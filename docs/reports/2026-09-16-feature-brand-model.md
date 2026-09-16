@@ -60,15 +60,19 @@
 
 ## 7. Commits pushed
 ```
+cfa6dce docs(claude): replace CLAUDE.md with full 520-line setup document
+6570f76 docs(decisions): fill founder names in D-003
+69ba3e6 docs: add engineering report 2026-09-16 (this file, initial version)
 079aac3 docs(governance): install operating manual, commands, and decision log
 ```
 
 ## 8. Decisions approved today
 | ID | Decision | Approved by | Impact |
 |---|---|---|---|
-| D-003 | slowapi for rate limiting | `<founder name>` (needs fill-in) | Rate limiting library locked in; switch to Redis storage before multi-process deploy |
+| D-003 | slowapi for rate limiting | Adhi and Erode Harish (filled in commit `6570f76`) | Rate limiting library locked in; switch to Redis storage before multi-process deploy |
+| (informal) | CLAUDE.md kept in full 520-line setup-wrapper form | Adhi | CLAUDE.md contains setup instructions + four fenced blocks verbatim; supersedes the extracted 196-line form |
 
-Note: D-001 and D-002 are recorded in the log as historical decisions from 2026-09-14 (pre-log). No new decisions were minted today.
+Note: D-001 and D-002 are recorded in the log as historical decisions from 2026-09-14 (pre-log). D-003 is the only formal decision minted today.
 
 ## 9. Dependencies
 | Package | Version | Reason | Approval ref |
@@ -90,8 +94,8 @@ Note: D-001 and D-002 are recorded in the log as historical decisions from 2026-
 ## 12. Blockers
 | Blocker | Impact | What's needed | From whom |
 |---|---|---|---|
-| PR for `feature/brand-model` not yet opened | Cannot merge Brand model or governance install | Founder opens PR at the compare link above | Founder |
-| `<founder name>` placeholder in D-003 | Decision log incomplete | Founder replaces placeholder | Founder |
+| PR for `feature/brand-model` not yet opened | Cannot merge Brand model or governance install | Founder opens PR at the compare link above | Adhi |
+| CLAUDE.md divergence: `main` has 755-line version (Erode's PR #2), `feature/brand-model` has 520-line version (Adhi's setup document) | Merging PR will conflict on CLAUDE.md; needs founder-to-founder reconciliation | Decide which version wins, or merge the two | Adhi + Erode Harish |
 
 ## 13. Health
 | Area | Status | Why |
@@ -103,17 +107,17 @@ Note: D-001 and D-002 are recorded in the log as historical decisions from 2026-
 | Infrastructure | 🟢 | Docker compose on port 5433 (moved from 5432 to avoid host Postgres collision); `.env` gitignored |
 
 ## 14. Next recommended tasks
-1. **Open PR for `feature/brand-model`** targeting `main` — the branch is 2 commits ahead of local main and needs review to unblock further data-layer work.
-2. **Fill `<founder name>` in `docs/DECISIONS.md` D-003** — small chore, keeps the decision log valid.
-3. **Set up GitHub Actions CI** — health check green currently depends on local pytest only; CI is listed in the stack (CLAUDE.md section 3) but no workflow exists.
+1. **Reconcile CLAUDE.md between founders** — `main` has Erode's 755-line version, `feature/brand-model` has Adhi's 520-line setup document. Decide together: which one wins, or merge them into one canonical file.
+2. **Open PR for `feature/brand-model`** targeting `main` at https://github.com/adhi2801/nicheconnect-tn/compare/feature/brand-model?expand=1 — bundles Brand model + governance-v2 + report. Expect CLAUDE.md conflict per item 1.
+3. **Set up GitHub Actions CI** — CI is listed in the stack (CLAUDE.md section 3) but no workflow exists; without it "reviewed by other founder + green CI" from Definition of Done cannot be satisfied.
 4. **Next data-layer model (Creator)** — logical next step after Brand.
-5. **Rebase `feature/brand-model` on new `main`** if there are conflicts once PRs #1–#3 land — verify with `git fetch origin && git log origin/main..HEAD`.
+5. **Rebase `feature/brand-model` on new `main`** — main moved with PRs #1–#3 today; verify with `git fetch origin && git log origin/main..HEAD` before opening PR.
 
 _Not started automatically. Awaiting founder approval._
 
 ## 15. Handoff
-- **Pick up from:** `feature/brand-model` at commit `079aac3`
-- **Pending:** Open PR for this branch; fill `<founder name>` in D-003
-- **Open questions:** Does the governance rewrite here need to be reviewed separately from the Brand model, or bundled?
-- **Watch out for:** `main` moved today (3 PRs merged); may need rebase before PR merge. Docker Postgres runs on **5433** (not 5432 — see `.env` and `docker-compose.yml`).
-- **First command to run:** `git fetch origin` then open the PR link above.
+- **Pick up from:** `feature/brand-model` at commit `cfa6dce`
+- **Pending:** Reconcile CLAUDE.md between founders (see item 12); open PR for this branch
+- **Open questions:** Which CLAUDE.md wins — Erode's 755-line "Project Governance, Founder Control & Reporting" on `main`, or Adhi's 520-line setup document on this branch? Should Brand model be split from the governance change into a separate PR?
+- **Watch out for:** `main` moved today (3 PRs merged, including Erode's governance in PR #2 as commit `489d831`); rebase likely needed before PR opens. Docker Postgres runs on **5433** (not 5432 — see `.env` and `docker-compose.yml`).
+- **First command to run:** `git fetch origin && git log origin/main..HEAD` to see how far this branch has diverged.
