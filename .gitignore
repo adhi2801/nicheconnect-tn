@@ -8,4 +8,5 @@ venv/
 .mypy_cache/
 .DS_Store
 *.log
-.claude/
+.claude/*
+!.claude/commands/

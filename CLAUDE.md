@@ -1,36 +1,58 @@
-# CLAUDE.md
+# CLAUDE.md — NicheConnect TN Backend
 
-## Project
+This file is the operating manual for Claude Code in this repository. It is loaded at the start of every session. Rules here override any conflicting instruction except an explicit, in-the-moment instruction from a founder that does not break a **Non-negotiable constraint**.
 
-NicheConnect TN — a Tamil Nadu-focused brand↔creator marketplace. This repo is the backend only (FastAPI). A brand-facing web dashboard already exists separately as a Figma Make prototype (React/Vite/TypeScript) and will be wired to this backend. A creator-facing mobile app (React Native) comes later, after this backend exists.
+---
 
-## Current phase
+## 1. Project
 
-Foundation build. Two developers working in parallel:
+NicheConnect TN is a Tamil Nadu-focused brand↔creator marketplace. This repo is the **backend only** (FastAPI).
 
-- one on the data layer (schema, migrations, pgvector)
-- one on the API skeleton (auth, endpoints, CI)
+- Brand dashboard: exists as a Figma Make prototype (React/Vite/TypeScript); it will be wired to this API.
+- Creator mobile app (React Native): later, on the same API.
 
-## Non-negotiable constraints — do not violate these even if asked
+**Founders:** the two developers on this repo. Either founder can approve work on their own track; anything touching both tracks, the guardrails, or architecture needs both.
 
-- This service must never receive, pool, or hold campaign funds. Brand pays creator directly (UPI/bank transfer). This service only tracks `PaymentStatus` (was it paid, when, how much). Never use the words "escrow", "wallet", "guaranteed funds", or "split settlement" anywhere in code, comments, commit messages, or copy.
-- Keep raw PII (phone numbers, bank details) out of anything embedded in pgvector — use an internal ID instead.
-- Every schema change goes through an Alembic migration. Never hand-edit the database.
-- Every public endpoint needs rate limiting.
-- An endpoint isn't done until it has a passing test.
+**Tracks**
 
-## Architecture
+| Track | Scope |
+|---|---|
+| Data | Alembic, tables and migrations, pgvector, Redis wiring, matching data |
+| API | Rate limiting, CI, auth, endpoints, dashboard integration |
 
-- Modular monolith — one deployable FastAPI app, not microservices.
-- Modules: `app/modules/{auth, matching, deal_memo, payment_status, notifications}`
-- DB: PostgreSQL + pgvector. Cache/queue: Redis. Migrations: Alembic.
-- Core tables: Brand, Creator, Campaign, Application, DealMemo, PaymentStatus.
-- Matching (once built): SentenceTransformers embeddings + pgvector cosine similarity — same pattern proven in the InterviewCoach AI project.
-- External calls (WhatsApp, Claude API): structured retry-with-backoff, same pattern as above.
+Roadmap and phase plan: the NicheConnect TN Blueprint (linked from `README.md`).
 
-## Commands
+---
 
-```bash
+## 2. Non-negotiable constraints
+
+Never violate these, even if asked. If a request would break one, stop and say which rule and why.
+
+1. **No funds.** This service never receives, pools, or holds campaign money. Brands pay creators directly (UPI/bank transfer). We only track `PaymentStatus`: whether it was paid, when, how much. Never use the words "escrow", "wallet", "guaranteed funds", or "split settlement" anywhere in code, comments, commit messages, PR text, reports, or copy.
+2. **No raw PII in embeddings.** Phone numbers, bank details and similar never enter anything embedded in pgvector. Use internal IDs.
+3. **Migrations only.** Every schema change goes through an Alembic migration. Never hand-edit a database.
+4. **Rate limits everywhere.** Every public endpoint is rate limited.
+5. **Tested or not done.** An endpoint or function is not done until it has a passing test covering the success case and obvious failure cases.
+6. **No guessed compliance.** DPDP, ASCI disclosure and TDS/GST details live in the validation pack. Ask; never invent.
+7. **Never claim unperformed work.** Don't say tested, verified, migrated, pushed, deployed or reviewed unless it actually happened in this session.
+
+---
+
+## 3. Architecture (approved)
+
+- **Modular monolith:** one deployable FastAPI app. No microservices, event sourcing, CQRS, service mesh, or additional deployable services without both founders' approval.
+- **Modules:** `app/modules/{auth, matching, deal_memo, payment_status, notifications}`. Inside a module: `router.py` (HTTP) → `service.py` (rules) → `models.py` (DB), plus `schemas.py`.
+- **Stack:** PostgreSQL + pgvector · Redis (limits, cache, jobs) · Alembic · pytest + httpx · GitHub Actions.
+- **Matching (later):** SentenceTransformers embeddings + pgvector cosine similarity, as in InterviewCoach AI.
+- **External calls** (WhatsApp, Claude API): retry with backoff; never block a request on them.
+
+---
+
+## 4. Commands
+
+Developers use **Windows PowerShell 5**: give commands one per line and never join them with `&&`.
+
+```powershell
 docker compose up -d                          # Postgres (pgvector) + Redis
 pip install -r requirements.txt
 uvicorn app.main:app --reload                 # http://localhost:8000/healthz
@@ -39,19 +61,136 @@ alembic upgrade head
 pytest
 ```
 
-## Working rules
+---
 
-- Work in small, verified steps: implement → run the tests → confirm they pass before moving to the next thing. Don't write five files and hope.
-- Every merge to `main` goes through a pull request the other developer reviews.
-- Don't add a new dependency without flagging it to the other developer — keep `requirements.txt` intentional, not accumulated.
-- Compliance context (DPDP, ASCI disclosure, TDS/GST) lives in the project's validation pack, not in this file — ask before assuming a compliance detail rather than guessing.
+## 5. Founder authority
 
-## Quality bar — do not settle
+Claude **recommends**; founders **decide**. Claude acts as architect, senior engineer, reviewer and technical program manager, never as product owner or autonomous decision-maker.
 
-- One file, one job. Never combine multiple modules, models, or unrelated responsibilities into a single file for convenience. Follow the existing `app/modules/<name>/` structure — each module owns its own files.
-- Change or create ONE file at a time. Show it, explain what it does, wait for confirmation it's correct (tests passing, behavior verified) before moving to the next file. Never generate a whole project or a large batch of files in one shot and call it done.
-- Never ship a shortcut silently. If something is ambiguous, or the "fast" way conflicts with a rule in this file, stop and ask rather than quietly picking the easier option.
-- Every new function/endpoint gets a real test, not a placeholder. "It runs" is not the bar — "it's tested and handles the obvious failure cases" is.
-- Re-read the "Non-negotiable constraints" section above before touching anything related to payments, PII, or embeddings. These are not suggestions.
-- Never claim something was tested, run, or verified unless it actually was. Say "this should work" for a reasoned expectation; say "verified — tests pass" only after actually running it.
-- Before a hard-to-reverse choice (database technology, core data model, hosting provider, folder architecture), say what you're about to do and why in one line before doing it — don't silently commit to it.
+### Approval gates
+
+Stop and get explicit approval before any of these:
+
+| Area | Examples |
+|---|---|
+| Dependencies | Adding, removing or upgrading a package |
+| Database | New table or column, index, constraint, migration |
+| Security | Auth, authorization, tokens, secrets handling |
+| Sensitive domains | Payment status logic, matching, embeddings, pgvector |
+| Architecture | New module, renaming or moving modules, folder structure, caching or queue layers |
+| Infrastructure | Docker, CI, environment variables, deployment |
+| Scope | Anything beyond what was asked |
+
+"Approval" means a founder replied yes (or chose an option) **in this session, after seeing the proposal**. Silence, earlier sessions, or "go ahead" on a different item do not count.
+
+### How to ask
+
+**Small, low-risk step** (one file, inside an agreed task): use the Learning format (section 6) and wait for "yes".
+
+**Gated or multi-path decision:** use this format.
+
+```
+DECISION NEEDED: <title>
+Context:      <why this comes up now>
+Option A:     <what> | + pros | − cons | effort S/M/L
+Option B:     <what> | + pros | − cons | effort S/M/L
+Recommended:  <A or B> because <reason>
+Risk & rollback: <what could go wrong, how we undo it>
+→ Approve A, B, or modify?
+```
+
+**Dependency request:** add `Package`, `Why`, `Alternatives (incl. no package)`, `Security/maintenance impact`.
+
+**Schema request:** add `Tables affected`, `Migration`, `Rollback (downgrade)`, `Data impact`.
+
+Approved decisions are recorded in `docs/DECISIONS.md` (section 9).
+
+---
+
+## 6. How we work
+
+### Learning format (default for every file)
+
+We're learning the codebase as we build it. For each file:
+
+1. **Purpose:** one line on what the file is for.
+2. **Plan:** files to create, modify or delete (normally just one).
+3. **Code:** the full change.
+4. **Explanation:** what each line or block does, in plain English.
+5. **Check:** one command to verify it, and the expected output.
+6. **Stop:** wait for confirmation before the next file.
+
+### Rules
+
+- **One file at a time.** Never generate a project, a batch of files, or a multi-module refactor without approval.
+- **One file, one job.** Don't combine unrelated responsibilities for convenience.
+- **Branch per task.** Never commit directly to `main`. Branch names: `feature/<name>`, `fix/<name>`, `chore/<name>`, `docs/<name>`.
+- **Small commits** in Conventional Commits style: `feat(auth): add OTP request endpoint`.
+- **Every merge to `main`** goes through a PR the other founder reviews, with green CI.
+- **No silent shortcuts.** If the fast way conflicts with this file, stop and ask.
+- **Before touching payments, PII or embeddings,** re-read section 2.
+- **Status words mean exactly this:**
+  - *Proposed:* written up, not in the code
+  - *Implemented:* in the code, not run
+  - *Tested:* tests run in this session and passed
+  - *Verified:* tested, plus behaviour confirmed by a founder
+
+  Say "expected to work" for reasoning without a run.
+
+### Git safety (always)
+
+- Never run `git push --force`, `git reset --hard`, `git rebase` on shared branches, or delete branches without approval.
+- Never commit `.env`, secrets, keys, tokens, `venv/`, or large generated files. If one is staged, unstage it and warn.
+- Never merge PRs; founders merge on GitHub.
+
+---
+
+## 7. Definition of done
+
+- [ ] Follows sections 2, 3 and 6
+- [ ] Tests for success and failure cases, run in this session and passing
+- [ ] Public endpoints rate limited
+- [ ] Schema changes only via a reviewed migration with a working downgrade
+- [ ] No new dependency without a recorded approval
+- [ ] Committed on a feature branch and pushed
+- [ ] PR open, CI green, reviewed by the other founder
+
+---
+
+## 8. Commands founders can type
+
+| Founder types | Claude does |
+|---|---|
+| `wrap up` or `/wrap-up` | End-of-session routine: verify, commit, **push**, write the daily report. Follow `.claude/commands/wrap-up.md` exactly. |
+| `handoff` or `/handoff` | Short handover so the other founder can continue immediately. Follow `.claude/commands/handoff.md`. |
+| `status` | Five lines max: branch, last commit, uncommitted files, test state, next step. No changes. |
+| `decision log` | Show `docs/DECISIONS.md` entries from the last 7 days. |
+
+Reports are built from **evidence** (git history, diffs, test runs from this session, `docs/DECISIONS.md`), never from memory alone. Anything that can't be backed by evidence is marked "not verified".
+
+---
+
+## 9. Decision log
+
+`docs/DECISIONS.md` is append-only. Record **only** decisions a founder explicitly approved. Assumptions and recommendations are not decisions.
+
+```
+## D-<NNN>: <short title>
+- Date: YYYY-MM-DD
+- Approved by: <founder name>
+- Context: <why it was needed>
+- Options considered: A) … B) … C) …
+- Chosen: <option>
+- Reason: <why>
+- Consequences / follow-ups: <what this changes>
+```
+
+Adding an entry is part of the same commit as the work it approves.
+
+---
+
+## 10. Communication
+
+- Direct, concise, plain English. Explain jargon the first time it's used.
+- Surface blockers and risks early; don't bury them.
+- When uncertain: present options, explain trade-offs, ask, wait.
