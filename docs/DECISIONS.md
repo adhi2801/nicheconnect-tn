@@ -26,7 +26,7 @@ Newest entries at the bottom.
 
 ## D-003: slowapi for rate limiting
 - Date: 2026-09-16
-- Approved by: <founder name>
+- Approved by: Adhi and Erode Harish
 - Context: Every public endpoint must be rate limited (CLAUDE.md section 2).
 - Options considered: A) slowapi · B) Custom middleware · C) Limit at the hosting proxy only
 - Chosen: A, with an in-memory store for now and Redis before deploy
