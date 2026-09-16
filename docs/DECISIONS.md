@@ -32,3 +32,12 @@ Newest entries at the bottom.
 - Chosen: A, with an in-memory store for now and Redis before deploy
 - Reason: FastAPI-native, small, well known.
 - Consequences / follow-ups: Switch the storage to Redis before running more than one process.
+
+## D-004: Backend first; UI/UX and frontend after the backend is complete
+- Date: 2026-09-16
+- Approved by: <founder name>
+- Context: The earlier plan assumed a finished brand dashboard prototype to wire up. There isn't one.
+- Options considered: A) Build backend and frontend in parallel · B) Complete the backend first, then UI/UX design, web dashboard and mobile app
+- Chosen: B
+- Reason: A stable, tested API lets the UI be designed against real data and contracts, with no rework.
+- Consequences / follow-ups: No frontend code in this repo. The roadmap's dashboard integration moves to after backend completion.

@@ -12,7 +12,7 @@ A founder has approved this setup. Do exactly the following, then stop:
 2. Create an empty folder `docs/reports/` containing an empty `.gitkeep` file.
 3. Delete this file (`SETUP_GOVERNANCE.md`).
 4. Run `git status --short` and show the result.
-5. Don't commit or push. Tell the founder: "Setup complete. Review the files, replace `<founder name>` in docs/DECISIONS.md, then type `wrap up`."
+5. Don't commit or push. Tell the founder: "Setup complete. Review the files, replace both `<founder name>` placeholders in docs/DECISIONS.md, then type `wrap up`."
 
 ---
 
@@ -29,8 +29,11 @@ This file is the operating manual for Claude Code in this repository. It is load
 
 NicheConnect TN is a Tamil Nadu-focused brand↔creator marketplace. This repo is the **backend only** (FastAPI).
 
-- Brand dashboard: exists as a Figma Make prototype (React/Vite/TypeScript); it will be wired to this API.
-- Creator mobile app (React Native): later, on the same API.
+**Build order (approved):** backend first, to completion. UI/UX design and all frontend work (brand web dashboard, creator mobile app) start only after the backend is complete.
+
+- This repo contains **no frontend code**. Don't create UI, screens, or frontend scaffolding here.
+- Design the API around the product's domain (brands, creators, campaigns, applications, deal memos, payment status), not around assumed screens.
+- There is no finished dashboard. Any earlier Figma sketches are reference only, not a contract.
 
 **Founders:** the two developers on this repo. Either founder can approve work on their own track; anything touching both tracks, the guardrails, or architecture needs both.
 
@@ -39,7 +42,7 @@ NicheConnect TN is a Tamil Nadu-focused brand↔creator marketplace. This repo i
 | Track | Scope |
 |---|---|
 | Data | Alembic, tables and migrations, pgvector, Redis wiring, matching data |
-| API | Rate limiting, CI, auth, endpoints, dashboard integration |
+| API | Rate limiting, CI, auth, endpoints, API docs & contracts |
 
 Roadmap and phase plan: the NicheConnect TN Blueprint (linked from `README.md`).
 
@@ -66,6 +69,7 @@ Never violate these, even if asked. If a request would break one, stop and say w
 - **Stack:** PostgreSQL + pgvector · Redis (limits, cache, jobs) · Alembic · pytest + httpx · GitHub Actions.
 - **Matching (later):** SentenceTransformers embeddings + pgvector cosine similarity, as in InterviewCoach AI.
 - **External calls** (WhatsApp, Claude API): retry with backoff; never block a request on them.
+- **Scale posture:** build for pilot scale first. Do not introduce Kafka or other brokers, Kubernetes, multi-region, service mesh, GraphQL, or dedicated vector/search databases without both founders' approval. Future-scale ideas go in `docs/ARCHITECTURE_SCALE.md` as proposals with explicit migration triggers, never straight into code.
 
 ---
 
@@ -517,4 +521,13 @@ Newest entries at the bottom.
 - Chosen: A, with an in-memory store for now and Redis before deploy
 - Reason: FastAPI-native, small, well known.
 - Consequences / follow-ups: Switch the storage to Redis before running more than one process.
+
+## D-004: Backend first; UI/UX and frontend after the backend is complete
+- Date: 2026-09-16
+- Approved by: <founder name>
+- Context: The earlier plan assumed a finished brand dashboard prototype to wire up. There isn't one.
+- Options considered: A) Build backend and frontend in parallel · B) Complete the backend first, then UI/UX design, web dashboard and mobile app
+- Chosen: B
+- Reason: A stable, tested API lets the UI be designed against real data and contracts, with no rework.
+- Consequences / follow-ups: No frontend code in this repo. The roadmap's dashboard integration moves to after backend completion.
 ~~~~
