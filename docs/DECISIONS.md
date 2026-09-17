@@ -1,6 +1,6 @@
 # Decision Log
 
-Append-only record of decisions **explicitly approved by a founder**. Recommendations and assumptions don't belong here. Format and rules: `CLAUDE.md` section 9.
+Append-only record of decisions **explicitly approved by a founder**. Recommendations and assumptions don't belong here. Format and rules: `CLAUDE.md` section 10.
 
 Newest entries at the bottom.
 
