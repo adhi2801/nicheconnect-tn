@@ -4,6 +4,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from app.core.errors import register_error_handlers
 from app.core.rate_limit import limiter
 from app.core.request_id import RequestIdMiddleware
+from app.modules.auth.router import router as auth_router
 
 app = FastAPI(title="NicheConnect TN API")
 
@@ -13,6 +14,8 @@ register_error_handlers(app)
 app.add_middleware(SlowAPIMiddleware)
 # Added last so it wraps everything: every response gets X-Request-ID.
 app.add_middleware(RequestIdMiddleware)
+
+app.include_router(auth_router)
 
 
 @app.get("/healthz")
