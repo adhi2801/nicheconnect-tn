@@ -1,24 +1,27 @@
 from fastapi import FastAPI
-from slowapi import _rate_limit_exceeded_handler  # NEW
-from slowapi.errors import RateLimitExceeded  # NEW
-from slowapi.middleware import SlowAPIMiddleware  # NEW
+from slowapi.middleware import SlowAPIMiddleware
 
-from app.core.rate_limit import limiter  # NEW
+from app.core.errors import register_error_handlers
+from app.core.rate_limit import limiter
+from app.core.request_id import RequestIdMiddleware
 
 app = FastAPI(title="NicheConnect TN API")
 
-app.state.limiter = limiter  # NEW
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # NEW
-app.add_middleware(SlowAPIMiddleware)  # NEW
+app.state.limiter = limiter
+# Every error, including 429 from the rate limiter, uses Problem Details.
+register_error_handlers(app)
+app.add_middleware(SlowAPIMiddleware)
+# Added last so it wraps everything: every response gets X-Request-ID.
+app.add_middleware(RequestIdMiddleware)
 
 
 @app.get("/healthz")
-def healthz():
+def healthz() -> dict[str, str]:
     """Liveness check — is the process up at all."""
     return {"status": "ok"}
 
 
 @app.get("/readyz")
-def readyz():
+def readyz() -> dict[str, str]:
     """Readiness check — placeholder until DB/Redis connectivity is wired in."""
     return {"status": "ready"}

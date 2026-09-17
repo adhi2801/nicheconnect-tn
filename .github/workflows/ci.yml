@@ -25,8 +25,12 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
+    # Test-only values (security.md section 5). Never real keys.
     env:
       DATABASE_URL: postgresql+psycopg://niche:niche@localhost:5432/nicheconnect
+      REDIS_URL: redis://localhost:6379/0
+      SECRET_KEY: ci-test-only-signing-key-not-a-secret-0001
+      OTP_HASH_KEY: ci-test-only-otp-hash-key-not-a-secret-0002
 
     steps:
       - uses: actions/checkout@v4
