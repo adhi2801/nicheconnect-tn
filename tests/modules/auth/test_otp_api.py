@@ -29,7 +29,13 @@ class Clock:
 
 
 class FailingSender:
+    """A provider that fails with an error message echoing the phone and code."""
+
+    def __init__(self) -> None:
+        self.attempted_code: str | None = None
+
     def send_code(self, phone: str, code: str) -> None:
+        self.attempted_code = code
         raise ConnectionError(f"provider down while sending {code} to {phone}")
 
 
@@ -160,18 +166,23 @@ def test_fourth_request_from_one_ip_gets_429(client, sender):
     assert len(sender.sent) == 3
 
 
-def test_send_failure_does_not_break_the_request(client, clock, caplog):
-    app.dependency_overrides[get_otp_sender] = lambda: FailingSender()
+def test_send_failure_does_not_break_the_request(client, caplog):
+    failing = FailingSender()
+    app.dependency_overrides[get_otp_sender] = lambda: failing
     phone = fake_phone()
 
-    with caplog.at_level(logging.ERROR, logger="app.modules.auth.service"):
+    with caplog.at_level(logging.DEBUG):
         response = client.post(REQUEST_URL, json={"phone": phone})
 
     assert response.status_code == 202
-    failures = [r for r in caplog.records if r.getMessage() == "otp.send_failed"]
-    assert len(failures) == 1
-    # The exception text (which here contains the phone) is not in the message.
-    assert phone not in failures[0].getMessage()
+    failures = [r for r in caplog.records if r.getMessage().startswith("otp.send_failed")]
+    assert [r.getMessage() for r in failures] == ["otp.send_failed error_type=ConnectionError"]
+    assert failures[0].exc_info is None
+    # caplog.text is the full formatted output, including any tracebacks.
+    assert failing.attempted_code is not None
+    assert failing.attempted_code not in caplog.text
+    assert phone not in caplog.text
+    assert phone[3:] not in caplog.text
 
 
 # --- POST /otp/verify ----------------------------------------------------
@@ -312,6 +323,6 @@ def test_codes_phones_and_tokens_never_reach_the_logs(client, sender, caplog):
         verify(client, phone, wrong(code))
         body = verify(client, phone, code).json()
 
-    logged = "\n".join(record.getMessage() for record in caplog.records)
+    # caplog.text is the full formatted output, including any tracebacks.
     for secret in (phone, phone[3:], code, body["access_token"], body["refresh_token"]):
-        assert secret not in logged
+        assert secret not in caplog.text

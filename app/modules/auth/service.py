@@ -119,8 +119,10 @@ def deliver_otp(sender: OtpSender, pending: PendingOtp) -> None:
     """
     try:
         sender.send_code(pending.phone, pending.code)
-    except Exception:
-        logger.exception("otp.send_failed")
+    except Exception as exc:
+        # Provider errors can echo the phone or code, so never log the
+        # exception text or traceback: only the error type.
+        logger.error("otp.send_failed error_type=%s", type(exc).__name__)
 
 
 def verify_otp(db: Session, phone: str, code: str, role: str, now: datetime) -> LoginResult:
