@@ -1,1 +1,5 @@
+from app.modules.auth.models.account import Account  # noqa: F401
+from app.modules.auth.models.auth_session import AuthSession  # noqa: F401
 from app.modules.auth.models.brand import Brand  # noqa: F401
+from app.modules.auth.models.creator import Creator  # noqa: F401
+from app.modules.auth.models.otp_challenge import OtpChallenge  # noqa: F401
