@@ -9,11 +9,16 @@ from pydantic_core import PydanticCustomError
 
 from app.core.taxonomy import CURRENCY, MAX_NICHES, NICHES
 from app.modules.campaigns.models import (
+    APPLICATION_STATUSES,
     BUDGETED_TYPES,
     CAMPAIGN_TYPES,
     DELIVERABLES_MAX_LENGTH,
     DESCRIPTION_MAX_LENGTH,
     MAX_CITIES,
+    PITCH_MAX_LENGTH,
+    PITCH_MIN_LENGTH,
+    REJECTION_NOTE_MAX_LENGTH,
+    REJECTION_REASONS,
     TITLE_MAX_LENGTH,
 )
 
@@ -136,5 +141,69 @@ class CampaignRead(BaseModel):
     deliverables: str
     applications_close_on: date | None
     status: CampaignStatus
+    created_at: datetime
+    updated_at: datetime
+
+
+# --- applications --------------------------------------------------------
+
+ApplicationStatus = Literal[
+    "submitted", "shortlisted", "accepted", "rejected", "withdrawn"
+]
+RejectionReason = Literal[
+    "budget_mismatch",
+    "audience_mismatch",
+    "timing",
+    "chose_another_creator",
+    "incomplete_profile",
+    "other",
+]
+
+assert set(APPLICATION_STATUSES) == set(ApplicationStatus.__args__)
+assert set(REJECTION_REASONS) == set(RejectionReason.__args__)
+
+Pitch = Annotated[
+    str,
+    Field(
+        min_length=PITCH_MIN_LENGTH,
+        max_length=PITCH_MAX_LENGTH,
+        description="Why you are a good fit for this campaign",
+        examples=["I run a Madurai street-food page with 12k local followers..."],
+    ),
+]
+RejectionNote = Annotated[str, Field(max_length=REJECTION_NOTE_MAX_LENGTH)]
+
+
+class ApplicationCreate(BaseModel):
+    """What a creator sends to apply."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    pitch: Pitch
+    quoted_amount_paise: Paise | None = None
+
+
+class ApplicationReject(BaseModel):
+    """Why a brand said no. The reason is a code so the creator sees it clearly."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    reason: RejectionReason
+    note: RejectionNote | None = None
+
+
+class ApplicationRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    campaign_id: uuid.UUID
+    creator_id: uuid.UUID
+    pitch: str
+    quoted_amount_paise: int | None
+    currency: Literal["INR"] = CURRENCY
+    status: ApplicationStatus
+    rejection_reason: RejectionReason | None
+    rejection_note: str | None
+    status_changed_at: datetime
     created_at: datetime
     updated_at: datetime

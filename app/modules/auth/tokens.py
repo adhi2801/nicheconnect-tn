@@ -64,8 +64,16 @@ def decode_access_token(token: str, now: datetime) -> AccessTokenClaims:
             token,
             settings.secret_key.get_secret_value(),
             algorithms=[ALGORITHM],
-            # Expiry is checked below against the caller's clock.
-            options={"verify_exp": False, "require": ["sub", "role", "typ", "iat", "exp", "jti"]},
+            # Expiry is checked below against the caller's clock, which is the
+            # single source of time here. PyJWT's own exp and iat checks use
+            # the machine clock, so they are off: with them on, a token issued
+            # a moment "ahead" of the machine (clock skew, or a test clock) is
+            # refused even though our rules accept it.
+            options={
+                "verify_exp": False,
+                "verify_iat": False,
+                "require": ["sub", "role", "typ", "iat", "exp", "jti"],
+            },
         )
         account_id = uuid.UUID(claims["sub"])
         expires_at = datetime.fromtimestamp(int(claims["exp"]), tz=timezone.utc)

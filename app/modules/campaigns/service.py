@@ -14,17 +14,25 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import Select, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.pagination import Slice, build_slice, decode_cursor
 from app.modules.auth.models.brand import Brand
+from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.exceptions import (
+    AlreadyApplied,
+    ApplicationsClosed,
+    ApplicationStatusConflict,
     BrandProfileRequired,
     CampaignNotEditable,
+    CampaignNotFound,
+    CampaignNotOpen,
     CampaignStatusConflict,
+    CreatorProfileRequired,
     FieldNotEditableNow,
 )
-from app.modules.campaigns.models import Campaign
+from app.modules.campaigns.models import Application, Campaign
 
 # What each status allows next. Empty means the campaign is finished.
 ALLOWED_TRANSITIONS: dict[str, frozenset[str]] = {
@@ -159,3 +167,146 @@ def discover_campaigns(
         # "Pays at least this much": the top of the range must reach it.
         query = query.where(Campaign.budget_max_paise >= min_budget_paise)
     return _paginate(db, query, limit, cursor)
+
+
+# --- applications --------------------------------------------------------
+#
+# Status flow:
+#
+#     submitted ──shortlist──> shortlisted ──accept──> accepted
+#         │  │                   │  │
+#         │  └────reject─────────┘  └────reject───────> rejected
+#         └────withdraw────────────────withdraw───────> withdrawn
+#
+# The brand shortlists, accepts and rejects; the creator withdraws. Accepted,
+# rejected and withdrawn are final: a new attempt means a new campaign.
+APPLICATION_TRANSITIONS: dict[str, frozenset[str]] = {
+    "submitted": frozenset({"shortlisted", "rejected", "withdrawn"}),
+    "shortlisted": frozenset({"accepted", "rejected", "withdrawn"}),
+    "accepted": frozenset(),
+    "rejected": frozenset(),
+    "withdrawn": frozenset(),
+}
+
+
+def get_creator_for_account(db: Session, account_id: uuid.UUID) -> Creator:
+    """The creator profile of a signed-in creator account."""
+    creator = db.scalars(select(Creator).where(Creator.account_id == account_id)).first()
+    if creator is None:
+        raise CreatorProfileRequired()
+    return creator
+
+
+def apply_to_campaign(
+    db: Session,
+    campaign_id: uuid.UUID,
+    creator: Creator,
+    fields: dict,
+    now: datetime,
+) -> Application:
+    """Apply to an open campaign.
+
+    Raises CampaignNotFound (unknown or not open to this creator),
+    ApplicationsClosed (past the closing date) and AlreadyApplied.
+    """
+    campaign = db.get(Campaign, campaign_id)
+    if campaign is None:
+        db.rollback()
+        raise CampaignNotFound()
+    if campaign.status != "open":
+        db.rollback()
+        raise CampaignNotOpen()
+    if campaign.applications_close_on is not None and now.date() > campaign.applications_close_on:
+        db.rollback()
+        raise ApplicationsClosed()
+
+    application = Application(
+        campaign_id=campaign.id,
+        creator_id=creator.id,
+        status="submitted",
+        status_changed_at=now,
+        created_at=now,
+        updated_at=now,
+        **fields,
+    )
+    db.add(application)
+    try:
+        db.commit()
+    except IntegrityError as error:
+        db.rollback()
+        if "uq_application_campaign_creator" in str(error):
+            raise AlreadyApplied() from error
+        raise
+    db.refresh(application)
+    return application
+
+
+def change_application_status(
+    db: Session,
+    application: Application,
+    new_status: str,
+    now: datetime,
+    *,
+    rejection_reason: str | None = None,
+    rejection_note: str | None = None,
+) -> Application:
+    """Move an application on, or raise ApplicationStatusConflict."""
+    if new_status not in APPLICATION_TRANSITIONS[application.status]:
+        db.rollback()
+        raise ApplicationStatusConflict(
+            f"A {application.status} application cannot become {new_status}."
+        )
+    application.status = new_status
+    application.rejection_reason = rejection_reason if new_status == "rejected" else None
+    application.rejection_note = rejection_note if new_status == "rejected" else None
+    application.status_changed_at = now
+    application.updated_at = now
+    db.commit()
+    db.refresh(application)
+    return application
+
+
+def _paginate_applications(
+    db: Session, query: Select, limit: int, cursor: str | None
+) -> Slice[Application]:
+    if cursor is not None:
+        created_at, row_id = decode_cursor(cursor)
+        query = query.where((Application.created_at, Application.id) < (created_at, row_id))
+    rows = list(
+        db.scalars(
+            query.order_by(Application.created_at.desc(), Application.id.desc()).limit(
+                limit + 1
+            )
+        ).all()
+    )
+    return build_slice(rows, limit, key=lambda row: (row.created_at, row.id))
+
+
+def list_campaign_applications(
+    db: Session,
+    campaign: Campaign,
+    *,
+    limit: int,
+    cursor: str | None = None,
+    status: str | None = None,
+) -> Slice[Application]:
+    """Applications to one of the brand's own campaigns."""
+    query = select(Application).where(Application.campaign_id == campaign.id)
+    if status is not None:
+        query = query.where(Application.status == status)
+    return _paginate_applications(db, query, limit, cursor)
+
+
+def list_creator_applications(
+    db: Session,
+    creator: Creator,
+    *,
+    limit: int,
+    cursor: str | None = None,
+    status: str | None = None,
+) -> Slice[Application]:
+    """A creator's own applications, across every campaign."""
+    query = select(Application).where(Application.creator_id == creator.id)
+    if status is not None:
+        query = query.where(Application.status == status)
+    return _paginate_applications(db, query, limit, cursor)

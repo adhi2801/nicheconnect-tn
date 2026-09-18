@@ -159,3 +159,20 @@ def test_otp_hash_depends_on_the_secret_key(monkeypatch):
     monkeypatch.setattr(settings, "otp_hash_key", type(settings.otp_hash_key)("y" * 43))
 
     assert hash_otp_code("123456") != original
+
+
+def test_token_issued_ahead_of_the_machine_clock_still_works():
+    """Our injectable clock decides validity, not the machine clock.
+
+    PyJWT would refuse a token whose "issued at" is in the machine's future
+    (clock skew between servers, or a test clock). Expiry is checked against
+    the clock we pass in, so that check stays off.
+    """
+    far_future = FIXED_NOW + timedelta(days=365)
+    token, expires_at = create_access_token(uuid.uuid4(), "creator", far_future)
+
+    claims = decode_access_token(token, far_future)
+
+    assert claims.expires_at == expires_at
+    with pytest.raises(InvalidToken):
+        decode_access_token(token, expires_at)

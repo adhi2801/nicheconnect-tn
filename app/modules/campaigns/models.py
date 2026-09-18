@@ -10,6 +10,7 @@ from sqlalchemy import (
     Index,
     String,
     Text,
+    UniqueConstraint,
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
@@ -120,6 +121,108 @@ class Campaign(Base):
     applications_close_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, server_default=text("'draft'")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+# A creator's answer to a campaign (D-016). One per creator per campaign.
+
+APPLICATION_STATUSES: tuple[str, ...] = (
+    "submitted",
+    "shortlisted",
+    "accepted",
+    "rejected",
+    "withdrawn",
+)
+# Why a brand said no. Stored as a code so the creator sees a clear reason and
+# we can report on it, rather than free text nobody reads.
+REJECTION_REASONS: tuple[str, ...] = (
+    "budget_mismatch",
+    "audience_mismatch",
+    "timing",
+    "chose_another_creator",
+    "incomplete_profile",
+    "other",
+)
+PITCH_MIN_LENGTH = 20
+PITCH_MAX_LENGTH = 1000
+REJECTION_NOTE_MAX_LENGTH = 500
+
+
+class Application(Base):
+    __tablename__ = "application"
+    __table_args__ = (
+        UniqueConstraint("campaign_id", "creator_id", name="uq_application_campaign_creator"),
+        CheckConstraint(
+            f"status IN {tuple(APPLICATION_STATUSES)}", name="status_allowed"
+        ),
+        CheckConstraint(
+            f"char_length(btrim(pitch)) BETWEEN {PITCH_MIN_LENGTH} AND {PITCH_MAX_LENGTH}",
+            name="pitch_length",
+        ),
+        CheckConstraint(
+            "quoted_amount_paise IS NULL OR quoted_amount_paise > 0",
+            name="quoted_amount_positive",
+        ),
+        CheckConstraint(
+            f"rejection_reason IS NULL OR rejection_reason IN {tuple(REJECTION_REASONS)}",
+            name="rejection_reason_allowed",
+        ),
+        # A rejection always carries a reason; nothing else may carry one.
+        CheckConstraint(
+            "(status = 'rejected') = (rejection_reason IS NOT NULL)",
+            name="rejection_reason_matches_status",
+        ),
+        CheckConstraint(
+            f"rejection_note IS NULL OR char_length(rejection_note) <= {REJECTION_NOTE_MAX_LENGTH}",
+            name="rejection_note_length",
+        ),
+        # The brand's list for one campaign, newest first.
+        Index("ix_application_campaign_created_at", "campaign_id", "created_at"),
+        # The creator's own list, newest first.
+        Index("ix_application_creator_created_at", "creator_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    # RESTRICT on both: an application is a record of what happened, so neither
+    # side can be deleted out from under it.
+    campaign_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("campaign.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    creator_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("creator.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    pitch: Mapped[str] = mapped_column(Text, nullable=False)
+    # What the creator asks for, in paise (D-015). Optional: barter campaigns
+    # and commission deals may have nothing to quote.
+    quoted_amount_paise: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default=text("'submitted'")
+    )
+    # Set only when the status is 'rejected'.
+    rejection_reason: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    rejection_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # When the status last changed, so the app can show "what happened when".
+    status_changed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

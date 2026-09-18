@@ -35,3 +35,39 @@ class CampaignStatusConflict(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "campaign_status_conflict"
     title = "This campaign is not in a state where that is allowed"
+
+
+class CreatorProfileRequired(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "creator_profile_required"
+    title = "Complete your creator profile before applying"
+
+
+class CampaignNotOpen(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "campaign_not_open"
+    title = "This campaign is not open for applications"
+
+
+class ApplicationsClosed(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "applications_closed"
+    title = "The closing date for this campaign has passed"
+
+
+class AlreadyApplied(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "already_applied"
+    title = "You have already applied to this campaign"
+
+
+class ApplicationNotFound(DomainError):
+    status_code = HTTPStatus.NOT_FOUND
+    code = "application_not_found"
+    title = "That application does not exist"
+
+
+class ApplicationStatusConflict(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "application_status_conflict"
+    title = "This application is not in a state where that is allowed"
