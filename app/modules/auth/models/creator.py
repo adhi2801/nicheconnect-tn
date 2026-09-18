@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text, text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKeyConstraint, Index, String, Text, text
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -58,6 +58,15 @@ class Creator(Base):
             f"char_length(bio) <= {BIO_MAX_LENGTH}", name="bio_length"
         ),
         Index("ix_creator_niches", "niches", postgresql_using="gin"),
+   # account_role is always 'creator'; paired with account_id it forces the
+        # linked account to have that role, and stops one account owning both
+        # profiles or changing role while a profile exists (D-014).
+        CheckConstraint("account_role = 'creator'", name="account_role_fixed"),
+        ForeignKeyConstraint(
+            ["account_id", "account_role"],
+            ["account.id", "account.role"],
+            ondelete="RESTRICT",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -67,11 +76,13 @@ class Creator(Base):
     )
     account_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        # RESTRICT: an account can't be deleted while its profile exists (D-011).
-        ForeignKey("account.id", ondelete="RESTRICT"),
         nullable=False,
         # Unique: one profile per account. The unique index also serves as the FK index.
         unique=True,
+    )
+    # Always 'creator': see the constraints above (D-014).
+    account_role: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default=text("'creator'")
     )
     display_name: Mapped[str] = mapped_column(String(100), nullable=False)
     handle: Mapped[str] = mapped_column(String(30), nullable=False, unique=True)
