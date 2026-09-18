@@ -5,10 +5,19 @@ import uuid
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, Field
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    model_validator,
+)
 from pydantic_core import PydanticCustomError
 
+from app.core.taxonomy import LANGUAGES, MAX_NICHES, NICHES
 from app.modules.auth.models.account import PHONE_PATTERN
+from app.modules.auth.models.creator import BIO_MAX_LENGTH, HANDLE_PATTERN
 
 # Separators people commonly type: "+91 98765 43210", "98765-43210", "(98765) 43210".
 _PHONE_SEPARATORS = re.compile(r"[\s\-()]")
@@ -130,3 +139,118 @@ class LoggedOutAll(BaseModel):
     sessions_ended: int = Field(
         description="How many sessions were still active", examples=[3]
     )
+
+# --- profiles ------------------------------------------------------------
+
+_EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$")
+
+
+def _normalize_email(value: object) -> str:
+    """Trim and lowercase; the database stores lowercase only (D-006)."""
+    if not isinstance(value, str):
+        raise PydanticCustomError("email_type", "Enter the email address as text")
+    email = value.strip().lower()
+    if not _EMAIL_PATTERN.fullmatch(email) or len(email) > 320:
+        raise PydanticCustomError("email_invalid", "Enter a valid email address")
+    return email
+
+
+def _normalize_handle(value: object) -> str:
+    """Trim, drop a leading @, lowercase; handles are stored lowercase."""
+    if not isinstance(value, str):
+        raise PydanticCustomError("handle_type", "Enter the handle as text")
+    handle = value.strip().lstrip("@").lower()
+    if not re.fullmatch(HANDLE_PATTERN, handle):
+        raise PydanticCustomError(
+            "handle_invalid",
+            "Use 3 to 30 characters: lowercase letters, numbers, dots or underscores",
+        )
+    return handle
+
+
+BrandName = Annotated[str, Field(min_length=1, max_length=150, examples=["Amma Sweets"])]
+BrandEmail = Annotated[
+    str, BeforeValidator(_normalize_email), Field(examples=["hello@ammasweets.in"])
+]
+CreatorName = Annotated[str, Field(min_length=1, max_length=100, examples=["Priya Eats"])]
+Handle = Annotated[str, BeforeValidator(_normalize_handle), Field(examples=["priya.eats"])]
+CreatorCity = Annotated[str, Field(min_length=2, max_length=60, examples=["Coimbatore"])]
+CreatorNiches = Annotated[
+    list[Literal[NICHES]], Field(min_length=1, max_length=MAX_NICHES)
+]
+CreatorLanguages = Annotated[list[Literal[LANGUAGES]], Field(min_length=1)]
+Bio = Annotated[str, Field(max_length=BIO_MAX_LENGTH)]
+
+
+class BrandProfileCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    name: BrandName
+    email: BrandEmail
+
+
+class BrandProfileUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    name: BrandName | None = None
+    email: BrandEmail | None = None
+
+    @model_validator(mode="after")
+    def at_least_one_field(self) -> "BrandProfileUpdate":
+        if not self.model_fields_set:
+            raise PydanticCustomError("empty_update", "Send at least one field to change")
+        return self
+
+
+class BrandProfileRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    account_id: uuid.UUID
+    name: str
+    email: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class CreatorProfileCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    display_name: CreatorName
+    handle: Handle
+    city: CreatorCity
+    niches: CreatorNiches
+    languages: CreatorLanguages = list(LANGUAGES)
+    bio: Bio | None = None
+
+
+class CreatorProfileUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    display_name: CreatorName | None = None
+    handle: Handle | None = None
+    city: CreatorCity | None = None
+    niches: CreatorNiches | None = None
+    languages: CreatorLanguages | None = None
+    bio: Bio | None = None
+
+    @model_validator(mode="after")
+    def at_least_one_field(self) -> "CreatorProfileUpdate":
+        if not self.model_fields_set:
+            raise PydanticCustomError("empty_update", "Send at least one field to change")
+        return self
+
+
+class CreatorProfileRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    account_id: uuid.UUID
+    display_name: str
+    handle: str
+    city: str
+    niches: list[str]
+    languages: list[str]
+    bio: str | None
+    created_at: datetime
+    updated_at: datetime

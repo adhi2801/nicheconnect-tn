@@ -33,3 +33,26 @@ class RoleNotAllowed(DomainError):
     status_code = HTTPStatus.FORBIDDEN
     code = "role_not_allowed"
     title = "This account type cannot use this feature"
+
+class ProfileNotFound(DomainError):
+    status_code = HTTPStatus.NOT_FOUND
+    code = "profile_not_found"
+    title = "You have not created your profile yet"
+
+
+class ProfileAlreadyExists(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "profile_exists"
+    title = "This account already has a profile"
+
+
+class HandleTaken(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "handle_taken"
+    title = "That handle is already in use. Try another one"
+
+
+class EmailTaken(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "email_taken"
+    title = "That email is already registered to another brand"
