@@ -2,7 +2,7 @@
 
 What the product needs from this repository, in the order we should build it.
 
-**Source:** the NicheConnect TN Product, Design & Build Playbook v1.0 (17 September 2026), plus the decisions in `docs/DECISIONS.md`. The playbook is product and design; this file translates it into backend work.
+**Source:** the NicheConnect TN Product, Design & Build Playbook v1.0 (17 September 2026), plus the decisions in `docs/DECISIONS.md`. The playbook is product and design; this file translates it into backend work. What the playbook does not cover at all is listed in `docs/PLAYBOOK_GAPS.md`.
 
 **Status words** follow `CLAUDE.md` section 6: *Proposed* (written up, not in the code), *Implemented* (in the code, not run), *Tested* (tests ran and passed this session), *Verified* (tested, plus behaviour confirmed by a founder).
 
