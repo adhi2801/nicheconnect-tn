@@ -28,3 +28,8 @@ class RoleMismatch(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "role_mismatch"
     title = "This number is already registered with a different account type"
+
+class RoleNotAllowed(DomainError):
+    status_code = HTTPStatus.FORBIDDEN
+    code = "role_not_allowed"
+    title = "This account type cannot use this feature"

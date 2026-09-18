@@ -2,6 +2,7 @@
 
 import re
 import uuid
+from datetime import datetime
 from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, Field
@@ -93,3 +94,39 @@ class LoginTokens(BaseModel):
         description="Refresh token lifetime in seconds", examples=[2592000]
     )
     account: AccountSummary
+
+# A refresh token is secrets.token_urlsafe(32), i.e. 43 URL-safe characters.
+RefreshToken = Annotated[
+    str,
+    Field(
+        min_length=20,
+        max_length=512,
+        description="The refresh token from a login or an earlier refresh",
+    ),
+]
+
+
+class RefreshIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    refresh_token: RefreshToken
+
+
+class LogoutIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    refresh_token: RefreshToken
+
+class AccountRead(BaseModel):
+    """The signed-in account, returned to its owner only."""
+
+    id: uuid.UUID
+    role: Role
+    phone: IndianMobile
+    created_at: datetime
+
+
+class LoggedOutAll(BaseModel):
+    sessions_ended: int = Field(
+        description="How many sessions were still active", examples=[3]
+    )

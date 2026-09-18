@@ -7,14 +7,19 @@ from an injectable clock so expiry and limits are testable.
 import logging
 import math
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
-from sqlalchemy import select, text
+from sqlalchemy import select, text, update
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.modules.auth.exceptions import OtpInvalid, OtpSendLimitReached, RoleMismatch
+from app.modules.auth.exceptions import (
+    InvalidToken,
+    OtpInvalid,
+    OtpSendLimitReached,
+    RoleMismatch,
+)
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.otp_challenge import MAX_OTP_ATTEMPTS, OTP_TTL, OtpChallenge
@@ -168,12 +173,30 @@ def verify_otp(db: Session, phone: str, code: str, role: str, now: datetime) -> 
         db.flush()
 
     challenge.consumed_at = now
+    # A fresh login starts its own rotation family.
+    result = _issue_session(db, account, uuid.uuid4(), now)
+    db.commit()
+    return replace(result, is_new_account=is_new_account)
+
+def _revoke_family(db: Session, family_id: uuid.UUID, now: datetime) -> None:
+    """End every session in one login's rotation chain."""
+    db.execute(
+        update(AuthSession)
+        .where(AuthSession.family_id == family_id, AuthSession.revoked_at.is_(None))
+        .values(revoked_at=now, updated_at=now)
+    )
+
+
+def _issue_session(
+    db: Session, account: Account, family_id: uuid.UUID, now: datetime
+) -> LoginResult:
+    """Create one session in `family_id` and return its tokens."""
     refresh_token = new_refresh_token()
     refresh_expires_at = now + timedelta(days=settings.refresh_token_expire_days)
     db.add(
         AuthSession(
             account_id=account.id,
-            family_id=uuid.uuid4(),
+            family_id=family_id,
             token_hash=hash_refresh_token(refresh_token),
             expires_at=refresh_expires_at,
             created_at=now,
@@ -181,14 +204,76 @@ def verify_otp(db: Session, phone: str, code: str, role: str, now: datetime) -> 
         )
     )
     access_token, access_expires_at = create_access_token(account.id, account.role, now)
-    db.commit()
-
     return LoginResult(
         account_id=account.id,
         role=account.role,
-        is_new_account=is_new_account,
+        is_new_account=False,
         access_token=access_token,
         access_token_expires_at=access_expires_at,
         refresh_token=refresh_token,
         refresh_token_expires_at=refresh_expires_at,
     )
+
+
+def refresh_session(db: Session, refresh_token: str, now: datetime) -> LoginResult:
+    """Swap a refresh token for a new pair of tokens (D-008).
+
+    Rotation: the old token is marked used and a new one joins the same family.
+    Presenting an already-used token means it was copied, so the whole family
+    is revoked and the caller must log in again.
+    Raises InvalidToken for unknown, expired, revoked or reused tokens.
+    """
+    # Locked so two callers cannot rotate the same token at once.
+    auth_session = db.scalars(
+        select(AuthSession)
+        .where(AuthSession.token_hash == hash_refresh_token(refresh_token))
+        .with_for_update()
+    ).first()
+
+    if auth_session is None:
+        db.rollback()
+        raise InvalidToken()
+
+    if auth_session.used_at is not None:
+        # Token reuse: assume theft and end every session in the family.
+        _revoke_family(db, auth_session.family_id, now)
+        db.commit()
+        logger.warning("auth.refresh_token_reused family_id=%s", auth_session.family_id)
+        raise InvalidToken()
+
+    if auth_session.revoked_at is not None or now >= auth_session.expires_at:
+        db.rollback()
+        raise InvalidToken()
+
+    auth_session.used_at = now
+    auth_session.updated_at = now
+    account = db.get(Account, auth_session.account_id)
+    result = _issue_session(db, account, auth_session.family_id, now)
+    db.commit()
+    return result
+
+
+def logout(db: Session, refresh_token: str, now: datetime) -> None:
+    """End the login this refresh token belongs to.
+
+    Revokes the whole rotation chain, so older copies stop working too.
+    Unknown tokens are ignored: logout always looks the same to the caller.
+    """
+    auth_session = db.scalars(
+        select(AuthSession).where(
+            AuthSession.token_hash == hash_refresh_token(refresh_token)
+        )
+    ).first()
+    if auth_session is not None:
+        _revoke_family(db, auth_session.family_id, now)
+    db.commit()
+
+def logout_all_sessions(db: Session, account_id: uuid.UUID, now: datetime) -> int:
+    """End every session of one account. Returns how many were still active."""
+    result = db.execute(
+        update(AuthSession)
+        .where(AuthSession.account_id == account_id, AuthSession.revoked_at.is_(None))
+        .values(revoked_at=now, updated_at=now)
+    )
+    db.commit()
+    return result.rowcount

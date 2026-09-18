@@ -9,19 +9,24 @@ from app.core.errors import problem_doc
 from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.modules.auth import service
-from app.modules.auth.dependencies import get_now
+from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.auth.schemas import (
+    AccountRead,
     AccountSummary,
+    LoggedOutAll,
     LoginTokens,
+    LogoutIn,
     OtpRequestAccepted,
     OtpRequestIn,
     OtpVerifyIn,
+    RefreshIn,
 )
 from app.modules.auth.sender import OtpSender, get_otp_sender
 
 # Per-IP limits (security.md section 4). Per-phone send limits live in the service.
 OTP_REQUEST_LIMIT = "3 per 10 minutes"
 OTP_VERIFY_LIMIT = "10 per 10 minutes"
+SESSION_LIMIT = "30 per minute"
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -95,3 +100,108 @@ def verify_code(
             id=result.account_id, role=result.role, is_new=result.is_new_account
         ),
     )
+@router.post(
+    "/refresh",
+    response_model=LoginTokens,
+    summary="Get a new access token with a refresh token",
+    description=(
+        "Swaps a refresh token for a new access token and a new refresh token. "
+        "The old refresh token stops working. Presenting an already-used token "
+        "means it was copied, so every session from that login is ended and the "
+        "user must log in again. Limit: 30 requests per minute per IP address."
+    ),
+    responses={
+        401: problem_doc("The refresh token is unknown, expired, revoked or already used"),
+        422: problem_doc("The refresh token field is missing or malformed"),
+        429: problem_doc("Too many requests; see the Retry-After header"),
+    },
+)
+@limiter.limit(SESSION_LIMIT)
+def refresh(
+    request: Request,
+    response: Response,
+    body: RefreshIn,
+    db: Session = Depends(get_db),
+    now: datetime = Depends(get_now),
+) -> LoginTokens:
+    result = service.refresh_session(db, body.refresh_token, now)
+    # Tokens must never be cached by browsers or proxies.
+    response.headers["Cache-Control"] = "no-store"
+    return LoginTokens(
+        access_token=result.access_token,
+        expires_in=_seconds_between(now, result.access_token_expires_at),
+        refresh_token=result.refresh_token,
+        refresh_expires_in=_seconds_between(now, result.refresh_token_expires_at),
+        account=AccountSummary(
+            id=result.account_id, role=result.role, is_new=result.is_new_account
+        ),
+    )
+
+
+@router.post(
+    "/logout",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Log out of this device",
+    description=(
+        "Ends the login the refresh token belongs to, including tokens it was "
+        "rotated from. Always returns 204, even for an unknown token, so nobody "
+        "can test whether a token exists. Limit: 30 requests per minute per IP address."
+    ),
+    responses={
+        422: problem_doc("The refresh token field is missing or malformed"),
+        429: problem_doc("Too many requests; see the Retry-After header"),
+    },
+)
+@limiter.limit(SESSION_LIMIT)
+def logout(
+    request: Request,
+    body: LogoutIn,
+    db: Session = Depends(get_db),
+    now: datetime = Depends(get_now),
+) -> None:
+    service.logout(db, body.refresh_token, now)
+
+@router.get(
+    "/me",
+    response_model=AccountRead,
+    summary="Who am I",
+    description=(
+        "The signed-in account, from the access token in the Authorization header "
+        "(`Bearer <token>`). Limit: 30 requests per minute per IP address."
+    ),
+    responses={
+        401: problem_doc("No access token, or it is invalid or expired"),
+        429: problem_doc("Too many requests; see the Retry-After header"),
+    },
+)
+@limiter.limit(SESSION_LIMIT)
+def me(request: Request, account: CurrentAccount) -> AccountRead:
+    return AccountRead(
+        id=account.id,
+        role=account.role,
+        phone=account.phone,
+        created_at=account.created_at,
+    )
+
+
+@router.post(
+    "/logout-all",
+    response_model=LoggedOutAll,
+    summary="Log out of every device",
+    description=(
+        "Ends every session of the signed-in account, on all devices. Needs a "
+        "valid access token. Limit: 30 requests per minute per IP address."
+    ),
+    responses={
+        401: problem_doc("No access token, or it is invalid or expired"),
+        429: problem_doc("Too many requests; see the Retry-After header"),
+    },
+)
+@limiter.limit(SESSION_LIMIT)
+def logout_all(
+    request: Request,
+    account: CurrentAccount,
+    db: Session = Depends(get_db),
+    now: datetime = Depends(get_now),
+) -> LoggedOutAll:
+    return LoggedOutAll(sessions_ended=service.logout_all_sessions(db, account.id, now))
