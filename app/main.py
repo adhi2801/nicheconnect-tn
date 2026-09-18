@@ -5,6 +5,7 @@ from app.core.errors import register_error_handlers
 from app.core.rate_limit import limiter
 from app.core.request_id import RequestIdMiddleware
 from app.modules.auth.router import router as auth_router
+from app.modules.campaigns.router import router as campaigns_router
 
 app = FastAPI(title="NicheConnect TN API")
 
@@ -16,6 +17,7 @@ app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(RequestIdMiddleware)
 
 app.include_router(auth_router)
+app.include_router(campaigns_router)
 
 
 @app.get("/healthz")

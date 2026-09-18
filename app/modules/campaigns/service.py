@@ -1,0 +1,161 @@
+"""Campaign rules (D-016). One service call is one unit of work.
+
+Status flow:
+
+    draft ──publish──> open ──close──> closed
+      │                  │
+      └────cancel────────┴──> cancelled
+
+Nothing reopens a closed or cancelled campaign; posting again means a new
+campaign, so a creator's application history always points at what they saw.
+"""
+
+import uuid
+from datetime import datetime
+
+from sqlalchemy import Select, select
+from sqlalchemy.orm import Session
+
+from app.core.pagination import Slice, build_slice, decode_cursor
+from app.modules.auth.models.brand import Brand
+from app.modules.campaigns.exceptions import (
+    BrandProfileRequired,
+    CampaignNotEditable,
+    CampaignStatusConflict,
+    FieldNotEditableNow,
+)
+from app.modules.campaigns.models import Campaign
+
+# What each status allows next. Empty means the campaign is finished.
+ALLOWED_TRANSITIONS: dict[str, frozenset[str]] = {
+    "draft": frozenset({"open", "cancelled"}),
+    "open": frozenset({"closed", "cancelled"}),
+    "closed": frozenset(),
+    "cancelled": frozenset(),
+}
+# Once creators can apply, the deal on offer must not change under them.
+EDITABLE_WHILE_OPEN = frozenset({"description", "deliverables", "applications_close_on"})
+
+
+def get_brand_for_account(db: Session, account_id: uuid.UUID) -> Brand:
+    """The brand profile of a signed-in brand account.
+
+    Raises BrandProfileRequired when the account has not created one yet.
+    """
+    brand = db.scalars(select(Brand).where(Brand.account_id == account_id)).first()
+    if brand is None:
+        raise BrandProfileRequired()
+    return brand
+
+
+def create_campaign(db: Session, brand: Brand, fields: dict, now: datetime) -> Campaign:
+    """Create a campaign as a draft. Only publishing makes it visible."""
+    campaign = Campaign(
+        brand_id=brand.id,
+        status="draft",
+        created_at=now,
+        updated_at=now,
+        **fields,
+    )
+    db.add(campaign)
+    db.commit()
+    db.refresh(campaign)
+    return campaign
+
+
+def update_campaign(
+    db: Session, campaign: Campaign, changes: dict, now: datetime
+) -> Campaign:
+    """Change a campaign the brand owns.
+
+    A draft can be changed completely. An open campaign only allows the fields
+    in EDITABLE_WHILE_OPEN. A closed or cancelled campaign allows nothing.
+    Raises CampaignNotEditable and FieldNotEditableNow.
+    """
+    if campaign.status in ("closed", "cancelled"):
+        db.rollback()
+        raise CampaignNotEditable()
+    if campaign.status == "open":
+        blocked = set(changes) - EDITABLE_WHILE_OPEN
+        if blocked:
+            db.rollback()
+            raise FieldNotEditableNow(
+                f"Cannot change {', '.join(sorted(blocked))} while the campaign is open."
+            )
+
+    for field, value in changes.items():
+        setattr(campaign, field, value)
+    campaign.updated_at = now
+    db.commit()
+    db.refresh(campaign)
+    return campaign
+
+
+def change_status(
+    db: Session, campaign: Campaign, new_status: str, now: datetime
+) -> Campaign:
+    """Move a campaign to `new_status`, or raise CampaignStatusConflict."""
+    if new_status not in ALLOWED_TRANSITIONS[campaign.status]:
+        db.rollback()
+        raise CampaignStatusConflict(
+            f"A {campaign.status} campaign cannot become {new_status}."
+        )
+    campaign.status = new_status
+    campaign.updated_at = now
+    db.commit()
+    db.refresh(campaign)
+    return campaign
+
+
+def _paginate(db: Session, query: Select, limit: int, cursor: str | None) -> Slice[Campaign]:
+    """Newest first, one row past the limit to know whether more exist."""
+    if cursor is not None:
+        created_at, row_id = decode_cursor(cursor)
+        query = query.where(
+            (Campaign.created_at, Campaign.id) < (created_at, row_id)
+        )
+    rows = list(
+        db.scalars(
+            query.order_by(Campaign.created_at.desc(), Campaign.id.desc()).limit(limit + 1)
+        ).all()
+    )
+    return build_slice(rows, limit, key=lambda row: (row.created_at, row.id))
+
+
+def list_brand_campaigns(
+    db: Session,
+    brand: Brand,
+    *,
+    limit: int,
+    cursor: str | None = None,
+    status: str | None = None,
+) -> Slice[Campaign]:
+    """A brand's own campaigns, in every status."""
+    query = select(Campaign).where(Campaign.brand_id == brand.id)
+    if status is not None:
+        query = query.where(Campaign.status == status)
+    return _paginate(db, query, limit, cursor)
+
+
+def discover_campaigns(
+    db: Session,
+    *,
+    limit: int,
+    cursor: str | None = None,
+    city: str | None = None,
+    niche: str | None = None,
+    campaign_type: str | None = None,
+    min_budget_paise: int | None = None,
+) -> Slice[Campaign]:
+    """Open campaigns for creators to browse, with optional filters."""
+    query = select(Campaign).where(Campaign.status == "open")
+    if city is not None:
+        query = query.where(Campaign.cities.any(city))
+    if niche is not None:
+        query = query.where(Campaign.niches.any(niche))
+    if campaign_type is not None:
+        query = query.where(Campaign.campaign_type == campaign_type)
+    if min_budget_paise is not None:
+        # "Pays at least this much": the top of the range must reach it.
+        query = query.where(Campaign.budget_max_paise >= min_budget_paise)
+    return _paginate(db, query, limit, cursor)
