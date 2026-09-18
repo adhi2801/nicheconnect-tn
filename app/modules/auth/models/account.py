@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, String, text
+from sqlalchemy import CheckConstraint, DateTime, String, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -24,6 +24,10 @@ class Account(Base):
             "role IN (" + ", ".join(f"'{role}'" for role in ACCOUNT_ROLES) + ")",
             name="role_allowed",
         ),
+        # Lets brand and creator reference (id, role) together, so a profile
+        # can only belong to an account of its own role (D-014).
+        # Full name given: the uq naming convention covers only the first column.
+        UniqueConstraint("id", "role", name="uq_account_id_role"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(

@@ -4,7 +4,10 @@ from slowapi.middleware import SlowAPIMiddleware
 from app.core.errors import register_error_handlers
 from app.core.rate_limit import limiter
 from app.core.request_id import RequestIdMiddleware
+from app.modules.auth.profile_router import brand_router, creator_router
 from app.modules.auth.router import router as auth_router
+from app.modules.campaigns.application_router import router as applications_router
+from app.modules.campaigns.router import router as campaigns_router
 
 app = FastAPI(title="NicheConnect TN API")
 
@@ -16,6 +19,10 @@ app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(RequestIdMiddleware)
 
 app.include_router(auth_router)
+app.include_router(brand_router)
+app.include_router(creator_router)
+app.include_router(campaigns_router)
+app.include_router(applications_router)
 
 
 @app.get("/healthz")
