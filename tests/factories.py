@@ -14,6 +14,7 @@ from app.modules.auth.models.account import Account
 from app.modules.auth.models.auth_session import REFRESH_TOKEN_TTL, AuthSession
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
+from app.modules.campaigns.models import Campaign
 from app.modules.auth.models.otp_challenge import OTP_TTL, OtpChallenge
 
 _sequence = count(1)
@@ -90,3 +91,24 @@ def build_auth_session(db: Session, **overrides: Any) -> AuthSession:
     fields.update(overrides)
     fields.setdefault("account_id", create_account(db, "creator").id)
     return AuthSession(**fields)
+
+def build_campaign(db: Session, **overrides: Any) -> Campaign:
+    """Return an unsaved paid campaign owned by a newly saved brand."""
+    fields: dict[str, Any] = {
+        "title": "Pongal sweets launch",
+        "description": "Three reels featuring our new sweet box.",
+        "campaign_type": "paid",
+        "budget_min_paise": 500_000,
+        "budget_max_paise": 1_500_000,
+        "cities": ["Madurai", "Coimbatore"],
+        "niches": ["food"],
+        "deliverables": "3 Instagram reels, 1 story set.",
+        "status": "open",
+    }
+    fields.update(overrides)
+    if "brand_id" not in fields:
+        brand = build_brand(db)
+        db.add(brand)
+        db.flush()
+        fields["brand_id"] = brand.id
+    return Campaign(**fields)

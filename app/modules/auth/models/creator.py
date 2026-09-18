@@ -6,33 +6,17 @@ from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
+from app.core.taxonomy import LANGUAGES, MAX_NICHES, NICHES, sql_text_array
 from app.db.base import Base
 
 # Creator profiles will feed matching embeddings, so this table must never
 # hold contact details (phone, email, bank, UPI). The phone lives in account (D-011).
 
-CREATOR_NICHES: tuple[str, ...] = (
-    "food",
-    "fashion",
-    "beauty",
-    "tech",
-    "travel",
-    "fitness",
-    "education",
-    "entertainment",
-    "finance",
-    "lifestyle",
-)
-CREATOR_LANGUAGES: tuple[str, ...] = ("en",)
-MAX_NICHES = 5
+# Shared with campaigns, so both use one list (app/core/taxonomy.py).
+CREATOR_NICHES = NICHES
+CREATOR_LANGUAGES = LANGUAGES
 HANDLE_PATTERN = r"^[a-z0-9._]{3,30}$"
 BIO_MAX_LENGTH = 500
-
-
-def _text_array_literal(values: tuple[str, ...]) -> str:
-    """Build a SQL text[] literal from fixed, code-defined values (never user input)."""
-    quoted = ", ".join(f"'{value}'" for value in values)
-    return f"ARRAY[{quoted}]::text[]"
 
 
 class Creator(Base):
@@ -47,11 +31,11 @@ class Creator(Base):
             f"cardinality(niches) BETWEEN 1 AND {MAX_NICHES}", name="niches_count"
         ),
         CheckConstraint(
-            f"niches <@ {_text_array_literal(CREATOR_NICHES)}", name="niches_allowed"
+            f"niches <@ {sql_text_array(CREATOR_NICHES)}", name="niches_allowed"
         ),
         CheckConstraint("cardinality(languages) >= 1", name="languages_count"),
         CheckConstraint(
-            f"languages <@ {_text_array_literal(CREATOR_LANGUAGES)}",
+            f"languages <@ {sql_text_array(CREATOR_LANGUAGES)}",
             name="languages_allowed",
         ),
         CheckConstraint(
