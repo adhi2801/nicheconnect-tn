@@ -19,6 +19,10 @@ NotificationType = Literal[
     "memo_declined",
     "memo_change_requested",
     "memo_cancelled",
+    "proof_submitted",
+    "proof_approved",
+    "proof_auto_approved",
+    "proof_revision_requested",
 ]
 
 assert set(NOTIFICATION_TYPES) == set(NotificationType.__args__)

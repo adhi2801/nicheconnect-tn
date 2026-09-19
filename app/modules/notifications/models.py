@@ -20,11 +20,15 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     "memo_accepted",
     "memo_declined",
     "memo_change_requested",
+    "proof_submitted",
     # To the creator
     "application_shortlisted",
     "application_accepted",
     "application_rejected",
     "memo_sent",
+    "proof_approved",
+    "proof_auto_approved",
+    "proof_revision_requested",
     # To whichever side did not do it
     "memo_cancelled",
 )

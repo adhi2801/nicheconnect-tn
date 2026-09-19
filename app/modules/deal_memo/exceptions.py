@@ -47,3 +47,21 @@ class PaidMemoNeedsFee(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "paid_memo_needs_fee"
     title = "This campaign type needs a fee in the memo"
+
+
+class ProofNotFound(DomainError):
+    status_code = HTTPStatus.NOT_FOUND
+    code = "proof_not_found"
+    title = "That proof submission does not exist"
+
+
+class ProofAlreadyDecided(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "proof_already_decided"
+    title = "This proof has already been reviewed"
+
+
+class ProofNotSubmitted(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "proof_not_submitted"
+    title = "There is no proof waiting for review"

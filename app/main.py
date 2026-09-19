@@ -11,6 +11,7 @@ from app.modules.auth.profile_router import brand_router, creator_router
 from app.modules.auth.router import router as auth_router
 from app.modules.campaigns.application_router import router as applications_router
 from app.modules.campaigns.router import router as campaigns_router
+from app.modules.deal_memo.proof_router import router as proof_router
 from app.modules.deal_memo.router import router as deal_memos_router
 from app.modules.notifications.router import router as notifications_router
 
@@ -30,6 +31,7 @@ app.include_router(campaigns_router)
 app.include_router(applications_router)
 app.include_router(notifications_router)
 app.include_router(deal_memos_router)
+app.include_router(proof_router)
 
 
 @app.get("/healthz")
