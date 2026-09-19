@@ -167,3 +167,12 @@ Newest entries at the bottom.
 - Chosen: A. `verify_otp` refuses with 429 `otp_verify_limit_reached` and an exact `Retry-After` once 10 wrong guesses land in the window.
 - Reason: No new storage or dependency; the count is already recorded on each challenge. Guessing is the risk the standard is protecting against, and this caps it.
 - Consequences / follow-ups: The count covers guesses against real codes. Attempts for a phone with no code at all are not counted, since there is nothing to guess. Per-IP limits still apply and move to Redis with D-003.
+
+## D-019: CI checks that migrations undo and redo
+- Date: 2026-09-19
+- Approved by: Adhi
+- Context: docs/standards/testing.md gate 4 requires CI to run `upgrade head`, `downgrade base`, `upgrade head` on a fresh database. CI only ran `upgrade head`, so a broken downgrade could reach `main`; it was only ever checked by hand.
+- Options considered: A) Add the round trip plus `alembic check` to the existing CI job · B) Keep checking by hand
+- Chosen: A. Two extra steps in `.github/workflows/ci.yml`.
+- Reason: The standard asks for it, and a hand check is exactly what should be automatic. `alembic check` also catches a model changed without a migration.
+- Consequences / follow-ups: CI takes roughly 20 seconds longer. A migration without a working `downgrade()` now fails the build.

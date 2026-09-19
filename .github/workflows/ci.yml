@@ -48,5 +48,15 @@ jobs:
       - name: Apply migrations
         run: alembic upgrade head
 
+      # testing.md gate 4: every migration must undo itself cleanly, or a
+      # broken downgrade reaches main unnoticed.
+      - name: Check migrations undo and redo
+        run: |
+          alembic downgrade base
+          alembic upgrade head
+
+      - name: Check models match the database
+        run: alembic check
+
       - name: Run tests
         run: pytest -x --tb=short
