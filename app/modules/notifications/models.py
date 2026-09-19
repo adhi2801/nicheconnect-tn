@@ -17,10 +17,16 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     # To the brand
     "application_received",
     "application_withdrawn",
+    "memo_accepted",
+    "memo_declined",
+    "memo_change_requested",
     # To the creator
     "application_shortlisted",
     "application_accepted",
     "application_rejected",
+    "memo_sent",
+    # To whichever side did not do it
+    "memo_cancelled",
 )
 MAX_DETAILS_LENGTH = 2000
 

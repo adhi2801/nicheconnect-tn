@@ -14,6 +14,11 @@ NotificationType = Literal[
     "application_shortlisted",
     "application_accepted",
     "application_rejected",
+    "memo_sent",
+    "memo_accepted",
+    "memo_declined",
+    "memo_change_requested",
+    "memo_cancelled",
 ]
 
 assert set(NOTIFICATION_TYPES) == set(NotificationType.__args__)
