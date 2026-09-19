@@ -194,3 +194,12 @@ Newest entries at the bottom.
 - Chosen: A.
 - Reason: Nothing changes for a single local process, and one setting switches to shared counters. Tests prove the difference: in memory two limiters allow the limit twice; with Redis they share one count.
 - Consequences / follow-ups: Set `RATE_LIMIT_STORAGE_URI` to the deployed Redis before running more than one process. CI now runs a Redis service so the shared-count tests run there too. If Redis becomes unreachable in production, limiting behaviour under failure is still to be decided (open question in the reports).
+
+## D-022: WhatsApp is alerts plus two one-tap replies, not a second app
+- Date: 2026-09-19
+- Approved by: Adhi
+- Context: The Frontend Blueprint's flow 2.3 runs the whole journey inside WhatsApp (apply, accept, upload proof, confirm payment). Adhi's point: if the whole process happens in WhatsApp, the app has no reason to exist.
+- Options considered: A) WhatsApp carries alerts with deep links, plus at most two one-tap replies (accept memo, confirm payment received) · B) The full WhatsApp journey in flow 2.3 · C) No WhatsApp at all
+- Chosen: A.
+- Reason: Creators find out things happened in WhatsApp, but the app holds the record, the Passport, earnings and history, which is why it is worth installing. Every duplicated action would double the code, rules and tests, and the two paths could disagree about what happened.
+- Consequences / follow-ups: The notifications module needs outbound templates and one inbound webhook for the two replies, not a conversation engine: roughly a quarter of the work in flow 2.3. Blueprint flow 2.3 should be trimmed to match. Applying, pitches, proof upload and disputes stay in the app.
