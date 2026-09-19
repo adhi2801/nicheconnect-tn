@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     db_max_overflow: int = Field(default=10, ge=0, le=50)
     db_statement_timeout_ms: int = Field(default=5000, ge=100, le=60000)
     redis_url: str
+    # Addresses or ranges we accept X-Forwarded-For from, comma separated
+    # (e.g. "10.0.0.0/8,172.16.0.0/12"). Empty means trust nothing, which is
+    # right for local development and any direct-to-internet deployment.
+    trusted_proxies: str = ""
     # Signs access tokens (D-008).
     secret_key: SecretStr = Field(min_length=MIN_KEY_LENGTH)
     # Keys the HMAC of one-time codes (D-011). Must differ from secret_key.

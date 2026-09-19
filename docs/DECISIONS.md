@@ -176,3 +176,12 @@ Newest entries at the bottom.
 - Chosen: A. Two extra steps in `.github/workflows/ci.yml`.
 - Reason: The standard asks for it, and a hand check is exactly what should be automatic. `alembic check` also catches a model changed without a migration.
 - Consequences / follow-ups: CI takes roughly 20 seconds longer. A migration without a working `downgrade()` now fails the build.
+
+## D-020: Client IP behind a proxy comes from a trusted X-Forwarded-For
+- Date: 2026-09-19
+- Approved by: Adhi
+- Context: Rate limits key on the connecting address. Behind a load balancer that address is the proxy, so every user would share one limit and a single attacker could lock everyone out.
+- Options considered: A) Trust `X-Forwarded-For` only when the connection comes from an address in a new `TRUSTED_PROXIES` setting · B) Always trust the header · C) Wait until a hosting platform is chosen
+- Chosen: A. `TRUSTED_PROXIES` is empty by default, so nothing changes locally. The header is read right to left, skipping our own proxies, so a caller cannot forge a value.
+- Reason: B lets anyone fake their address and bypass every limit. C risks reaching production with broken limits.
+- Consequences / follow-ups: Set `TRUSTED_PROXIES` to the load balancer's range at deploy time. Covered by 15 tests, including forged headers, chained proxies and IPv6.
