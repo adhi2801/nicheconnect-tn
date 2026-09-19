@@ -22,7 +22,7 @@ from app.modules.auth.exceptions import (
     RoleMismatch,
 )
 from app.modules.auth.models.account import Account
-from app.modules.auth.models.auth_session import AuthSession
+from app.modules.auth.models.auth_session import AuthSession, refresh_token_ttl
 from app.modules.auth.models.otp_challenge import MAX_OTP_ATTEMPTS, OTP_TTL, OtpChallenge
 from app.modules.auth.sender import OtpSender
 from app.modules.auth.tokens import (
@@ -224,7 +224,7 @@ def _issue_session(
 ) -> LoginResult:
     """Create one session in `family_id` and return its tokens."""
     refresh_token = new_refresh_token()
-    refresh_expires_at = now + timedelta(days=settings.refresh_token_expire_days)
+    refresh_expires_at = now + refresh_token_ttl()
     db.add(
         AuthSession(
             account_id=account.id,

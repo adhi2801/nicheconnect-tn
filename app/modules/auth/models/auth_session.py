@@ -6,6 +6,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
+from app.core.config import settings
 from app.db.base import Base
 
 # Refresh-token sessions (D-008, D-011). Each refresh rotates the token: the
@@ -13,7 +14,9 @@ from app.db.base import Base
 # token whose row already has used_at means theft: revoke the whole family.
 # Only a SHA-256 of the token is stored, never the token itself.
 
-REFRESH_TOKEN_TTL = timedelta(days=30)
+def refresh_token_ttl() -> timedelta:
+    """How long a refresh token lasts. One source: settings (D-008)."""
+    return timedelta(days=settings.refresh_token_expire_days)
 TOKEN_HASH_PATTERN = r"^[0-9a-f]{64}$"
 
 
@@ -43,7 +46,7 @@ class AuthSession(Base):
         UUID(as_uuid=True), nullable=False, index=True
     )
     token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
-    # Set by the service from its injectable clock (issue time + REFRESH_TOKEN_TTL).
+    # Set by the service from its injectable clock (issue time + refresh_token_ttl()).
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     # Nullable on purpose: empty until this token is rotated.
     used_at: Mapped[datetime | None] = mapped_column(

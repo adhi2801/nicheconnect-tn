@@ -1,4 +1,3 @@
-import os
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
@@ -6,6 +5,7 @@ from sqlalchemy import pool
 
 from alembic import context
 
+from app.core.config import settings
 from app.db.base import Base
 from app.db import models  # noqa: F401  # registers all models on Base.metadata
 
@@ -13,13 +13,10 @@ from app.db import models  # noqa: F401  # registers all models on Base.metadata
 # access to the values within the .ini file in use.
 config = context.config
 
-# Override the sqlalchemy.url from alembic.ini with the DATABASE_URL env var,
-# so migrations and the running app share one source of truth.
-database_url = os.getenv(
-    "DATABASE_URL",
-    "postgresql+psycopg://niche:niche@localhost:5433/nicheconnect",
-)
-config.set_main_option("sqlalchemy.url", database_url)
+# Override the sqlalchemy.url from alembic.ini with the app's settings, so
+# migrations and the running app share one source of truth, with the same
+# validation (backend.md section 8).
+config.set_main_option("sqlalchemy.url", settings.database_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
