@@ -143,7 +143,7 @@ Newest entries at the bottom.
 
 ## D-016: Campaigns and applications live in a new campaigns module
 - Date: 2026-09-18
-- Approved by: Adhi (Erode Harish still to confirm: CLAUDE.md section 3 needs both founders for architecture)
+- Approved by: Adhi and Erode Harish (Erode confirmed on 2026-09-19, as CLAUDE.md section 3 requires both founders for architecture)
 - Context: `campaign` and `application` fit none of the approved modules (auth, matching, deal_memo, payment_status, notifications).
 - Options considered: A) New `app/modules/campaigns/` holding campaign and application · B) Put them in `deal_memo` · C) Two new modules
 - Chosen: A. The campaign table: brand owner, title, description, type (paid, barter, commission, local_business), budget range in paise, cities, niches, deliverables, optional closing date, status (draft, open, closed, cancelled).

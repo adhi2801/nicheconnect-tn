@@ -44,7 +44,7 @@ Never violate these, even if asked. If a request would break one, stop and say w
 ## 3. Architecture (approved)
 
 - **Modular monolith:** one deployable FastAPI app. No microservices, event sourcing, CQRS, service mesh, or additional deployable services without both founders' approval.
-- **Modules:** `app/modules/{auth, matching, deal_memo, payment_status, notifications}`. Inside a module: `router.py` (HTTP) → `service.py` (rules) → `models.py` (DB), plus `schemas.py`.
+- **Modules:** `app/modules/{auth, campaigns, matching, deal_memo, payment_status, notifications}`. Inside a module: `router.py` (HTTP) → `service.py` (rules) → `models.py` (DB), plus `schemas.py`.
 - **Stack:** PostgreSQL + pgvector · Redis (limits, cache, jobs) · Alembic · pytest + httpx · GitHub Actions.
 - **Matching (later):** SentenceTransformers embeddings + pgvector cosine similarity, as in InterviewCoach AI.
 - **External calls** (WhatsApp, Claude API): retry with backoff; never block a request on them.
