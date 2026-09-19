@@ -4,7 +4,12 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy import select
 
-from app.modules.auth.exceptions import OtpInvalid, OtpSendLimitReached, RoleMismatch
+from app.modules.auth.exceptions import (
+    OtpInvalid,
+    OtpSendLimitReached,
+    OtpVerifyLimitReached,
+    RoleMismatch,
+)
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.otp_challenge import OTP_TTL, OtpChallenge
@@ -275,3 +280,64 @@ def test_committed_rows_do_not_leak_between_tests(db, run):
     assert challenges_for(db, ISOLATION_PHONE) == []
     request_otp(db, ISOLATION_PHONE, FIXED_NOW)
     assert len(challenges_for(db, ISOLATION_PHONE)) == 1
+
+
+# --- per-phone guess limit ------------------------------------------------
+
+
+def wrong_guesses(db, phone: str, code: str, count: int, now) -> None:
+    for _ in range(count):
+        with pytest.raises(OtpInvalid):
+            verify_otp(db, phone, wrong_code(code), "creator", now)
+
+
+def test_guessing_is_capped_across_several_codes_for_one_phone(db):
+    phone = fake_phone()
+    first = request_otp(db, phone, FIXED_NOW)
+    # 5 wrong guesses use up the first code.
+    wrong_guesses(db, phone, first.code, 5, FIXED_NOW)
+    second = request_otp(db, phone, FIXED_NOW + timedelta(minutes=1))
+    # 5 more on the second code reach the 10-guess limit for this number.
+    wrong_guesses(db, phone, second.code, 5, FIXED_NOW + timedelta(minutes=1))
+    third = request_otp(db, phone, FIXED_NOW + timedelta(minutes=2))
+
+    with pytest.raises(OtpVerifyLimitReached):
+        verify_otp(db, phone, third.code, "creator", FIXED_NOW + timedelta(minutes=3))
+
+
+def test_the_limit_frees_up_after_the_window(db):
+    phone = fake_phone()
+    first = request_otp(db, phone, FIXED_NOW)
+    wrong_guesses(db, phone, first.code, 5, FIXED_NOW)
+    second = request_otp(db, phone, FIXED_NOW + timedelta(minutes=1))
+    wrong_guesses(db, phone, second.code, 5, FIXED_NOW + timedelta(minutes=1))
+
+    later = FIXED_NOW + timedelta(minutes=12)
+    third = request_otp(db, phone, later)
+    result = verify_otp(db, phone, third.code, "creator", later)
+
+    assert result.is_new_account is True
+
+
+def test_the_limit_is_per_phone(db):
+    busy, other = fake_phone(), fake_phone()
+    busy_code = request_otp(db, busy, FIXED_NOW)
+    wrong_guesses(db, busy, busy_code.code, 5, FIXED_NOW)
+    second = request_otp(db, busy, FIXED_NOW + timedelta(minutes=1))
+    wrong_guesses(db, busy, second.code, 5, FIXED_NOW + timedelta(minutes=1))
+
+    other_code = request_otp(db, other, FIXED_NOW + timedelta(minutes=2))
+    result = verify_otp(db, other, other_code.code, "creator", FIXED_NOW + timedelta(minutes=2))
+
+    assert result.is_new_account is True
+
+
+def test_a_correct_code_still_works_below_the_limit(db):
+    phone = fake_phone()
+    first = request_otp(db, phone, FIXED_NOW)
+    wrong_guesses(db, phone, first.code, 4, FIXED_NOW)
+    second = request_otp(db, phone, FIXED_NOW + timedelta(minutes=1))
+
+    result = verify_otp(db, phone, second.code, "creator", FIXED_NOW + timedelta(minutes=1))
+
+    assert result.is_new_account is True
