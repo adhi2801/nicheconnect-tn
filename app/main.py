@@ -1,7 +1,10 @@
-from fastapi import FastAPI
+from http import HTTPStatus
+
+from fastapi import FastAPI, Request
 from slowapi.middleware import SlowAPIMiddleware
 
-from app.core.errors import register_error_handlers
+from app.core.errors import problem_response, register_error_handlers
+from app.core.health import run_readiness_checks
 from app.core.rate_limit import limiter
 from app.core.request_id import RequestIdMiddleware
 from app.modules.auth.profile_router import brand_router, creator_router
@@ -31,7 +34,25 @@ def healthz() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.get("/readyz")
-def readyz() -> dict[str, str]:
-    """Readiness check — placeholder until DB/Redis connectivity is wired in."""
-    return {"status": "ready"}
+@app.get(
+    "/readyz",
+    summary="Readiness check",
+    description=(
+        "Reports whether the database and Redis are reachable. Returns 503 "
+        "while either is down, so a deployment platform stops sending traffic."
+    ),
+)
+def readyz(request: Request):
+    """Readiness check — can this process actually serve requests?"""
+    checks = run_readiness_checks()
+    results = {check.name: "ok" if check.ok else "unavailable" for check in checks}
+    failed = [check.name for check in checks if not check.ok]
+    if failed:
+        return problem_response(
+            request,
+            status=HTTPStatus.SERVICE_UNAVAILABLE,
+            code="not_ready",
+            title="The service is not ready to take requests",
+            detail=f"Unavailable: {', '.join(sorted(failed))}.",
+        )
+    return {"status": "ready", "checks": results}
