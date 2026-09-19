@@ -137,6 +137,7 @@ def _notify_other_side(
     to: str,
     notification_type: str,
     now: datetime,
+    message: str | None = None,
 ) -> None:
     application = db.get(Application, memo.application_id)
     campaign = _campaign_of(db, application)
@@ -147,6 +148,10 @@ def _notify_other_side(
     )
     if account_id is None:
         return
+    details: dict[str, object] = {"campaign_title": campaign.title}
+    if message is not None:
+        # The creator's own words, so the brand knows what to change.
+        details["message"] = message
     notifications.record(
         db,
         account_id=account_id,
@@ -154,7 +159,7 @@ def _notify_other_side(
         now=now,
         campaign_id=campaign.id,
         application_id=application.id,
-        details={"campaign_title": campaign.title},
+        details=details,
     )
 
 
@@ -166,6 +171,7 @@ def change_status(
     *,
     actor: str,
     cancellation_kind: str | None = None,
+    message: str | None = None,
 ) -> DealMemo:
     """Move a memo on, as `actor` ("brand" or "creator").
 
@@ -207,7 +213,14 @@ def change_status(
         )
     elif new_status in STATUS_NOTIFICATIONS:
         side, notification_type = STATUS_NOTIFICATIONS[new_status]
-        _notify_other_side(db, memo, to=side, notification_type=notification_type, now=now)
+        _notify_other_side(
+            db,
+            memo,
+            to=side,
+            notification_type=notification_type,
+            now=now,
+            message=message,
+        )
 
     db.commit()
     db.refresh(memo)
