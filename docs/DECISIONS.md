@@ -185,3 +185,12 @@ Newest entries at the bottom.
 - Chosen: A. `TRUSTED_PROXIES` is empty by default, so nothing changes locally. The header is read right to left, skipping our own proxies, so a caller cannot forge a value.
 - Reason: B lets anyone fake their address and bypass every limit. C risks reaching production with broken limits.
 - Consequences / follow-ups: Set `TRUSTED_PROXIES` to the load balancer's range at deploy time. Covered by 15 tests, including forged headers, chained proxies and IPv6.
+
+## D-021: Rate-limit storage is configurable, Redis before multiple processes
+- Date: 2026-09-19
+- Approved by: Adhi
+- Context: D-003 chose slowapi with in-memory counters as an interim. In memory each process keeps its own count, so two processes would each allow the full limit. This is the follow-up D-003 asked for.
+- Options considered: A) A `RATE_LIMIT_STORAGE_URI` setting, `memory://` by default and Redis in deployment · B) Always Redis, including locally · C) Leave it until deployment
+- Chosen: A.
+- Reason: Nothing changes for a single local process, and one setting switches to shared counters. Tests prove the difference: in memory two limiters allow the limit twice; with Redis they share one count.
+- Consequences / follow-ups: Set `RATE_LIMIT_STORAGE_URI` to the deployed Redis before running more than one process. CI now runs a Redis service so the shared-count tests run there too. If Redis becomes unreachable in production, limiting behaviour under failure is still to be decided (open question in the reports).

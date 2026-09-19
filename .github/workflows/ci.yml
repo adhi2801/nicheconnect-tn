@@ -25,6 +25,18 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
+      # The rate-limit storage tests prove counters are shared between
+      # processes, which needs a real Redis (D-003).
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     # Test-only values (security.md section 5). Never real keys.
     env:
       DATABASE_URL: postgresql+psycopg://niche:niche@localhost:5432/nicheconnect
