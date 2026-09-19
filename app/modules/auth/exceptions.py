@@ -56,3 +56,9 @@ class EmailTaken(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "email_taken"
     title = "That email is already registered to another brand"
+
+
+class OtpVerifyLimitReached(DomainError):
+    status_code = HTTPStatus.TOO_MANY_REQUESTS
+    code = "otp_verify_limit_reached"
+    title = "Too many code attempts for this number. Please try again later"

@@ -88,9 +88,9 @@ class Campaign(Base):
             "created_at",
             postgresql_where=text("status = 'open'"),
         ),
-        # Filters on the discovery list.
-        Index("ix_campaign_niches", "niches", postgresql_using="gin"),
-        Index("ix_campaign_cities", "cities", postgresql_using="gin"),
+        # No GIN indexes on niches or cities: measured at 20,000 campaigns,
+        # the planner uses the index above and filters, so they were never
+        # chosen (D-017). They return with the feature that needs them.
     )
 
     id: Mapped[uuid.UUID] = mapped_column(

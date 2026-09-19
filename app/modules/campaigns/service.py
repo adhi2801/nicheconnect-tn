@@ -33,6 +33,7 @@ from app.modules.campaigns.exceptions import (
     FieldNotEditableNow,
 )
 from app.modules.campaigns.models import Application, Campaign
+from app.modules.notifications import service as notifications
 
 # What each status allows next. Empty means the campaign is finished.
 ALLOWED_TRANSITIONS: dict[str, frozenset[str]] = {
@@ -197,6 +198,27 @@ def get_creator_for_account(db: Session, account_id: uuid.UUID) -> Creator:
     return creator
 
 
+def _brand_account_id(db: Session, campaign: Campaign) -> uuid.UUID | None:
+    """The account behind a campaign's brand, to notify it."""
+    return db.scalar(select(Brand.account_id).where(Brand.id == campaign.brand_id))
+
+
+def _creator_account_id(db: Session, application: Application) -> uuid.UUID | None:
+    return db.scalar(
+        select(Creator.account_id).where(Creator.id == application.creator_id)
+    )
+
+
+# Which status change tells whom. The brand hears about withdrawals; the
+# creator hears the brand's decisions (D-023).
+STATUS_NOTIFICATIONS: dict[str, tuple[str, str]] = {
+    "shortlisted": ("creator", "application_shortlisted"),
+    "accepted": ("creator", "application_accepted"),
+    "rejected": ("creator", "application_rejected"),
+    "withdrawn": ("brand", "application_withdrawn"),
+}
+
+
 def apply_to_campaign(
     db: Session,
     campaign_id: uuid.UUID,
@@ -231,12 +253,27 @@ def apply_to_campaign(
     )
     db.add(application)
     try:
-        db.commit()
+        # Flush here so the notification can reference the new row; a second
+        # application from the same creator fails on the unique rule now.
+        db.flush()
     except IntegrityError as error:
         db.rollback()
         if "uq_application_campaign_creator" in str(error):
             raise AlreadyApplied() from error
         raise
+
+    brand_account_id = _brand_account_id(db, campaign)
+    if brand_account_id is not None:
+        notifications.record(
+            db,
+            account_id=brand_account_id,
+            notification_type="application_received",
+            now=now,
+            campaign_id=campaign.id,
+            application_id=application.id,
+            details={"campaign_title": campaign.title, "creator_handle": creator.handle},
+        )
+    db.commit()
     db.refresh(application)
     return application
 
@@ -261,6 +298,30 @@ def change_application_status(
     application.rejection_note = rejection_note if new_status == "rejected" else None
     application.status_changed_at = now
     application.updated_at = now
+
+    # Tell the other side what happened, in the same transaction: a record
+    # that exists only if the change itself succeeded.
+    side, notification_type = STATUS_NOTIFICATIONS[new_status]
+    campaign = db.get(Campaign, application.campaign_id)
+    account_id = (
+        _creator_account_id(db, application)
+        if side == "creator"
+        else _brand_account_id(db, campaign)
+    )
+    if account_id is not None:
+        details: dict[str, object] = {"campaign_title": campaign.title}
+        if rejection_reason is not None:
+            details["reason"] = rejection_reason
+        notifications.record(
+            db,
+            account_id=account_id,
+            notification_type=notification_type,
+            now=now,
+            campaign_id=campaign.id,
+            application_id=application.id,
+            details=details,
+        )
+
     db.commit()
     db.refresh(application)
     return application

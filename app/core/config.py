@@ -22,12 +22,27 @@ class Settings(BaseSettings):
     db_max_overflow: int = Field(default=10, ge=0, le=50)
     db_statement_timeout_ms: int = Field(default=5000, ge=100, le=60000)
     redis_url: str
+    # Addresses or ranges we accept X-Forwarded-For from, comma separated
+    # (e.g. "10.0.0.0/8,172.16.0.0/12"). Empty means trust nothing, which is
+    # right for local development and any direct-to-internet deployment.
+    trusted_proxies: str = ""
+    # Where rate-limit counters live. "memory://" is per process, so it only
+    # works with a single process (D-003). Point it at Redis before running
+    # more than one, e.g. "redis://localhost:6379/1".
+    rate_limit_storage_uri: str = "memory://"
     # Signs access tokens (D-008).
     secret_key: SecretStr = Field(min_length=MIN_KEY_LENGTH)
     # Keys the HMAC of one-time codes (D-011). Must differ from secret_key.
     otp_hash_key: SecretStr = Field(min_length=MIN_KEY_LENGTH)
     access_token_expire_minutes: int = Field(default=15, ge=1, le=15)
     refresh_token_expire_days: int = Field(default=30, ge=1, le=30)
+
+    @field_validator("rate_limit_storage_uri")
+    @classmethod
+    def known_storage(cls, value: str) -> str:
+        if not value.startswith(("memory://", "redis://", "rediss://")):
+            raise ValueError("must start with memory://, redis:// or rediss://")
+        return value
 
     @field_validator("secret_key", "otp_hash_key")
     @classmethod

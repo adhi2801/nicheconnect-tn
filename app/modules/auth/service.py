@@ -18,10 +18,11 @@ from app.modules.auth.exceptions import (
     InvalidToken,
     OtpInvalid,
     OtpSendLimitReached,
+    OtpVerifyLimitReached,
     RoleMismatch,
 )
 from app.modules.auth.models.account import Account
-from app.modules.auth.models.auth_session import AuthSession
+from app.modules.auth.models.auth_session import AuthSession, refresh_token_ttl
 from app.modules.auth.models.otp_challenge import MAX_OTP_ATTEMPTS, OTP_TTL, OtpChallenge
 from app.modules.auth.sender import OtpSender
 from app.modules.auth.tokens import (
@@ -34,6 +35,13 @@ from app.modules.auth.tokens import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Per-phone guess limit (security.md section 4): wrong codes allowed for one
+# number in a window, counted across all of its codes. The per-code limit
+# (MAX_OTP_ATTEMPTS) alone would allow 5 guesses per code, so three codes in
+# ten minutes would allow fifteen.
+VERIFY_ATTEMPT_WINDOW = timedelta(minutes=10)
+MAX_VERIFY_ATTEMPTS_PER_WINDOW = 10
 
 # Per-phone send limits (security.md section 4): (window, max codes in window).
 OTP_SEND_LIMITS: tuple[tuple[timedelta, int], ...] = (
@@ -130,6 +138,25 @@ def deliver_otp(sender: OtpSender, pending: PendingOtp) -> None:
         logger.error("otp.send_failed error_type=%s", type(exc).__name__)
 
 
+def _seconds_until_verify_allowed(db: Session, phone: str, now: datetime) -> int:
+    """0 if another guess is allowed for this number, else seconds to wait.
+
+    Counts wrong guesses across every code sent to the phone in the window.
+    """
+    window_start = now - VERIFY_ATTEMPT_WINDOW
+    rows = db.execute(
+        select(OtpChallenge.created_at, OtpChallenge.attempts).where(
+            OtpChallenge.phone == phone, OtpChallenge.created_at > window_start
+        )
+    ).all()
+    used = sum(attempts for _, attempts in rows)
+    if used < MAX_VERIFY_ATTEMPTS_PER_WINDOW:
+        return 0
+    # Free again when the oldest counted code leaves the window.
+    oldest = min(created_at for created_at, _ in rows)
+    return max(1, math.ceil((oldest + VERIFY_ATTEMPT_WINDOW - now).total_seconds()))
+
+
 def verify_otp(db: Session, phone: str, code: str, role: str, now: datetime) -> LoginResult:
     """Check a code and log the phone in, creating the account if it is new.
 
@@ -139,6 +166,11 @@ def verify_otp(db: Session, phone: str, code: str, role: str, now: datetime) -> 
     RoleMismatch (the account exists with another role; the code stays usable).
     """
     _lock_phone(db, phone)
+    retry_after = _seconds_until_verify_allowed(db, phone, now)
+    if retry_after > 0:
+        db.rollback()
+        raise OtpVerifyLimitReached(headers={"Retry-After": str(retry_after)})
+
     challenge = db.scalars(
         select(OtpChallenge)
         .where(OtpChallenge.phone == phone)
@@ -192,7 +224,7 @@ def _issue_session(
 ) -> LoginResult:
     """Create one session in `family_id` and return its tokens."""
     refresh_token = new_refresh_token()
-    refresh_expires_at = now + timedelta(days=settings.refresh_token_expire_days)
+    refresh_expires_at = now + refresh_token_ttl()
     db.add(
         AuthSession(
             account_id=account.id,

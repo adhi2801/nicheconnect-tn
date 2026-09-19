@@ -296,7 +296,9 @@ def test_brand_can_post_a_campaign_right_after_creating_its_profile(client, db, 
     )
 
     assert response.status_code == 201
-    brand = db.scalars(select(Brand)).one()
+    brand = db.scalars(
+        select(Brand).where(Brand.email == brand_body()["email"])
+    ).one()
     assert response.json()["brand_id"] == str(brand.id)
 
 

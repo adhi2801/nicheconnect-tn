@@ -116,8 +116,8 @@ def test_valid_profiles_still_save(db):
     db.add_all([brand, creator])
     db.flush()
 
-    assert db.scalars(select(Brand)).all() == [brand]
-    assert db.scalars(select(Creator)).all() == [creator]
+    assert db.get(Brand, brand.id) is brand
+    assert db.get(Creator, creator.id) is creator
 
 
 def test_deleting_an_account_with_a_profile_is_still_refused(db):
