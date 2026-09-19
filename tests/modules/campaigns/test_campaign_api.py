@@ -1,3 +1,4 @@
+import uuid
 from collections.abc import Iterator
 from datetime import datetime, timedelta
 
@@ -84,6 +85,11 @@ def publish(client, headers, campaign_id: str) -> dict:
     response = client.post(f"{URL}/{campaign_id}/publish", headers=headers)
     assert response.status_code == 200, response.text
     return response.json()
+
+
+def unique_city() -> str:
+    """A city nobody else uses, so a test sees only its own campaigns."""
+    return f"Testpuram{uuid.uuid4().hex[:10]}"
 
 
 def assert_problem(response, status: int, code: str) -> dict:
@@ -459,54 +465,71 @@ def test_limit_outside_the_allowed_range_is_rejected(client, db, clock, limit):
 
 def test_discover_shows_only_open_campaigns(client, db, clock):
     _, brand_headers = brand_login(db, clock)
-    create(client, brand_headers, title="Draft one")
-    publish(client, brand_headers, create(client, brand_headers, title="Open one")["id"])
+    city = unique_city()
+    create(client, brand_headers, title="Draft one", cities=[city])
+    publish(
+        client, brand_headers, create(client, brand_headers, title="Open one", cities=[city])["id"]
+    )
 
-    response = client.get(DISCOVER_URL, headers=creator_login(db, clock))
+    response = client.get(
+        DISCOVER_URL, params={"city": city}, headers=creator_login(db, clock)
+    )
 
     assert [item["title"] for item in response.json()["items"]] == ["Open one"]
 
 
 def test_discover_filters_combine(client, db, clock):
     _, headers = brand_login(db, clock)
+    food_city, tech_city = unique_city(), unique_city()
     publish(
         client,
         headers,
-        create(client, headers, title="Madurai food", cities=["Madurai"], niches=["food"])["id"],
+        create(client, headers, title="Local food", cities=[food_city], niches=["food"])["id"],
     )
     publish(
         client,
         headers,
-        create(client, headers, title="Chennai tech", cities=["Chennai"], niches=["tech"])["id"],
+        create(client, headers, title="Local tech", cities=[tech_city], niches=["tech"])["id"],
     )
     creator = creator_login(db, clock)
 
-    by_city = client.get(DISCOVER_URL, params={"city": "Madurai"}, headers=creator).json()
-    by_niche = client.get(DISCOVER_URL, params={"niche": "tech"}, headers=creator).json()
+    by_city = client.get(DISCOVER_URL, params={"city": food_city}, headers=creator).json()
+    by_niche = client.get(
+        DISCOVER_URL, params={"city": tech_city, "niche": "tech"}, headers=creator
+    ).json()
     combined = client.get(
-        DISCOVER_URL, params={"city": "Madurai", "niche": "tech"}, headers=creator
+        DISCOVER_URL, params={"city": food_city, "niche": "tech"}, headers=creator
     ).json()
 
-    assert [item["title"] for item in by_city["items"]] == ["Madurai food"]
-    assert [item["title"] for item in by_niche["items"]] == ["Chennai tech"]
+    assert [item["title"] for item in by_city["items"]] == ["Local food"]
+    assert [item["title"] for item in by_niche["items"]] == ["Local tech"]
     assert combined["items"] == []
 
 
 def test_discover_filters_by_minimum_budget(client, db, clock):
     _, headers = brand_login(db, clock)
+    city = unique_city()
     publish(
         client,
         headers,
-        create(client, headers, title="Small", budget_min_paise=100_000, budget_max_paise=200_000)["id"],
+        create(
+            client, headers, title="Small", cities=[city],
+            budget_min_paise=100_000, budget_max_paise=200_000,
+        )["id"],
     )
     publish(
         client,
         headers,
-        create(client, headers, title="Big", budget_min_paise=900_000, budget_max_paise=1_500_000)["id"],
+        create(
+            client, headers, title="Big", cities=[city],
+            budget_min_paise=900_000, budget_max_paise=1_500_000,
+        )["id"],
     )
 
     response = client.get(
-        DISCOVER_URL, params={"min_budget_paise": 500_000}, headers=creator_login(db, clock)
+        DISCOVER_URL,
+        params={"city": city, "min_budget_paise": 500_000},
+        headers=creator_login(db, clock),
     )
 
     assert [item["title"] for item in response.json()["items"]] == ["Big"]

@@ -461,4 +461,4 @@ def test_stored_row_matches_what_the_api_returned(client, db, clock):
     stored = db.get(Application, body["id"])
     assert stored.pitch == body["pitch"]
     assert stored.status == "submitted"
-    assert db.scalars(select(Application)).all() == [stored]
+    assert str(stored.campaign_id) == body["campaign_id"]

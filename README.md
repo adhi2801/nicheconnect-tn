@@ -9,6 +9,7 @@ service; it tracks payment **status** only (brand pays creator directly).
 - `app/modules/matching` — creator–brand matching (SentenceTransformers + pgvector)
 - `app/modules/deal_memo` — deal memo generation, ASCI disclosure, usage rights
 - `app/modules/payment_status` — payment status tracking only, never funds
+- `app/modules/campaigns` — campaigns and applications (D-016)
 - `app/modules/notifications` — WhatsApp / email reminders
 
 ## Local setup (same for both of you)
@@ -36,6 +37,20 @@ Never edit the database by hand — every schema change goes through a migration
 ```bash
 pytest
 ```
+
+Tests roll back everything they create, so they can run against a database
+that already holds sample data.
+
+## Sample data and performance
+
+```bash
+python scripts/seed_dev_data.py --reset          # realistic Tamil Nadu data
+python scripts/measure_performance.py --explain  # p95 per list endpoint + query plans
+```
+
+Both refuse to run unless `ENVIRONMENT=local`. Sample phones are
+`+9190000xxxxx` and emails end in `@example.com`, so no sample row can ever
+be mistaken for a real person. `--reset` removes the previous sample data.
 
 ## Working rules
 - Every merge to `main` goes through a pull request the other person reviews.
