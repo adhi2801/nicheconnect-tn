@@ -14,14 +14,21 @@ NicheConnect TN is a Tamil Nadu-focused brand↔creator marketplace. This repo i
 - Design the API around the product's domain (brands, creators, campaigns, applications, deal memos, payment status), not around assumed screens.
 - There is no finished dashboard. Any earlier Figma sketches are reference only, not a contract.
 
-**Founders:** the two developers on this repo. Either founder can approve work on their own track; anything touching both tracks, the guardrails, or architecture needs both.
+**Founders:** two developers, building the backend together. Either founder can approve work inside their own track; anything touching both tracks, the guardrails, or architecture needs both.
 
-**Tracks**
+| Founder | Track | Owns these areas (nobody else edits them the same day) |
+|---|---|---|
+| **Adhi** | API | `app/main.py`, `app/core/` (config, rate limiting, security), `app/modules/*/router.py`, `app/modules/*/schemas.py`, `app/modules/*/service.py`, `.github/workflows/`, API docs |
+| **Erode Harish** | Data | `app/db/`, `app/modules/*/models*`, `alembic/`, seed scripts, pgvector and Redis wiring, query performance |
 
-| Track | Scope |
-|---|---|
-| Data | Alembic, tables and migrations, pgvector, Redis wiring, matching data |
-| API | Rate limiting, CI, auth, endpoints, API docs & contracts |
+Shared, and only ever edited by one person at a time with the other told first: `CLAUDE.md`, `docs/standards/`, `docs/DECISIONS.md`, `requirements.txt`, `docker-compose.yml`, `.env.example`.
+
+**Overlap rules**
+
+- Two founders never edit the same file on the same day. If a task needs a file from the other track, that task is split and sequenced: one finishes and merges, then the other starts.
+- Tests follow the code: `tests/modules/<module>/test_*_api.py` belongs to API, `test_*_model.py` and migration tests to Data.
+- Only one new Alembic migration is in flight at a time, so revision chains can't fork.
+- Each founder works on their own branch and opens their own pull request. The other reviews it.
 
 Roadmap and phase plan: the NicheConnect TN Blueprint (linked from `README.md`).
 
@@ -198,6 +205,7 @@ If a standard conflicts with a founder's explicit instruction, point out the con
 |---|---|
 | `wrap up` or `/wrap-up` | End-of-session routine: verify, commit, **push**, write the daily report. Follow `.claude/commands/wrap-up.md` exactly. |
 | `handoff` or `/handoff` | Short handover so the other founder can continue immediately. Follow `.claude/commands/handoff.md`. |
+| `assign task` or `/assign-task` | Review real project progress, explain in plain words where we are, then give today's separate task to each founder with the reason behind it. Follow `.claude/commands/assign-task.md` exactly. |
 | `status` | Five lines max: branch, last commit, uncommitted files, test state, next step. No changes. |
 | `decision log` | Show `docs/DECISIONS.md` entries from the last 7 days. |
 
