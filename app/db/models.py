@@ -5,3 +5,4 @@ from app.modules.auth.models.creator import Creator  # noqa: F401
 from app.modules.auth.models.otp_challenge import OtpChallenge  # noqa: F401
 from app.modules.campaigns.models import Application  # noqa: F401
 from app.modules.campaigns.models import Campaign  # noqa: F401
+from app.modules.notifications.models import Notification  # noqa: F401

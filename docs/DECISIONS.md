@@ -203,3 +203,12 @@ Newest entries at the bottom.
 - Chosen: A.
 - Reason: Creators find out things happened in WhatsApp, but the app holds the record, the Passport, earnings and history, which is why it is worth installing. Every duplicated action would double the code, rules and tests, and the two paths could disagree about what happened.
 - Consequences / follow-ups: The notifications module needs outbound templates and one inbound webhook for the two replies, not a conversation engine: roughly a quarter of the work in flow 2.3. Blueprint flow 2.3 should be trimmed to match. Applying, pitches, proof upload and disputes stay in the app.
+
+## D-023: In-app notifications, stored as type plus details
+- Date: 2026-09-19
+- Approved by: Adhi
+- Context: The Frontend Blueprint marks Notifications as MVP, and D-022 makes WhatsApp alerts a delivery channel for the same events. `notifications` is already an approved module (CLAUDE.md section 3).
+- Options considered: A) Store an event type, the related ids and a small JSON of rendering values · B) Store the finished sentence shown to the user
+- Chosen: A. `notification` table: owner account (`ON DELETE CASCADE`), type from a fixed list, optional campaign and application links, a `details` object limited to 2,000 characters, and a read time.
+- Reason: Storing English sentences would make the Tamil version impossible (ux.md section 6). The app renders wording from the type and details, so one row serves both languages.
+- Consequences / follow-ups: Notifications are written in the same transaction as the event, so a record exists only if the change succeeded. Delivery (WhatsApp, push) reads these rows later and is a separate decision, together with the job runner. Only application events exist so far; deal memo and payment events follow in Phase B.

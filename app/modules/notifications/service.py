@@ -1,0 +1,98 @@
+"""Notification rules: record what happened, for one account (D-023).
+
+Creating a notification never sends anything by itself. Delivery (WhatsApp
+alerts, D-022) is a separate step that reads these rows, so a failure to
+deliver can never lose the record or break the action that caused it.
+"""
+
+import uuid
+from datetime import datetime
+from typing import Any
+
+from sqlalchemy import func, select, update
+from sqlalchemy.orm import Session
+
+from app.core.pagination import Slice, build_slice, decode_cursor
+from app.modules.notifications.models import Notification
+
+
+def record(
+    db: Session,
+    *,
+    account_id: uuid.UUID,
+    notification_type: str,
+    now: datetime,
+    campaign_id: uuid.UUID | None = None,
+    application_id: uuid.UUID | None = None,
+    details: dict[str, Any] | None = None,
+) -> Notification:
+    """Add a notification. The caller commits, as part of its own work."""
+    notification = Notification(
+        account_id=account_id,
+        notification_type=notification_type,
+        campaign_id=campaign_id,
+        application_id=application_id,
+        details=details or {},
+        created_at=now,
+        updated_at=now,
+    )
+    db.add(notification)
+    return notification
+
+
+def list_for_account(
+    db: Session,
+    account_id: uuid.UUID,
+    *,
+    limit: int,
+    cursor: str | None = None,
+    unread_only: bool = False,
+) -> Slice[Notification]:
+    """One account's notifications, newest first."""
+    query = select(Notification).where(Notification.account_id == account_id)
+    if unread_only:
+        query = query.where(Notification.read_at.is_(None))
+    if cursor is not None:
+        created_at, row_id = decode_cursor(cursor)
+        query = query.where(
+            (Notification.created_at, Notification.id) < (created_at, row_id)
+        )
+    rows = list(
+        db.scalars(
+            query.order_by(
+                Notification.created_at.desc(), Notification.id.desc()
+            ).limit(limit + 1)
+        ).all()
+    )
+    return build_slice(rows, limit, key=lambda row: (row.created_at, row.id))
+
+
+def unread_count(db: Session, account_id: uuid.UUID) -> int:
+    return db.scalar(
+        select(func.count())
+        .select_from(Notification)
+        .where(Notification.account_id == account_id, Notification.read_at.is_(None))
+    )
+
+
+def mark_read(db: Session, notification: Notification, now: datetime) -> Notification:
+    """Mark one as read. Reading it again keeps the first time."""
+    if notification.read_at is None:
+        notification.read_at = now
+        notification.updated_at = now
+        db.commit()
+        db.refresh(notification)
+    else:
+        db.rollback()
+    return notification
+
+
+def mark_all_read(db: Session, account_id: uuid.UUID, now: datetime) -> int:
+    """Mark every unread notification read. Returns how many changed."""
+    result = db.execute(
+        update(Notification)
+        .where(Notification.account_id == account_id, Notification.read_at.is_(None))
+        .values(read_at=now, updated_at=now)
+    )
+    db.commit()
+    return result.rowcount

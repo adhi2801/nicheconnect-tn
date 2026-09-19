@@ -11,6 +11,7 @@ from app.modules.auth.profile_router import brand_router, creator_router
 from app.modules.auth.router import router as auth_router
 from app.modules.campaigns.application_router import router as applications_router
 from app.modules.campaigns.router import router as campaigns_router
+from app.modules.notifications.router import router as notifications_router
 
 app = FastAPI(title="NicheConnect TN API")
 
@@ -26,6 +27,7 @@ app.include_router(brand_router)
 app.include_router(creator_router)
 app.include_router(campaigns_router)
 app.include_router(applications_router)
+app.include_router(notifications_router)
 
 
 @app.get("/healthz")
