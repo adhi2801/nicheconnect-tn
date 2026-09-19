@@ -107,7 +107,9 @@ def build_campaign(db: Session, **overrides: Any) -> Campaign:
     }
     fields.update(overrides)
     if "brand_id" not in fields:
-        brand = build_brand(db)
+        # A unique email per brand: several campaigns in one test would
+        # otherwise collide on uq_brand_email.
+        brand = build_brand(db, email=f"brand-{uuid.uuid4().hex[:12]}@example.com")
         db.add(brand)
         db.flush()
         fields["brand_id"] = brand.id

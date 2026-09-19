@@ -212,3 +212,66 @@ Newest entries at the bottom.
 - Chosen: A. `notification` table: owner account (`ON DELETE CASCADE`), type from a fixed list, optional campaign and application links, a `details` object limited to 2,000 characters, and a read time.
 - Reason: Storing English sentences would make the Tamil version impossible (ux.md section 6). The app renders wording from the type and details, so one row serves both languages.
 - Consequences / follow-ups: Notifications are written in the same transaction as the event, so a record exists only if the change succeeded. Delivery (WhatsApp, push) reads these rows later and is a separate decision, together with the job runner. Only application events exist so far; deal memo and payment events follow in Phase B.
+
+## D-024: What counts as proof of work
+- Date: 2026-09-19
+- Approved by: Adhi
+- Context: Phase B needs a definition of "the work was done" that holds up for a solo creator on a budget phone and a one-person shop reviewing on patchy 4G.
+- Options considered: A) Link plus a screenshot · B) Link plus a screenshot, and a 5-10 second screen recording for video and Story formats · C) Link only, re-checked by the server
+- Chosen: B with C's mechanism. The **public link is the primary evidence**; the server re-checks it (live at day 1, 7 and 30) and records a `content_removed_on` date if it disappears. A **screenshot** is required for static posts and a **5-10 second screen recording** for video and Story formats, because a still frame proves nothing about a Reel and Stories vanish in 24 hours. Media is **compressed on the phone** before upload; the server only makes a thumbnail. Every file is stored with a checksum. Proof is required for **barter deals too**.
+- Reason: A recording proves the post existed, but only a repeated link check proves it stayed up, and that check is far cheaper than asking a budget phone to upload video. Server-side video processing is infrastructure we do not need yet. Barter is often a nano creator's first deal and the one most worth documenting.
+- Consequences / follow-ups: Needs the media storage decision (where files live, size limits, resumable uploads) and a scheduled job for link checks, which needs the job-runner decision. Whether a disclosure is compliant stays an ASCI question for the validation pack; the system records the creator's confirmation, it does not judge it.
+
+## D-025: Approval window of 7 calendar days
+- Date: 2026-09-19
+- Approved by: Adhi
+- Context: A brand must review submitted proof, or a creator waits indefinitely.
+- Options considered: A) 5 working days · B) 5 calendar days · C) 7 calendar days
+- Chosen: C. Proof not approved within 7 calendar days is **automatically approved**, recorded distinctly as `auto_approved`. A reminder goes out on **day 3 by WhatsApp**, not only in the app. A brand may **request changes once**, which restarts the clock; a second request does not, and the memo screen says so plainly before the first one is sent.
+- Reason: "Working days" is a question a shop owner has to answer rather than a fact, so calendar days are clearer. Five calendar days is about 40% shorter than five working days, and a festival weekend would eat most of it; seven is still faster than the original and does not punish anyone for Pongal. The day-3 reminder has to reach a brand who opens the app once a month, so it goes where they already are.
+- Consequences / follow-ups: Timers are anchored to midnight IST, so a deal made at 11pm does not lose a day. `auto_approved` and `approved` stay separate states, because they mean different things in the reliability record.
+
+## D-026: Cancellation depends on whether work had started
+- Date: 2026-09-19
+- Approved by: Adhi
+- Context: Cancelling the day after accepting, before the creator has done anything, is not the same as cancelling after a script or draft was delivered. Treating both alike would scare small brands away from barter and local campaigns, which is where the growth plan starts.
+- Options considered: A) One rule for everything after acceptance · B) Split by whether work had started
+- Chosen: B. Before any draft, script or proof is submitted, a cancellation is recorded as `withdrawn_early`: visible on the deal, **not counted** in the reliability record. After work has been submitted it is `cancelled_by_brand` or `cancelled_by_creator`, and it counts. **Barter cancellations are shown as a separate count and never scored**, so backing out of a free-product trial is not punished like breaking a paid deal. The memo keeps a cancellation-fee field, defaulting to zero, recorded but never collected by us.
+- Reason: Fear of a permanent mark would stop the very experiments we want. Recording an unenforced fee honestly is better than pretending we can collect it.
+- Consequences / follow-ups: The memo needs a "work started" marker, a new state set by the first draft, script or proof submission. Barter cancellations stay visible, so a brand cannot hide bad behaviour by routing everything through barter.
+
+## D-027: Payment timing, states and methods
+- Date: 2026-09-19
+- Approved by: Adhi
+- Context: We never hold money, so payment states are a record and a reputation, not a transfer.
+- Options considered: A) On time or late · B) On time, late after 7 days, and unpaid after 21 days
+- Chosen: B. Payment is due **7 calendar days after approval**. Not marked paid by then is `late`; still unpaid at **21 days with no dispute** is `unpaid`, a stronger and separate state. Payment may be marked paid by **UPI, bank transfer or cash**, each with a reference note; only UPI can be matched automatically, so the others rest on the creator's confirmation, and both sides are nudged to confirm. A brand's record shows median days to pay, the share late, and the number of completed deals, **only after 3 completed deals**; before that it reads "New brand, no payment history yet" rather than showing nothing.
+- Reason: Late at day 8 and silence at day 25 are different problems for someone owed Rs 3,000. A Tamil Nadu shop paying cash at an event should not be marked late because nobody logged it. A blank record invites the worst assumption; a stated floor is honest.
+- Consequences / follow-ups: Payment reminders go by WhatsApp, as money-related timers (D-029). Automatic matching applies to UPI references only.
+
+## D-028: Disputes - we record, we do not judge
+- Date: 2026-09-19
+- Approved by: Adhi
+- Context: With no money in our hands and no legal standing, acting as a judge creates liability and disappointment.
+- Options considered: A) A neutral evidence timeline with factual outcomes · B) We decide who is right · C) Automatically pull the parties' WhatsApp conversation into the evidence
+- Chosen: A. Either side opens a dispute; the other has 7 days to respond with evidence. Outcomes: `resolved_paid`, `resolved_withdrawn`, **`resolved_informally`** (either side may close it early, because most of these end with a phone call), or `unresolved` after 30 days. `unresolved` appears as a fact on both records, never as a verdict, and either party can export the timeline.
+- Reason: Being the honest record-keeper is what makes the marketplace trustworthy. Forcing a 30-day wait for a matter already settled by phone is bad for a WhatsApp-native audience.
+- Consequences / follow-ups: **C was rejected on two grounds**: the WhatsApp Business API only exposes messages in the conversation with our own number, so a brand's private chat with a creator is not available to us; and ingesting private conversations would break our own data-minimisation rule and raise a serious DPDP problem. Instead **either party attaches evidence, including WhatsApp screenshots**, and attachments join the timeline with a timestamp. The claim that this posture preserves intermediary protection under the IT Act goes to the lawyer **as a question, not a conclusion** (CLAUDE.md section 2: no guessed compliance).
+
+## D-029: Reminder channels and notification limits
+- Date: 2026-09-19
+- Approved by: Adhi
+- Context: Every Phase B timer (proof due, day-3 approval nudge, payment due, payment late, dispute response) could send a WhatsApp message to both sides. Template messages cost money, need approval in advance, and Indian rules restrict unsolicited and night-time messages.
+- Options considered: A) WhatsApp for every timer · B) WhatsApp for money-related timers, in-app for the rest, with quiet hours and per-account preferences
+- Chosen: B. WhatsApp carries the approval deadline, payment due, payment late and dispute response reminders. Everything else stays in-app. No messages during quiet hours, and each account can turn categories off.
+- Reason: Assuming the app is opened rarely is correct, but four timers for both sides of every deal is a cost and an annoyance, and someone who mutes us receives nothing at all.
+- Consequences / follow-ups: Needs a notification preference table and a quiet-hours rule. Template wording must be approved by the provider before launch, which takes days: plan it early.
+
+## D-030: Phase B open points carried forward
+- Date: 2026-09-19
+- Approved by: Adhi
+- Context: Recording what D-024 to D-029 deliberately leave open, so none of it is lost.
+- Options considered: n/a (a record, not a choice)
+- Chosen: Four points stay open. (1) **A day means midnight IST** for every timer. (2) **Link rot**: a removed post gets `content_removed_on`, which also matters for usage rights. (3) **Notification fatigue** is a real risk once timers chase both sides; preferences and quiet hours exist for that reason. (4) **Who the pilot serves**: this policy assumes a one-person shop, while the Frontend Blueprint assumes brand teams with admin, editor and viewer roles. Both cannot be the primary user, and the answer changes the account model.
+- Reason: Writing down what is unresolved is cheaper than rediscovering it during the build.
+- Consequences / follow-ups: Point 4 must be settled before any team-account work. Points 1 to 3 are handled inside Phase B.
