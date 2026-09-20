@@ -20,6 +20,7 @@ from app.modules.campaigns.router import router as campaigns_router
 from app.modules.deal_memo.proof_router import router as proof_router
 from app.modules.deal_memo.router import router as deal_memos_router
 from app.modules.notifications.router import router as notifications_router
+from app.modules.payment_status.router import router as payment_router
 
 app = FastAPI(title="NicheConnect TN API")
 
@@ -52,6 +53,7 @@ app.include_router(applications_router)
 app.include_router(notifications_router)
 app.include_router(deal_memos_router)
 app.include_router(proof_router)
+app.include_router(payment_router)
 
 
 @app.get("/healthz")

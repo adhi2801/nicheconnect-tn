@@ -8,7 +8,7 @@ overdue. See `models.py` for why that choice was made.
 
 import re
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -63,6 +63,23 @@ PAID = "paid"
 CONFIRMED = "confirmed"
 
 PAYMENT_STATES: tuple[str, ...] = (DUE, LATE, UNPAID, PAID, CONFIRMED)
+
+# Every deadline in this file is counted in Tamil Nadu's calendar, not the
+# server's (D-030 point 1: a day means midnight IST). A proof approved at
+# 23:00 UTC is already tomorrow for the person waiting to be paid, and taking
+# the UTC date would hand them a deadline a day early.
+#
+# A fixed offset rather than a named zone: India has no daylight saving, so
+# +05:30 is always right, and it avoids depending on the system holding an
+# up-to-date timezone database. When another timer needs this, it moves to
+# app/core.
+IST = timezone(timedelta(hours=5, minutes=30))
+
+
+def india_date(moment: datetime) -> date:
+    """The calendar date this moment falls on in Tamil Nadu."""
+    return moment.astimezone(IST).date()
+
 
 # How long after the due date silence becomes the stronger `unpaid` state.
 #
@@ -300,3 +317,23 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
             fields=EXPORT_FIELDS,
         )
     ]
+
+
+def open_on_approval(
+    db: Session, memo: DealMemo, *, approved_at: datetime, now: datetime
+) -> PaymentStatus | None:
+    """Open the payment record because the work was approved (D-027).
+
+    Called from proof approval, which happens both when a brand approves and
+    when the window lapses, so this has to be safe to run more than once.
+    Returns None when there is nothing to record: a barter memo carries no
+    fee, and a record already opened is not opened again.
+    """
+    if memo.fee_amount_paise is None:
+        return None
+    existing = get_for_memo(db, memo.id)
+    if existing is not None:
+        return existing
+    return create_for_memo(
+        db, memo, approved_on=india_date(approved_at), now=now
+    )

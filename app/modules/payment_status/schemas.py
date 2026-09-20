@@ -1,0 +1,98 @@
+"""Request and response shapes for payment records."""
+
+import uuid
+from datetime import date, datetime
+from typing import Annotated, Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.core.taxonomy import CURRENCY
+from app.modules.payment_status.models import (
+    PAYMENT_METHODS,
+    REFERENCE_MAX_LENGTH,
+    PaymentStatus,
+)
+from app.modules.payment_status.service import (
+    PAYMENT_STATES,
+    REFERENCE_MIN_LENGTH,
+    days_overdue,
+    derive_state,
+    is_auto_matchable,
+)
+
+PaymentMethod = Literal["upi", "bank_transfer", "cash"]
+PaymentState = Literal["due", "late", "unpaid", "paid", "confirmed"]
+
+# Keeps these lists honest against the database's own allow-lists.
+assert set(PAYMENT_METHODS) == set(PaymentMethod.__args__)
+assert set(PAYMENT_STATES) == set(PaymentState.__args__)
+
+
+class MarkPaidRequest(BaseModel):
+    """What the brand says when it has sent the money."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    method: Annotated[
+        PaymentMethod,
+        Field(description="How the money was sent"),
+    ]
+    reference: Annotated[
+        str,
+        Field(
+            min_length=REFERENCE_MIN_LENGTH,
+            max_length=REFERENCE_MAX_LENGTH,
+            description=(
+                "The UPI reference number, the bank UTR, or a note saying how "
+                "cash was handed over. A UPI reference is 12 digits, a NEFT "
+                "UTR 16 characters, an RTGS UTR 22."
+            ),
+            examples=["412345678901"],
+        ),
+    ]
+
+
+class PaymentRead(BaseModel):
+    """A payment record, with its state read from the dates.
+
+    `state` is not a stored column. It is worked out from `due_on`,
+    `marked_paid_at` and `confirmed_at` against today, so it can never be
+    stale (see models.py).
+    """
+
+    id: uuid.UUID
+    deal_memo_id: uuid.UUID
+    amount_paise: int
+    currency: str = CURRENCY
+    due_on: date
+    state: PaymentState
+    days_overdue: int
+    method: PaymentMethod | None
+    reference: str | None
+    # Whether this reference could ever be checked against a bank feed. Only
+    # a real 12-digit UPI reference can (D-027).
+    reference_auto_matchable: bool
+    marked_paid_at: datetime | None
+    confirmed_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+def to_read(payment: PaymentStatus, today: date) -> PaymentRead:
+    """Build the response, including the parts that are worked out."""
+    return PaymentRead(
+        id=payment.id,
+        deal_memo_id=payment.deal_memo_id,
+        amount_paise=payment.amount_paise,
+        currency=payment.currency,
+        due_on=payment.due_on,
+        state=derive_state(payment, today),
+        days_overdue=days_overdue(payment, today),
+        method=payment.method,
+        reference=payment.reference,
+        reference_auto_matchable=is_auto_matchable(payment),
+        marked_paid_at=payment.marked_paid_at,
+        confirmed_at=payment.confirmed_at,
+        created_at=payment.created_at,
+        updated_at=payment.updated_at,
+    )

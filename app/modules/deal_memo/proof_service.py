@@ -18,6 +18,7 @@ from app.modules.deal_memo.exceptions import (
 )
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof
+from app.modules.payment_status import service as payments
 from app.modules.deal_memo.service import _notify_other_side
 
 
@@ -82,6 +83,10 @@ def settle_if_overdue(
         _notify_other_side(
             db, memo, to="creator", notification_type="proof_auto_approved", now=now
         )
+        # Approval is what starts the payment clock (D-027). Opened here, in
+        # the same transaction, so a memo can never be approved without the
+        # payment it is owed existing.
+        payments.open_on_approval(db, memo, approved_at=proof.approved_at, now=now)
         db.commit()
         db.refresh(proof)
     return proof
@@ -100,6 +105,7 @@ def approve_proof(
     proof.approved_at = now
     proof.updated_at = now
     _notify_other_side(db, memo, to="creator", notification_type="proof_approved", now=now)
+    payments.open_on_approval(db, memo, approved_at=now, now=now)
     db.commit()
     db.refresh(proof)
     return proof

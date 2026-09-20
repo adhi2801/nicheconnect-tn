@@ -329,3 +329,46 @@ def test_outstanding_puts_the_longest_wait_first(db):
     ]
 
     assert [row.id for row in found] == [earlier.id, later.id]
+
+
+# --- opening on approval (the automatic trigger) --------------------------
+
+
+def test_approval_opens_the_record_on_the_indian_calendar_date(db):
+    """A proof approved at 23:00 UTC is already tomorrow in Tamil Nadu, and
+    the person waiting to be paid should not lose a day (D-030 point 1)."""
+    from datetime import datetime, timezone
+
+    memo = make_memo(db)
+    late_evening_utc = datetime(2026, 9, 20, 23, 0, tzinfo=timezone.utc)
+
+    record = service.open_on_approval(
+        db, memo, approved_at=late_evening_utc, now=late_evening_utc
+    )
+
+    assert record.due_on == date(2026, 9, 28)  # 21 Sep in India, plus 7
+
+
+def test_opening_it_twice_returns_the_same_record(db):
+    """Approval runs both when a brand approves and when the window lapses,
+    so this has to be safe to run more than once."""
+    from datetime import datetime, timezone
+
+    memo = make_memo(db)
+    moment = datetime(2026, 9, 20, 12, 0, tzinfo=timezone.utc)
+    first = service.open_on_approval(db, memo, approved_at=moment, now=moment)
+    db.flush()
+
+    again = service.open_on_approval(db, memo, approved_at=moment, now=moment)
+
+    assert again.id == first.id
+
+
+def test_approving_barter_work_opens_nothing(db):
+    """Nothing is owed, so there is nothing to record (D-024)."""
+    from datetime import datetime, timezone
+
+    memo = make_memo(db, fee_amount_paise=None)
+    moment = datetime(2026, 9, 20, 12, 0, tzinfo=timezone.utc)
+
+    assert service.open_on_approval(db, memo, approved_at=moment, now=moment) is None
