@@ -33,3 +33,9 @@ class UnknownDisputeOutcome(DomainError):
     status_code = HTTPStatus.UNPROCESSABLE_ENTITY
     code = "unknown_dispute_outcome"
     title = "That is not an outcome we record"
+
+
+class NothingToRecord(DomainError):
+    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
+    code = "nothing_to_record"
+    title = "An entry needs a note, a link, or both"

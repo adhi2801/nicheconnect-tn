@@ -19,6 +19,7 @@ from app.modules.campaigns.application_router import router as applications_rout
 from app.modules.campaigns.router import router as campaigns_router
 from app.modules.deal_memo.proof_router import router as proof_router
 from app.modules.deal_memo.router import router as deal_memos_router
+from app.modules.disputes.router import router as disputes_router
 from app.modules.notifications.router import router as notifications_router
 from app.modules.payment_status.brand_router import router as reliability_router
 from app.modules.payment_status.router import router as payment_router
@@ -56,6 +57,7 @@ app.include_router(deal_memos_router)
 app.include_router(proof_router)
 app.include_router(payment_router)
 app.include_router(reliability_router)
+app.include_router(disputes_router)
 
 
 @app.get("/healthz")
