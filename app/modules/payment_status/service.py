@@ -8,11 +8,12 @@ overdue. See `models.py` for why that choice was made.
 
 import re
 import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.clock import india_date
 from app.core.export import (
     MAX_ROWS_PER_SECTION,
     ExportedSection,
@@ -81,23 +82,6 @@ PAYMENT_STATES: tuple[str, ...] = (DUE, LATE, UNPAID, PAID, UNCONFIRMED, CONFIRM
 # A late confirmation is still accepted and still moves the record to
 # `confirmed`; this window only changes what the record says in the meantime.
 CONFIRMATION_WINDOW_DAYS = 7
-
-# Every deadline in this file is counted in Tamil Nadu's calendar, not the
-# server's (D-030 point 1: a day means midnight IST). A proof approved at
-# 23:00 UTC is already tomorrow for the person waiting to be paid, and taking
-# the UTC date would hand them a deadline a day early.
-#
-# A fixed offset rather than a named zone: India has no daylight saving, so
-# +05:30 is always right, and it avoids depending on the system holding an
-# up-to-date timezone database. When another timer needs this, it moves to
-# app/core.
-IST = timezone(timedelta(hours=5, minutes=30))
-
-
-def india_date(moment: datetime) -> date:
-    """The calendar date this moment falls on in Tamil Nadu."""
-    return moment.astimezone(IST).date()
-
 
 # How long after the due date silence becomes the stronger `unpaid` state.
 #

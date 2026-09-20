@@ -25,6 +25,7 @@ from app.modules.auth.tokens import create_access_token
 from app.modules.campaigns import service as campaigns_service
 from app.modules.campaigns.models import Application
 from app.modules.deal_memo import service as deal_memo_service
+from app.modules.disputes import service as disputes_service
 from app.modules.notifications import service as notifications_service
 from app.modules.payment_status import service as payment_service
 from tests.factories import (
@@ -51,6 +52,8 @@ FIELD_LISTS: dict[str, tuple[str, ...]] = {
     "deliverable_proof": deal_memo_service.PROOF_EXPORT_FIELDS,
     "notification": notifications_service.EXPORT_FIELDS,
     "payment_status": payment_service.EXPORT_FIELDS,
+    "dispute": disputes_service.DISPUTE_EXPORT_FIELDS,
+    "dispute_event": disputes_service.EVENT_EXPORT_FIELDS,
 }
 
 

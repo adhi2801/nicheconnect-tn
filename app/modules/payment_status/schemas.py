@@ -79,11 +79,16 @@ class PaymentRead(BaseModel):
     reference_auto_matchable: bool
     marked_paid_at: datetime | None
     confirmed_at: datetime | None
+    # A payment being argued about is held at `late` rather than hardening
+    # into `unpaid` (D-027), so the UI can say why.
+    has_open_dispute: bool
     created_at: datetime
     updated_at: datetime
 
 
-def to_read(payment: PaymentStatus, today: date) -> PaymentRead:
+def to_read(
+    payment: PaymentStatus, today: date, *, has_open_dispute: bool = False
+) -> PaymentRead:
     """Build the response, including the parts that are worked out."""
     return PaymentRead(
         id=payment.id,
@@ -91,13 +96,14 @@ def to_read(payment: PaymentStatus, today: date) -> PaymentRead:
         amount_paise=payment.amount_paise,
         currency=payment.currency,
         due_on=payment.due_on,
-        state=derive_state(payment, today),
+        state=derive_state(payment, today, has_open_dispute=has_open_dispute),
         days_overdue=days_overdue(payment, today),
         method=payment.method,
         reference=payment.reference,
         reference_auto_matchable=is_auto_matchable(payment),
         marked_paid_at=payment.marked_paid_at,
         confirmed_at=payment.confirmed_at,
+        has_open_dispute=has_open_dispute,
         created_at=payment.created_at,
         updated_at=payment.updated_at,
     )

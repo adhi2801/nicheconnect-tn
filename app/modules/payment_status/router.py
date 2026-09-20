@@ -27,6 +27,7 @@ from app.modules.deal_memo.dependencies import (
     CreatorMemo,
     visible_memo_for_account,
 )
+from app.modules.disputes import service as disputes
 from app.modules.payment_status import service
 from app.modules.payment_status.exceptions import PaymentRecordNotFound
 from app.modules.payment_status.schemas import MarkPaidRequest, PaymentRead, to_read
@@ -49,6 +50,16 @@ _COMMON_ERRORS = {
     404: problem_doc("No such memo, or it is not yours, or it has no payment record"),
     429: problem_doc("Too many requests; see the Retry-After header"),
 }
+
+
+def _disputed(db: Session, payment, today) -> bool:
+    """Whether somebody is actively arguing about this payment.
+
+    `today` is passed in rather than read from the machine, so a test that
+    moves time forward moves this with it (testing.md section 4).
+    """
+    dispute = disputes.get_for_payment(db, payment.id)
+    return dispute is not None and disputes.is_open(dispute, today)
 
 
 def _payment_or_404(db: Session, memo_id: uuid.UUID):
@@ -83,7 +94,8 @@ def read_payment(
     """Either party may read it. Nobody else can."""
     memo = visible_memo_for_account(db, memo_id, account.id, account.role)
     payment = _payment_or_404(db, memo.id)
-    return to_read(payment, service.india_date(now))
+    today = service.india_date(now)
+    return to_read(payment, today, has_open_dispute=_disputed(db, payment, today))
 
 
 @router.post(
@@ -115,7 +127,8 @@ def mark_paid(
     service.mark_paid(
         db, payment, method=body.method, reference=body.reference, now=now
     )
-    return to_read(payment, service.india_date(now))
+    today = service.india_date(now)
+    return to_read(payment, today, has_open_dispute=_disputed(db, payment, today))
 
 
 @router.post(
@@ -144,4 +157,5 @@ def confirm_received(
     """Only the creator can say the money arrived."""
     payment = _payment_or_404(db, memo.id)
     service.confirm_received(db, payment, now=now)
-    return to_read(payment, service.india_date(now))
+    today = service.india_date(now)
+    return to_read(payment, today, has_open_dispute=_disputed(db, payment, today))

@@ -43,6 +43,7 @@ from sqlalchemy.orm import Session
 from app.modules.auth.models.brand import Brand
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.models import DealMemo
+from app.modules.disputes import service as disputes
 from app.modules.payment_status.models import PaymentStatus
 from app.modules.payment_status.service import (
     CONFIRMED,
@@ -126,10 +127,28 @@ def _paid_on_time(payment: PaymentStatus) -> bool:
 
 
 def build_record(
-    payments: list[PaymentStatus], brand_id: uuid.UUID, today: date
+    payments: list[PaymentStatus],
+    brand_id: uuid.UUID,
+    today: date,
+    disputed: set[uuid.UUID] | None = None,
 ) -> ReliabilityRecord:
-    """Work the record out from payment rows. Pure, so it is easy to trust."""
-    states = [(payment, derive_state(payment, today)) for payment in payments]
+    """Work the record out from payment rows. Pure, so it is easy to trust.
+
+    `disputed` holds the payments somebody is actively arguing about. They
+    are held short of `unpaid`, because a payment under dispute is not the
+    same as a payment nobody will discuss, and marking a brand as a
+    non-payer while the matter is live would be us taking a side (D-028).
+    """
+    argued_about = disputed or set()
+    states = [
+        (
+            payment,
+            derive_state(
+                payment, today, has_open_dispute=payment.id in argued_about
+            ),
+        )
+        for payment in payments
+    ]
 
     settled = [payment for payment, state in states if state in SETTLED_STATES]
     paid = [payment for payment, state in states if state in SETTLED_PAID]
@@ -171,7 +190,9 @@ def build_record(
 
 def for_brand(db: Session, brand_id: uuid.UUID, today: date) -> ReliabilityRecord:
     """This brand's payment record as of today."""
-    return build_record(_payments_for_brand(db, brand_id), brand_id, today)
+    payments = _payments_for_brand(db, brand_id)
+    disputed = disputes.open_payment_ids(db, {p.id for p in payments}, today)
+    return build_record(payments, brand_id, today, disputed)
 
 
 def brand_exists(db: Session, brand_id: uuid.UUID) -> bool:
