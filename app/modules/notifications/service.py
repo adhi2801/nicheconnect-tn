@@ -12,8 +12,30 @@ from typing import Any
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
+from app.core.export import (
+    MAX_ROWS_PER_SECTION,
+    ExportedSection,
+    allow,
+    build_section,
+)
 from app.core.pagination import Slice, build_slice, decode_cursor
 from app.modules.notifications.models import Notification
+
+# Tables this module answers for in a data export. The completeness test in
+# tests/modules/auth/test_export_api.py reads this, so a new table here
+# cannot be left out of an export by accident.
+EXPORTED_TABLES = frozenset({"notification"})
+
+EXPORT_FIELDS = allow(
+    "id",
+    "notification_type",
+    "campaign_id",
+    "application_id",
+    "details",
+    "read_at",
+    "created_at",
+    "updated_at",
+)
 
 
 def record(
@@ -96,3 +118,31 @@ def mark_all_read(db: Session, account_id: uuid.UUID, now: datetime) -> int:
     )
     db.commit()
     return result.rowcount
+
+
+def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSection]:
+    """This account's notifications, for a data export.
+
+    `details` holds only the campaign title and the other side's public
+    handle, so nothing private about anyone else travels with it.
+    """
+    rows = list(
+        db.scalars(
+            select(Notification)
+            .where(Notification.account_id == account_id)
+            .order_by(Notification.created_at, Notification.id)
+            .limit(MAX_ROWS_PER_SECTION + 1)
+        ).all()
+    )
+    return [
+        build_section(
+            "notifications",
+            table="notification",
+            purpose=(
+                "Alerts we raised for you about campaigns, applications, deal "
+                "memos and proof of work, so you can see what happened and when."
+            ),
+            objects=rows,
+            fields=EXPORT_FIELDS,
+        )
+    ]

@@ -11,6 +11,12 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.export import (
+    MAX_ROWS_PER_SECTION,
+    ExportedSection,
+    allow,
+    build_section,
+)
 from app.core.pagination import Slice, build_slice, decode_cursor
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
@@ -24,7 +30,53 @@ from app.modules.deal_memo.exceptions import (
     PaidMemoNeedsFee,
 )
 from app.modules.deal_memo.models import DealMemo
+from app.modules.deal_memo.proof_models import DeliverableProof
 from app.modules.notifications import service as notifications
+
+# Tables this module answers for in a data export (see
+# tests/modules/auth/test_export_api.py, which fails if one is missed).
+EXPORTED_TABLES = frozenset({"deal_memo", "deliverable_proof"})
+
+MEMO_EXPORT_FIELDS = allow(
+    "id",
+    "application_id",
+    "deliverables",
+    "fee_amount_paise",
+    "currency",
+    "cancellation_fee_paise",
+    "approval_window_days",
+    "payment_due_days",
+    "usage_rights_days",
+    "content_due_on",
+    "disclosure_required",
+    "extra_terms",
+    "status",
+    "revision_count",
+    "sent_at",
+    "accepted_at",
+    "work_started_at",
+    "cancelled_at",
+    "cancellation_kind",
+    "created_at",
+    "updated_at",
+)
+
+PROOF_EXPORT_FIELDS = allow(
+    "id",
+    "deal_memo_id",
+    "content_url",
+    "format",
+    "note",
+    "disclosure_confirmed",
+    "status",
+    "approved_at",
+    "auto_approved",
+    "revision_note",
+    "content_removed_on",
+    "last_checked_at",
+    "created_at",
+    "updated_at",
+)
 
 # Who may make each move, and where it leads.
 BRAND_TRANSITIONS: dict[str, frozenset[str]] = {
@@ -271,3 +323,65 @@ def list_for_creator(
     if status is not None:
         query = query.where(DealMemo.status == status)
     return _paginate(db, query, limit, cursor)
+
+
+def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSection]:
+    """Deal memos this account is a party to, and the proof filed against them.
+
+    Both sides of a memo agreed to the same terms, so both sides may keep a
+    copy. The query reaches the memo from whichever side this account is on.
+    """
+    brand = db.scalars(select(Brand).where(Brand.account_id == account_id)).first()
+    creator = db.scalars(select(Creator).where(Creator.account_id == account_id)).first()
+    if brand is None and creator is None:
+        return []
+
+    query = (
+        select(DealMemo)
+        .join(Application, Application.id == DealMemo.application_id)
+        .join(Campaign, Campaign.id == Application.campaign_id)
+    )
+    if brand is not None:
+        query = query.where(Campaign.brand_id == brand.id)
+    else:
+        query = query.where(Application.creator_id == creator.id)
+
+    memos = list(
+        db.scalars(
+            query.order_by(DealMemo.created_at, DealMemo.id).limit(
+                MAX_ROWS_PER_SECTION + 1
+            )
+        ).all()
+    )
+
+    memo_ids = {memo.id for memo in memos}
+    proofs: list[DeliverableProof] = []
+    if memo_ids:
+        proofs = list(
+            db.scalars(
+                select(DeliverableProof)
+                .where(DeliverableProof.deal_memo_id.in_(memo_ids))
+                .order_by(DeliverableProof.created_at, DeliverableProof.id)
+                .limit(MAX_ROWS_PER_SECTION + 1)
+            ).all()
+        )
+
+    return [
+        build_section(
+            "deal_memos",
+            table="deal_memo",
+            purpose=(
+                "What each side agreed: deliverables, fee, deadlines and how "
+                "the memo ended. Money is recorded, never held by us."
+            ),
+            objects=memos,
+            fields=MEMO_EXPORT_FIELDS,
+        ),
+        build_section(
+            "deliverable_proofs",
+            table="deliverable_proof",
+            purpose="Proof of published work filed against those memos, and its review.",
+            objects=proofs,
+            fields=PROOF_EXPORT_FIELDS,
+        ),
+    ]

@@ -17,6 +17,12 @@ from sqlalchemy import Select, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.export import (
+    MAX_ROWS_PER_SECTION,
+    ExportedSection,
+    allow,
+    build_section,
+)
 from app.core.pagination import Slice, build_slice, decode_cursor
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
@@ -34,6 +40,40 @@ from app.modules.campaigns.exceptions import (
 )
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.notifications import service as notifications
+
+# Tables this module answers for in a data export (see
+# tests/modules/auth/test_export_api.py, which fails if one is missed).
+EXPORTED_TABLES = frozenset({"campaign", "application"})
+
+CAMPAIGN_EXPORT_FIELDS = allow(
+    "id",
+    "title",
+    "description",
+    "campaign_type",
+    "budget_min_paise",
+    "budget_max_paise",
+    "currency",
+    "cities",
+    "niches",
+    "deliverables",
+    "applications_close_on",
+    "status",
+    "created_at",
+    "updated_at",
+)
+
+APPLICATION_EXPORT_FIELDS = allow(
+    "id",
+    "campaign_id",
+    "pitch",
+    "quoted_amount_paise",
+    "status",
+    "rejection_reason",
+    "rejection_note",
+    "status_changed_at",
+    "created_at",
+    "updated_at",
+)
 
 # What each status allows next. Empty means the campaign is finished.
 ALLOWED_TRANSITIONS: dict[str, frozenset[str]] = {
@@ -371,3 +411,110 @@ def list_creator_applications(
     if status is not None:
         query = query.where(Application.status == status)
     return _paginate_applications(db, query, limit, cursor)
+
+
+def _campaign_titles(db: Session, campaign_ids: set[uuid.UUID]) -> dict[uuid.UUID, str]:
+    """Titles for a set of campaigns, in one query rather than one each."""
+    if not campaign_ids:
+        return {}
+    rows = db.execute(
+        select(Campaign.id, Campaign.title).where(Campaign.id.in_(campaign_ids))
+    ).all()
+    return {row.id: row.title for row in rows}
+
+
+def _creator_handles(db: Session, creator_ids: set[uuid.UUID]) -> dict[uuid.UUID, str]:
+    """Public handles for a set of creators, in one query.
+
+    A handle is already public (it is what the Creator Passport is keyed on),
+    so it is the one thing about the other side that may appear in an export.
+    Nothing else about them does.
+    """
+    if not creator_ids:
+        return {}
+    rows = db.execute(
+        select(Creator.id, Creator.handle).where(Creator.id.in_(creator_ids))
+    ).all()
+    return {row.id: row.handle for row in rows}
+
+
+def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSection]:
+    """Campaigns and applications belonging to this account.
+
+    A brand gets the campaigns it posted and the applications it received; a
+    creator gets the applications it sent. Either side sees the other only by
+    internal id and public handle.
+    """
+    sections: list[ExportedSection] = []
+
+    brand = db.scalars(select(Brand).where(Brand.account_id == account_id)).first()
+    if brand is not None:
+        campaigns = list(
+            db.scalars(
+                select(Campaign)
+                .where(Campaign.brand_id == brand.id)
+                .order_by(Campaign.created_at, Campaign.id)
+                .limit(MAX_ROWS_PER_SECTION + 1)
+            ).all()
+        )
+        sections.append(
+            build_section(
+                "campaigns",
+                table="campaign",
+                purpose="The campaigns you posted, including ones still in draft.",
+                objects=campaigns,
+                fields=CAMPAIGN_EXPORT_FIELDS,
+            )
+        )
+
+        received = list(
+            db.scalars(
+                select(Application)
+                .join(Campaign, Application.campaign_id == Campaign.id)
+                .where(Campaign.brand_id == brand.id)
+                .order_by(Application.created_at, Application.id)
+                .limit(MAX_ROWS_PER_SECTION + 1)
+            ).all()
+        )
+        handles = _creator_handles(db, {row.creator_id for row in received})
+        titles = _campaign_titles(db, {row.campaign_id for row in received})
+        sections.append(
+            build_section(
+                "applications_received",
+                table="application",
+                purpose=(
+                    "Applications creators sent to your campaigns. The creator "
+                    "is identified by their public handle only."
+                ),
+                objects=received,
+                fields=APPLICATION_EXPORT_FIELDS,
+                extra=lambda row: {
+                    "creator_handle": handles.get(row.creator_id),
+                    "campaign_title": titles.get(row.campaign_id),
+                },
+            )
+        )
+
+    creator = db.scalars(select(Creator).where(Creator.account_id == account_id)).first()
+    if creator is not None:
+        sent = list(
+            db.scalars(
+                select(Application)
+                .where(Application.creator_id == creator.id)
+                .order_by(Application.created_at, Application.id)
+                .limit(MAX_ROWS_PER_SECTION + 1)
+            ).all()
+        )
+        titles = _campaign_titles(db, {row.campaign_id for row in sent})
+        sections.append(
+            build_section(
+                "applications_sent",
+                table="application",
+                purpose="Applications you sent to campaigns, and how each ended.",
+                objects=sent,
+                fields=APPLICATION_EXPORT_FIELDS,
+                extra=lambda row: {"campaign_title": titles.get(row.campaign_id)},
+            )
+        )
+
+    return sections
