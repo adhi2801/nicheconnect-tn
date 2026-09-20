@@ -9,8 +9,9 @@
 - **We were running a web layer with 16 known security holes.** An audit of our pinned packages found eight in Starlette alone, including an unvalidated `Host` header and request bodies that buffer without limit — reachable by anyone, no login needed. Upgraded and now clean.
 - **CI will catch the next one by itself.** A `pip-audit` step now blocks merge on any known vulnerability.
 - **Request bodies are now capped at 1 MB.** Our own security standard claimed this control; nothing enforced it. Now two checks do.
-- **Two more controls our standard claims still don't exist:** secure response headers and a CORS allow-list. Found today, not fixed. Written up below.
-- **Tests:** 637 passing, up from 599 at the last report. Nothing is broken.
+- **Security headers now go out on every response** — the second of the three gaps found today, closed. A test guards the `/docs` page against a future CDN change breaking it.
+- **One gap left:** a CORS allow-list, which genuinely can't be built until a frontend origin exists.
+- **Tests:** 663 passing, up from 599 at the last report. Nothing is broken.
 - **Waiting on Erode Harish:** the `payment_status` table. Everything about money, reliability scores and disputes is blocked behind it.
 
 ## 2. Work completed
@@ -22,6 +23,7 @@
 | Upgrade FastAPI, Starlette, pytest | Tested | `552367d`; full suite passed on the new versions before the pins changed |
 | `pip-audit` as a CI gate | Implemented | `552367d`; the exact command was run locally and exits 0. Not yet seen green on GitHub Actions |
 | Request body size limit | Tested | `2f4b662`; 18 tests in `tests/core/test_body_limit.py` |
+| Security headers on every response | Tested | `94b89d8`; 26 tests in `tests/core/test_security_headers.py` |
 | Decision D-031 recorded | Tested | `552367d`, `docs/DECISIONS.md` |
 | Assignment file for 19 Sep committed | Implemented | `4d8d91c` |
 
@@ -35,6 +37,8 @@
 | `tests/modules/auth/test_public_profile_api.py` | 20 tests, including an exact-field-set contract test |
 | `app/core/body_limit.py` | Refuses request bodies over 1 MB, by declared size and by real size |
 | `tests/core/test_body_limit.py` | 18 tests, including chunked bodies and a lying `Content-Length` |
+| `app/core/security_headers.py` | nosniff, Referrer-Policy, X-Frame-Options, CSP and HSTS on every response |
+| `tests/core/test_security_headers.py` | 26 tests, including a guard that the CSP covers what `/docs` really loads |
 | `docs/assignments/2026-09-19.md` | Yesterday's task assignment, previously uncommitted |
 
 ### Modified
@@ -43,7 +47,7 @@
 |---|---|---|---|
 | `requirements.txt` | `fastapi` 0.115.0→0.141.1, `pytest` 8.3.3→9.1.1, new explicit `starlette==1.6.0` | 16 known vulnerabilities in the old pins | Everyone must re-run `pip install -r requirements.txt` |
 | `.github/workflows/ci.yml` | Added the `pip-audit` step as gate 6 | `security.md` section 8 | A known vulnerability now blocks merge |
-| `app/main.py` | Registered the public router and `BodyLimitMiddleware` | Wiring | Public endpoint live; every request body capped |
+| `app/main.py` | Registered the public router, `BodyLimitMiddleware` and `SecurityHeadersMiddleware` | Wiring | Public endpoint live; every request body capped; every response carries security headers |
 | `docs/DECISIONS.md` | Added D-031 | Approval record | None |
 
 ### Deleted
@@ -60,6 +64,8 @@ Public fields: `id`, `handle`, `display_name`, `city`, `niches`, `languages`, `b
 
 The endpoint caches for 5 minutes and supports `ETag` / `If-None-Match`, because a link in a bio is read far more often than it changes.
 
+Every response now carries `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY` and a Content-Security-Policy — `default-src 'none'` for JSON, and a wider, explicit policy for the `/docs` and `/redoc` HTML so the API documentation still works. HSTS is sent only outside local and test.
+
 Every other endpoint now returns **413** with the standard Problem Details body when the request body exceeds 1 MB.
 
 ## 5. Database changes
@@ -70,15 +76,17 @@ Every other endpoint now returns **413** with the standard Problem Details body 
 
 ## 6. Testing
 
-- **Commands run:** `pytest -q` · `pip-audit --requirement requirements.txt --strict --desc` · an OpenAPI generation check · a direct check that the chunked-body test exercises the counting path rather than the header path
-- **Result:** **637 passed, 2 warnings, 19.14s.** 0 failed, 0 skipped. `pip-audit` exit 0, "No known vulnerabilities found". OpenAPI generates 40 paths / 49 operations, every one with a summary, `ProblemDetails` present.
-- **New tests:** 20 for the public Passport, 18 for the body limit.
+- **Commands run:** `pytest -q` · `pip-audit --requirement requirements.txt --strict --desc` · an OpenAPI generation check · a direct check that the chunked-body test exercises the counting path rather than the header path · a direct check of which origins `/docs` and `/redoc` actually reference
+- **Result:** **663 passed, 2 warnings, 19.89s.** 0 failed, 0 skipped. `pip-audit` exit 0, "No known vulnerabilities found". OpenAPI generates 40 paths / 49 operations, every one with a summary, `ProblemDetails` present.
+- **New tests:** 20 for the public Passport, 18 for the body limit, 26 for the security headers.
 - **Not verified:** CI has not run on GitHub Actions yet. The `pip-audit` step is expected to pass because the identical command passes locally, but it has not been seen green on a runner.
 - The 2 warnings come from Starlette's own test client (`anyio` deprecations). Upstream, not ours.
 
 ## 7. Commits pushed
 
 ```
+94b89d8 feat(core): security headers on every response
+5ebf392 docs: add engineering report 2026-09-20
 4d8d91c docs: add the task assignment for 2026-09-19
 2f4b662 feat(core): refuse request bodies over 1 MB
 552367d chore(deps): upgrade FastAPI, Starlette and pytest, and audit in CI
@@ -109,6 +117,7 @@ e7cabff feat(auth): public Creator Passport, readable without logging in
 | High | `max_fields` / `max_part_size` silently ignored on urlencoded forms, so limits we thought were set did nothing | Fixed by upgrade |
 | Medium | FastAPI 0.141.1 allows `starlette>=0.46.0` with no upper bound, and advisories in that range stay open until 1.3.1 — a fresh install could have drifted back onto a vulnerable version | Fixed by pinning Starlette explicitly |
 | Medium | No request body size limit existed, though `security.md` section 3 claims one | Fixed in `2f4b662` |
+| Medium | No security headers existed, though `security.md` section 7 claims four of them | Fixed in `94b89d8` |
 | Low | `pytest` local temp-directory issue (PYSEC-2026-1845) | Fixed by upgrade |
 
 ## 11. Technical debt
@@ -116,8 +125,8 @@ e7cabff feat(auth): public Creator Passport, readable without logging in
 | Item | Why it exists | Risk | Cleanup plan |
 |---|---|---|---|
 | Creators cannot opt out of the public Passport | The switch is a column on the creator table, which belongs to the Data track | **Blocks deployment.** Someone who signed up only to browse is published without consent | One column plus a migration; `passport_is_public()` is the only line that changes |
-| No secure response headers (`nosniff`, `Referrer-Policy`, `X-Frame-Options`, CSP) | Never built | `security.md` section 7 claims them. Matters most for the `/docs` HTML page | One middleware, API track. Next session |
 | No CORS allow-list | No frontend origin exists yet to allow | Low today, blocking the day a frontend appears | Decide origins when frontend work starts (D-004) |
+| `/docs` CSP allows `'unsafe-inline'` scripts | FastAPI generates an inline bootstrap script we don't control | Confined to two developer-facing pages | `security.md` section 9 still requires a decision on whether `/docs` is reachable in production at all |
 | Body limit is a module constant, not config | Avoids adding an environment variable before anyone needs to tune it | Low | Move to `config.py` when a deployment needs a different value |
 
 ## 12. Blockers
@@ -144,8 +153,7 @@ e7cabff feat(auth): public Creator Passport, readable without logging in
 
 1. **Creator opt-out column (Data track)** — it is the one thing standing between the Passport and being usable, and it is small.
 2. **`payment_status` table (Data track, D-027)** — the largest blocker on the board; five separate features wait behind it.
-3. **Secure response headers (API track)** — closes the second of the three gaps found today; roughly an hour.
-4. **Settle the three open decisions** — media storage, job runner, and who the pilot serves. Each is blocking real work.
+3. **Settle the three open decisions** — media storage, job runner, and who the pilot serves. Each is blocking real work.
 
 _Not started automatically. Awaiting founder approval._
 
