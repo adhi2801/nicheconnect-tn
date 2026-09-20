@@ -3,6 +3,7 @@ from http import HTTPStatus
 from fastapi import FastAPI, Request
 from slowapi.middleware import SlowAPIMiddleware
 
+from app.core.body_limit import BodyLimitMiddleware
 from app.core.errors import problem_response, register_error_handlers
 from app.core.health import run_readiness_checks
 from app.core.rate_limit import limiter
@@ -21,6 +22,10 @@ app = FastAPI(title="NicheConnect TN API")
 app.state.limiter = limiter
 # Every error, including 429 from the rate limiter, uses Problem Details.
 register_error_handlers(app)
+# Added before the rate limiter, which puts it *inside* it: an oversized
+# request is still counted against the sender's limit, so a flood of them
+# earns a 429 rather than an endless stream of cheap 413s.
+app.add_middleware(BodyLimitMiddleware)
 app.add_middleware(SlowAPIMiddleware)
 # Added last so it wraps everything: every response gets X-Request-ID.
 app.add_middleware(RequestIdMiddleware)
