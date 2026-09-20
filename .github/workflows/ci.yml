@@ -72,3 +72,21 @@ jobs:
 
       - name: Run tests
         run: pytest -x --tb=short
+
+      # testing.md gate 6. Reads the pinned set in requirements.txt, resolves
+      # everything those pins drag in, and checks the lot against the Python
+      # advisory database. --strict means a package it cannot check fails the
+      # build instead of being passed over quietly.
+      #
+      # This blocks merge on ANY known vulnerability, not only high and
+      # critical ones: most Python advisories carry no severity rating, so
+      # filtering by severity would let unrated ones through. Stricter wins
+      # (CLAUDE.md section 7). To accept one knowingly, add --ignore-vuln
+      # <ID> here with a comment saying who decided and why.
+      #
+      # pip-audit is pinned but deliberately not in requirements.txt: it is a
+      # CI tool, and its own dependencies have no business in the running app.
+      - name: Audit dependencies for known vulnerabilities
+        run: |
+          pip install pip-audit==2.10.1
+          pip-audit --requirement requirements.txt --strict --desc
