@@ -325,11 +325,12 @@ def list_for_creator(
     return _paginate(db, query, limit, cursor)
 
 
-def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSection]:
-    """Deal memos this account is a party to, and the proof filed against them.
+def memos_for_account(db: Session, account_id: uuid.UUID, *, limit: int) -> list[DealMemo]:
+    """Every memo this account is a party to, oldest first.
 
-    Both sides of a memo agreed to the same terms, so both sides may keep a
-    copy. The query reaches the memo from whichever side this account is on.
+    Both sides agreed the same terms, so the query reaches the memo from
+    whichever side the account is on. Shared so that other modules keep one
+    definition of "a memo of mine" rather than each rebuilding the join.
     """
     brand = db.scalars(select(Brand).where(Brand.account_id == account_id)).first()
     creator = db.scalars(select(Creator).where(Creator.account_id == account_id)).first()
@@ -346,13 +347,18 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
     else:
         query = query.where(Application.creator_id == creator.id)
 
-    memos = list(
-        db.scalars(
-            query.order_by(DealMemo.created_at, DealMemo.id).limit(
-                MAX_ROWS_PER_SECTION + 1
-            )
-        ).all()
+    return list(
+        db.scalars(query.order_by(DealMemo.created_at, DealMemo.id).limit(limit)).all()
     )
+
+
+def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSection]:
+    """Deal memos this account is a party to, and the proof filed against them.
+
+    Both sides of a memo agreed to the same terms, so both sides may keep a
+    copy. The query reaches the memo from whichever side this account is on.
+    """
+    memos = memos_for_account(db, account_id, limit=MAX_ROWS_PER_SECTION + 1)
 
     memo_ids = {memo.id for memo in memos}
     proofs: list[DeliverableProof] = []

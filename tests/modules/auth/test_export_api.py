@@ -26,6 +26,7 @@ from app.modules.campaigns import service as campaigns_service
 from app.modules.campaigns.models import Application
 from app.modules.deal_memo import service as deal_memo_service
 from app.modules.notifications import service as notifications_service
+from app.modules.payment_status import service as payment_service
 from tests.factories import (
     FIXED_NOW,
     build_auth_session,
@@ -49,6 +50,7 @@ FIELD_LISTS: dict[str, tuple[str, ...]] = {
     "deal_memo": deal_memo_service.MEMO_EXPORT_FIELDS,
     "deliverable_proof": deal_memo_service.PROOF_EXPORT_FIELDS,
     "notification": notifications_service.EXPORT_FIELDS,
+    "payment_status": payment_service.EXPORT_FIELDS,
 }
 
 

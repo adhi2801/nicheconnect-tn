@@ -34,6 +34,7 @@ from app.modules.auth.models.creator import Creator
 from app.modules.campaigns import service as campaigns
 from app.modules.deal_memo import service as deal_memos
 from app.modules.notifications import service as notifications
+from app.modules.payment_status import service as payments
 
 # Bumped whenever the shape of the file changes, so a reader can tell which
 # version it is looking at.
@@ -152,6 +153,7 @@ def collect_sections(db: Session, account: Account) -> list[ExportedSection]:
         *_account_sections(db, account),
         *campaigns.export_for_account(db, account.id),
         *deal_memos.export_for_account(db, account.id),
+        *payments.export_for_account(db, account.id),
         *notifications.export_for_account(db, account.id),
     ]
 
@@ -189,6 +191,7 @@ def exported_tables() -> frozenset[str]:
         | campaigns.EXPORTED_TABLES
         | deal_memos.EXPORTED_TABLES
         | notifications.EXPORTED_TABLES
+        | payments.EXPORTED_TABLES
     )
 
 
