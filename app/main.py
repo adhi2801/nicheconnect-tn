@@ -8,6 +8,7 @@ from app.core.errors import problem_response, register_error_handlers
 from app.core.health import run_readiness_checks
 from app.core.rate_limit import limiter
 from app.core.request_id import RequestIdMiddleware
+from app.core.security_headers import SecurityHeadersMiddleware
 from app.modules.auth.profile_router import brand_router, creator_router
 from app.modules.auth.public_router import router as public_router
 from app.modules.auth.router import router as auth_router
@@ -27,8 +28,11 @@ register_error_handlers(app)
 # earns a 429 rather than an endless stream of cheap 413s.
 app.add_middleware(BodyLimitMiddleware)
 app.add_middleware(SlowAPIMiddleware)
-# Added last so it wraps everything: every response gets X-Request-ID.
+# Every response gets X-Request-ID.
 app.add_middleware(RequestIdMiddleware)
+# Added last so it wraps everything, including the 413 and 429 that the
+# middlewares above generate on their own.
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.include_router(auth_router)
 app.include_router(brand_router)
