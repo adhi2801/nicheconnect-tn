@@ -11,7 +11,8 @@
 - **Request bodies are now capped at 1 MB.** Our own security standard claimed this control; nothing enforced it. Now two checks do.
 - **Security headers now go out on every response** — the second of the three gaps found today, closed. A test guards the `/docs` page against a future CDN change breaking it.
 - **One gap left:** a CORS allow-list, which genuinely can't be built until a frontend origin exists.
-- **Tests:** 663 passing, up from 599 at the last report. Nothing is broken.
+- **You can now download everything we hold about you.** `GET /api/v1/me/export` returns one self-explaining JSON file. It is built so that forgetting a table is impossible: a test fails until every table is either exported or has a written reason not to be.
+- **Tests:** 706 passing, up from 599 at the last report. Nothing is broken.
 - **Waiting on Erode Harish:** the `payment_status` table. Everything about money, reliability scores and disputes is blocked behind it.
 
 ## 2. Work completed
@@ -24,6 +25,7 @@
 | `pip-audit` as a CI gate | Implemented | `552367d`; the exact command was run locally and exits 0. Not yet seen green on GitHub Actions |
 | Request body size limit | Tested | `2f4b662`; 18 tests in `tests/core/test_body_limit.py` |
 | Security headers on every response | Tested | `94b89d8`; 26 tests in `tests/core/test_security_headers.py` |
+| Data export (`GET /api/v1/me/export`) | Tested | `828c208`; 43 tests in `tests/modules/auth/test_export_api.py` |
 | Decision D-031 recorded | Tested | `552367d`, `docs/DECISIONS.md` |
 | Assignment file for 19 Sep committed | Implemented | `4d8d91c` |
 
@@ -39,6 +41,10 @@
 | `tests/core/test_body_limit.py` | 18 tests, including chunked bodies and a lying `Content-Length` |
 | `app/core/security_headers.py` | nosniff, Referrer-Policy, X-Frame-Options, CSP and HSTS on every response |
 | `tests/core/test_security_headers.py` | 26 tests, including a guard that the CSP covers what `/docs` really loads |
+| `app/core/export.py` | Declared fields, secret-name refusal, row caps and JSON conversion for exports |
+| `app/modules/auth/export_service.py` | Assembles the export, the manifest, and what is deliberately withheld |
+| `app/modules/auth/export_router.py` | `GET /api/v1/me/export` |
+| `tests/modules/auth/test_export_api.py` | 43 tests, including the table-completeness guard |
 | `docs/assignments/2026-09-19.md` | Yesterday's task assignment, previously uncommitted |
 
 ### Modified
@@ -48,6 +54,9 @@
 | `requirements.txt` | `fastapi` 0.115.0→0.141.1, `pytest` 8.3.3→9.1.1, new explicit `starlette==1.6.0` | 16 known vulnerabilities in the old pins | Everyone must re-run `pip install -r requirements.txt` |
 | `.github/workflows/ci.yml` | Added the `pip-audit` step as gate 6 | `security.md` section 8 | A known vulnerability now blocks merge |
 | `app/main.py` | Registered the public router, `BodyLimitMiddleware` and `SecurityHeadersMiddleware` | Wiring | Public endpoint live; every request body capped; every response carries security headers |
+| `app/modules/campaigns/service.py` | Declares its campaign and application export sections | Each module owns its own export shape | None to existing endpoints |
+| `app/modules/deal_memo/service.py` | Declares its memo and proof export sections | As above | None to existing endpoints |
+| `app/modules/notifications/service.py` | Declares its notification export section | As above | None to existing endpoints |
 | `docs/DECISIONS.md` | Added D-031 | Approval record | None |
 
 ### Deleted
@@ -59,6 +68,7 @@ None.
 | Method | Path | Purpose | Auth | Rate limited | Tests |
 |---|---|---|---|---|---|
 | GET | `/api/v1/creators/by-handle/{handle}` | Public Creator Passport | **None — public** | 60/min | 20 |
+| GET | `/api/v1/me/export` | Download everything we hold about you | Any signed-in account | 3/hour | 43 |
 
 Public fields: `id`, `handle`, `display_name`, `city`, `niches`, `languages`, `bio`, `member_since`. Deliberately excluded: `account_id`, phone, email, `updated_at`. A test asserts the exact field set, so a column added later cannot leak in by accident.
 
@@ -77,14 +87,18 @@ Every other endpoint now returns **413** with the standard Problem Details body 
 ## 6. Testing
 
 - **Commands run:** `pytest -q` · `pip-audit --requirement requirements.txt --strict --desc` · an OpenAPI generation check · a direct check that the chunked-body test exercises the counting path rather than the header path · a direct check of which origins `/docs` and `/redoc` actually reference
-- **Result:** **663 passed, 2 warnings, 19.89s.** 0 failed, 0 skipped. `pip-audit` exit 0, "No known vulnerabilities found". OpenAPI generates 40 paths / 49 operations, every one with a summary, `ProblemDetails` present.
-- **New tests:** 20 for the public Passport, 18 for the body limit, 26 for the security headers.
+- **Result:** **706 passed, 2 warnings, 19.62s**, re-run against a database holding 1,000+ seeded rows to prove no test assumes an empty table. 0 failed, 0 skipped. `pip-audit` exit 0, "No known vulnerabilities found". OpenAPI generates 40 paths / 49 operations, every one with a summary, `ProblemDetails` present.
+- **New tests:** 20 for the public Passport, 18 for the body limit, 26 for the security headers, 43 for the export.
+- **Measured on the export:** 93 records in **13 queries, 26 ms, 53 KB** on seeded data — constant query count, no N+1, well inside the 300 ms read budget.
 - **Not verified:** CI has not run on GitHub Actions yet. The `pip-audit` step is expected to pass because the identical command passes locally, but it has not been seen green on a runner.
 - The 2 warnings come from Starlette's own test client (`anyio` deprecations). Upstream, not ours.
 
 ## 7. Commits pushed
 
 ```
+0161976 test(privacy): flag the one allowed use of the forbidden payment words
+828c208 feat(privacy): download everything we hold about you
+ca286c4 docs: update the 2026-09-20 report with the security headers work
 94b89d8 feat(core): security headers on every response
 5ebf392 docs: add engineering report 2026-09-20
 4d8d91c docs: add the task assignment for 2026-09-19
@@ -148,6 +162,13 @@ e7cabff feat(auth): public Creator Passport, readable without logging in
 | APIs | 🟡 | Solid, but the public Passport must not deploy before the opt-out column |
 | Tests & CI | 🟢 | No failures, no skips, and a dependency audit now guards merges |
 | Infrastructure | 🔴 | No hosting, no backups, no job runner. Nothing deployed |
+
+## 13a. Open questions for the other founder
+
+Two calls on the export that are a founder's, not mine. Both are live in the code now and easy to change:
+
+1. **A brand's export includes the pitches creators wrote to them.** That is the brand's own business record, and the creator appears only by public handle — no phone, no email. But it is still text another person authored. Reasonable either way; say if you want it out.
+2. **Login session metadata is included** (when you signed in, when it expires, whether it was logged out — never the tokens). Useful for "where am I signed in", but nobody asked for it.
 
 ## 14. Next recommended tasks
 
