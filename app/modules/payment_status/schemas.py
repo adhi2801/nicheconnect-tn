@@ -21,7 +21,7 @@ from app.modules.payment_status.service import (
 )
 
 PaymentMethod = Literal["upi", "bank_transfer", "cash"]
-PaymentState = Literal["due", "late", "unpaid", "paid", "confirmed"]
+PaymentState = Literal["due", "late", "unpaid", "paid", "unconfirmed", "confirmed"]
 
 # Keeps these lists honest against the database's own allow-lists.
 assert set(PAYMENT_METHODS) == set(PaymentMethod.__args__)

@@ -60,9 +60,27 @@ DUE = "due"
 LATE = "late"
 UNPAID = "unpaid"
 PAID = "paid"
+UNCONFIRMED = "unconfirmed"
 CONFIRMED = "confirmed"
 
-PAYMENT_STATES: tuple[str, ...] = (DUE, LATE, UNPAID, PAID, CONFIRMED)
+PAYMENT_STATES: tuple[str, ...] = (DUE, LATE, UNPAID, PAID, UNCONFIRMED, CONFIRMED)
+
+# How long a creator has to confirm before the record says so plainly.
+#
+# Most people who have been paid never come back to tick a box; not
+# confirming is the common case, not an edge case. Leaving the record at
+# `paid` forever would let a brand that genuinely paid look permanently
+# unconfirmed through nobody's fault.
+#
+# We do NOT auto-confirm. Confirmation is the creator's statement about their
+# own income, and putting words in their mouth would be the one thing in this
+# product that asserts something we do not know. `unconfirmed` says exactly
+# what happened: the brand says it paid, the creator never answered. It is
+# not an accusation of either of them (D-028: we record, we do not judge).
+#
+# A late confirmation is still accepted and still moves the record to
+# `confirmed`; this window only changes what the record says in the meantime.
+CONFIRMATION_WINDOW_DAYS = 7
 
 # Every deadline in this file is counted in Tamil Nadu's calendar, not the
 # server's (D-030 point 1: a day means midnight IST). A proof approved at
@@ -119,6 +137,13 @@ def unpaid_date_for(due_on: date) -> date:
     return due_on + timedelta(days=UNPAID_AFTER_DUE_DAYS)
 
 
+def confirmation_deadline(payment: PaymentStatus) -> date:
+    """The day after which silence from the creator is stated as silence."""
+    return india_date(payment.marked_paid_at) + timedelta(
+        days=CONFIRMATION_WINDOW_DAYS
+    )
+
+
 def derive_state(
     payment: PaymentStatus, today: date, *, has_open_dispute: bool = False
 ) -> str:
@@ -132,6 +157,8 @@ def derive_state(
     if payment.confirmed_at is not None:
         return CONFIRMED
     if payment.marked_paid_at is not None:
+        if today >= confirmation_deadline(payment):
+            return UNCONFIRMED
         return PAID
     if today <= payment.due_on:
         return DUE
@@ -237,6 +264,12 @@ def mark_paid(
     payment.reference = clean_reference(reference)
     payment.marked_paid_at = now
     payment.updated_at = now
+    # The creator has no other way to know they should look for the money.
+    memo = db.get(DealMemo, payment.deal_memo_id)
+    if memo is not None:
+        deal_memos.notify_party(
+            db, memo, to="creator", notification_type="payment_marked_paid", now=now
+        )
     db.commit()
     db.refresh(payment)
     return payment
@@ -253,6 +286,11 @@ def confirm_received(
 
     payment.confirmed_at = now
     payment.updated_at = now
+    memo = db.get(DealMemo, payment.deal_memo_id)
+    if memo is not None:
+        deal_memos.notify_party(
+            db, memo, to="brand", notification_type="payment_confirmed", now=now
+        )
     db.commit()
     db.refresh(payment)
     return payment

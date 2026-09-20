@@ -29,8 +29,10 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     "proof_approved",
     "proof_auto_approved",
     "proof_revision_requested",
+    "payment_marked_paid",
     # To whichever side did not do it
     "memo_cancelled",
+    "payment_confirmed",
 )
 MAX_DETAILS_LENGTH = 2000
 

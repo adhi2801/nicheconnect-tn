@@ -75,10 +75,16 @@ def test_a_dispute_holds_it_at_late_rather_than_unpaid():
     assert state == service.LATE
 
 
-def test_marking_it_paid_stops_the_clock():
-    marked = payment(method="upi", reference=RRN, marked_paid_at=FIXED_NOW)
+def test_marking_it_paid_stops_the_lateness_clock():
+    """Paid on 30 September, read on 5 October: past due, but not late."""
+    from datetime import datetime, timezone
 
-    assert service.derive_state(marked, date(2026, 12, 1)) == service.PAID
+    paid_after_the_due_date = datetime(2026, 9, 30, 9, 0, tzinfo=timezone.utc)
+    marked = payment(
+        method="upi", reference=RRN, marked_paid_at=paid_after_the_due_date
+    )
+
+    assert service.derive_state(marked, date(2026, 10, 5)) == service.PAID
 
 
 def test_confirmation_outranks_everything():
@@ -245,7 +251,7 @@ def test_the_brand_marks_it_paid(db):
     service.mark_paid(db, record, method="upi", reference=RRN, now=FIXED_NOW)
 
     assert record.marked_paid_at == FIXED_NOW
-    assert service.derive_state(record, date(2026, 12, 1)) == service.PAID
+    assert service.derive_state(record, date(2026, 9, 20)) == service.PAID
 
 
 def test_it_cannot_be_marked_paid_twice(db):
@@ -372,3 +378,116 @@ def test_approving_barter_work_opens_nothing(db):
     moment = datetime(2026, 9, 20, 12, 0, tzinfo=timezone.utc)
 
     assert service.open_on_approval(db, memo, approved_at=moment, now=moment) is None
+
+
+# --- when the creator never answers ---------------------------------------
+
+
+def test_silence_from_the_creator_is_stated_rather_than_assumed():
+    """Most people who have been paid never come back to tick a box.
+
+    We do not auto-confirm: confirmation is the creator's statement about
+    their own income, and asserting it for them would be the one thing here
+    that claims something we do not know. `unconfirmed` says exactly what
+    happened instead.
+    """
+    marked = payment(method="upi", reference=RRN, marked_paid_at=FIXED_NOW)
+
+    within = service.derive_state(marked, date(2026, 9, 23))
+    after = service.derive_state(marked, date(2026, 9, 24))
+
+    assert within == service.PAID
+    assert after == service.UNCONFIRMED
+
+
+def test_the_confirmation_window_is_counted_in_india():
+    """Marked at 23:00 UTC is already tomorrow for the person being paid."""
+    from datetime import datetime, timezone
+
+    late_evening_utc = datetime(2026, 9, 17, 23, 0, tzinfo=timezone.utc)
+    marked = payment(
+        method="upi", reference=RRN, marked_paid_at=late_evening_utc
+    )
+
+    assert service.confirmation_deadline(marked) == date(2026, 9, 25)
+
+
+def test_a_late_confirmation_is_still_a_confirmation(db):
+    """The window changes what the record says in the meantime. It never
+    takes away the creator's right to answer."""
+    memo = make_memo(db)
+    record = service.create_for_memo(db, memo, approved_on=APPROVED_ON, now=FIXED_NOW)
+    db.flush()
+    service.mark_paid(db, record, method="upi", reference=RRN, now=FIXED_NOW)
+    assert service.derive_state(record, date(2026, 11, 1)) == service.UNCONFIRMED
+
+    service.confirm_received(db, record, now=FIXED_NOW + timedelta(days=60))
+
+    assert service.derive_state(record, date(2026, 12, 1)) == service.CONFIRMED
+
+
+def test_unconfirmed_is_never_reached_without_the_brand_claiming_payment():
+    """It describes the creator's silence, not the brand's."""
+    never_claimed = payment()
+
+    assert service.derive_state(never_claimed, date(2027, 1, 1)) == service.UNPAID
+
+
+# --- telling the other side -----------------------------------------------
+
+
+def test_marking_it_paid_tells_the_creator_to_look_for_the_money(db):
+    from app.modules.notifications import service as notifications
+
+    memo = make_memo(db)
+    record = service.create_for_memo(db, memo, approved_on=APPROVED_ON, now=FIXED_NOW)
+    db.flush()
+    creator_account = _creator_account_of(db, memo)
+
+    service.mark_paid(db, record, method="upi", reference=RRN, now=FIXED_NOW)
+
+    types = _notification_types(db, notifications, creator_account)
+    assert "payment_marked_paid" in types
+
+
+def test_confirming_tells_the_brand_it_landed(db):
+    from app.modules.notifications import service as notifications
+
+    memo = make_memo(db)
+    record = service.create_for_memo(db, memo, approved_on=APPROVED_ON, now=FIXED_NOW)
+    db.flush()
+    brand_account = _brand_account_of(db, memo)
+    service.mark_paid(db, record, method="upi", reference=RRN, now=FIXED_NOW)
+
+    service.confirm_received(db, record, now=FIXED_NOW + timedelta(hours=1))
+
+    types = _notification_types(db, notifications, brand_account)
+    assert "payment_confirmed" in types
+
+
+def _creator_account_of(db, memo):
+    from sqlalchemy import select
+
+    from app.modules.auth.models.creator import Creator
+    from app.modules.campaigns.models import Application
+
+    application = db.get(Application, memo.application_id)
+    return db.scalar(
+        select(Creator.account_id).where(Creator.id == application.creator_id)
+    )
+
+
+def _brand_account_of(db, memo):
+    from sqlalchemy import select
+
+    from app.modules.auth.models.brand import Brand
+    from app.modules.campaigns.models import Application, Campaign
+
+    application = db.get(Application, memo.application_id)
+    campaign = db.get(Campaign, application.campaign_id)
+    return db.scalar(select(Brand.account_id).where(Brand.id == campaign.brand_id))
+
+
+def _notification_types(db, notifications, account_id) -> set[str]:
+    rows = notifications.list_for_account(db, account_id, limit=50).rows
+    return {row.notification_type for row in rows}

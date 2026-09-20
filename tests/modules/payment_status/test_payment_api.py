@@ -330,3 +330,68 @@ def test_marking_it_paid_twice_from_one_tap_records_it_once(client, deal):
         set_store(None)
         store_client.flushdb()
         store_client.close()
+
+
+# --- when the creator never answers ---------------------------------------
+
+
+def test_the_record_says_plainly_when_the_creator_never_answered(client, deal):
+    """A brand that genuinely paid must not look unconfirmed forever, and a
+    creator must not have a confirmation put in their mouth."""
+    client.post(
+        f"{payment_url(deal['memo_id'])}/mark-paid",
+        json={"method": "upi", "reference": RRN},
+        headers=deal["brand"].headers,
+    )
+    deal["clock"].advance(timedelta(days=8))
+
+    body = client.get(payment_url(deal["memo_id"]), headers=deal["brand"].headers).json()
+
+    assert body["state"] == "unconfirmed"
+    assert body["confirmed_at"] is None
+
+
+def test_the_creator_can_still_confirm_long_afterwards(client, deal):
+    client.post(
+        f"{payment_url(deal['memo_id'])}/mark-paid",
+        json={"method": "upi", "reference": RRN},
+        headers=deal["brand"].headers,
+    )
+    deal["clock"].advance(timedelta(days=45))
+
+    response = client.post(
+        f"{payment_url(deal['memo_id'])}/confirm", headers=deal["creator"].headers
+    )
+
+    assert response.status_code == 200
+    assert response.json()["state"] == "confirmed"
+
+
+def test_the_creator_is_told_to_look_for_the_money(client, deal):
+    """Otherwise nothing ever prompts them to confirm."""
+    client.post(
+        f"{payment_url(deal['memo_id'])}/mark-paid",
+        json={"method": "upi", "reference": RRN},
+        headers=deal["brand"].headers,
+    )
+
+    notifications = client.get(
+        "/api/v1/notifications", headers=deal["creator"].headers
+    ).json()["items"]
+
+    assert "payment_marked_paid" in {n["notification_type"] for n in notifications}
+
+
+def test_the_brand_is_told_the_money_landed(client, deal):
+    client.post(
+        f"{payment_url(deal['memo_id'])}/mark-paid",
+        json={"method": "upi", "reference": RRN},
+        headers=deal["brand"].headers,
+    )
+    client.post(f"{payment_url(deal['memo_id'])}/confirm", headers=deal["creator"].headers)
+
+    notifications = client.get(
+        "/api/v1/notifications", headers=deal["brand"].headers
+    ).json()["items"]
+
+    assert "payment_confirmed" in {n["notification_type"] for n in notifications}

@@ -391,3 +391,22 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
             fields=PROOF_EXPORT_FIELDS,
         ),
     ]
+
+
+def notify_party(
+    db: Session,
+    memo: DealMemo,
+    *,
+    to: str,
+    notification_type: str,
+    now: datetime,
+) -> None:
+    """Tell one side of a deal that something happened.
+
+    Public so other modules — payment records, for one — reuse a single
+    definition of "who are the two sides of this deal" instead of rebuilding
+    the joins and risking telling the wrong person about their money.
+    """
+    _notify_other_side(
+        db, memo, to=to, notification_type=notification_type, now=now
+    )
