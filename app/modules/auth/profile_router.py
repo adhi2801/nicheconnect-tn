@@ -174,3 +174,65 @@ def update_creator_profile(
     return CreatorProfileRead.model_validate(
         profiles.update_profile(db, profile, changes, now)
     )
+
+
+# --- the public Creator Passport switch ----------------------------------
+#
+# Publishing is a decision, not a field edit, so it is its own action rather
+# than a flag on the profile update (backend.md section 2). It also means the
+# moment of consent is a single, auditable call.
+
+
+@creator_router.post(
+    "/me/passport/publish",
+    response_model=CreatorProfileRead,
+    summary="Publish my Creator Passport",
+    description=(
+        "Turns on the public page at `/api/v1/creators/by-handle/{handle}`, "
+        "readable by anyone with the link and no login. It shows your "
+        "display name, handle, city, niches, languages, bio and the month "
+        "you joined — never your phone number or email. "
+        "Publishing again keeps the date you first chose, and you can turn "
+        "it off at any time."
+    ),
+    responses={
+        **_COMMON_ERRORS,
+        404: problem_doc("You have not created a creator profile yet"),
+    },
+)
+@limiter.limit(WRITE_LIMIT)
+def publish_passport(
+    request: Request,
+    account: CurrentCreator,
+    db: Session = Depends(get_db),
+    now: datetime = Depends(get_now),
+) -> Creator:
+    """Only the creator can publish their own profile."""
+    creator = profiles.get_profile(db, Creator, account.id)
+    return profiles.publish_passport(db, creator, now)
+
+
+@creator_router.post(
+    "/me/passport/unpublish",
+    response_model=CreatorProfileRead,
+    summary="Take my Creator Passport down",
+    description=(
+        "Stops the public page answering, immediately. Your profile stays "
+        "exactly as it is for campaigns and applications; it simply is not "
+        "findable by anyone who is not signed in."
+    ),
+    responses={
+        **_COMMON_ERRORS,
+        404: problem_doc("You have not created a creator profile yet"),
+    },
+)
+@limiter.limit(WRITE_LIMIT)
+def unpublish_passport(
+    request: Request,
+    account: CurrentCreator,
+    db: Session = Depends(get_db),
+    now: datetime = Depends(get_now),
+) -> Creator:
+    """Withdrawing is never refused."""
+    creator = profiles.get_profile(db, Creator, account.id)
+    return profiles.unpublish_passport(db, creator, now)

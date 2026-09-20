@@ -42,6 +42,13 @@ def client(db) -> Iterator[TestClient]:
 
 
 def make_creator(db, **overrides) -> Creator:
+    """A creator who has published their Passport.
+
+    Published on purpose: these tests are about the public page, and nobody
+    appears on it until they have chosen to (D-036). The tests that cover
+    *not* having chosen pass `passport_published_at=None` explicitly.
+    """
+    overrides.setdefault("passport_published_at", FIXED_NOW)
     creator = build_creator(db, **overrides)
     db.add(creator)
     db.flush()
@@ -180,19 +187,43 @@ def test_an_old_etag_gets_the_new_profile(client, db):
 # --- the publication switch ----------------------------------------------
 
 
-def test_a_profile_that_is_not_public_is_not_found(client, db, monkeypatch):
-    """The opt-out is not built yet; this proves the seam works when it is."""
-    make_creator(db, handle="priya.eats")
-    monkeypatch.setattr(public_router, "passport_is_public", lambda creator: False)
+def test_a_creator_who_has_not_published_is_not_found(client, db):
+    """Not "private", not "hidden" — simply not there, and indistinguishable
+    from a handle that was never taken."""
+    make_creator(db, handle="priya.eats", passport_published_at=None)
 
     assert_problem(client.get(f"{URL}/priya.eats"), 404, "profile_not_found")
 
 
-def test_every_profile_is_public_today(db):
-    """Recorded on purpose: this is the behaviour the opt-out will change."""
+def test_nobody_is_published_until_they_choose(db):
+    """The default, and the whole point of D-036.
+
+    Somebody who signed up to browse campaigns is not findable by strangers.
+    """
     creator = build_creator(db, handle=f"seam{uuid.uuid4().hex[:8]}")
 
+    assert creator.passport_published_at is None
+    assert public_router.passport_is_public(creator) is False
+
+
+def test_choosing_to_publish_makes_the_page_answer(db):
+    creator = build_creator(
+        db, handle=f"seam{uuid.uuid4().hex[:8]}", passport_published_at=FIXED_NOW
+    )
+
     assert public_router.passport_is_public(creator) is True
+
+
+def test_an_unpublished_profile_cannot_be_told_apart_from_a_missing_one(client, db):
+    """A 404 either way, so nobody can use this page to work out whether a
+    handle belongs to somebody who chose not to be listed."""
+    make_creator(db, handle="priya.eats", passport_published_at=None)
+
+    hidden = client.get(f"{URL}/priya.eats")
+    absent = client.get(f"{URL}/nobody.here")
+
+    assert hidden.status_code == absent.status_code == 404
+    assert hidden.json()["code"] == absent.json()["code"]
 
 
 # --- limits ---------------------------------------------------------------

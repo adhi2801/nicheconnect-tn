@@ -252,6 +252,10 @@ class CreatorProfileRead(BaseModel):
     niches: list[str]
     languages: list[str]
     bio: str | None
+    # NULL means the public Passport is off: this profile is not findable by
+    # anyone who is not signed in. Set means the creator turned it on, and
+    # when (D-036).
+    passport_published_at: datetime | None
     created_at: datetime
     updated_at: datetime
 

@@ -12,11 +12,10 @@ is written defensively:
 - responses carry a cache header and an ETag, because a link in an Instagram
   bio is read far more often than it changes.
 
-PUBLICATION NOTE (open decision): every profile is publishable today. A
-creator who signed up only to browse has no way to say no. The switch belongs
-on the creator table, which is the data track's file, so it is not added here.
-`passport_is_public` is the single place that changes when it lands, and it
-must land before this endpoint is deployed.
+PUBLICATION: nobody is published until they choose to be. A creator who
+signed up only to browse campaigns is not findable by strangers, and a
+profile only appears here once its owner has turned the Passport on
+(D-036). That switch is read in exactly one place, `passport_is_public`.
 """
 
 import hashlib
@@ -46,10 +45,10 @@ router = APIRouter(prefix="/api/v1/creators", tags=["public"])
 def passport_is_public(creator: Creator) -> bool:
     """Whether this profile may be shown to the open internet.
 
-    Today every profile qualifies. When the creator opt-out column exists,
-    this is the one line that changes, and nothing else in the endpoint moves.
+    Only if its owner said so. `passport_published_at` is both the switch
+    and the record of when they chose it.
     """
-    return True
+    return creator.passport_published_at is not None
 
 
 def _etag(creator: Creator) -> str:

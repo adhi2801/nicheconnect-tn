@@ -67,6 +67,9 @@ CREATOR_EXPORT_FIELDS = allow(
     "niches",
     "languages",
     "bio",
+    # When they chose to publish their Passport, or null if they never did.
+    # It is their consent, so it belongs in their own copy of their data.
+    "passport_published_at",
     "created_at",
     "updated_at",
 )
@@ -117,8 +120,10 @@ def _account_sections(db: Session, account: Account) -> list[ExportedSection]:
                 "creator_profile",
                 table="creator",
                 purpose=(
-                    "Your public profile. Everything here is visible to anyone "
-                    "who opens your Creator Passport link."
+                    "Your creator profile. If you turned your Creator "
+                    "Passport on, everything here except that timestamp is "
+                    "visible to anyone with your link; if you did not, none "
+                    "of it is."
                 ),
                 objects=[creator],
                 fields=CREATOR_EXPORT_FIELDS,

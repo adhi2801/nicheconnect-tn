@@ -94,3 +94,37 @@ def update_profile(
         _raise_for_conflict(error)
     db.refresh(profile)
     return profile
+
+
+def publish_passport(db: Session, creator: Creator, now: datetime) -> Creator:
+    """Turn the public Creator Passport on.
+
+    Publishing an already-published profile keeps the original date. The
+    timestamp is the record of when the creator consented, and a second tap
+    on a slow connection is not a second decision.
+    """
+    if creator.passport_published_at is None:
+        creator.passport_published_at = now
+        creator.updated_at = now
+        db.commit()
+        db.refresh(creator)
+    else:
+        db.rollback()
+    return creator
+
+
+def unpublish_passport(db: Session, creator: Creator, now: datetime) -> Creator:
+    """Turn it off. The profile stops answering to the open internet at once.
+
+    Withdrawing is never refused and never rate-limited into uselessness:
+    somebody who wants to stop being findable should not have to argue with
+    us about it.
+    """
+    if creator.passport_published_at is not None:
+        creator.passport_published_at = None
+        creator.updated_at = now
+        db.commit()
+        db.refresh(creator)
+    else:
+        db.rollback()
+    return creator

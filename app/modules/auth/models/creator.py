@@ -75,6 +75,19 @@ class Creator(Base):
     languages: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
     # Nullable on purpose: a bio is optional on a creator profile.
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # When this creator chose to put their profile on the open internet.
+    #
+    # NULL means not published, and that is the default for everybody: a
+    # creator who signed up to browse campaigns has not asked to be findable
+    # by strangers, and publishing somebody is not a thing that can be taken
+    # back once search engines have seen it.
+    #
+    # A timestamp rather than a boolean, because this is the consent itself:
+    # it records that the creator chose, and when. Turning the Passport off
+    # sets it back to NULL.
+    passport_published_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
