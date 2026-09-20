@@ -11,6 +11,7 @@ import uuid
 from datetime import date, datetime, timedelta
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.clock import india_date
@@ -229,6 +230,14 @@ def create_for_memo(
         updated_at=now,
     )
     db.add(payment)
+    try:
+        # The check above can be passed by two callers at once; the unique
+        # index on deal_memo_id is what actually holds the line, so its
+        # error becomes the same answer the check would have given.
+        db.flush()
+    except IntegrityError as error:
+        db.rollback()
+        raise PaymentRecordExists() from error
     return payment
 
 
@@ -240,7 +249,16 @@ def mark_paid(
     reference: str,
     now: datetime,
 ) -> PaymentStatus:
-    """The brand says it sent the money. Only the brand may do this."""
+    """The brand says it sent the money. Only the brand may do this.
+
+    The row is locked before it is read, because reading and then writing
+    without one lets two simultaneous taps both pass the check and both
+    write: proven with four concurrent calls, three of which won. On a
+    money record the second write would silently replace the method and
+    reference of the first, so the record could say cash when the brand
+    sent UPI. The lock makes exactly one win and the rest get a clean 409.
+    """
+    db.refresh(payment, with_for_update=True)
     if payment.marked_paid_at is not None:
         raise PaymentAlreadyMarkedPaid()
 
@@ -262,7 +280,11 @@ def mark_paid(
 def confirm_received(
     db: Session, payment: PaymentStatus, *, now: datetime
 ) -> PaymentStatus:
-    """The creator says the money arrived. Only the creator may do this."""
+    """The creator says the money arrived. Only the creator may do this.
+
+    Locked first, for the same reason as mark_paid.
+    """
+    db.refresh(payment, with_for_update=True)
     if payment.confirmed_at is not None:
         raise PaymentAlreadyConfirmed()
     if payment.marked_paid_at is None:

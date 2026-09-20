@@ -15,6 +15,7 @@ import uuid
 from datetime import date, datetime, timedelta
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.clock import india_date
@@ -199,7 +200,16 @@ def open_for_payment(
         updated_at=now,
     )
     db.add(dispute)
-    db.flush()
+    try:
+        # Two taps on a bad connection both pass the check above. The unique
+        # index on payment_status_id stops the second, and without this its
+        # error would reach the caller as a 500 saying something went wrong
+        # on our side — which is untrue, and is exactly what makes a client
+        # retry. Proven: four at once produced three 500s.
+        db.flush()
+    except IntegrityError as error:
+        db.rollback()
+        raise DisputeAlreadyOpen() from error
     _add_event(db, dispute, actor_role=opened_by, kind="opened", note=reason, now=now)
     return dispute
 
