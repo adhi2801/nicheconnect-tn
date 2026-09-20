@@ -11,12 +11,27 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.modules.auth.exceptions import InvalidToken, RoleNotAllowed
 from app.modules.auth.models.account import Account
-from app.modules.auth.tokens import decode_access_token
+from app.modules.auth.tokens import account_id_for_scoping, decode_access_token
 
 # auto_error=False: a missing header raises our InvalidToken, so every auth
 # failure comes back in the same shape instead of FastAPI's own error body.
 bearer_scheme = HTTPBearer(auto_error=False, description="Access token from login")
 UNAUTHENTICATED_HEADERS = {"WWW-Authenticate": "Bearer"}
+
+
+def idempotency_identity(request: Request) -> str | None:
+    """Whose request this is, for grouping a retry with its original.
+
+    Scoping by the account rather than the raw token means a client that
+    refreshed its access token between the first attempt and the retry still
+    gets its first answer back. The signature is verified inside
+    `account_id_for_scoping`, so this cannot be pointed at someone else.
+    """
+    scheme, _, token = request.headers.get("authorization", "").partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        return None
+    account_id = account_id_for_scoping(token)
+    return f"account:{account_id}" if account_id is not None else None
 
 
 def get_now() -> datetime:

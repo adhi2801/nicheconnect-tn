@@ -5,10 +5,12 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from app.core.body_limit import BodyLimitMiddleware
 from app.core.errors import problem_response, register_error_handlers
+from app.core.idempotent_route import set_identity_resolver
 from app.core.health import run_readiness_checks
 from app.core.rate_limit import limiter
 from app.core.request_id import RequestIdMiddleware
 from app.core.security_headers import SecurityHeadersMiddleware
+from app.modules.auth.dependencies import idempotency_identity
 from app.modules.auth.export_router import router as export_router
 from app.modules.auth.profile_router import brand_router, creator_router
 from app.modules.auth.public_router import router as public_router
@@ -22,6 +24,9 @@ from app.modules.notifications.router import router as notifications_router
 app = FastAPI(title="NicheConnect TN API")
 
 app.state.limiter = limiter
+# Retries are grouped by the account that sent them, so a refreshed token
+# does not turn a retry into a second request.
+set_identity_resolver(idempotency_identity)
 # Every error, including 429 from the rate limiter, uses Problem Details.
 register_error_handlers(app)
 # Added before the rate limiter, which puts it *inside* it: an oversized
