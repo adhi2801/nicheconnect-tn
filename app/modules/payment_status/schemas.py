@@ -12,6 +12,11 @@ from app.modules.payment_status.models import (
     REFERENCE_MAX_LENGTH,
     PaymentStatus,
 )
+from app.modules.payment_status.reliability import (
+    HAS_HISTORY,
+    NO_HISTORY_YET,
+    ReliabilityRecord,
+)
 from app.modules.payment_status.service import (
     PAYMENT_STATES,
     REFERENCE_MIN_LENGTH,
@@ -95,4 +100,44 @@ def to_read(payment: PaymentStatus, today: date) -> PaymentRead:
         confirmed_at=payment.confirmed_at,
         created_at=payment.created_at,
         updated_at=payment.updated_at,
+    )
+
+
+ReliabilityStatus = Literal["new_brand_no_history_yet", "has_payment_history"]
+
+assert {NO_HISTORY_YET, HAS_HISTORY} == set(ReliabilityStatus.__args__)
+
+
+class BrandReliabilityRead(BaseModel):
+    """How a brand pays, from what happened rather than from opinions.
+
+    `paid_on_time_share` and `median_days_to_pay` are `null` until the brand
+    has three completed deals (D-027). **Null means "not enough to say" and
+    must never be shown as zero** — the two mean opposite things here.
+
+    `currently_overdue` is reported whatever the status, including for a
+    brand with no completed deals at all, so that "new" can never be a place
+    to hide an unpaid creator.
+    """
+
+    brand_id: uuid.UUID
+    status: ReliabilityStatus
+    deals_completed: int
+    deals_paid: int
+    deals_unpaid: int
+    currently_overdue: int
+    paid_on_time_share: float | None
+    median_days_to_pay: float | None
+
+
+def to_reliability_read(record: ReliabilityRecord) -> BrandReliabilityRead:
+    return BrandReliabilityRead(
+        brand_id=record.brand_id,
+        status=record.status,
+        deals_completed=record.deals_completed,
+        deals_paid=record.deals_paid,
+        deals_unpaid=record.deals_unpaid,
+        currently_overdue=record.currently_overdue,
+        paid_on_time_share=record.paid_on_time_share,
+        median_days_to_pay=record.median_days_to_pay,
     )
