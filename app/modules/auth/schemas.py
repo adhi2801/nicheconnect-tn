@@ -254,3 +254,28 @@ class CreatorProfileRead(BaseModel):
     bio: str | None
     created_at: datetime
     updated_at: datetime
+
+# --- the public Creator Passport -----------------------------------------
+
+
+class PublicCreatorRead(BaseModel):
+    """A creator profile as the open internet sees it.
+
+    Deliberately narrow: this response is readable by anyone, so it carries
+    only what a creator would put on a public page. Contact details are not
+    merely omitted here, they are not in this table at all (D-011), and the
+    account id stays private so a public page cannot be linked to a login.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    handle: str
+    display_name: str
+    city: str
+    niches: list[str]
+    languages: list[str]
+    bio: str | None
+    member_since: str = Field(
+        description="Month the creator joined, e.g. 2026-09", examples=["2026-09"]
+    )
