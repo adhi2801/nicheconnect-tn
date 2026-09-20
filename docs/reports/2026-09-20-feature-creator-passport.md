@@ -12,7 +12,8 @@
 - **Security headers now go out on every response** — the second of the three gaps found today, closed. A test guards the `/docs` page against a future CDN change breaking it.
 - **One gap left:** a CORS allow-list, which genuinely can't be built until a frontend origin exists.
 - **You can now download everything we hold about you.** `GET /api/v1/me/export` returns one self-explaining JSON file. It is built so that forgetting a table is impossible: a test fails until every table is either exported or has a written reason not to be.
-- **Tests:** 706 passing, up from 599 at the last report. Nothing is broken.
+- **A retried application no longer submits twice.** `Idempotency-Key` is now honoured: a creator whose connection drops mid-apply gets their original answer back instead of a confusing "you already applied". This is the fourth control our own standards claimed and nothing implemented.
+- **Tests:** 748 passing, up from 599 at the last report. Nothing is broken.
 - **Waiting on Erode Harish:** the `payment_status` table. Everything about money, reliability scores and disputes is blocked behind it.
 
 ## 2. Work completed
@@ -26,6 +27,7 @@
 | Request body size limit | Tested | `2f4b662`; 18 tests in `tests/core/test_body_limit.py` |
 | Security headers on every response | Tested | `94b89d8`; 26 tests in `tests/core/test_security_headers.py` |
 | Data export (`GET /api/v1/me/export`) | Tested | `828c208`; 43 tests in `tests/modules/auth/test_export_api.py` |
+| `Idempotency-Key` on application POSTs | Tested | `a946a92`; 42 tests across `tests/core/test_idempotency.py` and `tests/modules/campaigns/test_application_idempotency_api.py` |
 | Decision D-031 recorded | Tested | `552367d`, `docs/DECISIONS.md` |
 | Assignment file for 19 Sep committed | Implemented | `4d8d91c` |
 
@@ -45,6 +47,10 @@
 | `app/modules/auth/export_service.py` | Assembles the export, the manifest, and what is deliberately withheld |
 | `app/modules/auth/export_router.py` | `GET /api/v1/me/export` |
 | `tests/modules/auth/test_export_api.py` | 43 tests, including the table-completeness guard |
+| `app/core/idempotency.py` | The claim/replay state machine, in Redis |
+| `app/core/idempotent_route.py` | Applies it to a whole router without touching endpoints |
+| `app/core/redis_client.py` | One shared Redis connection pool |
+| `tests/core/test_idempotency.py` · `tests/modules/campaigns/test_application_idempotency_api.py` | 42 tests |
 | `docs/assignments/2026-09-19.md` | Yesterday's task assignment, previously uncommitted |
 
 ### Modified
@@ -57,6 +63,9 @@
 | `app/modules/campaigns/service.py` | Declares its campaign and application export sections | Each module owns its own export shape | None to existing endpoints |
 | `app/modules/deal_memo/service.py` | Declares its memo and proof export sections | As above | None to existing endpoints |
 | `app/modules/notifications/service.py` | Declares its notification export section | As above | None to existing endpoints |
+| `app/modules/auth/tokens.py` | Split signature checking from expiry checking; added `account_id_for_scoping` | Idempotency needs to know *whose* request this is without caring that a token just lapsed | None to authentication |
+| `app/modules/auth/dependencies.py` | Added `idempotency_identity` | Resolves a request to its verified account | None |
+| `app/modules/campaigns/application_router.py` | Built with `route_class=IdempotentRoute` | Every POST here now accepts `Idempotency-Key` | Requests without the header are unchanged |
 | `docs/DECISIONS.md` | Added D-031 | Approval record | None |
 
 ### Deleted
@@ -76,6 +85,8 @@ The endpoint caches for 5 minutes and supports `ETag` / `If-None-Match`, because
 
 Every response now carries `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY` and a Content-Security-Policy — `default-src 'none'` for JSON, and a wider, explicit policy for the `/docs` and `/redoc` HTML so the API documentation still works. HSTS is sent only outside local and test.
 
+Every POST under `/api/v1/campaigns/{id}/applications` and `/api/v1/applications/...` now accepts an optional **`Idempotency-Key`** header: same key and body replays the original response with `Idempotency-Replayed: true`, a retry while the first is still running gives 409, and a key reused with a different body gives 422. Keys are remembered for 24 hours. The header is in the OpenAPI contract for exactly those routes.
+
 Every other endpoint now returns **413** with the standard Problem Details body when the request body exceeds 1 MB.
 
 ## 5. Database changes
@@ -87,8 +98,9 @@ Every other endpoint now returns **413** with the standard Problem Details body 
 ## 6. Testing
 
 - **Commands run:** `pytest -q` · `pip-audit --requirement requirements.txt --strict --desc` · an OpenAPI generation check · a direct check that the chunked-body test exercises the counting path rather than the header path · a direct check of which origins `/docs` and `/redoc` actually reference
-- **Result:** **706 passed, 2 warnings, 19.62s**, re-run against a database holding 1,000+ seeded rows to prove no test assumes an empty table. 0 failed, 0 skipped. `pip-audit` exit 0, "No known vulnerabilities found". OpenAPI generates 40 paths / 49 operations, every one with a summary, `ProblemDetails` present.
-- **New tests:** 20 for the public Passport, 18 for the body limit, 26 for the security headers, 43 for the export.
+- **Result:** **748 passed, 2 warnings, 30.35s**, re-run against a database holding 1,000+ seeded rows to prove no test assumes an empty table. 0 failed, 0 skipped. `pip-audit` exit 0, "No known vulnerabilities found". OpenAPI generates 40 paths / 49 operations, every one with a summary, `ProblemDetails` present.
+- **New tests:** 20 for the public Passport, 18 for the body limit, 26 for the security headers, 43 for the export, 42 for idempotency.
+- **Idempotency tests use real Redis** on database 2, kept apart from the rate-limit tests (database 1) and the app (database 0). CI already runs a Redis service.
 - **Measured on the export:** 93 records in **13 queries, 26 ms, 53 KB** on seeded data — constant query count, no N+1, well inside the 300 ms read budget.
 - **Not verified:** CI has not run on GitHub Actions yet. The `pip-audit` step is expected to pass because the identical command passes locally, but it has not been seen green on a runner.
 - The 2 warnings come from Starlette's own test client (`anyio` deprecations). Upstream, not ours.
@@ -96,6 +108,7 @@ Every other endpoint now returns **413** with the standard Problem Details body 
 ## 7. Commits pushed
 
 ```
+a946a92 feat(api): Idempotency-Key, so a retried request runs once
 0161976 test(privacy): flag the one allowed use of the forbidden payment words
 828c208 feat(privacy): download everything we hold about you
 ca286c4 docs: update the 2026-09-20 report with the security headers work
@@ -133,6 +146,7 @@ e7cabff feat(auth): public Creator Passport, readable without logging in
 | Medium | No request body size limit existed, though `security.md` section 3 claims one | Fixed in `2f4b662` |
 | Medium | No security headers existed, though `security.md` section 7 claims four of them | Fixed in `94b89d8` |
 | Low | `pytest` local temp-directory issue (PYSEC-2026-1845) | Fixed by upgrade |
+| Medium | Idempotency scoped by the raw access token, so a client that refreshed its token between a dropped request and its retry would have double-submitted — the exact failure the feature prevents. Found by a test, not by reasoning | Fixed in `a946a92`: retries are grouped by verified account |
 
 ## 11. Technical debt
 
