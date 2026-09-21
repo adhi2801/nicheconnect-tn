@@ -40,8 +40,7 @@ API_CSP = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
 # Swagger UI and ReDoc, spelled out. 'unsafe-inline' is here because FastAPI
 # generates an inline <script> to start the viewer and both libraries inject
 # inline styles; we do not control that markup. It is confined to these two
-# developer-facing pages, and `security.md` section 9 still requires a
-# decision on whether they are reachable in production at all.
+# developer-facing pages, which production does not serve at all (D-044).
 DOCS_CSP = (
     "default-src 'none'; "
     "script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
