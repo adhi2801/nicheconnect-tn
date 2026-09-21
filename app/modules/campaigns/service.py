@@ -12,6 +12,7 @@ campaign, so a creator's application history always points at what they saw.
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import Select, select
 from sqlalchemy.exc import IntegrityError
@@ -23,7 +24,7 @@ from app.core.export import (
     allow,
     build_section,
 )
-from app.core.pagination import Slice, build_slice, decode_cursor
+from app.core.pagination import Slice, build_slice, older_than_cursor
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.exceptions import (
@@ -97,7 +98,9 @@ def get_brand_for_account(db: Session, account_id: uuid.UUID) -> Brand:
     return brand
 
 
-def create_campaign(db: Session, brand: Brand, fields: dict, now: datetime) -> Campaign:
+def create_campaign(
+    db: Session, brand: Brand, fields: dict[str, Any], now: datetime
+) -> Campaign:
     """Create a campaign as a draft. Only publishing makes it visible."""
     campaign = Campaign(
         brand_id=brand.id,
@@ -113,7 +116,7 @@ def create_campaign(db: Session, brand: Brand, fields: dict, now: datetime) -> C
 
 
 def update_campaign(
-    db: Session, campaign: Campaign, changes: dict, now: datetime
+    db: Session, campaign: Campaign, changes: dict[str, Any], now: datetime
 ) -> Campaign:
     """Change a campaign the brand owns.
 
@@ -156,13 +159,12 @@ def change_status(
     return campaign
 
 
-def _paginate(db: Session, query: Select, limit: int, cursor: str | None) -> Slice[Campaign]:
+def _paginate(
+    db: Session, query: Select[tuple[Campaign]], limit: int, cursor: str | None
+) -> Slice[Campaign]:
     """Newest first, one row past the limit to know whether more exist."""
     if cursor is not None:
-        created_at, row_id = decode_cursor(cursor)
-        query = query.where(
-            (Campaign.created_at, Campaign.id) < (created_at, row_id)
-        )
+        query = query.where(older_than_cursor(Campaign.created_at, Campaign.id, cursor))
     rows = list(
         db.scalars(
             query.order_by(Campaign.created_at.desc(), Campaign.id.desc()).limit(limit + 1)
@@ -199,9 +201,9 @@ def discover_campaigns(
     """Open campaigns for creators to browse, with optional filters."""
     query = select(Campaign).where(Campaign.status == "open")
     if city is not None:
-        query = query.where(Campaign.cities.any(city))
+        query = query.where(Campaign.cities.any_() == city)
     if niche is not None:
-        query = query.where(Campaign.niches.any(niche))
+        query = query.where(Campaign.niches.any_() == niche)
     if campaign_type is not None:
         query = query.where(Campaign.campaign_type == campaign_type)
     if min_budget_paise is not None:
@@ -263,7 +265,7 @@ def apply_to_campaign(
     db: Session,
     campaign_id: uuid.UUID,
     creator: Creator,
-    fields: dict,
+    fields: dict[str, Any],
     now: datetime,
 ) -> Application:
     """Apply to an open campaign.
@@ -342,7 +344,7 @@ def change_application_status(
     # Tell the other side what happened, in the same transaction: a record
     # that exists only if the change itself succeeded.
     side, notification_type = STATUS_NOTIFICATIONS[new_status]
-    campaign = db.get(Campaign, application.campaign_id)
+    campaign = db.get_one(Campaign, application.campaign_id)
     account_id = (
         _creator_account_id(db, application)
         if side == "creator"
@@ -368,11 +370,12 @@ def change_application_status(
 
 
 def _paginate_applications(
-    db: Session, query: Select, limit: int, cursor: str | None
+    db: Session, query: Select[tuple[Application]], limit: int, cursor: str | None
 ) -> Slice[Application]:
     if cursor is not None:
-        created_at, row_id = decode_cursor(cursor)
-        query = query.where((Application.created_at, Application.id) < (created_at, row_id))
+        query = query.where(
+            older_than_cursor(Application.created_at, Application.id, cursor)
+        )
     rows = list(
         db.scalars(
             query.order_by(Application.created_at.desc(), Application.id.desc()).limit(

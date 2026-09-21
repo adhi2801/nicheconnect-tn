@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
 
 from app.core.rate_limit import limiter
 from app.db.session import get_db
@@ -451,6 +450,30 @@ def test_status_filter_and_paging_work(client, db, clock):
     assert len(first_page["items"]) == 2
     assert [item["id"] for item in second_page["items"]] == [application_ids[0]]
     assert second_page["next_cursor"] is None
+
+
+def test_paging_does_not_skip_applications_made_at_the_same_moment(client, db, clock):
+    # No clock.advance: all three share one created_at, so the id is the only
+    # thing ordering them. Without it a brand never sees the tied applicants.
+    brand = brand_with_profile(db, clock)
+    campaign_id = open_campaign(client, brand)
+    application_ids = {
+        apply(client, creator_with_profile(db, clock, handle=f"tied.{index}"), campaign_id).json()[
+            "id"
+        ]
+        for index in range(3)
+    }
+    url = f"{CAMPAIGNS_URL}/{campaign_id}/applications"
+
+    first = client.get(url, params={"limit": 2}, headers=brand.headers).json()
+    second = client.get(
+        url, params={"limit": 2, "cursor": first["next_cursor"]}, headers=brand.headers
+    ).json()
+
+    seen = [item["id"] for item in first["items"] + second["items"]]
+    assert len(seen) == 3
+    assert set(seen) == application_ids
+    assert second["next_cursor"] is None
 
 
 def test_stored_row_matches_what_the_api_returned(client, db, clock):

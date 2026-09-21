@@ -441,6 +441,23 @@ def test_my_list_pages_through_results(client, db, clock):
     assert third["next_cursor"] is None
 
 
+def test_my_list_does_not_skip_campaigns_created_at_the_same_moment(client, db, clock):
+    # No clock.advance: every row shares one created_at, so only the id can
+    # order them. Without it the second page loses the tied rows.
+    _, headers = brand_login(db, clock)
+    for index in range(3):
+        create(client, headers, title=f"Same moment {index}")
+
+    first = client.get(URL, params={"limit": 2}, headers=headers).json()
+    second = client.get(
+        URL, params={"limit": 2, "cursor": first["next_cursor"]}, headers=headers
+    ).json()
+
+    titles = [item["title"] for page in (first, second) for item in page["items"]]
+    assert sorted(titles) == ["Same moment 0", "Same moment 1", "Same moment 2"]
+    assert second["next_cursor"] is None
+
+
 def test_invalid_cursor_is_rejected(client, db, clock):
     _, headers = brand_login(db, clock)
 

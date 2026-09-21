@@ -316,7 +316,7 @@ def test_unread_only_filter(client, db, clock):
 
 
 def test_list_pages_newest_first(client, db, clock):
-    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    brand = brand_user(db, clock)
     campaign_id = open_campaign(client, brand)
     for index in range(3):
         clock.advance(timedelta(minutes=1))
@@ -332,6 +332,27 @@ def test_list_pages_newest_first(client, db, clock):
     assert second["next_cursor"] is None
     times = [item["created_at"] for item in first["items"] + second["items"]]
     assert times == sorted(times, reverse=True)
+
+
+def test_paging_does_not_skip_rows_created_at_the_same_moment(client, db, clock):
+    # No clock.advance: all three rows share one created_at, which is what a
+    # batch or a busy second produces. The id must break the tie, or the
+    # second page silently loses everything that shared the first page's
+    # last timestamp.
+    brand = brand_user(db, clock)
+    campaign_id = open_campaign(client, brand)
+    for index in range(3):
+        apply(client, creator_user(db, clock, handle=f"same.moment.{index}"), campaign_id)
+
+    first = client.get(URL, params={"limit": 2}, headers=brand.headers).json()
+    second = client.get(
+        URL, params={"limit": 2, "cursor": first["next_cursor"]}, headers=brand.headers
+    ).json()
+
+    seen = [item["id"] for item in first["items"] + second["items"]]
+    assert len(seen) == 3
+    assert len(set(seen)) == 3
+    assert second["next_cursor"] is None
 
 
 def test_stored_row_matches_the_api(client, db, clock):

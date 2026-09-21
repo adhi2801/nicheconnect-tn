@@ -18,7 +18,7 @@ from app.core.export import (
     allow,
     build_section,
 )
-from app.core.pagination import Slice, build_slice, decode_cursor
+from app.core.pagination import Slice, build_slice, older_than_cursor
 from app.modules.notifications.models import Notification
 
 # Tables this module answers for in a data export. The completeness test in
@@ -75,9 +75,8 @@ def list_for_account(
     if unread_only:
         query = query.where(Notification.read_at.is_(None))
     if cursor is not None:
-        created_at, row_id = decode_cursor(cursor)
         query = query.where(
-            (Notification.created_at, Notification.id) < (created_at, row_id)
+            older_than_cursor(Notification.created_at, Notification.id, cursor)
         )
     rows = list(
         db.scalars(
@@ -90,11 +89,13 @@ def list_for_account(
 
 
 def unread_count(db: Session, account_id: uuid.UUID) -> int:
-    return db.scalar(
+    # COUNT always returns a row; `or 0` only settles the Optional type.
+    count = db.scalar(
         select(func.count())
         .select_from(Notification)
         .where(Notification.account_id == account_id, Notification.read_at.is_(None))
     )
+    return count or 0
 
 
 def mark_read(db: Session, notification: Notification, now: datetime) -> Notification:

@@ -312,6 +312,30 @@ def test_my_list_shows_each_side_their_own(client, db, clock):
     assert creator_list["items"] == []
 
 
+def test_my_list_pages_without_skipping_memos_drafted_at_the_same_moment(client, db, clock):
+    # No clock.advance: all three memos share one created_at, so the id is the
+    # only thing ordering them. Without it the second page loses the tied rows.
+    brand = brand_user(db, clock)
+    memo_ids = {
+        draft_memo(client, brand, accepted_application(client, brand, creator_user(db, clock)))[
+            "id"
+        ]
+        for _ in range(3)
+    }
+
+    first = client.get(f"{MEMOS_URL}/mine", params={"limit": 2}, headers=brand.headers).json()
+    second = client.get(
+        f"{MEMOS_URL}/mine",
+        params={"limit": 2, "cursor": first["next_cursor"]},
+        headers=brand.headers,
+    ).json()
+
+    seen = [item["id"] for item in first["items"] + second["items"]]
+    assert len(seen) == 3
+    assert set(seen) == memo_ids
+    assert second["next_cursor"] is None
+
+
 # --- the journey ----------------------------------------------------------
 
 

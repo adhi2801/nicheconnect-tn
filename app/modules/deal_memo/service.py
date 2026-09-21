@@ -7,8 +7,9 @@ must be able to rely on what they said yes to.
 
 import uuid
 from datetime import datetime
+from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
 from app.core.export import (
@@ -17,7 +18,7 @@ from app.core.export import (
     allow,
     build_section,
 )
-from app.core.pagination import Slice, build_slice, decode_cursor
+from app.core.pagination import Slice, build_slice, older_than_cursor
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.models import Application, Campaign
@@ -110,7 +111,7 @@ FEE_REQUIRED_TYPES = frozenset({"paid", "local_business"})
 
 
 def _campaign_of(db: Session, application: Application) -> Campaign:
-    return db.get(Campaign, application.campaign_id)
+    return db.get_one(Campaign, application.campaign_id)
 
 
 def _brand_account_id(db: Session, campaign: Campaign) -> uuid.UUID | None:
@@ -132,7 +133,7 @@ def _check_fee_against_campaign(campaign: Campaign, fee_amount_paise: int | None
 
 
 def create_memo(
-    db: Session, application: Application, fields: dict, now: datetime
+    db: Session, application: Application, fields: dict[str, Any], now: datetime
 ) -> DealMemo:
     """Draft a memo for an accepted application.
 
@@ -164,14 +165,16 @@ def create_memo(
     return memo
 
 
-def update_memo(db: Session, memo: DealMemo, changes: dict, now: datetime) -> DealMemo:
+def update_memo(
+    db: Session, memo: DealMemo, changes: dict[str, Any], now: datetime
+) -> DealMemo:
     """Change a memo the brand still holds (draft, or a change was requested)."""
     if memo.status not in EDITABLE_STATUSES:
         db.rollback()
         raise MemoNotEditable()
 
     if "fee_amount_paise" in changes:
-        application = db.get(Application, memo.application_id)
+        application = db.get_one(Application, memo.application_id)
         _check_fee_against_campaign(_campaign_of(db, application), changes["fee_amount_paise"])
 
     for field, value in changes.items():
@@ -191,7 +194,7 @@ def _notify_other_side(
     now: datetime,
     message: str | None = None,
 ) -> None:
-    application = db.get(Application, memo.application_id)
+    application = db.get_one(Application, memo.application_id)
     campaign = _campaign_of(db, application)
     account_id = (
         _creator_account_id(db, application)
@@ -279,10 +282,11 @@ def change_status(
     return memo
 
 
-def _paginate(db: Session, query, limit: int, cursor: str | None) -> Slice[DealMemo]:
+def _paginate(
+    db: Session, query: Select[tuple[DealMemo]], limit: int, cursor: str | None
+) -> Slice[DealMemo]:
     if cursor is not None:
-        created_at, row_id = decode_cursor(cursor)
-        query = query.where((DealMemo.created_at, DealMemo.id) < (created_at, row_id))
+        query = query.where(older_than_cursor(DealMemo.created_at, DealMemo.id, cursor))
     rows = list(
         db.scalars(
             query.order_by(DealMemo.created_at.desc(), DealMemo.id.desc()).limit(limit + 1)
@@ -334,9 +338,6 @@ def memos_for_account(db: Session, account_id: uuid.UUID, *, limit: int) -> list
     """
     brand = db.scalars(select(Brand).where(Brand.account_id == account_id)).first()
     creator = db.scalars(select(Creator).where(Creator.account_id == account_id)).first()
-    if brand is None and creator is None:
-        return []
-
     query = (
         select(DealMemo)
         .join(Application, Application.id == DealMemo.application_id)
@@ -344,8 +345,10 @@ def memos_for_account(db: Session, account_id: uuid.UUID, *, limit: int) -> list
     )
     if brand is not None:
         query = query.where(Campaign.brand_id == brand.id)
-    else:
+    elif creator is not None:
         query = query.where(Application.creator_id == creator.id)
+    else:
+        return []
 
     return list(
         db.scalars(query.order_by(DealMemo.created_at, DealMemo.id).limit(limit)).all()
