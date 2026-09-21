@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.core.clock import india_date
 from app.core.errors import problem_doc
-from app.core.rate_limit import limiter
+from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.auth.exceptions import ProfileNotFound
@@ -52,7 +52,7 @@ BrandId = Annotated[uuid.UUID, Path(description="The brand's id")]
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def read_brand_reliability(
     request: Request,
     brand_id: BrandId,

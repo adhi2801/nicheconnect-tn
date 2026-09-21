@@ -26,7 +26,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.errors import problem_doc
-from app.core.rate_limit import limiter
+from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.exceptions import ProfileNotFound
 from app.modules.auth.models.creator import Creator
@@ -87,7 +87,7 @@ def _to_public(creator: Creator) -> PublicCreatorRead:
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@limiter.limit(PUBLIC_READ_LIMIT)
+@rate_limit(PUBLIC_READ_LIMIT)
 def read_public_profile(
     request: Request,
     response: Response,

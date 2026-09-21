@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, Path, Request
 from sqlalchemy.orm import Session
 
 from app.core.errors import ResponseDocs, problem_doc
-from app.core.rate_limit import limiter
+from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.auth.exceptions import ProfileNotFound, RoleNotAllowed
@@ -55,7 +55,7 @@ _ERRORS: ResponseDocs = {
     ),
     responses=_ERRORS,
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def read_delivery_record(
     request: Request,
     creator_id: CreatorId,

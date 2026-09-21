@@ -16,7 +16,7 @@ from app.core.clock import india_date
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page, Slice
-from app.core.rate_limit import limiter
+from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import get_now
 from app.modules.campaigns import feedback, service
@@ -80,7 +80,7 @@ def _page(result: Slice[Application]) -> Page[ApplicationRead]:
         422: problem_doc("A field is missing or invalid"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def apply_to_campaign(
     request: Request,
     response: Response,
@@ -109,7 +109,7 @@ def apply_to_campaign(
         422: problem_doc("A query parameter or the cursor is invalid"),
     },
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def list_campaign_applications(
     request: Request,
     campaign: OwnedCampaign,
@@ -136,7 +136,7 @@ def list_campaign_applications(
         422: problem_doc("A query parameter or the cursor is invalid"),
     },
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def list_my_applications(
     request: Request,
     creator: CurrentCreatorProfile,
@@ -168,7 +168,7 @@ def list_my_applications(
         409: problem_doc("The creator profile has not been created yet"),
     },
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def read_my_application_feedback(
     request: Request,
     creator: CurrentCreatorProfile,
@@ -189,7 +189,7 @@ def read_my_application_feedback(
     ),
     responses={**_COMMON_ERRORS, 404: problem_doc("No such application, or not yours")},
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def read_application(
     request: Request, application: VisibleApplication
 ) -> ApplicationRead:
@@ -213,7 +213,7 @@ def _brand_decision(
             409: problem_doc("The application is not in a state where that is allowed"),
         },
     )
-    @limiter.limit(WRITE_LIMIT)
+    @rate_limit(WRITE_LIMIT)
     def endpoint(
         request: Request,
         application: BrandApplication,
@@ -256,7 +256,7 @@ accept_application = _brand_decision(
         422: problem_doc("The reason is missing or not one of the allowed values"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def reject_application(
     request: Request,
     body: ApplicationReject,
@@ -287,7 +287,7 @@ def reject_application(
         409: problem_doc("The application is not in a state where that is allowed"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def withdraw_application(
     request: Request,
     application: CreatorApplication,

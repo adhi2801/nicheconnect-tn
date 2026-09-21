@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page, Slice
-from app.core.rate_limit import limiter
+from app.core.rate_limit import rate_limit
 from app.core.taxonomy import Niche
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
@@ -64,7 +64,7 @@ def _page(result: Slice[Campaign]) -> Page[CampaignRead]:
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def create_campaign(
     request: Request,
     response: Response,
@@ -91,7 +91,7 @@ def create_campaign(
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def list_my_campaigns(
     request: Request,
     brand: CurrentBrandProfile,
@@ -121,7 +121,7 @@ def list_my_campaigns(
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def discover_campaigns(
     request: Request,
     account: CurrentAccount,
@@ -160,7 +160,7 @@ def discover_campaigns(
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def read_campaign(
     request: Request,
     campaign_id: uuid.UUID,
@@ -198,7 +198,7 @@ def read_campaign(
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def update_campaign(
     request: Request,
     body: CampaignUpdate,
@@ -229,7 +229,7 @@ def _status_endpoint(
             429: problem_doc("Too many requests; see the Retry-After header"),
         },
     )
-    @limiter.limit(WRITE_LIMIT)
+    @rate_limit(WRITE_LIMIT)
     def endpoint(
         request: Request,
         campaign: OwnedCampaign,

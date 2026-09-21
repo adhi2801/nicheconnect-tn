@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from app.core.clock import india_date
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
-from app.core.rate_limit import limiter
+from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.auth.models.account import Account
@@ -99,7 +99,7 @@ def _rendered(db: Session, dispute: Dispute, today: date) -> DisputeRead:
         422: problem_doc("The reason is missing or too short"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def open_dispute(
     request: Request,
     memo_id: MemoId,
@@ -129,7 +129,7 @@ def open_dispute(
     ),
     responses=_COMMON_ERRORS,
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def read_dispute(
     request: Request,
     memo_id: MemoId,
@@ -160,7 +160,7 @@ def read_dispute(
         422: problem_doc("An entry must carry a note, a link, or both"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def add_entry(
     request: Request,
     memo_id: MemoId,
@@ -206,7 +206,7 @@ def add_entry(
         422: problem_doc("That is not an outcome we record"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def close_dispute(
     request: Request,
     memo_id: MemoId,

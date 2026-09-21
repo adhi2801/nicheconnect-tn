@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 from app.core.clock import india_date
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
-from app.core.rate_limit import limiter
+from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.deal_memo.dependencies import (
@@ -85,7 +85,7 @@ def _payment_or_404(db: Session, memo_id: uuid.UUID) -> PaymentStatus:
     ),
     responses=_COMMON_ERRORS,
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def read_payment(
     request: Request,
     memo_id: MemoId,
@@ -115,7 +115,7 @@ def read_payment(
         422: problem_doc("The method or reference is not usable"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def mark_paid(
     request: Request,
     memo_id: MemoId,
@@ -144,7 +144,7 @@ def mark_paid(
         409: problem_doc("Already confirmed, or the brand has not marked it as sent yet"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def confirm_received(
     request: Request,
     memo_id: MemoId,

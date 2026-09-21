@@ -6,7 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response, stat
 from sqlalchemy.orm import Session
 
 from app.core.errors import problem_doc
-from app.core.rate_limit import limiter
+from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth import service
 from app.modules.auth.dependencies import CurrentAccount, get_now
@@ -50,7 +50,7 @@ def _seconds_between(start: datetime, end: datetime) -> int:
         429: problem_doc("Too many codes requested; see the Retry-After header"),
     },
 )
-@limiter.limit(OTP_REQUEST_LIMIT)
+@rate_limit(OTP_REQUEST_LIMIT)
 def request_code(
     request: Request,
     body: OtpRequestIn,
@@ -82,7 +82,7 @@ def request_code(
         429: problem_doc("Too many attempts; see the Retry-After header"),
     },
 )
-@limiter.limit(OTP_VERIFY_LIMIT)
+@rate_limit(OTP_VERIFY_LIMIT)
 def verify_code(
     request: Request,
     response: Response,
@@ -122,7 +122,7 @@ def verify_code(
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@limiter.limit(SESSION_LIMIT)
+@rate_limit(SESSION_LIMIT)
 def refresh(
     request: Request,
     response: Response,
@@ -158,7 +158,7 @@ def refresh(
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@limiter.limit(SESSION_LIMIT)
+@rate_limit(SESSION_LIMIT)
 def logout(
     request: Request,
     body: LogoutIn,
@@ -181,7 +181,7 @@ def logout(
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@limiter.limit(SESSION_LIMIT)
+@rate_limit(SESSION_LIMIT)
 def me(request: Request, account: CurrentAccount) -> AccountRead:
     return AccountRead(
         id=account.id,
@@ -204,7 +204,7 @@ def me(request: Request, account: CurrentAccount) -> AccountRead:
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@limiter.limit(SESSION_LIMIT)
+@rate_limit(SESSION_LIMIT)
 def logout_all(
     request: Request,
     account: CurrentAccount,

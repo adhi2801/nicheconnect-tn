@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.core.errors import problem_doc
-from app.core.rate_limit import limiter
+from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth import export_service
 from app.modules.auth.dependencies import CurrentAccount, get_now
@@ -49,7 +49,7 @@ router = APIRouter(prefix="/api/v1/me", tags=["privacy"])
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@limiter.limit(EXPORT_LIMIT)
+@rate_limit(EXPORT_LIMIT)
 def export_my_data(
     request: Request,
     account: CurrentAccount,

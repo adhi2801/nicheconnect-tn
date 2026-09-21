@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
-from app.core.rate_limit import limiter
+from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth import profiles
 from app.modules.auth.dependencies import CurrentBrand, CurrentCreator, get_now
@@ -56,7 +56,7 @@ _COMMON_ERRORS: ResponseDocs = {
         422: problem_doc("A field is missing or invalid"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def create_brand_profile(
     request: Request,
     response: Response,
@@ -79,7 +79,7 @@ def create_brand_profile(
         404: problem_doc("The profile has not been created yet"),
     },
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def read_brand_profile(
     request: Request,
     account: CurrentBrand,
@@ -99,7 +99,7 @@ def read_brand_profile(
         422: problem_doc("A field is missing or invalid"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def update_brand_profile(
     request: Request,
     body: BrandProfileUpdate,
@@ -129,7 +129,7 @@ def update_brand_profile(
         422: problem_doc("A field is missing or invalid"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def create_creator_profile(
     request: Request,
     response: Response,
@@ -152,7 +152,7 @@ def create_creator_profile(
         404: problem_doc("The profile has not been created yet"),
     },
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def read_creator_profile(
     request: Request,
     account: CurrentCreator,
@@ -174,7 +174,7 @@ def read_creator_profile(
         422: problem_doc("A field is missing or invalid"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def update_creator_profile(
     request: Request,
     body: CreatorProfileUpdate,
@@ -213,7 +213,7 @@ def update_creator_profile(
         404: problem_doc("You have not created a creator profile yet"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def publish_passport(
     request: Request,
     account: CurrentCreator,
@@ -239,7 +239,7 @@ def publish_passport(
         404: problem_doc("You have not created a creator profile yet"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def unpublish_passport(
     request: Request,
     account: CurrentCreator,

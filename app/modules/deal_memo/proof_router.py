@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.literals import ensure_same_values
-from app.core.rate_limit import limiter
+from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.deal_memo import proof_service
@@ -117,7 +117,7 @@ class ProofRead(BaseModel):
         422: problem_doc("A field is missing or invalid"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def submit_proof(
     request: Request,
     response: Response,
@@ -141,7 +141,7 @@ def submit_proof(
     ),
     responses=_COMMON_ERRORS,
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def list_proof(
     request: Request,
     memo_id: MemoId,
@@ -169,7 +169,7 @@ def list_proof(
         409: problem_doc("This proof has already been reviewed"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def approve_proof(
     request: Request,
     proof_id: ProofId,
@@ -195,7 +195,7 @@ def approve_proof(
         422: problem_doc("The note is missing or too short"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def request_revision(
     request: Request,
     body: RevisionRequest,

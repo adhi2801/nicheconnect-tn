@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page, Slice
-from app.core.rate_limit import limiter
+from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.campaigns.dependencies import BrandApplication, CurrentCreatorProfile
@@ -76,7 +76,7 @@ def _page(result: Slice[DealMemo]) -> Page[MemoRead]:
         422: problem_doc("A field is missing or invalid"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def create_memo(
     request: Request,
     response: Response,
@@ -105,7 +105,7 @@ def create_memo(
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def list_my_memos(
     request: Request,
     account: CurrentAccount,
@@ -137,7 +137,7 @@ def list_my_memos(
     ),
     responses={**_COMMON_ERRORS, 404: problem_doc("No such memo, or not yours")},
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def read_memo(
     request: Request,
     memo_id: uuid.UUID,
@@ -167,7 +167,7 @@ def read_memo(
         422: problem_doc("A field is missing or invalid"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def update_memo(
     request: Request,
     body: MemoUpdate,
@@ -194,7 +194,7 @@ def _brand_move(
             409: problem_doc("The memo is not in a state where that is allowed"),
         },
     )
-    @limiter.limit(WRITE_LIMIT)
+    @rate_limit(WRITE_LIMIT)
     def endpoint(
         request: Request,
         memo: BrandMemo,
@@ -246,7 +246,7 @@ def _creator_move(
             409: problem_doc("The memo is not in a state where that is allowed"),
         },
     )
-    @limiter.limit(WRITE_LIMIT)
+    @rate_limit(WRITE_LIMIT)
     def endpoint(
         request: Request,
         memo: CreatorMemo,
@@ -303,7 +303,7 @@ withdraw_memo_as_creator = _creator_move(
         422: problem_doc("The message is missing or too short"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def request_change(
     request: Request,
     body: ChangeRequest,

@@ -143,11 +143,15 @@ def _seconds_until_verify_allowed(db: Session, phone: str, now: datetime) -> int
     Counts wrong guesses across every code sent to the phone in the window.
     """
     window_start = now - VERIFY_ATTEMPT_WINDOW
-    rows = db.execute(
-        select(OtpChallenge.created_at, OtpChallenge.attempts).where(
-            OtpChallenge.phone == phone, OtpChallenge.created_at > window_start
+    rows = (
+        db.execute(
+            select(OtpChallenge.created_at, OtpChallenge.attempts).where(
+                OtpChallenge.phone == phone, OtpChallenge.created_at > window_start
+            )
         )
-    ).all()
+        .tuples()
+        .all()
+    )
     used = sum(attempts for _, attempts in rows)
     if used < MAX_VERIFY_ATTEMPTS_PER_WINDOW:
         return 0

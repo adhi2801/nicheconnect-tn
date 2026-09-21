@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
-from app.core.rate_limit import limiter
+from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.notifications import service
@@ -67,7 +67,7 @@ OwnNotification = Annotated[Notification, Depends(_own_notification)]
         422: problem_doc("A query parameter or cursor is invalid"),
     },
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def list_notifications(
     request: Request,
     account: CurrentAccount,
@@ -92,7 +92,7 @@ def list_notifications(
     description="The number for the badge. Cheap: it reads an index of unread rows only.",
     responses=_COMMON_ERRORS,
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def count_unread(
     request: Request,
     account: CurrentAccount,
@@ -108,7 +108,7 @@ def count_unread(
     description="Marking an already-read notification again keeps the first time.",
     responses={**_COMMON_ERRORS, 404: problem_doc("No such notification, or not yours")},
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def mark_read(
     request: Request,
     notification: OwnNotification,
@@ -125,7 +125,7 @@ def mark_read(
     description="Clears the badge. Returns how many changed from unread.",
     responses=_COMMON_ERRORS,
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def mark_all_read(
     request: Request,
     account: CurrentAccount,

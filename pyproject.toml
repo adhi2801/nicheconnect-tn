@@ -64,14 +64,9 @@ plugins = ["pydantic.mypy"]
 # redis-py ships type hints but leaves a few methods (close) unannotated.
 # Exempting calls into it is narrower than turning the check off everywhere.
 untyped_calls_exclude = ["redis"]
-# Start honest: these are on, and the ones that are not yet on are listed
-# below with a reason rather than quietly omitted.
+# Full strict mode, nothing relaxed. The two relaxations adopted with D-037
+# were removed once the code no longer needed them (see rate_limit.py).
 strict = true
-# SQLAlchemy's declarative models and FastAPI's decorators produce types mypy
-# cannot always follow. These are relaxed for now and tightened as the
-# codebase allows; each line here is a debt, not a decision.
-warn_return_any = false
-disallow_untyped_decorators = false
 
 [[tool.mypy.overrides]]
 # Third-party packages without type information. Listing them is better than
