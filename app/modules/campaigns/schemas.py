@@ -7,7 +7,8 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic_core import PydanticCustomError
 
-from app.core.taxonomy import CURRENCY, MAX_NICHES, NICHES
+from app.core.literals import ensure_same_values
+from app.core.taxonomy import CURRENCY, MAX_NICHES, Niche
 from app.modules.campaigns.models import (
     APPLICATION_STATUSES,
     BUDGETED_TYPES,
@@ -24,22 +25,9 @@ from app.modules.campaigns.models import (
 
 CampaignType = Literal["paid", "barter", "commission", "local_business"]
 CampaignStatus = Literal["draft", "open", "closed", "cancelled"]
-Niche = Literal[
-    "food",
-    "fashion",
-    "beauty",
-    "tech",
-    "travel",
-    "fitness",
-    "education",
-    "entertainment",
-    "finance",
-    "lifestyle",
-]
 
-# The literal above must stay in step with the shared list and the database.
-assert set(NICHES) == set(Niche.__args__)
-assert set(CAMPAIGN_TYPES) == set(CampaignType.__args__)
+# The Literal above must stay in step with the database's allow-list.
+ensure_same_values("CampaignType", CampaignType, CAMPAIGN_TYPES)
 
 Title = Annotated[str, Field(min_length=1, max_length=TITLE_MAX_LENGTH, examples=["Pongal sweets launch"])]
 Description = Annotated[str, Field(min_length=1, max_length=DESCRIPTION_MAX_LENGTH)]
@@ -159,8 +147,8 @@ RejectionReason = Literal[
     "other",
 ]
 
-assert set(APPLICATION_STATUSES) == set(ApplicationStatus.__args__)
-assert set(REJECTION_REASONS) == set(RejectionReason.__args__)
+ensure_same_values("ApplicationStatus", ApplicationStatus, APPLICATION_STATUSES)
+ensure_same_values("RejectionReason", RejectionReason, REJECTION_REASONS)
 
 Pitch = Annotated[
     str,

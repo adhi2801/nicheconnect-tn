@@ -6,6 +6,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.literals import ensure_same_values
 from app.modules.disputes.event_models import (
     EVENT_KINDS,
     NOTE_MAX_LENGTH,
@@ -29,10 +30,10 @@ DisputeState = Literal[
 EventKind = Literal["opened", "response", "evidence", "closed"]
 
 # Keeps these honest against the database's own allow-lists.
-assert set(DISPUTE_PARTIES) == set(DisputeParty.__args__)
-assert set(DISPUTE_OUTCOMES) == set(DisputeOutcome.__args__)
-assert set(DISPUTE_STATES) == set(DisputeState.__args__)
-assert set(EVENT_KINDS) == set(EventKind.__args__)
+ensure_same_values("DisputeParty", DisputeParty, DISPUTE_PARTIES)
+ensure_same_values("DisputeOutcome", DisputeOutcome, DISPUTE_OUTCOMES)
+ensure_same_values("DisputeState", DisputeState, DISPUTE_STATES)
+ensure_same_values("EventKind", EventKind, EVENT_KINDS)
 
 Note = Annotated[
     str,

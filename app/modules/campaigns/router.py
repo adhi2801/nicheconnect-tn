@@ -1,16 +1,18 @@
 """HTTP endpoints for campaigns (D-016). HTTP only: rules live in service.py."""
 
 import uuid
+from collections.abc import Callable
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.errors import problem_doc
-from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
+from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page, Slice
 from app.core.rate_limit import limiter
+from app.core.taxonomy import Niche
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.auth.models.brand import Brand
@@ -24,7 +26,6 @@ from app.modules.campaigns.schemas import (
     CampaignStatus,
     CampaignType,
     CampaignUpdate,
-    Niche,
 )
 
 WRITE_LIMIT = "30 per minute"
@@ -36,7 +37,7 @@ Limit = Annotated[int, Query(ge=1, le=MAX_LIMIT, description="Rows per page")]
 Cursor = Annotated[str | None, Query(description="From a previous page's next_cursor")]
 
 
-def _page(result) -> Page[CampaignRead]:
+def _page(result: Slice[Campaign]) -> Page[CampaignRead]:
     return Page[CampaignRead](
         items=[CampaignRead.model_validate(row) for row in result.rows],
         next_cursor=result.next_cursor,
@@ -208,7 +209,9 @@ def update_campaign(
     )
 
 
-def _status_endpoint(action: str, new_status: str, summary: str, description: str):
+def _status_endpoint(
+    action: str, new_status: str, summary: str, description: str
+) -> Callable[..., Any]:
     @router.post(
         f"/{{campaign_id}}/{action}",
         response_model=CampaignRead,

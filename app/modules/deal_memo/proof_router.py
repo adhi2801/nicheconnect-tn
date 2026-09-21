@@ -8,12 +8,17 @@ from fastapi import APIRouter, Depends, Path, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
-from app.core.errors import problem_doc
+from app.core.errors import ResponseDocs, problem_doc
+from app.core.literals import ensure_same_values
 from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.deal_memo import proof_service
-from app.modules.deal_memo.dependencies import BrandMemo, CreatorMemo, visible_memo_for_account
+from app.modules.deal_memo.dependencies import (
+    BrandMemo,
+    CreatorMemo,
+    visible_memo_for_account,
+)
 from app.modules.deal_memo.proof_models import (
     NOTE_MAX_LENGTH,
     PROOF_FORMATS,
@@ -29,13 +34,13 @@ router = APIRouter(prefix="/api/v1/deal-memos", tags=["proof"])
 ProofFormat = Literal["post", "reel", "story", "video", "other"]
 ProofStatus = Literal["submitted", "approved", "revision_requested"]
 
-assert set(PROOF_FORMATS) == set(ProofFormat.__args__)
-assert set(PROOF_STATUSES) == set(ProofStatus.__args__)
+ensure_same_values("ProofFormat", ProofFormat, PROOF_FORMATS)
+ensure_same_values("ProofStatus", ProofStatus, PROOF_STATUSES)
 
 MemoId = Annotated[uuid.UUID, Path(description="The memo's id")]
 ProofId = Annotated[uuid.UUID, Path(description="The proof submission's id")]
 
-_COMMON_ERRORS = {
+_COMMON_ERRORS: ResponseDocs = {
     401: problem_doc("No access token, or it is invalid or expired"),
     403: problem_doc("This account type cannot use this endpoint"),
     404: problem_doc("No such memo, or it is not yours"),

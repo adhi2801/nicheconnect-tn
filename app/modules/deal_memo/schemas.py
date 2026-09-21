@@ -7,6 +7,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic_core import PydanticCustomError
 
+from app.core.literals import ensure_same_values
 from app.core.taxonomy import CURRENCY
 from app.modules.deal_memo.models import (
     CANCELLATION_KINDS,
@@ -20,8 +21,8 @@ from app.modules.deal_memo.models import (
 MemoStatus = Literal["draft", "sent", "change_requested", "accepted", "declined", "cancelled"]
 CancellationKind = Literal["withdrawn_early", "cancelled_by_brand", "cancelled_by_creator"]
 
-assert set(MEMO_STATUSES) == set(MemoStatus.__args__)
-assert set(CANCELLATION_KINDS) == set(CancellationKind.__args__)
+ensure_same_values("MemoStatus", MemoStatus, MEMO_STATUSES)
+ensure_same_values("CancellationKind", CancellationKind, CANCELLATION_KINDS)
 
 Deliverables = Annotated[
     str,

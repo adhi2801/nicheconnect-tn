@@ -6,6 +6,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.literals import ensure_same_values
 from app.core.taxonomy import CURRENCY
 from app.modules.payment_status.models import (
     PAYMENT_METHODS,
@@ -29,8 +30,8 @@ PaymentMethod = Literal["upi", "bank_transfer", "cash"]
 PaymentState = Literal["due", "late", "unpaid", "paid", "unconfirmed", "confirmed"]
 
 # Keeps these lists honest against the database's own allow-lists.
-assert set(PAYMENT_METHODS) == set(PaymentMethod.__args__)
-assert set(PAYMENT_STATES) == set(PaymentState.__args__)
+ensure_same_values("PaymentMethod", PaymentMethod, PAYMENT_METHODS)
+ensure_same_values("PaymentState", PaymentState, PAYMENT_STATES)
 
 
 class MarkPaidRequest(BaseModel):
@@ -111,7 +112,7 @@ def to_read(
 
 ReliabilityStatus = Literal["new_brand_no_history_yet", "has_payment_history"]
 
-assert {NO_HISTORY_YET, HAS_HISTORY} == set(ReliabilityStatus.__args__)
+ensure_same_values("ReliabilityStatus", ReliabilityStatus, (NO_HISTORY_YET, HAS_HISTORY))
 
 
 class BrandReliabilityRead(BaseModel):

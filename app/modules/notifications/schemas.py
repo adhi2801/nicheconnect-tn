@@ -6,6 +6,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.literals import ensure_same_values
 from app.modules.notifications.models import NOTIFICATION_TYPES
 
 NotificationType = Literal[
@@ -27,7 +28,7 @@ NotificationType = Literal[
     "payment_confirmed",
 ]
 
-assert set(NOTIFICATION_TYPES) == set(NotificationType.__args__)
+ensure_same_values("NotificationType", NotificationType, NOTIFICATION_TYPES)
 
 
 class NotificationRead(BaseModel):

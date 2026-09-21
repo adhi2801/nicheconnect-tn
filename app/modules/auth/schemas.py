@@ -15,7 +15,7 @@ from pydantic import (
 )
 from pydantic_core import PydanticCustomError
 
-from app.core.taxonomy import LANGUAGES, MAX_NICHES, NICHES
+from app.core.taxonomy import LANGUAGES, MAX_NICHES, Language, Niche
 from app.modules.auth.models.account import PHONE_PATTERN
 from app.modules.auth.models.creator import BIO_MAX_LENGTH, HANDLE_PATTERN
 
@@ -96,7 +96,7 @@ class AccountSummary(BaseModel):
 
 class LoginTokens(BaseModel):
     access_token: str
-    token_type: Literal["bearer"] = "bearer"
+    token_type: Literal["bearer"] = "bearer"  # noqa: S105 - OAuth scheme name, not a secret
     expires_in: int = Field(description="Access token lifetime in seconds", examples=[900])
     refresh_token: str
     refresh_expires_in: int = Field(
@@ -176,9 +176,9 @@ CreatorName = Annotated[str, Field(min_length=1, max_length=100, examples=["Priy
 Handle = Annotated[str, BeforeValidator(_normalize_handle), Field(examples=["priya.eats"])]
 CreatorCity = Annotated[str, Field(min_length=2, max_length=60, examples=["Coimbatore"])]
 CreatorNiches = Annotated[
-    list[Literal[NICHES]], Field(min_length=1, max_length=MAX_NICHES)
+    list[Niche], Field(min_length=1, max_length=MAX_NICHES)
 ]
-CreatorLanguages = Annotated[list[Literal[LANGUAGES]], Field(min_length=1)]
+CreatorLanguages = Annotated[list[Language], Field(min_length=1)]
 Bio = Annotated[str, Field(max_length=BIO_MAX_LENGTH)]
 
 
