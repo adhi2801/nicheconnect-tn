@@ -197,6 +197,27 @@ def test_a_payment_can_only_be_disputed_once(db):
         )
 
 
+def test_a_second_tap_that_got_past_the_check_is_refused_not_a_500(db, monkeypatch):
+    """Two taps on a bad connection can both pass the "already open?" check
+    before either has written. The unique index stops the second, and the
+    service must turn that into DisputeAlreadyOpen rather than let it reach
+    the caller as a 500. The thread race in test_payment_concurrency proves
+    this only when the threads happen to collide; this sets up the exact
+    moment instead, so it is proven on every run."""
+    payment = make_payment(db)
+    service.open_for_payment(
+        db, payment.id, opened_by="creator", reason=REASON, now=OPENED
+    )
+    db.commit()
+    # The second request checked before the first one's row existed.
+    monkeypatch.setattr(service, "get_for_payment", lambda db, payment_id: None)
+
+    with pytest.raises(DisputeAlreadyOpen):
+        service.open_for_payment(
+            db, payment.id, opened_by="brand", reason=REASON, now=OPENED
+        )
+
+
 def test_an_outsider_is_not_a_party(db):
     payment = make_payment(db)
 

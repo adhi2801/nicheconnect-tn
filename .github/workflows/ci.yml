@@ -102,8 +102,10 @@ jobs:
               if name.replace("\\", "/").endswith("service.py")
               and data["summary"]["percent_covered"] < 90
           }
+          # ::error lines become annotations on the pull request, so the
+          # file and the number are readable without opening the log.
           for name, percent in sorted(low.items()):
-              print(f"{name}: {percent}% (floor is 90%)")
+              print(f"::error file={name}::{name} is {percent}% covered; the floor is 90%")
           sys.exit(1 if low else 0)
           PY
 

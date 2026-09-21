@@ -127,6 +127,29 @@ def test_there_is_nothing_to_dispute_before_a_payment_exists(client, db, clock):
 # --- both sides, one record -----------------------------------------------
 
 
+def test_reading_a_dispute_nobody_raised_is_not_found(client, deal):
+    response = client.get(dispute_url(deal["memo_id"]), headers=deal["brand"].headers)
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "dispute_not_found"
+
+
+def test_both_sides_export_the_same_timeline(client, deal):
+    """D-028: either party can take the dated record anywhere, and both get
+    the same one, including the words the other side wrote."""
+    dispute_id = raise_dispute(client, deal).json()["id"]
+
+    exports = {
+        who: client.get("/api/v1/me/export", headers=deal[who].headers).json()["data"]
+        for who in ("creator", "brand")
+    }
+
+    for data in exports.values():
+        assert [row["id"] for row in data["disputes"]] == [dispute_id]
+        assert [row["kind"] for row in data["dispute_timeline"]] == ["opened"]
+    assert exports["creator"]["dispute_timeline"] == exports["brand"]["dispute_timeline"]
+
+
 def test_both_sides_read_the_same_record(client, deal):
     raise_dispute(client, deal)
 
