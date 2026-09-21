@@ -57,6 +57,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      # testing.md gate 2 (D-037). Cheapest checks first: a style or lint
+      # failure should not wait behind a database and the whole test suite.
+      - name: Lint
+        run: ruff check .
+
+      # testing.md gate 3 (D-037). Strict mode on app/, configured in
+      # pyproject.toml, where every relaxation is listed with its reason.
+      - name: Type check
+        run: mypy
+
       - name: Apply migrations
         run: alembic upgrade head
 
@@ -70,8 +80,29 @@ jobs:
       - name: Check models match the database
         run: alembic check
 
+      # Coverage is measured on the same run, and the 80% overall floor in
+      # pyproject.toml fails it (testing.md section 5).
       - name: Run tests
-        run: pytest -x --tb=short
+        run: pytest -x --tb=short --cov --cov-report=term
+
+      # The other half of testing.md section 5: every service.py at 90% or
+      # more. coverage.py has no per-file floor, so this reads its report.
+      - name: Check every service.py is at least 90% covered
+        run: |
+          coverage json -q -o coverage.json
+          python - <<'PY'
+          import json, sys
+          files = json.load(open("coverage.json"))["files"]
+          low = {
+              name: round(data["summary"]["percent_covered"], 1)
+              for name, data in files.items()
+              if name.replace("\\", "/").endswith("service.py")
+              and data["summary"]["percent_covered"] < 90
+          }
+          for name, percent in sorted(low.items()):
+              print(f"{name}: {percent}% (floor is 90%)")
+          sys.exit(1 if low else 0)
+          PY
 
       # testing.md gate 6. Reads the pinned set in requirements.txt, resolves
       # everything those pins drag in, and checks the lot against the Python

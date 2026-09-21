@@ -5,13 +5,11 @@ from datetime import timedelta
 import pytest
 from fastapi.testclient import TestClient
 
-from tests.modules.deal_memo.test_proof_api import (  # noqa: F401 — fixtures
+from tests.deal_flow import (
     LINK,
     MEMOS_URL,
     accepted_memo,
     brand_user,
-    client,
-    clock,
     creator_user,
 )
 

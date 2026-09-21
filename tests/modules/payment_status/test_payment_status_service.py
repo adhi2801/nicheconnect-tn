@@ -4,7 +4,7 @@ There is no status column: `due`, `late` and `unpaid` are worked out from the
 dates against today. These tests are what stands behind that decision.
 """
 
-from datetime import date, timedelta
+from datetime import UTC, date, timedelta
 
 import pytest
 
@@ -77,9 +77,9 @@ def test_a_dispute_holds_it_at_late_rather_than_unpaid():
 
 def test_marking_it_paid_stops_the_lateness_clock():
     """Paid on 30 September, read on 5 October: past due, but not late."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    paid_after_the_due_date = datetime(2026, 9, 30, 9, 0, tzinfo=timezone.utc)
+    paid_after_the_due_date = datetime(2026, 9, 30, 9, 0, tzinfo=UTC)
     marked = payment(
         method="upi", reference=RRN, marked_paid_at=paid_after_the_due_date
     )
@@ -343,10 +343,10 @@ def test_outstanding_puts_the_longest_wait_first(db):
 def test_approval_opens_the_record_on_the_indian_calendar_date(db):
     """A proof approved at 23:00 UTC is already tomorrow in Tamil Nadu, and
     the person waiting to be paid should not lose a day (D-030 point 1)."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     memo = make_memo(db)
-    late_evening_utc = datetime(2026, 9, 20, 23, 0, tzinfo=timezone.utc)
+    late_evening_utc = datetime(2026, 9, 20, 23, 0, tzinfo=UTC)
 
     record = service.open_on_approval(
         db, memo, approved_at=late_evening_utc, now=late_evening_utc
@@ -358,10 +358,10 @@ def test_approval_opens_the_record_on_the_indian_calendar_date(db):
 def test_opening_it_twice_returns_the_same_record(db):
     """Approval runs both when a brand approves and when the window lapses,
     so this has to be safe to run more than once."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     memo = make_memo(db)
-    moment = datetime(2026, 9, 20, 12, 0, tzinfo=timezone.utc)
+    moment = datetime(2026, 9, 20, 12, 0, tzinfo=UTC)
     first = service.open_on_approval(db, memo, approved_at=moment, now=moment)
     db.flush()
 
@@ -372,10 +372,10 @@ def test_opening_it_twice_returns_the_same_record(db):
 
 def test_approving_barter_work_opens_nothing(db):
     """Nothing is owed, so there is nothing to record (D-024)."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     memo = make_memo(db, fee_amount_paise=None)
-    moment = datetime(2026, 9, 20, 12, 0, tzinfo=timezone.utc)
+    moment = datetime(2026, 9, 20, 12, 0, tzinfo=UTC)
 
     assert service.open_on_approval(db, memo, approved_at=moment, now=moment) is None
 
@@ -402,14 +402,20 @@ def test_silence_from_the_creator_is_stated_rather_than_assumed():
 
 def test_the_confirmation_window_is_counted_in_india():
     """Marked at 23:00 UTC is already tomorrow for the person being paid."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    late_evening_utc = datetime(2026, 9, 17, 23, 0, tzinfo=timezone.utc)
+    late_evening_utc = datetime(2026, 9, 17, 23, 0, tzinfo=UTC)
     marked = payment(
         method="upi", reference=RRN, marked_paid_at=late_evening_utc
     )
 
     assert service.confirmation_deadline(marked) == date(2026, 9, 25)
+
+
+def test_an_unpaid_record_has_no_confirmation_deadline():
+    """Nobody can be late confirming money nobody said was sent."""
+    with pytest.raises(ValueError, match="marked as paid"):
+        service.confirmation_deadline(payment())
 
 
 def test_a_late_confirmation_is_still_a_confirmation(db):

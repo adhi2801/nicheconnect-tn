@@ -14,7 +14,7 @@ rows and delete them again.
 
 import threading
 from collections.abc import Callable, Iterator
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any
 
 import pytest
@@ -35,7 +35,7 @@ from app.modules.payment_status.exceptions import (
 )
 from app.modules.payment_status.models import PaymentStatus
 
-NOW = datetime(2026, 9, 21, 9, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 9, 21, 9, 0, tzinfo=UTC)
 APPROVED_ON = date(2026, 9, 21)
 RRN = "412345678901"
 AT_ONCE = 4

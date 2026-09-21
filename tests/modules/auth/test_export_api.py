@@ -6,7 +6,7 @@ from datetime import datetime
 import pytest
 from fastapi.testclient import TestClient
 
-import app.db.models  # noqa: F401  — registers every table on Base.metadata
+import app.db.models  # registers every table on Base.metadata, as the app does
 from app.core.export import (
     MAX_ROWS_PER_SECTION,
     ForbiddenExportField,
@@ -356,7 +356,7 @@ def test_timestamps_come_out_as_utc_with_a_z():
 
 def test_a_naive_timestamp_is_read_as_utc_not_local_time():
     """Reading it as local time would shift every date in the file."""
-    naive = datetime(2026, 9, 17, 12, 0)
+    naive = datetime(2026, 9, 17, 12, 0)  # noqa: DTZ001 - naive on purpose; it is the input under test
 
     assert to_json_value(naive) == "2026-09-17T12:00:00Z"
 

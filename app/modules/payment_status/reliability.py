@@ -40,6 +40,7 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.clock import india_date
 from app.modules.auth.models.brand import Brand
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.models import DealMemo
@@ -52,7 +53,6 @@ from app.modules.payment_status.service import (
     UNCONFIRMED,
     UNPAID,
     derive_state,
-    india_date,
 )
 
 # Below this, the figures are withheld rather than shown with a caveat
@@ -119,11 +119,18 @@ def _days_to_pay(payment: PaymentStatus) -> int:
     started the clock, so it answers the question a creator actually asks:
     how long does this brand take?
     """
-    return (india_date(payment.marked_paid_at) - india_date(payment.created_at)).days
+    return (_paid_on(payment) - india_date(payment.created_at)).days
 
 
 def _paid_on_time(payment: PaymentStatus) -> bool:
-    return india_date(payment.marked_paid_at) <= payment.due_on
+    return _paid_on(payment) <= payment.due_on
+
+
+def _paid_on(payment: PaymentStatus) -> date:
+    """The Tamil Nadu date the brand says it paid. Only for paid records."""
+    if payment.marked_paid_at is None:
+        raise ValueError("Only a payment marked as paid has a paid date")
+    return india_date(payment.marked_paid_at)
 
 
 def build_record(

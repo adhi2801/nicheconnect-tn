@@ -13,7 +13,8 @@ never sees the response it would need to store.
 Requests without the header behave exactly as before.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 from fastapi import Request, Response
 from fastapi.routing import APIRoute
@@ -83,7 +84,7 @@ def _to_stored(response: Response) -> StoredResponse:
     }
     return StoredResponse(
         status=response.status_code,
-        body=response.body.decode("utf-8"),
+        body=bytes(response.body).decode("utf-8"),
         headers=headers,
     )
 
@@ -103,6 +104,8 @@ def _replay(stored: StoredResponse) -> Response:
 def _answer_for(claim: Claim) -> Response:
     """Turn a claim that isn't "proceed" into the right answer."""
     if claim.outcome is Outcome.REPLAY:
+        if claim.response is None:
+            raise RuntimeError("A replay claim always carries the stored response")
         return _replay(claim.response)
     if claim.outcome is Outcome.IN_FLIGHT:
         raise IdempotentRequestInFlight(
@@ -145,7 +148,7 @@ UNAVAILABLE_RESPONSE = {
 class IdempotentRoute(APIRoute):
     """Honours an Idempotency-Key header on the routes of its router."""
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         # Put the header in the API documentation for exactly the routes that
         # honour it. FastAPI concatenates list values here, so a route's own
@@ -156,7 +159,7 @@ class IdempotentRoute(APIRoute):
             extra["responses"] = {**UNAVAILABLE_RESPONSE, **extra.get("responses", {})}
             self.openapi_extra = extra
 
-    def get_route_handler(self):
+    def get_route_handler(self) -> Callable[[Request], Coroutine[Any, Any, Response]]:
         run_endpoint = super().get_route_handler()
 
         async def handler(request: Request) -> Response:

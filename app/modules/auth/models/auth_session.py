@@ -17,7 +17,7 @@ from app.db.base import Base
 def refresh_token_ttl() -> timedelta:
     """How long a refresh token lasts. One source: settings (D-008)."""
     return timedelta(days=settings.refresh_token_expire_days)
-TOKEN_HASH_PATTERN = r"^[0-9a-f]{64}$"
+TOKEN_HASH_PATTERN = r"^[0-9a-f]{64}$"  # noqa: S105 - a format check, not a secret
 
 
 class AuthSession(Base):

@@ -20,7 +20,7 @@ rules are enforced here rather than trusted to each caller:
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any
 
 # Enough for any pilot account, small enough that one request cannot exhaust
@@ -67,8 +67,8 @@ def to_json_value(value: Any) -> Any:
         # Columns are TIMESTAMPTZ, so this is normally already aware. A naive
         # value is read as UTC rather than as the server's local time, which
         # would silently shift every timestamp in the file.
-        moment = value if value.tzinfo else value.replace(tzinfo=timezone.utc)
-        return moment.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+        moment = value if value.tzinfo else value.replace(tzinfo=UTC)
+        return moment.astimezone(UTC).isoformat().replace("+00:00", "Z")
     if isinstance(value, date):
         return value.isoformat()
     if isinstance(value, (list, tuple)):

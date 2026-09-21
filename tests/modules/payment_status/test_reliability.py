@@ -6,7 +6,7 @@ it is built carelessly.
 """
 
 import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -15,7 +15,7 @@ from app.modules.payment_status.models import PaymentStatus
 
 BRAND = uuid.uuid4()
 RRN = "412345678901"
-APPROVED = datetime(2026, 9, 1, 9, 0, tzinfo=timezone.utc)
+APPROVED = datetime(2026, 9, 1, 9, 0, tzinfo=UTC)
 DUE_ON = date(2026, 9, 8)  # approval + the default 7-day window
 TODAY = date(2026, 9, 20)
 
@@ -37,14 +37,14 @@ def paid_on(day: int, **overrides) -> PaymentStatus:
     return record(
         method="upi",
         reference=RRN,
-        marked_paid_at=datetime(2026, 9, day, 10, 0, tzinfo=timezone.utc),
+        marked_paid_at=datetime(2026, 9, day, 10, 0, tzinfo=UTC),
         **overrides,
     )
 
 
 def never_paid(due_on: date = date(2026, 8, 1)) -> PaymentStatus:
     """Long past due and past the silence window: an unpaid record."""
-    return record(due_on=due_on, created_at=datetime(2026, 7, 25, 9, 0, tzinfo=timezone.utc))
+    return record(due_on=due_on, created_at=datetime(2026, 7, 25, 9, 0, tzinfo=UTC))
 
 
 def build(payments, today=TODAY):
@@ -52,6 +52,13 @@ def build(payments, today=TODAY):
 
 
 # --- the floor ------------------------------------------------------------
+
+
+def test_a_paid_date_is_never_invented_for_an_unpaid_record():
+    # Speed and on-time figures read the paid date. Asking for one on a
+    # record nobody marked paid is a bug in the caller, and must say so.
+    with pytest.raises(ValueError, match="marked as paid"):
+        reliability._paid_on(never_paid())
 
 
 def test_a_brand_with_no_deals_has_nothing_to_report():
@@ -185,7 +192,7 @@ def test_a_payment_the_creator_never_confirmed_still_counts_for_the_brand():
 
 
 def test_a_confirmed_payment_counts(db=None):
-    confirmed = paid_on(5, confirmed_at=datetime(2026, 9, 6, 9, 0, tzinfo=timezone.utc))
+    confirmed = paid_on(5, confirmed_at=datetime(2026, 9, 6, 9, 0, tzinfo=UTC))
 
     result = build([confirmed, paid_on(6), paid_on(7)])
 
@@ -230,7 +237,7 @@ def test_the_indian_calendar_decides_whether_a_payment_was_on_time():
     recorded it as on time, quietly crediting the brand with a day it did
     not have and telling creators something untrue.
     """
-    just_past_midnight_in_india = datetime(2026, 9, 8, 19, 0, tzinfo=timezone.utc)
+    just_past_midnight_in_india = datetime(2026, 9, 8, 19, 0, tzinfo=UTC)
     missed_it = record(
         method="upi", reference=RRN, marked_paid_at=just_past_midnight_in_india
     )

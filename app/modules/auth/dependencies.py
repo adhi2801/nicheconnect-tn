@@ -1,7 +1,7 @@
 """FastAPI dependencies for the auth module."""
 
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import Depends, Request
@@ -36,7 +36,7 @@ def idempotency_identity(request: Request) -> str | None:
 
 def get_now() -> datetime:
     """The current UTC time. Tests override this to control expiry and limits."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def get_current_account(

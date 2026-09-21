@@ -1,7 +1,7 @@
 """Disputes: a dated record of what each side said, and never a verdict."""
 
 import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
@@ -16,7 +16,7 @@ from app.modules.disputes.models import Dispute
 from app.modules.payment_status import service as payments
 from tests.modules.deal_memo.test_deal_memo_model import build_memo
 
-OPENED = datetime(2026, 9, 10, 9, 0, tzinfo=timezone.utc)
+OPENED = datetime(2026, 9, 10, 9, 0, tzinfo=UTC)
 REASON = "The brand marked this paid on 8 September but nothing has reached my account."
 
 
@@ -86,7 +86,7 @@ def test_the_response_window_is_seven_days():
 
 def test_the_clock_starts_on_the_indian_calendar():
     """Raised at 23:00 UTC is already tomorrow for the person answering."""
-    late_evening = dispute(created_at=datetime(2026, 9, 10, 23, 0, tzinfo=timezone.utc))
+    late_evening = dispute(created_at=datetime(2026, 9, 10, 23, 0, tzinfo=UTC))
 
     assert service.unresolved_on(late_evening) == date(2026, 10, 11)
 

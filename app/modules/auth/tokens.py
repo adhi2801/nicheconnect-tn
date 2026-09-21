@@ -8,7 +8,8 @@ import hmac
 import secrets
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import jwt
 
@@ -19,7 +20,7 @@ from app.modules.auth.models.account import ACCOUNT_ROLES
 ALGORITHM = "HS256"
 # Key ID in the token header, so the signing key can be rotated later.
 CURRENT_KEY_ID = "k1"
-ACCESS_TOKEN_TYPE = "access"
+ACCESS_TOKEN_TYPE = "access"  # noqa: S105 - a claim value, not a secret
 OTP_CODE_DIGITS = 6
 REFRESH_TOKEN_BYTES = 32
 
@@ -51,7 +52,7 @@ def create_access_token(account_id: uuid.UUID, role: str, now: datetime) -> tupl
     return token, expires_at
 
 
-def _verified_claims(token: str) -> dict:
+def _verified_claims(token: str) -> dict[str, Any]:
     """Check a token's signature and shape. Expiry is the caller's business.
 
     Split out so that scoping (which does not care whether the token has
@@ -77,7 +78,7 @@ def _verified_claims(token: str) -> dict:
             },
         )
         uuid.UUID(claims["sub"])
-        datetime.fromtimestamp(int(claims["exp"]), tz=timezone.utc)
+        datetime.fromtimestamp(int(claims["exp"]), tz=UTC)
     except (jwt.PyJWTError, ValueError, TypeError) as exc:
         raise InvalidToken() from exc
 
@@ -93,7 +94,7 @@ def decode_access_token(token: str, now: datetime) -> AccessTokenClaims:
     type, unknown role, malformed claims, or expired at `now`).
     """
     claims = _verified_claims(token)
-    expires_at = datetime.fromtimestamp(int(claims["exp"]), tz=timezone.utc)
+    expires_at = datetime.fromtimestamp(int(claims["exp"]), tz=UTC)
     if now >= expires_at:
         raise InvalidToken()
     return AccessTokenClaims(

@@ -124,6 +124,8 @@ def unpaid_date_for(due_on: date) -> date:
 
 def confirmation_deadline(payment: PaymentStatus) -> date:
     """The day after which silence from the creator is stated as silence."""
+    if payment.marked_paid_at is None:
+        raise ValueError("Only a payment marked as paid has a confirmation deadline")
     return india_date(payment.marked_paid_at) + timedelta(
         days=CONFIRMATION_WINDOW_DAYS
     )

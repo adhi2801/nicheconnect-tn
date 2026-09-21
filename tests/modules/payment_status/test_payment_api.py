@@ -5,20 +5,17 @@ make; "it arrived" is a fact only the creator can confirm. Neither side can
 make the other's, and these tests are what hold that apart.
 """
 
-from datetime import date, timedelta
+from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.modules.payment_status import service
-from tests.modules.deal_memo.test_proof_api import (  # noqa: F401 — fixtures
+from tests.deal_flow import (
     LINK,
     MEMOS_URL,
-    Clock,
     accepted_memo,
     brand_user,
-    client,
-    clock,
     creator_user,
 )
 
@@ -304,9 +301,9 @@ def test_marking_it_paid_twice_from_one_tap_records_it_once(client, deal):
     A retry must not become a second claim, nor come back as a confusing
     conflict about something the brand already did.
     """
-    from app.core.idempotency import HEADER, RedisIdempotencyStore, set_store
-
     import redis
+
+    from app.core.idempotency import HEADER, RedisIdempotencyStore, set_store
 
     store_client = redis.Redis.from_url("redis://localhost:6379/2", decode_responses=True)
     store_client.flushdb()

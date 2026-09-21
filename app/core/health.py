@@ -60,7 +60,8 @@ def check_redis() -> CheckResult:
             try:
                 client.close()
             except Exception:
-                pass
+                # Cleanup only: the probe already has its answer.
+                logger.debug("readiness.redis_close_failed", exc_info=True)
 
 
 def run_readiness_checks() -> list[CheckResult]:

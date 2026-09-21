@@ -6,7 +6,7 @@ An account has exactly one profile, and its role decides which kind.
 
 import uuid
 from datetime import datetime
-from typing import TypeVar
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -20,8 +20,6 @@ from app.modules.auth.exceptions import (
 )
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
-
-Profile = TypeVar("Profile", Brand, Creator)
 
 # Which database rule broke, and the error a user should see.
 CONFLICTS: tuple[tuple[str, type], ...] = (
@@ -41,11 +39,15 @@ def _raise_for_conflict(error: IntegrityError) -> None:
     raise error
 
 
-def find_profile(db: Session, model: type[Profile], account_id: uuid.UUID) -> Profile | None:
+def find_profile[Profile: (Brand, Creator)](
+    db: Session, model: type[Profile], account_id: uuid.UUID
+) -> Profile | None:
     return db.scalars(select(model).where(model.account_id == account_id)).first()
 
 
-def get_profile(db: Session, model: type[Profile], account_id: uuid.UUID) -> Profile:
+def get_profile[Profile: (Brand, Creator)](
+    db: Session, model: type[Profile], account_id: uuid.UUID
+) -> Profile:
     """The account's profile, or ProfileNotFound."""
     profile = find_profile(db, model, account_id)
     if profile is None:
@@ -53,11 +55,11 @@ def get_profile(db: Session, model: type[Profile], account_id: uuid.UUID) -> Pro
     return profile
 
 
-def create_profile(
+def create_profile[Profile: (Brand, Creator)](
     db: Session,
     model: type[Profile],
     account_id: uuid.UUID,
-    fields: dict,
+    fields: dict[str, Any],
     now: datetime,
 ) -> Profile:
     """Create the account's one profile.
@@ -80,8 +82,8 @@ def create_profile(
     return profile
 
 
-def update_profile(
-    db: Session, profile: Profile, changes: dict, now: datetime
+def update_profile[Profile: (Brand, Creator)](
+    db: Session, profile: Profile, changes: dict[str, Any], now: datetime
 ) -> Profile:
     """Change the account's own profile."""
     for field, value in changes.items():

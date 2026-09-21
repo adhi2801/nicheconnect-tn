@@ -1,12 +1,13 @@
 from http import HTTPStatus
 
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from slowapi.middleware import SlowAPIMiddleware
 
 from app.core.body_limit import BodyLimitMiddleware
 from app.core.errors import problem_response, register_error_handlers
-from app.core.idempotent_route import set_identity_resolver
 from app.core.health import run_readiness_checks
+from app.core.idempotent_route import set_identity_resolver
 from app.core.rate_limit import limiter
 from app.core.request_id import RequestIdMiddleware
 from app.core.security_headers import SecurityHeadersMiddleware
@@ -73,8 +74,9 @@ def healthz() -> dict[str, str]:
         "Reports whether the database and Redis are reachable. Returns 503 "
         "while either is down, so a deployment platform stops sending traffic."
     ),
+    response_model=None,
 )
-def readyz(request: Request):
+def readyz(request: Request) -> JSONResponse | dict[str, object]:
     """Readiness check — can this process actually serve requests?"""
     checks = run_readiness_checks()
     results = {check.name: "ok" if check.ok else "unavailable" for check in checks}

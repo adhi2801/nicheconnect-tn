@@ -16,18 +16,20 @@ import time
 # Run as `python scripts/measure_performance.py` from the project root.
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from fastapi.testclient import TestClient  # noqa: E402
-from sqlalchemy import select, text  # noqa: E402
+from datetime import UTC
 
-from app.core.config import settings  # noqa: E402
-from app.core.rate_limit import limiter  # noqa: E402
-from app.db.session import SessionLocal  # noqa: E402
-from app.main import app  # noqa: E402
-from app.modules.auth.dependencies import get_now  # noqa: E402
-from app.modules.auth.models.brand import Brand  # noqa: E402
-from app.modules.auth.models.creator import Creator  # noqa: E402
-from app.modules.auth.tokens import create_access_token  # noqa: E402
-from app.modules.campaigns.models import Application, Campaign  # noqa: E402
+from fastapi.testclient import TestClient
+from sqlalchemy import select, text
+
+from app.core.config import settings
+from app.core.rate_limit import limiter
+from app.db.session import SessionLocal
+from app.main import app
+from app.modules.auth.dependencies import get_now
+from app.modules.auth.models.brand import Brand
+from app.modules.auth.models.creator import Creator
+from app.modules.auth.tokens import create_access_token
+from app.modules.campaigns.models import Campaign
 
 READ_BUDGET_MS = 300
 WRITE_BUDGET_MS = 500
@@ -122,9 +124,9 @@ def main() -> int:
         return 1
 
     # A fixed clock keeps tokens valid for the whole run.
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     app.dependency_overrides[get_now] = lambda: now
     brand_token, _ = create_access_token(brand.account_id, "brand", now)
     creator_token, _ = create_access_token(creator.account_id, "creator", now)

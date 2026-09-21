@@ -13,7 +13,6 @@ from datetime import datetime, timedelta
 from sqlalchemy import select, text, update
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.modules.auth.exceptions import (
     InvalidToken,
     OtpInvalid,
@@ -279,7 +278,7 @@ def refresh_session(db: Session, refresh_token: str, now: datetime) -> LoginResu
 
     auth_session.used_at = now
     auth_session.updated_at = now
-    account = db.get(Account, auth_session.account_id)
+    account = db.get_one(Account, auth_session.account_id)
     result = _issue_session(db, account, auth_session.family_id, now)
     db.commit()
     return result

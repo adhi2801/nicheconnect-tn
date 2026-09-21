@@ -11,7 +11,11 @@ from app.main import app
 from app.modules.auth.dependencies import get_now
 from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.sender import FakeOtpSender, get_otp_sender
-from app.modules.auth.tokens import decode_access_token, hash_refresh_token, new_refresh_token
+from app.modules.auth.tokens import (
+    decode_access_token,
+    hash_refresh_token,
+    new_refresh_token,
+)
 from tests.factories import FIXED_NOW, fake_phone
 
 REQUEST_URL = "/api/v1/auth/otp/request"

@@ -261,9 +261,11 @@ def test_failure_while_logging_in_leaves_no_partial_account(db):
     phone = fake_phone()
     pending = request_otp(db, phone, FIXED_NOW)
 
-    with patch("app.modules.auth.service.create_access_token", side_effect=RuntimeError("boom")):
-        with pytest.raises(RuntimeError):
-            verify_otp(db, phone, pending.code, "creator", FIXED_NOW)
+    with (
+        patch("app.modules.auth.service.create_access_token", side_effect=RuntimeError("boom")),
+        pytest.raises(RuntimeError),
+    ):
+        verify_otp(db, phone, pending.code, "creator", FIXED_NOW)
     db.rollback()
 
     assert db.scalar(select(Account).where(Account.phone == phone)) is None

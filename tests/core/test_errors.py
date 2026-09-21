@@ -56,7 +56,7 @@ def assert_problem(response, status: int, code: str) -> dict:
     assert response.status_code == status
     assert response.headers["content-type"] == "application/problem+json"
     body = response.json()
-    assert PROBLEM_KEYS <= body.keys()
+    assert body.keys() >= PROBLEM_KEYS
     assert body["status"] == status
     assert body["code"] == code
     assert body["type"] == "https://nicheconnect.in/errors/" + code.replace("_", "-")

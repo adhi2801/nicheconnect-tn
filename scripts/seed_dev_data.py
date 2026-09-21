@@ -14,20 +14,20 @@ import random
 import sys
 import time
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 # Run as `python scripts/seed_dev_data.py` from the project root.
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from sqlalchemy import delete, func, select  # noqa: E402
+from sqlalchemy import delete, func, select
 
-from app.core.config import settings  # noqa: E402
-from app.core.taxonomy import NICHES  # noqa: E402
-from app.db.session import SessionLocal  # noqa: E402
-from app.modules.auth.models.account import Account  # noqa: E402
-from app.modules.auth.models.brand import Brand  # noqa: E402
-from app.modules.auth.models.creator import Creator  # noqa: E402
-from app.modules.campaigns.models import (  # noqa: E402
+from app.core.config import settings
+from app.core.taxonomy import NICHES
+from app.db.session import SessionLocal
+from app.modules.auth.models.account import Account
+from app.modules.auth.models.brand import Brand
+from app.modules.auth.models.creator import Creator
+from app.modules.campaigns.models import (
     CAMPAIGN_TYPES,
     REJECTION_REASONS,
     Application,
@@ -253,8 +253,8 @@ def main() -> int:
         )
         return 1
 
-    rng = random.Random(args.seed)
-    now = datetime.now(timezone.utc)
+    rng = random.Random(args.seed)  # noqa: S311 - repeatable fake data, not security
+    now = datetime.now(UTC)
     started = time.perf_counter()
 
     with SessionLocal() as db:

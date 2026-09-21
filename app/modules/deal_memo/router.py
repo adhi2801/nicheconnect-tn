@@ -1,22 +1,34 @@
 """Deal memo endpoints (D-024 to D-027). HTTP only: rules live in service.py."""
 
 import uuid
+from collections.abc import Callable
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
-from app.core.errors import problem_doc
-from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
+from app.core.errors import ResponseDocs, problem_doc
+from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page, Slice
 from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.campaigns.dependencies import BrandApplication, CurrentCreatorProfile
 from app.modules.campaigns.service import get_brand_for_account, get_creator_for_account
 from app.modules.deal_memo import service
-from app.modules.deal_memo.dependencies import BrandMemo, CreatorMemo, visible_memo_for_account
-from app.modules.deal_memo.schemas import ChangeRequest, MemoCreate, MemoRead, MemoStatus, MemoUpdate
+from app.modules.deal_memo.dependencies import (
+    BrandMemo,
+    CreatorMemo,
+    visible_memo_for_account,
+)
+from app.modules.deal_memo.models import DealMemo
+from app.modules.deal_memo.schemas import (
+    ChangeRequest,
+    MemoCreate,
+    MemoRead,
+    MemoStatus,
+    MemoUpdate,
+)
 
 WRITE_LIMIT = "30 per minute"
 READ_LIMIT = "60 per minute"
@@ -27,14 +39,14 @@ Limit = Annotated[int, Query(ge=1, le=MAX_LIMIT, description="Rows per page")]
 Cursor = Annotated[str | None, Query(description="From a previous page's next_cursor")]
 StatusFilter = Annotated[MemoStatus | None, Query(alias="status")]
 
-_COMMON_ERRORS = {
+_COMMON_ERRORS: ResponseDocs = {
     401: problem_doc("No access token, or it is invalid or expired"),
     403: problem_doc("This account type cannot use this endpoint"),
     429: problem_doc("Too many requests; see the Retry-After header"),
 }
 
 
-def _page(result) -> Page[MemoRead]:
+def _page(result: Slice[DealMemo]) -> Page[MemoRead]:
     return Page[MemoRead](
         items=[MemoRead.model_validate(row) for row in result.rows],
         next_cursor=result.next_cursor,
@@ -160,7 +172,9 @@ def update_memo(
     return MemoRead.model_validate(service.update_memo(db, memo, changes, now))
 
 
-def _brand_move(action: str, new_status: str, summary: str, description: str):
+def _brand_move(
+    action: str, new_status: str, summary: str, description: str
+) -> Callable[..., Any]:
     @router.post(
         f"/{{memo_id}}/{action}",
         response_model=MemoRead,
@@ -204,7 +218,9 @@ cancel_memo_as_brand = _brand_move(
 )
 
 
-def _creator_move(action: str, new_status: str, summary: str, description: str):
+def _creator_move(
+    action: str, new_status: str, summary: str, description: str
+) -> Callable[..., Any]:
     @router.post(
         f"/{{memo_id}}/{action}",
         response_model=MemoRead,

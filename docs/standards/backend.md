@@ -118,7 +118,7 @@ One error shape for every non-2xx response (RFC 9457 Problem Details):
 ## 10. Code style
 
 - Python 3.12, type hints on every function signature and return value.
-- Formatting and linting: ruff (format + lint). Type checking: mypy or pyright in strict mode for `app/`. **(decision)** adopting these tools, as each is a new dependency.
+- Formatting and linting: ruff (format + lint). Type checking: mypy in strict mode for `app/`. Adopted in D-037, configured in `pyproject.toml`, and enforced in CI.
 - Functions do one thing; about 40 lines is a smell worth questioning.
 - Names say what things are: `get_open_campaigns_for_brand`, not `get_data`.
 - Docstrings on every public service function: what it does, what it raises.

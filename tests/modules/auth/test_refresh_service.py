@@ -6,7 +6,11 @@ from sqlalchemy import select
 from app.modules.auth.exceptions import InvalidToken
 from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.service import logout, refresh_session, request_otp, verify_otp
-from app.modules.auth.tokens import decode_access_token, hash_refresh_token, new_refresh_token
+from app.modules.auth.tokens import (
+    decode_access_token,
+    hash_refresh_token,
+    new_refresh_token,
+)
 from tests.factories import FIXED_NOW, fake_phone
 
 LATER = FIXED_NOW + timedelta(minutes=5)

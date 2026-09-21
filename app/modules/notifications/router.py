@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Path, Query, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.errors import problem_doc
+from app.core.errors import ResponseDocs, problem_doc
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
 from app.core.rate_limit import limiter
 from app.db.session import get_db
@@ -23,7 +23,7 @@ READ_LIMIT = "60 per minute"
 
 router = APIRouter(prefix="/api/v1/notifications", tags=["notifications"])
 
-_COMMON_ERRORS = {
+_COMMON_ERRORS: ResponseDocs = {
     401: problem_doc("No access token, or it is invalid or expired"),
     429: problem_doc("Too many requests; see the Retry-After header"),
 }

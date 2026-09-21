@@ -5,15 +5,16 @@ the campaigns module.
 """
 
 import uuid
+from collections.abc import Callable
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
-from app.core.errors import problem_doc
+from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
-from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
+from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page, Slice
 from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.modules.auth.dependencies import get_now
@@ -25,6 +26,7 @@ from app.modules.campaigns.dependencies import (
     OwnedCampaign,
     VisibleApplication,
 )
+from app.modules.campaigns.models import Application
 from app.modules.campaigns.schemas import (
     ApplicationCreate,
     ApplicationRead,
@@ -43,14 +45,14 @@ Limit = Annotated[int, Query(ge=1, le=MAX_LIMIT, description="Rows per page")]
 Cursor = Annotated[str | None, Query(description="From a previous page's next_cursor")]
 StatusFilter = Annotated[ApplicationStatus | None, Query(alias="status")]
 
-_COMMON_ERRORS = {
+_COMMON_ERRORS: ResponseDocs = {
     401: problem_doc("No access token, or it is invalid or expired"),
     403: problem_doc("This account type cannot use this endpoint"),
     429: problem_doc("Too many requests; see the Retry-After header"),
 }
 
 
-def _page(result) -> Page[ApplicationRead]:
+def _page(result: Slice[Application]) -> Page[ApplicationRead]:
     return Page[ApplicationRead](
         items=[ApplicationRead.model_validate(row) for row in result.rows],
         next_cursor=result.next_cursor,
@@ -165,7 +167,9 @@ def read_application(
     return ApplicationRead.model_validate(application)
 
 
-def _brand_decision(action: str, new_status: str, summary: str, description: str):
+def _brand_decision(
+    action: str, new_status: str, summary: str, description: str
+) -> Callable[..., Any]:
     """Shortlist and accept: the brand moves one of its applications on."""
 
     @router.post(

@@ -4,11 +4,9 @@ We never hold the money, so this row is the only record that it moved. The
 constraints here are what stop it becoming a record of something impossible.
 """
 
-import uuid
 from datetime import date, timedelta
 
 import pytest
-from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.db.base import Base

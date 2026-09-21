@@ -2,7 +2,7 @@
 
 import uuid
 from collections.abc import Iterator
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient

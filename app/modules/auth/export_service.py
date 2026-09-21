@@ -32,8 +32,8 @@ from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns import service as campaigns
-from app.modules.disputes import service as disputes
 from app.modules.deal_memo import service as deal_memos
+from app.modules.disputes import service as disputes
 from app.modules.notifications import service as notifications
 from app.modules.payment_status import service as payments
 

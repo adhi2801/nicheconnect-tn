@@ -11,13 +11,14 @@ what the two sides say happened.
 """
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Request
 from sqlalchemy.orm import Session
 
-from app.core.errors import problem_doc
+from app.core.clock import india_date
+from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.rate_limit import limiter
 from app.db.session import get_db
@@ -30,6 +31,7 @@ from app.modules.deal_memo.dependencies import (
 from app.modules.disputes import service as disputes
 from app.modules.payment_status import service
 from app.modules.payment_status.exceptions import PaymentRecordNotFound
+from app.modules.payment_status.models import PaymentStatus
 from app.modules.payment_status.schemas import MarkPaidRequest, PaymentRead, to_read
 
 WRITE_LIMIT = "30 per minute"
@@ -44,7 +46,7 @@ router = APIRouter(
 
 MemoId = Annotated[uuid.UUID, Path(description="The memo's id")]
 
-_COMMON_ERRORS = {
+_COMMON_ERRORS: ResponseDocs = {
     401: problem_doc("No access token, or it is invalid or expired"),
     403: problem_doc("This account type cannot use this endpoint"),
     404: problem_doc("No such memo, or it is not yours, or it has no payment record"),
@@ -52,7 +54,7 @@ _COMMON_ERRORS = {
 }
 
 
-def _disputed(db: Session, payment, today) -> bool:
+def _disputed(db: Session, payment: PaymentStatus, today: date) -> bool:
     """Whether somebody is actively arguing about this payment.
 
     `today` is passed in rather than read from the machine, so a test that
@@ -62,7 +64,7 @@ def _disputed(db: Session, payment, today) -> bool:
     return dispute is not None and disputes.is_open(dispute, today)
 
 
-def _payment_or_404(db: Session, memo_id: uuid.UUID):
+def _payment_or_404(db: Session, memo_id: uuid.UUID) -> PaymentStatus:
     payment = service.get_for_memo(db, memo_id)
     if payment is None:
         raise PaymentRecordNotFound(
@@ -94,7 +96,7 @@ def read_payment(
     """Either party may read it. Nobody else can."""
     memo = visible_memo_for_account(db, memo_id, account.id, account.role)
     payment = _payment_or_404(db, memo.id)
-    today = service.india_date(now)
+    today = india_date(now)
     return to_read(payment, today, has_open_dispute=_disputed(db, payment, today))
 
 
@@ -127,7 +129,7 @@ def mark_paid(
     service.mark_paid(
         db, payment, method=body.method, reference=body.reference, now=now
     )
-    today = service.india_date(now)
+    today = india_date(now)
     return to_read(payment, today, has_open_dispute=_disputed(db, payment, today))
 
 
@@ -157,5 +159,5 @@ def confirm_received(
     """Only the creator can say the money arrived."""
     payment = _payment_or_404(db, memo.id)
     service.confirm_received(db, payment, now=now)
-    today = service.india_date(now)
+    today = india_date(now)
     return to_read(payment, today, has_open_dispute=_disputed(db, payment, today))

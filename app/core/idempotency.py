@@ -32,16 +32,19 @@ error into the right answer; it is not the thing keeping the data honest.
 
 import hashlib
 import json
+import logging
 import re
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from http import HTTPStatus
-from typing import Any
+from typing import Any, cast
 
 import redis
 
 from app.core.errors import DomainError
 from app.core.redis_client import get_redis
+
+logger = logging.getLogger(__name__)
 
 HEADER = "Idempotency-Key"
 
@@ -91,7 +94,7 @@ class IdempotencyStoreUnavailable(DomainError):
     title = "Can't guarantee this request runs only once. Please try again"
 
 
-class Outcome(str, Enum):
+class Outcome(StrEnum):
     PROCEED = "proceed"
     REPLAY = "replay"
     IN_FLIGHT = "in_flight"
@@ -164,7 +167,8 @@ class RedisIdempotencyStore:
         try:
             if self.client.set(key, marker, nx=True, ex=IN_FLIGHT_TTL_SECONDS):
                 return Claim(Outcome.PROCEED)
-            raw = self.client.get(key)
+            # redis-py types a sync client's reply as maybe-awaitable; it is not.
+            raw = cast("bytes | None", self.client.get(key))
         except redis.RedisError as error:
             raise IdempotencyStoreUnavailable() from error
 
@@ -204,7 +208,9 @@ class RedisIdempotencyStore:
         try:
             self.client.delete(key)
         except redis.RedisError:
-            pass
+            # Worth knowing about, not worth failing for: the key expires by
+            # itself. Never log the key; it carries the account id.
+            logger.warning("idempotency.release_failed", exc_info=True)
 
 
 _store: RedisIdempotencyStore | None = None

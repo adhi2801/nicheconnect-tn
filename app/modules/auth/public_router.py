@@ -94,14 +94,14 @@ def read_public_profile(
     handle: str,
     if_none_match: Annotated[str | None, Header()] = None,
     db: Session = Depends(get_db),
-):
+) -> Response | PublicCreatorRead:
     """Anyone may call this. Nothing here depends on who is asking."""
     try:
         normalised = _normalize_handle(handle)
     except Exception:
         # An impossible handle is simply not found: no hint about what a valid
         # one looks like, and no stack trace for a stranger.
-        raise ProfileNotFound()
+        raise ProfileNotFound() from None
 
     creator = db.scalars(select(Creator).where(Creator.handle == normalised)).first()
     if creator is None or not passport_is_public(creator):

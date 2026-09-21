@@ -17,12 +17,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Request
 from sqlalchemy.orm import Session
 
+from app.core.clock import india_date
 from app.core.errors import problem_doc
 from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.auth.exceptions import ProfileNotFound
-from app.modules.payment_status import reliability, service
+from app.modules.payment_status import reliability
 from app.modules.payment_status.schemas import BrandReliabilityRead, to_reliability_read
 
 READ_LIMIT = "60 per minute"
@@ -62,5 +63,5 @@ def read_brand_reliability(
     """Any signed-in account may read any brand's record."""
     if not reliability.brand_exists(db, brand_id):
         raise ProfileNotFound()
-    record = reliability.for_brand(db, brand_id, service.india_date(now))
+    record = reliability.for_brand(db, brand_id, india_date(now))
     return to_reliability_read(record)

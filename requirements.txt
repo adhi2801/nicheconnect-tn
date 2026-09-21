@@ -14,3 +14,9 @@ slowapi==0.1.9
 PyJWT==2.14.0
 pytest==9.1.1
 httpx==0.27.2
+# Developer tools (D-037). The app never imports them; they are here, pinned,
+# so every laptop and CI check the code with the same versions, and so the
+# dependency audit covers them too.
+ruff==0.16.8
+mypy==2.3.1
+pytest-cov==7.1.0

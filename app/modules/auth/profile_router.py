@@ -10,7 +10,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy.orm import Session
 
-from app.core.errors import problem_doc
+from app.core.errors import ResponseDocs, problem_doc
 from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.modules.auth import profiles
@@ -32,7 +32,7 @@ READ_LIMIT = "60 per minute"
 brand_router = APIRouter(prefix="/api/v1/brands", tags=["profiles"])
 creator_router = APIRouter(prefix="/api/v1/creators", tags=["profiles"])
 
-_COMMON_ERRORS = {
+_COMMON_ERRORS: ResponseDocs = {
     401: problem_doc("No access token, or it is invalid or expired"),
     403: problem_doc("This account type does not have that kind of profile"),
     429: problem_doc("Too many requests; see the Retry-After header"),

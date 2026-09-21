@@ -1,0 +1,97 @@
+# Tool configuration. There is no packaging here: this repo is a deployed
+# service, not a library, so it has no [project] section on purpose.
+
+[tool.ruff]
+line-length = 90
+target-version = "py312"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # import order
+    "B",        # bugbear: real bugs, not style
+    "UP",       # pyupgrade: stop writing Python 3.8
+    "SIM",      # simplify
+    "DTZ",      # naive datetimes — we care about this one a lot
+    "S",        # bandit: security
+    "RUF",
+]
+ignore = [
+    # Long lines are caught by the formatter; failing twice for one thing
+    # just trains people to ignore the linter.
+    "E501",
+]
+
+[tool.ruff.lint.flake8-bugbear]
+# B008 exists because a mutable default evaluated once is a classic bug.
+# FastAPI's whole dependency system is built on exactly that call-in-a-default
+# shape, and it is evaluated per request, not once. Listing them here is the
+# documented fix; blanket-ignoring B008 would also hide the real bug it
+# catches everywhere else.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Header",
+    "fastapi.Body",
+    "fastapi.Form",
+    "fastapi.File",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests assert on things a linter reads as suspicious: hard-coded fake
+# credentials, asserts, and deliberately unreachable hosts.
+"tests/**" = [
+    "S101",  # assert is the point of a test
+    "S105", "S106",  # "hardcoded password" — test-only fake values
+    "S311",  # random in test data is not cryptography
+    "S113",  # request timeouts in probes
+]
+# Migrations are generated and then hand-edited; their shape is alembic's.
+"alembic/**" = ["E402", "F401"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "tests"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["app"]
+# Pydantic's own plugin: without it mypy reads every BaseSettings field as a
+# required constructor argument, when they actually come from the environment.
+plugins = ["pydantic.mypy"]
+# redis-py ships type hints but leaves a few methods (close) unannotated.
+# Exempting calls into it is narrower than turning the check off everywhere.
+untyped_calls_exclude = ["redis"]
+# Start honest: these are on, and the ones that are not yet on are listed
+# below with a reason rather than quietly omitted.
+strict = true
+# SQLAlchemy's declarative models and FastAPI's decorators produce types mypy
+# cannot always follow. These are relaxed for now and tightened as the
+# codebase allows; each line here is a debt, not a decision.
+warn_return_any = false
+disallow_untyped_decorators = false
+
+[[tool.mypy.overrides]]
+# Third-party packages without type information. Listing them is better than
+# ignore_missing_imports globally, which would also hide our own mistakes.
+module = ["slowapi.*", "pgvector.*", "limits.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Quiet by default; CI adds coverage flags explicitly.
+addopts = "-q"
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+
+[tool.coverage.report]
+# A floor, not a goal (testing.md section 5): 80% overall here, and 90% for
+# every service.py, which CI checks file by file. Missing failure-case tests
+# fail review even when coverage is high. Counts branches as well as lines.
+fail_under = 80
+show_missing = true
+skip_covered = true
