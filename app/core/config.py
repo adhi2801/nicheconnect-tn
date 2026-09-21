@@ -1,4 +1,3 @@
-import ipaddress
 import re
 from typing import Literal
 from urllib.parse import urlsplit
@@ -31,13 +30,9 @@ def split_origins(raw: str) -> tuple[str, ...]:
 
 
 def _is_host(host: str) -> bool:
-    if ":" in host:
-        try:
-            ipaddress.IPv6Address(host)
-        except ValueError:
-            return False
-        return True
-    return HOST_NAME.fullmatch(host) is not None
+    # Only a bracketed IPv6 address gives a host with a colon, and urlsplit
+    # has already refused a malformed one, as "is not a web address".
+    return ":" in host or HOST_NAME.fullmatch(host) is not None
 
 
 def origin_problem(origin: str, *, allow_http: bool) -> str | None:

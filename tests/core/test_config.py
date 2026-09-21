@@ -160,6 +160,8 @@ def test_plain_http_is_refused_once_deployed(environment):
         "https://app.example.in:99999",
         "https://exa mple.in",
         "https://app_example.in",
+        "http://[zzz]:5173",
+        "http://[::1",
     ],
 )
 def test_an_origin_no_browser_sends_stops_the_app(origin):
