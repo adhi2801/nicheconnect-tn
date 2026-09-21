@@ -1,6 +1,6 @@
 # Proposal: rate card, channels and media kit on the Creator Passport
 
-**Status: Proposed. Nothing here is built or approved.** Written 21 September 2026 by Adhi's session. It carries four decisions (section 3). The schema half is **Erode Harish's to own and implement**; the API half is Adhi's. The work is sequenced so no file is edited by both of you (section 6).
+**Status: Decisions 2–4 approved (D-042). Decision 1, the schema, still needs both founders.** Nothing here is built. Written 21 September 2026 by Adhi's session. Decision 3 changed after research; section 3 says why. The schema half is **Erode Harish's to own and implement**; the API half is Adhi's. The work is sequenced so no file is edited by both of you (section 6).
 
 ---
 
@@ -15,13 +15,13 @@
 ## 2. What people will see
 
 **A creator** can:
-- add their Instagram and YouTube channels, with follower count and average views, which are always shown as "self-reported, as of <date>";
+- add their Instagram and YouTube channels, with follower count and average views. Brands always see these labelled "self-reported, as of <date>";
 - list up to 10 packages, e.g. "1 Instagram Reel, ₹8,000, delivered in 5 days, 30 days' usage rights";
 - decide whether their prices appear on their public Passport. Signed-in brands always see them.
 
 **A brand** considering a creator gets one screen: the creator's public facts, channels, packages with prices, and delivery record. That is the media kit.
 
-**The open internet**, on the public Passport link, sees channels, and packages only if the creator switched them on. It never sees the delivery record (D-038 point b stays open) or contact details (D-011).
+**The open internet**, on the public Passport link, sees **links to the channels themselves**, so anyone can check the real numbers at the source, and packages only if the creator switched them on. It never sees our copy of a follower count (D-042). It never sees the delivery record (D-038 point b stays open) or contact details (D-011).
 
 **What it deliberately does not do:**
 - No booking or paying through a package: we never move money (constraint 1).
@@ -61,7 +61,10 @@ Option B:     Public by default
               | + more visible | − publishes someone's prices without asking,
                   and it cannot be undone once search engines have indexed it
 Recommended:  A
-→ Approve A, B, or modify?
+APPROVED: A (D-042). Research: 73–78% of brands prefer creators with published
+rates, and nano and micro creators gain most from publishing. So the sign-up
+screen asks the question plainly. It is never a default, because DPDP is
+consent-first.
 ```
 
 ```
@@ -73,7 +76,13 @@ Option B:     Brands only until verification exists
 Recommended:  A. Labelled and dated, a claim is honest; hiding it helps nobody. The
               delivery and payment records are the real check on a creator, and they
               are built from facts.
-→ Approve A, B, or modify?
+APPROVED, CHANGED after research (D-042): neither A nor B. Follower counts are
+the easiest number to fake, and about two in three Indian creators show
+inflation. Republishing an unverifiable number under our name on the open
+internet would lend it our credibility. So: the public page links to the
+channel itself, where the real count lives. Signed-in brands see the
+self-reported numbers, labelled and dated. The word "verified" is never used
+for them.
 ```
 
 ```
@@ -83,7 +92,8 @@ Option A:     The brand-facing media kit shows the delivery record (D-038) besid
               | + the one thing no competitor can show | − none new: same access as D-038
 Option B:     Keep them on separate screens
 Recommended:  A
-→ Approve A, B, or modify?
+APPROVED: A (D-042), with one rule added: the records are never merged into a
+single score. Averaging hides the one risk a brand needs to see.
 ```
 
 ---
@@ -153,7 +163,7 @@ The consent itself, like `passport_published_at` (D-036): who chose, and when. N
 | DELETE | `/api/v1/creators/me/packages/{package_id}` | The creator | |
 | POST | `/api/v1/creators/me/rate-card/publish` and `/unpublish` | The creator | Mirrors the Passport switch (D-036): the first date is kept; unpublishing is never refused |
 | GET | `/api/v1/creators/{creator_id}/media-kit` | Any brand, or the creator themself | Passport facts + channels + packages + delivery record, in a constant number of queries |
-| GET | `/api/v1/creators/by-handle/{handle}` | Public (existing) | Gains `channels`, and `packages` only when published. Additive; the existing fields do not change |
+| GET | `/api/v1/creators/by-handle/{handle}` | Public (existing) | Gains `channels` (platform and link only, no counts) and `packages` only when published. Additive; the existing fields do not change |
 
 All writes are rate limited at 30/min and reads at 60/min, and every `POST` and `PATCH` is retry-safe (D-040). Prices are integers in paise with the currency stated; the frontend formats them, in Tamil and English.
 
@@ -170,4 +180,4 @@ The CLAUDE.md overlap rules apply: no file is edited by both founders on the sam
 - **Each endpoint:** success; 422 validation; 401 without a token; 403 for the wrong role; 404 for another creator's package; rate limit.
 - **Business rules:** 10-package limit; a domain that doesn't match the platform refused; the price never shown publicly before the switch and shown after it; unpublishing always allowed; the consent date kept on a second publish.
 - **Media kit:** a constant query count whatever the number of packages; p95 measured on seeded data against the 300 ms budget.
-- **Public Passport:** a contract test that the exact field set grows only by `channels` and `packages`.
+- **Public Passport:** a contract test that the exact field set grows only by `channels` and `packages`, and that no follower or view count appears in it.
