@@ -209,7 +209,13 @@ send_memo = _brand_move(
     "send",
     "sent",
     "Send the memo to the creator",
-    "Moves a draft to sent, so the creator can read, accept or question it.",
+    (
+        "Moves a draft to sent, so the creator can read, accept or question it. "
+        "A paid, commission or local-business memo needs `content_due_on`, and "
+        "it cannot be in the past (409 `memo_needs_due_date` or "
+        "`due_date_has_passed`): with no agreed date nothing can ever be late "
+        "(D-038). Barter memos may leave it empty."
+    ),
 )
 cancel_memo_as_brand = _brand_move(
     "cancel",
@@ -255,7 +261,12 @@ accept_memo = _creator_move(
     "accept",
     "accepted",
     "Accept the memo",
-    "Agrees to these terms. From here the work begins and the terms stop changing.",
+    (
+        "Agrees to these terms. From here the work begins and the terms stop "
+        "changing. Refused with 409 `due_date_has_passed` if the agreed date went "
+        "by while the memo waited: ask for a new date instead, rather than "
+        "starting a deal already overdue."
+    ),
 )
 decline_memo = _creator_move(
     "decline",

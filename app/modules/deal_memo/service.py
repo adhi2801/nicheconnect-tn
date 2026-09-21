@@ -12,6 +12,7 @@ from typing import Any
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
+from app.core.clock import india_date
 from app.core.export import (
     MAX_ROWS_PER_SECTION,
     ExportedSection,
@@ -25,7 +26,9 @@ from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.exceptions import (
     ApplicationNotAccepted,
     BarterMemoHasNoFee,
+    DueDateHasPassed,
     MemoAlreadyExists,
+    MemoNeedsDueDate,
     MemoNotEditable,
     MemoStatusConflict,
     PaidMemoNeedsFee,
@@ -108,6 +111,9 @@ STATUS_NOTIFICATIONS: dict[str, tuple[str, str]] = {
 EDITABLE_STATUSES = frozenset({"draft", "change_requested"})
 # Types whose memo must name a fee (barter pays in goods).
 FEE_REQUIRED_TYPES = frozenset({"paid", "local_business"})
+# Types whose memo must name the date the work is due before it is sent.
+# Barter is left free, as its cancellations are left unscored (D-026).
+DUE_DATE_REQUIRED_TYPES = frozenset({"paid", "commission", "local_business"})
 
 
 def _campaign_of(db: Session, application: Application) -> Campaign:
@@ -130,6 +136,25 @@ def _check_fee_against_campaign(campaign: Campaign, fee_amount_paise: int | None
         raise BarterMemoHasNoFee()
     if campaign.campaign_type in FEE_REQUIRED_TYPES and fee_amount_paise is None:
         raise PaidMemoNeedsFee()
+
+
+def _check_due_date(db: Session, memo: DealMemo, *, to_send: bool, now: datetime) -> None:
+    """The agreed date must exist to send a scored deal, and must not be past.
+
+    Checked when the brand sends and again when the creator accepts, on
+    Tamil Nadu's calendar: a date can pass while a memo waits for an answer.
+    Raises MemoNeedsDueDate and DueDateHasPassed.
+    """
+    if memo.content_due_on is None:
+        if to_send:
+            campaign = _campaign_of(db, db.get_one(Application, memo.application_id))
+            if campaign.campaign_type in DUE_DATE_REQUIRED_TYPES:
+                db.rollback()
+                raise MemoNeedsDueDate()
+        return
+    if memo.content_due_on < india_date(now):
+        db.rollback()
+        raise DueDateHasPassed()
 
 
 def create_memo(
@@ -242,8 +267,10 @@ def change_status(
         )
 
     if new_status == "sent":
+        _check_due_date(db, memo, to_send=True, now=now)
         memo.sent_at = now
     elif new_status == "accepted":
+        _check_due_date(db, memo, to_send=False, now=now)
         memo.accepted_at = now
     elif new_status == "change_requested":
         # Only the first request restarts the approval clock (D-025); the

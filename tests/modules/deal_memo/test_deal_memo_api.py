@@ -19,6 +19,7 @@ CAMPAIGNS_URL = "/api/v1/campaigns"
 MEMOS_URL = "/api/v1/deal-memos"
 NOTIFICATIONS_URL = "/api/v1/notifications"
 PITCH = "I run a Madurai street-food page with 12,000 local followers."
+AGREED_DUE_ON = "2026-12-31"
 
 
 class Clock:
@@ -106,6 +107,7 @@ def draft_memo(client, brand: User, application_id: str, **overrides) -> dict:
     body = {
         "deliverables": "3 Instagram reels, 1 story set.",
         "fee_amount_paise": 800_000,
+        "content_due_on": AGREED_DUE_ON,
     }
     body.update(overrides)
     response = client.post(
@@ -476,6 +478,118 @@ def test_a_brand_cannot_accept_its_own_memo(client, db, clock):
         403,
         "role_not_allowed",
     )
+
+
+# --- the agreed date (D-038) ---------------------------------------------
+
+
+def send(client, brand: User, memo_id: str):
+    return client.post(f"{MEMOS_URL}/{memo_id}/send", headers=brand.headers)
+
+
+@pytest.mark.parametrize("campaign_type", ["paid", "commission", "local_business"])
+def test_a_scored_deal_cannot_be_sent_without_an_agreed_date(
+    client, db, clock, campaign_type
+):
+    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    application_id = accepted_application(client, brand, creator, campaign_type)
+    memo = draft_memo(client, brand, application_id, content_due_on=None)
+
+    assert_problem(send(client, brand, memo["id"]), 409, "memo_needs_due_date")
+    unchanged = client.get(f"{MEMOS_URL}/{memo['id']}", headers=brand.headers).json()
+    assert unchanged["status"] == "draft"
+
+
+def test_a_barter_deal_can_be_sent_without_a_date(client, db, clock):
+    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    application_id = accepted_application(client, brand, creator, "barter")
+    memo = draft_memo(
+        client, brand, application_id, fee_amount_paise=None, content_due_on=None
+    )
+
+    response = send(client, brand, memo["id"])
+
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "sent"
+
+
+def test_a_date_already_past_cannot_be_sent(client, db, clock):
+    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    memo = draft_memo(
+        client,
+        brand,
+        accepted_application(client, brand, creator),
+        content_due_on="2026-09-16",  # the day before FIXED_NOW
+    )
+
+    assert_problem(send(client, brand, memo["id"]), 409, "due_date_has_passed")
+
+
+def test_today_is_still_a_date_that_can_be_agreed(client, db, clock):
+    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    memo = draft_memo(
+        client,
+        brand,
+        accepted_application(client, brand, creator),
+        content_due_on="2026-09-17",
+    )
+
+    assert send(client, brand, memo["id"]).status_code == 200
+
+
+def test_the_date_is_read_on_tamil_nadus_calendar(client, db, clock):
+    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    memo = draft_memo(
+        client,
+        brand,
+        accepted_application(client, brand, creator),
+        content_due_on="2026-09-17",
+    )
+    # 19:00 UTC on the 17th is 00:30 on the 18th in Tamil Nadu: already past.
+    clock.advance(timedelta(hours=7))
+
+    assert_problem(send(client, brand, memo["id"]), 409, "due_date_has_passed")
+
+
+def test_a_creator_cannot_accept_a_date_that_passed_while_the_memo_waited(
+    client, db, clock
+):
+    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    memo = sent_memo(
+        client,
+        brand,
+        accepted_application(client, brand, creator),
+        content_due_on="2026-09-20",
+    )
+    clock.advance(timedelta(days=5))
+
+    assert_problem(
+        client.post(f"{MEMOS_URL}/{memo['id']}/accept", headers=creator.headers),
+        409,
+        "due_date_has_passed",
+    )
+    # Not stuck: asking for a new date is still open to them.
+    asked = client.post(
+        f"{MEMOS_URL}/{memo['id']}/request-change",
+        json={"message": "The date has passed. Can we move it to 5 October?"},
+        headers=creator.headers,
+    )
+    assert asked.status_code == 200, asked.text
+
+
+def test_removing_the_date_during_a_change_blocks_the_resend(client, db, clock):
+    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    memo = sent_memo(client, brand, accepted_application(client, brand, creator))
+    client.post(
+        f"{MEMOS_URL}/{memo['id']}/request-change",
+        json={"message": "Can we leave the date open?"},
+        headers=creator.headers,
+    )
+    client.patch(
+        f"{MEMOS_URL}/{memo['id']}", json={"content_due_on": None}, headers=brand.headers
+    )
+
+    assert_problem(send(client, brand, memo["id"]), 409, "memo_needs_due_date")
 
 
 # --- cancelling (D-026) ---------------------------------------------------

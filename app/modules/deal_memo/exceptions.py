@@ -65,3 +65,19 @@ class ProofNotSubmitted(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "proof_not_submitted"
     title = "There is no proof waiting for review"
+
+
+class MemoNeedsDueDate(DomainError):
+    # Without an agreed date nothing can ever be late, so a creator who never
+    # delivers would never show on their delivery record (D-038 point a).
+    status_code = HTTPStatus.CONFLICT
+    code = "memo_needs_due_date"
+    title = "Set the date the work is due before sending this memo"
+
+
+class DueDateHasPassed(DomainError):
+    # A date already behind us is not a date anybody can agree to: accepting
+    # it would make the creator overdue on the day they said yes.
+    status_code = HTTPStatus.CONFLICT
+    code = "due_date_has_passed"
+    title = "The agreed due date has already passed. Set a new one first"

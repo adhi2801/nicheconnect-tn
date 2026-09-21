@@ -19,6 +19,8 @@ MEMOS_URL = "/api/v1/deal-memos"
 NOTIFICATIONS_URL = "/api/v1/notifications"
 PITCH = "I run a Madurai street-food page with 12,000 local followers."
 LINK = "https://www.instagram.com/reel/abc123/"
+# Far enough past FIXED_NOW that no test's clock reaches it by accident.
+AGREED_DUE_ON = "2026-12-31"
 
 
 class Clock:
@@ -88,6 +90,8 @@ def accepted_memo(
     body: dict[str, object] = {
         "deliverables": "3 Instagram reels, 1 story set.",
         "fee_amount_paise": 800_000,
+        # A paid memo cannot be sent without an agreed date (D-038).
+        "content_due_on": AGREED_DUE_ON,
     }
     body.update(memo_fields)
     memo_id = client.post(
