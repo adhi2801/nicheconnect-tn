@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.errors import ResponseDocs, problem_doc
+from app.core.idempotent_route import IdempotentRoute
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page, Slice
 from app.core.rate_limit import limiter
 from app.db.session import get_db
@@ -33,7 +34,9 @@ from app.modules.deal_memo.schemas import (
 WRITE_LIMIT = "30 per minute"
 READ_LIMIT = "60 per minute"
 
-router = APIRouter(prefix="/api/v1/deal-memos", tags=["deal memos"])
+router = APIRouter(
+    prefix="/api/v1/deal-memos", tags=["deal memos"], route_class=IdempotentRoute
+)
 
 Limit = Annotated[int, Query(ge=1, le=MAX_LIMIT, description="Rows per page")]
 Cursor = Annotated[str | None, Query(description="From a previous page's next_cursor")]

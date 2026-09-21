@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from app.core.errors import ResponseDocs, problem_doc
+from app.core.idempotent_route import IdempotentRoute
 from app.core.literals import ensure_same_values
 from app.core.rate_limit import limiter
 from app.db.session import get_db
@@ -29,7 +30,9 @@ from app.modules.deal_memo.proof_models import (
 WRITE_LIMIT = "30 per minute"
 READ_LIMIT = "60 per minute"
 
-router = APIRouter(prefix="/api/v1/deal-memos", tags=["proof"])
+router = APIRouter(
+    prefix="/api/v1/deal-memos", tags=["proof"], route_class=IdempotentRoute
+)
 
 ProofFormat = Literal["post", "reel", "story", "video", "other"]
 ProofStatus = Literal["submitted", "approved", "revision_requested"]

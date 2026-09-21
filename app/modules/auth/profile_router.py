@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.errors import ResponseDocs, problem_doc
+from app.core.idempotent_route import IdempotentRoute
 from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.modules.auth import profiles
@@ -29,8 +30,12 @@ from app.modules.auth.schemas import (
 WRITE_LIMIT = "30 per minute"
 READ_LIMIT = "60 per minute"
 
-brand_router = APIRouter(prefix="/api/v1/brands", tags=["profiles"])
-creator_router = APIRouter(prefix="/api/v1/creators", tags=["profiles"])
+brand_router = APIRouter(
+    prefix="/api/v1/brands", tags=["profiles"], route_class=IdempotentRoute
+)
+creator_router = APIRouter(
+    prefix="/api/v1/creators", tags=["profiles"], route_class=IdempotentRoute
+)
 
 _COMMON_ERRORS: ResponseDocs = {
     401: problem_doc("No access token, or it is invalid or expired"),

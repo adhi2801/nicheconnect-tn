@@ -47,7 +47,7 @@ Each module under `app/modules/<name>/` owns its own files:
 - **Pagination** on every list: cursor-based. Request `?limit=20&cursor=<opaque>`; default limit 20, maximum 100. Response:
   `{"items": [...], "next_cursor": "<opaque or null>"}`
 - **Filtering and sorting:** explicit, allow-listed query parameters only (`?status=open&sort=-created_at`). Unknown parameters return 422.
-- **Idempotency:** `POST` endpoints that create payment-status records or send notifications accept an `Idempotency-Key` header. A repeated key returns the original response.
+- **Idempotency:** every `POST` and `PATCH` outside `/api/v1/auth/` accepts an `Idempotency-Key` header, by building its router with `route_class=IdempotentRoute` (D-040). A repeated key returns the original response. A test fails if any new write is missing it. Login is excluded until decided separately.
 - **OpenAPI is the contract.** Every route has a `summary`, a `response_model`, documented error responses and request/response examples. `/docs` must stay accurate enough for the future frontend to build against.
 
 ## 3. Errors

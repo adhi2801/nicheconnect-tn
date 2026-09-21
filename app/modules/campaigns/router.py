@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.errors import problem_doc
+from app.core.idempotent_route import IdempotentRoute
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page, Slice
 from app.core.rate_limit import limiter
 from app.core.taxonomy import Niche
@@ -31,7 +32,9 @@ from app.modules.campaigns.schemas import (
 WRITE_LIMIT = "30 per minute"
 READ_LIMIT = "60 per minute"
 
-router = APIRouter(prefix="/api/v1/campaigns", tags=["campaigns"])
+router = APIRouter(
+    prefix="/api/v1/campaigns", tags=["campaigns"], route_class=IdempotentRoute
+)
 
 Limit = Annotated[int, Query(ge=1, le=MAX_LIMIT, description="Rows per page")]
 Cursor = Annotated[str | None, Query(description="From a previous page's next_cursor")]

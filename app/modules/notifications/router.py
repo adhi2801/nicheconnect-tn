@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.errors import ResponseDocs, problem_doc
+from app.core.idempotent_route import IdempotentRoute
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
 from app.core.rate_limit import limiter
 from app.db.session import get_db
@@ -21,7 +22,11 @@ from app.modules.notifications.schemas import MarkedRead, NotificationRead, Unre
 WRITE_LIMIT = "30 per minute"
 READ_LIMIT = "60 per minute"
 
-router = APIRouter(prefix="/api/v1/notifications", tags=["notifications"])
+router = APIRouter(
+    prefix="/api/v1/notifications",
+    tags=["notifications"],
+    route_class=IdempotentRoute,
+)
 
 _COMMON_ERRORS: ResponseDocs = {
     401: problem_doc("No access token, or it is invalid or expired"),
