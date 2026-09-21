@@ -14,11 +14,13 @@ Requests without the header behave exactly as before.
 """
 
 from collections.abc import Callable, Coroutine
+from http import HTTPStatus
 from typing import Any
 
 from fastapi import Request, Response
 from fastapi.routing import APIRoute
 
+from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotency import (
     COMPLETED_TTL_SECONDS,
     HEADER,
@@ -134,29 +136,60 @@ HEADER_DOC = {
     ),
 }
 
-# Documented by the route class rather than per endpoint, so no POST can be
-# added later that honours the header without saying what it may answer.
-UNAVAILABLE_RESPONSE = {
-    "503": {
-        "description": (
-            "Can't guarantee this request runs only once right now. Safe to retry."
-        )
-    }
+# What the header itself can answer. Documented by the route class rather
+# than per endpoint, so no write can honour the header without saying so. A
+# route that already documents the same status for its own reason keeps its
+# text, with the key's meaning added: an OpenAPI operation has one entry per
+# status code, and replacing the route's text would hide its own meaning.
+KEY_RESPONSES: dict[int, str] = {
+    HTTPStatus.CONFLICT: (
+        "A request with the same Idempotency-Key is still being processed; "
+        "wait a moment and retry"
+    ),
+    # Also covers the route's own path, query and body validation, which
+    # FastAPI would otherwise document by itself: one entry per status.
+    HTTPStatus.UNPROCESSABLE_ENTITY: (
+        "The request is not valid, including an Idempotency-Key that is not "
+        "usable or was already used with a different body"
+    ),
+    HTTPStatus.SERVICE_UNAVAILABLE: (
+        "Can't guarantee this request runs only once right now. Safe to retry"
+    ),
 }
+
+
+def with_key_responses(responses: ResponseDocs | None) -> ResponseDocs:
+    """A route's documented responses, plus what the header may answer."""
+    merged: ResponseDocs = dict(responses or {})
+    for status, meaning in KEY_RESPONSES.items():
+        key = next((k for k in (status, str(status)) if k in merged), None)
+        if key is None:
+            merged[status] = problem_doc(meaning)
+            continue
+        entry = dict(merged[key])
+        own = str(entry.get("description", "")).rstrip(". ")
+        entry["description"] = f"{own}. Or: {meaning}" if own else meaning
+        merged[key] = entry
+    return merged
 
 
 class IdempotentRoute(APIRoute):
     """Honours an Idempotency-Key header on the routes of its router."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        guarded = bool({m.upper() for m in kwargs.get("methods") or ()} & GUARDED_METHODS)
+        if guarded:
+            # Before FastAPI builds the route: it prepares a response model
+            # for every documented status in its constructor, and one added
+            # afterwards would be missing from the generated documentation.
+            kwargs["responses"] = with_key_responses(kwargs.get("responses"))
         super().__init__(*args, **kwargs)
         # Put the header in the API documentation for exactly the routes that
         # honour it. FastAPI concatenates list values here, so a route's own
         # path parameters are kept.
-        if set(self.methods or ()) & GUARDED_METHODS:
+        if guarded:
             extra = dict(self.openapi_extra or {})
             extra["parameters"] = [*extra.get("parameters", []), HEADER_DOC]
-            extra["responses"] = {**UNAVAILABLE_RESPONSE, **extra.get("responses", {})}
             self.openapi_extra = extra
 
     def get_route_handler(self) -> Callable[[Request], Coroutine[Any, Any, Response]]:

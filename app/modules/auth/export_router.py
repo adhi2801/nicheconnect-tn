@@ -20,6 +20,7 @@ from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth import export_service
 from app.modules.auth.dependencies import CurrentAccount, get_now
+from app.modules.auth.schemas import ExportFile
 
 # Deliberately far stricter than an ordinary read. Building an export touches
 # every table an account appears in, and the result is the most sensitive
@@ -42,8 +43,8 @@ router = APIRouter(prefix="/api/v1/me", tags=["privacy"])
     response_class=JSONResponse,
     responses={
         200: {
-            "description": "The export file",
-            "content": {"application/json": {}},
+            "model": ExportFile,
+            "description": "The export file, offered as a download",
         },
         401: problem_doc("No access token, or it is invalid or expired"),
         429: problem_doc("Too many requests; see the Retry-After header"),

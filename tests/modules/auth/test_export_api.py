@@ -21,6 +21,7 @@ from app.main import app
 from app.modules.auth import export_service
 from app.modules.auth.dependencies import get_now
 from app.modules.auth.models.account import Account
+from app.modules.auth.schemas import ExportFile
 from app.modules.auth.tokens import create_access_token
 from app.modules.campaigns import service as campaigns_service
 from app.modules.campaigns.models import Application
@@ -277,6 +278,15 @@ def test_a_brand_new_account_still_gets_a_file(client, db, now):
 
 
 # --- the file explains itself ---------------------------------------------
+
+
+def test_every_export_matches_the_documented_file_shape(client, scenario, now):
+    """The API documents the file with ExportFile; the route builds it by hand.
+    This keeps the two from drifting: a new key, or a missing one, fails here."""
+    for who in ("brand_account", "creator_account"):
+        body = client.get(URL, headers=auth_for(scenario[who], now)).json()
+
+        ExportFile.model_validate(body)
 
 
 def test_the_manifest_describes_every_section(client, scenario, now):

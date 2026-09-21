@@ -74,6 +74,10 @@ def create_brand_profile(
     "/me",
     response_model=BrandProfileRead,
     summary="Read my brand profile",
+    description=(
+        "The signed-in brand's own profile, as the brand entered it. 404 until "
+        "the profile has been created."
+    ),
     responses={
         **_COMMON_ERRORS,
         404: problem_doc("The profile has not been created yet"),
@@ -92,6 +96,10 @@ def read_brand_profile(
     "/me",
     response_model=BrandProfileRead,
     summary="Change my brand profile",
+    description=(
+        "Changes the fields sent and leaves the rest as they are. An email "
+        "another brand already uses is refused with 409."
+    ),
     responses={
         **_COMMON_ERRORS,
         404: problem_doc("The profile has not been created yet"),
@@ -147,6 +155,11 @@ def create_creator_profile(
     "/me",
     response_model=CreatorProfileRead,
     summary="Read my creator profile",
+    description=(
+        "The signed-in creator's own profile, as they entered it, including "
+        "whether their Passport is published. 404 until the profile has been "
+        "created."
+    ),
     responses={
         **_COMMON_ERRORS,
         404: problem_doc("The profile has not been created yet"),
@@ -167,6 +180,11 @@ def read_creator_profile(
     "/me",
     response_model=CreatorProfileRead,
     summary="Change my creator profile",
+    description=(
+        "Changes the fields sent and leaves the rest as they are. A handle "
+        "another creator already has is refused with 409. Publishing the "
+        "Passport is its own action, never a side effect of an edit (D-036)."
+    ),
     responses={
         **_COMMON_ERRORS,
         404: problem_doc("The profile has not been created yet"),

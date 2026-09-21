@@ -4,9 +4,10 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from slowapi.middleware import SlowAPIMiddleware
 
+from app.core import openapi
 from app.core.body_limit import BodyLimitMiddleware
-from app.core.errors import problem_response, register_error_handlers
-from app.core.health import run_readiness_checks
+from app.core.errors import problem_doc, problem_response, register_error_handlers
+from app.core.health import HealthRead, ReadinessRead, run_readiness_checks
 from app.core.idempotent_route import set_identity_resolver
 from app.core.rate_limit import limiter
 from app.core.request_id import RequestIdMiddleware
@@ -28,6 +29,8 @@ from app.modules.payment_status.bulk_router import router as bulk_payments_route
 from app.modules.payment_status.router import router as payment_router
 
 app = FastAPI(title="NicheConnect TN API")
+# Every error in the API document in our one format, validation included.
+openapi.install(app)
 
 app.state.limiter = limiter
 # Retries are grouped by the account that sent them, so a refreshed token
@@ -65,10 +68,20 @@ app.include_router(delivery_router)
 app.include_router(disputes_router)
 
 
-@app.get("/healthz")
-def healthz() -> dict[str, str]:
+@app.get(
+    "/healthz",
+    response_model=HealthRead,
+    summary="Liveness check",
+    description=(
+        "Answers as long as the process is running, without touching the "
+        "database or Redis. For a deployment platform deciding whether to "
+        "restart it."
+    ),
+    responses={429: problem_doc("Too many requests; see the Retry-After header")},
+)
+def healthz() -> HealthRead:
     """Liveness check — is the process up at all."""
-    return {"status": "ok"}
+    return HealthRead(status="ok")
 
 
 @app.get(
@@ -78,9 +91,15 @@ def healthz() -> dict[str, str]:
         "Reports whether the database and Redis are reachable. Returns 503 "
         "while either is down, so a deployment platform stops sending traffic."
     ),
-    response_model=None,
+    # Explicit, because the 503 is returned as a response object rather than
+    # this model, and FastAPI would otherwise read the union as the model.
+    response_model=ReadinessRead,
+    responses={
+        429: problem_doc("Too many requests; see the Retry-After header"),
+        503: problem_doc("The database or Redis cannot be reached"),
+    },
 )
-def readyz(request: Request) -> JSONResponse | dict[str, object]:
+def readyz(request: Request) -> JSONResponse | ReadinessRead:
     """Readiness check — can this process actually serve requests?"""
     checks = run_readiness_checks()
     results = {check.name: "ok" if check.ok else "unavailable" for check in checks}
@@ -93,4 +112,4 @@ def readyz(request: Request) -> JSONResponse | dict[str, object]:
             title="The service is not ready to take requests",
             detail=f"Unavailable: {', '.join(sorted(failed))}.",
         )
-    return {"status": "ready", "checks": results}
+    return ReadinessRead(status="ready", checks=results)

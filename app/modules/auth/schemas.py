@@ -3,7 +3,7 @@
 import re
 import uuid
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     AfterValidator,
@@ -293,4 +293,46 @@ class PublicCreatorRead(BaseModel):
     bio: str | None
     member_since: str = Field(
         description="Month the creator joined, e.g. 2026-09", examples=["2026-09"]
+    )
+
+
+class ExportManifestEntry(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    section: str
+    records: int
+    purpose: str = Field(description="Why we hold this data")
+    truncated: bool | None = Field(
+        default=None, description="Present, and true, only when rows were left out"
+    )
+    note: str | None = None
+
+
+class ExportNotIncluded(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    data: str
+    reason: str
+
+
+class ExportFile(BaseModel):
+    """The file `GET /api/v1/me/export` returns, for the API documentation.
+
+    The route builds the file itself so it can offer it as a download, so
+    FastAPI cannot see this shape on its own. A test checks every real
+    export against this model, so the two cannot drift apart.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: int
+    generated_at: str = Field(description="UTC, ISO 8601")
+    account_id: uuid.UUID
+    about: str
+    manifest: list[ExportManifestEntry]
+    not_included: list[ExportNotIncluded] = Field(
+        description="What we hold but deliberately leave out, and why"
+    )
+    data: dict[str, list[dict[str, Any]]] = Field(
+        description="One list of records per manifest section"
     )

@@ -8,8 +8,10 @@ response: those contain passwords.
 
 import logging
 from dataclasses import dataclass
+from typing import Literal
 
 import redis
+from pydantic import BaseModel
 from sqlalchemy import text
 
 from app.core.config import settings
@@ -20,6 +22,19 @@ logger = logging.getLogger(__name__)
 # A probe that waits is a probe that fails; these are deliberately short.
 DATABASE_TIMEOUT_MS = 2000
 REDIS_TIMEOUT_SECONDS = 2.0
+
+
+class HealthRead(BaseModel):
+    """The process is up. Says nothing about what it depends on."""
+
+    status: Literal["ok"]
+
+
+class ReadinessRead(BaseModel):
+    """Everything this process needs is reachable."""
+
+    status: Literal["ready"]
+    checks: dict[str, Literal["ok", "unavailable"]]
 
 
 @dataclass(frozen=True)
