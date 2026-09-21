@@ -18,6 +18,7 @@ from app.modules.auth.public_router import router as public_router
 from app.modules.auth.router import router as auth_router
 from app.modules.campaigns.application_router import router as applications_router
 from app.modules.campaigns.router import router as campaigns_router
+from app.modules.deal_memo.delivery_router import router as delivery_router
 from app.modules.deal_memo.proof_router import router as proof_router
 from app.modules.deal_memo.router import router as deal_memos_router
 from app.modules.disputes.router import router as disputes_router
@@ -58,6 +59,7 @@ app.include_router(deal_memos_router)
 app.include_router(proof_router)
 app.include_router(payment_router)
 app.include_router(reliability_router)
+app.include_router(delivery_router)
 app.include_router(disputes_router)
 
 
