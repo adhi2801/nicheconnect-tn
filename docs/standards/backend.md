@@ -48,7 +48,7 @@ Each module under `app/modules/<name>/` owns its own files:
   `{"items": [...], "next_cursor": "<opaque or null>"}`
 - **Filtering and sorting:** explicit, allow-listed query parameters only (`?status=open&sort=-created_at`). Unknown parameters return 422.
 - **Idempotency:** every `POST` and `PATCH` outside `/api/v1/auth/` accepts an `Idempotency-Key` header, by building its router with `route_class=IdempotentRoute` (D-040). A repeated key returns the original response. A test fails if any new write is missing it. Login is excluded until decided separately.
-- **OpenAPI is the contract.** Every route has a `summary`, a `response_model`, documented error responses and request/response examples. `/docs` must stay accurate enough for the future frontend to build against.
+- **OpenAPI is the contract.** Every route has a `summary`, a `response_model`, documented error responses and request/response examples. `/docs` must stay accurate enough for the future frontend to build against. A committed copy lives in `docs/api/openapi.json`, and `tests/test_api_contract.py` fails when the running app differs from it. When a change is intended, refresh it with `venv\Scripts\python.exe -m tests.openapi_snapshot` and commit it with the change, so every contract change is a visible diff in review. The same test file checks, across every operation: a login is required except on a named public list; every operation has a summary, a description and a documented success shape; 401, 422 and 429 are documented where they apply; and every error is documented as Problem Details.
 
 ## 3. Errors
 
