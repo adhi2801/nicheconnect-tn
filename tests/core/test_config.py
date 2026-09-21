@@ -1,10 +1,13 @@
 import secrets
+from pathlib import Path
 from typing import Any
 
 import pytest
 from pydantic import ValidationError
 
 from app.core.config import Settings
+
+ENV_EXAMPLE = Path(__file__).resolve().parents[2] / ".env.example"
 
 
 def valid_values(**overrides: Any) -> dict[str, Any]:
@@ -196,3 +199,32 @@ def test_a_wildcard_is_refused_with_its_own_reason():
         load(cors_allowed_origins="*")
 
     assert "list each website instead" in str(exc_info.value)
+
+
+# --- .env.example (backend.md section 8) ---------------------------------
+
+
+def env_example_values() -> dict[str, str]:
+    lines = ENV_EXAMPLE.read_text(encoding="utf-8").splitlines()
+    pairs = (line.split("=", 1) for line in lines if "=" in line and line[0] != "#")
+    return {name.strip(): value.strip() for name, value in pairs}
+
+
+def test_every_setting_is_listed_in_env_example():
+    """A new setting nobody can find is a setting nobody sets."""
+    listed = set(env_example_values())
+
+    assert {name.upper() for name in Settings.model_fields} <= listed
+
+
+def test_the_example_values_load():
+    """Copying .env.example must give a working app once the two keys are
+    generated, which the placeholders deliberately force."""
+    values = {name.lower(): value for name, value in env_example_values().items()}
+    values["secret_key"] = secrets.token_urlsafe(32)
+    values["otp_hash_key"] = secrets.token_urlsafe(32)
+
+    settings = Settings(_env_file=None, **values)
+
+    assert settings.environment == "local"
+    assert settings.cors_origins == ()
