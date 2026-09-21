@@ -4,7 +4,8 @@ import uuid
 from datetime import date, datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic_core import PydanticCustomError
 
 from app.core.literals import ensure_same_values
 from app.core.taxonomy import CURRENCY
@@ -19,6 +20,7 @@ from app.modules.payment_status.reliability import (
     ReliabilityRecord,
 )
 from app.modules.payment_status.service import (
+    MAX_BULK_MARK_PAID,
     PAYMENT_STATES,
     REFERENCE_MIN_LENGTH,
     days_overdue,
@@ -148,3 +150,58 @@ def to_reliability_read(record: ReliabilityRecord) -> BrandReliabilityRead:
         paid_on_time_share=record.paid_on_time_share,
         median_days_to_pay=record.median_days_to_pay,
     )
+
+
+# --- many at once --------------------------------------------------------------
+
+
+class BulkMarkPaidRow(MarkPaidRequest):
+    """One row of a bank bulk transfer: which deal, how it was sent, its reference."""
+
+    memo_id: uuid.UUID
+
+
+class BulkMarkPaidRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    payments: list[BulkMarkPaidRow] = Field(
+        min_length=1,
+        max_length=MAX_BULK_MARK_PAID,
+        description=f"1 to {MAX_BULK_MARK_PAID} rows, each deal memo at most once",
+    )
+
+    @model_validator(mode="after")
+    def each_deal_once(self) -> "BulkMarkPaidRequest":
+        # Two rows for one deal would make "which reference is the real one"
+        # a question the order of the list answers. Refuse it instead.
+        memo_ids = [row.memo_id for row in self.payments]
+        if len(set(memo_ids)) != len(memo_ids):
+            raise PydanticCustomError(
+                "duplicate_memo", "Each deal memo can appear only once in a request"
+            )
+        return self
+
+
+class RowProblem(BaseModel):
+    """Why one row was refused, in the same terms a single request would get."""
+
+    status: int
+    code: str
+    title: str
+    detail: str | None = None
+
+
+class BulkMarkPaidResult(BaseModel):
+    index: int = Field(description="The row's position in the request, from 0")
+    memo_id: uuid.UUID
+    outcome: Literal["recorded", "refused"]
+    payment: PaymentRead | None = Field(description="Set when recorded")
+    problem: RowProblem | None = Field(description="Set when refused")
+
+
+class BulkMarkPaidRead(BaseModel):
+    """Every row's result, in the order the rows were sent."""
+
+    recorded: int
+    refused: int
+    results: list[BulkMarkPaidResult]

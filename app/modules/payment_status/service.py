@@ -8,6 +8,7 @@ overdue. See `models.py` for why that choice was made.
 
 import re
 import uuid
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
 from sqlalchemy import select
@@ -15,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.clock import india_date
+from app.core.errors import DomainError
 from app.core.export import (
     MAX_ROWS_PER_SECTION,
     ExportedSection,
@@ -22,7 +24,9 @@ from app.core.export import (
     build_section,
 )
 from app.core.taxonomy import CURRENCY
+from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo import service as deal_memos
+from app.modules.deal_memo.exceptions import MemoNotFound
 from app.modules.deal_memo.models import DealMemo
 from app.modules.payment_status.exceptions import (
     BarterMemoHasNoPayment,
@@ -31,6 +35,7 @@ from app.modules.payment_status.exceptions import (
     PaymentAlreadyMarkedPaid,
     PaymentNotMarkedPaid,
     PaymentRecordExists,
+    PaymentRecordNotFound,
     UnknownPaymentMethod,
 )
 from app.modules.payment_status.models import (
@@ -254,6 +259,20 @@ def mark_paid(
     reference of the first, so the record could say cash when the brand
     sent UPI. The lock makes exactly one win and the rest get a clean 409.
     """
+    _record_marked_paid(db, payment, method=method, reference=reference, now=now)
+    db.commit()
+    db.refresh(payment)
+    return payment
+
+
+def _record_marked_paid(
+    db: Session, payment: PaymentStatus, *, method: str, reference: str, now: datetime
+) -> None:
+    """The change `mark_paid` makes, without committing it.
+
+    Shared with the bulk path, so a payment marked in a batch is marked by
+    exactly the same rules, lock and notification as one marked alone.
+    """
     db.refresh(payment, with_for_update=True)
     if payment.marked_paid_at is not None:
         raise PaymentAlreadyMarkedPaid()
@@ -268,9 +287,6 @@ def mark_paid(
         deal_memos.notify_party(
             db, memo, to="creator", notification_type="payment_marked_paid", now=now
         )
-    db.commit()
-    db.refresh(payment)
-    return payment
 
 
 def confirm_received(
@@ -375,3 +391,87 @@ def open_on_approval(
     if existing is not None:
         return existing
     return create_for_memo(db, memo, approved_on=india_date(approved_at), now=now)
+
+
+# --- many at once ---------------------------------------------------------------
+#
+# A brand that pays several creators in one bank bulk transfer gets one
+# reference per row back from the bank, and the bank may reject some rows
+# while others go through. So each row here is recorded or refused on its
+# own: a typo in row 7 must not hold back the other creators' notice that
+# their money is on its way.
+
+# Kept small enough that one request stays inside the 500 ms write budget
+# (backend.md section 6); measured, not guessed.
+MAX_BULK_MARK_PAID = 25
+
+
+@dataclass(frozen=True)
+class BulkMarkPaidRow:
+    memo_id: uuid.UUID
+    method: str
+    reference: str
+
+
+@dataclass(frozen=True)
+class BulkMarkPaidOutcome:
+    """One row's result: the payment it recorded, or the reason it was refused."""
+
+    memo_id: uuid.UUID
+    payment: PaymentStatus | None
+    refusal: DomainError | None
+
+
+def mark_paid_in_bulk(
+    db: Session, brand_id: uuid.UUID, rows: list[BulkMarkPaidRow], *, now: datetime
+) -> list[BulkMarkPaidOutcome]:
+    """Record several payments, each on its own, in the order given.
+
+    Every row makes exactly the change a single `mark_paid` makes: the same
+    lock, checks and notification. A memo that is not this brand's is
+    refused as not found, never as someone else's (security.md section 2).
+
+    Each row runs in its own savepoint, so a refused row undoes only its own
+    changes and nothing else in the session. The recorded rows are committed
+    together, once, at the end: an unexpected failure part-way leaves none
+    of them recorded rather than some.
+    """
+    # One query for every row: the memo, if it is this brand's, and its
+    # payment record, if one has been opened.
+    found: dict[uuid.UUID, PaymentStatus | None] = {
+        memo_id: payment
+        for memo_id, payment in db.execute(
+            select(DealMemo.id, PaymentStatus)
+            .join(Application, Application.id == DealMemo.application_id)
+            .join(Campaign, Campaign.id == Application.campaign_id)
+            .outerjoin(PaymentStatus, PaymentStatus.deal_memo_id == DealMemo.id)
+            .where(
+                Campaign.brand_id == brand_id,
+                DealMemo.id.in_([row.memo_id for row in rows]),
+            )
+        ).tuples()
+    }
+
+    outcomes: list[BulkMarkPaidOutcome] = []
+    for row in rows:
+        savepoint = db.begin_nested()
+        try:
+            if row.memo_id not in found:
+                raise MemoNotFound()
+            payment = found[row.memo_id]
+            if payment is None:
+                raise PaymentRecordNotFound(
+                    "A payment record opens when the work is approved; this deal "
+                    "has no approved work yet, or it is a barter deal."
+                )
+            _record_marked_paid(
+                db, payment, method=row.method, reference=row.reference, now=now
+            )
+        except DomainError as refusal:
+            savepoint.rollback()
+            outcomes.append(BulkMarkPaidOutcome(row.memo_id, None, refusal))
+        else:
+            savepoint.commit()
+            outcomes.append(BulkMarkPaidOutcome(row.memo_id, payment, None))
+    db.commit()
+    return outcomes
