@@ -264,3 +264,52 @@ Worst p95 is 28% of its budget. **Caveat:** inside the test transaction a commit
 - Whether login steps should be retry-safe (excluded from D-040).
 - Audience size on creator profiles, which fair-rate guidance (C3) needs: a creator column, so Erode Harish's track.
 - Merging `docs/notice-for-erode`, so Erode Harish's sessions show him the notice.
+
+---
+
+## Update: evening, 2026-09-21
+
+All pushed; GitHub Actions green on every tip. The line of branches now ends at `chore/api-guards`, which contains everything below and everything above: `feature/retry-safety` → `feature/application-feedback` → `chore/stricter-types` → `feature/bulk-mark-paid` → `chore/api-guards`. The docs branches are merged into it.
+
+### Work completed
+
+| Task | Status | Evidence |
+|---|---|---|
+| Competitive landscape v2: about 20 competitors, ranked build list, corrections to v1 | Implemented | `486cdd8`, `docs/COMPETITIVE_LANDSCAPE.md` |
+| Proposal: rate card, channels and media kit on the Passport | Proposed | `61748c3`, `docs/PROPOSAL_PASSPORT_RATE_CARD.md` |
+| Decisions 2–4 of that proposal, decided on research (D-042) | Implemented | `1c35056`; decision 3 changed after research |
+| Full strict type checking, nothing relaxed; typed rate-limit decorator on all 54 endpoints | Tested | `cfbecb0` |
+| Mark several payments as sent at once (D-043) | Tested | `53012f4`; 16 tests; 25 rows at p95 238 ms against the 500 ms budget |
+| API documentation audit and fixes | Tested | `71da2e0`; see below |
+| Contract guards and a committed copy of the API contract | Tested | `e14150e`; 9 guards, each checked against a deliberate break |
+
+### What the API audit found and fixed
+
+- **Seven GET endpoints documented their 422 in FastAPI's own shape**, which our API never sends. Fixed centrally in `app/core/openapi.py`, so no future route can repeat it.
+- **The 24 retry-safe routes did not list their Idempotency-Key errors** (409, 422, and the 503 as Problem Details). The route class now documents them, keeping each route's own text where it had one.
+- **`/me/export`, `/readyz` and `/healthz` declared no response shape**; four profile routes had no description. All fixed. The export's shape is tested against real exports, so the two cannot drift.
+- **Reassuring result:** every one of the 56 operations behind a login answers 401 without a token, checked by calling each one for real.
+
+### Bugs found
+
+| Severity | Description | Status |
+|---|---|---|
+| Medium | The first bulk version rolled back the whole session on a refused row; a test lost the brand's own sign-in because of it | Fixed before commit: a savepoint per row, one commit at the end (`53012f4`) |
+| Low | The API document described 422 bodies we never send, and left retry errors out | Fixed (`71da2e0`) |
+
+### Testing
+
+- **Result:** 1,078 passed · 0 failed · 0 skipped. Coverage 97.83%. Strict mypy with nothing relaxed.
+- **Each commit checked on its own files.** `71da2e0` alone: 1,069 passed.
+
+### Changes to how we work (for both founders)
+
+- **Any change to the API contract now fails a test until `docs/api/openapi.json` is refreshed:** `venv\Scripts\python.exe -m tests.openapi_snapshot`, committed with the change. Every contract change becomes a visible diff in review. This is implemented, not a recorded decision; say if either of you would rather not have it.
+- **`@limiter.limit` is replaced by `@rate_limit`** from `app/core/rate_limit.py`; a test fails if the old one returns.
+
+### Still open
+
+- **Decision 1 of the rate card proposal** (two tables, one column): both founders; Erode Harish implements.
+- Merging `docs/notice-for-erode`, so Erode Harish's sessions show him the notice.
+- Review of the whole line, starting with PR #11's migrations 17–20. **Suggestion:** one pull request from `chore/api-guards` to `main`, instead of six reviewed in order.
+- Whether `/docs` should be reachable in production (`security.md` section 9), and whether login steps should be retry-safe.
