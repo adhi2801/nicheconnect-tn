@@ -211,3 +211,56 @@ _Not started automatically. Awaiting founder approval._
   - To make `git blame` skip the formatting commit locally: `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
   - On Adhi's laptop, bare `python` points at another project's venv. Use `venv\Scripts\python.exe`.
 - **First command to run:** `pip install -r requirements.txt`
+
+---
+
+## Update: afternoon, 2026-09-21
+
+Work after the wrap-up above, on three branches, each built on the one before: PR #11 (`feature/creator-passport`) → `feature/retry-safety` → `feature/application-feedback`. All pushed; GitHub Actions green on every tip.
+
+### Work completed
+
+| Task | Status | Evidence |
+|---|---|---|
+| A scored deal needs an agreed date before it is sent, and the date cannot be past (D-039, closes D-038 a) | Tested | `6987c53` on PR #11; 9 tests, each check removed once to prove its tests fail |
+| Every write outside login is safe to retry (D-040) | Tested | `f047a6e`; 11 tests failed before the change with the false 409s and duplicates, pass after; a test fails if any new write lacks the header |
+| Why a creator's applications are not turning into deals, `GET /api/v1/applications/me/feedback` (C4, D-041) | Tested | `0668508`, `c623533`; 22 tests, 4 rules broken on purpose and caught |
+| Performance of every Phase B endpoint measured on seeded data | Tested | Table below |
+| Notice for Erode Harish at the top of `CLAUDE.md` | Implemented | `docs/notice-for-erode` branch, `e1d794d`; takes effect once merged to `main` |
+
+### Measured performance
+
+Seeded dev database (150 campaigns, 786 applications, 200 creators) plus one brand with 60 complete deals, built inside a transaction that was rolled back afterwards: nothing was left behind. Reads 100 runs each; writes one per deal.
+
+| Endpoint | p95 ms | Budget |
+|---|---|---|
+| Phase A list endpoints (existing script) | ≤ 14.2 | 300 |
+| `GET /deal-memos/mine`, memo, proof, payment, dispute | ≤ 10.5 | 300 |
+| `GET /brands/{id}/reliability` (60 deals) | 12.9 | 300 |
+| `GET /creators/{id}/delivery-record` | 10.0 | 300 |
+| `GET /applications/me/feedback` (busiest seeded creator) | 23.4 | 300 |
+| `GET /me/export` (brand with 60 deals) | 83.2 | 300 |
+| Every Phase B write (create, send, accept, proof, approve, mark paid, confirm, dispute) | ≤ 23.8 | 500 |
+
+Worst p95 is 28% of its budget. **Caveat:** inside the test transaction a commit releases a savepoint instead of writing to disk, so write figures are a lower bound. The margin is wide enough that this does not change the verdict.
+
+### Decisions approved
+
+| ID | Decision | Approved by |
+|---|---|---|
+| D-039 | Paid, commission and local-business memos need an agreed date to be sent; the date cannot be past at send or accept | Adhi |
+| D-040 | Idempotency-Key on every `POST` and `PATCH` outside `/api/v1/auth/`; login excluded pending its own decision | Adhi |
+| D-041 | Application feedback: most common reason only from three rejections and never on a tie; profile facts, not gaps | Adhi |
+
+### Testing
+
+- **Result:** 1,051 passed · 0 failed · 0 skipped. Coverage 97.65%, every service above 90%.
+- **Contract:** checked operation by operation for each branch. D-040 changed 24 operations, each only by the added header and its 503. C4 added one path and one schema. Nothing else changed.
+
+### Still open, for founders
+
+- Whether the brand and creator records should ever be public (D-034 point 5, D-038 b).
+- DPDP: keeping and contesting a record about a person (D-038 c), for the validation pack.
+- Whether login steps should be retry-safe (excluded from D-040).
+- Audience size on creator profiles, which fair-rate guidance (C3) needs: a creator column, so Erode Harish's track.
+- Merging `docs/notice-for-erode`, so Erode Harish's sessions show him the notice.
