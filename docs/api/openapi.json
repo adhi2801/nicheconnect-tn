@@ -368,6 +368,229 @@
         "title": "ApplicationReject",
         "type": "object"
       },
+      "AttentionItemRead": {
+        "description": "One thing waiting on the caller. The words belong to the frontend.",
+        "properties": {
+          "amount_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Paise"
+          },
+          "application_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Application Id"
+          },
+          "campaign_id": {
+            "format": "uuid",
+            "title": "Campaign Id",
+            "type": "string"
+          },
+          "campaign_title": {
+            "title": "Campaign Title",
+            "type": "string"
+          },
+          "count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For an item that stands for several things, such as applications",
+            "title": "Count"
+          },
+          "counterparty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A creator's handle for a brand, a brand's name for a creator",
+            "title": "Counterparty"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "const": "INR",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "days_left": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Days until due_on; negative when overdue, 0 on the day itself",
+            "title": "Days Left"
+          },
+          "due_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The Tamil Nadu date it is due by; null when nothing sets a date",
+            "title": "Due On"
+          },
+          "kind": {
+            "enum": [
+              "respond_to_dispute",
+              "pay_creator",
+              "review_proof",
+              "revise_memo",
+              "draft_memo",
+              "review_applications",
+              "confirm_payment",
+              "payment_overdue",
+              "resubmit_work",
+              "deliver_work",
+              "answer_memo"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "memo_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memo Id"
+          },
+          "proof_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proof Id"
+          }
+        },
+        "required": [
+          "kind",
+          "due_on",
+          "days_left",
+          "campaign_id",
+          "campaign_title",
+          "counterparty",
+          "application_id",
+          "memo_id",
+          "proof_id",
+          "amount_paise",
+          "currency",
+          "count"
+        ],
+        "title": "AttentionItemRead",
+        "type": "object"
+      },
+      "AttentionRead": {
+        "description": "What is waiting on the signed-in account, the most urgent first.",
+        "properties": {
+          "as_of": {
+            "description": "The Tamil Nadu date the list was worked out for",
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Items per kind, every kind for the role present, zeros included",
+            "propertyNames": {
+              "enum": [
+                "respond_to_dispute",
+                "pay_creator",
+                "review_proof",
+                "revise_memo",
+                "draft_memo",
+                "review_applications",
+                "confirm_payment",
+                "payment_overdue",
+                "resubmit_work",
+                "deliver_work",
+                "answer_memo"
+              ]
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AttentionItemRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "role": {
+            "enum": [
+              "brand",
+              "creator"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "truncated": {
+            "description": "True when more items exist than are listed",
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "role",
+          "as_of",
+          "total",
+          "truncated",
+          "counts",
+          "items"
+        ],
+        "title": "AttentionRead",
+        "type": "object"
+      },
       "BrandProfileCreate": {
         "additionalProperties": false,
         "properties": {
@@ -9701,6 +9924,66 @@
         "summary": "Withdraw from an accepted deal (creator)",
         "tags": [
           "deal memos"
+        ]
+      }
+    },
+    "/api/v1/me/attention": {
+      "get": {
+        "description": "Everything waiting on the signed-in brand or creator, the most urgent first: overdue, then soonest due, then anything without a date. For a brand: applications to review, memos to draft or revise, proof to review before it approves itself, creators to pay, and disputes to answer. For a creator: memos to answer, work to deliver or redo, payments to confirm, payments owed past their date, and disputes to answer. Worked out from the records each time, so an item disappears the moment it is done. Items carry a `kind` code and the facts; the wording belongs to the app. At most 50 items; `counts` and `total` always cover everything.",
+        "operationId": "read_my_attention_api_v1_me_attention_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttentionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The profile has not been created yet"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "What needs my attention",
+        "tags": [
+          "attention"
         ]
       }
     },

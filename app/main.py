@@ -12,6 +12,7 @@ from app.core.idempotent_route import set_identity_resolver
 from app.core.rate_limit import limiter
 from app.core.request_id import RequestIdMiddleware
 from app.core.security_headers import SecurityHeadersMiddleware
+from app.modules.auth.attention_router import router as attention_router
 from app.modules.auth.dependencies import idempotency_identity
 from app.modules.auth.export_router import router as export_router
 from app.modules.auth.profile_router import brand_router, creator_router
@@ -54,6 +55,7 @@ app.include_router(brand_router)
 app.include_router(creator_router)
 # Privacy: download everything we hold about you.
 app.include_router(export_router)
+app.include_router(attention_router)
 # Public: the Creator Passport, readable without logging in.
 app.include_router(public_router)
 app.include_router(campaigns_router)

@@ -2,7 +2,7 @@
 
 import re
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Any, Literal
 
 from pydantic import (
@@ -15,7 +15,9 @@ from pydantic import (
 )
 from pydantic_core import PydanticCustomError
 
-from app.core.taxonomy import LANGUAGES, MAX_NICHES, Language, Niche
+from app.core.attention import BRAND_KINDS, CREATOR_KINDS, AttentionList
+from app.core.literals import ensure_same_values
+from app.core.taxonomy import CURRENCY, LANGUAGES, MAX_NICHES, Language, Niche
 from app.modules.auth.models.account import PHONE_PATTERN
 from app.modules.auth.models.creator import BIO_MAX_LENGTH, HANDLE_PATTERN
 
@@ -335,4 +337,88 @@ class ExportFile(BaseModel):
     )
     data: dict[str, list[dict[str, Any]]] = Field(
         description="One list of records per manifest section"
+    )
+
+
+AttentionKind = Literal[
+    "respond_to_dispute",
+    "pay_creator",
+    "review_proof",
+    "revise_memo",
+    "draft_memo",
+    "review_applications",
+    "confirm_payment",
+    "payment_overdue",
+    "resubmit_work",
+    "deliver_work",
+    "answer_memo",
+]
+
+ensure_same_values("AttentionKind", AttentionKind, (*BRAND_KINDS, *CREATOR_KINDS))
+
+
+class AttentionItemRead(BaseModel):
+    """One thing waiting on the caller. The words belong to the frontend."""
+
+    kind: AttentionKind
+    due_on: date | None = Field(
+        description="The Tamil Nadu date it is due by; null when nothing sets a date"
+    )
+    days_left: int | None = Field(
+        description="Days until due_on; negative when overdue, 0 on the day itself"
+    )
+    campaign_id: uuid.UUID
+    campaign_title: str
+    counterparty: str | None = Field(
+        description="A creator's handle for a brand, a brand's name for a creator"
+    )
+    application_id: uuid.UUID | None
+    memo_id: uuid.UUID | None
+    proof_id: uuid.UUID | None
+    amount_paise: int | None
+    currency: Literal["INR"] | None
+    count: int | None = Field(
+        description="For an item that stands for several things, such as applications"
+    )
+
+
+class AttentionRead(BaseModel):
+    """What is waiting on the signed-in account, the most urgent first."""
+
+    role: Literal["brand", "creator"]
+    as_of: date = Field(description="The Tamil Nadu date the list was worked out for")
+    total: int
+    truncated: bool = Field(description="True when more items exist than are listed")
+    counts: dict[AttentionKind, int] = Field(
+        description="Items per kind, every kind for the role present, zeros included"
+    )
+    items: list[AttentionItemRead]
+
+
+def to_attention_read(result: AttentionList) -> AttentionRead:
+    return AttentionRead(
+        role=result.role,
+        as_of=result.as_of,
+        total=result.total,
+        truncated=result.truncated,
+        counts=result.counts,
+        items=[
+            AttentionItemRead(
+                kind=item.kind,
+                due_on=item.due_on,
+                days_left=(
+                    None if item.due_on is None else (item.due_on - result.as_of).days
+                ),
+                campaign_id=item.campaign_id,
+                campaign_title=item.campaign_title,
+                counterparty=item.counterparty,
+                application_id=item.application_id,
+                memo_id=item.memo_id,
+                proof_id=item.proof_id,
+                amount_paise=item.amount_paise,
+                currency=None if item.amount_paise is None else CURRENCY,
+                count=item.count,
+            )
+            for item in result.items
+        ],
     )
