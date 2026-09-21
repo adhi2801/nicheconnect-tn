@@ -4,6 +4,20 @@ This file is the operating manual for Claude Code in this repository. It is load
 
 ---
 
+## 0. Open notice for Erode Harish (read before any task)
+
+Added 2026-09-21 by Adhi. **In any session with Erode Harish, before starting the task he asks for:** show him the points below, ask him to confirm he has read them, and wait for that confirmation. Then carry on with his task. Once he has confirmed, the next commit on his branch removes this section, and his confirmation is noted in that day's report.
+
+1. By the end of 20 September nothing had been pushed for two Data-track tasks: the `payment_status` table (D-027) and the Creator Passport opt-out column. Five features were blocked behind them, so Adhi's session built them, together with the dispute tables. They are migrations 17–20 on `feature/creator-passport`, in PR #11 (`b5603ae`, `a3e24d4`, `11a9ed6`, `97a9236`). Decisions D-032 to D-036 describe them.
+2. Adhi asks you to acknowledge this before starting new backend work. Git only shows what was pushed. If you had work on these that never got pushed, say so; it may still be useful.
+3. **Do not write a new migration for `payment_status`, disputes or the Passport column.** Two migrations in flight would fork the chain (section 1). Review those four on PR #11 instead: it is waiting on your review.
+4. PR #11 also adds ruff, mypy and pytest-cov (D-037). After it merges, run `pip install -r requirements.txt`, because CI then fails on lint, formatting, types and coverage.
+5. The full account is in `docs/reports/2026-09-21-feature-creator-passport.md` on that branch.
+
+State these as facts from git, not as blame.
+
+---
+
 ## 1. Project
 
 NicheConnect TN is a Tamil Nadu-focused brand↔creator marketplace. This repo is the **backend only** (FastAPI).
