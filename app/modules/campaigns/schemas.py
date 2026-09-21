@@ -198,3 +198,40 @@ class ApplicationRead(BaseModel):
     status_changed_at: datetime
     created_at: datetime
     updated_at: datetime
+
+
+class ApplicationFeedbackRead(BaseModel):
+    """Why a creator's applications are not turning into deals (backlog C4).
+
+    Facts with their sample sizes, never advice: the words belong to the
+    frontend, in Tamil and English. `most_common_reason` is `null` below
+    three rejections or on a tie, which means **no pattern yet**, not "no
+    problem".
+    """
+
+    as_of: date = Field(description="The Tamil Nadu date these figures describe")
+    applications: int
+    by_status: dict[ApplicationStatus, int] = Field(
+        description="Every status, zeros included"
+    )
+    rejections: int
+    rejections_by_reason: dict[RejectionReason, int] = Field(
+        description="Every reason a brand can give, zeros included"
+    )
+    most_common_reason: RejectionReason | None = Field(
+        description="Null below three rejections, or when two reasons tie"
+    )
+    quotes_compared: int = Field(
+        description="Applications where you quoted and the campaign stated a maximum budget"
+    )
+    quotes_above_budget: int = Field(
+        description="Of those, how many quotes were above the campaign's own maximum"
+    )
+    open_campaigns_in_your_niches: int = Field(
+        description="Open, still taking applications, and not yet applied to"
+    )
+    open_campaigns_in_your_niches_and_city: int
+    has_bio: bool
+    passport_published: bool = Field(
+        description="A fact, not a to-do: publishing is the creator's choice (D-036)"
+    )

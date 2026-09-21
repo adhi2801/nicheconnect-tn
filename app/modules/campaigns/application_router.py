@@ -12,13 +12,14 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
+from app.core.clock import india_date
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page, Slice
 from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.modules.auth.dependencies import get_now
-from app.modules.campaigns import service
+from app.modules.campaigns import feedback, service
 from app.modules.campaigns.dependencies import (
     BrandApplication,
     CreatorApplication,
@@ -29,6 +30,7 @@ from app.modules.campaigns.dependencies import (
 from app.modules.campaigns.models import Application
 from app.modules.campaigns.schemas import (
     ApplicationCreate,
+    ApplicationFeedbackRead,
     ApplicationRead,
     ApplicationReject,
     ApplicationStatus,
@@ -148,6 +150,33 @@ def list_my_applications(
             db, creator, limit=limit, cursor=cursor, status=application_status
         )
     )
+
+
+@router.get(
+    "/applications/me/feedback",
+    response_model=ApplicationFeedbackRead,
+    summary="Why my applications are not turning into deals",
+    description=(
+        "The pattern behind a creator's applications, as facts with their sample "
+        "sizes: rejections by the reason the brand gave, how many quotes were "
+        "above the campaign's own maximum budget, and how many open campaigns in "
+        "their niches they have not applied to yet. `most_common_reason` is null "
+        "below three rejections or on a tie, meaning no pattern yet. Creators only."
+    ),
+    responses={
+        **_COMMON_ERRORS,
+        409: problem_doc("The creator profile has not been created yet"),
+    },
+)
+@limiter.limit(READ_LIMIT)
+def read_my_application_feedback(
+    request: Request,
+    creator: CurrentCreatorProfile,
+    now: Annotated[datetime, Depends(get_now)],
+    db: Session = Depends(get_db),
+) -> ApplicationFeedbackRead:
+    record = feedback.for_creator(db, creator, india_date(now))
+    return ApplicationFeedbackRead.model_validate(record, from_attributes=True)
 
 
 @router.get(
