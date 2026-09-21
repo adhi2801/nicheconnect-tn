@@ -131,7 +131,9 @@ def test_the_public_page_still_carries_nothing_private(client, db, creator):
 def test_publishing_twice_keeps_the_day_they_first_chose(client, creator, clock):
     """The timestamp is the consent. A second tap on a slow connection is
     not a second decision."""
-    first = client.post(PUBLISH_URL, headers=creator.headers).json()["passport_published_at"]
+    first = client.post(PUBLISH_URL, headers=creator.headers).json()[
+        "passport_published_at"
+    ]
     clock.advance(timedelta(days=3))
 
     again = client.post(PUBLISH_URL, headers=creator.headers).json()[

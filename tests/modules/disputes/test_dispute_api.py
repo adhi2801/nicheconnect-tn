@@ -67,7 +67,10 @@ def test_a_brand_can_raise_one_too(client, deal):
     """Not only creators are wronged. A brand may say the work was not what
     was agreed."""
     response = raise_dispute(
-        client, deal, who="brand", reason="The reel was posted and then deleted within a day."
+        client,
+        deal,
+        who="brand",
+        reason="The reel was posted and then deleted within a day.",
     )
 
     assert response.status_code == 201
@@ -138,7 +141,10 @@ def test_the_brand_can_answer_on_the_record(client, deal):
 
     response = client.post(
         f"{dispute_url(deal['memo_id'])}/entries",
-        json={"note": "Sent by UPI on the 8th, receipt attached.", "evidence_url": RECEIPT},
+        json={
+            "note": "Sent by UPI on the 8th, receipt attached.",
+            "evidence_url": RECEIPT,
+        },
         headers=deal["brand"].headers,
     )
 
@@ -234,7 +240,10 @@ def test_settling_it_by_phone_is_a_real_outcome(client, deal):
 
     response = client.post(
         f"{dispute_url(deal['memo_id'])}/close",
-        json={"outcome": "resolved_informally", "note": "Sorted on a call, money received."},
+        json={
+            "outcome": "resolved_informally",
+            "note": "Sorted on a call, money received.",
+        },
         headers=deal["creator"].headers,
     )
 
@@ -321,9 +330,7 @@ def test_an_open_dispute_holds_the_payment_short_of_unpaid(client, db, clock):
     )
     clock.advance(timedelta(days=25))
 
-    payment = client.get(
-        f"{MEMOS_URL}/{memo_id}/payment", headers=creator.headers
-    ).json()
+    payment = client.get(f"{MEMOS_URL}/{memo_id}/payment", headers=creator.headers).json()
 
     assert payment["has_open_dispute"] is True
     assert payment["state"] == "late"

@@ -156,7 +156,9 @@ def _seconds_until_verify_allowed(db: Session, phone: str, now: datetime) -> int
     return max(1, math.ceil((oldest + VERIFY_ATTEMPT_WINDOW - now).total_seconds()))
 
 
-def verify_otp(db: Session, phone: str, code: str, role: str, now: datetime) -> LoginResult:
+def verify_otp(
+    db: Session, phone: str, code: str, role: str, now: datetime
+) -> LoginResult:
     """Check a code and log the phone in, creating the account if it is new.
 
     Only the latest code for the phone counts. A wrong code uses up one of
@@ -208,6 +210,7 @@ def verify_otp(db: Session, phone: str, code: str, role: str, now: datetime) -> 
     result = _issue_session(db, account, uuid.uuid4(), now)
     db.commit()
     return replace(result, is_new_account=is_new_account)
+
 
 def _revoke_family(db: Session, family_id: uuid.UUID, now: datetime) -> None:
     """End every session in one login's rotation chain."""
@@ -298,6 +301,7 @@ def logout(db: Session, refresh_token: str, now: datetime) -> None:
     if auth_session is not None:
         _revoke_family(db, auth_session.family_id, now)
     db.commit()
+
 
 def logout_all_sessions(db: Session, account_id: uuid.UUID, now: datetime) -> int:
     """End every session of one account. Returns how many were still active."""

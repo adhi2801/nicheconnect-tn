@@ -72,7 +72,9 @@ def creator_user(db, clock) -> User:
     return User(creator.account_id, "creator", clock)
 
 
-def accepted_application(client, brand: User, creator: User, campaign_type: str = "paid") -> str:
+def accepted_application(
+    client, brand: User, creator: User, campaign_type: str = "paid"
+) -> str:
     """A campaign, an application, shortlisted and accepted: ready for a memo."""
     body = {
         "title": "Pongal sweets launch",
@@ -101,7 +103,10 @@ def accepted_application(client, brand: User, creator: User, campaign_type: str 
 
 
 def draft_memo(client, brand: User, application_id: str, **overrides) -> dict:
-    body = {"deliverables": "3 Instagram reels, 1 story set.", "fee_amount_paise": 800_000}
+    body = {
+        "deliverables": "3 Instagram reels, 1 story set.",
+        "fee_amount_paise": 800_000,
+    }
     body.update(overrides)
     response = client.post(
         f"{MEMOS_URL}/for-application/{application_id}", json=body, headers=brand.headers
@@ -139,7 +144,10 @@ def test_brand_drafts_a_memo_with_the_agreed_defaults(client, db, clock):
 
     response = client.post(
         f"{MEMOS_URL}/for-application/{application_id}",
-        json={"deliverables": "3 Instagram reels, 1 story set.", "fee_amount_paise": 800_000},
+        json={
+            "deliverables": "3 Instagram reels, 1 story set.",
+            "fee_amount_paise": 800_000,
+        },
         headers=brand.headers,
     )
 
@@ -166,7 +174,9 @@ def test_a_memo_needs_an_accepted_application(client, db, clock):
         "niches": ["food"],
         "deliverables": "3 reels",
     }
-    campaign_id = client.post(CAMPAIGNS_URL, json=body, headers=brand.headers).json()["id"]
+    campaign_id = client.post(CAMPAIGNS_URL, json=body, headers=brand.headers).json()[
+        "id"
+    ]
     client.post(f"{CAMPAIGNS_URL}/{campaign_id}/publish", headers=brand.headers)
     application_id = client.post(
         f"{CAMPAIGNS_URL}/{campaign_id}/applications",
@@ -277,13 +287,20 @@ def test_a_draft_is_invisible_to_the_creator_until_it_is_sent(client, db, clock)
     memo = draft_memo(client, brand, accepted_application(client, brand, creator))
 
     assert_problem(
-        client.get(f"{MEMOS_URL}/{memo['id']}", headers=creator.headers), 404, "memo_not_found"
+        client.get(f"{MEMOS_URL}/{memo['id']}", headers=creator.headers),
+        404,
+        "memo_not_found",
     )
-    assert client.get(f"{MEMOS_URL}/{memo['id']}", headers=brand.headers).status_code == 200
+    assert (
+        client.get(f"{MEMOS_URL}/{memo['id']}", headers=brand.headers).status_code == 200
+    )
 
     client.post(f"{MEMOS_URL}/{memo['id']}/send", headers=brand.headers)
 
-    assert client.get(f"{MEMOS_URL}/{memo['id']}", headers=creator.headers).status_code == 200
+    assert (
+        client.get(f"{MEMOS_URL}/{memo['id']}", headers=creator.headers).status_code
+        == 200
+    )
 
 
 def test_strangers_see_nothing(client, db, clock):
@@ -302,7 +319,9 @@ def test_my_list_shows_each_side_their_own(client, db, clock):
     brand, creator = brand_user(db, clock), creator_user(db, clock)
     draft = draft_memo(client, brand, accepted_application(client, brand, creator))
     other_brand, other_creator = brand_user(db, clock), creator_user(db, clock)
-    sent_memo(client, other_brand, accepted_application(client, other_brand, other_creator))
+    sent_memo(
+        client, other_brand, accepted_application(client, other_brand, other_creator)
+    )
 
     brand_list = client.get(f"{MEMOS_URL}/mine", headers=brand.headers).json()
     creator_list = client.get(f"{MEMOS_URL}/mine", headers=creator.headers).json()
@@ -312,18 +331,22 @@ def test_my_list_shows_each_side_their_own(client, db, clock):
     assert creator_list["items"] == []
 
 
-def test_my_list_pages_without_skipping_memos_drafted_at_the_same_moment(client, db, clock):
+def test_my_list_pages_without_skipping_memos_drafted_at_the_same_moment(
+    client, db, clock
+):
     # No clock.advance: all three memos share one created_at, so the id is the
     # only thing ordering them. Without it the second page loses the tied rows.
     brand = brand_user(db, clock)
     memo_ids = {
-        draft_memo(client, brand, accepted_application(client, brand, creator_user(db, clock)))[
-            "id"
-        ]
+        draft_memo(
+            client, brand, accepted_application(client, brand, creator_user(db, clock))
+        )["id"]
         for _ in range(3)
     }
 
-    first = client.get(f"{MEMOS_URL}/mine", params={"limit": 2}, headers=brand.headers).json()
+    first = client.get(
+        f"{MEMOS_URL}/mine", params={"limit": 2}, headers=brand.headers
+    ).json()
     second = client.get(
         f"{MEMOS_URL}/mine",
         params={"limit": 2, "cursor": first["next_cursor"]},
@@ -346,7 +369,9 @@ def test_send_then_accept(client, db, clock):
     clock.advance(timedelta(hours=1))
     sent = client.post(f"{MEMOS_URL}/{memo['id']}/send", headers=brand.headers).json()
     clock.advance(timedelta(hours=1))
-    accepted = client.post(f"{MEMOS_URL}/{memo['id']}/accept", headers=creator.headers).json()
+    accepted = client.post(
+        f"{MEMOS_URL}/{memo['id']}/accept", headers=creator.headers
+    ).json()
 
     assert sent["status"] == "sent" and sent["sent_at"] is not None
     assert accepted["status"] == "accepted"
@@ -359,7 +384,9 @@ def test_creator_declines(client, db, clock):
     brand, creator = brand_user(db, clock), creator_user(db, clock)
     memo = sent_memo(client, brand, accepted_application(client, brand, creator))
 
-    declined = client.post(f"{MEMOS_URL}/{memo['id']}/decline", headers=creator.headers).json()
+    declined = client.post(
+        f"{MEMOS_URL}/{memo['id']}/decline", headers=creator.headers
+    ).json()
 
     assert declined["status"] == "declined"
     assert "memo_declined" in notification_types(client, brand)
@@ -381,7 +408,9 @@ def test_creator_asks_for_a_change_and_the_brand_resends(client, db, clock):
         headers=creator.headers,
     ).json()
     changed = client.patch(
-        f"{MEMOS_URL}/{memo['id']}", json={"deliverables": "2 Instagram reels"}, headers=brand.headers
+        f"{MEMOS_URL}/{memo['id']}",
+        json={"deliverables": "2 Instagram reels"},
+        headers=brand.headers,
     ).json()
     resent = client.post(f"{MEMOS_URL}/{memo['id']}/send", headers=brand.headers).json()
 
@@ -389,11 +418,17 @@ def test_creator_asks_for_a_change_and_the_brand_resends(client, db, clock):
     assert asked["revision_count"] == 1
     assert changed["deliverables"] == "2 Instagram reels"
     assert resent["status"] == "sent"
-    brand_notifications = client.get(NOTIFICATIONS_URL, headers=brand.headers).json()["items"]
-    [change_request] = [
-        item for item in brand_notifications if item["notification_type"] == "memo_change_requested"
+    brand_notifications = client.get(NOTIFICATIONS_URL, headers=brand.headers).json()[
+        "items"
     ]
-    assert change_request["details"]["message"] == "Can we make it 2 reels for the same fee?"
+    [change_request] = [
+        item
+        for item in brand_notifications
+        if item["notification_type"] == "memo_change_requested"
+    ]
+    assert (
+        change_request["details"]["message"] == "Can we make it 2 reels for the same fee?"
+    )
 
 
 def test_terms_stop_changing_once_accepted(client, db, clock):
@@ -403,7 +438,9 @@ def test_terms_stop_changing_once_accepted(client, db, clock):
 
     assert_problem(
         client.patch(
-            f"{MEMOS_URL}/{memo['id']}", json={"fee_amount_paise": 100_000}, headers=brand.headers
+            f"{MEMOS_URL}/{memo['id']}",
+            json={"fee_amount_paise": 100_000},
+            headers=brand.headers,
         ),
         409,
         "memo_not_editable",
@@ -415,10 +452,16 @@ def test_a_creator_cannot_send_or_edit(client, db, clock):
     memo = draft_memo(client, brand, accepted_application(client, brand, creator))
 
     assert_problem(
-        client.post(f"{MEMOS_URL}/{memo['id']}/send", headers=creator.headers), 403, "role_not_allowed"
+        client.post(f"{MEMOS_URL}/{memo['id']}/send", headers=creator.headers),
+        403,
+        "role_not_allowed",
     )
     assert_problem(
-        client.patch(f"{MEMOS_URL}/{memo['id']}", json={"deliverables": "mine"}, headers=creator.headers),
+        client.patch(
+            f"{MEMOS_URL}/{memo['id']}",
+            json={"deliverables": "mine"},
+            headers=creator.headers,
+        ),
         403,
         "role_not_allowed",
     )
@@ -429,7 +472,9 @@ def test_a_brand_cannot_accept_its_own_memo(client, db, clock):
     memo = sent_memo(client, brand, accepted_application(client, brand, creator))
 
     assert_problem(
-        client.post(f"{MEMOS_URL}/{memo['id']}/accept", headers=brand.headers), 403, "role_not_allowed"
+        client.post(f"{MEMOS_URL}/{memo['id']}/accept", headers=brand.headers),
+        403,
+        "role_not_allowed",
     )
 
 
@@ -441,7 +486,9 @@ def test_cancelling_before_work_costs_nothing(client, db, clock):
     memo = sent_memo(client, brand, accepted_application(client, brand, creator))
     client.post(f"{MEMOS_URL}/{memo['id']}/accept", headers=creator.headers)
 
-    cancelled = client.post(f"{MEMOS_URL}/{memo['id']}/cancel", headers=brand.headers).json()
+    cancelled = client.post(
+        f"{MEMOS_URL}/{memo['id']}/cancel", headers=brand.headers
+    ).json()
 
     assert cancelled["status"] == "cancelled"
     assert cancelled["cancellation_kind"] == "withdrawn_early"
@@ -457,7 +504,9 @@ def test_cancelling_after_work_started_counts(client, db, clock):
     stored.work_started_at = clock.now
     db.flush()
 
-    cancelled = client.post(f"{MEMOS_URL}/{memo['id']}/cancel", headers=brand.headers).json()
+    cancelled = client.post(
+        f"{MEMOS_URL}/{memo['id']}/cancel", headers=brand.headers
+    ).json()
 
     assert cancelled["cancellation_kind"] == "cancelled_by_brand"
 
@@ -470,7 +519,9 @@ def test_a_creator_withdrawing_after_work_counts_against_them(client, db, clock)
     stored.work_started_at = clock.now
     db.flush()
 
-    cancelled = client.post(f"{MEMOS_URL}/{memo['id']}/withdraw", headers=creator.headers).json()
+    cancelled = client.post(
+        f"{MEMOS_URL}/{memo['id']}/withdraw", headers=creator.headers
+    ).json()
 
     assert cancelled["cancellation_kind"] == "cancelled_by_creator"
     assert "memo_cancelled" in notification_types(client, brand)
@@ -497,9 +548,18 @@ def test_a_cancelled_memo_is_finished(client, db, clock):
     [
         ({"deliverables": "", "fee_amount_paise": 1}, "deliverables"),
         ({"deliverables": "x", "fee_amount_paise": 0}, "fee_amount_paise"),
-        ({"deliverables": "x", "fee_amount_paise": 1, "approval_window_days": 31}, "approval_window_days"),
-        ({"deliverables": "x", "fee_amount_paise": 1, "payment_due_days": 0}, "payment_due_days"),
-        ({"deliverables": "x", "fee_amount_paise": 1, "usage_rights_days": 0}, "usage_rights_days"),
+        (
+            {"deliverables": "x", "fee_amount_paise": 1, "approval_window_days": 31},
+            "approval_window_days",
+        ),
+        (
+            {"deliverables": "x", "fee_amount_paise": 1, "payment_due_days": 0},
+            "payment_due_days",
+        ),
+        (
+            {"deliverables": "x", "fee_amount_paise": 1, "usage_rights_days": 0},
+            "usage_rights_days",
+        ),
         ({"deliverables": "x", "fee_amount_paise": 1, "status": "accepted"}, "status"),
     ],
 )
@@ -509,7 +569,9 @@ def test_invalid_memo_fields_are_rejected(client, db, clock, body, field):
 
     problem = assert_problem(
         client.post(
-            f"{MEMOS_URL}/for-application/{application_id}", json=body, headers=brand.headers
+            f"{MEMOS_URL}/for-application/{application_id}",
+            json=body,
+            headers=brand.headers,
         ),
         422,
         "validation_failed",
@@ -522,7 +584,9 @@ def test_a_change_request_needs_a_message(client, db, clock):
     memo = sent_memo(client, brand, accepted_application(client, brand, creator))
 
     assert_problem(
-        client.post(f"{MEMOS_URL}/{memo['id']}/request-change", json={}, headers=creator.headers),
+        client.post(
+            f"{MEMOS_URL}/{memo['id']}/request-change", json={}, headers=creator.headers
+        ),
         422,
         "validation_failed",
     )

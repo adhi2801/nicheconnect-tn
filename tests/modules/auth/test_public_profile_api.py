@@ -103,7 +103,9 @@ def test_nothing_private_is_ever_in_the_response(client, db):
         assert forbidden not in text
 
 
-@pytest.mark.parametrize("typed", ["Priya.Eats", "@priya.eats", "PRIYA.EATS", " priya.eats "])
+@pytest.mark.parametrize(
+    "typed", ["Priya.Eats", "@priya.eats", "PRIYA.EATS", " priya.eats "]
+)
 def test_handles_are_matched_however_they_are_typed(client, db, typed):
     make_creator(db, handle="priya.eats")
 

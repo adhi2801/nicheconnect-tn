@@ -32,7 +32,9 @@ def check_database() -> CheckResult:
     """One trivial query, with its own statement timeout."""
     try:
         with engine.connect() as connection:
-            connection.execute(text(f"SET LOCAL statement_timeout = {DATABASE_TIMEOUT_MS}"))
+            connection.execute(
+                text(f"SET LOCAL statement_timeout = {DATABASE_TIMEOUT_MS}")
+            )
             connection.execute(text("SELECT 1"))
         return CheckResult("database", True)
     except Exception:

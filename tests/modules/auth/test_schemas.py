@@ -42,7 +42,9 @@ def test_invalid_mobile_is_rejected_with_a_friendly_message(typed):
     with pytest.raises(ValidationError) as exc_info:
         OtpRequestIn(phone=typed)
 
-    assert error_messages(exc_info) == {"phone": "Enter a valid 10-digit Indian mobile number"}
+    assert error_messages(exc_info) == {
+        "phone": "Enter a valid 10-digit Indian mobile number"
+    }
 
 
 def test_mobile_given_as_a_number_is_rejected():

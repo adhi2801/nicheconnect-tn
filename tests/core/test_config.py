@@ -44,7 +44,9 @@ def test_keys_are_hidden_when_printed():
     assert "k" * 40 not in str(settings.secret_key)
 
 
-@pytest.mark.parametrize("field", ["database_url", "redis_url", "secret_key", "otp_hash_key"])
+@pytest.mark.parametrize(
+    "field", ["database_url", "redis_url", "secret_key", "otp_hash_key"]
+)
 def test_missing_required_setting_is_rejected(monkeypatch, field):
     monkeypatch.delenv(field.upper(), raising=False)
     values = valid_values()

@@ -82,7 +82,8 @@ class Dispute(Base):
         # either without the other would leave a dispute that is closed but
         # undated, or dated but still open.
         CheckConstraint(
-            "(outcome IS NULL) = (closed_at IS NULL)", name="outcome_matches_closed_at",
+            "(outcome IS NULL) = (closed_at IS NULL)",
+            name="outcome_matches_closed_at",
         ),
         CheckConstraint(
             f"char_length(btrim(reason)) >= {REASON_MIN_LENGTH}"

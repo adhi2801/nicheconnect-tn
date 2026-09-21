@@ -81,8 +81,7 @@ class PaymentStatus(Base):
         # A claim of payment always says how it was sent and what identifies
         # it. "I paid you" with no method and no reference is not a record.
         CheckConstraint(
-            "marked_paid_at IS NULL"
-            " OR (method IS NOT NULL AND reference IS NOT NULL)",
+            "marked_paid_at IS NULL OR (method IS NOT NULL AND reference IS NOT NULL)",
             name="paid_needs_method_and_reference",
         ),
         # Nobody can confirm receiving money that was never said to be sent.

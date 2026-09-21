@@ -126,9 +126,7 @@ def confirmation_deadline(payment: PaymentStatus) -> date:
     """The day after which silence from the creator is stated as silence."""
     if payment.marked_paid_at is None:
         raise ValueError("Only a payment marked as paid has a confirmation deadline")
-    return india_date(payment.marked_paid_at) + timedelta(
-        days=CONFIRMATION_WINDOW_DAYS
-    )
+    return india_date(payment.marked_paid_at) + timedelta(days=CONFIRMATION_WINDOW_DAYS)
 
 
 def derive_state(
@@ -173,9 +171,7 @@ def is_auto_matchable(payment: PaymentStatus) -> bool:
 
 def check_method(method: str) -> str:
     if method not in PAYMENT_METHODS:
-        raise UnknownPaymentMethod(
-            f"Use one of: {', '.join(PAYMENT_METHODS)}."
-        )
+        raise UnknownPaymentMethod(f"Use one of: {', '.join(PAYMENT_METHODS)}.")
     return method
 
 
@@ -192,9 +188,7 @@ def clean_reference(reference: str) -> str:
             "was handed over."
         )
     if not PRINTABLE_REFERENCE.fullmatch(tidied):
-        raise InvalidPaymentReference(
-            "Use letters, digits, spaces or - / . : # only."
-        )
+        raise InvalidPaymentReference("Use letters, digits, spaces or - / . : # only.")
     return tidied
 
 
@@ -380,6 +374,4 @@ def open_on_approval(
     existing = get_for_memo(db, memo.id)
     if existing is not None:
         return existing
-    return create_for_memo(
-        db, memo, approved_on=india_date(approved_at), now=now
-    )
+    return create_for_memo(db, memo, approved_on=india_date(approved_at), now=now)

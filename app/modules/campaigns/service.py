@@ -167,7 +167,9 @@ def _paginate(
         query = query.where(older_than_cursor(Campaign.created_at, Campaign.id, cursor))
     rows = list(
         db.scalars(
-            query.order_by(Campaign.created_at.desc(), Campaign.id.desc()).limit(limit + 1)
+            query.order_by(Campaign.created_at.desc(), Campaign.id.desc()).limit(
+                limit + 1
+            )
         ).all()
     )
     return build_slice(rows, limit, key=lambda row: (row.created_at, row.id))
@@ -280,7 +282,10 @@ def apply_to_campaign(
     if campaign.status != "open":
         db.rollback()
         raise CampaignNotOpen()
-    if campaign.applications_close_on is not None and now.date() > campaign.applications_close_on:
+    if (
+        campaign.applications_close_on is not None
+        and now.date() > campaign.applications_close_on
+    ):
         db.rollback()
         raise ApplicationsClosed()
 

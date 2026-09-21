@@ -24,9 +24,7 @@ def make_payment(db, **overrides):
     memo = build_memo(db)
     db.add(memo)
     db.flush()
-    record = payments.create_for_memo(
-        db, memo, approved_on=date(2026, 9, 1), now=OPENED
-    )
+    record = payments.create_for_memo(db, memo, approved_on=date(2026, 9, 1), now=OPENED)
     for key, value in overrides.items():
         setattr(record, key, value)
     db.flush()
@@ -73,7 +71,9 @@ def test_unresolved_is_a_fact_not_a_verdict():
     assert timed_out not in {"brand_at_fault", "creator_at_fault"}
 
 
-@pytest.mark.parametrize("outcome", ["resolved_paid", "resolved_withdrawn", "resolved_informally"])
+@pytest.mark.parametrize(
+    "outcome", ["resolved_paid", "resolved_withdrawn", "resolved_informally"]
+)
 def test_an_agreed_outcome_outranks_the_clock(outcome):
     settled = dispute(outcome=outcome, closed_at=OPENED)
 
@@ -103,7 +103,9 @@ def test_an_open_dispute_holds_a_payment_short_of_unpaid(db):
     """Being argued about is not the same as nobody discussing it. Marking a
     brand a non-payer while the matter is live would be taking a side."""
     payment = make_payment(db)
-    service.open_for_payment(db, payment.id, opened_by="creator", reason=REASON, now=OPENED)
+    service.open_for_payment(
+        db, payment.id, opened_by="creator", reason=REASON, now=OPENED
+    )
     db.commit()
 
     long_after = date(2026, 11, 1)
@@ -130,7 +132,9 @@ def test_a_timed_out_dispute_stops_holding_the_payment(db):
 def test_open_payment_ids_finds_live_disputes_in_one_query(db):
     argued = make_payment(db)
     quiet = make_payment(db)
-    service.open_for_payment(db, argued.id, opened_by="creator", reason=REASON, now=OPENED)
+    service.open_for_payment(
+        db, argued.id, opened_by="creator", reason=REASON, now=OPENED
+    )
     db.commit()
 
     found = service.open_payment_ids(db, {argued.id, quiet.id}, date(2026, 9, 20))
@@ -182,7 +186,9 @@ def test_the_reason_becomes_the_first_entry_on_the_timeline(db):
 
 def test_a_payment_can_only_be_disputed_once(db):
     payment = make_payment(db)
-    service.open_for_payment(db, payment.id, opened_by="creator", reason=REASON, now=OPENED)
+    service.open_for_payment(
+        db, payment.id, opened_by="creator", reason=REASON, now=OPENED
+    )
     db.commit()
 
     with pytest.raises(DisputeAlreadyOpen):
@@ -211,8 +217,12 @@ def test_both_sides_can_put_their_account_on_the_record(db):
     db.commit()
 
     service.add_entry(
-        db, raised, actor_role="brand", note="Sent by UPI, here is the screenshot.",
-        evidence_url="https://example.com/proof.png", now=OPENED + timedelta(days=1),
+        db,
+        raised,
+        actor_role="brand",
+        note="Sent by UPI, here is the screenshot.",
+        evidence_url="https://example.com/proof.png",
+        now=OPENED + timedelta(days=1),
         kind="response",
     )
 
@@ -230,7 +240,10 @@ def test_the_timeline_is_in_the_order_things_were_said(db):
     db.commit()
     for day in (3, 1, 2):
         service.add_entry(
-            db, raised, actor_role="creator", note=f"Entry from day {day}",
+            db,
+            raised,
+            actor_role="creator",
+            note=f"Entry from day {day}",
             now=OPENED + timedelta(days=day),
         )
 
@@ -251,7 +264,10 @@ def test_a_late_account_is_still_accepted(db):
     db.commit()
 
     entry = service.add_entry(
-        db, raised, actor_role="brand", note="Sorry, only just saw this.",
+        db,
+        raised,
+        actor_role="brand",
+        note="Sorry, only just saw this.",
         now=OPENED + timedelta(days=60),
     )
 
@@ -267,7 +283,9 @@ def test_nothing_is_added_after_it_is_settled(db):
     service.close(db, raised, outcome="resolved_paid", actor_role="brand", now=OPENED)
 
     with pytest.raises(DisputeAlreadyClosed):
-        service.add_entry(db, raised, actor_role="creator", note="One more thing", now=OPENED)
+        service.add_entry(
+            db, raised, actor_role="creator", note="One more thing", now=OPENED
+        )
 
 
 # --- closing it -----------------------------------------------------------
@@ -299,7 +317,10 @@ def test_closing_it_lands_on_the_timeline(db):
     # A day later: two entries at the very same instant are genuinely
     # simultaneous, and the timeline would have no honest order to give.
     service.close(
-        db, raised, outcome="resolved_paid", actor_role="brand",
+        db,
+        raised,
+        outcome="resolved_paid",
+        actor_role="brand",
         now=OPENED + timedelta(days=1),
     )
 

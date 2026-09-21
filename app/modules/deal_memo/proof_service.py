@@ -105,7 +105,9 @@ def approve_proof(
     proof.status = "approved"
     proof.approved_at = now
     proof.updated_at = now
-    _notify_other_side(db, memo, to="creator", notification_type="proof_approved", now=now)
+    _notify_other_side(
+        db, memo, to="creator", notification_type="proof_approved", now=now
+    )
     payments.open_on_approval(db, memo, approved_at=now, now=now)
     db.commit()
     db.refresh(proof)

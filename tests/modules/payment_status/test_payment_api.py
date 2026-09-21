@@ -385,7 +385,9 @@ def test_the_brand_is_told_the_money_landed(client, deal):
         json={"method": "upi", "reference": RRN},
         headers=deal["brand"].headers,
     )
-    client.post(f"{payment_url(deal['memo_id'])}/confirm", headers=deal["creator"].headers)
+    client.post(
+        f"{payment_url(deal['memo_id'])}/confirm", headers=deal["creator"].headers
+    )
 
     notifications = client.get(
         "/api/v1/notifications", headers=deal["brand"].headers

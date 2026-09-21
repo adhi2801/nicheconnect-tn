@@ -33,7 +33,9 @@ def sessions_for(db, account_id):
 
 def session_by_token(db, refresh_token: str) -> AuthSession | None:
     return db.scalars(
-        select(AuthSession).where(AuthSession.token_hash == hash_refresh_token(refresh_token))
+        select(AuthSession).where(
+            AuthSession.token_hash == hash_refresh_token(refresh_token)
+        )
     ).first()
 
 
@@ -114,7 +116,9 @@ def test_expired_token_is_rejected(db):
 def test_token_works_until_just_before_expiry(db):
     login = log_in(db)
 
-    refresh_session(db, login.refresh_token, FIXED_NOW + timedelta(days=30) - timedelta(seconds=1))
+    refresh_session(
+        db, login.refresh_token, FIXED_NOW + timedelta(days=30) - timedelta(seconds=1)
+    )
 
 
 def test_revoked_token_is_rejected(db):

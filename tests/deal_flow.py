@@ -59,7 +59,9 @@ def creator_user(db: Session, clock: Clock) -> User:
     return User(creator.account_id, "creator", clock)
 
 
-def accepted_memo(client: TestClient, brand: User, creator: User, **memo_fields: object) -> str:
+def accepted_memo(
+    client: TestClient, brand: User, creator: User, **memo_fields: object
+) -> str:
     """A whole journey: campaign, application, acceptance, memo, accepted."""
     campaign_id = client.post(
         CAMPAIGNS_URL,

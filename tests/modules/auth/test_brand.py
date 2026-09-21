@@ -51,7 +51,9 @@ def test_same_email_in_different_case_cannot_be_stored_twice(db):
     db.flush()
 
     assert_rejected_by(
-        db, build_brand(db, name="Second", email="CASE@example.com"), "ck_brand_email_lowercase"
+        db,
+        build_brand(db, name="Second", email="CASE@example.com"),
+        "ck_brand_email_lowercase",
     )
 
 

@@ -150,9 +150,7 @@ def build_record(
     states = [
         (
             payment,
-            derive_state(
-                payment, today, has_open_dispute=payment.id in argued_about
-            ),
+            derive_state(payment, today, has_open_dispute=payment.id in argued_about),
         )
         for payment in payments
     ]
@@ -178,9 +176,7 @@ def build_record(
         # Undefined rather than zero when they have never paid: "pays in 0
         # days" would be a lie in the brand's favour.
         median_days = (
-            statistics.median(_days_to_pay(payment) for payment in paid)
-            if paid
-            else None
+            statistics.median(_days_to_pay(payment) for payment in paid) if paid else None
         )
 
     return ReliabilityRecord(

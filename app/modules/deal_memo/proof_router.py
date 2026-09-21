@@ -161,7 +161,10 @@ def list_proof(
         "The brand accepts the work. Approval starts the payment clock: payment "
         "is due the agreed number of days after this moment (D-027)."
     ),
-    responses={**_COMMON_ERRORS, 409: problem_doc("This proof has already been reviewed")},
+    responses={
+        **_COMMON_ERRORS,
+        409: problem_doc("This proof has already been reviewed"),
+    },
 )
 @limiter.limit(WRITE_LIMIT)
 def approve_proof(

@@ -240,7 +240,9 @@ def main() -> int:
     parser.add_argument("--creators", type=int, default=200)
     parser.add_argument("--campaigns", type=int, default=150)
     parser.add_argument("--applications", type=int, default=800)
-    parser.add_argument("--seed", type=int, default=42, help="Random seed, for repeatable data")
+    parser.add_argument(
+        "--seed", type=int, default=42, help="Random seed, for repeatable data"
+    )
     parser.add_argument(
         "--reset", action="store_true", help="Delete existing sample data first"
     )

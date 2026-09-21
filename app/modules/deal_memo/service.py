@@ -175,7 +175,9 @@ def update_memo(
 
     if "fee_amount_paise" in changes:
         application = db.get_one(Application, memo.application_id)
-        _check_fee_against_campaign(_campaign_of(db, application), changes["fee_amount_paise"])
+        _check_fee_against_campaign(
+            _campaign_of(db, application), changes["fee_amount_paise"]
+        )
 
     for field, value in changes.items():
         setattr(memo, field, value)
@@ -251,7 +253,9 @@ def change_status(
         memo.cancelled_at = now
         memo.cancellation_kind = cancellation_kind or (
             # Before any work was submitted a cancellation costs nothing (D-026).
-            f"cancelled_by_{actor}" if memo.work_started_at is not None else "withdrawn_early"
+            f"cancelled_by_{actor}"
+            if memo.work_started_at is not None
+            else "withdrawn_early"
         )
 
     memo.status = new_status
@@ -289,14 +293,21 @@ def _paginate(
         query = query.where(older_than_cursor(DealMemo.created_at, DealMemo.id, cursor))
     rows = list(
         db.scalars(
-            query.order_by(DealMemo.created_at.desc(), DealMemo.id.desc()).limit(limit + 1)
+            query.order_by(DealMemo.created_at.desc(), DealMemo.id.desc()).limit(
+                limit + 1
+            )
         ).all()
     )
     return build_slice(rows, limit, key=lambda row: (row.created_at, row.id))
 
 
 def list_for_brand(
-    db: Session, brand: Brand, *, limit: int, cursor: str | None = None, status: str | None = None
+    db: Session,
+    brand: Brand,
+    *,
+    limit: int,
+    cursor: str | None = None,
+    status: str | None = None,
 ) -> Slice[DealMemo]:
     """Memos on the brand's own campaigns."""
     query = (
@@ -329,7 +340,9 @@ def list_for_creator(
     return _paginate(db, query, limit, cursor)
 
 
-def memos_for_account(db: Session, account_id: uuid.UUID, *, limit: int) -> list[DealMemo]:
+def memos_for_account(
+    db: Session, account_id: uuid.UUID, *, limit: int
+) -> list[DealMemo]:
     """Every memo this account is a party to, oldest first.
 
     Both sides agreed the same terms, so the query reaches the memo from
@@ -410,6 +423,4 @@ def notify_party(
     definition of "who are the two sides of this deal" instead of rebuilding
     the joins and risking telling the wrong person about their money.
     """
-    _notify_other_side(
-        db, memo, to=to, notification_type=notification_type, now=now
-    )
+    _notify_other_side(db, memo, to=to, notification_type=notification_type, now=now)

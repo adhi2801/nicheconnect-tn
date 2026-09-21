@@ -29,7 +29,10 @@ CampaignStatus = Literal["draft", "open", "closed", "cancelled"]
 # The Literal above must stay in step with the database's allow-list.
 ensure_same_values("CampaignType", CampaignType, CAMPAIGN_TYPES)
 
-Title = Annotated[str, Field(min_length=1, max_length=TITLE_MAX_LENGTH, examples=["Pongal sweets launch"])]
+Title = Annotated[
+    str,
+    Field(min_length=1, max_length=TITLE_MAX_LENGTH, examples=["Pongal sweets launch"]),
+]
 Description = Annotated[str, Field(min_length=1, max_length=DESCRIPTION_MAX_LENGTH)]
 Deliverables = Annotated[
     str,

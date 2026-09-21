@@ -176,7 +176,9 @@ def test_send_failure_does_not_break_the_request(client, caplog):
 
     assert response.status_code == 202
     failures = [r for r in caplog.records if r.getMessage().startswith("otp.send_failed")]
-    assert [r.getMessage() for r in failures] == ["otp.send_failed error_type=ConnectionError"]
+    assert [r.getMessage() for r in failures] == [
+        "otp.send_failed error_type=ConnectionError"
+    ]
     assert failures[0].exc_info is None
     # caplog.text is the full formatted output, including any tracebacks.
     assert failing.attempted_code is not None
@@ -293,7 +295,15 @@ def test_role_mismatch_gets_409(client, sender, db):
         ({"phone": "123", "code": "123456", "role": "creator"}, ["phone"]),
         ({"phone": "9999900001", "code": "123456", "role": "admin"}, ["role"]),
         ({"phone": "9999900001", "code": "123456"}, ["role"]),
-        ({"phone": "9999900001", "code": "123456", "role": "creator", "is_admin": True}, ["is_admin"]),
+        (
+            {
+                "phone": "9999900001",
+                "code": "123456",
+                "role": "creator",
+                "is_admin": True,
+            },
+            ["is_admin"],
+        ),
     ],
 )
 def test_verify_with_invalid_fields_gets_422(client, body, fields):

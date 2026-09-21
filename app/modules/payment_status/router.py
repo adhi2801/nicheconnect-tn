@@ -126,9 +126,7 @@ def mark_paid(
 ) -> PaymentRead:
     """Only the brand can say it sent the money."""
     payment = _payment_or_404(db, memo.id)
-    service.mark_paid(
-        db, payment, method=body.method, reference=body.reference, now=now
-    )
+    service.mark_paid(db, payment, method=body.method, reference=body.reference, now=now)
     today = india_date(now)
     return to_read(payment, today, has_open_dispute=_disputed(db, payment, today))
 
@@ -143,9 +141,7 @@ def mark_paid(
     ),
     responses={
         **_COMMON_ERRORS,
-        409: problem_doc(
-            "Already confirmed, or the brand has not marked it as sent yet"
-        ),
+        409: problem_doc("Already confirmed, or the brand has not marked it as sent yet"),
     },
 )
 @limiter.limit(WRITE_LIMIT)

@@ -61,7 +61,9 @@ def request_code(
 ) -> OtpRequestAccepted:
     pending = service.request_otp(db, body.phone, now)
     background_tasks.add_task(service.deliver_otp, sender, pending)
-    return OtpRequestAccepted(expires_in_seconds=_seconds_between(now, pending.expires_at))
+    return OtpRequestAccepted(
+        expires_in_seconds=_seconds_between(now, pending.expires_at)
+    )
 
 
 @router.post(
@@ -100,6 +102,8 @@ def verify_code(
             id=result.account_id, role=result.role, is_new=result.is_new_account
         ),
     )
+
+
 @router.post(
     "/refresh",
     response_model=LoginTokens,
@@ -111,7 +115,9 @@ def verify_code(
         "user must log in again. Limit: 30 requests per minute per IP address."
     ),
     responses={
-        401: problem_doc("The refresh token is unknown, expired, revoked or already used"),
+        401: problem_doc(
+            "The refresh token is unknown, expired, revoked or already used"
+        ),
         422: problem_doc("The refresh token field is missing or malformed"),
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
@@ -160,6 +166,7 @@ def logout(
     now: datetime = Depends(get_now),
 ) -> None:
     service.logout(db, body.refresh_token, now)
+
 
 @router.get(
     "/me",

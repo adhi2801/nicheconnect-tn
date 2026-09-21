@@ -80,9 +80,7 @@ def payment() -> Iterator[PaymentStatus]:
         )
         session.add(memo)
         session.commit()
-        record = payments.create_for_memo(
-            session, memo, approved_on=APPROVED_ON, now=NOW
-        )
+        record = payments.create_for_memo(session, memo, approved_on=APPROVED_ON, now=NOW)
         session.commit()
         memo_id, payment_id = memo.id, record.id
 
@@ -93,9 +91,7 @@ def payment() -> Iterator[PaymentStatus]:
             session.execute(
                 delete(DisputeEvent).where(
                     DisputeEvent.dispute_id.in_(
-                        select(Dispute.id).where(
-                            Dispute.payment_status_id == payment_id
-                        )
+                        select(Dispute.id).where(Dispute.payment_status_id == payment_id)
                     )
                 )
             )

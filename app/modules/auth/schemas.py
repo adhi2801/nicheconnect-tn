@@ -45,7 +45,9 @@ def normalize_indian_mobile(value: object) -> str:
 def _check_e164(value: str) -> str:
     # Same rule the database enforces (ck_account_phone_format).
     if not re.fullmatch(PHONE_PATTERN, value):
-        raise PydanticCustomError("phone_invalid", "Enter a valid 10-digit Indian mobile number")
+        raise PydanticCustomError(
+            "phone_invalid", "Enter a valid 10-digit Indian mobile number"
+        )
     return value
 
 
@@ -60,7 +62,10 @@ IndianMobile = Annotated[
     str,
     BeforeValidator(normalize_indian_mobile),
     AfterValidator(_check_e164),
-    Field(description="Indian mobile number; stored as +91XXXXXXXXXX", examples=["+919876543210"]),
+    Field(
+        description="Indian mobile number; stored as +91XXXXXXXXXX",
+        examples=["+919876543210"],
+    ),
 ]
 OtpCode = Annotated[
     str,
@@ -97,12 +102,15 @@ class AccountSummary(BaseModel):
 class LoginTokens(BaseModel):
     access_token: str
     token_type: Literal["bearer"] = "bearer"  # noqa: S105 - OAuth scheme name, not a secret
-    expires_in: int = Field(description="Access token lifetime in seconds", examples=[900])
+    expires_in: int = Field(
+        description="Access token lifetime in seconds", examples=[900]
+    )
     refresh_token: str
     refresh_expires_in: int = Field(
         description="Refresh token lifetime in seconds", examples=[2592000]
     )
     account: AccountSummary
+
 
 # A refresh token is secrets.token_urlsafe(32), i.e. 43 URL-safe characters.
 RefreshToken = Annotated[
@@ -126,6 +134,7 @@ class LogoutIn(BaseModel):
 
     refresh_token: RefreshToken
 
+
 class AccountRead(BaseModel):
     """The signed-in account, returned to its owner only."""
 
@@ -139,6 +148,7 @@ class LoggedOutAll(BaseModel):
     sessions_ended: int = Field(
         description="How many sessions were still active", examples=[3]
     )
+
 
 # --- profiles ------------------------------------------------------------
 
@@ -173,11 +183,11 @@ BrandEmail = Annotated[
     str, BeforeValidator(_normalize_email), Field(examples=["hello@ammasweets.in"])
 ]
 CreatorName = Annotated[str, Field(min_length=1, max_length=100, examples=["Priya Eats"])]
-Handle = Annotated[str, BeforeValidator(_normalize_handle), Field(examples=["priya.eats"])]
-CreatorCity = Annotated[str, Field(min_length=2, max_length=60, examples=["Coimbatore"])]
-CreatorNiches = Annotated[
-    list[Niche], Field(min_length=1, max_length=MAX_NICHES)
+Handle = Annotated[
+    str, BeforeValidator(_normalize_handle), Field(examples=["priya.eats"])
 ]
+CreatorCity = Annotated[str, Field(min_length=2, max_length=60, examples=["Coimbatore"])]
+CreatorNiches = Annotated[list[Niche], Field(min_length=1, max_length=MAX_NICHES)]
 CreatorLanguages = Annotated[list[Language], Field(min_length=1)]
 Bio = Annotated[str, Field(max_length=BIO_MAX_LENGTH)]
 
@@ -258,6 +268,7 @@ class CreatorProfileRead(BaseModel):
     passport_published_at: datetime | None
     created_at: datetime
     updated_at: datetime
+
 
 # --- the public Creator Passport -----------------------------------------
 

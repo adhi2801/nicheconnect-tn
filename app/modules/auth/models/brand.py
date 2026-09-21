@@ -16,7 +16,7 @@ class Brand(Base):
         # also blocks duplicates that differ only in capitals.
         CheckConstraint("email = lower(email)", name="email_lowercase"),
         CheckConstraint("char_length(btrim(name)) > 0", name="name_not_blank"),
-   # account_role is always 'brand'; paired with account_id it forces the
+        # account_role is always 'brand'; paired with account_id it forces the
         # linked account to have that role, and stops one account owning both
         # profiles or changing role while a profile exists (D-014).
         CheckConstraint("account_role = 'brand'", name="account_role_fixed"),

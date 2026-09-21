@@ -113,7 +113,9 @@ def list_my_memos(
 ) -> Page[MemoRead]:
     if account.role == "brand":
         brand = get_brand_for_account(db, account.id)
-        result = service.list_for_brand(db, brand, limit=limit, cursor=cursor, status=memo_status)
+        result = service.list_for_brand(
+            db, brand, limit=limit, cursor=cursor, status=memo_status
+        )
     else:
         creator = get_creator_for_account(db, account.id)
         result = service.list_for_creator(
@@ -156,7 +158,9 @@ def read_memo(
     responses={
         **_COMMON_ERRORS,
         404: problem_doc("No such memo, or it is not yours"),
-        409: problem_doc("The memo cannot be changed now, or the fee does not match the campaign"),
+        409: problem_doc(
+            "The memo cannot be changed now, or the fee does not match the campaign"
+        ),
         422: problem_doc("A field is missing or invalid"),
     },
 )

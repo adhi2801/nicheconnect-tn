@@ -87,7 +87,9 @@ def open_campaign(client, brand, **overrides) -> str:
     created = client.post(CAMPAIGNS_URL, json=body, headers=brand.headers)
     assert created.status_code == 201, created.text
     campaign_id = created.json()["id"]
-    published = client.post(f"{CAMPAIGNS_URL}/{campaign_id}/publish", headers=brand.headers)
+    published = client.post(
+        f"{CAMPAIGNS_URL}/{campaign_id}/publish", headers=brand.headers
+    )
     assert published.status_code == 200
     return campaign_id
 
@@ -229,7 +231,11 @@ def test_invalid_application_is_rejected(client, db, clock, body, field):
     campaign_id = open_campaign(client, brand)
 
     problem = assert_problem(
-        client.post(f"{CAMPAIGNS_URL}/{campaign_id}/applications", json=body, headers=creator.headers),
+        client.post(
+            f"{CAMPAIGNS_URL}/{campaign_id}/applications",
+            json=body,
+            headers=creator.headers,
+        ),
         422,
         "validation_failed",
     )
@@ -259,8 +265,12 @@ def test_other_people_cannot_read_the_application(client, db, clock):
     other_brand = brand_with_profile(db, clock)
     other_creator = creator_with_profile(db, clock, handle="other.creator")
 
-    assert_problem(client.get(url, headers=other_brand.headers), 404, "application_not_found")
-    assert_problem(client.get(url, headers=other_creator.headers), 404, "application_not_found")
+    assert_problem(
+        client.get(url, headers=other_brand.headers), 404, "application_not_found"
+    )
+    assert_problem(
+        client.get(url, headers=other_creator.headers), 404, "application_not_found"
+    )
 
 
 def test_brand_lists_applications_to_its_own_campaign_only(client, db, clock):
@@ -270,8 +280,12 @@ def test_brand_lists_applications_to_its_own_campaign_only(client, db, clock):
     apply(client, creator_with_profile(db, clock, handle="second.creator"), campaign_id)
     other_brand = brand_with_profile(db, clock)
 
-    mine = client.get(f"{CAMPAIGNS_URL}/{campaign_id}/applications", headers=brand.headers)
-    theirs = client.get(f"{CAMPAIGNS_URL}/{campaign_id}/applications", headers=other_brand.headers)
+    mine = client.get(
+        f"{CAMPAIGNS_URL}/{campaign_id}/applications", headers=brand.headers
+    )
+    theirs = client.get(
+        f"{CAMPAIGNS_URL}/{campaign_id}/applications", headers=other_brand.headers
+    )
 
     assert len(mine.json()["items"]) == 2
     assert_problem(theirs, 404, "campaign_not_found")
@@ -319,7 +333,9 @@ def test_accept_needs_a_shortlisted_application(client, db, clock):
     application_id = apply(client, creator, open_campaign(client, brand)).json()["id"]
 
     assert_problem(
-        client.post(f"/api/v1/applications/{application_id}/accept", headers=brand.headers),
+        client.post(
+            f"/api/v1/applications/{application_id}/accept", headers=brand.headers
+        ),
         409,
         "application_status_conflict",
     )
@@ -338,7 +354,9 @@ def test_rejection_carries_a_reason_the_creator_can_see(client, db, clock):
 
     assert rejected.json()["status"] == "rejected"
     assert rejected.json()["rejection_reason"] == "budget_mismatch"
-    seen_by_creator = client.get(f"/api/v1/applications/{application_id}", headers=creator.headers)
+    seen_by_creator = client.get(
+        f"/api/v1/applications/{application_id}", headers=creator.headers
+    )
     assert seen_by_creator.json()["rejection_note"] == "We can pay up to Rs 6,000."
 
 
@@ -348,7 +366,11 @@ def test_rejection_without_a_reason_is_refused(client, db, clock):
     application_id = apply(client, creator, open_campaign(client, brand)).json()["id"]
 
     problem = assert_problem(
-        client.post(f"/api/v1/applications/{application_id}/reject", json={}, headers=brand.headers),
+        client.post(
+            f"/api/v1/applications/{application_id}/reject",
+            json={},
+            headers=brand.headers,
+        ),
         422,
         "validation_failed",
     )
@@ -389,8 +411,12 @@ def test_brand_cannot_withdraw_and_creator_cannot_decide(client, db, clock):
     application_id = apply(client, creator, open_campaign(client, brand)).json()["id"]
     url = f"/api/v1/applications/{application_id}"
 
-    assert_problem(client.post(f"{url}/withdraw", headers=brand.headers), 403, "role_not_allowed")
-    assert_problem(client.post(f"{url}/shortlist", headers=creator.headers), 403, "role_not_allowed")
+    assert_problem(
+        client.post(f"{url}/withdraw", headers=brand.headers), 403, "role_not_allowed"
+    )
+    assert_problem(
+        client.post(f"{url}/shortlist", headers=creator.headers), 403, "role_not_allowed"
+    )
 
 
 def test_another_brand_cannot_decide_on_your_applicant(client, db, clock):
@@ -400,7 +426,10 @@ def test_another_brand_cannot_decide_on_your_applicant(client, db, clock):
     other_brand = brand_with_profile(db, clock)
 
     assert_problem(
-        client.post(f"/api/v1/applications/{application_id}/shortlist", headers=other_brand.headers),
+        client.post(
+            f"/api/v1/applications/{application_id}/shortlist",
+            headers=other_brand.headers,
+        ),
         404,
         "application_not_found",
     )
@@ -430,7 +459,9 @@ def test_status_filter_and_paging_work(client, db, clock):
         clock.advance(timedelta(minutes=1))
         creator = creator_with_profile(db, clock, handle=f"creator.{index}")
         application_ids.append(apply(client, creator, campaign_id).json()["id"])
-    client.post(f"/api/v1/applications/{application_ids[0]}/shortlist", headers=brand.headers)
+    client.post(
+        f"/api/v1/applications/{application_ids[0]}/shortlist", headers=brand.headers
+    )
 
     shortlisted = client.get(
         f"{CAMPAIGNS_URL}/{campaign_id}/applications",
@@ -438,7 +469,9 @@ def test_status_filter_and_paging_work(client, db, clock):
         headers=brand.headers,
     ).json()
     first_page = client.get(
-        f"{CAMPAIGNS_URL}/{campaign_id}/applications", params={"limit": 2}, headers=brand.headers
+        f"{CAMPAIGNS_URL}/{campaign_id}/applications",
+        params={"limit": 2},
+        headers=brand.headers,
     ).json()
     second_page = client.get(
         f"{CAMPAIGNS_URL}/{campaign_id}/applications",
@@ -458,9 +491,9 @@ def test_paging_does_not_skip_applications_made_at_the_same_moment(client, db, c
     brand = brand_with_profile(db, clock)
     campaign_id = open_campaign(client, brand)
     application_ids = {
-        apply(client, creator_with_profile(db, clock, handle=f"tied.{index}"), campaign_id).json()[
-            "id"
-        ]
+        apply(
+            client, creator_with_profile(db, clock, handle=f"tied.{index}"), campaign_id
+        ).json()["id"]
         for index in range(3)
     }
     url = f"{CAMPAIGNS_URL}/{campaign_id}/applications"

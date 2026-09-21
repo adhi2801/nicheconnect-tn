@@ -46,11 +46,9 @@ class Creator(Base):
             f"languages <@ {sql_text_array(CREATOR_LANGUAGES)}",
             name="languages_allowed",
         ),
-        CheckConstraint(
-            f"char_length(bio) <= {BIO_MAX_LENGTH}", name="bio_length"
-        ),
+        CheckConstraint(f"char_length(bio) <= {BIO_MAX_LENGTH}", name="bio_length"),
         Index("ix_creator_niches", "niches", postgresql_using="gin"),
-   # account_role is always 'creator'; paired with account_id it forces the
+        # account_role is always 'creator'; paired with account_id it forces the
         # linked account to have that role, and stops one account owning both
         # profiles or changing role while a profile exists (D-014).
         CheckConstraint("account_role = 'creator'", name="account_role_fixed"),

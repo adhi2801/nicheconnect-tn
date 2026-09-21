@@ -116,9 +116,7 @@ def test_a_brand_that_never_pays_is_shown_as_such(client, db, brand, clock):
     assert body["median_days_to_pay"] is None
 
 
-def test_a_new_brand_cannot_hide_a_creator_it_is_still_owing(
-    client, db, brand, clock
-):
+def test_a_new_brand_cannot_hide_a_creator_it_is_still_owing(client, db, brand, clock):
     """The whole point of reporting overdue below the floor."""
     approved_deal(client, db, clock, brand)
     clock.advance(timedelta(days=10))
@@ -183,9 +181,7 @@ def test_an_unknown_brand_is_not_found(client, brand):
 # --- one brand's record is its own ----------------------------------------
 
 
-def test_one_brands_deals_never_land_on_another_brands_record(
-    client, db, brand, clock
-):
+def test_one_brands_deals_never_land_on_another_brands_record(client, db, brand, clock):
     other = brand_user(db, clock)
     for _ in range(3):
         pay(client, brand, approved_deal(client, db, clock, brand))

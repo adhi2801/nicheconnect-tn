@@ -92,6 +92,7 @@ def build_auth_session(db: Session, **overrides: Any) -> AuthSession:
     fields.setdefault("account_id", create_account(db, "creator").id)
     return AuthSession(**fields)
 
+
 def build_campaign(db: Session, **overrides: Any) -> Campaign:
     """Return an unsaved paid campaign owned by a newly saved brand."""
     fields: dict[str, Any] = {

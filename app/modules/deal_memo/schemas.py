@@ -18,8 +18,12 @@ from app.modules.deal_memo.models import (
     TERMS_MAX_LENGTH,
 )
 
-MemoStatus = Literal["draft", "sent", "change_requested", "accepted", "declined", "cancelled"]
-CancellationKind = Literal["withdrawn_early", "cancelled_by_brand", "cancelled_by_creator"]
+MemoStatus = Literal[
+    "draft", "sent", "change_requested", "accepted", "declined", "cancelled"
+]
+CancellationKind = Literal[
+    "withdrawn_early", "cancelled_by_brand", "cancelled_by_creator"
+]
 
 ensure_same_values("MemoStatus", MemoStatus, MEMO_STATUSES)
 ensure_same_values("CancellationKind", CancellationKind, CANCELLATION_KINDS)
@@ -33,7 +37,8 @@ Deliverables = Annotated[
     ),
 ]
 Paise = Annotated[
-    int, Field(gt=0, le=10_000_000_000, description="Whole paise, e.g. 800000 is Rs 8,000")
+    int,
+    Field(gt=0, le=10_000_000_000, description="Whole paise, e.g. 800000 is Rs 8,000"),
 ]
 CancellationFee = Annotated[int, Field(ge=0, le=10_000_000_000)]
 WindowDays = Annotated[int, Field(ge=1, le=MAX_WINDOW_DAYS)]

@@ -60,7 +60,16 @@ def percentile(values: list[float], fraction: float) -> float:
     return ordered[index]
 
 
-def measure(client: TestClient, name: str, method: str, url: str, headers: dict, runs: int, budget: int, **kwargs) -> dict:
+def measure(
+    client: TestClient,
+    name: str,
+    method: str,
+    url: str,
+    headers: dict,
+    runs: int,
+    budget: int,
+    **kwargs,
+) -> dict:
     limiter.reset()  # the limits are not what we are measuring
     timings: list[float] = []
     for _ in range(runs):
@@ -86,7 +95,10 @@ def main() -> int:
     args = parser.parse_args()
 
     if settings.environment != "local":
-        print(f"Refusing to run outside local (ENVIRONMENT={settings.environment}).", file=sys.stderr)
+        print(
+            f"Refusing to run outside local (ENVIRONMENT={settings.environment}).",
+            file=sys.stderr,
+        )
         return 1
 
     with SessionLocal() as db:
@@ -97,7 +109,11 @@ def main() -> int:
                 "GROUP BY c.brand_id ORDER BY count(*) DESC LIMIT 1"
             )
         ).scalar()
-        brand = db.get(Brand, brand_id) if brand_id else db.scalars(select(Brand).limit(1)).first()
+        brand = (
+            db.get(Brand, brand_id)
+            if brand_id
+            else db.scalars(select(Brand).limit(1)).first()
+        )
         creator = db.scalars(select(Creator).limit(1)).first()
         campaign = db.scalars(
             select(Campaign).where(Campaign.status == "open").limit(1)
@@ -120,7 +136,10 @@ def main() -> int:
         ).first()
 
     if brand is None or creator is None or campaign is None:
-        print("No sample data. Run: python scripts/seed_dev_data.py --reset", file=sys.stderr)
+        print(
+            "No sample data. Run: python scripts/seed_dev_data.py --reset",
+            file=sys.stderr,
+        )
         return 1
 
     # A fixed clock keeps tokens valid for the whole run.
@@ -136,20 +155,78 @@ def main() -> int:
 
     client = TestClient(app)
     results = [
-        measure(client, "GET /campaigns/discover", "GET", "/api/v1/campaigns/discover", creator_headers, args.runs, READ_BUDGET_MS),
-        measure(client, "GET /campaigns/discover?city&niche", "GET", "/api/v1/campaigns/discover?city=Madurai&niche=food", creator_headers, args.runs, READ_BUDGET_MS),
-        measure(client, "GET /campaigns (mine)", "GET", "/api/v1/campaigns", brand_headers, args.runs, READ_BUDGET_MS),
-        measure(client, "GET /campaigns/{id}", "GET", f"/api/v1/campaigns/{campaign.id}", creator_headers, args.runs, READ_BUDGET_MS),
-        measure(client, "GET /campaigns/{id}/applications", "GET", f"/api/v1/campaigns/{busiest_campaign_id}/applications", brand_headers, args.runs, READ_BUDGET_MS),
-        measure(client, "GET /applications/me", "GET", "/api/v1/applications/me", creator_headers, args.runs, READ_BUDGET_MS),
-        measure(client, "GET /auth/me", "GET", "/api/v1/auth/me", creator_headers, args.runs, READ_BUDGET_MS),
+        measure(
+            client,
+            "GET /campaigns/discover",
+            "GET",
+            "/api/v1/campaigns/discover",
+            creator_headers,
+            args.runs,
+            READ_BUDGET_MS,
+        ),
+        measure(
+            client,
+            "GET /campaigns/discover?city&niche",
+            "GET",
+            "/api/v1/campaigns/discover?city=Madurai&niche=food",
+            creator_headers,
+            args.runs,
+            READ_BUDGET_MS,
+        ),
+        measure(
+            client,
+            "GET /campaigns (mine)",
+            "GET",
+            "/api/v1/campaigns",
+            brand_headers,
+            args.runs,
+            READ_BUDGET_MS,
+        ),
+        measure(
+            client,
+            "GET /campaigns/{id}",
+            "GET",
+            f"/api/v1/campaigns/{campaign.id}",
+            creator_headers,
+            args.runs,
+            READ_BUDGET_MS,
+        ),
+        measure(
+            client,
+            "GET /campaigns/{id}/applications",
+            "GET",
+            f"/api/v1/campaigns/{busiest_campaign_id}/applications",
+            brand_headers,
+            args.runs,
+            READ_BUDGET_MS,
+        ),
+        measure(
+            client,
+            "GET /applications/me",
+            "GET",
+            "/api/v1/applications/me",
+            creator_headers,
+            args.runs,
+            READ_BUDGET_MS,
+        ),
+        measure(
+            client,
+            "GET /auth/me",
+            "GET",
+            "/api/v1/auth/me",
+            creator_headers,
+            args.runs,
+            READ_BUDGET_MS,
+        ),
     ]
     app.dependency_overrides.clear()
     limiter.reset()
 
     print(f"Rows: {counts[0]} campaigns, {counts[1]} applications, {counts[2]} creators")
     print(f"Runs per endpoint: {args.runs}\n")
-    print(f"{'endpoint':42} {'p50 ms':>8} {'p95 ms':>8} {'max ms':>8} {'budget':>8}  verdict")
+    print(
+        f"{'endpoint':42} {'p50 ms':>8} {'p95 ms':>8} {'max ms':>8} {'budget':>8}  verdict"
+    )
     failures = 0
     for row in results:
         ok = row["p95"] <= row["budget"]
@@ -164,8 +241,14 @@ def main() -> int:
         with SessionLocal() as db:
             for name, sql in EXPLAINED_QUERIES.items():
                 print(f"\n--- {name}")
-                params = {"campaign_id": busiest_campaign_id} if ":campaign_id" in sql else {}
-                plan = db.execute(text(f"EXPLAIN (ANALYZE, BUFFERS) {sql}"), params).scalars().all()
+                params = (
+                    {"campaign_id": busiest_campaign_id} if ":campaign_id" in sql else {}
+                )
+                plan = (
+                    db.execute(text(f"EXPLAIN (ANALYZE, BUFFERS) {sql}"), params)
+                    .scalars()
+                    .all()
+                )
                 for line in plan:
                     print("   ", line)
 

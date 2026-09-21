@@ -257,9 +257,7 @@ def test_retrying_while_the_first_is_still_running_is_a_conflict(client, store, 
     """Simulated by leaving a claim in flight, which is what a slow first
     request looks like to the second one."""
     body = b'{"name": "first"}'
-    held = storage_key(
-        credential="testclient", method="POST", path="/things", key=KEY
-    )
+    held = storage_key(credential="testclient", method="POST", path="/things", key=KEY)
     store.claim(held, fingerprint(body))
 
     response = client.post("/things", content=body, headers={HEADER: KEY})

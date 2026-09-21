@@ -59,7 +59,8 @@ def log_in(client: TestClient, sender: FakeOtpSender, role: str = "creator") -> 
     phone = fake_phone()
     assert client.post(REQUEST_URL, json={"phone": phone}).status_code == 202
     response = client.post(
-        VERIFY_URL, json={"phone": phone, "code": sender.last_code_for(phone), "role": role}
+        VERIFY_URL,
+        json={"phone": phone, "code": sender.last_code_for(phone), "role": role},
     )
     assert response.status_code == 200
     return response.json()
@@ -76,7 +77,9 @@ def assert_problem(response, status: int, code: str) -> dict:
 
 def session_by_token(db, refresh_token: str) -> AuthSession | None:
     return db.scalars(
-        select(AuthSession).where(AuthSession.token_hash == hash_refresh_token(refresh_token))
+        select(AuthSession).where(
+            AuthSession.token_hash == hash_refresh_token(refresh_token)
+        )
     ).first()
 
 
@@ -114,7 +117,9 @@ def test_old_refresh_token_stops_working(client, sender, clock):
 
 def test_reused_token_ends_every_session_of_that_login(client, sender, clock, db):
     login = log_in(client, sender)
-    current = client.post(REFRESH_URL, json={"refresh_token": login["refresh_token"]}).json()
+    current = client.post(
+        REFRESH_URL, json={"refresh_token": login["refresh_token"]}
+    ).json()
     clock.advance(timedelta(minutes=1))
 
     client.post(REFRESH_URL, json={"refresh_token": login["refresh_token"]})
@@ -156,7 +161,9 @@ def test_expired_token_is_rejected(client, sender, clock):
     ],
 )
 def test_bad_refresh_body_is_rejected(client, body, field):
-    problem = assert_problem(client.post(REFRESH_URL, json=body), 422, "validation_failed")
+    problem = assert_problem(
+        client.post(REFRESH_URL, json=body), 422, "validation_failed"
+    )
     assert [error["field"] for error in problem["errors"]] == [field]
 
 
@@ -200,10 +207,17 @@ def test_refresh_after_logout_is_rejected(client, sender, clock):
 
 def test_logout_also_ends_tokens_it_was_rotated_from(client, sender, clock, db):
     login = log_in(client, sender)
-    current = client.post(REFRESH_URL, json={"refresh_token": login["refresh_token"]}).json()
+    current = client.post(
+        REFRESH_URL, json={"refresh_token": login["refresh_token"]}
+    ).json()
     clock.advance(timedelta(minutes=1))
 
-    assert client.post(LOGOUT_URL, json={"refresh_token": current["refresh_token"]}).status_code == 204
+    assert (
+        client.post(
+            LOGOUT_URL, json={"refresh_token": current["refresh_token"]}
+        ).status_code
+        == 204
+    )
 
     assert session_by_token(db, login["refresh_token"]).revoked_at is not None
     assert session_by_token(db, current["refresh_token"]).revoked_at is not None

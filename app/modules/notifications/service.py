@@ -80,9 +80,9 @@ def list_for_account(
         )
     rows = list(
         db.scalars(
-            query.order_by(
-                Notification.created_at.desc(), Notification.id.desc()
-            ).limit(limit + 1)
+            query.order_by(Notification.created_at.desc(), Notification.id.desc()).limit(
+                limit + 1
+            )
         ).all()
     )
     return build_slice(rows, limit, key=lambda row: (row.created_at, row.id))

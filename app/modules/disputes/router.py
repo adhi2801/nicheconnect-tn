@@ -74,7 +74,9 @@ def _memo_and_payment(
 
 
 def _rendered(db: Session, dispute: Dispute, today: date) -> DisputeRead:
-    return to_read(dispute, service.derive_state(dispute, today), service.timeline(db, dispute))
+    return to_read(
+        dispute, service.derive_state(dispute, today), service.timeline(db, dispute)
+    )
 
 
 @router.post(

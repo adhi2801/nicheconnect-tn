@@ -19,7 +19,9 @@ UNKNOWN = "unknown"
 
 
 @lru_cache(maxsize=8)
-def _parse_networks(raw: str) -> tuple[ipaddress.IPv4Network | ipaddress.IPv6Network, ...]:
+def _parse_networks(
+    raw: str,
+) -> tuple[ipaddress.IPv4Network | ipaddress.IPv6Network, ...]:
     """Read the setting into networks, ignoring anything unparseable."""
     networks = []
     for entry in raw.split(","):
@@ -56,7 +58,9 @@ def client_ip(request: Request) -> str:
         return socket_address
 
     forwarded = request.headers.get(FORWARDED_FOR, "")
-    for candidate in reversed([part.strip() for part in forwarded.split(",") if part.strip()]):
+    for candidate in reversed(
+        [part.strip() for part in forwarded.split(",") if part.strip()]
+    ):
         if not _is_trusted(candidate):
             try:
                 ipaddress.ip_address(candidate)

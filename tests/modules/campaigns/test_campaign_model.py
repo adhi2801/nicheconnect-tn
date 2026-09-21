@@ -143,11 +143,15 @@ def test_every_allowed_status_is_accepted(db, status):
 
 @pytest.mark.parametrize("status", ["archived", "Open", ""])
 def test_unknown_status_is_rejected(db, status):
-    assert_rejected_by(db, build_campaign(db, status=status), "ck_campaign_status_allowed")
+    assert_rejected_by(
+        db, build_campaign(db, status=status), "ck_campaign_status_allowed"
+    )
 
 
 def test_currency_other_than_rupees_is_rejected(db):
-    assert_rejected_by(db, build_campaign(db, currency="USD"), "ck_campaign_currency_allowed")
+    assert_rejected_by(
+        db, build_campaign(db, currency="USD"), "ck_campaign_currency_allowed"
+    )
 
 
 # --- budget rules --------------------------------------------------------
@@ -185,7 +189,9 @@ def test_equal_minimum_and_maximum_is_allowed(db):
 
 def test_large_budget_fits(db):
     # Rs 1 crore in paise, far beyond a 32-bit integer.
-    db.add(build_campaign(db, budget_min_paise=1_000_000_000, budget_max_paise=1_000_000_000))
+    db.add(
+        build_campaign(db, budget_min_paise=1_000_000_000, budget_max_paise=1_000_000_000)
+    )
     db.flush()
 
 
@@ -230,7 +236,9 @@ def test_city_count_outside_one_to_ten_is_rejected(db, cities):
     assert_rejected_by(db, build_campaign(db, cities=cities), "ck_campaign_cities_count")
 
 
-@pytest.mark.parametrize("niches", [[], ["food", "fashion", "beauty", "tech", "travel", "fitness"]])
+@pytest.mark.parametrize(
+    "niches", [[], ["food", "fashion", "beauty", "tech", "travel", "fitness"]]
+)
 def test_niche_count_outside_one_to_five_is_rejected(db, niches):
     assert_rejected_by(db, build_campaign(db, niches=niches), "ck_campaign_niches_count")
 

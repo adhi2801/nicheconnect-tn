@@ -104,7 +104,7 @@ def test_every_agreed_method_is_accepted(db, method):
 
 
 def test_a_claim_of_payment_must_say_how_it_was_sent(db):
-    """"I paid you", with no method and no reference, is not a record."""
+    """ "I paid you", with no method and no reference, is not a record."""
     assert_rejected_by(
         db,
         build_payment(db, marked_paid_at=FIXED_NOW),

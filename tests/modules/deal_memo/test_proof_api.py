@@ -97,7 +97,9 @@ def test_another_creator_cannot_submit_on_your_memo(client, db, clock):
     brand, creator = brand_user(db, clock), creator_user(db, clock)
     memo_id = accepted_memo(client, brand, creator)
 
-    assert_problem(submit(client, creator_user(db, clock), memo_id), 404, "memo_not_found")
+    assert_problem(
+        submit(client, creator_user(db, clock), memo_id), 404, "memo_not_found"
+    )
 
 
 @pytest.mark.parametrize(
@@ -114,7 +116,9 @@ def test_invalid_proof_is_rejected(client, db, clock, overrides, field):
     brand, creator = brand_user(db, clock), creator_user(db, clock)
     memo_id = accepted_memo(client, brand, creator)
 
-    problem = assert_problem(submit(client, creator, memo_id, **overrides), 422, "validation_failed")
+    problem = assert_problem(
+        submit(client, creator, memo_id, **overrides), 422, "validation_failed"
+    )
     assert field in [error["field"] for error in problem["errors"]]
 
 
@@ -162,7 +166,9 @@ def test_a_decided_submission_cannot_be_decided_again(client, db, clock):
     client.post(f"{MEMOS_URL}/{memo_id}/proof/{proof_id}/approve", headers=brand.headers)
 
     assert_problem(
-        client.post(f"{MEMOS_URL}/{memo_id}/proof/{proof_id}/approve", headers=brand.headers),
+        client.post(
+            f"{MEMOS_URL}/{memo_id}/proof/{proof_id}/approve", headers=brand.headers
+        ),
         409,
         "proof_already_decided",
     )
@@ -174,7 +180,9 @@ def test_a_creator_cannot_approve_their_own_proof(client, db, clock):
     proof_id = submit(client, creator, memo_id).json()["id"]
 
     assert_problem(
-        client.post(f"{MEMOS_URL}/{memo_id}/proof/{proof_id}/approve", headers=creator.headers),
+        client.post(
+            f"{MEMOS_URL}/{memo_id}/proof/{proof_id}/approve", headers=creator.headers
+        ),
         403,
         "role_not_allowed",
     )
@@ -241,7 +249,9 @@ def test_approving_late_reports_the_automatic_approval(client, db, clock):
     proof_id = submit(client, creator, memo_id).json()["id"]
 
     clock.advance(timedelta(days=8))
-    late = client.post(f"{MEMOS_URL}/{memo_id}/proof/{proof_id}/approve", headers=brand.headers)
+    late = client.post(
+        f"{MEMOS_URL}/{memo_id}/proof/{proof_id}/approve", headers=brand.headers
+    )
 
     assert_problem(late, 409, "proof_already_decided")
     [proof] = client.get(f"{MEMOS_URL}/{memo_id}/proof", headers=brand.headers).json()
@@ -256,7 +266,9 @@ def test_both_sides_see_the_same_submissions(client, db, clock):
     memo_id = accepted_memo(client, brand, creator)
     submit(client, creator, memo_id)
 
-    from_creator = client.get(f"{MEMOS_URL}/{memo_id}/proof", headers=creator.headers).json()
+    from_creator = client.get(
+        f"{MEMOS_URL}/{memo_id}/proof", headers=creator.headers
+    ).json()
     from_brand = client.get(f"{MEMOS_URL}/{memo_id}/proof", headers=brand.headers).json()
 
     assert [item["id"] for item in from_creator] == [item["id"] for item in from_brand]
@@ -268,7 +280,9 @@ def test_a_stranger_sees_nothing(client, db, clock):
     submit(client, creator, memo_id)
 
     assert_problem(
-        client.get(f"{MEMOS_URL}/{memo_id}/proof", headers=creator_user(db, clock).headers),
+        client.get(
+            f"{MEMOS_URL}/{memo_id}/proof", headers=creator_user(db, clock).headers
+        ),
         404,
         "memo_not_found",
     )
@@ -286,9 +300,13 @@ def test_submissions_are_listed_newest_first(client, db, clock):
     memo_id = accepted_memo(client, brand, creator)
     first = submit(client, creator, memo_id).json()["id"]
     proof_url = f"{MEMOS_URL}/{memo_id}/proof/{first}/request-revision"
-    client.post(proof_url, json={"note": "Please add the ad label."}, headers=brand.headers)
+    client.post(
+        proof_url, json={"note": "Please add the ad label."}, headers=brand.headers
+    )
     clock.advance(timedelta(hours=3))
-    second = submit(client, creator, memo_id, content_url="https://example.com/second").json()["id"]
+    second = submit(
+        client, creator, memo_id, content_url="https://example.com/second"
+    ).json()["id"]
 
     listed = client.get(f"{MEMOS_URL}/{memo_id}/proof", headers=brand.headers).json()
 

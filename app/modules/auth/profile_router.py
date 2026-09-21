@@ -69,7 +69,10 @@ def create_brand_profile(
     "/me",
     response_model=BrandProfileRead,
     summary="Read my brand profile",
-    responses={**_COMMON_ERRORS, 404: problem_doc("The profile has not been created yet")},
+    responses={
+        **_COMMON_ERRORS,
+        404: problem_doc("The profile has not been created yet"),
+    },
 )
 @limiter.limit(READ_LIMIT)
 def read_brand_profile(
@@ -139,7 +142,10 @@ def create_creator_profile(
     "/me",
     response_model=CreatorProfileRead,
     summary="Read my creator profile",
-    responses={**_COMMON_ERRORS, 404: problem_doc("The profile has not been created yet")},
+    responses={
+        **_COMMON_ERRORS,
+        404: problem_doc("The profile has not been created yet"),
+    },
 )
 @limiter.limit(READ_LIMIT)
 def read_creator_profile(
@@ -147,7 +153,9 @@ def read_creator_profile(
     account: CurrentCreator,
     db: Session = Depends(get_db),
 ) -> CreatorProfileRead:
-    return CreatorProfileRead.model_validate(profiles.get_profile(db, Creator, account.id))
+    return CreatorProfileRead.model_validate(
+        profiles.get_profile(db, Creator, account.id)
+    )
 
 
 @creator_router.patch(

@@ -95,9 +95,7 @@ class BodyLimitMiddleware:
         await self.app(scope, receive_counting, send)
 
     def _error(self) -> RequestBodyTooLarge:
-        return RequestBodyTooLarge(
-            f"Requests are limited to {self.max_bytes:,} bytes."
-        )
+        return RequestBodyTooLarge(f"Requests are limited to {self.max_bytes:,} bytes.")
 
     async def _refuse(self, scope: Scope, receive: Receive, send: Send) -> None:
         """Answer 413 directly, without calling the app or reading the body."""

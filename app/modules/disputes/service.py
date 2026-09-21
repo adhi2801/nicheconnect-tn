@@ -117,9 +117,7 @@ def check_party(role: str) -> str:
 
 def check_outcome(outcome: str) -> str:
     if outcome not in DISPUTE_OUTCOMES:
-        raise UnknownDisputeOutcome(
-            f"Use one of: {', '.join(DISPUTE_OUTCOMES)}."
-        )
+        raise UnknownDisputeOutcome(f"Use one of: {', '.join(DISPUTE_OUTCOMES)}.")
     return outcome
 
 
@@ -144,9 +142,7 @@ def open_payment_ids(
             Dispute.payment_status_id.in_(payment_ids), Dispute.outcome.is_(None)
         )
     ).all()
-    return {
-        dispute.payment_status_id for dispute in disputes if is_open(dispute, today)
-    }
+    return {dispute.payment_status_id for dispute in disputes if is_open(dispute, today)}
 
 
 def _add_event(
@@ -323,9 +319,7 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
     if memo_ids:
         payment_ids = set(
             db.scalars(
-                select(PaymentStatus.id).where(
-                    PaymentStatus.deal_memo_id.in_(memo_ids)
-                )
+                select(PaymentStatus.id).where(PaymentStatus.deal_memo_id.in_(memo_ids))
             ).all()
         )
         if payment_ids:

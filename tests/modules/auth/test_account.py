@@ -44,12 +44,16 @@ def test_duplicate_phone_is_rejected(db):
     ],
 )
 def test_badly_formatted_phone_is_rejected(db, phone):
-    assert_rejected_by(db, Account(phone=phone, role="creator"), "ck_account_phone_format")
+    assert_rejected_by(
+        db, Account(phone=phone, role="creator"), "ck_account_phone_format"
+    )
 
 
 @pytest.mark.parametrize("role", ["admin", "Brand", ""])
 def test_unknown_role_is_rejected(db, role):
-    assert_rejected_by(db, Account(phone=fake_phone(), role=role), "ck_account_role_allowed")
+    assert_rejected_by(
+        db, Account(phone=fake_phone(), role=role), "ck_account_role_allowed"
+    )
 
 
 @pytest.mark.parametrize(

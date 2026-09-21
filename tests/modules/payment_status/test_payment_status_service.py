@@ -23,10 +23,10 @@ from tests.factories import FIXED_NOW
 from tests.modules.deal_memo.test_deal_memo_model import build_memo
 
 APPROVED_ON = date(2026, 9, 20)
-DUE_ON = date(2026, 9, 27)           # approval + the default 7-day window
-UNPAID_ON = date(2026, 10, 11)       # due + 14
-RRN = "412345678901"                 # a 12-digit UPI reference
-NEFT_UTR = "SBIN226092012345"        # 16 characters
+DUE_ON = date(2026, 9, 27)  # approval + the default 7-day window
+UNPAID_ON = date(2026, 10, 11)  # due + 14
+RRN = "412345678901"  # a 12-digit UPI reference
+NEFT_UTR = "SBIN226092012345"  # 16 characters
 RTGS_UTR = "SBINR52026092000123456"  # 22 characters
 
 
@@ -50,11 +50,11 @@ def make_memo(db, **overrides):
 @pytest.mark.parametrize(
     ("today", "expected"),
     [
-        (date(2026, 9, 20), service.DUE),      # the day it was approved
-        (date(2026, 9, 26), service.DUE),      # the day before it is due
-        (date(2026, 9, 27), service.DUE),      # the due date itself
-        (date(2026, 9, 28), service.LATE),     # the day after
-        (date(2026, 10, 10), service.LATE),    # still late
+        (date(2026, 9, 20), service.DUE),  # the day it was approved
+        (date(2026, 9, 26), service.DUE),  # the day before it is due
+        (date(2026, 9, 27), service.DUE),  # the due date itself
+        (date(2026, 9, 28), service.LATE),  # the day after
+        (date(2026, 10, 10), service.LATE),  # still late
         (date(2026, 10, 11), service.UNPAID),  # silence becomes non-payment
         (date(2026, 12, 1), service.UNPAID),
     ],
@@ -80,9 +80,7 @@ def test_marking_it_paid_stops_the_lateness_clock():
     from datetime import datetime
 
     paid_after_the_due_date = datetime(2026, 9, 30, 9, 0, tzinfo=UTC)
-    marked = payment(
-        method="upi", reference=RRN, marked_paid_at=paid_after_the_due_date
-    )
+    marked = payment(method="upi", reference=RRN, marked_paid_at=paid_after_the_due_date)
 
     assert service.derive_state(marked, date(2026, 10, 5)) == service.PAID
 
@@ -405,9 +403,7 @@ def test_the_confirmation_window_is_counted_in_india():
     from datetime import datetime
 
     late_evening_utc = datetime(2026, 9, 17, 23, 0, tzinfo=UTC)
-    marked = payment(
-        method="upi", reference=RRN, marked_paid_at=late_evening_utc
-    )
+    marked = payment(method="upi", reference=RRN, marked_paid_at=late_evening_utc)
 
     assert service.confirmation_deadline(marked) == date(2026, 9, 25)
 

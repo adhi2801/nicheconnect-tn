@@ -121,7 +121,7 @@ def test_paying_none_of_them_reads_as_zero_not_as_no_figure():
 
 
 def test_never_paying_leaves_the_speed_figure_undefined():
-    """"Pays in 0 days" would be a lie in the brand's favour."""
+    """ "Pays in 0 days" would be a lie in the brand's favour."""
     result = build([never_paid(), never_paid(), never_paid()])
 
     assert result.median_days_to_pay is None

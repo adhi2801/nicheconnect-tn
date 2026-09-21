@@ -88,7 +88,9 @@ def test_brand_creates_reads_and_changes_its_profile(client, db, now):
 def test_brand_email_is_stored_lowercase(client, db, now):
     headers = login(db, now, "brand")
 
-    response = client.post(BRAND_URL, json=brand_body(email="  Hello@AmmaSweets.IN "), headers=headers)
+    response = client.post(
+        BRAND_URL, json=brand_body(email="  Hello@AmmaSweets.IN "), headers=headers
+    )
 
     assert response.json()["email"] == "hello@ammasweets.in"
 
@@ -104,7 +106,9 @@ def test_second_brand_profile_is_refused(client, db, now):
     client.post(BRAND_URL, json=brand_body(), headers=headers)
 
     assert_problem(
-        client.post(BRAND_URL, json=brand_body(email="other@example.com"), headers=headers),
+        client.post(
+            BRAND_URL, json=brand_body(email="other@example.com"), headers=headers
+        ),
         409,
         "profile_exists",
     )
@@ -154,7 +158,11 @@ def test_invalid_brand_profile_is_rejected(client, db, now, body, field):
 def test_creator_cannot_use_the_brand_profile_endpoints(client, db, now):
     headers = login(db, now, "creator")
 
-    assert_problem(client.post(BRAND_URL, json=brand_body(), headers=headers), 403, "role_not_allowed")
+    assert_problem(
+        client.post(BRAND_URL, json=brand_body(), headers=headers),
+        403,
+        "role_not_allowed",
+    )
     assert_problem(client.get(BRAND_URL, headers=headers), 403, "role_not_allowed")
 
 
@@ -170,7 +178,9 @@ def test_creator_creates_reads_and_changes_its_profile(client, db, now):
 
     created = client.post(CREATOR_URL, json=creator_body(), headers=headers)
     read = client.get(CREATOR_URL, headers=headers)
-    changed = client.patch(CREATOR_URL, json={"city": "Madurai", "bio": None}, headers=headers)
+    changed = client.patch(
+        CREATOR_URL, json={"city": "Madurai", "bio": None}, headers=headers
+    )
 
     assert created.status_code == 201
     assert created.json()["languages"] == ["en"]
@@ -215,7 +225,9 @@ def test_second_creator_profile_is_refused(client, db, now):
     client.post(CREATOR_URL, json=creator_body(), headers=headers)
 
     assert_problem(
-        client.post(CREATOR_URL, json=creator_body(handle="another.one"), headers=headers),
+        client.post(
+            CREATOR_URL, json=creator_body(handle="another.one"), headers=headers
+        ),
         409,
         "profile_exists",
     )
@@ -236,12 +248,16 @@ def test_second_creator_profile_is_refused(client, db, now):
 )
 def test_invalid_creator_profile_is_rejected(client, db, now, body, field):
     problem = assert_problem(
-        client.post(CREATOR_URL, json=creator_body(**body), headers=login(db, now, "creator")),
+        client.post(
+            CREATOR_URL, json=creator_body(**body), headers=login(db, now, "creator")
+        ),
         422,
         "validation_failed",
     )
     reported = [error["field"] for error in problem["errors"]]
-    assert any(name == field or name.startswith(f"{field}.") for name in reported), reported
+    assert any(name == field or name.startswith(f"{field}.") for name in reported), (
+        reported
+    )
 
 
 def test_brand_cannot_use_the_creator_profile_endpoints(client, db, now):
@@ -256,7 +272,9 @@ def test_empty_update_is_rejected(client, db, now):
     headers = login(db, now, "creator")
     client.post(CREATOR_URL, json=creator_body(), headers=headers)
 
-    assert_problem(client.patch(CREATOR_URL, json={}, headers=headers), 422, "validation_failed")
+    assert_problem(
+        client.patch(CREATOR_URL, json={}, headers=headers), 422, "validation_failed"
+    )
 
 
 def test_profiles_belong_to_their_own_account(client, db, now):
@@ -296,9 +314,7 @@ def test_brand_can_post_a_campaign_right_after_creating_its_profile(client, db, 
     )
 
     assert response.status_code == 201
-    brand = db.scalars(
-        select(Brand).where(Brand.email == brand_body()["email"])
-    ).one()
+    brand = db.scalars(select(Brand).where(Brand.email == brand_body()["email"])).one()
     assert response.json()["brand_id"] == str(brand.id)
 
 

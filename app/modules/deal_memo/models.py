@@ -154,7 +154,9 @@ class DealMemo(Base):
     revision_count: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0")
     )
-    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     accepted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

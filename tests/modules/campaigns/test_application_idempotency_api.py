@@ -100,9 +100,7 @@ def applications_for(db, campaign_id: str) -> int:
     )
 
 
-def test_a_retry_gets_the_original_answer_not_a_confusing_conflict(
-    client, db, setting
-):
+def test_a_retry_gets_the_original_answer_not_a_confusing_conflict(client, db, setting):
     """The whole point. Without a key the retry would be a 409."""
     key = new_key()
     first = apply_with(client, setting, key)
@@ -199,9 +197,7 @@ def test_two_creators_may_use_the_same_key(client, db, clock):
     assert applications_for(db, campaign_id) == 2
 
 
-def test_a_retry_still_replays_after_the_client_refreshed_its_token(
-    client, db, setting
-):
+def test_a_retry_still_replays_after_the_client_refreshed_its_token(client, db, setting):
     """Retries are grouped by account, not by the token presented.
 
     A mobile client that refreshed its access token between the dropped

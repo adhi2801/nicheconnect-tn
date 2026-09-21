@@ -57,7 +57,10 @@ OwnNotification = Annotated[Notification, Depends(_own_notification)]
         "The signed-in account's notifications, newest first. `unread_only=true` "
         "returns just the ones not yet read."
     ),
-    responses={**_COMMON_ERRORS, 422: problem_doc("A query parameter or cursor is invalid")},
+    responses={
+        **_COMMON_ERRORS,
+        422: problem_doc("A query parameter or cursor is invalid"),
+    },
 )
 @limiter.limit(READ_LIMIT)
 def list_notifications(

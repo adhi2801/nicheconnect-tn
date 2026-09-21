@@ -62,6 +62,9 @@ jobs:
       - name: Lint
         run: ruff check .
 
+      - name: Check formatting
+        run: ruff format --check .
+
       # testing.md gate 3 (D-037). Strict mode on app/, configured in
       # pyproject.toml, where every relaxation is listed with its reason.
       - name: Type check

@@ -32,7 +32,9 @@ class AccessTokenClaims:
     expires_at: datetime
 
 
-def create_access_token(account_id: uuid.UUID, role: str, now: datetime) -> tuple[str, datetime]:
+def create_access_token(
+    account_id: uuid.UUID, role: str, now: datetime
+) -> tuple[str, datetime]:
     """Sign a short-lived access token. Returns the token and its expiry time."""
     expires_at = now + timedelta(minutes=settings.access_token_expire_minutes)
     claims = {

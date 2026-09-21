@@ -218,7 +218,7 @@ accept_application = _brand_decision(
     summary="Reject an application",
     description=(
         "Says no, with a reason the creator can see. A reason is required: "
-        "\"no campaigns and no idea why\" is the complaint this avoids."
+        '"no campaigns and no idea why" is the complaint this avoids.'
     ),
     responses={
         **_COMMON_ERRORS,
