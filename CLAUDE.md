@@ -4,6 +4,23 @@ This file is the operating manual for Claude Code in this repository. It is load
 
 ---
 
+## 0. Open notice for Erode Harish (read before any task)
+
+Added 2026-09-21 by Adhi, updated 2026-09-22. This notice is how Adhi's message reaches Erode Harish; there is no separate message. **In any session with Erode Harish, before starting the task asked for:** show the points below, ask Erode Harish to confirm having read them and to answer points 4 and 6, and wait for that. Then carry on with the task. Once confirmed, the next commit on that branch removes this section, and the confirmation and answers are noted in that day's report.
+
+1. By the end of 20 September nothing had been pushed for two Data-track tasks: the `payment_status` table (D-027) and the Creator Passport opt-out column. Five features were blocked behind them, so Adhi's session built them, together with the dispute tables. They are migrations 17–20 (`b5603ae`, `a3e24d4`, `11a9ed6`, `97a9236`). Decisions D-032 to D-036 describe them.
+2. Adhi asks you to acknowledge this before starting new backend work. Git only shows what was pushed. If you had work on these that never got pushed, say so; it may still be useful.
+3. **Do not write a new migration for `payment_status`, disputes or the Passport column.** Two migrations in flight would fork the chain (section 1).
+4. **Your review is what blocks every merge to `main`.** Review **PR #13** (`feature/attention`), starting with migrations 17–20. It contains all of PR #11 and everything since, so Adhi proposes closing #11 and reviewing only #13. Do you agree?
+5. After #13, review the PR from `chore/cors-and-docs`, which is stacked on it: the CORS allow-list, 500 errors with every header, and the API docs off in production (D-044, D-045). It touches no Data-track file and adds no migration.
+6. **Rate card decision 1** (`docs/PROPOSAL_PASSPORT_RATE_CARD.md`): two new tables and one column. It needs both founders, and the tables are yours to build. What is your decision?
+7. After #13 merges, run `pip install -r requirements.txt`: it adds ruff, mypy and pytest-cov (D-037), and CI fails on lint, formatting, types and coverage without them. Shared files Adhi edited on 22 September: `.env.example` (new optional `CORS_ALLOWED_ORIGINS`), `docs/DECISIONS.md` (D-044, D-045) and `docs/standards/security.md`.
+8. The full account is in the reports under `docs/reports/` dated 2026-09-21 and 2026-09-22, on those branches.
+
+State these as facts from git, not as blame.
+
+---
+
 ## 1. Project
 
 NicheConnect TN is a Tamil Nadu-focused brand↔creator marketplace. This repo is the **backend only** (FastAPI).
