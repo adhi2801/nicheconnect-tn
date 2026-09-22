@@ -6,7 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response, stat
 from sqlalchemy.orm import Session
 
 from app.core.errors import problem_doc
-from app.core.rate_limit import limiter
+from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth import service
 from app.modules.auth.dependencies import CurrentAccount, get_now
@@ -50,7 +50,7 @@ def _seconds_between(start: datetime, end: datetime) -> int:
         429: problem_doc("Too many codes requested; see the Retry-After header"),
     },
 )
-@limiter.limit(OTP_REQUEST_LIMIT)
+@rate_limit(OTP_REQUEST_LIMIT)
 def request_code(
     request: Request,
     body: OtpRequestIn,
@@ -61,7 +61,9 @@ def request_code(
 ) -> OtpRequestAccepted:
     pending = service.request_otp(db, body.phone, now)
     background_tasks.add_task(service.deliver_otp, sender, pending)
-    return OtpRequestAccepted(expires_in_seconds=_seconds_between(now, pending.expires_at))
+    return OtpRequestAccepted(
+        expires_in_seconds=_seconds_between(now, pending.expires_at)
+    )
 
 
 @router.post(
@@ -80,7 +82,7 @@ def request_code(
         429: problem_doc("Too many attempts; see the Retry-After header"),
     },
 )
-@limiter.limit(OTP_VERIFY_LIMIT)
+@rate_limit(OTP_VERIFY_LIMIT)
 def verify_code(
     request: Request,
     response: Response,
@@ -100,6 +102,8 @@ def verify_code(
             id=result.account_id, role=result.role, is_new=result.is_new_account
         ),
     )
+
+
 @router.post(
     "/refresh",
     response_model=LoginTokens,
@@ -111,12 +115,14 @@ def verify_code(
         "user must log in again. Limit: 30 requests per minute per IP address."
     ),
     responses={
-        401: problem_doc("The refresh token is unknown, expired, revoked or already used"),
+        401: problem_doc(
+            "The refresh token is unknown, expired, revoked or already used"
+        ),
         422: problem_doc("The refresh token field is missing or malformed"),
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@limiter.limit(SESSION_LIMIT)
+@rate_limit(SESSION_LIMIT)
 def refresh(
     request: Request,
     response: Response,
@@ -152,7 +158,7 @@ def refresh(
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@limiter.limit(SESSION_LIMIT)
+@rate_limit(SESSION_LIMIT)
 def logout(
     request: Request,
     body: LogoutIn,
@@ -160,6 +166,7 @@ def logout(
     now: datetime = Depends(get_now),
 ) -> None:
     service.logout(db, body.refresh_token, now)
+
 
 @router.get(
     "/me",
@@ -174,7 +181,7 @@ def logout(
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@limiter.limit(SESSION_LIMIT)
+@rate_limit(SESSION_LIMIT)
 def me(request: Request, account: CurrentAccount) -> AccountRead:
     return AccountRead(
         id=account.id,
@@ -197,7 +204,7 @@ def me(request: Request, account: CurrentAccount) -> AccountRead:
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@limiter.limit(SESSION_LIMIT)
+@rate_limit(SESSION_LIMIT)
 def logout_all(
     request: Request,
     account: CurrentAccount,

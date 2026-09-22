@@ -14,18 +14,19 @@ from app.db.base import Base
 # token whose row already has used_at means theft: revoke the whole family.
 # Only a SHA-256 of the token is stored, never the token itself.
 
+
 def refresh_token_ttl() -> timedelta:
     """How long a refresh token lasts. One source: settings (D-008)."""
     return timedelta(days=settings.refresh_token_expire_days)
-TOKEN_HASH_PATTERN = r"^[0-9a-f]{64}$"
+
+
+TOKEN_HASH_PATTERN = r"^[0-9a-f]{64}$"  # noqa: S105 - a format check, not a secret
 
 
 class AuthSession(Base):
     __tablename__ = "auth_session"
     __table_args__ = (
-        CheckConstraint(
-            f"token_hash ~ '{TOKEN_HASH_PATTERN}'", name="token_hash_format"
-        ),
+        CheckConstraint(f"token_hash ~ '{TOKEN_HASH_PATTERN}'", name="token_hash_format"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(

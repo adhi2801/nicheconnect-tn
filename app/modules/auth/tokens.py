@@ -8,7 +8,8 @@ import hmac
 import secrets
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import jwt
 
@@ -19,7 +20,7 @@ from app.modules.auth.models.account import ACCOUNT_ROLES
 ALGORITHM = "HS256"
 # Key ID in the token header, so the signing key can be rotated later.
 CURRENT_KEY_ID = "k1"
-ACCESS_TOKEN_TYPE = "access"
+ACCESS_TOKEN_TYPE = "access"  # noqa: S105 - a claim value, not a secret
 OTP_CODE_DIGITS = 6
 REFRESH_TOKEN_BYTES = 32
 
@@ -31,7 +32,9 @@ class AccessTokenClaims:
     expires_at: datetime
 
 
-def create_access_token(account_id: uuid.UUID, role: str, now: datetime) -> tuple[str, datetime]:
+def create_access_token(
+    account_id: uuid.UUID, role: str, now: datetime
+) -> tuple[str, datetime]:
     """Sign a short-lived access token. Returns the token and its expiry time."""
     expires_at = now + timedelta(minutes=settings.access_token_expire_minutes)
     claims = {
@@ -51,11 +54,12 @@ def create_access_token(account_id: uuid.UUID, role: str, now: datetime) -> tupl
     return token, expires_at
 
 
-def decode_access_token(token: str, now: datetime) -> AccessTokenClaims:
-    """Verify an access token and return its claims.
+def _verified_claims(token: str) -> dict[str, Any]:
+    """Check a token's signature and shape. Expiry is the caller's business.
 
-    Raises InvalidToken for any problem (bad signature, wrong key ID, wrong
-    type, unknown role, malformed claims, or expired at `now`).
+    Split out so that scoping (which does not care whether the token has
+    just lapsed) and authentication (which very much does) share one piece
+    of verification rather than two that could drift apart.
     """
     try:
         if jwt.get_unverified_header(token).get("kid") != CURRENT_KEY_ID:
@@ -75,16 +79,48 @@ def decode_access_token(token: str, now: datetime) -> AccessTokenClaims:
                 "require": ["sub", "role", "typ", "iat", "exp", "jti"],
             },
         )
-        account_id = uuid.UUID(claims["sub"])
-        expires_at = datetime.fromtimestamp(int(claims["exp"]), tz=timezone.utc)
+        uuid.UUID(claims["sub"])
+        datetime.fromtimestamp(int(claims["exp"]), tz=UTC)
     except (jwt.PyJWTError, ValueError, TypeError) as exc:
         raise InvalidToken() from exc
 
     if claims["typ"] != ACCESS_TOKEN_TYPE or claims["role"] not in ACCOUNT_ROLES:
         raise InvalidToken()
+    return claims
+
+
+def decode_access_token(token: str, now: datetime) -> AccessTokenClaims:
+    """Verify an access token and return its claims.
+
+    Raises InvalidToken for any problem (bad signature, wrong key ID, wrong
+    type, unknown role, malformed claims, or expired at `now`).
+    """
+    claims = _verified_claims(token)
+    expires_at = datetime.fromtimestamp(int(claims["exp"]), tz=UTC)
     if now >= expires_at:
         raise InvalidToken()
-    return AccessTokenClaims(account_id=account_id, role=claims["role"], expires_at=expires_at)
+    return AccessTokenClaims(
+        account_id=uuid.UUID(claims["sub"]),
+        role=claims["role"],
+        expires_at=expires_at,
+    )
+
+
+def account_id_for_scoping(token: str) -> uuid.UUID | None:
+    """Which account a token belongs to, for grouping retries of one request.
+
+    The signature is verified, so this cannot be forged into somebody else's
+    bucket. Expiry deliberately is not: a retry arriving just after a token
+    lapsed, or after the client refreshed it, is still the same person
+    retrying the same request, and should still get their first answer.
+
+    Never use this to decide access. It answers "whose request is this",
+    not "may they do it" — `decode_access_token` answers that.
+    """
+    try:
+        return uuid.UUID(_verified_claims(token)["sub"])
+    except InvalidToken:
+        return None
 
 
 def new_refresh_token() -> str:

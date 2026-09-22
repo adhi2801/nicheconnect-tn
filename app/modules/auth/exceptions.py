@@ -29,10 +29,12 @@ class RoleMismatch(DomainError):
     code = "role_mismatch"
     title = "This number is already registered with a different account type"
 
+
 class RoleNotAllowed(DomainError):
     status_code = HTTPStatus.FORBIDDEN
     code = "role_not_allowed"
     title = "This account type cannot use this feature"
+
 
 class ProfileNotFound(DomainError):
     status_code = HTTPStatus.NOT_FOUND

@@ -10,3 +10,5 @@ venv/
 *.log
 .claude/*
 !.claude/commands/
+.coverage
+coverage.json

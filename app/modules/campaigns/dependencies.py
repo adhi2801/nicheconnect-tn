@@ -37,9 +37,7 @@ def get_owned_campaign(
     confirm that the campaign exists (security.md section 2).
     """
     campaign = db.scalars(
-        select(Campaign).where(
-            Campaign.id == campaign_id, Campaign.brand_id == brand.id
-        )
+        select(Campaign).where(Campaign.id == campaign_id, Campaign.brand_id == brand.id)
     ).first()
     if campaign is None:
         raise CampaignNotFound()

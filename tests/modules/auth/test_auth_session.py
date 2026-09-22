@@ -48,7 +48,11 @@ def test_used_and_revoked_times_are_kept(db):
 def test_rotated_sessions_share_one_family(db):
     account = create_account(db, "creator")
     family_id = uuid.uuid4()
-    db.add(build_auth_session(db, account_id=account.id, family_id=family_id, used_at=FIXED_NOW))
+    db.add(
+        build_auth_session(
+            db, account_id=account.id, family_id=family_id, used_at=FIXED_NOW
+        )
+    )
     db.add(build_auth_session(db, account_id=account.id, family_id=family_id))
     db.flush()
 
@@ -75,7 +79,9 @@ def test_duplicate_token_hash_is_rejected(db):
 )
 def test_value_that_is_not_a_token_hash_is_rejected(db, token_hash):
     assert_rejected_by(
-        db, build_auth_session(db, token_hash=token_hash), "ck_auth_session_token_hash_format"
+        db,
+        build_auth_session(db, token_hash=token_hash),
+        "ck_auth_session_token_hash_format",
     )
 
 

@@ -36,7 +36,9 @@ def test_duplicate_handle_is_rejected(db):
     db.add(build_creator(db))
     db.flush()
 
-    assert_rejected_by(db, build_creator(db, display_name="Someone Else"), "uq_creator_handle")
+    assert_rejected_by(
+        db, build_creator(db, display_name="Someone Else"), "uq_creator_handle"
+    )
 
 
 @pytest.mark.parametrize(
@@ -69,7 +71,9 @@ def test_five_niches_is_allowed(db):
 
 
 def test_unknown_niche_is_rejected(db):
-    assert_rejected_by(db, build_creator(db, niches=["food", "gaming"]), "ck_creator_niches_allowed")
+    assert_rejected_by(
+        db, build_creator(db, niches=["food", "gaming"]), "ck_creator_niches_allowed"
+    )
 
 
 def test_empty_languages_is_rejected(db):
@@ -77,13 +81,17 @@ def test_empty_languages_is_rejected(db):
 
 
 def test_language_other_than_english_is_rejected(db):
-    assert_rejected_by(db, build_creator(db, languages=["en", "ta"]), "ck_creator_languages_allowed")
+    assert_rejected_by(
+        db, build_creator(db, languages=["en", "ta"]), "ck_creator_languages_allowed"
+    )
 
 
 @pytest.mark.parametrize("display_name", ["", "   "])
 def test_blank_display_name_is_rejected(db, display_name):
     assert_rejected_by(
-        db, build_creator(db, display_name=display_name), "ck_creator_display_name_not_blank"
+        db,
+        build_creator(db, display_name=display_name),
+        "ck_creator_display_name_not_blank",
     )
 
 

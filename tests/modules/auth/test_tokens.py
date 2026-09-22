@@ -58,8 +58,12 @@ def test_access_token_carries_key_id_and_unique_jti():
     second, _ = create_access_token(account_id, "creator", FIXED_NOW)
 
     assert jwt.get_unverified_header(first)["kid"] == CURRENT_KEY_ID
-    first_jti = jwt.decode(first, SECRET, algorithms=[ALGORITHM], options={"verify_exp": False})["jti"]
-    second_jti = jwt.decode(second, SECRET, algorithms=[ALGORITHM], options={"verify_exp": False})["jti"]
+    first_jti = jwt.decode(
+        first, SECRET, algorithms=[ALGORITHM], options={"verify_exp": False}
+    )["jti"]
+    second_jti = jwt.decode(
+        second, SECRET, algorithms=[ALGORITHM], options={"verify_exp": False}
+    )["jti"]
     assert first_jti != second_jti
 
 
@@ -79,14 +83,18 @@ def test_token_signed_with_another_key_is_rejected():
 def test_tampered_token_is_rejected():
     token, _ = create_access_token(uuid.uuid4(), "creator", FIXED_NOW)
     header, payload, signature = token.split(".")
-    tampered = ".".join([header, payload, signature[:-2] + ("AA" if signature[-2:] != "AA" else "BB")])
+    tampered = ".".join(
+        [header, payload, signature[:-2] + ("AA" if signature[-2:] != "AA" else "BB")]
+    )
 
     with pytest.raises(InvalidToken):
         decode_access_token(tampered, FIXED_NOW)
 
 
 def test_unsigned_token_is_rejected():
-    unsigned = jwt.encode(valid_claims(), key=None, algorithm="none", headers={"kid": CURRENT_KEY_ID})
+    unsigned = jwt.encode(
+        valid_claims(), key=None, algorithm="none", headers={"kid": CURRENT_KEY_ID}
+    )
 
     with pytest.raises(InvalidToken):
         decode_access_token(unsigned, FIXED_NOW)

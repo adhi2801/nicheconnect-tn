@@ -22,13 +22,17 @@ REDIS_URI = "redis://localhost:6379/1"
 
 def make_limiter(storage_uri: str) -> Limiter:
     """A limiter like the app's, standing in for a second process."""
-    return Limiter(key_func=client_ip, default_limits=["60/minute"], storage_uri=storage_uri)
+    return Limiter(
+        key_func=client_ip, default_limits=["60/minute"], storage_uri=storage_uri
+    )
 
 
 def hits_until_refused(storages: list, item, key: str, attempts: int) -> list[bool]:
     """Alternate between the storages, as two processes would."""
     strategies = [FixedWindowRateLimiter(storage) for storage in storages]
-    return [strategies[index % len(strategies)].hit(item, key) for index in range(attempts)]
+    return [
+        strategies[index % len(strategies)].hit(item, key) for index in range(attempts)
+    ]
 
 
 def test_the_app_uses_the_storage_from_settings():
@@ -36,10 +40,14 @@ def test_the_app_uses_the_storage_from_settings():
 
 
 def test_the_default_is_in_memory():
-    assert Settings(_env_file=None, **valid_values()).rate_limit_storage_uri == "memory://"
+    assert (
+        Settings(_env_file=None, **valid_values()).rate_limit_storage_uri == "memory://"
+    )
 
 
-@pytest.mark.parametrize("uri", ["memory://", "redis://localhost:6379/1", "rediss://host:6379"])
+@pytest.mark.parametrize(
+    "uri", ["memory://", "redis://localhost:6379/1", "rediss://host:6379"]
+)
 def test_known_storage_values_are_accepted(uri):
     settings = Settings(_env_file=None, **valid_values(rate_limit_storage_uri=uri))
 

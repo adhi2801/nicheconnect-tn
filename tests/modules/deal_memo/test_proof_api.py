@@ -1,111 +1,19 @@
 """Proof of work: submitted, reviewed, or approved by the clock (D-024, D-025)."""
 
-import uuid
-from collections.abc import Iterator
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
-from fastapi.testclient import TestClient
 
-from app.core.rate_limit import limiter
-from app.db.session import get_db
-from app.main import app
-from app.modules.auth.dependencies import get_now
-from app.modules.auth.tokens import create_access_token
 from app.modules.deal_memo.models import DealMemo
-from tests.factories import FIXED_NOW, build_brand, build_creator
-
-CAMPAIGNS_URL = "/api/v1/campaigns"
-MEMOS_URL = "/api/v1/deal-memos"
-NOTIFICATIONS_URL = "/api/v1/notifications"
-PITCH = "I run a Madurai street-food page with 12,000 local followers."
-LINK = "https://www.instagram.com/reel/abc123/"
-
-
-class Clock:
-    def __init__(self, now: datetime) -> None:
-        self.now = now
-
-    def advance(self, delta: timedelta) -> None:
-        self.now += delta
-
-
-class User:
-    def __init__(self, account_id, role: str, clock: Clock) -> None:
-        self.account_id = account_id
-        self.role = role
-        self.clock = clock
-
-    @property
-    def headers(self) -> dict[str, str]:
-        token, _ = create_access_token(self.account_id, self.role, self.clock.now)
-        return {"Authorization": f"Bearer {token}"}
-
-
-@pytest.fixture
-def clock() -> Clock:
-    return Clock(FIXED_NOW)
-
-
-@pytest.fixture
-def client(db, clock) -> Iterator[TestClient]:
-    app.dependency_overrides[get_db] = lambda: db
-    app.dependency_overrides[get_now] = lambda: clock.now
-    limiter.reset()
-    try:
-        yield TestClient(app)
-    finally:
-        app.dependency_overrides.clear()
-        limiter.reset()
-
-
-def brand_user(db, clock) -> User:
-    brand = build_brand(db, email=f"brand-{uuid.uuid4().hex[:12]}@example.com")
-    db.add(brand)
-    db.flush()
-    return User(brand.account_id, "brand", clock)
-
-
-def creator_user(db, clock) -> User:
-    creator = build_creator(db, handle=f"proof{uuid.uuid4().hex[:12]}")
-    db.add(creator)
-    db.flush()
-    return User(creator.account_id, "creator", clock)
-
-
-def accepted_memo(client, brand: User, creator: User, **memo_fields) -> str:
-    """A whole journey: campaign, application, acceptance, memo, accepted."""
-    campaign_id = client.post(
-        CAMPAIGNS_URL,
-        json={
-            "title": "Pongal sweets launch",
-            "description": "Three reels featuring our new sweet box.",
-            "campaign_type": "paid",
-            "budget_min_paise": 500_000,
-            "budget_max_paise": 1_500_000,
-            "cities": ["Madurai"],
-            "niches": ["food"],
-            "deliverables": "3 Instagram reels",
-        },
-        headers=brand.headers,
-    ).json()["id"]
-    client.post(f"{CAMPAIGNS_URL}/{campaign_id}/publish", headers=brand.headers)
-    application_id = client.post(
-        f"{CAMPAIGNS_URL}/{campaign_id}/applications",
-        json={"pitch": PITCH},
-        headers=creator.headers,
-    ).json()["id"]
-    client.post(f"/api/v1/applications/{application_id}/shortlist", headers=brand.headers)
-    client.post(f"/api/v1/applications/{application_id}/accept", headers=brand.headers)
-    body = {"deliverables": "3 Instagram reels, 1 story set.", "fee_amount_paise": 800_000}
-    body.update(memo_fields)
-    memo_id = client.post(
-        f"{MEMOS_URL}/for-application/{application_id}", json=body, headers=brand.headers
-    ).json()["id"]
-    client.post(f"{MEMOS_URL}/{memo_id}/send", headers=brand.headers)
-    accepted = client.post(f"{MEMOS_URL}/{memo_id}/accept", headers=creator.headers)
-    assert accepted.status_code == 200, accepted.text
-    return memo_id
+from tests.deal_flow import (
+    LINK,
+    MEMOS_URL,
+    NOTIFICATIONS_URL,
+    User,
+    accepted_memo,
+    brand_user,
+    creator_user,
+)
 
 
 def submit(client, creator: User, memo_id: str, **overrides):
@@ -189,7 +97,9 @@ def test_another_creator_cannot_submit_on_your_memo(client, db, clock):
     brand, creator = brand_user(db, clock), creator_user(db, clock)
     memo_id = accepted_memo(client, brand, creator)
 
-    assert_problem(submit(client, creator_user(db, clock), memo_id), 404, "memo_not_found")
+    assert_problem(
+        submit(client, creator_user(db, clock), memo_id), 404, "memo_not_found"
+    )
 
 
 @pytest.mark.parametrize(
@@ -206,7 +116,9 @@ def test_invalid_proof_is_rejected(client, db, clock, overrides, field):
     brand, creator = brand_user(db, clock), creator_user(db, clock)
     memo_id = accepted_memo(client, brand, creator)
 
-    problem = assert_problem(submit(client, creator, memo_id, **overrides), 422, "validation_failed")
+    problem = assert_problem(
+        submit(client, creator, memo_id, **overrides), 422, "validation_failed"
+    )
     assert field in [error["field"] for error in problem["errors"]]
 
 
@@ -254,7 +166,9 @@ def test_a_decided_submission_cannot_be_decided_again(client, db, clock):
     client.post(f"{MEMOS_URL}/{memo_id}/proof/{proof_id}/approve", headers=brand.headers)
 
     assert_problem(
-        client.post(f"{MEMOS_URL}/{memo_id}/proof/{proof_id}/approve", headers=brand.headers),
+        client.post(
+            f"{MEMOS_URL}/{memo_id}/proof/{proof_id}/approve", headers=brand.headers
+        ),
         409,
         "proof_already_decided",
     )
@@ -266,7 +180,9 @@ def test_a_creator_cannot_approve_their_own_proof(client, db, clock):
     proof_id = submit(client, creator, memo_id).json()["id"]
 
     assert_problem(
-        client.post(f"{MEMOS_URL}/{memo_id}/proof/{proof_id}/approve", headers=creator.headers),
+        client.post(
+            f"{MEMOS_URL}/{memo_id}/proof/{proof_id}/approve", headers=creator.headers
+        ),
         403,
         "role_not_allowed",
     )
@@ -333,7 +249,9 @@ def test_approving_late_reports_the_automatic_approval(client, db, clock):
     proof_id = submit(client, creator, memo_id).json()["id"]
 
     clock.advance(timedelta(days=8))
-    late = client.post(f"{MEMOS_URL}/{memo_id}/proof/{proof_id}/approve", headers=brand.headers)
+    late = client.post(
+        f"{MEMOS_URL}/{memo_id}/proof/{proof_id}/approve", headers=brand.headers
+    )
 
     assert_problem(late, 409, "proof_already_decided")
     [proof] = client.get(f"{MEMOS_URL}/{memo_id}/proof", headers=brand.headers).json()
@@ -348,7 +266,9 @@ def test_both_sides_see_the_same_submissions(client, db, clock):
     memo_id = accepted_memo(client, brand, creator)
     submit(client, creator, memo_id)
 
-    from_creator = client.get(f"{MEMOS_URL}/{memo_id}/proof", headers=creator.headers).json()
+    from_creator = client.get(
+        f"{MEMOS_URL}/{memo_id}/proof", headers=creator.headers
+    ).json()
     from_brand = client.get(f"{MEMOS_URL}/{memo_id}/proof", headers=brand.headers).json()
 
     assert [item["id"] for item in from_creator] == [item["id"] for item in from_brand]
@@ -360,7 +280,9 @@ def test_a_stranger_sees_nothing(client, db, clock):
     submit(client, creator, memo_id)
 
     assert_problem(
-        client.get(f"{MEMOS_URL}/{memo_id}/proof", headers=creator_user(db, clock).headers),
+        client.get(
+            f"{MEMOS_URL}/{memo_id}/proof", headers=creator_user(db, clock).headers
+        ),
         404,
         "memo_not_found",
     )
@@ -378,9 +300,13 @@ def test_submissions_are_listed_newest_first(client, db, clock):
     memo_id = accepted_memo(client, brand, creator)
     first = submit(client, creator, memo_id).json()["id"]
     proof_url = f"{MEMOS_URL}/{memo_id}/proof/{first}/request-revision"
-    client.post(proof_url, json={"note": "Please add the ad label."}, headers=brand.headers)
+    client.post(
+        proof_url, json={"note": "Please add the ad label."}, headers=brand.headers
+    )
     clock.advance(timedelta(hours=3))
-    second = submit(client, creator, memo_id, content_url="https://example.com/second").json()["id"]
+    second = submit(
+        client, creator, memo_id, content_url="https://example.com/second"
+    ).json()["id"]
 
     listed = client.get(f"{MEMOS_URL}/{memo_id}/proof", headers=brand.headers).json()
 

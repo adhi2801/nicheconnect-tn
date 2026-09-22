@@ -7,7 +7,13 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic_core import PydanticCustomError
 
+from app.core.literals import ensure_same_values
 from app.core.taxonomy import CURRENCY
+from app.modules.deal_memo.delivery_record import (
+    HAS_HISTORY,
+    NO_HISTORY_YET,
+    DeliveryRecord,
+)
 from app.modules.deal_memo.models import (
     CANCELLATION_KINDS,
     DELIVERABLES_MAX_LENGTH,
@@ -17,11 +23,15 @@ from app.modules.deal_memo.models import (
     TERMS_MAX_LENGTH,
 )
 
-MemoStatus = Literal["draft", "sent", "change_requested", "accepted", "declined", "cancelled"]
-CancellationKind = Literal["withdrawn_early", "cancelled_by_brand", "cancelled_by_creator"]
+MemoStatus = Literal[
+    "draft", "sent", "change_requested", "accepted", "declined", "cancelled"
+]
+CancellationKind = Literal[
+    "withdrawn_early", "cancelled_by_brand", "cancelled_by_creator"
+]
 
-assert set(MEMO_STATUSES) == set(MemoStatus.__args__)
-assert set(CANCELLATION_KINDS) == set(CancellationKind.__args__)
+ensure_same_values("MemoStatus", MemoStatus, MEMO_STATUSES)
+ensure_same_values("CancellationKind", CancellationKind, CANCELLATION_KINDS)
 
 Deliverables = Annotated[
     str,
@@ -32,7 +42,8 @@ Deliverables = Annotated[
     ),
 ]
 Paise = Annotated[
-    int, Field(gt=0, le=10_000_000_000, description="Whole paise, e.g. 800000 is Rs 8,000")
+    int,
+    Field(gt=0, le=10_000_000_000, description="Whole paise, e.g. 800000 is Rs 8,000"),
 ]
 CancellationFee = Annotated[int, Field(ge=0, le=10_000_000_000)]
 WindowDays = Annotated[int, Field(ge=1, le=MAX_WINDOW_DAYS)]
@@ -121,3 +132,68 @@ class MemoRead(BaseModel):
     cancellation_kind: CancellationKind | None
     created_at: datetime
     updated_at: datetime
+
+
+DeliveryStatus = Literal["new_creator_no_history_yet", "has_delivery_history"]
+
+ensure_same_values("DeliveryStatus", DeliveryStatus, (NO_HISTORY_YET, HAS_HISTORY))
+
+
+class CreatorDeliveryRead(BaseModel):
+    """How a creator delivers, from what happened rather than from opinions.
+
+    The mirror of a brand's payment record (D-038). The shares are `null`
+    until three scored deals have completed. **Null means "not enough to
+    say" and must never be shown as zero**: the two mean opposite things.
+
+    `currently_overdue` is reported whatever the status, so "new" can never
+    hide work a brand is still waiting for. Barter deals are shown in their
+    own counts and never scored (D-026).
+    """
+
+    creator_id: uuid.UUID
+    status: DeliveryStatus
+    deals_completed: int = Field(
+        description="Scored (non-barter) deals that reached an outcome"
+    )
+    deals_delivered: int
+    deals_not_delivered: int = Field(
+        description=(
+            "Cancelled by the creator after work had started, or nothing "
+            "delivered 14 days after the agreed date"
+        )
+    )
+    currently_overdue: int = Field(
+        description="Deals past their agreed date with nothing delivered yet"
+    )
+    delivered_on_time_share: float | None = Field(
+        description=(
+            "Share of completed deals delivered by the agreed date, judged by "
+            "the first submission. Null below three completed deals"
+        )
+    )
+    disclosure_confirmed_share: float | None = Field(
+        description=(
+            "Of delivered deals that required an ad disclosure, the share where "
+            "the creator confirmed it was on the post. The creator's statement, "
+            "not a judgement of compliance. Null below three completed deals, "
+            "or when no delivered deal required one"
+        )
+    )
+    barter_deals_delivered: int
+    barter_deals_not_delivered: int
+
+
+def to_delivery_read(record: DeliveryRecord) -> CreatorDeliveryRead:
+    return CreatorDeliveryRead(
+        creator_id=record.creator_id,
+        status=record.status,
+        deals_completed=record.deals_completed,
+        deals_delivered=record.deals_delivered,
+        deals_not_delivered=record.deals_not_delivered,
+        currently_overdue=record.currently_overdue,
+        delivered_on_time_share=record.delivered_on_time_share,
+        disclosure_confirmed_share=record.disclosure_confirmed_share,
+        barter_deals_delivered=record.barter_deals_delivered,
+        barter_deals_not_delivered=record.barter_deals_not_delivered,
+    )

@@ -1,7 +1,7 @@
 """A profile may only belong to an account of its own role (D-014)."""
 
 import pytest
-from sqlalchemy import select, text
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from app.modules.auth.models.account import Account

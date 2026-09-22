@@ -111,7 +111,9 @@ def test_a_barter_memo_carries_no_fee(db):
 
 @pytest.mark.parametrize("fee", [0, -100])
 def test_a_fee_must_be_real_money(db, fee):
-    assert_rejected_by(db, build_memo(db, fee_amount_paise=fee), "ck_deal_memo_fee_positive")
+    assert_rejected_by(
+        db, build_memo(db, fee_amount_paise=fee), "ck_deal_memo_fee_positive"
+    )
 
 
 def test_a_cancellation_fee_can_be_agreed_and_defaults_to_zero(db):
@@ -131,7 +133,9 @@ def test_a_negative_cancellation_fee_is_rejected(db):
 
 
 def test_only_rupees_for_now(db):
-    assert_rejected_by(db, build_memo(db, currency="USD"), "ck_deal_memo_currency_allowed")
+    assert_rejected_by(
+        db, build_memo(db, currency="USD"), "ck_deal_memo_currency_allowed"
+    )
 
 
 # --- agreed windows --------------------------------------------------------
@@ -165,9 +169,7 @@ def test_usage_rights_outside_the_allowed_range_are_rejected(db, days):
 
 
 def test_usage_rights_and_a_content_date_can_be_agreed(db):
-    memo = build_memo(
-        db, usage_rights_days=180, content_due_on=date(2026, 10, 15)
-    )
+    memo = build_memo(db, usage_rights_days=180, content_due_on=date(2026, 10, 15))
     db.add(memo)
     db.flush()
 
@@ -191,9 +193,13 @@ def test_unknown_status_is_rejected(db, status):
     assert_rejected_by(db, build_memo(db, status=status), "ck_deal_memo_status_allowed")
 
 
-@pytest.mark.parametrize("kind", ["withdrawn_early", "cancelled_by_brand", "cancelled_by_creator"])
+@pytest.mark.parametrize(
+    "kind", ["withdrawn_early", "cancelled_by_brand", "cancelled_by_creator"]
+)
 def test_a_cancelled_memo_records_how_it_ended(db, kind):
-    memo = build_memo(db, status="cancelled", cancellation_kind=kind, cancelled_at=FIXED_NOW)
+    memo = build_memo(
+        db, status="cancelled", cancellation_kind=kind, cancelled_at=FIXED_NOW
+    )
     db.add(memo)
     db.flush()
 

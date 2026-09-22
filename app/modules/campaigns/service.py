@@ -12,12 +12,19 @@ campaign, so a creator's application history always points at what they saw.
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import Select, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.pagination import Slice, build_slice, decode_cursor
+from app.core.export import (
+    MAX_ROWS_PER_SECTION,
+    ExportedSection,
+    allow,
+    build_section,
+)
+from app.core.pagination import Slice, build_slice, older_than_cursor
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.exceptions import (
@@ -34,6 +41,40 @@ from app.modules.campaigns.exceptions import (
 )
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.notifications import service as notifications
+
+# Tables this module answers for in a data export (see
+# tests/modules/auth/test_export_api.py, which fails if one is missed).
+EXPORTED_TABLES = frozenset({"campaign", "application"})
+
+CAMPAIGN_EXPORT_FIELDS = allow(
+    "id",
+    "title",
+    "description",
+    "campaign_type",
+    "budget_min_paise",
+    "budget_max_paise",
+    "currency",
+    "cities",
+    "niches",
+    "deliverables",
+    "applications_close_on",
+    "status",
+    "created_at",
+    "updated_at",
+)
+
+APPLICATION_EXPORT_FIELDS = allow(
+    "id",
+    "campaign_id",
+    "pitch",
+    "quoted_amount_paise",
+    "status",
+    "rejection_reason",
+    "rejection_note",
+    "status_changed_at",
+    "created_at",
+    "updated_at",
+)
 
 # What each status allows next. Empty means the campaign is finished.
 ALLOWED_TRANSITIONS: dict[str, frozenset[str]] = {
@@ -57,7 +98,9 @@ def get_brand_for_account(db: Session, account_id: uuid.UUID) -> Brand:
     return brand
 
 
-def create_campaign(db: Session, brand: Brand, fields: dict, now: datetime) -> Campaign:
+def create_campaign(
+    db: Session, brand: Brand, fields: dict[str, Any], now: datetime
+) -> Campaign:
     """Create a campaign as a draft. Only publishing makes it visible."""
     campaign = Campaign(
         brand_id=brand.id,
@@ -73,7 +116,7 @@ def create_campaign(db: Session, brand: Brand, fields: dict, now: datetime) -> C
 
 
 def update_campaign(
-    db: Session, campaign: Campaign, changes: dict, now: datetime
+    db: Session, campaign: Campaign, changes: dict[str, Any], now: datetime
 ) -> Campaign:
     """Change a campaign the brand owns.
 
@@ -116,16 +159,17 @@ def change_status(
     return campaign
 
 
-def _paginate(db: Session, query: Select, limit: int, cursor: str | None) -> Slice[Campaign]:
+def _paginate(
+    db: Session, query: Select[tuple[Campaign]], limit: int, cursor: str | None
+) -> Slice[Campaign]:
     """Newest first, one row past the limit to know whether more exist."""
     if cursor is not None:
-        created_at, row_id = decode_cursor(cursor)
-        query = query.where(
-            (Campaign.created_at, Campaign.id) < (created_at, row_id)
-        )
+        query = query.where(older_than_cursor(Campaign.created_at, Campaign.id, cursor))
     rows = list(
         db.scalars(
-            query.order_by(Campaign.created_at.desc(), Campaign.id.desc()).limit(limit + 1)
+            query.order_by(Campaign.created_at.desc(), Campaign.id.desc()).limit(
+                limit + 1
+            )
         ).all()
     )
     return build_slice(rows, limit, key=lambda row: (row.created_at, row.id))
@@ -159,9 +203,9 @@ def discover_campaigns(
     """Open campaigns for creators to browse, with optional filters."""
     query = select(Campaign).where(Campaign.status == "open")
     if city is not None:
-        query = query.where(Campaign.cities.any(city))
+        query = query.where(Campaign.cities.any_() == city)
     if niche is not None:
-        query = query.where(Campaign.niches.any(niche))
+        query = query.where(Campaign.niches.any_() == niche)
     if campaign_type is not None:
         query = query.where(Campaign.campaign_type == campaign_type)
     if min_budget_paise is not None:
@@ -223,7 +267,7 @@ def apply_to_campaign(
     db: Session,
     campaign_id: uuid.UUID,
     creator: Creator,
-    fields: dict,
+    fields: dict[str, Any],
     now: datetime,
 ) -> Application:
     """Apply to an open campaign.
@@ -238,7 +282,10 @@ def apply_to_campaign(
     if campaign.status != "open":
         db.rollback()
         raise CampaignNotOpen()
-    if campaign.applications_close_on is not None and now.date() > campaign.applications_close_on:
+    if (
+        campaign.applications_close_on is not None
+        and now.date() > campaign.applications_close_on
+    ):
         db.rollback()
         raise ApplicationsClosed()
 
@@ -302,7 +349,7 @@ def change_application_status(
     # Tell the other side what happened, in the same transaction: a record
     # that exists only if the change itself succeeded.
     side, notification_type = STATUS_NOTIFICATIONS[new_status]
-    campaign = db.get(Campaign, application.campaign_id)
+    campaign = db.get_one(Campaign, application.campaign_id)
     account_id = (
         _creator_account_id(db, application)
         if side == "creator"
@@ -328,11 +375,12 @@ def change_application_status(
 
 
 def _paginate_applications(
-    db: Session, query: Select, limit: int, cursor: str | None
+    db: Session, query: Select[tuple[Application]], limit: int, cursor: str | None
 ) -> Slice[Application]:
     if cursor is not None:
-        created_at, row_id = decode_cursor(cursor)
-        query = query.where((Application.created_at, Application.id) < (created_at, row_id))
+        query = query.where(
+            older_than_cursor(Application.created_at, Application.id, cursor)
+        )
     rows = list(
         db.scalars(
             query.order_by(Application.created_at.desc(), Application.id.desc()).limit(
@@ -371,3 +419,110 @@ def list_creator_applications(
     if status is not None:
         query = query.where(Application.status == status)
     return _paginate_applications(db, query, limit, cursor)
+
+
+def _campaign_titles(db: Session, campaign_ids: set[uuid.UUID]) -> dict[uuid.UUID, str]:
+    """Titles for a set of campaigns, in one query rather than one each."""
+    if not campaign_ids:
+        return {}
+    rows = db.execute(
+        select(Campaign.id, Campaign.title).where(Campaign.id.in_(campaign_ids))
+    ).all()
+    return {row.id: row.title for row in rows}
+
+
+def _creator_handles(db: Session, creator_ids: set[uuid.UUID]) -> dict[uuid.UUID, str]:
+    """Public handles for a set of creators, in one query.
+
+    A handle is already public (it is what the Creator Passport is keyed on),
+    so it is the one thing about the other side that may appear in an export.
+    Nothing else about them does.
+    """
+    if not creator_ids:
+        return {}
+    rows = db.execute(
+        select(Creator.id, Creator.handle).where(Creator.id.in_(creator_ids))
+    ).all()
+    return {row.id: row.handle for row in rows}
+
+
+def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSection]:
+    """Campaigns and applications belonging to this account.
+
+    A brand gets the campaigns it posted and the applications it received; a
+    creator gets the applications it sent. Either side sees the other only by
+    internal id and public handle.
+    """
+    sections: list[ExportedSection] = []
+
+    brand = db.scalars(select(Brand).where(Brand.account_id == account_id)).first()
+    if brand is not None:
+        campaigns = list(
+            db.scalars(
+                select(Campaign)
+                .where(Campaign.brand_id == brand.id)
+                .order_by(Campaign.created_at, Campaign.id)
+                .limit(MAX_ROWS_PER_SECTION + 1)
+            ).all()
+        )
+        sections.append(
+            build_section(
+                "campaigns",
+                table="campaign",
+                purpose="The campaigns you posted, including ones still in draft.",
+                objects=campaigns,
+                fields=CAMPAIGN_EXPORT_FIELDS,
+            )
+        )
+
+        received = list(
+            db.scalars(
+                select(Application)
+                .join(Campaign, Application.campaign_id == Campaign.id)
+                .where(Campaign.brand_id == brand.id)
+                .order_by(Application.created_at, Application.id)
+                .limit(MAX_ROWS_PER_SECTION + 1)
+            ).all()
+        )
+        handles = _creator_handles(db, {row.creator_id for row in received})
+        titles = _campaign_titles(db, {row.campaign_id for row in received})
+        sections.append(
+            build_section(
+                "applications_received",
+                table="application",
+                purpose=(
+                    "Applications creators sent to your campaigns. The creator "
+                    "is identified by their public handle only."
+                ),
+                objects=received,
+                fields=APPLICATION_EXPORT_FIELDS,
+                extra=lambda row: {
+                    "creator_handle": handles.get(row.creator_id),
+                    "campaign_title": titles.get(row.campaign_id),
+                },
+            )
+        )
+
+    creator = db.scalars(select(Creator).where(Creator.account_id == account_id)).first()
+    if creator is not None:
+        sent = list(
+            db.scalars(
+                select(Application)
+                .where(Application.creator_id == creator.id)
+                .order_by(Application.created_at, Application.id)
+                .limit(MAX_ROWS_PER_SECTION + 1)
+            ).all()
+        )
+        titles = _campaign_titles(db, {row.campaign_id for row in sent})
+        sections.append(
+            build_section(
+                "applications_sent",
+                table="application",
+                purpose="Applications you sent to campaigns, and how each ended.",
+                objects=sent,
+                fields=APPLICATION_EXPORT_FIELDS,
+                extra=lambda row: {"campaign_title": titles.get(row.campaign_id)},
+            )
+        )
+
+    return sections

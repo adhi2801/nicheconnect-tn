@@ -46,7 +46,7 @@ tests/
 
 ## 5. Coverage
 
-- Target **≥ 90% line coverage** for `service.py` files and **≥ 80%** overall once the coverage tool is approved.
+- **≥ 90%** for every `service.py` file and **≥ 80%** overall, counting branches as well as lines. CI enforces both (D-037).
 - Coverage is a floor, not the goal. Missing failure-case tests fail review even when coverage is high.
 
 ## 6. Performance checks
@@ -57,11 +57,11 @@ tests/
 ## 7. CI gates (merge is blocked unless all pass)
 
 1. Install pinned dependencies
-2. Lint and format check (once approved)
-3. Type check (once approved)
+2. Lint and format check (D-037)
+3. Type check (D-037)
 4. `alembic upgrade head` on a fresh database, then downgrade and upgrade again
 5. `pytest` with no failures and no skipped tests without a reason
-6. Dependency vulnerability audit (once approved)
+6. Dependency vulnerability audit (D-031)
 7. Banned-term check from CLAUDE.md section 2
 
 ## 8. Honesty

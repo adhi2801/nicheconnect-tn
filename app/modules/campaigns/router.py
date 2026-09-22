@@ -1,16 +1,19 @@
 """HTTP endpoints for campaigns (D-016). HTTP only: rules live in service.py."""
 
 import uuid
+from collections.abc import Callable
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.errors import problem_doc
-from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
-from app.core.rate_limit import limiter
+from app.core.idempotent_route import IdempotentRoute
+from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page, Slice
+from app.core.rate_limit import rate_limit
+from app.core.taxonomy import Niche
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.auth.models.brand import Brand
@@ -24,19 +27,20 @@ from app.modules.campaigns.schemas import (
     CampaignStatus,
     CampaignType,
     CampaignUpdate,
-    Niche,
 )
 
 WRITE_LIMIT = "30 per minute"
 READ_LIMIT = "60 per minute"
 
-router = APIRouter(prefix="/api/v1/campaigns", tags=["campaigns"])
+router = APIRouter(
+    prefix="/api/v1/campaigns", tags=["campaigns"], route_class=IdempotentRoute
+)
 
 Limit = Annotated[int, Query(ge=1, le=MAX_LIMIT, description="Rows per page")]
 Cursor = Annotated[str | None, Query(description="From a previous page's next_cursor")]
 
 
-def _page(result) -> Page[CampaignRead]:
+def _page(result: Slice[Campaign]) -> Page[CampaignRead]:
     return Page[CampaignRead](
         items=[CampaignRead.model_validate(row) for row in result.rows],
         next_cursor=result.next_cursor,
@@ -60,7 +64,7 @@ def _page(result) -> Page[CampaignRead]:
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def create_campaign(
     request: Request,
     response: Response,
@@ -87,7 +91,7 @@ def create_campaign(
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def list_my_campaigns(
     request: Request,
     brand: CurrentBrandProfile,
@@ -117,7 +121,7 @@ def list_my_campaigns(
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def discover_campaigns(
     request: Request,
     account: CurrentAccount,
@@ -156,7 +160,7 @@ def discover_campaigns(
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def read_campaign(
     request: Request,
     campaign_id: uuid.UUID,
@@ -194,7 +198,7 @@ def read_campaign(
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def update_campaign(
     request: Request,
     body: CampaignUpdate,
@@ -208,7 +212,9 @@ def update_campaign(
     )
 
 
-def _status_endpoint(action: str, new_status: str, summary: str, description: str):
+def _status_endpoint(
+    action: str, new_status: str, summary: str, description: str
+) -> Callable[..., Any]:
     @router.post(
         f"/{{campaign_id}}/{action}",
         response_model=CampaignRead,
@@ -223,7 +229,7 @@ def _status_endpoint(action: str, new_status: str, summary: str, description: st
             429: problem_doc("Too many requests; see the Retry-After header"),
         },
     )
-    @limiter.limit(WRITE_LIMIT)
+    @rate_limit(WRITE_LIMIT)
     def endpoint(
         request: Request,
         campaign: OwnedCampaign,

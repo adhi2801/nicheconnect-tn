@@ -8,12 +8,18 @@ from fastapi import APIRouter, Depends, Path, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
-from app.core.errors import problem_doc
-from app.core.rate_limit import limiter
+from app.core.errors import ResponseDocs, problem_doc
+from app.core.idempotent_route import IdempotentRoute
+from app.core.literals import ensure_same_values
+from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.deal_memo import proof_service
-from app.modules.deal_memo.dependencies import BrandMemo, CreatorMemo, visible_memo_for_account
+from app.modules.deal_memo.dependencies import (
+    BrandMemo,
+    CreatorMemo,
+    visible_memo_for_account,
+)
 from app.modules.deal_memo.proof_models import (
     NOTE_MAX_LENGTH,
     PROOF_FORMATS,
@@ -24,18 +30,20 @@ from app.modules.deal_memo.proof_models import (
 WRITE_LIMIT = "30 per minute"
 READ_LIMIT = "60 per minute"
 
-router = APIRouter(prefix="/api/v1/deal-memos", tags=["proof"])
+router = APIRouter(
+    prefix="/api/v1/deal-memos", tags=["proof"], route_class=IdempotentRoute
+)
 
 ProofFormat = Literal["post", "reel", "story", "video", "other"]
 ProofStatus = Literal["submitted", "approved", "revision_requested"]
 
-assert set(PROOF_FORMATS) == set(ProofFormat.__args__)
-assert set(PROOF_STATUSES) == set(ProofStatus.__args__)
+ensure_same_values("ProofFormat", ProofFormat, PROOF_FORMATS)
+ensure_same_values("ProofStatus", ProofStatus, PROOF_STATUSES)
 
 MemoId = Annotated[uuid.UUID, Path(description="The memo's id")]
 ProofId = Annotated[uuid.UUID, Path(description="The proof submission's id")]
 
-_COMMON_ERRORS = {
+_COMMON_ERRORS: ResponseDocs = {
     401: problem_doc("No access token, or it is invalid or expired"),
     403: problem_doc("This account type cannot use this endpoint"),
     404: problem_doc("No such memo, or it is not yours"),
@@ -109,7 +117,7 @@ class ProofRead(BaseModel):
         422: problem_doc("A field is missing or invalid"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def submit_proof(
     request: Request,
     response: Response,
@@ -133,7 +141,7 @@ def submit_proof(
     ),
     responses=_COMMON_ERRORS,
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def list_proof(
     request: Request,
     memo_id: MemoId,
@@ -156,9 +164,12 @@ def list_proof(
         "The brand accepts the work. Approval starts the payment clock: payment "
         "is due the agreed number of days after this moment (D-027)."
     ),
-    responses={**_COMMON_ERRORS, 409: problem_doc("This proof has already been reviewed")},
+    responses={
+        **_COMMON_ERRORS,
+        409: problem_doc("This proof has already been reviewed"),
+    },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def approve_proof(
     request: Request,
     proof_id: ProofId,
@@ -184,7 +195,7 @@ def approve_proof(
         422: problem_doc("The note is missing or too short"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def request_revision(
     request: Request,
     body: RevisionRequest,

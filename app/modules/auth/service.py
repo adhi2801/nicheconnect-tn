@@ -13,7 +13,6 @@ from datetime import datetime, timedelta
 from sqlalchemy import select, text, update
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.modules.auth.exceptions import (
     InvalidToken,
     OtpInvalid,
@@ -144,11 +143,15 @@ def _seconds_until_verify_allowed(db: Session, phone: str, now: datetime) -> int
     Counts wrong guesses across every code sent to the phone in the window.
     """
     window_start = now - VERIFY_ATTEMPT_WINDOW
-    rows = db.execute(
-        select(OtpChallenge.created_at, OtpChallenge.attempts).where(
-            OtpChallenge.phone == phone, OtpChallenge.created_at > window_start
+    rows = (
+        db.execute(
+            select(OtpChallenge.created_at, OtpChallenge.attempts).where(
+                OtpChallenge.phone == phone, OtpChallenge.created_at > window_start
+            )
         )
-    ).all()
+        .tuples()
+        .all()
+    )
     used = sum(attempts for _, attempts in rows)
     if used < MAX_VERIFY_ATTEMPTS_PER_WINDOW:
         return 0
@@ -157,7 +160,9 @@ def _seconds_until_verify_allowed(db: Session, phone: str, now: datetime) -> int
     return max(1, math.ceil((oldest + VERIFY_ATTEMPT_WINDOW - now).total_seconds()))
 
 
-def verify_otp(db: Session, phone: str, code: str, role: str, now: datetime) -> LoginResult:
+def verify_otp(
+    db: Session, phone: str, code: str, role: str, now: datetime
+) -> LoginResult:
     """Check a code and log the phone in, creating the account if it is new.
 
     Only the latest code for the phone counts. A wrong code uses up one of
@@ -209,6 +214,7 @@ def verify_otp(db: Session, phone: str, code: str, role: str, now: datetime) -> 
     result = _issue_session(db, account, uuid.uuid4(), now)
     db.commit()
     return replace(result, is_new_account=is_new_account)
+
 
 def _revoke_family(db: Session, family_id: uuid.UUID, now: datetime) -> None:
     """End every session in one login's rotation chain."""
@@ -279,7 +285,7 @@ def refresh_session(db: Session, refresh_token: str, now: datetime) -> LoginResu
 
     auth_session.used_at = now
     auth_session.updated_at = now
-    account = db.get(Account, auth_session.account_id)
+    account = db.get_one(Account, auth_session.account_id)
     result = _issue_session(db, account, auth_session.family_id, now)
     db.commit()
     return result
@@ -299,6 +305,7 @@ def logout(db: Session, refresh_token: str, now: datetime) -> None:
     if auth_session is not None:
         _revoke_family(db, auth_session.family_id, now)
     db.commit()
+
 
 def logout_all_sessions(db: Session, account_id: uuid.UUID, now: datetime) -> int:
     """End every session of one account. Returns how many were still active."""

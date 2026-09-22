@@ -60,6 +60,11 @@ class ProblemDetails(BaseModel):
     errors: list[FieldError] | None = None
 
 
+# The shape FastAPI takes for a route's `responses=`. Written once so every
+# router's shared error table has the type FastAPI expects.
+ResponseDocs = dict[int | str, dict[str, Any]]
+
+
 def problem_doc(description: str) -> dict[str, Any]:
     """An OpenAPI `responses` entry for an error status."""
     return {
@@ -189,8 +194,17 @@ async def handle_unexpected_error(request: Request, exc: Exception) -> JSONRespo
 
 def register_error_handlers(app: FastAPI) -> None:
     """Attach every handler above to the app."""
-    app.add_exception_handler(DomainError, handle_domain_error)
-    app.add_exception_handler(RequestValidationError, handle_validation_error)
-    app.add_exception_handler(RateLimitExceeded, handle_rate_limit)
-    app.add_exception_handler(StarletteHTTPException, handle_http_error)
+    # Starlette types every handler as taking a bare Exception. Each of ours
+    # takes the class it is registered for, which Starlette guarantees at
+    # runtime by dispatching on that class; mypy cannot see the link.
+    app.add_exception_handler(DomainError, handle_domain_error)  # type: ignore[arg-type]
+    app.add_exception_handler(
+        RequestValidationError,
+        handle_validation_error,  # type: ignore[arg-type]
+    )
+    app.add_exception_handler(RateLimitExceeded, handle_rate_limit)  # type: ignore[arg-type]
+    app.add_exception_handler(
+        StarletteHTTPException,
+        handle_http_error,  # type: ignore[arg-type]
+    )
     app.add_exception_handler(Exception, handle_unexpected_error)

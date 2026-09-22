@@ -50,7 +50,9 @@ def test_database_and_redis_checks_pass_against_the_real_services():
         ("redis", "Unavailable: redis."),
     ],
 )
-def test_readyz_returns_503_when_one_dependency_is_down(client, monkeypatch, down, expected):
+def test_readyz_returns_503_when_one_dependency_is_down(
+    client, monkeypatch, down, expected
+):
     monkeypatch.setattr(
         main_module,
         "run_readiness_checks",

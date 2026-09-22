@@ -8,8 +8,10 @@ response: those contain passwords.
 
 import logging
 from dataclasses import dataclass
+from typing import Literal
 
 import redis
+from pydantic import BaseModel
 from sqlalchemy import text
 
 from app.core.config import settings
@@ -22,6 +24,19 @@ DATABASE_TIMEOUT_MS = 2000
 REDIS_TIMEOUT_SECONDS = 2.0
 
 
+class HealthRead(BaseModel):
+    """The process is up. Says nothing about what it depends on."""
+
+    status: Literal["ok"]
+
+
+class ReadinessRead(BaseModel):
+    """Everything this process needs is reachable."""
+
+    status: Literal["ready"]
+    checks: dict[str, Literal["ok", "unavailable"]]
+
+
 @dataclass(frozen=True)
 class CheckResult:
     name: str
@@ -32,7 +47,9 @@ def check_database() -> CheckResult:
     """One trivial query, with its own statement timeout."""
     try:
         with engine.connect() as connection:
-            connection.execute(text(f"SET LOCAL statement_timeout = {DATABASE_TIMEOUT_MS}"))
+            connection.execute(
+                text(f"SET LOCAL statement_timeout = {DATABASE_TIMEOUT_MS}")
+            )
             connection.execute(text("SELECT 1"))
         return CheckResult("database", True)
     except Exception:
@@ -60,7 +77,8 @@ def check_redis() -> CheckResult:
             try:
                 client.close()
             except Exception:
-                pass
+                # Cleanup only: the probe already has its answer.
+                logger.debug("readiness.redis_close_failed", exc_info=True)
 
 
 def run_readiness_checks() -> list[CheckResult]:

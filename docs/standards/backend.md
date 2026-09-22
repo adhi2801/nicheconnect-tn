@@ -47,8 +47,8 @@ Each module under `app/modules/<name>/` owns its own files:
 - **Pagination** on every list: cursor-based. Request `?limit=20&cursor=<opaque>`; default limit 20, maximum 100. Response:
   `{"items": [...], "next_cursor": "<opaque or null>"}`
 - **Filtering and sorting:** explicit, allow-listed query parameters only (`?status=open&sort=-created_at`). Unknown parameters return 422.
-- **Idempotency:** `POST` endpoints that create payment-status records or send notifications accept an `Idempotency-Key` header. A repeated key returns the original response.
-- **OpenAPI is the contract.** Every route has a `summary`, a `response_model`, documented error responses and request/response examples. `/docs` must stay accurate enough for the future frontend to build against.
+- **Idempotency:** every `POST` and `PATCH` outside `/api/v1/auth/` accepts an `Idempotency-Key` header, by building its router with `route_class=IdempotentRoute` (D-040). A repeated key returns the original response. A test fails if any new write is missing it. Login is excluded until decided separately.
+- **OpenAPI is the contract.** Every route has a `summary`, a `response_model`, documented error responses and request/response examples. `/docs` must stay accurate enough for the future frontend to build against. A committed copy lives in `docs/api/openapi.json`, and `tests/test_api_contract.py` fails when the running app differs from it. When a change is intended, refresh it with `venv\Scripts\python.exe -m tests.openapi_snapshot` and commit it with the change, so every contract change is a visible diff in review. The same test file checks, across every operation: a login is required except on a named public list; every operation has a summary, a description and a documented success shape; 401, 422 and 429 are documented where they apply; and every error is documented as Problem Details.
 
 ## 3. Errors
 
@@ -118,7 +118,7 @@ One error shape for every non-2xx response (RFC 9457 Problem Details):
 ## 10. Code style
 
 - Python 3.12, type hints on every function signature and return value.
-- Formatting and linting: ruff (format + lint). Type checking: mypy or pyright in strict mode for `app/`. **(decision)** adopting these tools, as each is a new dependency.
+- Formatting and linting: ruff (format + lint). Type checking: mypy in strict mode for `app/`. Adopted in D-037, configured in `pyproject.toml`, and enforced in CI.
 - Functions do one thing; about 40 lines is a smell worth questioning.
 - Names say what things are: `get_open_campaigns_for_brand`, not `get_data`.
 - Docstrings on every public service function: what it does, what it raises.

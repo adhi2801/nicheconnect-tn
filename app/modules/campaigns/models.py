@@ -37,9 +37,7 @@ DELIVERABLES_MAX_LENGTH = 2000
 class Campaign(Base):
     __tablename__ = "campaign"
     __table_args__ = (
-        CheckConstraint(
-            f"campaign_type IN {tuple(CAMPAIGN_TYPES)}", name="type_allowed"
-        ),
+        CheckConstraint(f"campaign_type IN {tuple(CAMPAIGN_TYPES)}", name="type_allowed"),
         CheckConstraint(f"status IN {tuple(CAMPAIGN_STATUSES)}", name="status_allowed"),
         CheckConstraint(f"currency = '{CURRENCY}'", name="currency_allowed"),
         CheckConstraint("char_length(btrim(title)) > 0", name="title_not_blank"),
@@ -79,9 +77,7 @@ class Campaign(Base):
         CheckConstraint(
             f"cardinality(niches) BETWEEN 1 AND {MAX_NICHES}", name="niches_count"
         ),
-        CheckConstraint(
-            f"niches <@ {sql_text_array(NICHES)}", name="niches_allowed"
-        ),
+        CheckConstraint(f"niches <@ {sql_text_array(NICHES)}", name="niches_allowed"),
         # Discovery: open campaigns, newest first.
         Index(
             "ix_campaign_open_created_at",
@@ -162,7 +158,9 @@ REJECTION_NOTE_MAX_LENGTH = 500
 class Application(Base):
     __tablename__ = "application"
     __table_args__ = (
-        UniqueConstraint("campaign_id", "creator_id", name="uq_application_campaign_creator"),
+        UniqueConstraint(
+            "campaign_id", "creator_id", name="uq_application_campaign_creator"
+        ),
         CheckConstraint(
             f"status IN {tuple(APPLICATION_STATUSES)}", name="status_allowed"
         ),

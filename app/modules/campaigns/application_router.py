@@ -5,18 +5,21 @@ the campaigns module.
 """
 
 import uuid
+from collections.abc import Callable
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
-from app.core.errors import problem_doc
-from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
-from app.core.rate_limit import limiter
+from app.core.clock import india_date
+from app.core.errors import ResponseDocs, problem_doc
+from app.core.idempotent_route import IdempotentRoute
+from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page, Slice
+from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import get_now
-from app.modules.campaigns import service
+from app.modules.campaigns import feedback, service
 from app.modules.campaigns.dependencies import (
     BrandApplication,
     CreatorApplication,
@@ -24,8 +27,10 @@ from app.modules.campaigns.dependencies import (
     OwnedCampaign,
     VisibleApplication,
 )
+from app.modules.campaigns.models import Application
 from app.modules.campaigns.schemas import (
     ApplicationCreate,
+    ApplicationFeedbackRead,
     ApplicationRead,
     ApplicationReject,
     ApplicationStatus,
@@ -34,20 +39,22 @@ from app.modules.campaigns.schemas import (
 WRITE_LIMIT = "30 per minute"
 READ_LIMIT = "60 per minute"
 
-router = APIRouter(prefix="/api/v1", tags=["applications"])
+# route_class: every POST here accepts an Idempotency-Key header, so a
+# creator whose connection dropped can retry safely (backend.md section 2).
+router = APIRouter(prefix="/api/v1", tags=["applications"], route_class=IdempotentRoute)
 
 Limit = Annotated[int, Query(ge=1, le=MAX_LIMIT, description="Rows per page")]
 Cursor = Annotated[str | None, Query(description="From a previous page's next_cursor")]
 StatusFilter = Annotated[ApplicationStatus | None, Query(alias="status")]
 
-_COMMON_ERRORS = {
+_COMMON_ERRORS: ResponseDocs = {
     401: problem_doc("No access token, or it is invalid or expired"),
     403: problem_doc("This account type cannot use this endpoint"),
     429: problem_doc("Too many requests; see the Retry-After header"),
 }
 
 
-def _page(result) -> Page[ApplicationRead]:
+def _page(result: Slice[Application]) -> Page[ApplicationRead]:
     return Page[ApplicationRead](
         items=[ApplicationRead.model_validate(row) for row in result.rows],
         next_cursor=result.next_cursor,
@@ -73,7 +80,7 @@ def _page(result) -> Page[ApplicationRead]:
         422: problem_doc("A field is missing or invalid"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def apply_to_campaign(
     request: Request,
     response: Response,
@@ -102,7 +109,7 @@ def apply_to_campaign(
         422: problem_doc("A query parameter or the cursor is invalid"),
     },
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def list_campaign_applications(
     request: Request,
     campaign: OwnedCampaign,
@@ -129,7 +136,7 @@ def list_campaign_applications(
         422: problem_doc("A query parameter or the cursor is invalid"),
     },
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def list_my_applications(
     request: Request,
     creator: CurrentCreatorProfile,
@@ -146,6 +153,33 @@ def list_my_applications(
 
 
 @router.get(
+    "/applications/me/feedback",
+    response_model=ApplicationFeedbackRead,
+    summary="Why my applications are not turning into deals",
+    description=(
+        "The pattern behind a creator's applications, as facts with their sample "
+        "sizes: rejections by the reason the brand gave, how many quotes were "
+        "above the campaign's own maximum budget, and how many open campaigns in "
+        "their niches they have not applied to yet. `most_common_reason` is null "
+        "below three rejections or on a tie, meaning no pattern yet. Creators only."
+    ),
+    responses={
+        **_COMMON_ERRORS,
+        409: problem_doc("The creator profile has not been created yet"),
+    },
+)
+@rate_limit(READ_LIMIT)
+def read_my_application_feedback(
+    request: Request,
+    creator: CurrentCreatorProfile,
+    now: Annotated[datetime, Depends(get_now)],
+    db: Session = Depends(get_db),
+) -> ApplicationFeedbackRead:
+    record = feedback.for_creator(db, creator, india_date(now))
+    return ApplicationFeedbackRead.model_validate(record, from_attributes=True)
+
+
+@router.get(
     "/applications/{application_id}",
     response_model=ApplicationRead,
     summary="Read one application",
@@ -155,14 +189,16 @@ def list_my_applications(
     ),
     responses={**_COMMON_ERRORS, 404: problem_doc("No such application, or not yours")},
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def read_application(
     request: Request, application: VisibleApplication
 ) -> ApplicationRead:
     return ApplicationRead.model_validate(application)
 
 
-def _brand_decision(action: str, new_status: str, summary: str, description: str):
+def _brand_decision(
+    action: str, new_status: str, summary: str, description: str
+) -> Callable[..., Any]:
     """Shortlist and accept: the brand moves one of its applications on."""
 
     @router.post(
@@ -177,7 +213,7 @@ def _brand_decision(action: str, new_status: str, summary: str, description: str
             409: problem_doc("The application is not in a state where that is allowed"),
         },
     )
-    @limiter.limit(WRITE_LIMIT)
+    @rate_limit(WRITE_LIMIT)
     def endpoint(
         request: Request,
         application: BrandApplication,
@@ -211,7 +247,7 @@ accept_application = _brand_decision(
     summary="Reject an application",
     description=(
         "Says no, with a reason the creator can see. A reason is required: "
-        "\"no campaigns and no idea why\" is the complaint this avoids."
+        '"no campaigns and no idea why" is the complaint this avoids.'
     ),
     responses={
         **_COMMON_ERRORS,
@@ -220,7 +256,7 @@ accept_application = _brand_decision(
         422: problem_doc("The reason is missing or not one of the allowed values"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def reject_application(
     request: Request,
     body: ApplicationReject,
@@ -251,7 +287,7 @@ def reject_application(
         409: problem_doc("The application is not in a state where that is allowed"),
     },
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def withdraw_application(
     request: Request,
     application: CreatorApplication,

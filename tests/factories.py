@@ -4,7 +4,7 @@ import hashlib
 import hmac
 import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from itertools import count
 from typing import Any
 
@@ -14,12 +14,12 @@ from app.modules.auth.models.account import Account
 from app.modules.auth.models.auth_session import AuthSession, refresh_token_ttl
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
-from app.modules.campaigns.models import Campaign
 from app.modules.auth.models.otp_challenge import OTP_TTL, OtpChallenge
+from app.modules.campaigns.models import Campaign
 
 _sequence = count(1)
 TEST_OTP_HASH_KEY = b"test-only-otp-hash-key"
-FIXED_NOW = datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc)
+FIXED_NOW = datetime(2026, 9, 17, 12, 0, tzinfo=UTC)
 
 
 def fake_phone() -> str:
@@ -91,6 +91,7 @@ def build_auth_session(db: Session, **overrides: Any) -> AuthSession:
     fields.update(overrides)
     fields.setdefault("account_id", create_account(db, "creator").id)
     return AuthSession(**fields)
+
 
 def build_campaign(db: Session, **overrides: Any) -> Campaign:
     """Return an unsaved paid campaign owned by a newly saved brand."""

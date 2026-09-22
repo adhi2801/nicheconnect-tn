@@ -6,7 +6,11 @@ from sqlalchemy import select
 from app.modules.auth.exceptions import InvalidToken
 from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.service import logout, refresh_session, request_otp, verify_otp
-from app.modules.auth.tokens import decode_access_token, hash_refresh_token, new_refresh_token
+from app.modules.auth.tokens import (
+    decode_access_token,
+    hash_refresh_token,
+    new_refresh_token,
+)
 from tests.factories import FIXED_NOW, fake_phone
 
 LATER = FIXED_NOW + timedelta(minutes=5)
@@ -29,7 +33,9 @@ def sessions_for(db, account_id):
 
 def session_by_token(db, refresh_token: str) -> AuthSession | None:
     return db.scalars(
-        select(AuthSession).where(AuthSession.token_hash == hash_refresh_token(refresh_token))
+        select(AuthSession).where(
+            AuthSession.token_hash == hash_refresh_token(refresh_token)
+        )
     ).first()
 
 
@@ -110,7 +116,9 @@ def test_expired_token_is_rejected(db):
 def test_token_works_until_just_before_expiry(db):
     login = log_in(db)
 
-    refresh_session(db, login.refresh_token, FIXED_NOW + timedelta(days=30) - timedelta(seconds=1))
+    refresh_session(
+        db, login.refresh_token, FIXED_NOW + timedelta(days=30) - timedelta(seconds=1)
+    )
 
 
 def test_revoked_token_is_rejected(db):

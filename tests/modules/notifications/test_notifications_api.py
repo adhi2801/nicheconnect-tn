@@ -89,7 +89,12 @@ def open_campaign(client, brand: User, title: str = "Pongal sweets launch") -> s
     )
     assert created.status_code == 201, created.text
     campaign_id = created.json()["id"]
-    assert client.post(f"{CAMPAIGNS_URL}/{campaign_id}/publish", headers=brand.headers).status_code == 200
+    assert (
+        client.post(
+            f"{CAMPAIGNS_URL}/{campaign_id}/publish", headers=brand.headers
+        ).status_code
+        == 200
+    )
     return campaign_id
 
 
@@ -149,12 +154,16 @@ def test_the_creator_is_not_told_about_their_own_application(client, db, clock):
         ("reject", {"reason": "budget_mismatch"}, "application_rejected"),
     ],
 )
-def test_creator_is_told_about_the_brands_decision(client, db, clock, action, body, expected_type):
+def test_creator_is_told_about_the_brands_decision(
+    client, db, clock, action, body, expected_type
+):
     brand, creator = brand_user(db, clock), creator_user(db, clock)
     application_id = apply(client, creator, open_campaign(client, brand))
 
     response = client.post(
-        f"/api/v1/applications/{application_id}/{action}", json=body, headers=brand.headers
+        f"/api/v1/applications/{application_id}/{action}",
+        json=body,
+        headers=brand.headers,
     )
 
     assert response.status_code == 200, response.text
@@ -196,7 +205,9 @@ def test_withdrawing_tells_the_brand(client, db, clock):
     application_id = apply(client, creator, open_campaign(client, brand))
     clock.advance(timedelta(minutes=5))  # so "newest first" has a clear order
 
-    client.post(f"/api/v1/applications/{application_id}/withdraw", headers=creator.headers)
+    client.post(
+        f"/api/v1/applications/{application_id}/withdraw", headers=creator.headers
+    )
 
     types = [item["notification_type"] for item in notifications_of(client, brand)]
     assert types == ["application_withdrawn", "application_received"]
@@ -208,7 +219,9 @@ def test_no_notification_when_the_action_is_refused(client, db, clock):
 
     # Accept without shortlisting first: refused, so nothing is recorded.
     assert_problem(
-        client.post(f"/api/v1/applications/{application_id}/accept", headers=brand.headers),
+        client.post(
+            f"/api/v1/applications/{application_id}/accept", headers=brand.headers
+        ),
         409,
         "application_status_conflict",
     )
@@ -298,7 +311,9 @@ def test_mark_all_read_clears_the_badge(client, db, clock):
 
     assert marked.json() == {"marked_read": 2}
     assert again.json() == {"marked_read": 0}
-    assert client.get(f"{URL}/unread-count", headers=brand.headers).json() == {"unread": 0}
+    assert client.get(f"{URL}/unread-count", headers=brand.headers).json() == {
+        "unread": 0
+    }
 
 
 def test_unread_only_filter(client, db, clock):
@@ -316,7 +331,7 @@ def test_unread_only_filter(client, db, clock):
 
 
 def test_list_pages_newest_first(client, db, clock):
-    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    brand = brand_user(db, clock)
     campaign_id = open_campaign(client, brand)
     for index in range(3):
         clock.advance(timedelta(minutes=1))
@@ -332,6 +347,27 @@ def test_list_pages_newest_first(client, db, clock):
     assert second["next_cursor"] is None
     times = [item["created_at"] for item in first["items"] + second["items"]]
     assert times == sorted(times, reverse=True)
+
+
+def test_paging_does_not_skip_rows_created_at_the_same_moment(client, db, clock):
+    # No clock.advance: all three rows share one created_at, which is what a
+    # batch or a busy second produces. The id must break the tie, or the
+    # second page silently loses everything that shared the first page's
+    # last timestamp.
+    brand = brand_user(db, clock)
+    campaign_id = open_campaign(client, brand)
+    for index in range(3):
+        apply(client, creator_user(db, clock, handle=f"same.moment.{index}"), campaign_id)
+
+    first = client.get(URL, params={"limit": 2}, headers=brand.headers).json()
+    second = client.get(
+        URL, params={"limit": 2, "cursor": first["next_cursor"]}, headers=brand.headers
+    ).json()
+
+    seen = [item["id"] for item in first["items"] + second["items"]]
+    assert len(seen) == 3
+    assert len(set(seen)) == 3
+    assert second["next_cursor"] is None
 
 
 def test_stored_row_matches_the_api(client, db, clock):

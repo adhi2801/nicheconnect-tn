@@ -5,7 +5,9 @@ check whether its window has passed and settle it then. A job can send the
 day-3 reminder later, but the outcome never waits for one.
 """
 
+import uuid
 from datetime import datetime, timedelta
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -14,15 +16,15 @@ from app.modules.deal_memo.exceptions import (
     MemoStatusConflict,
     ProofAlreadyDecided,
     ProofNotFound,
-    ProofNotSubmitted,
 )
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof
 from app.modules.deal_memo.service import _notify_other_side
+from app.modules.payment_status import service as payments
 
 
 def submit_proof(
-    db: Session, memo: DealMemo, fields: dict, now: datetime
+    db: Session, memo: DealMemo, fields: dict[str, Any], now: datetime
 ) -> DeliverableProof:
     """Record the creator's evidence, and mark that work has started.
 
@@ -82,6 +84,10 @@ def settle_if_overdue(
         _notify_other_side(
             db, memo, to="creator", notification_type="proof_auto_approved", now=now
         )
+        # Approval is what starts the payment clock (D-027). Opened here, in
+        # the same transaction, so a memo can never be approved without the
+        # payment it is owed existing.
+        payments.open_on_approval(db, memo, approved_at=proof.approved_at, now=now)
         db.commit()
         db.refresh(proof)
     return proof
@@ -99,7 +105,10 @@ def approve_proof(
     proof.status = "approved"
     proof.approved_at = now
     proof.updated_at = now
-    _notify_other_side(db, memo, to="creator", notification_type="proof_approved", now=now)
+    _notify_other_side(
+        db, memo, to="creator", notification_type="proof_approved", now=now
+    )
+    payments.open_on_approval(db, memo, approved_at=now, now=now)
     db.commit()
     db.refresh(proof)
     return proof
@@ -140,7 +149,7 @@ def list_for_memo(db: Session, memo: DealMemo, now: datetime) -> list[Deliverabl
 
 
 def get_for_memo(
-    db: Session, memo: DealMemo, proof_id, now: datetime
+    db: Session, memo: DealMemo, proof_id: uuid.UUID, now: datetime
 ) -> DeliverableProof:
     proof = db.scalars(
         select(DeliverableProof).where(

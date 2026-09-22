@@ -8,9 +8,10 @@ from fastapi import APIRouter, Depends, Path, Query, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.errors import problem_doc
+from app.core.errors import ResponseDocs, problem_doc
+from app.core.idempotent_route import IdempotentRoute
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
-from app.core.rate_limit import limiter
+from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.notifications import service
@@ -21,9 +22,13 @@ from app.modules.notifications.schemas import MarkedRead, NotificationRead, Unre
 WRITE_LIMIT = "30 per minute"
 READ_LIMIT = "60 per minute"
 
-router = APIRouter(prefix="/api/v1/notifications", tags=["notifications"])
+router = APIRouter(
+    prefix="/api/v1/notifications",
+    tags=["notifications"],
+    route_class=IdempotentRoute,
+)
 
-_COMMON_ERRORS = {
+_COMMON_ERRORS: ResponseDocs = {
     401: problem_doc("No access token, or it is invalid or expired"),
     429: problem_doc("Too many requests; see the Retry-After header"),
 }
@@ -57,9 +62,12 @@ OwnNotification = Annotated[Notification, Depends(_own_notification)]
         "The signed-in account's notifications, newest first. `unread_only=true` "
         "returns just the ones not yet read."
     ),
-    responses={**_COMMON_ERRORS, 422: problem_doc("A query parameter or cursor is invalid")},
+    responses={
+        **_COMMON_ERRORS,
+        422: problem_doc("A query parameter or cursor is invalid"),
+    },
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def list_notifications(
     request: Request,
     account: CurrentAccount,
@@ -84,7 +92,7 @@ def list_notifications(
     description="The number for the badge. Cheap: it reads an index of unread rows only.",
     responses=_COMMON_ERRORS,
 )
-@limiter.limit(READ_LIMIT)
+@rate_limit(READ_LIMIT)
 def count_unread(
     request: Request,
     account: CurrentAccount,
@@ -100,7 +108,7 @@ def count_unread(
     description="Marking an already-read notification again keeps the first time.",
     responses={**_COMMON_ERRORS, 404: problem_doc("No such notification, or not yours")},
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def mark_read(
     request: Request,
     notification: OwnNotification,
@@ -117,7 +125,7 @@ def mark_read(
     description="Clears the badge. Returns how many changed from unread.",
     responses=_COMMON_ERRORS,
 )
-@limiter.limit(WRITE_LIMIT)
+@rate_limit(WRITE_LIMIT)
 def mark_all_read(
     request: Request,
     account: CurrentAccount,

@@ -100,7 +100,9 @@ def test_new_number_gets_an_account_session_and_tokens(db):
     phone = fake_phone()
     pending = request_otp(db, phone, FIXED_NOW)
 
-    result = verify_otp(db, phone, pending.code, "creator", FIXED_NOW + timedelta(minutes=1))
+    result = verify_otp(
+        db, phone, pending.code, "creator", FIXED_NOW + timedelta(minutes=1)
+    )
 
     account = db.get(Account, result.account_id)
     assert account.phone == phone and account.role == "creator"
@@ -109,7 +111,9 @@ def test_new_number_gets_an_account_session_and_tokens(db):
     assert claims.account_id == account.id and claims.role == "creator"
     assert result.access_token_expires_at == FIXED_NOW + timedelta(minutes=16)
 
-    session = db.scalars(select(AuthSession).where(AuthSession.account_id == account.id)).one()
+    session = db.scalars(
+        select(AuthSession).where(AuthSession.account_id == account.id)
+    ).one()
     assert session.token_hash == hash_refresh_token(result.refresh_token)
     assert result.refresh_token not in session.token_hash
     assert session.expires_at == FIXED_NOW + timedelta(minutes=1, days=30)
@@ -126,7 +130,9 @@ def test_existing_account_logs_in_without_creating_another(db):
     assert result.account_id == account.id
     assert result.is_new_account is False
     assert db.scalar(select(Account).where(Account.phone == account.phone)) is not None
-    assert len(db.scalars(select(Account).where(Account.phone == account.phone)).all()) == 1
+    assert (
+        len(db.scalars(select(Account).where(Account.phone == account.phone)).all()) == 1
+    )
 
 
 def test_code_is_consumed_after_success(db):
@@ -141,11 +147,15 @@ def test_code_is_consumed_after_success(db):
 
 def test_each_login_starts_a_new_session_family(db):
     phone = fake_phone()
-    first = verify_otp(db, phone, request_otp(db, phone, FIXED_NOW).code, "creator", FIXED_NOW)
+    first = verify_otp(
+        db, phone, request_otp(db, phone, FIXED_NOW).code, "creator", FIXED_NOW
+    )
     later = FIXED_NOW + timedelta(minutes=11)
     second = verify_otp(db, phone, request_otp(db, phone, later).code, "creator", later)
 
-    sessions = db.scalars(select(AuthSession).where(AuthSession.account_id == first.account_id)).all()
+    sessions = db.scalars(
+        select(AuthSession).where(AuthSession.account_id == first.account_id)
+    ).all()
     assert len(sessions) == 2
     assert sessions[0].family_id != sessions[1].family_id
     assert first.refresh_token != second.refresh_token
@@ -195,7 +205,9 @@ def test_code_is_valid_until_just_before_expiry(db):
     phone = fake_phone()
     pending = request_otp(db, phone, FIXED_NOW)
 
-    verify_otp(db, phone, pending.code, "creator", FIXED_NOW + OTP_TTL - timedelta(seconds=1))
+    verify_otp(
+        db, phone, pending.code, "creator", FIXED_NOW + OTP_TTL - timedelta(seconds=1)
+    )
 
 
 def test_expired_code_is_rejected(db):
@@ -252,7 +264,10 @@ def test_role_mismatch_is_refused_and_code_stays_usable(db):
 
     [challenge] = challenges_for(db, account.phone)
     assert challenge.consumed_at is None and challenge.attempts == 0
-    assert db.scalars(select(AuthSession).where(AuthSession.account_id == account.id)).all() == []
+    assert (
+        db.scalars(select(AuthSession).where(AuthSession.account_id == account.id)).all()
+        == []
+    )
     result = verify_otp(db, account.phone, pending.code, "brand", FIXED_NOW)
     assert result.account_id == account.id
 
@@ -261,9 +276,14 @@ def test_failure_while_logging_in_leaves_no_partial_account(db):
     phone = fake_phone()
     pending = request_otp(db, phone, FIXED_NOW)
 
-    with patch("app.modules.auth.service.create_access_token", side_effect=RuntimeError("boom")):
-        with pytest.raises(RuntimeError):
-            verify_otp(db, phone, pending.code, "creator", FIXED_NOW)
+    with (
+        patch(
+            "app.modules.auth.service.create_access_token",
+            side_effect=RuntimeError("boom"),
+        ),
+        pytest.raises(RuntimeError),
+    ):
+        verify_otp(db, phone, pending.code, "creator", FIXED_NOW)
     db.rollback()
 
     assert db.scalar(select(Account).where(Account.phone == phone)) is None
@@ -327,7 +347,9 @@ def test_the_limit_is_per_phone(db):
     wrong_guesses(db, busy, second.code, 5, FIXED_NOW + timedelta(minutes=1))
 
     other_code = request_otp(db, other, FIXED_NOW + timedelta(minutes=2))
-    result = verify_otp(db, other, other_code.code, "creator", FIXED_NOW + timedelta(minutes=2))
+    result = verify_otp(
+        db, other, other_code.code, "creator", FIXED_NOW + timedelta(minutes=2)
+    )
 
     assert result.is_new_account is True
 
@@ -338,6 +360,8 @@ def test_a_correct_code_still_works_below_the_limit(db):
     wrong_guesses(db, phone, first.code, 4, FIXED_NOW)
     second = request_otp(db, phone, FIXED_NOW + timedelta(minutes=1))
 
-    result = verify_otp(db, phone, second.code, "creator", FIXED_NOW + timedelta(minutes=1))
+    result = verify_otp(
+        db, phone, second.code, "creator", FIXED_NOW + timedelta(minutes=1)
+    )
 
     assert result.is_new_account is True

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -44,3 +46,16 @@ def test_successful_response_has_request_id():
 
     assert resp.status_code == 200
     assert resp.headers["x-request-id"]
+
+
+def test_routers_use_the_typed_rate_limit_decorator():
+    """`limiter.limit` hides every endpoint's type from mypy, and nothing in
+    ruff or mypy would notice it coming back (app/core/rate_limit.py)."""
+    app_dir = Path(__file__).resolve().parents[1] / "app" / "modules"
+    offenders = [
+        str(path.relative_to(app_dir))
+        for path in app_dir.rglob("*.py")
+        if "@limiter.limit(" in path.read_text(encoding="utf-8")
+    ]
+
+    assert offenders == [], "Use @rate_limit(...) instead in: " + ", ".join(offenders)

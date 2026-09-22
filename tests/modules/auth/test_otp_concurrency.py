@@ -27,7 +27,9 @@ THREADS = 6
 def remove_rows_for(phone: str) -> None:
     with SessionLocal() as session:
         account_ids = select(Account.id).where(Account.phone == phone)
-        session.execute(delete(AuthSession).where(AuthSession.account_id.in_(account_ids)))
+        session.execute(
+            delete(AuthSession).where(AuthSession.account_id.in_(account_ids))
+        )
         session.execute(delete(Account).where(Account.phone == phone))
         session.execute(delete(OtpChallenge).where(OtpChallenge.phone == phone))
         session.commit()
@@ -67,11 +69,17 @@ def test_simultaneous_requests_never_exceed_the_send_limit(phone):
     results = run_at_once(lambda session: request_otp(session, phone, FIXED_NOW), THREADS)
 
     refused = [r for r in results if isinstance(r, OtpSendLimitReached)]
-    unexpected = [r for r in results if isinstance(r, Exception) and not isinstance(r, OtpSendLimitReached)]
+    unexpected = [
+        r
+        for r in results
+        if isinstance(r, Exception) and not isinstance(r, OtpSendLimitReached)
+    ]
     assert unexpected == []
     assert len(refused) == THREADS - 3
     with SessionLocal() as session:
-        stored = session.scalars(select(OtpChallenge).where(OtpChallenge.phone == phone)).all()
+        stored = session.scalars(
+            select(OtpChallenge).where(OtpChallenge.phone == phone)
+        ).all()
     assert len(stored) == 3
 
 

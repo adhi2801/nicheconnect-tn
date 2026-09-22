@@ -60,7 +60,8 @@ def log_in(client: TestClient, sender: FakeOtpSender, role: str = "creator") -> 
     phone = fake_phone()
     assert client.post(REQUEST_URL, json={"phone": phone}).status_code == 202
     response = client.post(
-        VERIFY_URL, json={"phone": phone, "code": sender.last_code_for(phone), "role": role}
+        VERIFY_URL,
+        json={"phone": phone, "code": sender.last_code_for(phone), "role": role},
     )
     assert response.status_code == 200
     return response.json()
@@ -132,19 +133,21 @@ def test_me_with_an_expired_token_is_rejected(client, sender, clock):
     login = log_in(client, sender)
     clock.advance(timedelta(minutes=15))
 
-    assert_problem(client.get(ME_URL, headers=auth(login["access_token"])), 401, "invalid_token")
+    assert_problem(
+        client.get(ME_URL, headers=auth(login["access_token"])), 401, "invalid_token"
+    )
 
 
 def test_me_with_a_token_for_a_deleted_account_is_rejected(client, sender, db, clock):
     login = log_in(client, sender)
     account = db.get(Account, login["account"]["id"])
-    db.execute(
-        AuthSession.__table__.delete().where(AuthSession.account_id == account.id)
-    )
+    db.execute(AuthSession.__table__.delete().where(AuthSession.account_id == account.id))
     db.delete(account)
     db.flush()
 
-    assert_problem(client.get(ME_URL, headers=auth(login["access_token"])), 401, "invalid_token")
+    assert_problem(
+        client.get(ME_URL, headers=auth(login["access_token"])), 401, "invalid_token"
+    )
 
 
 def test_token_whose_role_no_longer_matches_is_rejected(client, sender, db, clock):
@@ -153,7 +156,9 @@ def test_token_whose_role_no_longer_matches_is_rejected(client, sender, db, cloc
     account.role = "brand"
     db.flush()
 
-    assert_problem(client.get(ME_URL, headers=auth(login["access_token"])), 401, "invalid_token")
+    assert_problem(
+        client.get(ME_URL, headers=auth(login["access_token"])), 401, "invalid_token"
+    )
 
 
 def test_token_for_an_account_that_never_existed_is_rejected(client, clock):
@@ -167,7 +172,9 @@ def test_token_for_an_account_that_never_existed_is_rejected(client, clock):
 def test_refresh_token_cannot_be_used_as_an_access_token(client, sender):
     login = log_in(client, sender)
 
-    assert_problem(client.get(ME_URL, headers=auth(login["refresh_token"])), 401, "invalid_token")
+    assert_problem(
+        client.get(ME_URL, headers=auth(login["refresh_token"])), 401, "invalid_token"
+    )
 
 
 # --- POST /auth/logout-all -----------------------------------------------
@@ -263,13 +270,17 @@ def test_brand_only_endpoint_allows_a_brand(role_client, db, clock):
 
 
 def test_brand_only_endpoint_refuses_a_creator(role_client, db, clock):
-    response = role_client.get("/brand-only", headers=auth(token_for(db, clock, "creator")))
+    response = role_client.get(
+        "/brand-only", headers=auth(token_for(db, clock, "creator"))
+    )
 
     assert_problem(response, 403, "role_not_allowed")
 
 
 def test_creator_only_endpoint_refuses_a_brand(role_client, db, clock):
-    response = role_client.get("/creator-only", headers=auth(token_for(db, clock, "brand")))
+    response = role_client.get(
+        "/creator-only", headers=auth(token_for(db, clock, "brand"))
+    )
 
     assert_problem(response, 403, "role_not_allowed")
 

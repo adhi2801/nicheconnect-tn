@@ -162,10 +162,14 @@ def test_invalid_campaign_fields_are_rejected(client, db, clock, overrides, fiel
     )
     # List fields report the exact entry, e.g. "niches.0".
     reported = [error["field"] for error in problem["errors"]]
-    assert any(name == field or name.startswith(f"{field}.") for name in reported), reported
+    assert any(name == field or name.startswith(f"{field}.") for name in reported), (
+        reported
+    )
 
 
-def test_barter_campaign_with_a_budget_is_rejected_with_a_readable_message(client, db, clock):
+def test_barter_campaign_with_a_budget_is_rejected_with_a_readable_message(
+    client, db, clock
+):
     _, headers = brand_login(db, clock)
 
     problem = assert_problem(
@@ -332,7 +336,11 @@ def test_draft_can_be_changed_completely(client, db, clock):
 
     response = client.patch(
         f"{URL}/{campaign['id']}",
-        json={"title": "New title", "budget_min_paise": 100_000, "budget_max_paise": 200_000},
+        json={
+            "title": "New title",
+            "budget_min_paise": 100_000,
+            "budget_max_paise": 200_000,
+        },
         headers=headers,
     )
 
@@ -364,7 +372,9 @@ def test_closed_campaign_cannot_be_changed(client, db, clock):
     client.post(f"{URL}/{campaign['id']}/close", headers=headers)
 
     assert_problem(
-        client.patch(f"{URL}/{campaign['id']}", json={"description": "x"}, headers=headers),
+        client.patch(
+            f"{URL}/{campaign['id']}", json={"description": "x"}, headers=headers
+        ),
         409,
         "campaign_not_editable",
     )
@@ -388,7 +398,9 @@ def test_another_brand_cannot_change_your_campaign(client, db, clock):
 
     assert_problem(
         client.patch(
-            f"{URL}/{campaign['id']}", json={"description": "mine now"}, headers=second_headers
+            f"{URL}/{campaign['id']}",
+            json={"description": "mine now"},
+            headers=second_headers,
         ),
         404,
         "campaign_not_found",
@@ -437,8 +449,31 @@ def test_my_list_pages_through_results(client, db, clock):
     ).json()
 
     titles = [item["title"] for page in (first, second, third) for item in page["items"]]
-    assert titles == ["Campaign 4", "Campaign 3", "Campaign 2", "Campaign 1", "Campaign 0"]
+    assert titles == [
+        "Campaign 4",
+        "Campaign 3",
+        "Campaign 2",
+        "Campaign 1",
+        "Campaign 0",
+    ]
     assert third["next_cursor"] is None
+
+
+def test_my_list_does_not_skip_campaigns_created_at_the_same_moment(client, db, clock):
+    # No clock.advance: every row shares one created_at, so only the id can
+    # order them. Without it the second page loses the tied rows.
+    _, headers = brand_login(db, clock)
+    for index in range(3):
+        create(client, headers, title=f"Same moment {index}")
+
+    first = client.get(URL, params={"limit": 2}, headers=headers).json()
+    second = client.get(
+        URL, params={"limit": 2, "cursor": first["next_cursor"]}, headers=headers
+    ).json()
+
+    titles = [item["title"] for page in (first, second) for item in page["items"]]
+    assert sorted(titles) == ["Same moment 0", "Same moment 1", "Same moment 2"]
+    assert second["next_cursor"] is None
 
 
 def test_invalid_cursor_is_rejected(client, db, clock):
@@ -456,7 +491,9 @@ def test_limit_outside_the_allowed_range_is_rejected(client, db, clock, limit):
     _, headers = brand_login(db, clock)
 
     assert_problem(
-        client.get(URL, params={"limit": limit}, headers=headers), 422, "validation_failed"
+        client.get(URL, params={"limit": limit}, headers=headers),
+        422,
+        "validation_failed",
     )
 
 
@@ -468,7 +505,9 @@ def test_discover_shows_only_open_campaigns(client, db, clock):
     city = unique_city()
     create(client, brand_headers, title="Draft one", cities=[city])
     publish(
-        client, brand_headers, create(client, brand_headers, title="Open one", cities=[city])["id"]
+        client,
+        brand_headers,
+        create(client, brand_headers, title="Open one", cities=[city])["id"],
     )
 
     response = client.get(
@@ -484,12 +523,16 @@ def test_discover_filters_combine(client, db, clock):
     publish(
         client,
         headers,
-        create(client, headers, title="Local food", cities=[food_city], niches=["food"])["id"],
+        create(client, headers, title="Local food", cities=[food_city], niches=["food"])[
+            "id"
+        ],
     )
     publish(
         client,
         headers,
-        create(client, headers, title="Local tech", cities=[tech_city], niches=["tech"])["id"],
+        create(client, headers, title="Local tech", cities=[tech_city], niches=["tech"])[
+            "id"
+        ],
     )
     creator = creator_login(db, clock)
 
@@ -513,16 +556,24 @@ def test_discover_filters_by_minimum_budget(client, db, clock):
         client,
         headers,
         create(
-            client, headers, title="Small", cities=[city],
-            budget_min_paise=100_000, budget_max_paise=200_000,
+            client,
+            headers,
+            title="Small",
+            cities=[city],
+            budget_min_paise=100_000,
+            budget_max_paise=200_000,
         )["id"],
     )
     publish(
         client,
         headers,
         create(
-            client, headers, title="Big", cities=[city],
-            budget_min_paise=900_000, budget_max_paise=1_500_000,
+            client,
+            headers,
+            title="Big",
+            cities=[city],
+            budget_min_paise=900_000,
+            budget_max_paise=1_500_000,
         )["id"],
     )
 
@@ -541,7 +592,9 @@ def test_discover_needs_a_signed_in_account(client):
 
 def test_discover_rejects_an_unknown_niche(client, db, clock):
     assert_problem(
-        client.get(DISCOVER_URL, params={"niche": "gaming"}, headers=creator_login(db, clock)),
+        client.get(
+            DISCOVER_URL, params={"niche": "gaming"}, headers=creator_login(db, clock)
+        ),
         422,
         "validation_failed",
     )

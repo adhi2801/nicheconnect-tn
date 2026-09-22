@@ -75,20 +75,20 @@ Rules marked **(decision)** need a recorded decision before first use.
 ## 7. Transport and headers
 
 - HTTPS only outside local development; HSTS enabled in production.
-- Response headers: `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`, and a `Content-Security-Policy` on any HTML the API serves.
-- CORS: explicit allow-list of frontend origins. Never `*` with credentials.
+- Response headers: `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`, and a `Content-Security-Policy` on any HTML the API serves. On every response, errors and 500s included (D-045).
+- CORS: explicit allow-list of frontend origins in `CORS_ALLOWED_ORIGINS`, each written exactly as a browser sends it. Never `*`, and no cookies across sites (D-044).
 
 ## 8. Dependencies and supply chain
 
 - Every dependency is pinned in `requirements.txt` and approved (CLAUDE.md section 5).
-- CI runs a vulnerability audit (e.g. `pip-audit`) once approved; high or critical findings block merge.
+- CI runs `pip-audit` on every push (D-031). Any known vulnerability blocks merge, not only high or critical ones, because most Python advisories carry no severity rating.
 - Prefer well-maintained libraries with recent releases and many users. Avoid packages abandoned for over a year.
 - Enable GitHub Dependabot alerts and secret scanning on the repository.
 
 ## 9. Before production (checklist)
 
 - [ ] All items in sections 1–8 implemented and tested
-- [ ] `/docs` exposure decided
+- [x] `/docs` exposure decided: off in production, on elsewhere (D-044)
 - [ ] Debug mode off; generic 500 messages
 - [ ] Database user for the app has no superuser rights
 - [ ] Backups enabled and one restore tested

@@ -1,4 +1,8 @@
-fastapi==0.115.0
+fastapi==0.141.1
+# Pinned although FastAPI pulls it in: FastAPI only asks for >=0.46.0, and
+# advisories in that range stay open until 1.3.1. Left unpinned, a fresh
+# install could resolve to a vulnerable Starlette (security.md section 8).
+starlette==1.6.0
 uvicorn[standard]==0.30.6
 sqlalchemy==2.0.35
 alembic==1.13.2
@@ -8,5 +12,11 @@ redis==5.0.8
 pydantic-settings==2.5.2
 slowapi==0.1.9
 PyJWT==2.14.0
-pytest==8.3.3
+pytest==9.1.1
 httpx==0.27.2
+# Developer tools (D-037). The app never imports them; they are here, pinned,
+# so every laptop and CI check the code with the same versions, and so the
+# dependency audit covers them too.
+ruff==0.16.8
+mypy==2.3.1
+pytest-cov==7.1.0
