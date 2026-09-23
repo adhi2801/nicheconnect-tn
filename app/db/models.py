@@ -11,5 +11,9 @@ from app.modules.deal_memo.models import DealMemo  # noqa: F401
 from app.modules.deal_memo.proof_models import DeliverableProof  # noqa: F401
 from app.modules.disputes.event_models import DisputeEvent  # noqa: F401
 from app.modules.disputes.models import Dispute  # noqa: F401
+from app.modules.matching.models import (
+    CampaignEmbedding,  # noqa: F401
+    CreatorEmbedding,  # noqa: F401
+)
 from app.modules.notifications.models import Notification  # noqa: F401
 from app.modules.payment_status.models import PaymentStatus  # noqa: F401

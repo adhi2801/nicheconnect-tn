@@ -53,6 +53,17 @@ NOT_EXPORTED: dict[str, str] = {
         "never the code itself, and the record is tied to a phone number rather "
         "than an account. Releasing it would tell you nothing you don't know."
     ),
+    "creator_embedding": (
+        "A list of numbers worked out from your city, niches, languages and "
+        "bio, used to find campaigns that suit you. It holds nothing else: no "
+        "contact details, no name, no handle. Everything it was built from is "
+        "already in this export, in words you can read, and the numbers are "
+        "rebuilt from those words whenever your profile changes."
+    ),
+    "campaign_embedding": (
+        "The same kind of list of numbers, worked out from a campaign's own "
+        "brief. It describes a campaign rather than a person."
+    ),
 }
 
 ACCOUNT_EXPORT_FIELDS = allow("id", "phone", "role", "created_at", "updated_at")
