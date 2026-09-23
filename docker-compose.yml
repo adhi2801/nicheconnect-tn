@@ -1,6 +1,22 @@
 services:
+  # PostgreSQL 18 with pgvector (D-047, D-049). The tag names both versions
+  # and is exact, not floating: `pg16` could move under us, and this is the
+  # one image where that decides what our data is stored by.
+  #
+  # pgvector 0.8.6, deliberately: CVE-2026-3172 (CVSS 8.1) affects 0.6.0 to
+  # 0.8.1, so nothing below 0.8.2 may be deployed anywhere.
+  #
+  # 18 is a MAJOR upgrade: its data directory cannot be read by 16, and 16's
+  # cannot be read by 18. So this moves to a NEW volume, db_data_pg18, and
+  # leaves the old db_data untouched. Nothing is destroyed, and going back to
+  # 16 is just reverting this file. To come up:
+  #   docker compose up -d
+  #   alembic upgrade head
+  #
+  # The old volume holds only development data. Once you are happy on 18,
+  # remove it yourself: docker volume rm nicheconnect-tn_db_data
   db:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:0.8.6-pg18-trixie
     restart: unless-stopped
     environment:
       POSTGRES_USER: niche
@@ -9,7 +25,12 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - db_data:/var/lib/postgresql/data
+      # Mounted at /var/lib/postgresql, NOT /var/lib/postgresql/data. The
+      # image changed this at 18: it now keeps data in a major-version
+      # subdirectory (18/docker) so pg_upgrade --link can work across
+      # versions without crossing a mount boundary. Mounting the old path
+      # makes 18 refuse to start. docker-library/postgres#1259.
+      - db_data_pg18:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U niche -d nicheconnect"]
       interval: 5s
@@ -35,4 +56,5 @@ services:
       retries: 10
 
 volumes:
-  db_data:
+  # db_data (PostgreSQL 16) is deliberately left in place, see the db service.
+  db_data_pg18:

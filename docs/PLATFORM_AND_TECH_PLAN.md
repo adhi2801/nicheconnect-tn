@@ -209,7 +209,7 @@ Locked by both founders on 22 September 2026 (D-047; Erode Harish's approval rel
 | CI supply chain | Current action versions, pinned to commit SHAs, and zizmor | **Locked** (Adhi's track: `.github/workflows/`) |
 | Errors and traces | Sentry for errors (already in `docs/standards/backend.md`); OpenTelemetry for traces | **Locked**; where traces go waits on hosting |
 | Python and packaging | Python 3.14; uv | **Locked** |
-| Database | PostgreSQL 18 (19 after its first minor update); UUIDv7 for new tables; exact image tags; pgvector 0.8.2 or newer | **Locked** |
+| Database | PostgreSQL 18 (19 after its first minor update); UUIDv7 for new tables; exact image tags; pgvector 0.8.2 or newer | **Locked**; **built** 23 September (D-049), UUIDv7 awaiting the first new table |
 | Search | Hybrid Tamil search inside Postgres: built-in `tamil` and `english` stemmers, `pg_trgm`, pgvector | **Locked**; built after a test with real Tamil queries |
 | Migration safety | Squawk | **Locked** |
 | Cache and rate limits | Valkey 9.1.2 or newer | **Locked**; **built** 23 September (D-048) |
@@ -245,10 +245,10 @@ Locked by both founders on 22 September 2026 (D-047; Erode Harish's approval rel
 
 | Item | We run | Current best | Why move | Status | When |
 |---|---|---|---|---|---|
-| PostgreSQL | **16.15** (`pgvector/pgvector:pg16`; the newest 16.x) | **18** now (18.6 is its newest minor); **19** after release and its first minor update. 19 Beta 4 is due 24 September; the final release is targeted for the end of October 2026 | 18: asynchronous I/O (up to 2 to 3 times faster reads), native `uuidv7()`, statistics kept across upgrades. 19: online `REPACK CONCURRENTLY`, parallel autovacuum | Recommended | Next |
-| Primary keys | UUIDv4 (`gen_random_uuid()`) | **UUIDv7** for new tables | Time-ordered keys keep indexes compact and fast. Existing tables stay as they are | Recommended | Next, with Postgres 18 |
-| Docker images | floating tags (`pg16`, `7-alpine`) | **Exact version tags** | The same database everywhere, and upgrades are visible in review | Recommended | Next |
-| pgvector extension | not enabled yet; the image ships 0.8.6 | **Pin 0.8.2 or newer everywhere**, including hosting | CVE-2026-3172 (CVSS 8.1) affects 0.6.0 to 0.8.1. Also halfvec (half the memory) and iterative scans for city and niche filters | Recommended | Next, before matching |
+| PostgreSQL | **18.6** (`pgvector/pgvector:0.8.6-pg18-trixie`, exact) | **18** now (18.6 is its newest minor); **19** after release and its first minor update. 19 Beta 4 is due 24 September; the final release is targeted for the end of October 2026 | 18: asynchronous I/O (up to 2 to 3 times faster reads), native `uuidv7()`, statistics kept across upgrades. 19: online `REPACK CONCURRENTLY`, parallel autovacuum | Recommended | Next |
+| Primary keys | UUIDv4 (`gen_random_uuid()`) | **UUIDv7** for new tables | Time-ordered keys keep indexes compact and fast. Existing tables stay as they are | `uuidv7()` **available** on 18 (D-049); unused until a new table needs it | Next new table |
+| Docker images | **Exact version tags** on both services | — | The same database everywhere, and upgrades are visible in review | **Built** (D-048, D-049) | Done |
+| pgvector extension | not enabled yet; the image **pins** 0.8.6 (D-049) | **Pin 0.8.2 or newer everywhere**, including hosting | CVE-2026-3172 (CVSS 8.1) affects 0.6.0 to 0.8.1. Also halfvec (half the memory) and iterative scans for city and niche filters | Recommended | Next, before matching |
 | Vector index engine | — | **pgvector** at our scale (far below 10 million vectors). VectorChord inserts and queries faster at large scale | Nothing to gain yet; revisit if matching grows | — | Watch |
 | Embedding model | not chosen | Chosen by a **Tamil retrieval test**; candidates Qwen3-Embedding, gte-multilingual, Krutrim Vyakyarth. Stays on the approved SentenceTransformers + pgvector | Matching quality in Tamil | Recommended | Next (Phase D) |
 | **Search in Tamil** | none | **Hybrid search inside Postgres, with no new service:** Postgres's built-in `tamil` and `english` stemmers for words, `pg_trgm` for spelling slips and Tanglish typed in English letters, and pgvector for meaning. **ParadeDB `pg_search`** (BM25 ranking, ICU tokenizer) only if ranking quality needs it | Brands must find "Madurai food creator" whether they type it in Tamil, English or Tanglish. Competitors filter by language; we would search in it | Recommended | Next (after a test with real Tamil queries) |
