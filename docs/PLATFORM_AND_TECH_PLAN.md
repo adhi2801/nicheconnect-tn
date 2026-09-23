@@ -211,7 +211,7 @@ Locked by both founders on 22 September 2026 (D-047; Erode Harish's approval rel
 | Python and packaging | Python 3.14; uv | **Locked** |
 | Database | PostgreSQL 18 (19 after its first minor update); UUIDv7 for new tables; exact image tags; pgvector 0.8.2 or newer | **Locked**; **built** 23 September (D-049), UUIDv7 awaiting the first new table |
 | Search | Hybrid Tamil search inside Postgres: built-in `tamil` and `english` stemmers, `pg_trgm`, pgvector | **Locked**; built after a test with real Tamil queries |
-| Migration safety | Squawk | **Locked** |
+| Migration safety | Squawk | **Locked**; **built** 23 September (D-050), on added migrations only |
 | Cache and rate limits | Valkey 9.1.2 or newer | **Locked**; **built** 23 September (D-048) |
 | Background jobs | DBOS | **Locked**; installed with the first background job |
 | AI | Pydantic AI v2 as our interface; Claude (Opus 5 as the default) and Sarvam for Tamil speech; each model chosen by the Tamil test set, run with promptfoo | **Locked**; installed with the first approved AI feature |
@@ -252,7 +252,7 @@ Locked by both founders on 22 September 2026 (D-047; Erode Harish's approval rel
 | Vector index engine | — | **pgvector** at our scale (far below 10 million vectors). VectorChord inserts and queries faster at large scale | Nothing to gain yet; revisit if matching grows | — | Watch |
 | Embedding model | not chosen | Chosen by a **Tamil retrieval test**; candidates Qwen3-Embedding, gte-multilingual, Krutrim Vyakyarth. Stays on the approved SentenceTransformers + pgvector | Matching quality in Tamil | Recommended | Next (Phase D) |
 | **Search in Tamil** | none | **Hybrid search inside Postgres, with no new service:** Postgres's built-in `tamil` and `english` stemmers for words, `pg_trgm` for spelling slips and Tanglish typed in English letters, and pgvector for meaning. **ParadeDB `pg_search`** (BM25 ranking, ICU tokenizer) only if ranking quality needs it | Brands must find "Madurai food creator" whether they type it in Tamil, English or Tanglish. Competitors filter by language; we would search in it | Recommended | Next (after a test with real Tamil queries) |
-| Migration safety | Alembic; CI checks every downgrade | **Add Squawk**: lints the SQL of each migration for table locks and downtime before it merges (works with Alembic's offline SQL) | Catches the migration that would lock a busy table in production | Recommended | Next (Data track) |
+| Migration safety | Alembic; CI checks every downgrade; **Squawk on added migrations** | Current | Catches the migration that would lock a busy table in production | **Built** (D-050); lock/statement timeout rules still off, Data track to decide | Done |
 | Cache and limits store | **Valkey 9.1.2** (`valkey/valkey:9.1.2-alpine`, exact tag) | Current | Open licence, faster; it was a drop-in, and nothing in the application changed | **Built** (D-048, 23 September) | Done |
 | Background jobs | none | **DBOS**: durable jobs and workflows stored in Postgres, run inside our app, no new server. Alternatives: Procrastinate, Hatchet | Unblocks reminders, proof re-checks, WhatsApp retries. Fits the scale posture (no brokers) | Recommended | Next (job-runner decision) |
 | Hosting | none | An India region. **AWS Mumbai or Hyderabad** run Postgres 18 with pgvector (RDS and Aurora); **Supabase** has a Mumbai region; **Neon has no India region**. Compare with GCP and Azure before deciding | Latency for Tamil Nadu users | Recommended | Next (hosting decision) |

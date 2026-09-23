@@ -66,6 +66,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # Squawk lints the migrations a branch ADDS, which means diffing
+          # against origin/main, which needs more than the default single
+          # commit of history.
+          fetch-depth: 0
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -102,6 +106,21 @@ jobs:
       # pyproject.toml, where every relaxation is listed with its reason.
       - name: Type check
         run: mypy
+
+      # D-047 locks Squawk as the migration linter, D-050 wires it in. It
+      # reads the SQL a new migration would run and fails on what would lock
+      # a busy table: a constraint added without NOT VALID, a required column
+      # added to a populated table, a column type changed, an index dropped
+      # without CONCURRENTLY.
+      #
+      # Only the migrations this branch adds are checked, never the whole
+      # chain; .squawk.toml says which rules are off and why. It needs no
+      # database: Alembic emits the SQL offline.
+      - name: Lint new migrations for locks
+        run: |
+          pip install squawk-cli==2.65.0
+          git fetch --no-tags origin main:refs/remotes/origin/main || true
+          python -m scripts.lint_new_migrations origin/main
 
       - name: Apply migrations
         run: alembic upgrade head
