@@ -32,13 +32,14 @@ jobs:
           --health-retries 10
 
       # The rate-limit storage tests prove counters are shared between
-      # processes, which needs a real Redis (D-003).
+      # processes, which needs a real server (D-003). Valkey since D-047;
+      # the service name stays `redis` so REDIS_URL does not change.
       redis:
-        image: redis:7-alpine
+        image: valkey/valkey:9.1.2-alpine
         ports:
           - 6379:6379
         options: >-
-          --health-cmd "redis-cli ping"
+          --health-cmd "valkey-cli ping"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10

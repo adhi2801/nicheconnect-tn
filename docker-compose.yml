@@ -16,11 +16,23 @@ services:
       timeout: 5s
       retries: 10
 
+  # Valkey, not Redis (D-047). Valkey is the Linux Foundation's BSD-licensed
+  # fork; Redis 8 is AGPL. It speaks the same protocol, so redis-py and every
+  # REDIS_URL stay exactly as they are — the service name is kept as `redis`
+  # so no connection string, .env or test has to change.
+  #
+  # The tag is exact, not floating: the same version everywhere, and an
+  # upgrade is a visible line in review rather than whatever got pulled.
   redis:
-    image: redis:7-alpine
+    image: valkey/valkey:9.1.2-alpine
     restart: unless-stopped
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "valkey-cli ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
   db_data:
