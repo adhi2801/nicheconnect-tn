@@ -20,92 +20,116 @@ What the product needs from this repository, in the order we should build it.
 
 ## 2. Built so far
 
+Checked against the code on 23 September 2026, not from memory: 64 endpoints,
+20 migrations, 1173 tests passing.
+
 | Capability | Status | Where |
 |---|---|---|
 | Accounts, phone OTP login, tokens, sessions | Tested | `app/modules/auth/` (D-007, D-008, D-011, D-013) |
 | Refresh, logout, log out of all devices, "who am I" | Tested | `app/modules/auth/router.py` |
 | Role checks for endpoints (`CurrentBrand`, `CurrentCreator`) | Tested | `app/modules/auth/dependencies.py` |
-| Brand and creator profile tables, tied to their account role | Tested | D-005, D-006, D-014 |
+| Brand and creator profiles, tables and endpoints | Tested | D-005, D-006, D-014 |
+| Campaigns, applications, discovery with filters | Tested | `app/modules/campaigns/` (Phase A) |
+| Deal memos, the payment handshake, disputes | Tested | `app/modules/deal_memo/`, `payment_status/`, `disputes/` (Phase B) |
+| Creator Passport, application feedback | Tested | D-036, D-041 |
 | One error format, request IDs, rate limits, safe settings | Tested | `app/core/` (D-003, D-012) |
+| Repeat-safe writes (`Idempotency-Key`) | Tested | `app/core/idempotency.py` (D-040) |
+| Data export | Tested | `app/modules/auth/export_service.py` |
+| API fuzz testing, migration linting, measured budgets | Tested | D-047, D-050, `docs/PERFORMANCE.md` |
 
 ---
 
 ## 3. Build order
 
-Each phase is only useful once the one before it exists.
+Each phase is only useful once the one before it exists. **Status is from the
+code**, checked 23 September 2026.
 
-### Phase A — the marketplace core (next)
-| # | Item | Why it comes first | Notes |
+### Phase A — the marketplace core — **done**
+| # | Item | Status | Notes |
 |---|---|---|---|
-| A1 | `campaign` table and endpoints | Everything else points at a campaign | Needs the money-amount decision (paise or decimal) before the first budget field |
-| A2 | `application` table and endpoints | The creator's way in; the brand's shortlist | Status transitions with a stated table |
-| A3 | Creator and brand profile endpoints | Profiles exist as tables but have no API | Ownership checks on every read and write |
-| A4 | Campaign discovery for creators | The "Opportunities" screen | Filters: city, niche, budget, type; cursor pagination |
+| A1 | `campaign` table and endpoints | **Done** | Money is whole paise; that decision is settled |
+| A2 | `application` table and endpoints | **Done** | Status transitions with a stated table |
+| A3 | Creator and brand profile endpoints | **Done** | Ownership checks on every read and write |
+| A4 | Campaign discovery for creators | **Done** | Filters: city, niche, budget, type; cursor pagination |
 
-### Phase B — the deal and the money handshake
-| # | Item | Notes |
-|---|---|---|
-| B1 | `deal_memo` table, accept flow both sides | Terms, deliverables, usage-rights window |
-| B2 | `payment_status`: brand marks paid, creator confirms | Never implies we hold money |
-| B3 | Payment reference (UTR) recorded and matched | Repeat-proof confirmation |
-| B4 | Brand payment-reliability score | Median days to pay, dispute rate, sample size, computed from B2 events |
-| B5 | Disputes with an evidence timeline | Both sides see the same ordered facts |
+### Phase B — the deal and the money handshake — **done**
+| # | Item | Status | Notes |
+|---|---|---|---|
+| B1 | `deal_memo` table, accept flow both sides | **Done** | Terms, deliverables, usage-rights window |
+| B2 | `payment_status`: brand marks paid, creator confirms | **Done** | Never implies we hold money (D-033) |
+| B3 | Payment reference (UTR) recorded and matched | **Done** | Repeat-proof confirmation |
+| B4 | Brand payment-reliability score | **Done** | D-034, D-035 |
+| B5 | Disputes with an evidence timeline | **Done** | D-036; no verdict is ever recorded |
 
-### Phase C — trust and fairness features
-| # | Item | Notes |
-|---|---|---|
-| C1 | Tamper-evident record of deal and payment events | Append-only, chained, verifiable by both parties |
-| C2 | Creator Passport: public read-only profile | Verified facts only; no contact details |
-| C3 | Fair-rate guidance | Built from completed deals; always published with sample size and date |
-| C4 | Structured rejection reasons and profile guidance | Answers "no campaigns, no idea why" |
-| C5 | Usage-rights expiry reminders | The playbook puts this in v2; it is cheap once B1 exists |
+### Phase C — trust and fairness features — **2 of 5**
+| # | Item | Status | Notes |
+|---|---|---|---|
+| C1 | Tamper-evident record of deal and payment events | **Not started** | Append-only, chained. Needs a new table: Data track, and a schema decision |
+| C2 | Creator Passport: public read-only profile | **Done** | D-036 |
+| C3 | Fair-rate guidance | **Not started** | Proposed only, in `docs/PROPOSAL_PASSPORT_RATE_CARD.md`; rate card decision 1 is still open |
+| C4 | Structured rejection reasons and profile guidance | **Done** | D-041 |
+| C5 | Usage-rights expiry reminders | **Blocked** | The window is stored; the reminder needs the job runner |
 
-### Phase D — matching
-| # | Item | Notes |
-|---|---|---|
-| D1 | Embedding input builder, with a test proving no personal data is included | `CLAUDE.md` section 2 |
-| D2 | pgvector similarity search for campaign ↔ creator | Index and parameters decided after measuring |
-| D3 | Explainable results: the reasons behind every match | Niche overlap, city, rate fit, past completion |
+### Phase D — matching — **not started**
+`app/modules/matching/` is an empty package. This is the differentiator
+`docs/COMPETITIVE_LANDSCAPE.md` builds the position on, and nothing exists yet.
 
-### Phase E — reach and workflow
-| # | Item | Notes |
-|---|---|---|
-| E1 | Notifications module: WhatsApp and SMS behind one interface | Provider still undecided; retries and repeat-safety required |
-| E2 | WhatsApp actions (apply, accept, upload proof) | Signed links; the conversation state lives in the backend |
-| E3 | Offline-first write contract: repeat-proof requests, resumable uploads | What makes low-data mode safe on patchy 4G |
-| E4 | Campaign types: barter, commission, local-business | Playbook growth features |
-| E5 | City leaderboards, festival templates, creator collectives | Group applications need their own model |
-| E6 | Invoices and yearly earnings statement | **needs validation pack** (GST, TDS) |
-| E7 | ASCI disclosure check before submission | **needs validation pack** |
-| E8 | Data export and account deletion | **needs validation pack** (retention) |
-| E9 | Public read API and webhooks for agencies | After the contract is stable |
+| # | Item | Status | Notes |
+|---|---|---|---|
+| D1 | Embedding input builder, with a test proving no personal data is included | **Not started** | `CLAUDE.md` section 2 |
+| D2 | pgvector similarity search for campaign ↔ creator | **Not started** | pgvector 0.8.6 is pinned and available but the extension is not enabled (D-049) |
+| D3 | Explainable results: the reasons behind every match | **Not started** | Niche overlap, city, rate fit, past completion |
+
+### Phase E — reach and workflow — **1 of 9**
+| # | Item | Status | Notes |
+|---|---|---|---|
+| E1 | Notifications module: WhatsApp and SMS behind one interface | **Records only** | Rows are written; nothing is delivered. Provider undecided, which is also why nobody can log in off a laptop |
+| E2 | WhatsApp actions (apply, accept, upload proof) | **Not started** | Needs E1 |
+| E3 | Offline-first write contract | **Half** | `Idempotency-Key` is done (D-040); resumable uploads are not, and proof is a URL rather than a file |
+| E4 | Campaign types: barter, commission, local-business | **Done** | `CAMPAIGN_TYPES` in `app/modules/campaigns/models.py` |
+| E5 | City leaderboards, festival templates, creator collectives | **Not started** | Group applications need their own model |
+| E6 | Invoices and yearly earnings statement | **Blocked** | needs validation pack (GST, TDS) |
+| E7 | ASCI disclosure check before submission | **Blocked** | needs validation pack |
+| E8 | Data export and account deletion | **Half** | Export is done. **Deletion is not, and no app store will accept us without it in the app** |
+| E9 | Public read API and webhooks for agencies | **Not started** | After the contract is stable |
+
+### Where that leaves us
+
+About **half the backlog items are done**, but the half that remains is the
+harder half: Phase D is the differentiator and is at zero, and four of the
+seven decisions in section 4 block whole phases. Two launch blockers sit
+outside this list entirely — nobody can log in off a developer machine, and
+in-app account deletion does not exist.
 
 ---
 
 ## 4. Decisions needed before the phases above
 
-| Decision | Blocks | Notes |
+Checked 23 September 2026. **Four of the seven are still open, and each one
+blocks a whole phase.**
+
+| Decision | Blocks | Status |
 |---|---|---|
-| Money amounts: whole paise or decimal | A1 | One choice for the whole schema |
-| Campaign types for the pilot | A1, E4 | Paid, barter, commission, local business |
-| Job runner (for notifications and reminders) | E1, C5 | Until decided, no background worker exists |
-| Notification provider (WhatsApp or SMS, and which company) | E1, and real OTP delivery | Also unblocks real logins |
-| How a developer logs in locally | Developer experience | Codes are never logged, by design |
-| Media storage (proof uploads) | B1, E3 | Where files live, and how they are served safely |
-| Per-phone verify limit | Security hardening | Known gap from the automated review |
+| Money amounts: whole paise or decimal | A1 | **Settled:** whole paise, throughout the schema |
+| Campaign types for the pilot | A1, E4 | **Settled:** paid, barter, commission, local business |
+| Per-phone verify limit | Security hardening | **Done:** `MAX_VERIFY_ATTEMPTS_PER_WINDOW` in `app/modules/auth/service.py` |
+| Job runner (for notifications and reminders) | E1, C5 | **Open.** No background worker exists. DBOS is locked as the choice (D-047) but nothing is installed |
+| Notification provider (WhatsApp or SMS, and which company) | E1, C5, and real OTP delivery | **Open, and the most expensive one.** Until it is chosen **nobody can log in outside a developer's laptop** |
+| Media storage (proof uploads) | E3 | **Open.** Proof is currently a URL the creator pastes, not a file we hold |
+| How a developer logs in locally | Developer experience | **Open.** Codes are never logged, by design |
 
 ---
 
 ## 5. Cross-cutting quality work
 
-| Item | Why |
+| Item | Status |
 |---|---|
-| Move rate limits from memory to Redis | Required before more than one process runs (D-003) |
-| Correct client IP behind a proxy | Otherwise every user shares one limit |
-| Add the migration downgrade check to CI | `docs/standards/testing.md` gate 4 |
-| Seed script with realistic Tamil Nadu data | Needed for performance checks |
-| Performance budgets measured, not estimated | p95 ≤ 300 ms reads, ≤ 500 ms writes |
-| Backup and one tested restore | Before production |
+| Move rate limits from memory to a shared store | **Done** (D-003; now Valkey, D-048) |
+| Correct client IP behind a proxy | **Done** (`tests/core/test_client_ip.py`) |
+| Add the migration downgrade check to CI | **Done** (`.github/workflows/ci.yml`) |
+| Seed script with realistic data | **Done** (`scripts/seed_dev_data.py`) |
+| Performance budgets measured, not estimated | **Done** for reads (`docs/PERFORMANCE.md`). **Writes are still unmeasured**, and so is anything under load |
+| Backup and one tested restore | **Not started.** Waits on the hosting decision |
 
 ---
 
