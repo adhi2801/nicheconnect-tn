@@ -3837,6 +3837,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -3966,6 +3967,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -4105,6 +4107,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -4234,6 +4237,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -4760,6 +4764,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -4885,6 +4890,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -5001,6 +5007,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -5337,6 +5344,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -5724,6 +5732,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -6021,6 +6030,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -6160,6 +6170,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -6289,6 +6300,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -6418,6 +6430,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -6686,6 +6699,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -6811,6 +6825,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -6927,6 +6942,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -7044,6 +7060,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -7269,6 +7286,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -7628,6 +7646,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -7767,6 +7786,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -7896,6 +7916,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -8025,6 +8046,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -8249,6 +8271,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -8471,6 +8494,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -8610,6 +8634,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -8749,6 +8774,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -8888,6 +8914,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -9124,6 +9151,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -9275,6 +9303,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -9416,6 +9445,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -9555,6 +9585,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -9694,6 +9725,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -9823,6 +9855,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -10153,6 +10186,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -10309,6 +10343,7 @@
             "schema": {
               "maxLength": 128,
               "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }

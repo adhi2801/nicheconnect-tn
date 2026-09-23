@@ -137,6 +137,28 @@ jobs:
           sys.exit(1 if low else 0)
           PY
 
+      # D-047 locks Schemathesis as the API fuzz tester. It reads the OpenAPI
+      # document the app serves, generates thousands of requests from it, and
+      # checks every answer.
+      #
+      # The gate is not_a_server_error: no generated request, however strange,
+      # may produce a 5xx. That is CLAUDE.md section 7's "no unhandled
+      # exception reaches a user", proved on every run rather than assumed.
+      #
+      # The other checks are deliberately NOT gated yet. The run that added
+      # this step found 14 further contract findings, listed in
+      # docs/API_CONTRACT_FINDINGS.md. Turning them on before they are fixed
+      # would make CI red on day one, which teaches everyone to ignore it.
+      - name: Fuzz the API against its own contract
+        run: |
+          uvicorn app.main:app --port 8099 --log-level warning &
+          for _ in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8099/healthz > /dev/null && break
+            sleep 1
+          done
+          schemathesis run http://127.0.0.1:8099/openapi.json \
+            --max-time 120 --workers 4 --warnings off -c not_a_server_error
+
       # testing.md gate 6. Reads the pinned set in requirements.txt, resolves
       # everything those pins drag in, and checks the lot against the Python
       # advisory database. --strict means a package it cannot check fails the

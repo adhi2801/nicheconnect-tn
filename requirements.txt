@@ -25,3 +25,7 @@ pytest-cov==7.1.0
 # Pinned although pytest-cov pulls it in: unpinned, local and CI runs could
 # count branches differently (D-047).
 coverage==7.16.1
+# API fuzz testing (D-047). Reads docs/api/openapi.json, generates thousands
+# of requests from it and checks every answer. 4.27.5 rather than the newest
+# 4.28.0: a tool that gates merges gets to settle for a few days first.
+schemathesis==4.27.5
