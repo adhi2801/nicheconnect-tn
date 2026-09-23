@@ -94,7 +94,9 @@ def build_auth_session(db: Session, **overrides: Any) -> AuthSession:
         "expires_at": FIXED_NOW + refresh_token_ttl(),
     }
     fields.update(overrides)
-    fields.setdefault("account_id", create_account(db, "creator").id)
+    # Not setdefault, for the same reason as build_brand above.
+    if "account_id" not in fields:
+        fields["account_id"] = create_account(db, "creator").id
     return AuthSession(**fields)
 
 
