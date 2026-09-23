@@ -66,22 +66,26 @@ does not know about becomes an unhandled branch in the app.
 **Who:** API track, alongside the response-documentation work in
 `docs/standards/backend.md`.
 
-### 3. Field patterns not published, the same class as the fixed one (3 findings)
+### ~~3. Field patterns not published~~ — fixed
 
-`phone` and `code` are declared as plain strings, but the code requires a
-10-digit Indian mobile number and a 6-digit OTP. A client building a request
-from the document gets 422 on data the document called valid.
+`phone` and `code` were declared as plain strings, while the code required a
+10-digit Indian mobile number and a 6-digit OTP. This has been fixed in
+`app/modules/auth/schemas.py`, and the class went from 3 findings to 1.
 
-Seen on `POST /api/v1/auth/otp/verify`:
+**Worth knowing, because the obvious fix does not work.** Setting Pydantic's
+`Field(pattern=...)` publishes nothing here. `IndianMobile` has a
+`BeforeValidator` that deliberately accepts `98765 43210`, `+91 98765-43210`
+and `09876543210` and normalises them, so the accepted input really is wider
+than the stored form. Pydantic is right to drop the constraint from the
+**validation** schema, which is the one describing a request body; it keeps it
+only in the serialization schema, which describes responses. The pattern is
+therefore published through `json_schema_extra`, which documents without
+constraining. The document ends up stricter than the code, never looser, and
+the wider input keeps working.
 
-- `{"field": "phone", "message": "Enter a valid 10-digit Indian mobile number"}`
-- `{"field": "code", "message": "Enter the 6-digit code we sent you"}`
-
-The fix is the same shape as the `Idempotency-Key` one: publish the pattern
-the validator already enforces, from one source, so the two cannot disagree.
-It changes the public contract, so it is its own change with its own review.
-
-**Who:** API track.
+The one remaining finding in this class is a valid OTP-shaped code that is not
+the real one, answered with 400. That is correct behaviour and belongs to
+finding 2 below: 400 is simply not documented for that operation.
 
 ---
 

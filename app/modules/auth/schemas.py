@@ -53,26 +53,50 @@ def _check_e164(value: str) -> str:
     return value
 
 
+# Published on the schema as well as enforced here, so a client generating
+# requests from our OpenAPI document cannot produce a code we always refuse.
+OTP_CODE_PATTERN = r"^[0-9]{6}$"
+
+
 def _check_code(value: object) -> str:
     code = value.strip() if isinstance(value, str) else value
-    if not isinstance(code, str) or not re.fullmatch(r"[0-9]{6}", code):
+    if not isinstance(code, str) or not re.fullmatch(OTP_CODE_PATTERN, code):
         raise PydanticCustomError("code_invalid", "Enter the 6-digit code we sent you")
     return code
 
 
+# The pattern is published through json_schema_extra rather than Field's own
+# `pattern`. A BeforeValidator makes the accepted input wider than the stored
+# form, so Pydantic correctly refuses to publish a constraint on it and drops
+# `pattern` from the validation schema, where the request body is described.
+# Publishing nothing told a generated client that any string would do, and it
+# earned a 422 on data our own document called valid.
+#
+# What is published is the canonical form, the one the database enforces too:
+# what a client should send. The wider input the description lists keeps
+# working, so the document is stricter than the code, never looser.
 IndianMobile = Annotated[
     str,
     BeforeValidator(normalize_indian_mobile),
     AfterValidator(_check_e164),
     Field(
-        description="Indian mobile number; stored as +91XXXXXXXXXX",
+        description=(
+            "Indian mobile number, stored as +91XXXXXXXXXX. Send it in that "
+            "form. Spaces, dashes and brackets, and a leading +91, 91 or 0, "
+            "are also accepted and normalised away."
+        ),
+        json_schema_extra={"pattern": PHONE_PATTERN},
         examples=["+919876543210"],
     ),
 ]
 OtpCode = Annotated[
     str,
     BeforeValidator(_check_code),
-    Field(description="The 6-digit code sent to the phone", examples=["042917"]),
+    Field(
+        description="The 6-digit code sent to the phone",
+        json_schema_extra={"pattern": OTP_CODE_PATTERN},
+        examples=["042917"],
+    ),
 ]
 Role = Literal["brand", "creator"]
 

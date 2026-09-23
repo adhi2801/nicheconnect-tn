@@ -15,10 +15,11 @@
             "type": "string"
           },
           "phone": {
-            "description": "Indian mobile number; stored as +91XXXXXXXXXX",
+            "description": "Indian mobile number, stored as +91XXXXXXXXXX. Send it in that form. Spaces, dashes and brackets, and a leading +91, 91 or 0, are also accepted and normalised away.",
             "examples": [
               "+919876543210"
             ],
+            "pattern": "^\\+91[6-9][0-9]{9}$",
             "title": "Phone",
             "type": "string"
           },
@@ -2777,10 +2778,11 @@
         "additionalProperties": false,
         "properties": {
           "phone": {
-            "description": "Indian mobile number; stored as +91XXXXXXXXXX",
+            "description": "Indian mobile number, stored as +91XXXXXXXXXX. Send it in that form. Spaces, dashes and brackets, and a leading +91, 91 or 0, are also accepted and normalised away.",
             "examples": [
               "+919876543210"
             ],
+            "pattern": "^\\+91[6-9][0-9]{9}$",
             "title": "Phone",
             "type": "string"
           }
@@ -2799,14 +2801,16 @@
             "examples": [
               "042917"
             ],
+            "pattern": "^[0-9]{6}$",
             "title": "Code",
             "type": "string"
           },
           "phone": {
-            "description": "Indian mobile number; stored as +91XXXXXXXXXX",
+            "description": "Indian mobile number, stored as +91XXXXXXXXXX. Send it in that form. Spaces, dashes and brackets, and a leading +91, 91 or 0, are also accepted and normalised away.",
             "examples": [
               "+919876543210"
             ],
+            "pattern": "^\\+91[6-9][0-9]{9}$",
             "title": "Phone",
             "type": "string"
           },
