@@ -13,6 +13,10 @@ it passed completely — 6829 generated cases, 6829 passed, across all 64
 operations, no 5xx anywhere. That is `CLAUDE.md` section 7's "no unhandled
 exception reaches a user", proved rather than assumed.
 
+**Where the count stands.** 48 findings on the first run, 8 now: three fixes,
+each one root cause. What is left is the `Allow` header (7) and one correct
+refusal (1), both below.
+
 **Not gated yet:** everything below. They are real, and turning them on before
 they are fixed would make CI red on day one, which teaches everyone to ignore
 it. Each needs its own branch and its own review.
@@ -57,14 +61,24 @@ CORS preflight tests must still pass.
 **Who:** API track. **Needs:** a decision on whether to answer `OPTIONS`
 properly per resource, or to keep 405 and only correct the header.
 
-### 2. Undocumented status codes (3–8 findings)
+### ~~2. Undocumented status codes~~ — fixed
 
-Some operations answer with a status the document does not list for them. The
-document is what the frontend will generate its client from, so a status it
-does not know about becomes an unhandled branch in the app.
+Every one of these was the same thing: a request body that is not valid UTF-8
+is refused before any field is read, and answers 400 `bad_request` rather than
+the 422 a field error gets. All 22 operations that take a body can answer it,
+and none of them said so, so a client generated from this document met a
+status it had no branch for.
 
-**Who:** API track, alongside the response-documentation work in
-`docs/standards/backend.md`.
+Fixed in `app/core/openapi.py`, which already existed to correct the document
+once for every route, present and future, rather than asking each route to
+remember. `document_unreadable_body()` adds the 400 to every operation with a
+request body, and never replaces a 400 a route documented for its own reason.
+
+Guarded by three tests in `tests/test_api_contract.py`: that every
+body-taking operation documents 400, that an unreadable body really answers
+400 in the Problem Details shape, and that a *readable* body which is not JSON
+still answers 422 — because 400 is for bytes we cannot read, not for a body we
+can read and reject.
 
 ### ~~3. Field patterns not published~~ — fixed
 
