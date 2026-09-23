@@ -109,6 +109,96 @@ def test_wrong_method_is_method_not_allowed(client):
     assert "GET" in response.headers["allow"]
 
 
+def test_allow_names_every_method_the_path_answers():
+    """RFC 9110: `Allow` lists the resource's methods, not the matched route's.
+
+    Starlette raises the 405 from whichever route matched the path first and
+    fills `Allow` with that route's methods alone. FastAPI registers one
+    route per method, so a path answering GET, POST and PATCH used to report
+    a single one, and a client reading that concludes the rest do not exist.
+    """
+    app = FastAPI()
+    register_error_handlers(app)
+
+    @app.get("/thing")
+    def read() -> dict[str, str]:
+        return {}
+
+    @app.post("/thing")
+    def create() -> dict[str, str]:
+        return {}
+
+    @app.patch("/thing")
+    def update() -> dict[str, str]:
+        return {}
+
+    with TestClient(app) as client:
+        response = client.delete("/thing")
+
+    assert response.status_code == 405
+    assert set(response.headers["allow"].split(", ")) == {"GET", "POST", "PATCH"}
+
+
+def test_allow_covers_a_path_registered_through_an_included_router():
+    """The real app builds every path with include_router, which nests them.
+
+    `app.routes` is not flat: each include_router is wrapped, so walking it
+    naively finds the wrapper and never compares the paths inside it.
+    """
+    from fastapi import APIRouter
+
+    router = APIRouter(prefix="/api")
+    app = FastAPI()
+    register_error_handlers(app)
+
+    @router.get("/thing")
+    def read() -> dict[str, str]:
+        return {}
+
+    @router.patch("/thing")
+    def update() -> dict[str, str]:
+        return {}
+
+    app.include_router(router)
+
+    with TestClient(app) as client:
+        response = client.delete("/api/thing")
+
+    assert response.status_code == 405
+    assert set(response.headers["allow"].split(", ")) == {"GET", "PATCH"}
+
+
+def test_allow_does_not_borrow_methods_from_a_parameterised_sibling():
+    """A static path matches its `{id}` sibling's pattern, but does not serve it.
+
+    `/campaigns/discover` matches the pattern for `/campaigns/{campaign_id}`,
+    which answers PATCH. Routing takes the first match in registration order,
+    so the static route answers and that PATCH is not on offer. Advertising
+    it would send a client at a method that can only ever come back 405.
+    """
+    app = FastAPI()
+    register_error_handlers(app)
+
+    @app.get("/campaigns/discover")
+    def discover() -> dict[str, str]:
+        return {}
+
+    @app.get("/campaigns/{campaign_id}")
+    def read(campaign_id: str) -> dict[str, str]:
+        return {}
+
+    @app.patch("/campaigns/{campaign_id}")
+    def update(campaign_id: str) -> dict[str, str]:
+        return {}
+
+    with TestClient(app) as client:
+        static_path = client.delete("/campaigns/discover")
+        parameterised = client.delete("/campaigns/abc123")
+
+    assert static_path.headers["allow"] == "GET"
+    assert set(parameterised.headers["allow"].split(", ")) == {"GET", "PATCH"}
+
+
 def test_unexpected_error_hides_details_from_the_user(client):
     response = client.get("/crash")
 

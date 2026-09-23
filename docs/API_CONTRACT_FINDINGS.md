@@ -13,17 +13,20 @@ it passed completely — 6829 generated cases, 6829 passed, across all 64
 operations, no 5xx anywhere. That is `CLAUDE.md` section 7's "no unhandled
 exception reaches a user", proved rather than assumed.
 
-**Where the count stands.** 48 findings on the first run, 8 now: three fixes,
-each one root cause. What is left is the `Allow` header (7) and one correct
-refusal (1), both below.
+**Where the count stands.** 48 findings on the first run, **1 now**: four
+fixes, each one root cause. The one left is not a bug — a well-formed OTP
+that is not the real code, correctly refused with 400. See finding 3.
 
-**Not gated yet:** everything below. They are real, and turning them on before
-they are fixed would make CI red on day one, which teaches everyone to ignore
-it. Each needs its own branch and its own review.
+**Still not gated:** the other checks stay off in CI. They pass now, but they
+are property-based and explore different inputs each run, so a red build on a
+branch that changed nothing relevant would teach everyone to ignore it.
+Turning them on is worth revisiting once the contract has settled.
 
 ---
 
-## Fixed already
+## Fixed, 23 September
+
+Each was one root cause, found by generating requests from our own document.
 
 ### The `Idempotency-Key` header was under-described (was 35 findings)
 
@@ -40,26 +43,33 @@ findings from 48 to about 14.
 
 ---
 
-## Open
+### ~~1. `Allow` header on a 405 was incomplete~~ — fixed
 
-### 1. `Allow` header on a 405 is incomplete (7–8 findings)
+An `OPTIONS` or other unsupported method on a path with several methods
+returned 405 with an `Allow` header naming only the route that happened to
+match: `OPTIONS /api/v1/brands/me` said `POST` when `GET` and `PATCH` answer
+there too. RFC 9110 wants every method the resource supports, and a client
+reading the short list concludes the rest do not exist.
 
-An `OPTIONS` request to a path with several methods returns 405 with an
-`Allow` header listing only the methods of the route that happened to match,
-not every method the resource supports. Example: `OPTIONS
-/api/v1/brands/me` answers 405 with `Allow` missing `GET` and `PATCH`.
+Fixed in `app/core/errors.py`. Two things made it more than a one-liner:
 
-RFC 9110 requires `Allow` on a 405 to list every method the resource
-supports.
+**`app.routes` is not a flat list.** FastAPI wraps every `include_router` in
+a router object, so `route.matches(scope)` stops at the wrapper and never
+compares the paths inside it. The routes are flattened first.
 
-**Why this is not a quick fix.** `OPTIONS` is also the CORS preflight verb.
-D-044 put the CORS layer deliberately outside the rate limiter and relies on
-today's `OPTIONS` behaviour, and D-045 settled which headers an error answer
-carries. Changing 405 handling touches both. It needs its own branch, and the
-CORS preflight tests must still pass.
+**A static path matches its parameterised sibling's pattern.**
+`/api/v1/campaigns/discover` matches the pattern for
+`/api/v1/campaigns/{campaign_id}`, which answers `PATCH`. Taking every
+pattern that matched advertised a `PATCH` that path cannot serve — Schemathesis
+caught exactly that on the first attempt, complaining about an *undocumented*
+method instead of a missing one. Only the routes sharing the first matching
+path template count now, which is the order routing itself resolves in.
 
-**Who:** API track. **Needs:** a decision on whether to answer `OPTIONS`
-properly per resource, or to keep 405 and only correct the header.
+**CORS was never at risk.** Preflight is answered by the CORS middleware
+before routing, so it never reaches the 405 handler. All ten preflight tests
+in `tests/core/test_cors.py` still pass, and three new tests in
+`tests/core/test_errors.py` cover the plain case, the included-router case
+and the static-versus-parameterised case.
 
 ### ~~2. Undocumented status codes~~ — fixed
 
@@ -97,9 +107,19 @@ therefore published through `json_schema_extra`, which documents without
 constraining. The document ends up stricter than the code, never looser, and
 the wider input keeps working.
 
-The one remaining finding in this class is a valid OTP-shaped code that is not
-the real one, answered with 400. That is correct behaviour and belongs to
-finding 2 below: 400 is simply not documented for that operation.
+---
+
+## The one that remains, and why it stays
+
+A well-formed six-digit code that is not the real OTP is answered with 400
+`otp_invalid`. Schemathesis counts that as "API rejected schema-compliant
+request", because it expects 2xx, 401, 403, 404, 409, 429 or 5xx.
+
+It is correct behaviour and there is nothing to fix. The request *is*
+schema-compliant; it is simply wrong, and a guessed code must be refused. The
+only way to satisfy the check would be to answer a bad code with 401 instead,
+which would be a worse API: 401 means "you are not authenticated", not "that
+code is wrong".
 
 ---
 
