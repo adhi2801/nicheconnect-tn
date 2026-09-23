@@ -14,16 +14,26 @@ Desktop for Windows.
 
 | Endpoint | p50 ms | p95 ms | Budget | Verdict |
 | --- | --- | --- | --- | --- |
-| `GET /campaigns/discover` | 9.2 | 12.4 | 300 | OK |
-| `GET /campaigns/discover?city&niche` | 8.9 | 10.9 | 300 | OK |
-| `GET /campaigns` (mine) | 11.7 | 15.8 | 300 | OK |
-| `GET /campaigns/{id}` | 8.6 | 9.6 | 300 | OK |
-| `GET /campaigns/{id}/applications` | 11.9 | 15.4 | 300 | OK |
-| `GET /applications/me` | 9.8 | 12.3 | 300 | OK |
-| `GET /auth/me` | 7.1 | 9.3 | 300 | OK |
+| `GET /campaigns/discover` | 9.6 | 18.1 | 300 | OK |
+| `GET /campaigns/discover?city&niche` | 10.5 | 15.7 | 300 | OK |
+| `GET /campaigns` (mine) | 11.7 | 14.7 | 300 | OK |
+| `GET /campaigns/{id}` | 9.9 | 14.8 | 300 | OK |
+| `GET /campaigns/{id}/applications` | 13.5 | 18.0 | 300 | OK |
+| `GET /applications/me` | 11.9 | 14.0 | 300 | OK |
+| `GET /auth/me` | 9.3 | 15.6 | 300 | OK |
+| `PATCH /brands/me` | 12.5 | 15.9 | **500** | OK |
+| `PATCH /creators/me` | 12.7 | 18.0 | **500** | OK |
+| `POST /campaigns` | 15.3 | 17.1 | **500** | OK |
 
-Every read is inside budget with about twenty times the headroom. No write
-endpoint is measured yet, which is a gap.
+Every endpoint is inside budget with roughly twenty to thirty times the
+headroom. **Writes are measured as of 23 September**, having never been
+checked before: they run the whole write path — auth, validation, the
+idempotency route class, the UPDATE or INSERT, and the commit — and come in
+at about a thirtieth of their 500 ms budget.
+
+The two PATCHes rewrite the same row each run and add nothing. `POST
+/campaigns` writes one row per run, and the script removes them again and
+reports how many; the row count was verified back at 150 afterwards.
 
 ## PostgreSQL 18 did not make us faster, and that is fine
 
@@ -61,8 +71,6 @@ been corrected so nobody quotes a speed win we have not seen.
 
 ## What is not measured yet
 
-- **Writes.** The 500 ms budget has never been checked. Every endpoint above
-  is a read.
 - **Under load.** These are sequential requests from one client. The plan
   (section 4.5) wants a repeatable load test before launch; it does not exist.
 - **At real scale.** 150 campaigns is a pilot-sized seed, not a year of

@@ -219,11 +219,69 @@ def main() -> int:
             READ_BUDGET_MS,
         ),
     ]
+
+    # Writes, against the 500 ms budget, which had never been measured. These
+    # go through the whole write path: auth, validation, the idempotency route
+    # class, the UPDATE or INSERT, and the commit.
+    #
+    # The two PATCHes rewrite the same row every run, so they add no rows. The
+    # campaign POST does add one per run and they are removed afterwards; that
+    # is why it is the only one needing cleanup, and why it is measured last.
+    results += [
+        measure(
+            client,
+            "PATCH /brands/me",
+            "PATCH",
+            "/api/v1/brands/me",
+            brand_headers,
+            args.runs,
+            WRITE_BUDGET_MS,
+            json={"name": brand.name},
+        ),
+        measure(
+            client,
+            "PATCH /creators/me",
+            "PATCH",
+            "/api/v1/creators/me",
+            creator_headers,
+            args.runs,
+            WRITE_BUDGET_MS,
+            json={"city": creator.city},
+        ),
+        measure(
+            client,
+            "POST /campaigns",
+            "POST",
+            "/api/v1/campaigns",
+            brand_headers,
+            args.runs,
+            WRITE_BUDGET_MS,
+            json={
+                "title": "Measurement campaign, deleted afterwards",
+                "description": "Written by scripts/measure_performance.py.",
+                "campaign_type": "paid",
+                "budget_min_paise": 500_000,
+                "budget_max_paise": 1_500_000,
+                "cities": ["Madurai"],
+                "niches": ["food"],
+                "deliverables": "3 Instagram reels.",
+            },
+        ),
+    ]
+
     app.dependency_overrides.clear()
     limiter.reset()
 
+    with SessionLocal() as db:
+        removed = db.execute(
+            text("DELETE FROM campaign WHERE title = :title"),
+            {"title": "Measurement campaign, deleted afterwards"},
+        ).rowcount
+        db.commit()
+
     print(f"Rows: {counts[0]} campaigns, {counts[1]} applications, {counts[2]} creators")
-    print(f"Runs per endpoint: {args.runs}\n")
+    print(f"Runs per endpoint: {args.runs}")
+    print(f"Measurement campaigns written and removed again: {removed}\n")
     print(
         f"{'endpoint':42} {'p50 ms':>8} {'p95 ms':>8} {'max ms':>8} {'budget':>8}  verdict"
     )
