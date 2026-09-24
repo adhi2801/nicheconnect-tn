@@ -15,13 +15,15 @@ one. Callers run it after a write, or over a batch.
 
 import uuid
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from typing import Any, Protocol
 
-from sqlalchemy import select
+from sqlalchemy import desc, func, null, nulls_last, select
 from sqlalchemy.orm import Session
 
 from app.modules.auth.models.creator import Creator
-from app.modules.campaigns.models import Campaign
+from app.modules.campaigns.models import Application, Campaign
+from app.modules.deal_memo.models import DealMemo
 from app.modules.matching import embedder
 from app.modules.matching.embedding_input import campaign_text, creator_text
 from app.modules.matching.models import CampaignEmbedding, CreatorEmbedding
@@ -133,3 +135,107 @@ def refresh_campaigns(
         to_text=campaign_text,
         force=force,
     )
+
+
+# --- finding creators for a campaign (D2 and D3) --------------------------
+
+
+@dataclass(frozen=True)
+class MatchReasons:
+    """Why this creator came back, in facts a brand can check.
+
+    D3 in the backlog: "the reasons behind every match". Similarity alone is
+    unarguable-with — a brand cannot tell whether 0.83 is good — so the
+    reasons that decided it are returned beside it, and most of them are
+    structural rather than learned.
+    """
+
+    shared_niches: list[str]
+    city: str
+    accepted_deals: int
+    similarity: float | None
+
+
+@dataclass(frozen=True)
+class CreatorMatch:
+    creator: Creator
+    reasons: MatchReasons
+
+
+def find_creators_for_campaign(
+    db: Session, campaign: Campaign, *, limit: int
+) -> list[CreatorMatch]:
+    """Creators worth showing a brand for this campaign, best first.
+
+    **Structural filter first, similarity only to rank inside it.** A brand
+    does not want the semantically closest creator in Tamil Nadu; it wants one
+    in a city it ships to, in a relevant niche, and among those the best fit.
+    City and niche are facts, and getting them from a vector would be both
+    worse and unexplainable.
+
+    **Only creators who published their Passport.** D-036 settled that a
+    creator who signed up to browse campaigns has not asked to be findable by
+    strangers, and a brand searching for someone who never applied is exactly
+    that. The same reasoning, and the same free-safe-default argument, applies
+    here.
+
+    **It degrades rather than fails.** A campaign whose embedding has not been
+    built yet still gets matches, ordered by the structural signals, with
+    `similarity` null. Embedding inside a request is not an option: the model
+    takes 23 seconds to load and a single vector over 200 ms, both beyond the
+    budget (see embedder.py).
+    """
+    accepted_deals = (
+        select(func.count(DealMemo.id))
+        .join(Application, Application.id == DealMemo.application_id)
+        .where(Application.creator_id == Creator.id, DealMemo.status == "accepted")
+        .correlate(Creator)
+        .scalar_subquery()
+    )
+
+    campaign_vector = db.scalar(
+        select(CampaignEmbedding.embedding).where(
+            CampaignEmbedding.campaign_id == campaign.id
+        )
+    )
+    distance = (
+        CreatorEmbedding.embedding.cosine_distance(campaign_vector)
+        if campaign_vector is not None
+        else null()
+    )
+
+    query = (
+        select(Creator, accepted_deals.label("accepted_deals"), distance.label("d"))
+        .outerjoin(CreatorEmbedding, CreatorEmbedding.creator_id == Creator.id)
+        .where(
+            Creator.passport_published_at.is_not(None),
+            Creator.city.in_(campaign.cities),
+            Creator.niches.overlap(campaign.niches),
+        )
+    )
+    # Closest first when there is a vector to compare against; a creator with
+    # no embedding sorts last rather than disappearing. The clause is built as
+    # a list rather than passed conditionally, because `order_by(None, ...)`
+    # emits a literal `ORDER BY NULL`, which Postgres refuses.
+    order: list[Any] = []
+    if campaign_vector is not None:
+        order.append(nulls_last(distance.asc()))
+    order += [desc("accepted_deals"), Creator.id]
+    query = query.order_by(*order).limit(limit)
+
+    wanted = set(campaign.niches)
+    matches = []
+    for creator, deals, d in db.execute(query).all():
+        matches.append(
+            CreatorMatch(
+                creator=creator,
+                reasons=MatchReasons(
+                    shared_niches=sorted(wanted & set(creator.niches)),
+                    city=creator.city,
+                    accepted_deals=deals,
+                    # Cosine distance on normalised vectors: 0 is identical.
+                    similarity=None if d is None else round(1.0 - float(d), 4),
+                ),
+            )
+        )
+    return matches
