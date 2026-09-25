@@ -292,6 +292,10 @@ class CreatorProfileRead(BaseModel):
     # anyone who is not signed in. Set means the creator turned it on, and
     # when (D-036).
     passport_published_at: datetime | None
+    # The other consent, and a separate one (D-055): whether prices appear on
+    # the public page. NULL means signed-in brands see them and the open
+    # internet does not.
+    rate_card_public_at: datetime | None
     created_at: datetime
     updated_at: datetime
 
@@ -446,3 +450,133 @@ def to_attention_read(result: AttentionList) -> AttentionRead:
             for item in result.items
         ],
     )
+
+
+# --- rate card (D-055) ----------------------------------------------------
+
+ChannelPlatform = Literal["instagram", "youtube"]
+PackageFormat = Literal["post", "reel", "story", "short", "video", "live", "other"]
+
+
+class ChannelUpsert(BaseModel):
+    """What a creator states about one of their channels."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    profile_url: Annotated[
+        str,
+        Field(
+            min_length=12,
+            max_length=300,
+            pattern=r"^https://",
+            description="A link to the channel itself; the domain must match the platform",
+            examples=["https://instagram.com/priya.eats"],
+        ),
+    ]
+    followers: Annotated[
+        int, Field(ge=0, le=1_000_000_000, description="As the creator states it")
+    ]
+    average_views: Annotated[
+        int | None,
+        Field(
+            default=None,
+            ge=0,
+            le=1_000_000_000,
+            description="Optional: plenty of creators do not know it",
+        ),
+    ]
+
+
+class ChannelRead(BaseModel):
+    """A channel as its owner and signed-in brands see it.
+
+    `followers` and `average_views` are the creator's own claim. We have never
+    checked them, the word "verified" is never used, and `figures_as_of` says
+    when they were stated — a follower count without a date is not a fact.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    platform: ChannelPlatform
+    profile_url: str
+    followers: int
+    average_views: int | None
+    figures_as_of: date
+    self_reported: Literal[True] = Field(
+        default=True,
+        description="Always true. These numbers are the creator's, not ours",
+    )
+
+
+class PublicChannelRead(BaseModel):
+    """A channel on the open internet: the link, and nothing else.
+
+    D-042 decided this after research. Follower counts are the easiest number
+    to fake and about two in three Indian creators inflate them, so
+    republishing our copy under our name would lend it our credibility.
+    Anyone can follow the link and read the real number at the source.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    platform: ChannelPlatform
+    profile_url: str
+
+
+class PackageCreate(BaseModel):
+    """One offer a creator sells."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    platform: ChannelPlatform
+    format: PackageFormat
+    title: Annotated[
+        str, Field(min_length=1, max_length=80, examples=["1 Instagram Reel"])
+    ]
+    description: Annotated[str | None, Field(default=None, max_length=500)]
+    price_paise: Annotated[
+        int,
+        Field(gt=0, le=100_000_000_000, description="Whole paise: 800000 is Rs 8,000"),
+    ]
+    delivery_days: Annotated[int, Field(ge=1, le=90)]
+    usage_rights_days: Annotated[int | None, Field(default=None, ge=0, le=3650)]
+    position: Annotated[int, Field(default=0, ge=0, le=19, description="Display order")]
+
+
+class PackageUpdate(BaseModel):
+    """Any subset of a package's fields."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    platform: ChannelPlatform | None = None
+    format: PackageFormat | None = None
+    title: Annotated[str | None, Field(default=None, min_length=1, max_length=80)]
+    description: Annotated[str | None, Field(default=None, max_length=500)]
+    price_paise: Annotated[int | None, Field(default=None, gt=0, le=100_000_000_000)]
+    delivery_days: Annotated[int | None, Field(default=None, ge=1, le=90)]
+    usage_rights_days: Annotated[int | None, Field(default=None, ge=0, le=3650)]
+    position: Annotated[int | None, Field(default=None, ge=0, le=19)]
+
+    @model_validator(mode="after")
+    def at_least_one_field(self) -> "PackageUpdate":
+        if not self.model_fields_set:
+            raise PydanticCustomError("empty_update", "Send at least one field to change")
+        return self
+
+
+class PackageRead(BaseModel):
+    """A package, priced in paise so the frontend decides the formatting."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    platform: ChannelPlatform
+    format: PackageFormat
+    title: str
+    description: str | None
+    price_paise: int
+    currency: str
+    delivery_days: int
+    usage_rights_days: int | None
+    position: int

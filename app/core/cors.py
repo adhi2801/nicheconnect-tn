@@ -29,7 +29,11 @@ from app.core.idempotency import HEADER as IDEMPOTENCY_KEY_HEADER
 from app.core.idempotency import REPLAYED_HEADER
 from app.core.request_id import REQUEST_ID_HEADER
 
-ALLOWED_METHODS = ("GET", "POST", "PATCH")
+# PUT and DELETE joined the list with the rate card (D-055): a creator
+# replaces a channel with PUT and removes a channel or a package with DELETE.
+# The test below fails if an endpoint uses a method missing here, so a new
+# method cannot ship unreachable from the dashboard.
+ALLOWED_METHODS = ("GET", "POST", "PATCH", "PUT", "DELETE")
 
 ALLOWED_REQUEST_HEADERS = (
     "Authorization",
