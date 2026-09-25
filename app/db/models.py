@@ -3,6 +3,10 @@ from app.modules.auth.models.auth_session import AuthSession  # noqa: F401
 from app.modules.auth.models.brand import Brand  # noqa: F401
 from app.modules.auth.models.creator import Creator  # noqa: F401
 from app.modules.auth.models.otp_challenge import OtpChallenge  # noqa: F401
+from app.modules.auth.models.rate_card import (
+    CreatorChannel,  # noqa: F401
+    CreatorPackage,  # noqa: F401
+)
 from app.modules.campaigns.models import (
     Application,  # noqa: F401
     Campaign,  # noqa: F401
