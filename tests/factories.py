@@ -41,7 +41,10 @@ def build_brand(db: Session, **overrides: Any) -> Brand:
     """Return an unsaved brand linked to a newly saved brand account."""
     fields: dict[str, Any] = {"name": "Acme", "email": "acme@example.com"}
     fields.update(overrides)
-    fields.setdefault("account_id", create_account(db, "brand").id)
+    # Not setdefault: Python evaluates the default first, so that would create
+    # an orphan account even when the caller supplied account_id.
+    if "account_id" not in fields:
+        fields["account_id"] = create_account(db, "brand").id
     return Brand(**fields)
 
 
@@ -56,7 +59,9 @@ def build_creator(db: Session, **overrides: Any) -> Creator:
         "bio": "Street food across Tamil Nadu.",
     }
     fields.update(overrides)
-    fields.setdefault("account_id", create_account(db, "creator").id)
+    # Not setdefault, for the same reason as build_brand above.
+    if "account_id" not in fields:
+        fields["account_id"] = create_account(db, "creator").id
     return Creator(**fields)
 
 
@@ -89,7 +94,9 @@ def build_auth_session(db: Session, **overrides: Any) -> AuthSession:
         "expires_at": FIXED_NOW + refresh_token_ttl(),
     }
     fields.update(overrides)
-    fields.setdefault("account_id", create_account(db, "creator").id)
+    # Not setdefault, for the same reason as build_brand above.
+    if "account_id" not in fields:
+        fields["account_id"] = create_account(db, "creator").id
     return AuthSession(**fields)
 
 
