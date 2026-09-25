@@ -87,9 +87,7 @@ class CreatorChannel(Base):
 
     __tablename__ = "creator_channel"
     __table_args__ = (
-        CheckConstraint(
-            f"platform IN {CHANNEL_PLATFORMS}", name="platform_allowed"
-        ),
+        CheckConstraint(f"platform IN {CHANNEL_PLATFORMS}", name="platform_allowed"),
         # https only, and the API additionally checks the domain matches the
         # platform: a public page must not carry an arbitrary link.
         CheckConstraint("profile_url LIKE 'https://%'", name="profile_url_https"),

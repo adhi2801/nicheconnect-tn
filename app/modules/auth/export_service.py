@@ -31,6 +31,7 @@ from app.modules.auth.models.account import Account
 from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
+from app.modules.auth.models.rate_card import CreatorChannel, CreatorPackage
 from app.modules.campaigns import service as campaigns
 from app.modules.deal_memo import service as deal_memos
 from app.modules.disputes import service as disputes
@@ -43,7 +44,19 @@ SCHEMA_VERSION = 1
 
 # Tables this module answers for. Every other table is claimed by the module
 # that owns it, or listed in NOT_EXPORTED below.
-EXPORTED_TABLES = frozenset({"account", "brand", "creator", "auth_session"})
+EXPORTED_TABLES = frozenset(
+    {
+        "account",
+        "brand",
+        "creator",
+        "auth_session",
+        # A creator's own channels and prices are theirs, and unlike most of
+        # what we hold they are something they typed rather than something
+        # that happened to them (D-055).
+        "creator_channel",
+        "creator_package",
+    }
+)
 
 # Things we hold that are deliberately left out, and why. Printed in the file
 # itself: a person is entitled to know what exists, not only what we hand over.
@@ -81,6 +94,35 @@ CREATOR_EXPORT_FIELDS = allow(
     # When they chose to publish their Passport, or null if they never did.
     # It is their consent, so it belongs in their own copy of their data.
     "passport_published_at",
+    # The other consent: whether their prices are on the open internet, and
+    # when they said so (D-055). Same reasoning as the line above.
+    "rate_card_public_at",
+    "created_at",
+    "updated_at",
+)
+
+CHANNEL_EXPORT_FIELDS = allow(
+    "id",
+    "platform",
+    "profile_url",
+    "followers",
+    "average_views",
+    "figures_as_of",
+    "created_at",
+    "updated_at",
+)
+
+PACKAGE_EXPORT_FIELDS = allow(
+    "id",
+    "platform",
+    "format",
+    "title",
+    "description",
+    "price_paise",
+    "currency",
+    "delivery_days",
+    "usage_rights_days",
+    "position",
     "created_at",
     "updated_at",
 )
@@ -138,6 +180,53 @@ def _account_sections(db: Session, account: Account) -> list[ExportedSection]:
                 ),
                 objects=[creator],
                 fields=CREATOR_EXPORT_FIELDS,
+            )
+        )
+
+    if creator is not None:
+        channels = list(
+            db.scalars(
+                select(CreatorChannel)
+                .where(CreatorChannel.creator_id == creator.id)
+                .order_by(CreatorChannel.platform)
+                .limit(MAX_ROWS_PER_SECTION + 1)
+            ).all()
+        )
+        sections.append(
+            build_section(
+                "channels",
+                table="creator_channel",
+                purpose=(
+                    "The Instagram and YouTube channels you told us about, and "
+                    "the follower and view figures you gave, with the date you "
+                    "gave them. These are your own numbers: we have never "
+                    "checked or changed them."
+                ),
+                objects=channels,
+                fields=CHANNEL_EXPORT_FIELDS,
+            )
+        )
+
+        packages = list(
+            db.scalars(
+                select(CreatorPackage)
+                .where(CreatorPackage.creator_id == creator.id)
+                .order_by(CreatorPackage.position, CreatorPackage.id)
+                .limit(MAX_ROWS_PER_SECTION + 1)
+            ).all()
+        )
+        sections.append(
+            build_section(
+                "rate_card",
+                table="creator_package",
+                purpose=(
+                    "The packages you offer and what you charge for them. "
+                    "Prices are in paise, so 800000 is Rs 8,000. Whether these "
+                    "are visible on your public page is recorded on your "
+                    "profile as rate_card_public_at."
+                ),
+                objects=packages,
+                fields=PACKAGE_EXPORT_FIELDS,
             )
         )
 
