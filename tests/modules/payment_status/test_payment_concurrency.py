@@ -13,6 +13,7 @@ rows and delete them again.
 """
 
 import threading
+import uuid
 from collections.abc import Callable, Iterator
 from datetime import UTC, date, datetime
 from typing import Any
@@ -22,7 +23,10 @@ from sqlalchemy import delete, select
 
 import app.db.models  # noqa: F401 — registers every table, as the app does
 from app.db.session import SessionLocal
-from app.modules.campaigns.models import Application
+from app.modules.auth.models.account import Account
+from app.modules.auth.models.brand import Brand
+from app.modules.auth.models.creator import Creator
+from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.models import DealMemo
 from app.modules.disputes import service as disputes
 from app.modules.disputes.event_models import DisputeEvent
@@ -34,10 +38,18 @@ from app.modules.payment_status.exceptions import (
     PaymentAlreadyMarkedPaid,
 )
 from app.modules.payment_status.models import PaymentStatus
+from tests.factories import build_brand, build_campaign, build_creator, create_account
 
 NOW = datetime(2026, 9, 21, 9, 0, tzinfo=UTC)
 APPROVED_ON = date(2026, 9, 21)
 RRN = "412345678901"
+
+
+def unique_phone() -> str:
+    """A valid Indian mobile nobody else in this database is using."""
+    return f"+9199{uuid.uuid4().int % 10**8:08d}"
+
+
 AT_ONCE = 4
 
 
@@ -65,11 +77,48 @@ def run_at_once(work: Callable[[Any], Any], count: int) -> list[Any]:
 
 @pytest.fixture
 def payment() -> Iterator[PaymentStatus]:
-    """A real, committed payment record, removed again afterwards."""
+    """A real, committed payment record, removed again afterwards.
+
+    Every row it needs is built here. It used to borrow whatever `application`
+    happened to be in the database and skip when there was none, which meant
+    these tests never ran in CI at all: CI starts from an empty database and
+    has no seed step, so the skip was silent and permanent. They are the only
+    tests proving two simultaneous taps cannot corrupt a money record, so
+    silently not running them was the worst way to have them.
+    """
     with SessionLocal() as session:
-        application = session.scalars(select(Application)).first()
-        if application is None:
-            pytest.skip("needs seeded data: run scripts/seed_dev_data.py")
+        # Phones come from a counter that restarts with the process, and these
+        # rows are committed rather than rolled back, so a second run would
+        # collide on uq_account_phone. Unique per run instead.
+        brand_account = create_account(session, "brand", phone=unique_phone())
+        creator_account = create_account(session, "creator", phone=unique_phone())
+        brand = build_brand(
+            session,
+            account_id=brand_account.id,
+            email=f"conc-{uuid.uuid4().hex[:12]}@example.com",
+        )
+        session.add(brand)
+        session.flush()
+        campaign = build_campaign(session, status="open", brand_id=brand.id)
+        session.add(campaign)
+        creator = build_creator(
+            session,
+            handle=f"conc{uuid.uuid4().hex[:12]}",
+            account_id=creator_account.id,
+        )
+        session.add(creator)
+        session.flush()
+        application = Application(
+            campaign_id=campaign.id,
+            creator_id=creator.id,
+            pitch="I run a Madurai street-food page, for a concurrency test.",
+            status="accepted",
+            status_changed_at=NOW,
+            created_at=NOW,
+            updated_at=NOW,
+        )
+        session.add(application)
+        session.flush()
         memo = DealMemo(
             application_id=application.id,
             deliverables="Three reels, for a concurrency test.",
@@ -83,6 +132,9 @@ def payment() -> Iterator[PaymentStatus]:
         record = payments.create_for_memo(session, memo, approved_on=APPROVED_ON, now=NOW)
         session.commit()
         memo_id, payment_id = memo.id, record.id
+        application_id, campaign_id = application.id, campaign.id
+        creator_id, brand_id = creator.id, brand.id
+        account_ids = [brand_account.id, creator_account.id]
 
     try:
         yield payment_id
@@ -100,6 +152,14 @@ def payment() -> Iterator[PaymentStatus]:
             )
             session.execute(delete(PaymentStatus).where(PaymentStatus.id == payment_id))
             session.execute(delete(DealMemo).where(DealMemo.id == memo_id))
+            # Built by this fixture, so removed by it, innermost first.
+            session.execute(delete(Application).where(Application.id == application_id))
+            session.execute(delete(Campaign).where(Campaign.id == campaign_id))
+            session.execute(delete(Creator).where(Creator.id == creator_id))
+            session.execute(delete(Brand).where(Brand.id == brand_id))
+            # The accounts behind them too, or the next run collides on the
+            # phone number.
+            session.execute(delete(Account).where(Account.id.in_(account_ids)))
             session.commit()
 
 

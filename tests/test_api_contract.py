@@ -140,6 +140,44 @@ def test_every_operation_that_takes_input_documents_422():
     assert missing == [], missing
 
 
+def test_every_operation_that_takes_a_body_documents_400():
+    """A body that is not valid UTF-8 is refused before any field is read."""
+    missing = [
+        label(method, path)
+        for method, path, op in operations()
+        if op.get("requestBody") and "400" not in op["responses"]
+    ]
+
+    assert missing == [], missing
+
+
+def test_an_unreadable_body_really_answers_400():
+    """The document above is only worth anything if this is what happens."""
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/auth/otp/request",
+            content=b'\x1c\x8f\x9dd\xc2"\x9ais9',
+            headers={"Content-Type": "application/json"},
+        )
+
+    assert response.status_code == 400
+    assert response.headers["content-type"].startswith(PROBLEM_TYPE)
+    assert response.json()["code"] == "bad_request"
+
+
+def test_a_readable_body_that_is_not_json_still_answers_422():
+    """400 is for bytes we cannot read, not for a body we can read and reject."""
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/auth/otp/request",
+            content=b"not-json",
+            headers={"Content-Type": "application/json"},
+        )
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "validation_failed"
+
+
 def test_every_documented_error_uses_the_one_error_format():
     """backend.md section 3: one error shape everywhere, RFC 9457 Problem Details."""
     wrong = [

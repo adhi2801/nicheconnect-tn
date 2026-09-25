@@ -12,3 +12,5 @@ venv/
 !.claude/commands/
 .coverage
 coverage.json
+# Schemathesis keeps its test database and replay state here (D-047).
+.schemathesis/
