@@ -76,13 +76,71 @@ the model is served locally rather than through a paid API.
 
 **Security and maintenance impact:** torch will be by a wide margin the
 largest dependency in this project, and it lands in `pip-audit`'s scope and
-in every CI run and deployment image. **I have not installed it and so cannot
-give you a real number.** Before this is approved I would measure the
-installed size and the effect on CI time, because it may change the answer:
-if the cost is large, the embedding step belongs in a separate worker rather
-than inside the API image.
+in every CI run and deployment image.
 
-**Effort: S to measure, M to adopt.**
+### Measured, 23 September 2026
+
+Read from PyPI and Hugging Face metadata, not installed. Download sizes for
+Linux x86_64 and CPython 3.12, which is what CI and a deployment pull:
+
+| Package | Download |
+|---|---|
+| `torch` 2.14.0 | **555 MB** |
+| `nvidia-cudnn-cu13` | 519 MB |
+| `nvidia-nccl-cu13` | 305 MB |
+| `triton` | 248 MB |
+| `nvidia-nvshmem-cu13` | 182 MB |
+| `nvidia-cusparselt-cu13` | 172 MB |
+| `transformers`, `scipy`, `scikit-learn`, `numpy`, `tokenizers`, the rest | ~75 MB |
+| **Total, default install** | **≈ 2.0 GB** |
+
+**About 1.4 GB of that is CUDA, for a workload that will never touch a GPU.**
+On Linux, `torch` declares `nvidia-cudnn-cu13`, `nvidia-nccl-cu13`,
+`nvidia-nvshmem-cu13`, `nvidia-cusparselt-cu13`, `triton` and the CUDA
+toolkit as hard dependencies. A plain `pip install sentence-transformers`
+drags every one of them in.
+
+**The fix is a one-line change and it is the actual recommendation:** install
+torch from PyTorch's CPU index, which publishes `+cpu` builds carrying no
+NVIDIA packages at all.
+
+```
+pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
+pip install sentence-transformers==6.1.0
+```
+
+I checked that the CPU index is current rather than assuming it: it carries
+2.10.0 through **2.14.0** for CPython 3.12 on Linux, the same version as
+PyPI, so pinning CPU costs no version lag. I could **not** measure the CPU
+wheel's exact size — the CDN refuses a HEAD request — but PyPI's Windows and
+macOS wheels, which are CPU-only, are 124 MB and 127 MB, so the order of
+magnitude is a tenth of the default.
+
+**The model is a separate 1,192 MB**, downloaded once and cached on disk, not
+per run. It is not a dependency: it is a file the application fetches, and in
+a deployment it should be baked into the image or a mounted volume rather
+than downloaded at start-up.
+
+### What that changes
+
+The honest conclusion is **not** "too heavy, use an API". It is that the
+default install is 2 GB for no reason, and the CPU index takes it to roughly
+200 MB plus a 1.2 GB model file.
+
+At that size it is still the largest thing in the project, which argues for
+keeping the embedding step out of the request path — but it argues for that
+anyway, since `CLAUDE.md` section 3 already says an external call must never
+block a request.
+
+**One real consequence for CI:** `pip-audit` runs `--strict` over
+`requirements.txt` and fails on any advisory. torch and its tree have a much
+larger advisory surface than anything here now, so expect this to fail a
+build one day over something we cannot fix quickly. That is an argument for
+the embedding work living in its own requirements file and its own job, not
+for skipping the audit.
+
+**Effort: M to adopt, and the install line must pin the CPU index or the 2 GB
+comes back silently.**
 
 ## Decision 3: where the vectors live, and whether to index them
 
@@ -159,8 +217,9 @@ somebody decides where it belongs.
 
 1. The embedding input builder and its PII test (decision 4). No dependency,
    no migration — provable on its own.
-2. Measure torch's real cost (decision 2) and bring the number back before
-   the dependency is approved.
+2. ~~Measure torch's real cost (decision 2).~~ **Done, 23 September:** 2.0 GB
+   by default, about 1.4 GB of it CUDA nobody will use; roughly 200 MB from
+   the CPU index, plus a 1,192 MB model file. Decision 2 is now answerable.
 3. The migration and the two tables (decision 3).
 4. Generate embeddings, and the matching endpoint with its reasons.
 5. Measure p95 against `docs/PERFORMANCE.md` and only then consider HNSW.
