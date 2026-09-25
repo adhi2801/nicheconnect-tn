@@ -6,6 +6,7 @@ build error JSON by hand.
 """
 
 import logging
+from collections.abc import Iterable, Iterator
 from http import HTTPStatus
 from typing import Any
 
@@ -165,16 +166,78 @@ def handle_rate_limit(request: Request, exc: RateLimitExceeded) -> JSONResponse:
     )
 
 
+def _leaf_routes(routes: Iterable[Any]) -> Iterator[Any]:
+    """Every endpoint route, flattened out of whatever is nesting it.
+
+    `app.routes` is not a flat list: FastAPI wraps each `include_router` in a
+    router object, and Starlette nests a `Mount`'s routes inside it. Both are
+    unwrapped here, so a caller sees only the routes that actually answer.
+    """
+    for route in routes:
+        nested = getattr(route, "routes", None)
+        if nested is None:
+            original = getattr(route, "original_router", None)
+            nested = getattr(original, "routes", None)
+        if nested:
+            yield from _leaf_routes(nested)
+        else:
+            yield route
+
+
+def _methods_this_resource_supports(request: Request) -> str | None:
+    """Every method allowed on this path, for the `Allow` header on a 405.
+
+    Starlette raises the 405 from the first route whose path matched and
+    fills `Allow` with that one route's methods. FastAPI registers a route
+    per method, so `OPTIONS /api/v1/brands/me` answered saying only POST was
+    allowed, when GET and PATCH are too. RFC 9110 wants every method the
+    resource supports, and a client reading a short list concludes the
+    others do not exist.
+
+    Matched on `path_regex` rather than `route.matches(scope)`: the latter
+    stops at the wrapper, which never compares the path of the routes inside.
+
+    Only the routes sharing the FIRST matching path template count. A static
+    path also matches its parameterised sibling's pattern —
+    `/api/v1/campaigns/discover` matches `/api/v1/campaigns/{campaign_id}` —
+    but routing takes the first match in registration order, so the static
+    one answers and the sibling's PATCH is not on offer here. Taking every
+    pattern that matched advertised methods this path does not serve.
+    """
+    routes = list(_leaf_routes(request.app.routes))
+    path = request.url.path
+
+    template: str | None = None
+    for route in routes:
+        pattern = getattr(route, "path_regex", None)
+        if pattern is not None and pattern.match(path):
+            template = getattr(route, "path", None)
+            break
+    if template is None:
+        return None
+
+    methods: set[str] = set()
+    for route in routes:
+        if getattr(route, "path", None) == template:
+            methods |= getattr(route, "methods", None) or set()
+    return ", ".join(sorted(methods)) if methods else None
+
+
 async def handle_http_error(
     request: Request, exc: StarletteHTTPException
 ) -> JSONResponse:
     # Framework errors such as unknown routes (404) or wrong method (405).
+    headers = dict(exc.headers or {})
+    if exc.status_code == HTTPStatus.METHOD_NOT_ALLOWED:
+        allowed = _methods_this_resource_supports(request)
+        if allowed:
+            headers["Allow"] = allowed
     return problem_response(
         request,
         status=exc.status_code,
         code=_code_for_status(exc.status_code),
         title=HTTPStatus(exc.status_code).phrase,
-        headers=dict(exc.headers or {}),
+        headers=headers,
     )
 
 

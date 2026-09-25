@@ -7,9 +7,9 @@ deliver can never lose the record or break the action that caused it.
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
-from sqlalchemy import func, select, update
+from sqlalchemy import CursorResult, func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.export import (
@@ -112,10 +112,16 @@ def mark_read(db: Session, notification: Notification, now: datetime) -> Notific
 
 def mark_all_read(db: Session, account_id: uuid.UUID, now: datetime) -> int:
     """Mark every unread notification read. Returns how many changed."""
-    result = db.execute(
-        update(Notification)
-        .where(Notification.account_id == account_id, Notification.read_at.is_(None))
-        .values(read_at=now, updated_at=now)
+    # SQLAlchemy types Session.execute() as Result[Any], which has no rowcount.
+    # An UPDATE returns a CursorResult at runtime, and that is where rowcount
+    # lives; the cast is type-checker-only and emits no runtime code.
+    result = cast(
+        "CursorResult[Any]",
+        db.execute(
+            update(Notification)
+            .where(Notification.account_id == account_id, Notification.read_at.is_(None))
+            .values(read_at=now, updated_at=now)
+        ),
     )
     db.commit()
     return result.rowcount

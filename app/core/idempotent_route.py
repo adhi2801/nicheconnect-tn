@@ -24,6 +24,7 @@ from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotency import (
     COMPLETED_TTL_SECONDS,
     HEADER,
+    KEY_PATTERN,
     REPLAYABLE_HEADERS,
     REPLAYED_HEADER,
     Claim,
@@ -124,7 +125,16 @@ HEADER_DOC = {
     "name": HEADER,
     "in": "header",
     "required": False,
-    "schema": {"type": "string", "minLength": 8, "maxLength": 128},
+    # The pattern comes from KEY_PATTERN, the rule check_key() actually
+    # enforces, so the document and the validator cannot drift apart. Without
+    # it the document allowed any 8-to-128 character string, and a client
+    # generating requests from the document got 422 on a key we never accept.
+    "schema": {
+        "type": "string",
+        "minLength": 8,
+        "maxLength": 128,
+        "pattern": KEY_PATTERN.pattern,
+    },
     "description": (
         "Send the same key when retrying this request and you get the "
         "original response back instead of doing the work twice, with "

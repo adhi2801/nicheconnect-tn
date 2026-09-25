@@ -9,8 +9,9 @@ import math
 import uuid
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
+from typing import Any, cast
 
-from sqlalchemy import select, text, update
+from sqlalchemy import CursorResult, select, text, update
 from sqlalchemy.orm import Session
 
 from app.modules.auth.exceptions import (
@@ -309,10 +310,16 @@ def logout(db: Session, refresh_token: str, now: datetime) -> None:
 
 def logout_all_sessions(db: Session, account_id: uuid.UUID, now: datetime) -> int:
     """End every session of one account. Returns how many were still active."""
-    result = db.execute(
-        update(AuthSession)
-        .where(AuthSession.account_id == account_id, AuthSession.revoked_at.is_(None))
-        .values(revoked_at=now, updated_at=now)
+    # SQLAlchemy types Session.execute() as Result[Any], which has no rowcount.
+    # An UPDATE returns a CursorResult at runtime, and that is where rowcount
+    # lives; the cast is type-checker-only and emits no runtime code.
+    result = cast(
+        "CursorResult[Any]",
+        db.execute(
+            update(AuthSession)
+            .where(AuthSession.account_id == account_id, AuthSession.revoked_at.is_(None))
+            .values(revoked_at=now, updated_at=now)
+        ),
     )
     db.commit()
     return result.rowcount

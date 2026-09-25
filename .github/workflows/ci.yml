@@ -6,13 +6,23 @@ on:
   pull_request:
     branches: [main]
 
+# Least privilege (D-047, security.md section 8). Without this block a job
+# inherits the repository default, which can include write access to code,
+# packages and releases. CI only ever reads this repository.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
 
     services:
+      # PostgreSQL 18 with pgvector 0.8.6, pinned exactly (D-049). Never
+      # below pgvector 0.8.2: CVE-2026-3172 affects 0.6.0 to 0.8.1. CI starts
+      # from an empty database every run, so the major upgrade costs it
+      # nothing.
       db:
-        image: pgvector/pgvector:pg16
+        image: pgvector/pgvector:0.8.6-pg18-trixie
         env:
           POSTGRES_USER: niche
           POSTGRES_PASSWORD: niche
@@ -26,13 +36,14 @@ jobs:
           --health-retries 10
 
       # The rate-limit storage tests prove counters are shared between
-      # processes, which needs a real Redis (D-003).
+      # processes, which needs a real server (D-003). Valkey since D-047;
+      # the service name stays `redis` so REDIS_URL does not change.
       redis:
-        image: redis:7-alpine
+        image: valkey/valkey:9.1.2-alpine
         ports:
           - 6379:6379
         options: >-
-          --health-cmd "redis-cli ping"
+          --health-cmd "valkey-cli ping"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -45,12 +56,38 @@ jobs:
       OTP_HASH_KEY: ci-test-only-otp-hash-key-not-a-secret-0002
 
     steps:
-      - uses: actions/checkout@v4
+      # Actions are pinned to a commit SHA, never a tag (D-047). A tag can be
+      # moved: in March 2025 a hijacked tj-actions tag reached 23,000
+      # repositories, and only the runs pinned to a SHA were safe. The version
+      # in the comment is what the SHA was, so upgrades stay readable.
+      #
+      # persist-credentials: false stops checkout leaving a usable push token
+      # in .git/config for every later step to read.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # Squawk lints the migrations a branch ADDS, which means diffing
+          # against origin/main, which needs more than the default single
+          # commit of history.
+          fetch-depth: 0
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
           cache: pip
+
+      # D-047 locks zizmor as the workflow auditor. It reads the files in
+      # .github/workflows and fails on unpinned actions, over-broad
+      # permissions and credential leaks between steps. It runs before the
+      # dependencies install because it needs none of them, so a workflow
+      # problem is reported in seconds rather than after the whole suite.
+      #
+      # Pinned but deliberately not in requirements.txt, like pip-audit
+      # below: it is a CI tool and has no business in the running app.
+      - name: Audit the workflows
+        run: |
+          pip install zizmor==1.30.1
+          zizmor --persona=regular .github/workflows/
 
       - name: Install dependencies
         run: |
@@ -69,6 +106,21 @@ jobs:
       # pyproject.toml, where every relaxation is listed with its reason.
       - name: Type check
         run: mypy
+
+      # D-047 locks Squawk as the migration linter, D-050 wires it in. It
+      # reads the SQL a new migration would run and fails on what would lock
+      # a busy table: a constraint added without NOT VALID, a required column
+      # added to a populated table, a column type changed, an index dropped
+      # without CONCURRENTLY.
+      #
+      # Only the migrations this branch adds are checked, never the whole
+      # chain; .squawk.toml says which rules are off and why. It needs no
+      # database: Alembic emits the SQL offline.
+      - name: Lint new migrations for locks
+        run: |
+          pip install squawk-cli==2.65.0
+          git fetch --no-tags origin main:refs/remotes/origin/main || true
+          python -m scripts.lint_new_migrations origin/main
 
       - name: Apply migrations
         run: alembic upgrade head
@@ -108,6 +160,28 @@ jobs:
               print(f"::error file={name}::{name} is {percent}% covered; the floor is 90%")
           sys.exit(1 if low else 0)
           PY
+
+      # D-047 locks Schemathesis as the API fuzz tester. It reads the OpenAPI
+      # document the app serves, generates thousands of requests from it, and
+      # checks every answer.
+      #
+      # The gate is not_a_server_error: no generated request, however strange,
+      # may produce a 5xx. That is CLAUDE.md section 7's "no unhandled
+      # exception reaches a user", proved on every run rather than assumed.
+      #
+      # The other checks are deliberately NOT gated yet. The run that added
+      # this step found 14 further contract findings, listed in
+      # docs/API_CONTRACT_FINDINGS.md. Turning them on before they are fixed
+      # would make CI red on day one, which teaches everyone to ignore it.
+      - name: Fuzz the API against its own contract
+        run: |
+          uvicorn app.main:app --port 8099 --log-level warning &
+          for _ in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8099/healthz > /dev/null && break
+            sleep 1
+          done
+          schemathesis run http://127.0.0.1:8099/openapi.json \
+            --max-time 120 --workers 4 --warnings off -c not_a_server_error
 
       # testing.md gate 6. Reads the pinned set in requirements.txt, resolves
       # everything those pins drag in, and checks the lot against the Python
