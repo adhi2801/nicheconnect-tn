@@ -104,10 +104,24 @@ def _refresh(
 
 
 def refresh_creators(
-    db: Session, *, creator_ids: Sequence[uuid.UUID] | None = None, force: bool = False
+    db: Session,
+    *,
+    creator_ids: Sequence[uuid.UUID] | None = None,
+    force: bool = False,
+    discoverable_only: bool = True,
 ) -> Rebuilt:
-    """Bring creator embeddings up to date. All of them, or the ones named."""
+    """Bring creator embeddings up to date. All of them, or the ones named.
+
+    **Only creators who published their Passport, by default.** An embedding
+    for someone who cannot be matched is derived personal data we would be
+    holding for no purpose, and compute spent for no result. When they
+    publish, the next run picks them up; when they unpublish, the row stops
+    being reachable through `find_creators_for_campaign` immediately, because
+    the filter is on the query rather than on what is stored.
+    """
     query = select(Creator)
+    if discoverable_only:
+        query = query.where(Creator.passport_published_at.is_not(None))
     if creator_ids is not None:
         query = query.where(Creator.id.in_(creator_ids))
     return _refresh(

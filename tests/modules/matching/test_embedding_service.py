@@ -18,7 +18,9 @@ import app.db.models  # noqa: F401 — registers every table, as the app does
 from app.modules.matching import embedder, service
 from app.modules.matching.embedder import WrongDimensions
 from app.modules.matching.models import CampaignEmbedding, CreatorEmbedding
-from tests.factories import build_campaign, build_creator
+from tests.factories import FIXED_NOW, build_campaign, build_creator
+
+PUBLISHED_AT = FIXED_NOW
 
 
 class FakeEncoder:
@@ -51,8 +53,14 @@ def encoder():
         embedder.set_model(None)  # back to lazy loading
 
 
-def a_creator(db):
-    creator = build_creator(db, handle=f"svc{uuid.uuid4().hex[:12]}")
+def a_creator(db, *, published: bool = True):
+    """Published by default: an unpublished creator cannot be matched, so
+    refresh_creators skips them (see the two tests at the end)."""
+    creator = build_creator(
+        db,
+        handle=f"svc{uuid.uuid4().hex[:12]}",
+        passport_published_at=PUBLISHED_AT if published else None,
+    )
     db.add(creator)
     db.flush()
     return creator
@@ -209,3 +217,42 @@ def test_embedding_an_empty_list_never_loads_the_model():
 def test_the_source_hash_changes_with_the_text():
     assert embedder.source_hash("city: Madurai") != embedder.source_hash("city: Salem")
     assert embedder.source_hash("city: Madurai") == embedder.source_hash("city: Madurai")
+
+
+# --- who gets an embedding at all ------------------------------------------
+
+
+def test_an_unpublished_creator_is_not_embedded(db, encoder):
+    """They cannot be matched, so a vector for them would be derived personal
+    data held for no purpose, and compute spent for no result."""
+    creator = a_creator(db, published=False)
+
+    result = service.refresh_creators(db, creator_ids=[creator.id])
+
+    assert result.embedded == 0
+    assert encoder.calls == 0
+    assert db.get(CreatorEmbedding, creator.id) is None
+
+
+def test_publishing_makes_a_creator_eligible_on_the_next_run(db, encoder):
+    creator = a_creator(db, published=False)
+    service.refresh_creators(db, creator_ids=[creator.id])
+
+    creator.passport_published_at = PUBLISHED_AT
+    db.flush()
+    result = service.refresh_creators(db, creator_ids=[creator.id])
+    db.flush()
+
+    assert result.embedded == 1
+    assert db.get(CreatorEmbedding, creator.id) is not None
+
+
+def test_unpublished_creators_can_be_embedded_when_asked_explicitly(db, encoder):
+    """The backfill script exposes this as --include-unpublished."""
+    creator = a_creator(db, published=False)
+
+    result = service.refresh_creators(
+        db, creator_ids=[creator.id], discoverable_only=False
+    )
+
+    assert result.embedded == 1
