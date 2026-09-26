@@ -281,7 +281,7 @@ def test_a_package_that_does_not_exist_is_404(client, db):
 
 
 def test_prices_are_private_until_published(client, db):
-    creator, headers = creator_login(db)
+    creator, _ = creator_login(db)
 
     assert creator.rate_card_public_at is None
 

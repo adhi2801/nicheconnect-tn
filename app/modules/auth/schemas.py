@@ -324,6 +324,15 @@ class PublicCreatorRead(BaseModel):
     member_since: str = Field(
         description="Month the creator joined, e.g. 2026-09", examples=["2026-09"]
     )
+    channels: "list[PublicChannelRead]" = Field(
+        description="Links to the creator's channels. Never a follower count (D-042)"
+    )
+    packages: "list[PublicPackageRead]" = Field(
+        description=(
+            "Prices, only when the creator has chosen to publish them (D-055). "
+            "Empty otherwise, which looks the same as having none"
+        )
+    )
 
 
 class ExportManifestEntry(BaseModel):
@@ -580,3 +589,26 @@ class PackageRead(BaseModel):
     delivery_days: int
     usage_rights_days: int | None
     position: int
+
+
+class PublicPackageRead(BaseModel):
+    """A package on the open internet, once its owner has published prices.
+
+    No id and no position: the list is already in the creator's order, and an
+    id is only useful to someone who can edit it.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    platform: ChannelPlatform
+    format: PackageFormat
+    title: str
+    description: str | None
+    price_paise: int
+    currency: str
+    delivery_days: int
+    usage_rights_days: int | None
+
+
+# PublicCreatorRead is defined above the channel and package shapes it lists.
+PublicCreatorRead.model_rebuild()

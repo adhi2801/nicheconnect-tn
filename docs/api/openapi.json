@@ -3728,6 +3728,29 @@
         "title": "ProofRead",
         "type": "object"
       },
+      "PublicChannelRead": {
+        "description": "A channel on the open internet: the link, and nothing else.\n\nD-042 decided this after research. Follower counts are the easiest number\nto fake and about two in three Indian creators inflate them, so\nrepublishing our copy under our name would lend it our credibility.\nAnyone can follow the link and read the real number at the source.",
+        "properties": {
+          "platform": {
+            "enum": [
+              "instagram",
+              "youtube"
+            ],
+            "title": "Platform",
+            "type": "string"
+          },
+          "profile_url": {
+            "title": "Profile Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform",
+          "profile_url"
+        ],
+        "title": "PublicChannelRead",
+        "type": "object"
+      },
       "PublicCreatorRead": {
         "description": "A creator profile as the open internet sees it.\n\nDeliberately narrow: this response is readable by anyone, so it carries\nonly what a creator would put on a public page. Contact details are not\nmerely omitted here, they are not in this table at all (D-011), and the\naccount id stays private so a public page cannot be linked to a login.",
         "properties": {
@@ -3741,6 +3764,14 @@
               }
             ],
             "title": "Bio"
+          },
+          "channels": {
+            "description": "Links to the creator's channels. Never a follower count (D-042)",
+            "items": {
+              "$ref": "#/components/schemas/PublicChannelRead"
+            },
+            "title": "Channels",
+            "type": "array"
           },
           "city": {
             "title": "City",
@@ -3780,6 +3811,14 @@
             },
             "title": "Niches",
             "type": "array"
+          },
+          "packages": {
+            "description": "Prices, only when the creator has chosen to publish them (D-055). Empty otherwise, which looks the same as having none",
+            "items": {
+              "$ref": "#/components/schemas/PublicPackageRead"
+            },
+            "title": "Packages",
+            "type": "array"
           }
         },
         "required": [
@@ -3790,9 +3829,87 @@
           "niches",
           "languages",
           "bio",
-          "member_since"
+          "member_since",
+          "channels",
+          "packages"
         ],
         "title": "PublicCreatorRead",
+        "type": "object"
+      },
+      "PublicPackageRead": {
+        "description": "A package on the open internet, once its owner has published prices.\n\nNo id and no position: the list is already in the creator's order, and an\nid is only useful to someone who can edit it.",
+        "properties": {
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "delivery_days": {
+            "title": "Delivery Days",
+            "type": "integer"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "format": {
+            "enum": [
+              "post",
+              "reel",
+              "story",
+              "short",
+              "video",
+              "live",
+              "other"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "platform": {
+            "enum": [
+              "instagram",
+              "youtube"
+            ],
+            "title": "Platform",
+            "type": "string"
+          },
+          "price_paise": {
+            "title": "Price Paise",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "usage_rights_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usage Rights Days"
+          }
+        },
+        "required": [
+          "platform",
+          "format",
+          "title",
+          "description",
+          "price_paise",
+          "currency",
+          "delivery_days",
+          "usage_rights_days"
+        ],
+        "title": "PublicPackageRead",
         "type": "object"
       },
       "ReadinessRead": {
@@ -7055,7 +7172,7 @@
     },
     "/api/v1/creators/by-handle/{handle}": {
       "get": {
-        "description": "The public Creator Passport, readable without logging in. Handles are matched in lowercase, so `@Priya.Eats` and `priya.eats` find the same profile. Contact details are never included. Cached for 5 minutes, with an ETag so an unchanged profile costs almost nothing to re-read.",
+        "description": "The public Creator Passport, readable without logging in. Handles are matched in lowercase, so `@Priya.Eats` and `priya.eats` find the same profile. Channels are links only, never follower counts; packages appear only once the creator has published their prices, and are an empty list otherwise. Contact details are never included. Cached for 5 minutes, with an ETag so an unchanged profile costs almost nothing to re-read.",
         "operationId": "read_public_profile_api_v1_creators_by_handle__handle__get",
         "parameters": [
           {
@@ -8199,7 +8316,7 @@
     },
     "/api/v1/creators/me/passport/publish": {
       "post": {
-        "description": "Turns on the public page at `/api/v1/creators/by-handle/{handle}`, readable by anyone with the link and no login. It shows your display name, handle, city, niches, languages, bio and the month you joined — never your phone number or email. Publishing again keeps the date you first chose, and you can turn it off at any time.",
+        "description": "Turns on the public page at `/api/v1/creators/by-handle/{handle}`, readable by anyone with the link and no login. It shows your display name, handle, city, niches, languages, bio, the month you joined and links to your channels — never your follower counts, phone number or email. Your prices appear only if you also publish your rate card. Publishing again keeps the date you first chose, and you can turn it off at any time.",
         "operationId": "publish_passport_api_v1_creators_me_passport_publish_post",
         "parameters": [
           {
