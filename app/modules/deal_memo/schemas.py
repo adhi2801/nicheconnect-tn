@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import date, datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic_core import PydanticCustomError
@@ -197,3 +197,108 @@ def to_delivery_read(record: DeliveryRecord) -> CreatorDeliveryRead:
         barter_deals_delivered=record.barter_deals_delivered,
         barter_deals_not_delivered=record.barter_deals_not_delivered,
     )
+
+
+# --- the deal record (D-057) -----------------------------------------------
+
+
+class DealRecordEntryRead(BaseModel):
+    """One sealed step. `facts` holds figures and fingerprints, never typed text."""
+
+    sequence: int
+    kind: str
+    actor_role: Literal["brand", "creator", "system"] = Field(
+        description="`system` is the deal's own rules acting, such as approval at the deadline"
+    )
+    actor_account_sha256: str | None = Field(
+        description=(
+            "SHA-256 of the acting account's id, part of the seal. Hash your "
+            "own account id to recognise your entries; null for `system`"
+        )
+    )
+    # Strings, in exactly the spelling the seal was computed over (UTC, to
+    # the microsecond, ending in Z), so the seals can be checked from this
+    # JSON alone. The API's usual spelling drops the microseconds.
+    occurred_at: str = Field(
+        description="When it took effect", examples=["2026-09-26T06:30:00.000000Z"]
+    )
+    recorded_at: str = Field(
+        description="When we wrote it down", examples=["2026-09-26T06:30:00.000000Z"]
+    )
+    facts: dict[str, Any]
+    previous_seal: str = Field(
+        description="Hex SHA-256 of the entry before; zeros for the first"
+    )
+    seal: str = Field(description="Hex SHA-256 sealing this entry to the one before")
+
+
+class DealRecordRead(BaseModel):
+    """A deal's whole record, and whether it still holds together.
+
+    `intact` is our own check. The point of the seals is that you need not
+    take our word for it: `docs/DEAL_RECORD_VERIFY.md` shows how to check them
+    yourself, and saving `latest_seal` lets you catch a rewrite later.
+    """
+
+    deal_memo_id: uuid.UUID
+    algorithm: Literal["deal-record/v1"] = "deal-record/v1"
+    intact: bool
+    first_broken_sequence: int | None = Field(
+        description="The first entry that does not match, if any"
+    )
+    terms_unchanged_since_accepted: bool | None = Field(
+        description="Null until accepted; then whether today's terms are the accepted ones"
+    )
+    latest_seal: str | None = Field(description="Save this to detect a later rewrite")
+    entries: list[DealRecordEntryRead]
+
+
+# --- a deal's proof in a daily checkpoint (D-060) ------------------------------
+
+
+class CheckpointTimestampRead(BaseModel):
+    """One authority's signed statement that the day's root existed."""
+
+    authority: Literal["digicert", "sectigo"]
+    signed_at: datetime = Field(
+        description="The authority's own time, from inside the token"
+    )
+    token_base64: str = Field(
+        description=(
+            "The RFC 3161 token exactly as issued, base64. Check it with "
+            "`openssl ts -verify -in token.tsr -data root.bin -CAfile <roots>`"
+        )
+    )
+
+
+class DealRecordProofRead(BaseModel):
+    """How this deal's record is tied to a day's root, and who stamped that root.
+
+    Recompute the root from `seal` and `audit_path` (RFC 6962), and check each
+    token signs it: then the record as it stood that day did not rest on our
+    word. `docs/DEAL_RECORD_VERIFY.md` walks through it.
+    """
+
+    deal_memo_id: uuid.UUID
+    checkpoint_date: date = Field(description="Named by its date in Tamil Nadu")
+    covers_until: str = Field(
+        description="Entries recorded before this moment are covered",
+        examples=["2026-09-26T18:30:00.000000Z"],
+    )
+    algorithm: Literal["rfc6962-sha256"] = "rfc6962-sha256"
+    leaf_format: Literal["deal_memo_id (16 bytes) + seal (32 bytes)"] = (
+        "deal_memo_id (16 bytes) + seal (32 bytes)"
+    )
+    leaf_count: int
+    leaf_index: int
+    seal: str = Field(description="This deal's latest seal as of the cut-off, hex")
+    audit_path: list[str] = Field(
+        description="Sibling hashes from the leaf to the root, hex"
+    )
+    merkle_root: str = Field(
+        description="The day's root, hex; what the authorities signed"
+    )
+    stamped: bool = Field(
+        description="False while no authority has stamped the root yet: a visible gap"
+    )
+    timestamps: list[CheckpointTimestampRead]

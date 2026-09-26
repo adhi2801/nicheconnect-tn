@@ -10,6 +10,7 @@ from datetime import datetime
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import update
 
 import app.db.models
 from app.core.rate_limit import limiter
@@ -17,6 +18,7 @@ from app.db.session import get_db
 from app.main import app
 from app.modules.auth.dependencies import get_now
 from app.modules.auth.models.brand import Brand
+from app.modules.auth.models.creator import Creator
 from app.modules.auth.tokens import create_access_token
 from app.modules.matching import embedder, service
 from tests.factories import (
@@ -35,6 +37,15 @@ class FixedEncoder:
 
     def encode(self, sentences, **kwargs):
         return [[0.5] * embedder.EXPECTED_DIMENSIONS for _ in sentences]
+
+
+@pytest.fixture(autouse=True)
+def only_this_tests_creators(db) -> None:
+    """Matching considers every published creator, so a laptop's seeded
+    sample data (about half of it published) would land in these results.
+    Hidden inside the test's transaction, which is rolled back afterwards, so
+    the sample data survives."""
+    db.execute(update(Creator).values(passport_published_at=None))
 
 
 @pytest.fixture

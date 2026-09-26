@@ -64,3 +64,29 @@ class OtpVerifyLimitReached(DomainError):
     status_code = HTTPStatus.TOO_MANY_REQUESTS
     code = "otp_verify_limit_reached"
     title = "Too many code attempts for this number. Please try again later"
+
+
+class ChannelNotFound(DomainError):
+    status_code = HTTPStatus.NOT_FOUND
+    code = "channel_not_found"
+    title = "You have not added a channel for that platform"
+
+
+class PackageNotFound(DomainError):
+    # 404 rather than 403 for somebody else's package: 403 would confirm the
+    # id exists, which would let anyone walk the table.
+    status_code = HTTPStatus.NOT_FOUND
+    code = "package_not_found"
+    title = "No such package"
+
+
+class PackageLimitReached(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "package_limit_reached"
+    title = "You have as many packages as we allow"
+
+
+class ProfileUrlDoesNotMatchPlatform(DomainError):
+    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
+    code = "profile_url_platform_mismatch"
+    title = "That link is not on the platform you chose"

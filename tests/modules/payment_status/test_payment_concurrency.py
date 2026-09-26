@@ -39,6 +39,7 @@ from app.modules.payment_status.exceptions import (
 )
 from app.modules.payment_status.models import PaymentStatus
 from tests.factories import build_brand, build_campaign, build_creator, create_account
+from tests.record_cleanup import remove_deal_records
 
 NOW = datetime(2026, 9, 21, 9, 0, tzinfo=UTC)
 APPROVED_ON = date(2026, 9, 21)
@@ -140,6 +141,9 @@ def payment() -> Iterator[PaymentStatus]:
         yield payment_id
     finally:
         with SessionLocal() as session:
+            # The deal record refuses deletion (D-057), so it goes first,
+            # through the one test-only bypass.
+            remove_deal_records(session, [memo_id])
             session.execute(
                 delete(DisputeEvent).where(
                     DisputeEvent.dispute_id.in_(

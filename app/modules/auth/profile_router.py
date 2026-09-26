@@ -221,8 +221,10 @@ def update_creator_profile(
     description=(
         "Turns on the public page at `/api/v1/creators/by-handle/{handle}`, "
         "readable by anyone with the link and no login. It shows your "
-        "display name, handle, city, niches, languages, bio and the month "
-        "you joined — never your phone number or email. "
+        "display name, handle, city, niches, languages, bio, the month "
+        "you joined and links to your channels — never your follower "
+        "counts, phone number or email. Your prices appear only if you "
+        "also publish your rate card. "
         "Publishing again keeps the date you first chose, and you can turn "
         "it off at any time."
     ),

@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.modules.auth.schemas import PublicCreatorRead
+from app.modules.auth.schemas import PublicCreatorSummary
 
 
 class MatchReasonsRead(BaseModel):
@@ -45,7 +45,7 @@ class MatchReasonsRead(BaseModel):
 class CreatorMatchRead(BaseModel):
     """One suggested creator, and why."""
 
-    creator: PublicCreatorRead
+    creator: PublicCreatorSummary
     reasons: MatchReasonsRead
 
 

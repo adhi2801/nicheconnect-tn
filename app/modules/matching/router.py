@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
-from app.modules.auth.schemas import PublicCreatorRead
+from app.modules.auth.schemas import PublicCreatorSummary
 from app.modules.campaigns.dependencies import OwnedCampaign
 from app.modules.matching import service
 from app.modules.matching.schemas import (
@@ -69,7 +69,7 @@ def list_matches_for_campaign(
         ranked_by_similarity=bool(matches) and matches[0].reasons.similarity is not None,
         matches=[
             CreatorMatchRead(
-                creator=PublicCreatorRead(
+                creator=PublicCreatorSummary(
                     id=match.creator.id,
                     handle=match.creator.handle,
                     display_name=match.creator.display_name,
