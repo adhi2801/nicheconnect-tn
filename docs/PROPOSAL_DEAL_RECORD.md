@@ -1,6 +1,7 @@
 # Proposal: a deal record nobody can quietly rewrite (C1)
 
-**Status: proposed, not built.** Written 26 September 2026 on
+**Status: step 1 approved and built (D-057), 26 September 2026.** Step 2
+(section 4) is still a proposal. Written on
 `feature/deal-record`. It stacks on `feature/fair-rate-guidance`, because the
 rate card migration has not merged yet and only one migration may be in
 flight at a time (`CLAUDE.md` section 1).

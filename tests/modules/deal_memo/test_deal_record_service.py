@@ -28,13 +28,13 @@ def test_the_v1_fingerprint_is_exactly_what_the_documentation_says():
         "sequence": 1,
         "kind": "memo_sent",
         "actor_role": "system",
-        "actor_account_id": None,
+        "actor_account_sha256": None,
         "occurred_at": "2026-09-26T06:30:00.000000Z",
         "recorded_at": "2026-09-26T06:30:00.000000Z",
         "facts": {"fee_amount_paise": 800000, "terms_sha256": "ab"},
     }
     by_hand = (
-        b'{"actor_account_id":null,"actor_role":"system",'
+        b'{"actor_account_sha256":null,"actor_role":"system",'
         b'"deal_memo_id":"0192f7a0-0000-7000-8000-000000000001",'
         b'"facts":{"fee_amount_paise":800000,"terms_sha256":"ab"},'
         b'"kind":"memo_sent","occurred_at":"2026-09-26T06:30:00.000000Z",'
@@ -271,3 +271,13 @@ def test_terms_are_not_judged_before_acceptance(db):
     result = record_service.verify(memo, record_service.entries_for(db, memo.id))
 
     assert result.terms_unchanged_since_accepted is None
+
+
+def test_the_actor_is_sealed_as_a_fingerprint_of_the_account_id():
+    """So each side can check every seal without being shown the other's id."""
+    account_id = uuid.UUID("0192f7a0-0000-7000-8000-00000000abcd")
+
+    assert record_service.actor_fingerprint(account_id) == hashlib.sha256(
+        b"0192f7a0-0000-7000-8000-00000000abcd"
+    ).hexdigest()
+    assert record_service.actor_fingerprint(None) is None

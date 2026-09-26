@@ -1816,6 +1816,158 @@
         "title": "CreatorProfileUpdate",
         "type": "object"
       },
+      "DealRecordEntryRead": {
+        "description": "One sealed step. `facts` holds figures and fingerprints, never typed text.",
+        "properties": {
+          "actor_account_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SHA-256 of the acting account's id, part of the seal. Hash your own account id to recognise your entries; null for `system`",
+            "title": "Actor Account Sha256"
+          },
+          "actor_role": {
+            "description": "`system` is the deal's own rules acting, such as approval at the deadline",
+            "enum": [
+              "brand",
+              "creator",
+              "system"
+            ],
+            "title": "Actor Role",
+            "type": "string"
+          },
+          "facts": {
+            "additionalProperties": true,
+            "title": "Facts",
+            "type": "object"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "occurred_at": {
+            "description": "When it took effect",
+            "examples": [
+              "2026-09-26T06:30:00.000000Z"
+            ],
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "previous_seal": {
+            "description": "Hex SHA-256 of the entry before; zeros for the first",
+            "title": "Previous Seal",
+            "type": "string"
+          },
+          "recorded_at": {
+            "description": "When we wrote it down",
+            "examples": [
+              "2026-09-26T06:30:00.000000Z"
+            ],
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "seal": {
+            "description": "Hex SHA-256 sealing this entry to the one before",
+            "title": "Seal",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sequence",
+          "kind",
+          "actor_role",
+          "actor_account_sha256",
+          "occurred_at",
+          "recorded_at",
+          "facts",
+          "previous_seal",
+          "seal"
+        ],
+        "title": "DealRecordEntryRead",
+        "type": "object"
+      },
+      "DealRecordRead": {
+        "description": "A deal's whole record, and whether it still holds together.\n\n`intact` is our own check. The point of the seals is that you need not\ntake our word for it: `docs/DEAL_RECORD_VERIFY.md` shows how to check them\nyourself, and saving `latest_seal` lets you catch a rewrite later.",
+        "properties": {
+          "algorithm": {
+            "const": "deal-record/v1",
+            "default": "deal-record/v1",
+            "title": "Algorithm",
+            "type": "string"
+          },
+          "deal_memo_id": {
+            "format": "uuid",
+            "title": "Deal Memo Id",
+            "type": "string"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/DealRecordEntryRead"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "first_broken_sequence": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The first entry that does not match, if any",
+            "title": "First Broken Sequence"
+          },
+          "intact": {
+            "title": "Intact",
+            "type": "boolean"
+          },
+          "latest_seal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Save this to detect a later rewrite",
+            "title": "Latest Seal"
+          },
+          "terms_unchanged_since_accepted": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null until accepted; then whether today's terms are the accepted ones",
+            "title": "Terms Unchanged Since Accepted"
+          }
+        },
+        "required": [
+          "deal_memo_id",
+          "intact",
+          "first_broken_sequence",
+          "terms_unchanged_since_accepted",
+          "latest_seal",
+          "entries"
+        ],
+        "title": "DealRecordRead",
+        "type": "object"
+      },
       "DisputeClose": {
         "additionalProperties": false,
         "description": "How it ended. None of these say who was right.",
@@ -11619,6 +11771,91 @@
         "summary": "Ask the creator to fix the proof",
         "tags": [
           "proof"
+        ]
+      }
+    },
+    "/api/v1/deal-memos/{memo_id}/record": {
+      "get": {
+        "description": "Every step of this deal since it was first sent, each sealed with the SHA-256 of the one before, so a changed or missing entry shows. Typed text (terms, links, notes, payment references) appears only as a fingerprint. `intact` is our check; `docs/DEAL_RECORD_VERIFY.md` shows how to make your own, and keeping `latest_seal` lets you catch a rewrite later. The brand and the creator of this deal only.",
+        "operationId": "read_deal_record_api_v1_deal_memos__memo_id__record_get",
+        "parameters": [
+          {
+            "description": "The memo's id",
+            "in": "path",
+            "name": "memo_id",
+            "required": true,
+            "schema": {
+              "description": "The memo's id",
+              "format": "uuid",
+              "title": "Memo Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealRecordRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such memo, or not yours"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The memo id is not a valid id"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The deal's sealed record",
+        "tags": [
+          "deal record"
         ]
       }
     },

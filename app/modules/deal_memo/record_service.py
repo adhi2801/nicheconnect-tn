@@ -9,8 +9,13 @@ chain, so it is frozen; a change would be version 2, chosen per entry.
 
     entry_hash = SHA-256( b"deal-record/v1\\n" + previous_hash + canonical(body) )
 
-    body = {deal_memo_id, sequence, kind, actor_role, actor_account_id,
+    body = {deal_memo_id, sequence, kind, actor_role, actor_account_sha256,
             occurred_at, recorded_at, facts}
+
+`actor_account_sha256` is the SHA-256 of the acting account's id, not the id
+itself: each side can check the seals without being shown the other side's
+account id, and can recognise their own entries by hashing their own id.
+A UUID has 122 random bits, so the fingerprint cannot be worked backwards.
 
 `canonical` is JSON with keys sorted, no spaces, UTF-8, whole numbers only
 (a float is refused), and times in UTC to the microsecond ending in `Z`. For
@@ -34,6 +39,7 @@ from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.record_models import GENESIS_HASH, DealRecordEntry
+from app.modules.payment_status.models import PaymentStatus
 
 DOMAIN = b"deal-record/v1\n"
 
@@ -102,15 +108,18 @@ def terms_fingerprint(memo: DealMemo) -> str:
     return hashlib.sha256(canonical(terms)).hexdigest()
 
 
+def actor_fingerprint(account_id: uuid.UUID | None) -> str | None:
+    """SHA-256 of the account id as text, or None for the system."""
+    return fingerprint(str(account_id)) if account_id else None
+
+
 def entry_body(entry: DealRecordEntry) -> dict[str, Any]:
     return {
         "deal_memo_id": str(entry.deal_memo_id),
         "sequence": entry.sequence,
         "kind": entry.kind,
         "actor_role": entry.actor_role,
-        "actor_account_id": (
-            str(entry.actor_account_id) if entry.actor_account_id else None
-        ),
+        "actor_account_sha256": actor_fingerprint(entry.actor_account_id),
         "occurred_at": timestamp(entry.occurred_at),
         "recorded_at": timestamp(entry.recorded_at),
         "facts": entry.facts,
@@ -224,6 +233,30 @@ def append(
         now=now,
         facts=facts or {},
     )
+
+
+def append_for_payment(
+    db: Session, payment_id: uuid.UUID, **entry: Any
+) -> DealRecordEntry:
+    """`append` for callers that hold a payment rather than its deal."""
+    memo = db.scalars(
+        select(DealMemo)
+        .join(PaymentStatus, PaymentStatus.deal_memo_id == DealMemo.id)
+        .where(PaymentStatus.id == payment_id)
+    ).one()
+    return append(db, memo, **entry)
+
+
+def terms_facts(memo: DealMemo) -> dict[str, Any]:
+    """What a sent or accepted memo puts on the record: the terms' fingerprint,
+    and the two terms people argue about most, in plain figures."""
+    return {
+        "terms_sha256": terms_fingerprint(memo),
+        "fee_amount_paise": memo.fee_amount_paise,
+        "content_due_on": memo.content_due_on.isoformat()
+        if memo.content_due_on
+        else None,
+    }
 
 
 # --- reading and checking ---------------------------------------------------
