@@ -21,6 +21,10 @@ from app.core.taxonomy import CURRENCY, LANGUAGES, MAX_NICHES, Language, Niche
 from app.modules.auth.models.account import PHONE_PATTERN
 from app.modules.auth.models.creator import BIO_MAX_LENGTH, HANDLE_PATTERN
 
+# The media kit nests the delivery record as its own module defines it, so
+# the two can never describe the same numbers differently.
+from app.modules.deal_memo.schemas import CreatorDeliveryRead
+
 # Separators people commonly type: "+91 98765 43210", "98765-43210", "(98765) 43210".
 _PHONE_SEPARATORS = re.compile(r"[\s\-()]")
 _TEN_DIGIT_MOBILE = re.compile(r"^[6-9][0-9]{9}$")
@@ -612,3 +616,32 @@ class PublicPackageRead(BaseModel):
 
 # PublicCreatorRead is defined above the channel and package shapes it lists.
 PublicCreatorRead.model_rebuild()
+
+
+# --- the media kit (D-055) -------------------------------------------------
+
+
+class MediaKitRead(BaseModel):
+    """Everything a brand weighs on one screen, behind a login.
+
+    Unlike the public Passport it carries the self-reported numbers, each
+    dated, and every price whether or not the creator published them: those
+    switches decide what strangers see, not signed-in brands. Contact details
+    are not here either (D-011); a brand reaches a creator through a campaign.
+    """
+
+    creator_id: uuid.UUID
+    handle: str
+    display_name: str
+    city: str
+    niches: list[str]
+    languages: list[str]
+    bio: str | None
+    member_since: str = Field(
+        description="Month the creator joined, e.g. 2026-09", examples=["2026-09"]
+    )
+    channels: list[ChannelRead] = Field(
+        description="Self-reported, each with the date it was stated. Never verified"
+    )
+    packages: list[PackageRead] = Field(description="In the creator's order")
+    delivery_record: CreatorDeliveryRead

@@ -2363,6 +2363,95 @@
         "title": "MarkedRead",
         "type": "object"
       },
+      "MediaKitRead": {
+        "description": "Everything a brand weighs on one screen, behind a login.\n\nUnlike the public Passport it carries the self-reported numbers, each\ndated, and every price whether or not the creator published them: those\nswitches decide what strangers see, not signed-in brands. Contact details\nare not here either (D-011); a brand reaches a creator through a campaign.",
+        "properties": {
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bio"
+          },
+          "channels": {
+            "description": "Self-reported, each with the date it was stated. Never verified",
+            "items": {
+              "$ref": "#/components/schemas/ChannelRead"
+            },
+            "title": "Channels",
+            "type": "array"
+          },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "creator_id": {
+            "format": "uuid",
+            "title": "Creator Id",
+            "type": "string"
+          },
+          "delivery_record": {
+            "$ref": "#/components/schemas/CreatorDeliveryRead"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "handle": {
+            "title": "Handle",
+            "type": "string"
+          },
+          "languages": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Languages",
+            "type": "array"
+          },
+          "member_since": {
+            "description": "Month the creator joined, e.g. 2026-09",
+            "examples": [
+              "2026-09"
+            ],
+            "title": "Member Since",
+            "type": "string"
+          },
+          "niches": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Niches",
+            "type": "array"
+          },
+          "packages": {
+            "description": "In the creator's order",
+            "items": {
+              "$ref": "#/components/schemas/PackageRead"
+            },
+            "title": "Packages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "creator_id",
+          "handle",
+          "display_name",
+          "city",
+          "niches",
+          "languages",
+          "bio",
+          "member_since",
+          "channels",
+          "packages",
+          "delivery_record"
+        ],
+        "title": "MediaKitRead",
+        "type": "object"
+      },
       "MemoCreate": {
         "additionalProperties": false,
         "description": "What a brand sends to draft a memo for an accepted application.",
@@ -8879,6 +8968,102 @@
         "summary": "How this creator delivers",
         "tags": [
           "reliability"
+        ]
+      }
+    },
+    "/api/v1/creators/{creator_id}/media-kit": {
+      "get": {
+        "description": "Everything a brand needs to weigh a creator, on one screen: the profile, each channel with its follower count and average views, every package with its price, and the delivery record. Channel numbers are the creator's own claim, dated by `figures_as_of`, and must be shown as self-reported. Prices appear here whether or not the creator published them on their public page. Readable by any brand and by the creator themself, never by another creator.",
+        "operationId": "read_media_kit_api_v1_creators__creator_id__media_kit_get",
+        "parameters": [
+          {
+            "description": "The creator's id",
+            "in": "path",
+            "name": "creator_id",
+            "required": true,
+            "schema": {
+              "description": "The creator's id",
+              "format": "uuid",
+              "title": "Creator Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaKitRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only brands, or the creator themself, can read this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such creator"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The creator id is not a valid id"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "A creator's media kit",
+        "tags": [
+          "media kit"
         ]
       }
     },

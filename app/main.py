@@ -17,6 +17,7 @@ from app.core.unexpected_error import UnexpectedErrorMiddleware
 from app.modules.auth.attention_router import router as attention_router
 from app.modules.auth.dependencies import idempotency_identity
 from app.modules.auth.export_router import router as export_router
+from app.modules.auth.media_kit_router import router as media_kit_router
 from app.modules.auth.profile_router import brand_router, creator_router
 from app.modules.auth.public_router import router as public_router
 from app.modules.auth.rate_card_router import router as rate_card_router
@@ -84,6 +85,7 @@ app.include_router(attention_router)
 # Public: the Creator Passport, readable without logging in.
 app.include_router(public_router)
 app.include_router(rate_card_router)
+app.include_router(media_kit_router)
 app.include_router(campaigns_router)
 app.include_router(applications_router)
 app.include_router(notifications_router)

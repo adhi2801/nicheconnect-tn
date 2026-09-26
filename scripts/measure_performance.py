@@ -128,14 +128,23 @@ def main() -> int:
             ),
             {"brand_id": brand.id},
         ).first()
+        # The largest media kit and public page: the most packages, published.
+        fullest = db.execute(
+            text(
+                "SELECT c.id, c.handle FROM creator c "
+                "LEFT JOIN creator_package p ON p.creator_id = c.id "
+                "WHERE c.passport_published_at IS NOT NULL "
+                "GROUP BY c.id ORDER BY count(p.id) DESC LIMIT 1"
+            )
+        ).first()
         counts = db.execute(
             text(
                 "SELECT (SELECT count(*) FROM campaign), (SELECT count(*) FROM application),"
-                " (SELECT count(*) FROM creator)"
+                " (SELECT count(*) FROM creator), (SELECT count(*) FROM creator_package)"
             )
         ).first()
 
-    if brand is None or creator is None or campaign is None:
+    if brand is None or creator is None or campaign is None or fullest is None:
         print(
             "No sample data. Run: python scripts/seed_dev_data.py --reset",
             file=sys.stderr,
@@ -218,11 +227,32 @@ def main() -> int:
             args.runs,
             READ_BUDGET_MS,
         ),
+        measure(
+            client,
+            "GET /creators/{id}/media-kit",
+            "GET",
+            f"/api/v1/creators/{fullest.id}/media-kit",
+            brand_headers,
+            args.runs,
+            READ_BUDGET_MS,
+        ),
+        measure(
+            client,
+            "GET /creators/by-handle/{handle}",
+            "GET",
+            f"/api/v1/creators/by-handle/{fullest.handle}",
+            {},
+            args.runs,
+            READ_BUDGET_MS,
+        ),
     ]
     app.dependency_overrides.clear()
     limiter.reset()
 
-    print(f"Rows: {counts[0]} campaigns, {counts[1]} applications, {counts[2]} creators")
+    print(
+        f"Rows: {counts[0]} campaigns, {counts[1]} applications, "
+        f"{counts[2]} creators, {counts[3]} packages"
+    )
     print(f"Runs per endpoint: {args.runs}\n")
     print(
         f"{'endpoint':42} {'p50 ms':>8} {'p95 ms':>8} {'max ms':>8} {'budget':>8}  verdict"
