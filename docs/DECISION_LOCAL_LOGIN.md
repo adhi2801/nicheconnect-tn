@@ -1,7 +1,6 @@
 # Decision needed: how a developer logs in on a laptop
 
-**Status: needs Adhi's decision.** Written 26 September 2026. Nothing here is
-in the code.
+**Status: decided (D-059): option A, built.** Written 26 September 2026.
 
 ## The problem
 

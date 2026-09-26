@@ -46,9 +46,15 @@ that already holds sample data.
 ```bash
 python scripts/seed_dev_data.py --reset          # realistic Tamil Nadu data
 python scripts/measure_performance.py --explain  # p95 per list endpoint + query plans
+python scripts/dev_login.py +919000000001        # an access token for a sample account
 ```
 
-Both refuse to run unless `ENVIRONMENT=local`. Sample phones are
+All three refuse to run unless `ENVIRONMENT=local`. Login codes are never
+logged, so `dev_login.py` is how to call the API as a signed-in brand or
+creator on a laptop: it prints only the token, so
+`$token = python scripts\dev_login.py +919000000001` captures it (D-059).
+
+Sample phones are
 `+9190000xxxxx` and emails end in `@example.com`, so no sample row can ever
 be mistaken for a real person. `--reset` removes the previous sample data.
 

@@ -119,6 +119,7 @@ uvicorn app.main:app --reload                 # http://localhost:8000/healthz
 alembic revision --autogenerate -m "message"
 alembic upgrade head
 pytest
+python scripts\dev_login.py +919000000001     # access token for a sample account (local only)
 ```
 
 ---
