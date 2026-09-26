@@ -1523,6 +1523,49 @@
         "title": "CreatorDeliveryRead",
         "type": "object"
       },
+      "CreatorMatchRead": {
+        "description": "One suggested creator, and why.",
+        "properties": {
+          "creator": {
+            "$ref": "#/components/schemas/PublicCreatorSummary"
+          },
+          "reasons": {
+            "$ref": "#/components/schemas/MatchReasonsRead"
+          }
+        },
+        "required": [
+          "creator",
+          "reasons"
+        ],
+        "title": "CreatorMatchRead",
+        "type": "object"
+      },
+      "CreatorMatchesRead": {
+        "description": "The whole answer, with enough context to read the list honestly.",
+        "properties": {
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/CreatorMatchRead"
+            },
+            "title": "Matches",
+            "type": "array"
+          },
+          "ranked_by_similarity": {
+            "description": "False when the campaign has no embedding yet, so the order comes from the facts alone. Say so in the interface rather than showing an unranked list as if it were ranked",
+            "examples": [
+              true
+            ],
+            "title": "Ranked By Similarity",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "matches",
+          "ranked_by_similarity"
+        ],
+        "title": "CreatorMatchesRead",
+        "type": "object"
+      },
       "CreatorProfileCreate": {
         "additionalProperties": false,
         "properties": {
@@ -2361,6 +2404,64 @@
           "marked_read"
         ],
         "title": "MarkedRead",
+        "type": "object"
+      },
+      "MatchReasonsRead": {
+        "description": "Why this creator was returned, in facts a brand can check.\n\nA score on its own is not an explanation: a brand has no way to know\nwhether 0.83 is good. These are the things that actually decided the\nresult, and all but one of them are facts rather than a model's opinion.",
+        "properties": {
+          "accepted_deals": {
+            "description": "How many deal memos this creator has accepted, with any brand. Accepted, not delivered: it says they have worked before, not that the work went well",
+            "examples": [
+              3
+            ],
+            "title": "Accepted Deals",
+            "type": "integer"
+          },
+          "city": {
+            "description": "The creator's city, which is one the campaign named",
+            "examples": [
+              "Madurai"
+            ],
+            "title": "City",
+            "type": "string"
+          },
+          "shared_niches": {
+            "description": "Niches this creator and the campaign have in common",
+            "examples": [
+              [
+                "food",
+                "travel"
+              ]
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Shared Niches",
+            "type": "array"
+          },
+          "similarity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How close the creator's profile reads to the campaign brief, from 0 to 1. **Null when the campaign has not been indexed yet**, in which case the results are ordered by the facts above and are still worth reading",
+            "examples": [
+              0.83
+            ],
+            "title": "Similarity"
+          }
+        },
+        "required": [
+          "shared_niches",
+          "city",
+          "accepted_deals",
+          "similarity"
+        ],
+        "title": "MatchReasonsRead",
         "type": "object"
       },
       "MediaKitRead": {
@@ -3841,7 +3942,7 @@
         "type": "object"
       },
       "PublicCreatorRead": {
-        "description": "A creator profile as the open internet sees it.\n\nDeliberately narrow: this response is readable by anyone, so it carries\nonly what a creator would put on a public page. Contact details are not\nmerely omitted here, they are not in this table at all (D-011), and the\naccount id stays private so a public page cannot be linked to a login.",
+        "description": "The public Creator Passport: the profile, links, and published prices.",
         "properties": {
           "bio": {
             "anyOf": [
@@ -3923,6 +4024,73 @@
           "packages"
         ],
         "title": "PublicCreatorRead",
+        "type": "object"
+      },
+      "PublicCreatorSummary": {
+        "description": "A creator's public profile facts, and nothing else.\n\nDeliberately narrow: it carries only what a creator would put on a public\npage. Contact details are not merely omitted here, they are not in this\ntable at all (D-011), and the account id stays private so a public page\ncannot be linked to a login. Matching lists creators in this shape; the\nPassport below adds channels and prices.",
+        "properties": {
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bio"
+          },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "handle": {
+            "title": "Handle",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "languages": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Languages",
+            "type": "array"
+          },
+          "member_since": {
+            "description": "Month the creator joined, e.g. 2026-09",
+            "examples": [
+              "2026-09"
+            ],
+            "title": "Member Since",
+            "type": "string"
+          },
+          "niches": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Niches",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "handle",
+          "display_name",
+          "city",
+          "niches",
+          "languages",
+          "bio",
+          "member_since"
+        ],
+        "title": "PublicCreatorSummary",
         "type": "object"
       },
       "PublicPackageRead": {
@@ -7126,6 +7294,127 @@
         "summary": "Close a campaign",
         "tags": [
           "campaigns"
+        ]
+      }
+    },
+    "/api/v1/campaigns/{campaign_id}/matches": {
+      "get": {
+        "description": "Creators worth approaching for one of the signed-in brand's own campaigns, best first, each with the reasons it was suggested.\n\nOnly creators in a city the campaign named, in at least one of its niches, **and who have published their Creator Passport**. A creator who has not published is not discoverable here; that is their choice to make and it is not overridden by a brand searching (D-036).\n\nIf the campaign has not been indexed yet, `ranked_by_similarity` is false and `similarity` is null on every row: the list is ordered by the facts alone and is still worth reading.",
+        "operationId": "list_matches_for_campaign_api_v1_campaigns__campaign_id__matches_get",
+        "parameters": [
+          {
+            "description": "The campaign's id",
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "description": "The campaign's id",
+              "format": "uuid",
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "How many creators to suggest",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "How many creators to suggest",
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatorMatchesRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No token, or the token is not valid"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only a brand may ask for matches"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such campaign, or it is not yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The brand profile has not been created yet"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A query parameter is invalid"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Creators who suit this campaign",
+        "tags": [
+          "matching"
         ]
       }
     },

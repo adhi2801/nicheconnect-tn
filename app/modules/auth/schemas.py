@@ -307,13 +307,14 @@ class CreatorProfileRead(BaseModel):
 # --- the public Creator Passport -----------------------------------------
 
 
-class PublicCreatorRead(BaseModel):
-    """A creator profile as the open internet sees it.
+class PublicCreatorSummary(BaseModel):
+    """A creator's public profile facts, and nothing else.
 
-    Deliberately narrow: this response is readable by anyone, so it carries
-    only what a creator would put on a public page. Contact details are not
-    merely omitted here, they are not in this table at all (D-011), and the
-    account id stays private so a public page cannot be linked to a login.
+    Deliberately narrow: it carries only what a creator would put on a public
+    page. Contact details are not merely omitted here, they are not in this
+    table at all (D-011), and the account id stays private so a public page
+    cannot be linked to a login. Matching lists creators in this shape; the
+    Passport below adds channels and prices.
     """
 
     model_config = ConfigDict(from_attributes=True)
@@ -328,6 +329,11 @@ class PublicCreatorRead(BaseModel):
     member_since: str = Field(
         description="Month the creator joined, e.g. 2026-09", examples=["2026-09"]
     )
+
+
+class PublicCreatorRead(PublicCreatorSummary):
+    """The public Creator Passport: the profile, links, and published prices."""
+
     channels: "list[PublicChannelRead]" = Field(
         description="Links to the creator's channels. Never a follower count (D-042)"
     )
