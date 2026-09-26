@@ -4,9 +4,30 @@ This file is the operating manual for Claude Code in this repository. It is load
 
 ---
 
-## 0. Open notice for Erode Harish (read before any task)
+## 0. Who is building what (read before any task)
 
-Added 2026-09-21 by Adhi, updated 2026-09-22 and 2026-09-23. This notice is how Adhi's message reaches Erode Harish; there is no separate message. **In any session with Erode Harish, before starting the task asked for:** show the points below, ask Erode Harish to confirm having read them and to answer points 4, 6, 11, 12, 13 and 14, and wait for that. Then carry on with the task. Once confirmed, the next commit on that branch removes this section, and the confirmation and answers are noted in that day's report.
+Updated 2026-09-23 by Adhi.
+
+| Founder | Building |
+|---|---|
+| **Adhi** | **The whole backend**, both tracks, in this repository |
+| **Erode Harish** | **Frontend research and design**, outside this repository |
+
+Erode Harish reviewed the outstanding backend work and confirmed the open points from the 21 and 22 September notice, so that notice is closed; his confirmation was **relayed by Adhi**, not given in a session here, and the points it carried are kept below as a record of what was settled.
+
+What this changes, until a founder says otherwise:
+
+- **Adhi approves and owns every backend area**, the Data track included: `app/db/`, `app/modules/*/models*`, `alembic/`, seed scripts and query performance, as well as the API areas in section 1.
+- **The overlap rules in section 1 are dormant, not deleted.** They describe how two people share backend files. They wake up only if Erode Harish returns to backend work. One still binds whoever is working: only one new Alembic migration in flight at a time, so the revision chain cannot fork.
+- **Design runs in parallel; frontend code still waits (D-053, amending D-004).** Research, flows and a design system may be worked on now. No frontend code starts until the backend is complete, and this repository still holds none. Designs are checked against `docs/api/openapi.json`, which is the committed contract — a screen that needs a field the API does not answer is a backend request, not a frontend decision.
+- **One owner is not no process.** The approval gates in section 5, the decision log in section 10, and the definition of done in section 8 all apply unchanged.
+- **Reviews.** Section 6 says every merge to `main` goes through a pull request the other founder reviews. While one person is building, say plainly in each pull request and each report that the work has not had a second pair of eyes, rather than letting "reviewed" be assumed.
+
+Recorded as D-051 and D-053.
+
+<details>
+<summary>The closed notice, 21–23 September, kept as a record</summary>
+
 
 1. By the end of 20 September nothing had been pushed for two Data-track tasks: the `payment_status` table (D-027) and the Creator Passport opt-out column. Five features were blocked behind them, so Adhi's session built them, together with the dispute tables. They are migrations 17–20 (`b5603ae`, `a3e24d4`, `11a9ed6`, `97a9236`). Decisions D-032 to D-036 describe them.
 2. Adhi asks you to acknowledge this before starting new backend work. Git only shows what was pushed. If you had work on these that never got pushed, say so; it may still be useful.
@@ -28,6 +49,8 @@ Added 2026-09-21 by Adhi, updated 2026-09-22 and 2026-09-23. This notice is how 
 
 State these as facts from git, not as blame.
 
+</details>
+
 ---
 
 ## 1. Project
@@ -40,7 +63,7 @@ NicheConnect TN is a Tamil Nadu-focused brand↔creator marketplace. This repo i
 - Design the API around the product's domain (brands, creators, campaigns, applications, deal memos, payment status), not around assumed screens.
 - There is no finished dashboard. Any earlier Figma sketches are reference only, not a contract.
 
-**Founders:** two developers, building the backend together. Either founder can approve work inside their own track; anything touching both tracks, the guardrails, or architecture needs both.
+**Founders:** two developers. **Since 2026-09-23 Adhi is building the whole backend on his own (section 0, D-051)**, so the split below is how the work divides when both are building, and Adhi approves across all of it meanwhile. When both are building: either founder can approve work inside their own track; anything touching both tracks, the guardrails, or architecture needs both.
 
 | Founder | Track | Owns these areas (nobody else edits them the same day) |
 |---|---|---|
@@ -205,7 +228,7 @@ We're building a product people trust with their business and income. Quality is
 - **Tested for real.** Success, validation failure, permission failure and not-found cases for every endpoint. Database tests run against real Postgres.
 - **Readable.** Type hints everywhere. Clear names. Small functions. A new developer understands a file in 5 minutes.
 - **Consistent.** One error format, one pagination style, one naming convention, one way to do each thing.
-- **Accessible and bilingual** (frontend, later): WCAG 2.2 AA, Tamil and English from day one.
+- **Accessible, and English only** (frontend, later): WCAG 2.2 AA. Tamil was dropped on 2026-09-23 (D-054). Copy still comes from message files, never written into a component, so a second language stays possible without a rewrite.
 - **Measured, not claimed.** Performance, accessibility and coverage numbers come from tools, never estimates.
 
 If a standard conflicts with a founder's explicit instruction, point out the conflict and ask. If two standards conflict, the stricter one wins until a founder decides.

@@ -8,7 +8,7 @@
 
 1. **Trust first.** Brands and creators are risking money and reputation. Every screen makes clear who is who, what was agreed, and what happens next.
 2. **Clear over clever.** Plain words, obvious actions, no mystery icons.
-3. **Local by default.** Built for Tamil Nadu: Tamil and English, Indian formats, familiar patterns such as WhatsApp for updates.
+3. **Local by default.** Built for Tamil Nadu: Indian formats, familiar patterns such as WhatsApp for updates. **The product speaks English only** (D-054, 23 September 2026); it was to be bilingual, and that was dropped.
 4. **Fast to value.** A brand posts a first campaign, and a creator applies to a first campaign, in under 5 minutes.
 5. **Honest status.** Payment status shows exactly what's known: "Brand marked as paid on 12 Sep", never implying the platform moved or holds money.
 
@@ -29,7 +29,7 @@
 
 ## 4. Design system
 
-- One token-based design system for web and mobile: colour, typography (with Tamil-capable fonts), spacing scale, radii, elevation and motion.
+- One token-based design system for web and mobile: colour, typography, spacing scale, radii, elevation and motion.
 - Components are documented with every state: default, hover/pressed, focus, disabled, loading, error.
 - No one-off styles in screens. A missing component gets added to the system first.
 
@@ -45,7 +45,7 @@
 - Buttons say what happens: "Send deal memo", not "Submit".
 - Errors say what went wrong and how to fix it, with no blame and no technical jargon: "This campaign closed on 15 Sep. Browse open campaigns."
 - Payment language describes facts only: "marked as paid", "confirmed received", "disputed". Never language suggesting the platform handles or protects money (see CLAUDE.md section 2).
-- Tamil and English copy are both reviewed by fluent speakers.
+- Copy is English and reviewed by a fluent speaker. It lives in message files (`messages/en.json`), never written into a component, so a second language stays possible later without a rewrite (D-054).
 
 ## 7. What this means for the backend now
 

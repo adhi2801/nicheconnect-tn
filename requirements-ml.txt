@@ -1,0 +1,35 @@
+# The embedding stack (D-052). Deliberately NOT in requirements.txt.
+#
+# Install it with:
+#
+#     pip install -r requirements-ml.txt --extra-index-url https://download.pytorch.org/whl/cpu
+#
+# THE INDEX MATTERS. torch on Linux declares nvidia-cudnn, nvidia-nccl,
+# nvidia-nvshmem, nvidia-cusparselt, triton and the CUDA toolkit as hard
+# dependencies. A plain `pip install sentence-transformers` therefore
+# downloads about 2.0 GB, roughly 1.4 GB of it CUDA, for a workload that will
+# never touch a GPU. The `+cpu` build carries none of it. Measured
+# 23 September 2026; the figures are in docs/PROPOSAL_MATCHING.md.
+#
+# Kept separate from requirements.txt for three reasons:
+#
+# 1. The API image does not need it. Embedding is not on the request path
+#    (see app/modules/matching/embedder.py — one embedding takes longer than
+#    the whole 500 ms write budget), so whatever runs it can be its own job.
+# 2. pip-audit runs --strict over requirements.txt and fails the build on ANY
+#    advisory. torch's tree has a far larger advisory surface than the rest of
+#    this project combined, and a red build nobody can fix quickly teaches
+#    people to ignore the audit.
+# 3. It reintroduces `httpx`, which D-047 deliberately replaced with `httpx2`,
+#    as a transitive dependency of huggingface-hub. Both coexist today and the
+#    suite passes, but that belongs in a file where it is visible.
+#
+# The +cpu build is pinned exactly: without it, a fresh install resolves to
+# the default PyPI wheel and the 2 GB comes back silently.
+torch==2.14.0+cpu
+sentence-transformers==6.1.0
+
+# The model itself is NOT a dependency: it is a 1,192 MB file the application
+# downloads and caches on first use (Qwen/Qwen3-Embedding-0.6B). In a
+# deployment it belongs baked into the image or on a mounted volume, never
+# fetched at start-up.
