@@ -9,55 +9,71 @@ is where they live.
 
 **Last measured:** 26 September 2026, on PostgreSQL 18.6 with pgvector 0.8.6
 (D-049), seeded with 10 brands, 200 creators, 150 campaigns, 785
-applications and 958 rate card packages. 100 runs per read; for writes, 30
-whole deals taken from a new campaign to a confirmed payment. On a developer
-laptop under Docker Desktop for Windows.
+applications and 958 rate card packages. 100 runs per read. For writes: 30
+whole deals, 5 bank bulk transfers of 25 rows, and 30 rounds of rate card
+edits. All from one run, on a developer laptop under Docker Desktop for
+Windows.
 
 ## Reads
 
 | Endpoint | p50 ms | p95 ms | Budget | Verdict |
 | --- | --- | --- | --- | --- |
-| `GET /campaigns/discover` | 8.8 | 11.6 | 300 | OK |
-| `GET /campaigns/discover?city&niche` | 8.5 | 11.5 | 300 | OK |
-| `GET /campaigns` (mine) | 10.2 | 12.7 | 300 | OK |
-| `GET /campaigns/{id}` | 8.1 | 10.9 | 300 | OK |
-| `GET /campaigns/{id}/applications` | 11.6 | 14.6 | 300 | OK |
-| `GET /applications/me` | 10.1 | 13.0 | 300 | OK |
-| `GET /auth/me` | 7.0 | 8.4 | 300 | OK |
-| `GET /creators/{id}/media-kit` (10 packages) | 11.7 | 14.5 | 300 | OK |
-| `GET /creators/by-handle/{handle}` (10 packages) | 8.6 | 10.7 | 300 | OK |
-| `GET /rate-guidance` (niche and city) | 10.5 | 15.1 | 300 | OK |
+| `GET /campaigns/discover` | 9.1 | 11.8 | 300 | OK |
+| `GET /campaigns/discover?city&niche` | 9.9 | 16.2 | 300 | OK |
+| `GET /campaigns` (mine) | 12.5 | 19.9 | 300 | OK |
+| `GET /campaigns/{id}` | 9.5 | 12.9 | 300 | OK |
+| `GET /campaigns/{id}/applications` | 13.3 | 15.4 | 300 | OK |
+| `GET /applications/me` | 15.0 | 25.0 | 300 | OK |
+| `GET /auth/me` | 8.7 | 11.9 | 300 | OK |
+| `GET /creators/{id}/media-kit` (10 packages) | 12.9 | 15.8 | 300 | OK |
+| `GET /creators/by-handle/{handle}` (10 packages) | 9.9 | 12.9 | 300 | OK |
+| `GET /rate-guidance` (niche and city) | 12.5 | 21.8 | 300 | OK |
 
 ## Writes
 
-Every write in a deal's life, **including the deal record entry each one
-seals** (D-057). They run inside one transaction that is rolled back, so the
-measurement leaves nothing behind; that matters because a deal record entry
-cannot be deleted once written.
+Every write a deal can go through, **including the deal record entry each one
+seals** (D-057), plus the bank bulk transfer and the rate card. They run
+inside one transaction that is rolled back, so the measurement leaves nothing
+behind; that matters because a deal record entry cannot be deleted once
+written.
 
 | Endpoint | p50 ms | p95 ms | Budget | Verdict |
 | --- | --- | --- | --- | --- |
-| `POST /campaigns` | 10.6 | 12.2 | 500 | OK |
-| `POST /campaigns/{id}/publish` | 12.0 | 13.5 | 500 | OK |
-| `POST /campaigns/{id}/applications` | 13.0 | 14.9 | 500 | OK |
-| `POST /applications/{id}/shortlist` | 14.0 | 15.0 | 500 | OK |
-| `POST /applications/{id}/accept` | 14.3 | 17.7 | 500 | OK |
-| `POST /deal-memos/for-application/{id}` | 13.9 | 18.3 | 500 | OK |
-| `POST /deal-memos/{id}/send` | 18.8 | 30.5 | 500 | OK |
-| `POST /deal-memos/{id}/accept` | 18.6 | 25.8 | 500 | OK |
-| `POST /deal-memos/{id}/proof` | 20.8 | 25.9 | 500 | OK |
-| `POST /deal-memos/{id}/proof/{id}/approve` | 24.5 | 32.2 | 500 | OK |
-| `POST /deal-memos/{id}/payment/mark-paid` | 21.4 | 26.4 | 500 | OK |
-| `POST /deal-memos/{id}/payment/confirm` | 21.3 | 57.2 | 500 | OK |
+| `POST /campaigns` | 12.3 | 17.7 | 500 | OK |
+| `POST /campaigns/{id}/publish` | 13.7 | 18.5 | 500 | OK |
+| `POST /campaigns/{id}/applications` | 14.6 | 19.4 | 500 | OK |
+| `POST /applications/{id}/shortlist` | 16.4 | 21.4 | 500 | OK |
+| `POST /applications/{id}/accept` | 16.3 | 20.4 | 500 | OK |
+| `POST /deal-memos/for-application/{id}` | 16.2 | 22.8 | 500 | OK |
+| `POST /deal-memos/{id}/send` | 20.5 | 24.3 | 500 | OK |
+| `POST /deal-memos/{id}/accept` | 20.4 | 25.4 | 500 | OK |
+| `POST /deal-memos/{id}/proof` | 23.3 | 27.9 | 500 | OK |
+| `POST /deal-memos/{id}/proof/{id}/approve` | 26.8 | 29.9 | 500 | OK |
+| `POST /deal-memos/{id}/payment/mark-paid` | 23.3 | 25.6 | 500 | OK |
+| `POST /deal-memos/{id}/payment/dispute` | 18.5 | 21.4 | 500 | OK |
+| `POST .../payment/dispute/entries` | 17.6 | 23.2 | 500 | OK |
+| `POST .../payment/dispute/close` | 18.5 | 25.1 | 500 | OK |
+| `POST /deal-memos/{id}/payment/confirm` | 23.2 | 30.3 | 500 | OK |
+| `POST /brands/me/payments/mark-paid` (25 rows) | 289.0 | 313.7 | 500 | OK, see below |
+| `PUT /creators/me/channels/{platform}` | 11.9 | 16.5 | 500 | OK |
+| `POST /creators/me/packages` | 13.1 | 18.0 | 500 | OK |
+| `PATCH /creators/me/packages/{id}` | 13.1 | 16.7 | 500 | OK |
+| `DELETE /creators/me/packages/{id}` | 10.8 | 14.3 | 500 | OK |
+| `POST /creators/me/rate-card/publish` | 12.2 | 15.6 | 500 | OK |
+| `POST /creators/me/rate-card/unpublish` | 11.6 | 14.4 | 500 | OK |
+
+**The bulk mark-paid is the one to watch.** At its limit of 25 rows it uses
+about two-thirds of the write budget: roughly 12 ms a row, because each row
+takes its own lock, writes its own notification and seals its own deal record
+entry, exactly as a single mark-paid does (D-043 chose that on purpose). It
+is inside the budget with room, but it is the write most sensitive to a
+slower database. **If the 25-row limit is ever raised, measure again first.**
+Only 5 bulk calls were timed in this run, so its p95 is close to its maximum;
+the other writes had 30 samples each.
 
 The deal steps cost about 5 to 10 ms more than the campaign steps. That is
 the record: a row lock on the deal, the parties' account ids, the previous
-seal, and one insert. It is well inside the budget and it buys a history
-nobody can quietly rewrite.
-
-**Not yet in the script:** dispute writes, the bulk mark-paid, and rate card
-writes. Each is a single-row write of the kind measured above, so there is no
-reason to expect a surprise, but "no reason to expect" is not a measurement.
+seal, and one insert. It buys a history nobody can quietly rewrite.
 
 ## PostgreSQL 18 did not make us faster, and that is fine
 
@@ -95,8 +111,9 @@ been corrected so nobody quotes a speed win we have not seen.
 
 ## What is not measured yet
 
-- **Some writes.** The deal's whole path is measured; disputes, bulk
-  mark-paid and rate card writes are not yet.
+- **Writes beyond the deal, disputes, bulk mark-paid and the rate card.**
+  Profile and campaign edits are single-row writes of the same kind, but they
+  are not in the script yet.
 - **Under load.** These are sequential requests from one client. The plan
   (section 4.5) wants a repeatable load test before launch; it does not exist.
 - **At real scale.** 150 campaigns is a pilot-sized seed, not a year of

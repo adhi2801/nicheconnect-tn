@@ -33,10 +33,12 @@ from app.core.rate_limit import limiter
 from app.db.session import SessionLocal, engine, get_db
 from app.main import app
 from app.modules.auth.dependencies import get_now
+from app.modules.auth.models.account import Account
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.tokens import create_access_token
 from app.modules.campaigns.models import Campaign
+from app.modules.payment_status.service import MAX_BULK_MARK_PAID
 
 READ_BUDGET_MS = 300
 WRITE_BUDGET_MS = 500
@@ -105,13 +107,24 @@ def summarise(name: str, timings: list[float], budget: int) -> dict:
     }
 
 
+BULK_ROUNDS = 5
+# The most a brand may send in one call: the worst case is the one that matters.
+BULK_ROWS = MAX_BULK_MARK_PAID
+
+
 def measure_writes(
     deals: int, brand_headers: dict, creator_headers: dict, now: datetime
 ) -> list[dict]:
     """Every write in a deal's life, timed, then rolled back.
 
-    The seeded brand runs every deal with the same seeded creator, one new
-    campaign per deal, so each application is allowed.
+    Three phases, all inside one transaction that is rolled back at the end:
+
+    1. `deals` whole deals, from a new campaign to a confirmed payment, with
+       a dispute opened, added to and closed on each payment on the way.
+    2. `BULK_ROUNDS` bank bulk transfers of `BULK_ROWS` deals each, through
+       the bulk mark-paid.
+    3. `deals` rounds of rate card writes, by a creator made for the run:
+       the seeded creators may already hold the ten-package limit.
     """
     timings: dict[str, list[float]] = defaultdict(list)
     due_on = (now + timedelta(days=60)).date().isoformat()
@@ -122,89 +135,218 @@ def measure_writes(
     app.dependency_overrides[get_db] = lambda: db
     client = TestClient(app)
 
-    def write(name: str, url: str, headers: dict, body: dict | None = None) -> dict:
+    def write(
+        name: str | None,
+        url: str,
+        headers: dict,
+        body: dict | None = None,
+        method: str = "POST",
+    ) -> dict:
+        """One request; timed under `name`, or untimed setup when None."""
         limiter.reset()  # the limits are not what we are measuring
         started = time.perf_counter()
-        response = client.post(url, json=body, headers=headers)
-        timings[name].append((time.perf_counter() - started) * 1000)
+        response = client.request(method, url, json=body, headers=headers)
+        if name is not None:
+            timings[name].append((time.perf_counter() - started) * 1000)
         if response.status_code >= 400:
-            raise SystemExit(f"{name}: {response.status_code} {response.text[:200]}")
-        return response.json()
+            raise SystemExit(
+                f"{name or url}: {response.status_code} {response.text[:200]}"
+            )
+        return response.json() if response.content else {}
 
     memos = "/api/v1/deal-memos"
+
+    def approved_deal(timed: bool) -> str:
+        """A deal taken to approved work, its payment now owed."""
+
+        def name(label: str) -> str | None:
+            return label if timed else None
+
+        campaign = write(
+            name("POST /campaigns"),
+            "/api/v1/campaigns",
+            brand_headers,
+            {
+                "title": "Pongal sweets launch",
+                "description": "Three reels featuring our new sweet box.",
+                "campaign_type": "paid",
+                "budget_min_paise": 500_000,
+                "budget_max_paise": 1_500_000,
+                "cities": ["Madurai"],
+                "niches": ["food"],
+                "deliverables": "3 Instagram reels",
+            },
+        )["id"]
+        write(
+            name("POST /campaigns/{id}/publish"),
+            f"/api/v1/campaigns/{campaign}/publish",
+            brand_headers,
+        )
+        application = write(
+            name("POST /campaigns/{id}/applications"),
+            f"/api/v1/campaigns/{campaign}/applications",
+            creator_headers,
+            {"pitch": "I cover food in Madurai for local families, in Tamil."},
+        )["id"]
+        for action in ("shortlist", "accept"):
+            write(
+                name(f"POST /applications/{{id}}/{action}"),
+                f"/api/v1/applications/{application}/{action}",
+                brand_headers,
+            )
+        memo = write(
+            name("POST /deal-memos/for-application/{id}"),
+            f"{memos}/for-application/{application}",
+            brand_headers,
+            {
+                "deliverables": "3 Instagram reels, 1 story set.",
+                "fee_amount_paise": 800_000,
+                "content_due_on": due_on,
+            },
+        )["id"]
+        write(name("POST /deal-memos/{id}/send"), f"{memos}/{memo}/send", brand_headers)
+        write(
+            name("POST /deal-memos/{id}/accept"),
+            f"{memos}/{memo}/accept",
+            creator_headers,
+        )
+        proof = write(
+            name("POST /deal-memos/{id}/proof"),
+            f"{memos}/{memo}/proof",
+            creator_headers,
+            {
+                "content_url": "https://www.instagram.com/reel/abc123/",
+                "format": "reel",
+                "disclosure_confirmed": True,
+            },
+        )["id"]
+        write(
+            name("POST /deal-memos/{id}/proof/{id}/approve"),
+            f"{memos}/{memo}/proof/{proof}/approve",
+            brand_headers,
+        )
+        return str(memo)
+
     try:
+        # 1. Whole deals, with a dispute on each payment.
         for _ in range(deals):
-            campaign = write(
-                "POST /campaigns",
-                "/api/v1/campaigns",
-                brand_headers,
-                {
-                    "title": "Pongal sweets launch",
-                    "description": "Three reels featuring our new sweet box.",
-                    "campaign_type": "paid",
-                    "budget_min_paise": 500_000,
-                    "budget_max_paise": 1_500_000,
-                    "cities": ["Madurai"],
-                    "niches": ["food"],
-                    "deliverables": "3 Instagram reels",
-                },
-            )["id"]
-            write(
-                "POST /campaigns/{id}/publish",
-                f"/api/v1/campaigns/{campaign}/publish",
-                brand_headers,
-            )
-            application = write(
-                "POST /campaigns/{id}/applications",
-                f"/api/v1/campaigns/{campaign}/applications",
-                creator_headers,
-                {"pitch": "I cover food in Madurai for local families, in Tamil."},
-            )["id"]
-            for action in ("shortlist", "accept"):
-                write(
-                    f"POST /applications/{{id}}/{action}",
-                    f"/api/v1/applications/{application}/{action}",
-                    brand_headers,
-                )
-            memo = write(
-                "POST /deal-memos/for-application/{id}",
-                f"{memos}/for-application/{application}",
-                brand_headers,
-                {
-                    "deliverables": "3 Instagram reels, 1 story set.",
-                    "fee_amount_paise": 800_000,
-                    "content_due_on": due_on,
-                },
-            )["id"]
-            write("POST /deal-memos/{id}/send", f"{memos}/{memo}/send", brand_headers)
-            write(
-                "POST /deal-memos/{id}/accept", f"{memos}/{memo}/accept", creator_headers
-            )
-            proof = write(
-                "POST /deal-memos/{id}/proof",
-                f"{memos}/{memo}/proof",
-                creator_headers,
-                {
-                    "content_url": "https://www.instagram.com/reel/abc123/",
-                    "format": "reel",
-                    "disclosure_confirmed": True,
-                },
-            )["id"]
-            write(
-                "POST /deal-memos/{id}/proof/{id}/approve",
-                f"{memos}/{memo}/proof/{proof}/approve",
-                brand_headers,
-            )
+            memo = approved_deal(timed=True)
             write(
                 "POST /deal-memos/{id}/payment/mark-paid",
                 f"{memos}/{memo}/payment/mark-paid",
                 brand_headers,
                 {"method": "upi", "reference": "412345678901"},
             )
+            dispute = f"{memos}/{memo}/payment/dispute"
+            write(
+                "POST /deal-memos/{id}/payment/dispute",
+                dispute,
+                creator_headers,
+                {"reason": "The reference does not match anything in my bank statement."},
+            )
+            write(
+                "POST .../payment/dispute/entries",
+                f"{dispute}/entries",
+                brand_headers,
+                {"note": "Attaching the bank's confirmation for that reference."},
+            )
+            write(
+                "POST .../payment/dispute/close",
+                f"{dispute}/close",
+                creator_headers,
+                {"outcome": "resolved_paid"},
+            )
             write(
                 "POST /deal-memos/{id}/payment/confirm",
                 f"{memos}/{memo}/payment/confirm",
                 creator_headers,
+            )
+
+        # 2. Bank bulk transfers: set up untimed, only the bulk call is timed.
+        for _ in range(BULK_ROUNDS):
+            owed = [approved_deal(timed=False) for _ in range(BULK_ROWS)]
+            write(
+                f"POST /brands/me/payments/mark-paid ({BULK_ROWS} rows)",
+                "/api/v1/brands/me/payments/mark-paid",
+                brand_headers,
+                {
+                    "payments": [
+                        {
+                            "memo_id": memo,
+                            "method": "bank_transfer",
+                            "reference": f"41234567{i:04d}",
+                        }
+                        for i, memo in enumerate(owed)
+                    ]
+                },
+            )
+
+        # 3. The rate card, by a creator made for this run.
+        account = Account(phone="+919000099999", role="creator")
+        db.add(account)
+        db.flush()
+        db.add(
+            Creator(
+                account_id=account.id,
+                account_role="creator",
+                display_name="Measure Creator",
+                handle="measure.creator",
+                city="Madurai",
+                niches=["food"],
+                languages=["en"],
+            )
+        )
+        db.flush()
+        token, _ = create_access_token(account.id, "creator", now)
+        rate_card_headers = {"Authorization": f"Bearer {token}"}
+        cards = "/api/v1/creators/me"
+        for _ in range(deals):
+            write(
+                "PUT /creators/me/channels/{platform}",
+                f"{cards}/channels/instagram",
+                rate_card_headers,
+                {
+                    "profile_url": "https://instagram.com/measure.creator",
+                    "followers": 24_000,
+                    "average_views": 6_000,
+                },
+                method="PUT",
+            )
+            package = write(
+                "POST /creators/me/packages",
+                f"{cards}/packages",
+                rate_card_headers,
+                {
+                    "platform": "instagram",
+                    "format": "reel",
+                    "title": "1 Instagram Reel",
+                    "price_paise": 800_000,
+                    "delivery_days": 5,
+                    "position": 0,
+                },
+            )["id"]
+            write(
+                "PATCH /creators/me/packages/{id}",
+                f"{cards}/packages/{package}",
+                rate_card_headers,
+                {"price_paise": 900_000},
+                method="PATCH",
+            )
+            write(
+                "DELETE /creators/me/packages/{id}",
+                f"{cards}/packages/{package}",
+                rate_card_headers,
+                method="DELETE",
+            )
+            write(
+                "POST /creators/me/rate-card/publish",
+                f"{cards}/rate-card/publish",
+                rate_card_headers,
+            )
+            write(
+                "POST /creators/me/rate-card/unpublish",
+                f"{cards}/rate-card/unpublish",
+                rate_card_headers,
             )
     finally:
         app.dependency_overrides.pop(get_db, None)
