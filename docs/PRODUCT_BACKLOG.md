@@ -70,15 +70,22 @@ code**, checked 23 September 2026.
 | C4 | Structured rejection reasons and profile guidance | **Done** | D-041 |
 | C5 | Usage-rights expiry reminders | **Blocked** | The window is stored; the reminder needs the job runner |
 
-### Phase D — matching — **not started**
-`app/modules/matching/` is an empty package. This is the differentiator
-`docs/COMPETITIVE_LANDSCAPE.md` builds the position on, and nothing exists yet.
+### Phase D — matching — **done**
+Built 23–25 September (D-052). `app/modules/matching/` was an empty package;
+it is now the embedding input builder, the embedder, the refresh service and
+the endpoint, with 55 tests.
 
 | # | Item | Status | Notes |
 |---|---|---|---|
-| D1 | Embedding input builder, with a test proving no personal data is included | **Not started** | `CLAUDE.md` section 2 |
-| D2 | pgvector similarity search for campaign ↔ creator | **Not started** | pgvector 0.8.6 is pinned and available but the extension is not enabled (D-049) |
-| D3 | Explainable results: the reasons behind every match | **Not started** | Niche overlap, city, rate fit, past completion |
+| D1 | Embedding input builder, with a test proving no personal data is included | **Done** | Fails closed: a new column on `creator` or `campaign` breaks the test until somebody decides which side it belongs on |
+| D2 | pgvector similarity search for campaign ↔ creator | **Done** | `GET /api/v1/campaigns/{id}/matches`, p95 59.6 ms against a 300 ms budget. No ANN index: an exact scan over the filtered set is faster and always exactly right at this size |
+| D3 | Explainable results: the reasons behind every match | **Done** | Shared niches, city, accepted deals, and the similarity score. Structural filter first, so the reasons are facts rather than a model's opinion |
+
+**Still to do here, and both wait on other things:** embeddings are refreshed
+by `scripts/refresh_embeddings.py` on a schedule, because no job runner is
+chosen (D-047 locks DBOS, nothing is installed). And the creator-facing
+direction — campaigns matched to a creator — is not built; only the brand
+side is.
 
 ### Phase E — reach and workflow — **1 of 9**
 | # | Item | Status | Notes |
@@ -95,11 +102,25 @@ code**, checked 23 September 2026.
 
 ### Where that leaves us
 
-About **half the backlog items are done**, but the half that remains is the
-harder half: Phase D is the differentiator and is at zero, and four of the
-seven decisions in section 4 block whole phases. Two launch blockers sit
-outside this list entirely — nobody can log in off a developer machine, and
-in-app account deletion does not exist.
+**16 of the 26 items are done, about 62%.** Phases A, B and D are complete.
+
+Of the **10 that remain**, the split matters more than the count:
+
+| | Items | Why |
+|---|---|---|
+| **Buildable now** | C1, E5, E9 | Need a decision Claude can make and record, nothing external |
+| **Waiting on an account or a decision** | C3, C5, E1, E2, E3 | The notification provider, the job runner, media storage, the rate card |
+| **Waiting on the validation pack** | E6, E7, E8 | GST, TDS, ASCI and retention. `CLAUDE.md` constraint 6: ask, never invent |
+
+**E1 is the one that matters most.** Until a notification provider exists,
+nobody can log in outside a developer's laptop, so all 65 endpoints are
+unreachable by a real person. It is one decision, and it also unblocks E2
+and C5.
+
+**Two launch blockers sit outside this list.** In-app account deletion does
+not exist and no app store will accept either app without it (that is E8,
+and E8 is validation-pack blocked). And DPDP consent-manager rules land
+13 November 2026.
 
 ---
 

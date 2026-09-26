@@ -29,6 +29,7 @@ from app.modules.deal_memo.delivery_router import router as delivery_router
 from app.modules.deal_memo.proof_router import router as proof_router
 from app.modules.deal_memo.router import router as deal_memos_router
 from app.modules.disputes.router import router as disputes_router
+from app.modules.matching.router import router as matching_router
 from app.modules.notifications.router import router as notifications_router
 from app.modules.payment_status.brand_router import router as reliability_router
 from app.modules.payment_status.bulk_router import router as bulk_payments_router
@@ -98,6 +99,7 @@ app.include_router(bulk_payments_router)
 app.include_router(reliability_router)
 app.include_router(delivery_router)
 app.include_router(disputes_router)
+app.include_router(matching_router)
 
 
 @app.get(
