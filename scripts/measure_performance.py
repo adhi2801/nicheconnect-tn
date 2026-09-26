@@ -1,7 +1,12 @@
-"""Measure list endpoints against the budgets in backend.md section 6.
+"""Measure endpoints against the budgets in backend.md section 6.
 
 Budgets: p95 <= 300 ms for reads, <= 500 ms for writes, on seeded local data.
 Run scripts/seed_dev_data.py first.
+
+Writes are measured by taking whole deals through the API, from a new
+campaign to a confirmed payment, inside one transaction that is rolled back
+at the end. Nothing they write is kept, which matters because the deal
+record cannot be deleted once written (D-057).
 
     python scripts/measure_performance.py
     python scripts/measure_performance.py --runs 100 --explain
@@ -16,14 +21,16 @@ import time
 # Run as `python scripts/measure_performance.py` from the project root.
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from datetime import UTC
+from collections import defaultdict
+from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
 from sqlalchemy import select, text
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.rate_limit import limiter
-from app.db.session import SessionLocal
+from app.db.session import SessionLocal, engine, get_db
 from app.main import app
 from app.modules.auth.dependencies import get_now
 from app.modules.auth.models.brand import Brand
@@ -88,10 +95,134 @@ def measure(
     }
 
 
+def summarise(name: str, timings: list[float], budget: int) -> dict:
+    return {
+        "name": name,
+        "p50": statistics.median(timings),
+        "p95": percentile(timings, 0.95),
+        "max": max(timings),
+        "budget": budget,
+    }
+
+
+def measure_writes(
+    deals: int, brand_headers: dict, creator_headers: dict, now: datetime
+) -> list[dict]:
+    """Every write in a deal's life, timed, then rolled back.
+
+    The seeded brand runs every deal with the same seeded creator, one new
+    campaign per deal, so each application is allowed.
+    """
+    timings: dict[str, list[float]] = defaultdict(list)
+    due_on = (now + timedelta(days=60)).date().isoformat()
+
+    connection = engine.connect()
+    outer = connection.begin()
+    db = Session(bind=connection, join_transaction_mode="create_savepoint")
+    app.dependency_overrides[get_db] = lambda: db
+    client = TestClient(app)
+
+    def write(name: str, url: str, headers: dict, body: dict | None = None) -> dict:
+        limiter.reset()  # the limits are not what we are measuring
+        started = time.perf_counter()
+        response = client.post(url, json=body, headers=headers)
+        timings[name].append((time.perf_counter() - started) * 1000)
+        if response.status_code >= 400:
+            raise SystemExit(f"{name}: {response.status_code} {response.text[:200]}")
+        return response.json()
+
+    memos = "/api/v1/deal-memos"
+    try:
+        for _ in range(deals):
+            campaign = write(
+                "POST /campaigns",
+                "/api/v1/campaigns",
+                brand_headers,
+                {
+                    "title": "Pongal sweets launch",
+                    "description": "Three reels featuring our new sweet box.",
+                    "campaign_type": "paid",
+                    "budget_min_paise": 500_000,
+                    "budget_max_paise": 1_500_000,
+                    "cities": ["Madurai"],
+                    "niches": ["food"],
+                    "deliverables": "3 Instagram reels",
+                },
+            )["id"]
+            write(
+                "POST /campaigns/{id}/publish",
+                f"/api/v1/campaigns/{campaign}/publish",
+                brand_headers,
+            )
+            application = write(
+                "POST /campaigns/{id}/applications",
+                f"/api/v1/campaigns/{campaign}/applications",
+                creator_headers,
+                {"pitch": "I cover food in Madurai for local families, in Tamil."},
+            )["id"]
+            for action in ("shortlist", "accept"):
+                write(
+                    f"POST /applications/{{id}}/{action}",
+                    f"/api/v1/applications/{application}/{action}",
+                    brand_headers,
+                )
+            memo = write(
+                "POST /deal-memos/for-application/{id}",
+                f"{memos}/for-application/{application}",
+                brand_headers,
+                {
+                    "deliverables": "3 Instagram reels, 1 story set.",
+                    "fee_amount_paise": 800_000,
+                    "content_due_on": due_on,
+                },
+            )["id"]
+            write("POST /deal-memos/{id}/send", f"{memos}/{memo}/send", brand_headers)
+            write("POST /deal-memos/{id}/accept", f"{memos}/{memo}/accept", creator_headers)
+            proof = write(
+                "POST /deal-memos/{id}/proof",
+                f"{memos}/{memo}/proof",
+                creator_headers,
+                {
+                    "content_url": "https://www.instagram.com/reel/abc123/",
+                    "format": "reel",
+                    "disclosure_confirmed": True,
+                },
+            )["id"]
+            write(
+                "POST /deal-memos/{id}/proof/{id}/approve",
+                f"{memos}/{memo}/proof/{proof}/approve",
+                brand_headers,
+            )
+            write(
+                "POST /deal-memos/{id}/payment/mark-paid",
+                f"{memos}/{memo}/payment/mark-paid",
+                brand_headers,
+                {"method": "upi", "reference": "412345678901"},
+            )
+            write(
+                "POST /deal-memos/{id}/payment/confirm",
+                f"{memos}/{memo}/payment/confirm",
+                creator_headers,
+            )
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        db.close()
+        outer.rollback()
+        connection.close()
+
+    return [summarise(name, values, WRITE_BUDGET_MS) for name, values in timings.items()]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runs", type=int, default=50)
     parser.add_argument("--explain", action="store_true", help="Also print query plans")
+    parser.add_argument(
+        "--deals",
+        type=int,
+        default=30,
+        help="Whole deals to take through the writes, rolled back afterwards",
+    )
     args = parser.parse_args()
 
     if settings.environment != "local":
@@ -152,8 +283,6 @@ def main() -> int:
         return 1
 
     # A fixed clock keeps tokens valid for the whole run.
-    from datetime import datetime
-
     now = datetime.now(UTC)
     app.dependency_overrides[get_now] = lambda: now
     brand_token, _ = create_access_token(brand.account_id, "brand", now)
@@ -256,6 +385,7 @@ def main() -> int:
             READ_BUDGET_MS,
         ),
     ]
+    results += measure_writes(args.deals, brand_headers, creator_headers, now)
     app.dependency_overrides.clear()
     limiter.reset()
 
@@ -263,7 +393,7 @@ def main() -> int:
         f"Rows: {counts[0]} campaigns, {counts[1]} applications, "
         f"{counts[2]} creators, {counts[3]} packages"
     )
-    print(f"Runs per endpoint: {args.runs}\n")
+    print(f"Runs per read: {args.runs}; whole deals for the writes: {args.deals}\n")
     print(
         f"{'endpoint':42} {'p50 ms':>8} {'p95 ms':>8} {'max ms':>8} {'budget':>8}  verdict"
     )
