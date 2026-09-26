@@ -277,7 +277,8 @@ def test_the_actor_is_sealed_as_a_fingerprint_of_the_account_id():
     """So each side can check every seal without being shown the other's id."""
     account_id = uuid.UUID("0192f7a0-0000-7000-8000-00000000abcd")
 
-    assert record_service.actor_fingerprint(account_id) == hashlib.sha256(
-        b"0192f7a0-0000-7000-8000-00000000abcd"
-    ).hexdigest()
+    assert (
+        record_service.actor_fingerprint(account_id)
+        == hashlib.sha256(b"0192f7a0-0000-7000-8000-00000000abcd").hexdigest()
+    )
     assert record_service.actor_fingerprint(None) is None

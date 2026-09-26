@@ -177,7 +177,9 @@ def measure_writes(
                 },
             )["id"]
             write("POST /deal-memos/{id}/send", f"{memos}/{memo}/send", brand_headers)
-            write("POST /deal-memos/{id}/accept", f"{memos}/{memo}/accept", creator_headers)
+            write(
+                "POST /deal-memos/{id}/accept", f"{memos}/{memo}/accept", creator_headers
+            )
             proof = write(
                 "POST /deal-memos/{id}/proof",
                 f"{memos}/{memo}/proof",
