@@ -1,6 +1,6 @@
 # Decision needed: how a login code reaches a phone
 
-**Status: needs Adhi's decision (D-051).** Researched 23 September 2026.
+**Status: decided (D-058): MSG91, WhatsApp first.** Researched 23 September 2026; prices re-checked 26 September.
 Nothing here is in the code, and no account has been opened anywhere.
 
 ## Why this one first
