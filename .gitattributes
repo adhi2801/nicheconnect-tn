@@ -1,0 +1,3 @@
+# Signed RFC 3161 timestamp tokens (D-060). One changed byte breaks the
+# signature, so git must never touch their line endings or diff them as text.
+*.tsr binary
