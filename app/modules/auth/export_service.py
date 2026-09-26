@@ -77,6 +77,17 @@ NOT_EXPORTED: dict[str, str] = {
         "The same kind of list of numbers, worked out from a campaign's own "
         "brief. It describes a campaign rather than a person."
     ),
+    "deal_record_checkpoint": (
+        "Once a day, one fingerprint covering the latest seal of every deal on "
+        "the platform, yours among thousands. It holds no names, amounts or "
+        "text: only that single fingerprint and a count. The proof that ties "
+        "your own deal to it is available for each of your deals on its own."
+    ),
+    "deal_record_timestamp": (
+        "Independent timestamp authorities' signed statements that a day's "
+        "fingerprint existed at a given time. They say nothing about any one "
+        "person, and each deal's proof includes the ones that cover it."
+    ),
 }
 
 ACCOUNT_EXPORT_FIELDS = allow("id", "phone", "role", "created_at", "updated_at")
