@@ -1,6 +1,7 @@
 # Proposal: fair-rate guidance
 
-**Status: proposed, not built.** Written 26 September 2026 on
+**Status: step 1 approved and built (D-056), 26 September 2026.** Step 2
+(section 5) is still a proposal. Written on
 `feature/fair-rate-guidance`, which stacks on `feature/rate-card-api` because it
 reads the rate card tables (D-055). Backlog item **C3**; #2 on the build list
 in `docs/COMPETITIVE_LANDSCAPE.md` section 6.
@@ -56,7 +57,8 @@ That is where we lead, and it comes in the second step.
   the same rule and wording as the delivery record (D-038). It is never zero
   and never an estimate.
 - Audience numbers are self-reported (D-042), so the response says so, and
-  says the date the newest one was stated.
+  gives the date of the **oldest** one behind the figures, because a stale
+  count is what a reader needs to know about.
 
 **Worked example.** `GET /api/v1/rate-guidance?platform=instagram&format=reel&followers=12000&niche=food&city=Madurai`
 
@@ -73,6 +75,7 @@ That is where we lead, and it comes in the second step.
   "upper_quarter_paise": 1000000,
   "currency": "INR",
   "audience_self_reported": true,
+  "audience_figures_from": "2026-09-26",
   "as_of": "2026-09-26"
 }
 ```

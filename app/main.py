@@ -21,6 +21,7 @@ from app.modules.auth.media_kit_router import router as media_kit_router
 from app.modules.auth.profile_router import brand_router, creator_router
 from app.modules.auth.public_router import router as public_router
 from app.modules.auth.rate_card_router import router as rate_card_router
+from app.modules.auth.rate_guidance_router import router as rate_guidance_router
 from app.modules.auth.router import router as auth_router
 from app.modules.campaigns.application_router import router as applications_router
 from app.modules.campaigns.router import router as campaigns_router
@@ -86,6 +87,7 @@ app.include_router(attention_router)
 app.include_router(public_router)
 app.include_router(rate_card_router)
 app.include_router(media_kit_router)
+app.include_router(rate_guidance_router)
 app.include_router(campaigns_router)
 app.include_router(applications_router)
 app.include_router(notifications_router)

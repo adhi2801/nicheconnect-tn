@@ -245,6 +245,16 @@ def main() -> int:
             args.runs,
             READ_BUDGET_MS,
         ),
+        measure(
+            client,
+            "GET /rate-guidance (niche and city)",
+            "GET",
+            "/api/v1/rate-guidance?platform=instagram&format=reel"
+            "&followers=20000&niche=food&city=Madurai",
+            brand_headers,
+            args.runs,
+            READ_BUDGET_MS,
+        ),
     ]
     app.dependency_overrides.clear()
     limiter.reset()

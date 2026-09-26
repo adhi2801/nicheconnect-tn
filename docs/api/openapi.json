@@ -2874,6 +2874,51 @@
         "title": "MemoUpdate",
         "type": "object"
       },
+      "NarrowedTo": {
+        "description": "Which filters the figures actually used. Null means \"all of them\".",
+        "properties": {
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "niche": {
+            "anyOf": [
+              {
+                "enum": [
+                  "food",
+                  "fashion",
+                  "beauty",
+                  "tech",
+                  "travel",
+                  "fitness",
+                  "education",
+                  "entertainment",
+                  "finance",
+                  "lifestyle"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Niche"
+          }
+        },
+        "required": [
+          "niche",
+          "city"
+        ],
+        "title": "NarrowedTo",
+        "type": "object"
+      },
       "NotificationRead": {
         "description": "One notification. The app renders the wording from `type` and `details`,\nso the same row can be shown in Tamil or English.",
         "properties": {
@@ -3999,6 +4044,137 @@
           "usage_rights_days"
         ],
         "title": "PublicPackageRead",
+        "type": "object"
+      },
+      "RateGuidanceRead": {
+        "description": "What creators like this charge: a range, never a verdict.\n\n**Null figures mean \"not enough to say\"**, fewer than five creators, and\nmust never be shown as zero. There is deliberately no minimum or maximum:\neach would be one person's price.",
+        "properties": {
+          "as_of": {
+            "description": "The day these figures were worked out",
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "audience_band": {
+            "enum": [
+              "under_10k",
+              "10k_50k",
+              "50k_100k",
+              "100k_500k",
+              "500k_plus"
+            ],
+            "title": "Audience Band",
+            "type": "string"
+          },
+          "audience_figures_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Date of the oldest follower count behind the figures",
+            "title": "Audience Figures From"
+          },
+          "audience_self_reported": {
+            "const": true,
+            "default": true,
+            "description": "Bands come from follower counts creators stated; we never checked",
+            "title": "Audience Self Reported",
+            "type": "boolean"
+          },
+          "creators_counted": {
+            "description": "Creators behind the figures, each counted once",
+            "title": "Creators Counted",
+            "type": "integer"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "post",
+              "reel",
+              "story",
+              "short",
+              "video",
+              "live",
+              "other"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "lower_quarter_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lower Quarter Paise"
+          },
+          "median_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Paise"
+          },
+          "narrowed_to": {
+            "$ref": "#/components/schemas/NarrowedTo",
+            "description": "The niche and city the figures are for. If one you asked for is null here, there were too few creators with it and the answer is wider"
+          },
+          "platform": {
+            "enum": [
+              "instagram",
+              "youtube"
+            ],
+            "title": "Platform",
+            "type": "string"
+          },
+          "source": {
+            "const": "published_asking_prices",
+            "description": "Prices creators ask and have chosen to publish, not agreed fees",
+            "title": "Source",
+            "type": "string"
+          },
+          "upper_quarter_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upper Quarter Paise"
+          }
+        },
+        "required": [
+          "platform",
+          "format",
+          "audience_band",
+          "narrowed_to",
+          "source",
+          "creators_counted",
+          "lower_quarter_paise",
+          "median_paise",
+          "upper_quarter_paise",
+          "currency",
+          "audience_figures_from",
+          "as_of"
+        ],
+        "title": "RateGuidanceRead",
         "type": "object"
       },
       "ReadinessRead": {
@@ -12330,6 +12506,158 @@
         "summary": "Mark one as read",
         "tags": [
           "notifications"
+        ]
+      }
+    },
+    "/api/v1/rate-guidance": {
+      "get": {
+        "description": "The lower quarter, middle and upper quarter of what creators of this audience size charge for this format, from rate cards creators have published. Narrowed to the niche and city when at least five creators match; otherwise wider, and `narrowed_to` says so. Below five creators the figures are `null`, meaning **not enough to say**: never show that as zero. Readable by any signed-in brand or creator.",
+        "operationId": "read_rate_guidance_api_v1_rate_guidance_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "platform",
+            "required": true,
+            "schema": {
+              "enum": [
+                "instagram",
+                "youtube"
+              ],
+              "title": "Platform",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": true,
+            "schema": {
+              "enum": [
+                "post",
+                "reel",
+                "story",
+                "short",
+                "video",
+                "live",
+                "other"
+              ],
+              "title": "Format",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The audience to compare with",
+            "in": "query",
+            "name": "followers",
+            "required": true,
+            "schema": {
+              "description": "The audience to compare with",
+              "maximum": 1000000000,
+              "minimum": 0,
+              "title": "Followers",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "niche",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "food",
+                    "fashion",
+                    "beauty",
+                    "tech",
+                    "travel",
+                    "fitness",
+                    "education",
+                    "entertainment",
+                    "finance",
+                    "lifestyle"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Niche"
+            }
+          },
+          {
+            "in": "query",
+            "name": "city",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 60,
+                  "minLength": 2,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "City"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateGuidanceRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "An unknown platform, format or niche, or a bad follower count"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "What creators like this charge",
+        "tags": [
+          "rate guidance"
         ]
       }
     },
