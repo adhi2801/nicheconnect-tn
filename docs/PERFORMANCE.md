@@ -109,6 +109,27 @@ them was speed: native `uuidv7()`, statistics that survive an upgrade, exact
 image tags, and pgvector pinned clear of CVE-2026-3172. The plan's row has
 been corrected so nobody quotes a speed win we have not seen.
 
+## The deal record's daily proof, and when it will need work
+
+A proof (`GET /deal-memos/{id}/record/proof`) rebuilds that day's tree from
+every deal on the platform, then walks it, so its cost grows with the number
+of deals, not with the one asked about. The tree itself, measured on
+27 September:
+
+| Deals on the platform | Root | One proof's path |
+| --- | --- | --- |
+| 1,000 | 1.6 ms | 1.6 ms |
+| 10,000 | 17.1 ms | 18.2 ms |
+| 50,000 | 95.5 ms | 92.5 ms |
+
+A proof does both, plus one query that reads a row per deal. At pilot scale
+that is a few milliseconds. **Somewhere between 30,000 and 50,000 deals it
+approaches the 300 ms read budget.** The fix is to store each checkpoint's
+tree levels once, when the checkpoint is written, so a proof reads about 16
+hashes instead of rebuilding the tree. That is a schema change, so it waits
+for its own decision. **Trigger:** 20,000 deals, or a measured proof p95 above
+150 ms, whichever comes first.
+
 ## What is not measured yet
 
 - **Writes beyond the deal, disputes, bulk mark-paid and the rate card.**

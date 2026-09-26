@@ -104,8 +104,10 @@ kept the `latest_seal` you saw then. Recompute, and compare the seal at that
 same entry with the one you kept.
 
 **Our `intact` alone cannot prove** that we did not rebuild the whole record
-and seal it again. Only a seal you saved, or step 2's daily outside
-timestamps (not yet built), can show that. We say so because it is true.
+and seal it again. Two things can: a seal you saved yourself, or the daily
+outside timestamps in section 7, which do not depend on anyone having saved
+anything. Within the same day, before that day's timestamp exists, only a
+saved seal can. We say so because it is true.
 
 ## 5. Reading the facts
 
@@ -137,3 +139,77 @@ Section 63 of the Bharatiya Sakshya Adhiniyam, 2023 asks for the hash value
 of an electronic record produced in evidence, with the algorithm used. The
 record gives you SHA-256 values for every step. **Whether that is enough in a
 particular case is a legal question** for your lawyer; we do not claim it is.
+
+## 7. Checking a day's outside timestamp
+
+Every night, just after midnight in Tamil Nadu, one fingerprint (a Merkle
+root) is computed over the latest seal of every deal on the platform, and
+two independent timestamp authorities, **DigiCert** and **Sectigo**, sign a
+statement that this fingerprint existed at that moment (D-060). They never
+see any deal: only the fingerprint.
+
+`GET /api/v1/deal-memos/{memo_id}/record/proof` (add `?date=YYYY-MM-DD` for
+a particular day) gives you, for your deal:
+
+- `seal`: your deal's latest seal at that day's cut-off;
+- `leaf_index`, `leaf_count` and `audit_path`: how that seal joins the tree;
+- `merkle_root`: the day's fingerprint;
+- `timestamps`: each authority's signed token, in base64, exactly as issued.
+
+Checking it takes two steps, and neither needs our code.
+
+**Step 1: your seal is in the day's fingerprint.** The tree follows RFC 6962,
+the standard behind Certificate Transparency. Save the proof as `proof.json`
+and run:
+
+```python
+import base64
+import hashlib
+import json
+import uuid
+
+proof = json.load(open("proof.json", encoding="utf-8"))
+
+
+def node(left, right):
+    return hashlib.sha256(b"\x01" + left + right).digest()
+
+
+leaf = uuid.UUID(proof["deal_memo_id"]).bytes + bytes.fromhex(proof["seal"])
+result = hashlib.sha256(b"\x00" + leaf).digest()
+index, last = proof["leaf_index"], proof["leaf_count"] - 1
+for sibling in (bytes.fromhex(h) for h in proof["audit_path"]):
+    if index % 2 == 1 or index == last:
+        result = node(sibling, result)
+        while index % 2 == 0 and index != 0:
+            index, last = index >> 1, last >> 1
+    else:
+        result = node(result, sibling)
+    index, last = index >> 1, last >> 1
+if last != 0 or result.hex() != proof["merkle_root"]:
+    raise SystemExit("The seal does not lead to that day's fingerprint.")
+open("root.bin", "wb").write(result)
+for stamp in proof["timestamps"]:
+    open(stamp["authority"] + ".tsr", "wb").write(base64.b64decode(stamp["token_base64"]))
+print("Your seal is in the day's fingerprint:", result.hex())
+```
+
+**Step 2: an outside authority signed that fingerprint, on that day.** With
+OpenSSL, which most computers already have, and any standard root
+certificate bundle (for example the one from `certifi`, or your system's):
+
+```
+openssl ts -verify -in digicert.tsr -data root.bin -CAfile cacert.pem
+openssl ts -verify -in sectigo.tsr -data root.bin -CAfile cacert.pem
+```
+
+Each should end with `Verification: OK`. `openssl ts -reply -in digicert.tsr
+-token_in -text` shows the time the authority signed it.
+
+If `stamped` is `false`, neither authority has signed that day's root yet,
+usually because they could not be reached; the service keeps trying for a
+week. A missing day is shown, never hidden or back-filled with a later time.
+
+If the proof endpoint answers **409**, the record as it stands today no
+longer leads to a root the authorities signed. That is what a rewritten or
+backdated entry looks like, and it is the reason this section exists.

@@ -1440,6 +1440,37 @@
         "title": "ChannelUpsert",
         "type": "object"
       },
+      "CheckpointTimestampRead": {
+        "description": "One authority's signed statement that the day's root existed.",
+        "properties": {
+          "authority": {
+            "enum": [
+              "digicert",
+              "sectigo"
+            ],
+            "title": "Authority",
+            "type": "string"
+          },
+          "signed_at": {
+            "description": "The authority's own time, from inside the token",
+            "format": "date-time",
+            "title": "Signed At",
+            "type": "string"
+          },
+          "token_base64": {
+            "description": "The RFC 3161 token exactly as issued, base64. Check it with `openssl ts -verify -in token.tsr -data root.bin -CAfile <roots>`",
+            "title": "Token Base64",
+            "type": "string"
+          }
+        },
+        "required": [
+          "authority",
+          "signed_at",
+          "token_base64"
+        ],
+        "title": "CheckpointTimestampRead",
+        "type": "object"
+      },
       "CreatorDeliveryRead": {
         "description": "How a creator delivers, from what happened rather than from opinions.\n\nThe mirror of a brand's payment record (D-038). The shares are `null`\nuntil three scored deals have completed. **Null means \"not enough to\nsay\" and must never be shown as zero**: the two mean opposite things.\n\n`currently_overdue` is reported whatever the status, so \"new\" can never\nhide work a brand is still waiting for. Barter deals are shown in their\nown counts and never scored (D-026).",
         "properties": {
@@ -1936,6 +1967,94 @@
           "seal"
         ],
         "title": "DealRecordEntryRead",
+        "type": "object"
+      },
+      "DealRecordProofRead": {
+        "description": "How this deal's record is tied to a day's root, and who stamped that root.\n\nRecompute the root from `seal` and `audit_path` (RFC 6962), and check each\ntoken signs it: then the record as it stood that day did not rest on our\nword. `docs/DEAL_RECORD_VERIFY.md` walks through it.",
+        "properties": {
+          "algorithm": {
+            "const": "rfc6962-sha256",
+            "default": "rfc6962-sha256",
+            "title": "Algorithm",
+            "type": "string"
+          },
+          "audit_path": {
+            "description": "Sibling hashes from the leaf to the root, hex",
+            "items": {
+              "type": "string"
+            },
+            "title": "Audit Path",
+            "type": "array"
+          },
+          "checkpoint_date": {
+            "description": "Named by its date in Tamil Nadu",
+            "format": "date",
+            "title": "Checkpoint Date",
+            "type": "string"
+          },
+          "covers_until": {
+            "description": "Entries recorded before this moment are covered",
+            "examples": [
+              "2026-09-26T18:30:00.000000Z"
+            ],
+            "title": "Covers Until",
+            "type": "string"
+          },
+          "deal_memo_id": {
+            "format": "uuid",
+            "title": "Deal Memo Id",
+            "type": "string"
+          },
+          "leaf_count": {
+            "title": "Leaf Count",
+            "type": "integer"
+          },
+          "leaf_format": {
+            "const": "deal_memo_id (16 bytes) + seal (32 bytes)",
+            "default": "deal_memo_id (16 bytes) + seal (32 bytes)",
+            "title": "Leaf Format",
+            "type": "string"
+          },
+          "leaf_index": {
+            "title": "Leaf Index",
+            "type": "integer"
+          },
+          "merkle_root": {
+            "description": "The day's root, hex; what the authorities signed",
+            "title": "Merkle Root",
+            "type": "string"
+          },
+          "seal": {
+            "description": "This deal's latest seal as of the cut-off, hex",
+            "title": "Seal",
+            "type": "string"
+          },
+          "stamped": {
+            "description": "False while no authority has stamped the root yet: a visible gap",
+            "title": "Stamped",
+            "type": "boolean"
+          },
+          "timestamps": {
+            "items": {
+              "$ref": "#/components/schemas/CheckpointTimestampRead"
+            },
+            "title": "Timestamps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "deal_memo_id",
+          "checkpoint_date",
+          "covers_until",
+          "leaf_count",
+          "leaf_index",
+          "seal",
+          "audit_path",
+          "merkle_root",
+          "stamped",
+          "timestamps"
+        ],
+        "title": "DealRecordProofRead",
         "type": "object"
       },
       "DealRecordRead": {
@@ -12143,6 +12262,121 @@
           }
         ],
         "summary": "The deal's sealed record",
+        "tags": [
+          "deal record"
+        ]
+      }
+    },
+    "/api/v1/deal-memos/{memo_id}/record/proof": {
+      "get": {
+        "description": "Ties this deal's latest seal as of a day's cut-off to that day's Merkle root (RFC 6962), and returns the RFC 3161 timestamps DigiCert and Sectigo signed over the root. With it, the record as it stood that day can be checked without trusting us. Without `date`, the newest checkpoint that covers the deal. 409 means the record no longer matches a stamped checkpoint. The brand and the creator of this deal only.",
+        "operationId": "read_deal_record_proof_api_v1_deal_memos__memo_id__record_proof_get",
+        "parameters": [
+          {
+            "description": "The memo's id",
+            "in": "path",
+            "name": "memo_id",
+            "required": true,
+            "schema": {
+              "description": "The memo's id",
+              "format": "uuid",
+              "title": "Memo Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The checkpoint's date in Tamil Nadu, YYYY-MM-DD",
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The checkpoint's date in Tamil Nadu, YYYY-MM-DD",
+              "title": "Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealRecordProofRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such memo, not yours, or no checkpoint covers it yet"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The record no longer matches its stamped checkpoint"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The memo id is not a valid id"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Proof that the deal's record existed on a given day",
         "tags": [
           "deal record"
         ]

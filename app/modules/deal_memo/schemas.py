@@ -251,3 +251,54 @@ class DealRecordRead(BaseModel):
     )
     latest_seal: str | None = Field(description="Save this to detect a later rewrite")
     entries: list[DealRecordEntryRead]
+
+
+# --- a deal's proof in a daily checkpoint (D-060) ------------------------------
+
+
+class CheckpointTimestampRead(BaseModel):
+    """One authority's signed statement that the day's root existed."""
+
+    authority: Literal["digicert", "sectigo"]
+    signed_at: datetime = Field(
+        description="The authority's own time, from inside the token"
+    )
+    token_base64: str = Field(
+        description=(
+            "The RFC 3161 token exactly as issued, base64. Check it with "
+            "`openssl ts -verify -in token.tsr -data root.bin -CAfile <roots>`"
+        )
+    )
+
+
+class DealRecordProofRead(BaseModel):
+    """How this deal's record is tied to a day's root, and who stamped that root.
+
+    Recompute the root from `seal` and `audit_path` (RFC 6962), and check each
+    token signs it: then the record as it stood that day did not rest on our
+    word. `docs/DEAL_RECORD_VERIFY.md` walks through it.
+    """
+
+    deal_memo_id: uuid.UUID
+    checkpoint_date: date = Field(description="Named by its date in Tamil Nadu")
+    covers_until: str = Field(
+        description="Entries recorded before this moment are covered",
+        examples=["2026-09-26T18:30:00.000000Z"],
+    )
+    algorithm: Literal["rfc6962-sha256"] = "rfc6962-sha256"
+    leaf_format: Literal["deal_memo_id (16 bytes) + seal (32 bytes)"] = (
+        "deal_memo_id (16 bytes) + seal (32 bytes)"
+    )
+    leaf_count: int
+    leaf_index: int
+    seal: str = Field(description="This deal's latest seal as of the cut-off, hex")
+    audit_path: list[str] = Field(
+        description="Sibling hashes from the leaf to the root, hex"
+    )
+    merkle_root: str = Field(
+        description="The day's root, hex; what the authorities signed"
+    )
+    stamped: bool = Field(
+        description="False while no authority has stamped the root yet: a visible gap"
+    )
+    timestamps: list[CheckpointTimestampRead]

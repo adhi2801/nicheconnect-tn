@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from slowapi.middleware import SlowAPIMiddleware
 
-from app.core import cors, openapi
+from app.core import cors, jobs, openapi
 from app.core.body_limit import BodyLimitMiddleware
 from app.core.config import settings
 from app.core.errors import problem_doc, problem_response, register_error_handlers
@@ -44,6 +44,8 @@ API_DOCS_PUBLIC = settings.environment != "production"
 
 app = FastAPI(
     title="NicheConnect TN API",
+    # Starts the job runner when RUN_JOBS=true (D-060).
+    lifespan=jobs.lifespan,
     openapi_url="/openapi.json" if API_DOCS_PUBLIC else None,
     docs_url="/docs" if API_DOCS_PUBLIC else None,
     redoc_url="/redoc" if API_DOCS_PUBLIC else None,

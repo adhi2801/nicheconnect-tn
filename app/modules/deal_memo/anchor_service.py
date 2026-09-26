@@ -28,6 +28,7 @@ from sqlalchemy.orm import Session
 from app.core.clock import IST, india_date
 from app.modules.deal_memo import merkle
 from app.modules.deal_memo.anchor_models import DealRecordCheckpoint, DealRecordTimestamp
+from app.modules.deal_memo.exceptions import RecordDoesNotMatchCheckpoint
 from app.modules.deal_memo.record_models import DealRecordEntry
 from app.modules.deal_memo.timestamp_authority import Stamp, TimestampFailed
 
@@ -206,7 +207,12 @@ def proof_for(db: Session, memo_id: uuid.UUID, checkpoint: DealRecordCheckpoint)
         raise NotInCheckpoint()
     leaves = [leaf(m, s) for m, s in rows]
     if merkle.root(leaves) != checkpoint.merkle_root:
-        raise RuntimeError("the record no longer matches a stamped checkpoint")
+        # Never expected: it means history was rewritten or backdated. The
+        # log line names only the checkpoint, and the caller is told plainly.
+        logger.error(
+            "checkpoint.mismatch covers_until=%s", checkpoint.covers_until.isoformat()
+        )
+        raise RecordDoesNotMatchCheckpoint()
     index = ids.index(memo_id)
     timestamps = list(
         db.scalars(

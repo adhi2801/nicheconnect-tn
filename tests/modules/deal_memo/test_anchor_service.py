@@ -14,6 +14,7 @@ from app.core.clock import IST
 from app.modules.deal_memo import anchor_service, merkle, record_service
 from app.modules.deal_memo.anchor_models import DealRecordCheckpoint, DealRecordTimestamp
 from app.modules.deal_memo.anchor_service import NotInCheckpoint
+from app.modules.deal_memo.exceptions import RecordDoesNotMatchCheckpoint
 from app.modules.deal_memo.record_models import DealRecordEntry
 from app.modules.deal_memo.timestamp_authority import Stamp, TimestampFailed
 from tests.modules.deal_memo.test_deal_record_model import make_memo
@@ -207,7 +208,7 @@ def test_a_backdated_entry_is_caught(db):
 
     record_service.append(db, memo, kind="memo_accepted", actor_role="brand", now=BEFORE)
 
-    with pytest.raises(RuntimeError, match="no longer matches"):
+    with pytest.raises(RecordDoesNotMatchCheckpoint):
         anchor_service.proof_for(db, memo.id, checkpoint)
 
 

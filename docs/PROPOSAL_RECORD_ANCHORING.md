@@ -1,8 +1,8 @@
 # Proposal: the job runner, and a daily outside timestamp on every deal record
 
-**Status: proposed, not built.** Written 26 September 2026 on
-`feature/record-anchoring`, stacked on `feature/deal-record`. It needs five
-approvals, listed in section 5.
+**Status: approved in full (D-060) and built, 26–27 September 2026**, on
+`feature/record-anchoring`, stacked on `feature/deal-record`. Signed receipts
+(Ed25519, section 4) are not built; they remain a separate decision.
 
 ## 1. Why these two together
 
