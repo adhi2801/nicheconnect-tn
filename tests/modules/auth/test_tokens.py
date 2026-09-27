@@ -110,7 +110,8 @@ def test_unknown_or_missing_key_id_is_rejected(kid):
     "overrides",
     [
         {"typ": "refresh"},
-        {"role": "admin"},
+        # "admin" became a real role in D-061; "superuser" never exists.
+        {"role": "superuser"},
         {"sub": "not-a-uuid"},
         {"exp": "soon"},
     ],
