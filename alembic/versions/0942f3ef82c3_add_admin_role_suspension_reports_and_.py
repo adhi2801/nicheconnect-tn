@@ -70,20 +70,23 @@ def upgrade() -> None:
     op.add_column('account', sa.Column('suspension_reason', sa.String(length=40), nullable=True))
     # ### end Alembic commands ###
     op.drop_constraint('role_allowed', 'account', type_='check')
-    op.create_check_constraint(
-        'role_allowed', 'account', "role IN ('brand', 'creator', 'admin')"
+    # NOT VALID now, VALIDATE after the transaction commits: adding a check
+    # normally scans the table while blocking writes, and validating inside the
+    # same transaction would hold that lock anyway (Squawk, D-050).
+    checks = (
+        ("ck_account_role_allowed", "role IN ('brand', 'creator', 'admin')"),
+        (
+            "ck_account_suspension_reason_allowed",
+            "suspension_reason IS NULL OR suspension_reason IN "
+            "('fake_profile', 'spam', 'abuse', 'non_payment', 'other')",
+        ),
+        (
+            "ck_account_suspension_has_reason",
+            "(suspended_at IS NULL) = (suspension_reason IS NULL)",
+        ),
     )
-    op.create_check_constraint(
-        'suspension_reason_allowed',
-        'account',
-        "suspension_reason IS NULL OR suspension_reason IN "
-        "('fake_profile', 'spam', 'abuse', 'non_payment', 'other')",
-    )
-    op.create_check_constraint(
-        'suspension_has_reason',
-        'account',
-        '(suspended_at IS NULL) = (suspension_reason IS NULL)',
-    )
+    for name, condition in checks:
+        op.execute(f"ALTER TABLE account ADD CONSTRAINT {name} CHECK ({condition}) NOT VALID")
     op.execute(
         "CREATE TRIGGER admin_action_no_update_or_delete "
         "BEFORE UPDATE OR DELETE ON admin_action "
@@ -94,6 +97,9 @@ def upgrade() -> None:
         "BEFORE TRUNCATE ON admin_action "
         "FOR EACH STATEMENT EXECUTE FUNCTION append_only_refuse_change()"
     )
+    with op.get_context().autocommit_block():
+        for name, _ in checks:
+            op.execute(f"ALTER TABLE account VALIDATE CONSTRAINT {name}")
 
 
 def downgrade() -> None:
