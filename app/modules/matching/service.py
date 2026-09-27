@@ -22,6 +22,7 @@ from sqlalchemy import desc, func, null, nulls_last, select
 from sqlalchemy.orm import Session
 
 from app.modules.auth.models.creator import Creator
+from app.modules.auth.suspension import account_is_active
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.models import DealMemo
 from app.modules.matching import embedder
@@ -121,7 +122,10 @@ def refresh_creators(
     """
     query = select(Creator)
     if discoverable_only:
-        query = query.where(Creator.passport_published_at.is_not(None))
+        query = query.where(
+            Creator.passport_published_at.is_not(None),
+            account_is_active(Creator.account_id),
+        )
     if creator_ids is not None:
         query = query.where(Creator.id.in_(creator_ids))
     return _refresh(
@@ -223,6 +227,8 @@ def find_creators_for_campaign(
         .outerjoin(CreatorEmbedding, CreatorEmbedding.creator_id == Creator.id)
         .where(
             Creator.passport_published_at.is_not(None),
+            # A suspended creator is never suggested (D-061).
+            account_is_active(Creator.account_id),
             Creator.city.in_(campaign.cities),
             Creator.niches.overlap(campaign.niches),
         )

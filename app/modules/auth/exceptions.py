@@ -98,3 +98,15 @@ class InvalidSearch(DomainError):
     status_code = HTTPStatus.UNPROCESSABLE_ENTITY
     code = "invalid_search"
     title = "Those search filters contradict each other"
+
+
+class AccountSuspended(DomainError):
+    # Told plainly, with the category of reason, never the admin's own note
+    # (D-061). 403 rather than 401: the credentials are fine, the account is not.
+    status_code = HTTPStatus.FORBIDDEN
+    code = "account_suspended"
+    title = "This account is suspended"
+
+    @classmethod
+    def because(cls, reason: str | None) -> "AccountSuspended":
+        return cls(f"Reason: {(reason or 'other').replace('_', ' ')}.")

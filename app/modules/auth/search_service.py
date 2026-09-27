@@ -34,6 +34,7 @@ from app.core.taxonomy import CURRENCY
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.models.rate_card import CreatorChannel, CreatorPackage
 from app.modules.auth.schemas import ChannelPlatform
+from app.modules.auth.suspension import account_is_active
 
 
 @dataclass(frozen=True)
@@ -69,7 +70,11 @@ def _like(text: str) -> str:
 
 
 def _filtered(search: CreatorSearch) -> Select[tuple[Creator]]:
-    query = select(Creator).where(Creator.passport_published_at.is_not(None))
+    query = select(Creator).where(
+        Creator.passport_published_at.is_not(None),
+        # A suspended creator is not found (D-061).
+        account_is_active(Creator.account_id),
+    )
 
     if search.text:
         pattern = _like(search.text.strip())

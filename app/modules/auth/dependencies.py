@@ -9,7 +9,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.modules.auth.exceptions import InvalidToken, RoleNotAllowed
+from app.modules.auth.exceptions import AccountSuspended, InvalidToken, RoleNotAllowed
 from app.modules.auth.models.account import Account
 from app.modules.auth.tokens import account_id_for_scoping, decode_access_token
 
@@ -59,6 +59,10 @@ def get_current_account(
     if account is None or account.role != claims.role:
         # Account deleted, or its role changed after the token was issued.
         raise InvalidToken(headers=UNAUTHENTICATED_HEADERS)
+    if account.suspended_at is not None:
+        # Checked here, on every request, so a suspension takes effect at once
+        # even for a token that has not expired (D-061).
+        raise AccountSuspended.because(account.suspension_reason)
     # For logging and later ownership checks.
     request.state.account_id = account.id
     return account

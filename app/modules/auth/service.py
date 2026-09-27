@@ -15,6 +15,7 @@ from sqlalchemy import CursorResult, select, text, update
 from sqlalchemy.orm import Session
 
 from app.modules.auth.exceptions import (
+    AccountSuspended,
     InvalidToken,
     OtpInvalid,
     OtpSendLimitReached,
@@ -209,6 +210,10 @@ def verify_otp(
     if account is not None and account.role != role:
         db.rollback()
         raise RoleMismatch()
+    if account is not None and account.suspended_at is not None:
+        # The code is right, so the person is told; it stays unused (D-061).
+        db.rollback()
+        raise AccountSuspended.because(account.suspension_reason)
 
     is_new_account = account is None
     if account is None:
@@ -293,6 +298,11 @@ def refresh_session(db: Session, refresh_token: str, now: datetime) -> LoginResu
     auth_session.used_at = now
     auth_session.updated_at = now
     account = db.get_one(Account, auth_session.account_id)
+    if account.suspended_at is not None:
+        # A suspension ends every session; this catches any it missed.
+        _revoke_family(db, auth_session.family_id, now)
+        db.commit()
+        raise AccountSuspended.because(account.suspension_reason)
     result = _issue_session(db, account, auth_session.family_id, now)
     db.commit()
     return result
