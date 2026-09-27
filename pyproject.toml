@@ -74,6 +74,14 @@ strict = true
 module = ["slowapi.*", "pgvector.*", "limits.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# Installed only where embeddings are made (requirements-ml.txt, D-052), never
+# in CI or the API image. embedder.py imports it inside a function for that
+# reason; without this entry mypy fails wherever it is absent, which is CI.
+# It failed there from PR #28 on while passing on any laptop that had it.
+module = ["sentence_transformers.*", "sentence_transformers"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # Quiet by default; CI adds coverage flags explicitly.
