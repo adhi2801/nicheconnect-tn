@@ -1,6 +1,6 @@
 # Decision needed: where the backend runs, and where uploaded files live
 
-**Status: needs Adhi's decision.** Researched 27 September 2026. Nothing is
+**Status: decided (D-062): option A, AWS Mumbai.** Researched 27 September 2026. Nothing is
 set up, and no account has been opened anywhere.
 
 ## Why now
