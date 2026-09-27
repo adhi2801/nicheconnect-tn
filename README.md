@@ -17,7 +17,7 @@ service; it tracks payment **status** only (brand pays creator directly).
 ```bash
 cp .env.example .env          # fill in real values, never commit .env
 docker compose up -d          # starts Postgres (pgvector) + Redis
-pip install -r requirements.txt
+pip install -r requirements-dev.txt   # the app, plus the tools that check it
 uvicorn app.main:app --reload
 ```
 

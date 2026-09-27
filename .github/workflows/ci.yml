@@ -92,7 +92,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
 
       # testing.md gate 2 (D-037). Cheapest checks first: a style or lint
       # failure should not wait behind a database and the whole test suite.
@@ -183,7 +183,8 @@ jobs:
           schemathesis run http://127.0.0.1:8099/openapi.json \
             --max-time 120 --workers 4 --warnings off -c not_a_server_error
 
-      # testing.md gate 6. Reads the pinned set in requirements.txt, resolves
+      # testing.md gate 6. Reads the pinned set in requirements-dev.txt (which
+      # includes requirements.txt, so both lists are checked), resolves
       # everything those pins drag in, and checks the lot against the Python
       # advisory database. --strict means a package it cannot check fails the
       # build instead of being passed over quietly.
@@ -199,4 +200,4 @@ jobs:
       - name: Audit dependencies for known vulnerabilities
         run: |
           pip install pip-audit==2.10.1
-          pip-audit --requirement requirements.txt --strict --desc
+          pip-audit --requirement requirements-dev.txt --strict --desc

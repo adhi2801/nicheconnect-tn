@@ -80,7 +80,7 @@ Rules marked **(decision)** need a recorded decision before first use.
 
 ## 8. Dependencies and supply chain
 
-- Every dependency is pinned in `requirements.txt` and approved (CLAUDE.md section 5).
+- Every dependency is pinned and approved (CLAUDE.md section 5): what the app runs in `requirements.txt`, the tools that check it in `requirements-dev.txt` (D-063). Only the first reaches a server.
 - CI runs `pip-audit` on every push (D-031). Any known vulnerability blocks merge, not only high or critical ones, because most Python advisories carry no severity rating.
 - Prefer well-maintained libraries with recent releases and many users. Avoid packages abandoned for over a year.
 - Enable GitHub Dependabot alerts and secret scanning on the repository.

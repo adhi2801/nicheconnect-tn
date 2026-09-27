@@ -114,7 +114,7 @@ Developers use **Windows PowerShell 5**: give commands one per line and never jo
 
 ```powershell
 docker compose up -d                          # Postgres (pgvector) + Redis
-pip install -r requirements.txt
+pip install -r requirements-dev.txt           # the app plus its checking tools (D-063)
 uvicorn app.main:app --reload                 # http://localhost:8000/healthz
 alembic revision --autogenerate -m "message"
 alembic upgrade head
