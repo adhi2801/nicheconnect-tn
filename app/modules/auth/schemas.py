@@ -102,7 +102,8 @@ OtpCode = Annotated[
         examples=["042917"],
     ),
 ]
-Role = Literal["brand", "creator"]
+# "admin" logs in like everyone else but is never created by login (D-061).
+Role = Literal["brand", "creator", "admin"]
 
 
 class OtpRequestIn(BaseModel):
@@ -120,7 +121,13 @@ class OtpVerifyIn(BaseModel):
 
     phone: IndianMobile
     code: OtpCode
-    role: Role = Field(description="Which app is logging in", examples=["creator"])
+    role: Role = Field(
+        description=(
+            "Which app is logging in. `admin` logs in only to an admin account "
+            "that already exists; it never creates one"
+        ),
+        examples=["creator"],
+    )
 
 
 class AccountSummary(BaseModel):

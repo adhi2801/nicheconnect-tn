@@ -293,7 +293,7 @@ def test_role_mismatch_gets_409(client, sender, db):
     [
         ({"phone": "9999900001", "code": "12345", "role": "creator"}, ["code"]),
         ({"phone": "123", "code": "123456", "role": "creator"}, ["phone"]),
-        ({"phone": "9999900001", "code": "123456", "role": "admin"}, ["role"]),
+        ({"phone": "9999900001", "code": "123456", "role": "superuser"}, ["role"]),
         ({"phone": "9999900001", "code": "123456"}, ["role"]),
         (
             {

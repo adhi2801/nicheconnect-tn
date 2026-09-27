@@ -200,6 +200,12 @@ def verify_otp(
         raise OtpInvalid()
 
     account = db.scalars(select(Account).where(Account.phone == phone)).first()
+    if role == "admin" and (account is None or account.role != "admin"):
+        # Login never creates an admin, and must not reveal who is one: this
+        # is answered exactly as a wrong code, attempt used and all (D-061).
+        challenge.attempts += 1
+        db.commit()
+        raise OtpInvalid()
     if account is not None and account.role != role:
         db.rollback()
         raise RoleMismatch()
@@ -231,7 +237,7 @@ def _issue_session(
 ) -> LoginResult:
     """Create one session in `family_id` and return its tokens."""
     refresh_token = new_refresh_token()
-    refresh_expires_at = now + refresh_token_ttl()
+    refresh_expires_at = now + refresh_token_ttl(account.role)
     db.add(
         AuthSession(
             account_id=account.id,
