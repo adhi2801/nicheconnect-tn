@@ -2,6 +2,7 @@ from collections.abc import Callable
 from typing import Any
 
 from slowapi import Limiter
+from starlette.requests import Request
 
 from app.core.client_ip import client_ip
 from app.core.config import settings
@@ -19,8 +20,22 @@ limiter = Limiter(
 )
 
 
+def per_account(request: Request) -> str:
+    """Key a limit by the signed-in account rather than the address.
+
+    For limits on what a person may do, not what a network may send: an
+    office behind one address is not one person, and one person does not
+    escape a limit by changing networks. `get_current_account` records the
+    account before the limit is checked, since slowapi checks it when the
+    endpoint runs, after its dependencies. Falls back to the address when
+    there is no account, which only an unauthenticated route would see.
+    """
+    account_id = getattr(request.state, "account_id", None)
+    return f"account:{account_id}" if account_id else client_ip(request)
+
+
 def rate_limit[Endpoint: Callable[..., Any]](
-    value: str,
+    value: str, *, key: Callable[[Request], str] | None = None
 ) -> Callable[[Endpoint], Endpoint]:
     """`limiter.limit(value)`, with the endpoint's type kept.
 
@@ -30,5 +45,7 @@ def rate_limit[Endpoint: Callable[..., Any]](
     function, wrapped with `functools.wraps`, which is what this says.
     Routers use this, never `limiter.limit` directly.
     """
-    decorator: Callable[[Endpoint], Endpoint] = limiter.limit(value)
+    decorator: Callable[[Endpoint], Endpoint] = (
+        limiter.limit(value) if key is None else limiter.limit(value, key_func=key)
+    )
     return decorator

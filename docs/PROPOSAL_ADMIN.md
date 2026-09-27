@@ -1,8 +1,8 @@
 # Proposal: the admin side, so the pilot can be run
 
-**Status: option A approved in principle by Adhi (26 September 2026); this
-design needs his yes before anything is built.** Written 27 September 2026 on
-`feature/admin`, stacked on `feature/creator-search`.
+**Status: approved in full (D-061) and built, 27 September 2026**, on
+`feature/admin-v2`, which sits on the newest migration chain (the deal record)
+with creator search merged in, so the migration chain stays linear.
 
 ## 1. What it is for
 
