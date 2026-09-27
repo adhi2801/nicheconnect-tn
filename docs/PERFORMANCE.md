@@ -82,3 +82,24 @@ venv\Scripts\python.exe scripts\measure_performance.py --runs 100
 
 Add `--explain` to see the query plans behind each endpoint and confirm the
 indexes are used.
+
+## Creator search at 10,000 creators
+
+`GET /api/v1/creators`, measured on 27 September with **10,000 extra published
+creators and 34,920 packages** inserted inside a transaction and rolled back
+afterwards, 30 runs per search:
+
+| Search | p50 ms | p95 ms | Budget |
+| --- | --- | --- | --- |
+| No filters | 17.7 | 19.5 | 300 |
+| Niche and city | 16.0 | 22.7 | 300 |
+| Instagram, 10k to 50k followers | 18.7 | 29.8 | 300 |
+| Reels under ₹10,000 | 32.2 | 37.6 | 300 |
+| All of those together | 32.6 | 37.0 | 300 |
+| Words in handle, name or bio | 39.0 | 60.6 | 300 |
+
+No index was added: the slowest, a word search with no text index, uses a
+fifth of the budget at fifty times the pilot's size. **Trigger for a trigram
+index on the searched text:** a measured word-search p95 above 150 ms, or
+100,000 published creators. It would be a migration, so it needs its own
+approval.
