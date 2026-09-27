@@ -1890,6 +1890,90 @@
         "title": "CreatorProfileUpdate",
         "type": "object"
       },
+      "CreatorSearchResultRead": {
+        "description": "One creator in a brand's search: enough to decide whether to open the media kit.",
+        "properties": {
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bio"
+          },
+          "channels": {
+            "items": {
+              "$ref": "#/components/schemas/SearchChannelRead"
+            },
+            "title": "Channels",
+            "type": "array"
+          },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "creator_id": {
+            "format": "uuid",
+            "title": "Creator Id",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "from_price_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The cheapest package that answers the search (of the format and platform asked for, if any). Null when the creator lists none",
+            "title": "From Price Paise"
+          },
+          "handle": {
+            "title": "Handle",
+            "type": "string"
+          },
+          "member_since": {
+            "examples": [
+              "2026-09"
+            ],
+            "title": "Member Since",
+            "type": "string"
+          },
+          "niches": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Niches",
+            "type": "array"
+          }
+        },
+        "required": [
+          "creator_id",
+          "handle",
+          "display_name",
+          "city",
+          "niches",
+          "bio",
+          "member_since",
+          "channels",
+          "from_price_paise",
+          "currency"
+        ],
+        "title": "CreatorSearchResultRead",
+        "type": "object"
+      },
       "DealRecordEntryRead": {
         "description": "One sealed step. `facts` holds figures and fingerprints, never typed text.",
         "properties": {
@@ -3811,6 +3895,34 @@
         "title": "Page[CampaignRead]",
         "type": "object"
       },
+      "Page_CreatorSearchResultRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CreatorSearchResultRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as ?cursor= to get the next page",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[CreatorSearchResultRead]",
+        "type": "object"
+      },
       "Page_MemoRead_": {
         "properties": {
           "items": {
@@ -4712,6 +4824,42 @@
           "title"
         ],
         "title": "RowProblem",
+        "type": "object"
+      },
+      "SearchChannelRead": {
+        "description": "A channel's size, as the creator stated it and when.",
+        "properties": {
+          "figures_as_of": {
+            "format": "date",
+            "title": "Figures As Of",
+            "type": "string"
+          },
+          "followers": {
+            "title": "Followers",
+            "type": "integer"
+          },
+          "platform": {
+            "enum": [
+              "instagram",
+              "youtube"
+            ],
+            "title": "Platform",
+            "type": "string"
+          },
+          "self_reported": {
+            "const": true,
+            "default": true,
+            "description": "Always true. The creator's number, never verified by us",
+            "title": "Self Reported",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "platform",
+          "followers",
+          "figures_as_of"
+        ],
+        "title": "SearchChannelRead",
         "type": "object"
       },
       "UnreadCount": {
@@ -7992,6 +8140,276 @@
         "summary": "Publish a campaign",
         "tags": [
           "campaigns"
+        ]
+      }
+    },
+    "/api/v1/creators": {
+      "get": {
+        "description": "Creators who published their Passport, filtered by any combination of words in their handle, name or bio; niche; city; a platform and an audience size on it; and a price limit, optionally for one format. Every audience filter must hold for one channel, and every price filter for one package. Follower counts are the creator's own statement, dated, never verified. Newest profiles first; pass `next_cursor` back as `cursor` for the next page. Brands only.",
+        "operationId": "search_creators_api_v1_creators_get",
+        "parameters": [
+          {
+            "description": "Words in the handle, name or bio",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 60,
+                  "minLength": 2,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Words in the handle, name or bio",
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "niche",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "food",
+                    "fashion",
+                    "beauty",
+                    "tech",
+                    "travel",
+                    "fitness",
+                    "education",
+                    "entertainment",
+                    "finance",
+                    "lifestyle"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Niche"
+            }
+          },
+          {
+            "in": "query",
+            "name": "city",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 60,
+                  "minLength": 2,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "City"
+            }
+          },
+          {
+            "in": "query",
+            "name": "platform",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "instagram",
+                    "youtube"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Platform"
+            }
+          },
+          {
+            "in": "query",
+            "name": "min_followers",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 1000000000,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Followers"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_followers",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 1000000000,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Max Followers"
+            }
+          },
+          {
+            "description": "In paise: ₹1 is 100",
+            "in": "query",
+            "name": "max_price_paise",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 10000000000,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "In paise: ₹1 is 100",
+              "title": "Max Price Paise"
+            }
+          },
+          {
+            "description": "Only packages of this format count",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "post",
+                    "reel",
+                    "story",
+                    "short",
+                    "video",
+                    "live",
+                    "other"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only packages of this format count",
+              "title": "Format"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_CreatorSearchResultRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only brands can search for creators"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A filter is not valid, or the filters contradict each other"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Search for creators",
+        "tags": [
+          "creator search"
         ]
       }
     },

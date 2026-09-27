@@ -701,3 +701,38 @@ class RateGuidanceRead(BaseModel):
         description="Date of the oldest follower count behind the figures"
     )
     as_of: date = Field(description="The day these figures were worked out")
+
+
+# --- brands searching for creators -------------------------------------------
+
+
+class SearchChannelRead(BaseModel):
+    """A channel's size, as the creator stated it and when."""
+
+    platform: ChannelPlatform
+    followers: int
+    figures_as_of: date
+    self_reported: Literal[True] = Field(
+        default=True,
+        description="Always true. The creator's number, never verified by us",
+    )
+
+
+class CreatorSearchResultRead(BaseModel):
+    """One creator in a brand's search: enough to decide whether to open the media kit."""
+
+    creator_id: uuid.UUID
+    handle: str
+    display_name: str
+    city: str
+    niches: list[str]
+    bio: str | None
+    member_since: str = Field(examples=["2026-09"])
+    channels: list[SearchChannelRead]
+    from_price_paise: int | None = Field(
+        description=(
+            "The cheapest package that answers the search (of the format and "
+            "platform asked for, if any). Null when the creator lists none"
+        )
+    )
+    currency: str

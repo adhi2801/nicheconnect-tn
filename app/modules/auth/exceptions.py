@@ -90,3 +90,11 @@ class ProfileUrlDoesNotMatchPlatform(DomainError):
     status_code = HTTPStatus.UNPROCESSABLE_ENTITY
     code = "profile_url_platform_mismatch"
     title = "That link is not on the platform you chose"
+
+
+class InvalidSearch(DomainError):
+    # Filters that cannot all be true at once: answering with an empty list
+    # would look like "no creators" rather than "you asked for nothing".
+    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
+    code = "invalid_search"
+    title = "Those search filters contradict each other"

@@ -23,6 +23,7 @@ from app.modules.auth.public_router import router as public_router
 from app.modules.auth.rate_card_router import router as rate_card_router
 from app.modules.auth.rate_guidance_router import router as rate_guidance_router
 from app.modules.auth.router import router as auth_router
+from app.modules.auth.search_router import router as search_router
 from app.modules.campaigns.application_router import router as applications_router
 from app.modules.campaigns.router import router as campaigns_router
 from app.modules.deal_memo.delivery_router import router as delivery_router
@@ -90,6 +91,7 @@ app.include_router(attention_router)
 # Public: the Creator Passport, readable without logging in.
 app.include_router(public_router)
 app.include_router(rate_card_router)
+app.include_router(search_router)
 app.include_router(media_kit_router)
 app.include_router(rate_guidance_router)
 app.include_router(campaigns_router)
