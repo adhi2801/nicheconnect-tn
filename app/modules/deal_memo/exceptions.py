@@ -81,3 +81,20 @@ class DueDateHasPassed(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "due_date_has_passed"
     title = "The agreed due date has already passed. Set a new one first"
+
+
+class CheckpointNotFound(DomainError):
+    # No checkpoint covers this deal yet (its first entry is newer than the
+    # last one), or none exists for the date asked about.
+    status_code = HTTPStatus.NOT_FOUND
+    code = "checkpoint_not_found"
+    title = "No daily checkpoint covers this deal for that date yet"
+
+
+class RecordDoesNotMatchCheckpoint(DomainError):
+    # The record, recomputed today, no longer leads to a root the authorities
+    # stamped. That is what a rewrite or a backdated entry looks like, so it is
+    # answered plainly rather than as a server error (D-060).
+    status_code = HTTPStatus.CONFLICT
+    code = "record_does_not_match_checkpoint"
+    title = "The deal record no longer matches its stamped daily checkpoint"

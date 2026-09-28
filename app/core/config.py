@@ -99,6 +99,9 @@ class Settings(BaseSettings):
     otp_hash_key: SecretStr = Field(min_length=MIN_KEY_LENGTH)
     access_token_expire_minutes: int = Field(default=15, ge=1, le=15)
     refresh_token_expire_days: int = Field(default=30, ge=1, le=30)
+    # Background jobs (D-060). Off unless this instance should run them;
+    # several instances may, since DBOS shares the work between them.
+    run_jobs: bool = False
 
     @field_validator("cors_allowed_origins")
     @classmethod

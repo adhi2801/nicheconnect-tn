@@ -17,6 +17,12 @@ exception reaches a user", proved rather than assumed.
 fixes, each one root cause. The one left is not a bug — a well-formed OTP
 that is not the real code, correctly refused with 400. See finding 3.
 
+**Re-run on 26 September, with every check on**, after the rate card, media
+kit, rate guidance and deal record added 12 operations (76 in all): 9691
+generated cases, the same single finding, nothing new. The stateful phase
+passed all 518 scenarios. The CI gate (`not_a_server_error` alone) passed
+7658 cases on the same day.
+
 **Still not gated:** the other checks stay off in CI. They pass now, but they
 are property-based and explore different inputs each run, so a red build on a
 branch that changed nothing relevant would teach everyone to ignore it.

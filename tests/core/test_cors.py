@@ -103,7 +103,11 @@ def test_a_look_alike_of_the_dashboard_is_refused(client):
 
 
 def test_a_method_the_api_does_not_use_is_refused(client):
-    assert preflight(client, DASHBOARD, method="DELETE").status_code == 400
+    """DELETE used to stand in for "a method we do not use"; the rate card
+    (D-055) gave us a real one, so this needs a method we genuinely never
+    answer. TRACE is a good permanent choice: it echoes the request back, and
+    a browser has no reason to ask for it."""
+    assert preflight(client, DASHBOARD, method="TRACE").status_code == 400
 
 
 def test_a_header_the_api_does_not_read_is_refused(client):

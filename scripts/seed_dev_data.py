@@ -22,11 +22,16 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from sqlalchemy import delete, func, select
 
 from app.core.config import settings
-from app.core.taxonomy import NICHES
+from app.core.taxonomy import CURRENCY, NICHES
 from app.db.session import SessionLocal
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
+from app.modules.auth.models.rate_card import (
+    MAX_PACKAGES_PER_CREATOR,
+    CreatorChannel,
+    CreatorPackage,
+)
 from app.modules.campaigns.models import (
     CAMPAIGN_TYPES,
     REJECTION_REASONS,
@@ -82,6 +87,19 @@ PITCHES = (
     "Happy to shoot in Tamil, with English subtitles for wider reach.",
 )
 STATUS_WEIGHTS = {"draft": 1, "open": 6, "closed": 2, "cancelled": 1}
+# (platform, format, title, price in paise, delivery days)
+PACKAGE_OFFERS = (
+    ("instagram", "reel", "1 Instagram Reel", 800_000, 5),
+    ("instagram", "story", "3-story set", 300_000, 2),
+    ("instagram", "post", "1 feed post", 500_000, 3),
+    ("instagram", "live", "30-minute Instagram Live", 1_200_000, 7),
+    ("youtube", "short", "1 YouTube Short", 600_000, 5),
+    ("youtube", "video", "Dedicated YouTube video", 2_500_000, 14),
+    ("youtube", "video", "60-second integration in a video", 1_500_000, 10),
+    ("instagram", "reel", "Reel plus 2 stories", 1_000_000, 6),
+    ("instagram", "other", "Store visit and reel", 1_800_000, 10),
+    ("youtube", "live", "YouTube live unboxing", 2_000_000, 10),
+)
 APPLICATION_STATUS_WEIGHTS = {
     "submitted": 6,
     "shortlisted": 2,
@@ -161,6 +179,59 @@ def seed(
     db.add_all(creator_rows)
     db.flush()
     counts["creators"] = len(creator_rows)
+
+    # Channels and rate cards (D-055). About half the creators publish their
+    # Passport and, separately, their prices. The first creator always has
+    # both channels and the full ten packages, published, so the media kit
+    # and the public page can be measured at their largest.
+    channel_rows: list[CreatorChannel] = []
+    package_rows: list[CreatorPackage] = []
+    for index, creator in enumerate(creator_rows):
+        fullest = index == 0
+        if fullest or rng.random() < 0.5:
+            creator.passport_published_at = now
+        if fullest or rng.random() < 0.5:
+            creator.rate_card_public_at = now
+        platforms = ["instagram"]
+        if fullest or rng.random() < 0.4:
+            platforms.append("youtube")
+        for platform in platforms:
+            followers = rng.randint(2_000, 250_000)
+            channel_rows.append(
+                CreatorChannel(
+                    creator_id=creator.id,
+                    platform=platform,
+                    profile_url=f"https://{platform}.com/{creator.handle}",
+                    followers=followers,
+                    average_views=rng.choice([None, followers // rng.randint(3, 20)]),
+                    figures_as_of=now.date(),
+                )
+            )
+        how_many = (
+            MAX_PACKAGES_PER_CREATOR
+            if fullest
+            else rng.randint(0, MAX_PACKAGES_PER_CREATOR)
+        )
+        for position, offer in enumerate(rng.sample(PACKAGE_OFFERS, how_many)):
+            platform, package_format, title, price, days = offer
+            package_rows.append(
+                CreatorPackage(
+                    creator_id=creator.id,
+                    platform=platform,
+                    format=package_format,
+                    title=title,
+                    price_paise=price,
+                    currency=CURRENCY,
+                    delivery_days=days,
+                    usage_rights_days=rng.choice([None, 30, 90]),
+                    position=position,
+                )
+            )
+    db.add_all(channel_rows)
+    db.add_all(package_rows)
+    db.flush()
+    counts["channels"] = len(channel_rows)
+    counts["packages"] = len(package_rows)
 
     statuses = list(STATUS_WEIGHTS)
     status_weights = list(STATUS_WEIGHTS.values())

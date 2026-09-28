@@ -23,6 +23,7 @@ from app.core.pagination import Slice, build_slice, older_than_cursor
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.models import Application, Campaign
+from app.modules.deal_memo import record_service as record
 from app.modules.deal_memo.exceptions import (
     ApplicationNotAccepted,
     BarterMemoHasNoFee,
@@ -35,11 +36,24 @@ from app.modules.deal_memo.exceptions import (
 )
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof
+from app.modules.deal_memo.record_models import DealRecordEntry
 from app.modules.notifications import service as notifications
 
 # Tables this module answers for in a data export (see
 # tests/modules/auth/test_export_api.py, which fails if one is missed).
-EXPORTED_TABLES = frozenset({"deal_memo", "deliverable_proof"})
+EXPORTED_TABLES = frozenset({"deal_memo", "deliverable_proof", "deal_record_entry"})
+
+# The deal record (D-057). The seals are exported as `seal` and
+# `previous_seal`: they are public by design, and naming them so keeps the
+# export guard's ban on anything called a "hash" (secrets) intact.
+RECORD_EXPORT_FIELDS = allow(
+    "id",
+    "deal_memo_id",
+    "sequence",
+    "kind",
+    "actor_role",
+    "facts",
+)
 
 MEMO_EXPORT_FIELDS = allow(
     "id",
@@ -288,6 +302,20 @@ def change_status(
     memo.status = new_status
     memo.updated_at = now
 
+    # On the deal record, in the same transaction (D-057). It starts when the
+    # memo is first sent: a draft is the brand's own workspace, and a draft
+    # cancelled before anyone saw it was never a deal.
+    if memo.sent_at is not None:
+        if new_status in ("sent", "accepted"):
+            facts = record.terms_facts(memo)
+        elif new_status == "cancelled":
+            facts = {"cancellation_kind": memo.cancellation_kind}
+        else:
+            facts = {}
+        record.append(
+            db, memo, kind=f"memo_{new_status}", actor_role=actor, now=now, facts=facts
+        )
+
     # Tell the other side, in the same transaction as the change itself.
     if new_status == "cancelled":
         _notify_other_side(
@@ -415,6 +443,17 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
             ).all()
         )
 
+    entries: list[DealRecordEntry] = []
+    if memo_ids:
+        entries = list(
+            db.scalars(
+                select(DealRecordEntry)
+                .where(DealRecordEntry.deal_memo_id.in_(memo_ids))
+                .order_by(DealRecordEntry.deal_memo_id, DealRecordEntry.sequence)
+                .limit(MAX_ROWS_PER_SECTION + 1)
+            ).all()
+        )
+
     return [
         build_section(
             "deal_memos",
@@ -433,7 +472,33 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
             objects=proofs,
             fields=PROOF_EXPORT_FIELDS,
         ),
+        build_section(
+            "deal_record",
+            table="deal_record_entry",
+            purpose=(
+                "Every step of those deals, each sealed to the one before, so "
+                "you can prove what happened and when without trusting us. "
+                "docs/DEAL_RECORD_VERIFY.md explains how to check the seals."
+            ),
+            objects=entries,
+            fields=RECORD_EXPORT_FIELDS,
+            extra=_record_seals,
+        ),
     ]
+
+
+def _record_seals(entry: DealRecordEntry) -> dict[str, str | None]:
+    # The actor's account id is exported only as its fingerprint, which is
+    # what the seal covers: the other side's account id is theirs.
+    return {
+        "actor_account_sha256": record.actor_fingerprint(entry.actor_account_id),
+        # In the seal's own spelling, to the microsecond, so the seals can be
+        # checked from the export file alone (docs/DEAL_RECORD_VERIFY.md).
+        "occurred_at": record.timestamp(entry.occurred_at),
+        "recorded_at": record.timestamp(entry.recorded_at),
+        "previous_seal": entry.previous_hash.hex(),
+        "seal": entry.entry_hash.hex(),
+    }
 
 
 def notify_party(

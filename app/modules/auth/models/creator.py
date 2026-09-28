@@ -94,6 +94,15 @@ class Creator(Base):
     passport_published_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Whether the creator's prices appear on the open internet, and when they
+    # said so (D-042, D-055). A separate consent from the Passport above: a
+    # creator may want to be findable without publishing what they charge.
+    # Signed-in brands see the prices either way; only the public page waits
+    # on this. NULL for everybody, like the Passport, because publishing
+    # someone's rates cannot be undone once search engines have read them.
+    rate_card_public_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

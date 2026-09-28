@@ -73,10 +73,25 @@ CREATOR_NOT_EMBEDDED = frozenset(
         "display_name",
         "handle",
         "passport_published_at",
+        # A consent timestamp, not a description of anybody's work (D-055).
+        "rate_card_public_at",
         "created_at",
         "updated_at",
     }
 )
+
+# **Worth revisiting, and the reason is measured.** A creator's packages and
+# channels (`creator_package`, `creator_channel`, D-055) are far richer text
+# than the four fields above — "1 Instagram Reel, Rs 8,000, delivered in 5
+# days" says more about what someone actually does than "Food creator based in
+# Madurai." On the current profiles, similarity separates a food creator from
+# a fitness creator by 0.0115; on richly written ones the same model separates
+# them by 0.2704. The gap is the text, not the model.
+#
+# Not done here because this module reads columns on one row, and packages are
+# another table. It needs its own change, and a decision: a package is
+# something the creator published, so embedding it is fair, but it moves the
+# embedding input from one table to three.
 
 # What a campaign is matched on. A brand wrote all of it to be read.
 CAMPAIGN_FIELDS = embeddable(

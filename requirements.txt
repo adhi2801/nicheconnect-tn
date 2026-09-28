@@ -29,3 +29,12 @@ coverage==7.16.1
 # of requests from it and checks every answer. 4.27.5 rather than the newest
 # 4.28.0: a tool that gates merges gets to settle for a few days first.
 schemathesis==4.27.5
+# Background jobs (D-060). Durable workflows whose state lives in Postgres, in
+# DBOS's own `dbos` schema; they run inside the app, so there is no broker and
+# no new service to deploy (CLAUDE.md section 3).
+dbos==3.1.0
+# Checks the RFC 3161 timestamps on the deal record's daily checkpoint (D-060).
+rfc3161-client==1.0.9
+# Pinned although rfc3161-client pulls it in: it performs the signature checks,
+# so which version does that is ours to choose, not the resolver's.
+cryptography==50.0.1

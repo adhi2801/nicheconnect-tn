@@ -25,6 +25,7 @@ from app.core.export import (
 )
 from app.core.taxonomy import CURRENCY
 from app.modules.campaigns.models import Application, Campaign
+from app.modules.deal_memo import record_service as record
 from app.modules.deal_memo import service as deal_memos
 from app.modules.deal_memo.exceptions import MemoNotFound
 from app.modules.deal_memo.models import DealMemo
@@ -239,6 +240,20 @@ def create_for_memo(
     except IntegrityError as error:
         db.rollback()
         raise PaymentRecordExists() from error
+    # Opened by the deal's own rule (approval starts the clock, D-027), not
+    # by either person, so the record names us as the actor.
+    record.append(
+        db,
+        memo,
+        kind="payment_opened",
+        actor_role="system",
+        now=now,
+        facts={
+            "payment_id": str(payment.id),
+            "amount_paise": payment.amount_paise,
+            "due_on": payment.due_on.isoformat(),
+        },
+    )
     return payment
 
 
@@ -281,6 +296,19 @@ def _record_marked_paid(
     payment.reference = clean_reference(reference)
     payment.marked_paid_at = now
     payment.updated_at = now
+    # The reference is typed, so the record keeps its fingerprint.
+    record.append_for_payment(
+        db,
+        payment.id,
+        kind="payment_marked_paid",
+        actor_role="brand",
+        now=now,
+        facts={
+            "payment_id": str(payment.id),
+            "method": payment.method,
+            "reference_sha256": record.fingerprint(payment.reference),
+        },
+    )
     # The creator has no other way to know they should look for the money.
     memo = db.get(DealMemo, payment.deal_memo_id)
     if memo is not None:
@@ -304,6 +332,14 @@ def confirm_received(
 
     payment.confirmed_at = now
     payment.updated_at = now
+    record.append_for_payment(
+        db,
+        payment.id,
+        kind="payment_confirmed",
+        actor_role="creator",
+        now=now,
+        facts={"payment_id": str(payment.id)},
+    )
     memo = db.get(DealMemo, payment.deal_memo_id)
     if memo is not None:
         deal_memos.notify_party(

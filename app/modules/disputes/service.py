@@ -25,6 +25,7 @@ from app.core.export import (
     allow,
     build_section,
 )
+from app.modules.deal_memo import record_service as record
 from app.modules.disputes.event_models import DisputeEvent
 from app.modules.disputes.exceptions import (
     DisputeAlreadyClosed,
@@ -207,6 +208,17 @@ def open_for_payment(
         db.rollback()
         raise DisputeAlreadyOpen() from error
     _add_event(db, dispute, actor_role=opened_by, kind="opened", note=reason, now=now)
+    record.append_for_payment(
+        db,
+        payment_id,
+        kind="dispute_opened",
+        actor_role=opened_by,
+        now=now,
+        facts={
+            "dispute_id": str(dispute.id),
+            "reason_sha256": record.fingerprint(reason),
+        },
+    )
     return dispute
 
 
@@ -241,6 +253,21 @@ def add_entry(
         now=now,
     )
     dispute.updated_at = now
+    record.append_for_payment(
+        db,
+        dispute.payment_status_id,
+        kind="dispute_entry_added",
+        actor_role=actor_role,
+        now=now,
+        facts={
+            "dispute_id": str(dispute.id),
+            "entry_kind": kind,
+            "note_sha256": record.fingerprint(note) if note else None,
+            "evidence_url_sha256": (
+                record.fingerprint(evidence_url) if evidence_url else None
+            ),
+        },
+    )
     db.commit()
     db.refresh(event)
     return event
@@ -269,6 +296,18 @@ def close(
     dispute.outcome = outcome
     dispute.closed_at = now
     dispute.updated_at = now
+    record.append_for_payment(
+        db,
+        dispute.payment_status_id,
+        kind="dispute_closed",
+        actor_role=actor_role,
+        now=now,
+        facts={
+            "dispute_id": str(dispute.id),
+            "outcome": outcome,
+            "note_sha256": record.fingerprint(note) if note else None,
+        },
+    )
     _add_event(
         db,
         dispute,

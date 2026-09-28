@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from slowapi.middleware import SlowAPIMiddleware
 
-from app.core import cors, openapi
+from app.core import cors, jobs, openapi
 from app.core.body_limit import BodyLimitMiddleware
 from app.core.config import settings
 from app.core.errors import problem_doc, problem_response, register_error_handlers
@@ -17,13 +17,17 @@ from app.core.unexpected_error import UnexpectedErrorMiddleware
 from app.modules.auth.attention_router import router as attention_router
 from app.modules.auth.dependencies import idempotency_identity
 from app.modules.auth.export_router import router as export_router
+from app.modules.auth.media_kit_router import router as media_kit_router
 from app.modules.auth.profile_router import brand_router, creator_router
 from app.modules.auth.public_router import router as public_router
+from app.modules.auth.rate_card_router import router as rate_card_router
+from app.modules.auth.rate_guidance_router import router as rate_guidance_router
 from app.modules.auth.router import router as auth_router
 from app.modules.campaigns.application_router import router as applications_router
 from app.modules.campaigns.router import router as campaigns_router
 from app.modules.deal_memo.delivery_router import router as delivery_router
 from app.modules.deal_memo.proof_router import router as proof_router
+from app.modules.deal_memo.record_router import router as deal_record_router
 from app.modules.deal_memo.router import router as deal_memos_router
 from app.modules.disputes.router import router as disputes_router
 from app.modules.matching.router import router as matching_router
@@ -40,6 +44,8 @@ API_DOCS_PUBLIC = settings.environment != "production"
 
 app = FastAPI(
     title="NicheConnect TN API",
+    # Starts the job runner when RUN_JOBS=true (D-060).
+    lifespan=jobs.lifespan,
     openapi_url="/openapi.json" if API_DOCS_PUBLIC else None,
     docs_url="/docs" if API_DOCS_PUBLIC else None,
     redoc_url="/redoc" if API_DOCS_PUBLIC else None,
@@ -83,10 +89,14 @@ app.include_router(export_router)
 app.include_router(attention_router)
 # Public: the Creator Passport, readable without logging in.
 app.include_router(public_router)
+app.include_router(rate_card_router)
+app.include_router(media_kit_router)
+app.include_router(rate_guidance_router)
 app.include_router(campaigns_router)
 app.include_router(applications_router)
 app.include_router(notifications_router)
 app.include_router(deal_memos_router)
+app.include_router(deal_record_router)
 app.include_router(proof_router)
 app.include_router(payment_router)
 app.include_router(bulk_payments_router)

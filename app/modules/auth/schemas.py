@@ -21,6 +21,10 @@ from app.core.taxonomy import CURRENCY, LANGUAGES, MAX_NICHES, Language, Niche
 from app.modules.auth.models.account import PHONE_PATTERN
 from app.modules.auth.models.creator import BIO_MAX_LENGTH, HANDLE_PATTERN
 
+# The media kit nests the delivery record as its own module defines it, so
+# the two can never describe the same numbers differently.
+from app.modules.deal_memo.schemas import CreatorDeliveryRead
+
 # Separators people commonly type: "+91 98765 43210", "98765-43210", "(98765) 43210".
 _PHONE_SEPARATORS = re.compile(r"[\s\-()]")
 _TEN_DIGIT_MOBILE = re.compile(r"^[6-9][0-9]{9}$")
@@ -292,6 +296,10 @@ class CreatorProfileRead(BaseModel):
     # anyone who is not signed in. Set means the creator turned it on, and
     # when (D-036).
     passport_published_at: datetime | None
+    # The other consent, and a separate one (D-055): whether prices appear on
+    # the public page. NULL means signed-in brands see them and the open
+    # internet does not.
+    rate_card_public_at: datetime | None
     created_at: datetime
     updated_at: datetime
 
@@ -299,13 +307,14 @@ class CreatorProfileRead(BaseModel):
 # --- the public Creator Passport -----------------------------------------
 
 
-class PublicCreatorRead(BaseModel):
-    """A creator profile as the open internet sees it.
+class PublicCreatorSummary(BaseModel):
+    """A creator's public profile facts, and nothing else.
 
-    Deliberately narrow: this response is readable by anyone, so it carries
-    only what a creator would put on a public page. Contact details are not
-    merely omitted here, they are not in this table at all (D-011), and the
-    account id stays private so a public page cannot be linked to a login.
+    Deliberately narrow: it carries only what a creator would put on a public
+    page. Contact details are not merely omitted here, they are not in this
+    table at all (D-011), and the account id stays private so a public page
+    cannot be linked to a login. Matching lists creators in this shape; the
+    Passport below adds channels and prices.
     """
 
     model_config = ConfigDict(from_attributes=True)
@@ -319,6 +328,20 @@ class PublicCreatorRead(BaseModel):
     bio: str | None
     member_since: str = Field(
         description="Month the creator joined, e.g. 2026-09", examples=["2026-09"]
+    )
+
+
+class PublicCreatorRead(PublicCreatorSummary):
+    """The public Creator Passport: the profile, links, and published prices."""
+
+    channels: "list[PublicChannelRead]" = Field(
+        description="Links to the creator's channels. Never a follower count (D-042)"
+    )
+    packages: "list[PublicPackageRead]" = Field(
+        description=(
+            "Prices, only when the creator has chosen to publish them (D-055). "
+            "Empty otherwise, which looks the same as having none"
+        )
     )
 
 
@@ -446,3 +469,235 @@ def to_attention_read(result: AttentionList) -> AttentionRead:
             for item in result.items
         ],
     )
+
+
+# --- rate card (D-055) ----------------------------------------------------
+
+ChannelPlatform = Literal["instagram", "youtube"]
+PackageFormat = Literal["post", "reel", "story", "short", "video", "live", "other"]
+
+
+class ChannelUpsert(BaseModel):
+    """What a creator states about one of their channels."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    profile_url: Annotated[
+        str,
+        Field(
+            min_length=12,
+            max_length=300,
+            pattern=r"^https://",
+            description="A link to the channel itself; the domain must match the platform",
+            examples=["https://instagram.com/priya.eats"],
+        ),
+    ]
+    followers: Annotated[
+        int, Field(ge=0, le=1_000_000_000, description="As the creator states it")
+    ]
+    average_views: Annotated[
+        int | None,
+        Field(
+            default=None,
+            ge=0,
+            le=1_000_000_000,
+            description="Optional: plenty of creators do not know it",
+        ),
+    ]
+
+
+class ChannelRead(BaseModel):
+    """A channel as its owner and signed-in brands see it.
+
+    `followers` and `average_views` are the creator's own claim. We have never
+    checked them, the word "verified" is never used, and `figures_as_of` says
+    when they were stated — a follower count without a date is not a fact.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    platform: ChannelPlatform
+    profile_url: str
+    followers: int
+    average_views: int | None
+    figures_as_of: date
+    self_reported: Literal[True] = Field(
+        default=True,
+        description="Always true. These numbers are the creator's, not ours",
+    )
+
+
+class PublicChannelRead(BaseModel):
+    """A channel on the open internet: the link, and nothing else.
+
+    D-042 decided this after research. Follower counts are the easiest number
+    to fake and about two in three Indian creators inflate them, so
+    republishing our copy under our name would lend it our credibility.
+    Anyone can follow the link and read the real number at the source.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    platform: ChannelPlatform
+    profile_url: str
+
+
+class PackageCreate(BaseModel):
+    """One offer a creator sells."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    platform: ChannelPlatform
+    format: PackageFormat
+    title: Annotated[
+        str, Field(min_length=1, max_length=80, examples=["1 Instagram Reel"])
+    ]
+    description: Annotated[str | None, Field(default=None, max_length=500)]
+    price_paise: Annotated[
+        int,
+        Field(gt=0, le=100_000_000_000, description="Whole paise: 800000 is Rs 8,000"),
+    ]
+    delivery_days: Annotated[int, Field(ge=1, le=90)]
+    usage_rights_days: Annotated[int | None, Field(default=None, ge=0, le=3650)]
+    position: Annotated[int, Field(default=0, ge=0, le=19, description="Display order")]
+
+
+class PackageUpdate(BaseModel):
+    """Any subset of a package's fields."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    platform: ChannelPlatform | None = None
+    format: PackageFormat | None = None
+    title: Annotated[str | None, Field(default=None, min_length=1, max_length=80)]
+    description: Annotated[str | None, Field(default=None, max_length=500)]
+    price_paise: Annotated[int | None, Field(default=None, gt=0, le=100_000_000_000)]
+    delivery_days: Annotated[int | None, Field(default=None, ge=1, le=90)]
+    usage_rights_days: Annotated[int | None, Field(default=None, ge=0, le=3650)]
+    position: Annotated[int | None, Field(default=None, ge=0, le=19)]
+
+    @model_validator(mode="after")
+    def at_least_one_field(self) -> "PackageUpdate":
+        if not self.model_fields_set:
+            raise PydanticCustomError("empty_update", "Send at least one field to change")
+        return self
+
+
+class PackageRead(BaseModel):
+    """A package, priced in paise so the frontend decides the formatting."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    platform: ChannelPlatform
+    format: PackageFormat
+    title: str
+    description: str | None
+    price_paise: int
+    currency: str
+    delivery_days: int
+    usage_rights_days: int | None
+    position: int
+
+
+class PublicPackageRead(BaseModel):
+    """A package on the open internet, once its owner has published prices.
+
+    No id and no position: the list is already in the creator's order, and an
+    id is only useful to someone who can edit it.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    platform: ChannelPlatform
+    format: PackageFormat
+    title: str
+    description: str | None
+    price_paise: int
+    currency: str
+    delivery_days: int
+    usage_rights_days: int | None
+
+
+# PublicCreatorRead is defined above the channel and package shapes it lists.
+PublicCreatorRead.model_rebuild()
+
+
+# --- the media kit (D-055) -------------------------------------------------
+
+
+class MediaKitRead(BaseModel):
+    """Everything a brand weighs on one screen, behind a login.
+
+    Unlike the public Passport it carries the self-reported numbers, each
+    dated, and every price whether or not the creator published them: those
+    switches decide what strangers see, not signed-in brands. Contact details
+    are not here either (D-011); a brand reaches a creator through a campaign.
+    """
+
+    creator_id: uuid.UUID
+    handle: str
+    display_name: str
+    city: str
+    niches: list[str]
+    languages: list[str]
+    bio: str | None
+    member_since: str = Field(
+        description="Month the creator joined, e.g. 2026-09", examples=["2026-09"]
+    )
+    channels: list[ChannelRead] = Field(
+        description="Self-reported, each with the date it was stated. Never verified"
+    )
+    packages: list[PackageRead] = Field(description="In the creator's order")
+    delivery_record: CreatorDeliveryRead
+
+
+# --- fair-rate guidance (D-056) ------------------------------------------
+
+AudienceBand = Literal["under_10k", "10k_50k", "50k_100k", "100k_500k", "500k_plus"]
+
+
+class NarrowedTo(BaseModel):
+    """Which filters the figures actually used. Null means "all of them"."""
+
+    niche: Niche | None
+    city: str | None
+
+
+class RateGuidanceRead(BaseModel):
+    """What creators like this charge: a range, never a verdict.
+
+    **Null figures mean "not enough to say"**, fewer than five creators, and
+    must never be shown as zero. There is deliberately no minimum or maximum:
+    each would be one person's price.
+    """
+
+    platform: ChannelPlatform
+    format: PackageFormat
+    audience_band: AudienceBand
+    narrowed_to: NarrowedTo = Field(
+        description=(
+            "The niche and city the figures are for. If one you asked for is "
+            "null here, there were too few creators with it and the answer "
+            "is wider"
+        )
+    )
+    source: Literal["published_asking_prices"] = Field(
+        description="Prices creators ask and have chosen to publish, not agreed fees"
+    )
+    creators_counted: int = Field(
+        description="Creators behind the figures, each counted once"
+    )
+    lower_quarter_paise: int | None
+    median_paise: int | None
+    upper_quarter_paise: int | None
+    currency: str
+    audience_self_reported: Literal[True] = Field(
+        default=True,
+        description="Bands come from follower counts creators stated; we never checked",
+    )
+    audience_figures_from: date | None = Field(
+        description="Date of the oldest follower count behind the figures"
+    )
+    as_of: date = Field(description="The day these figures were worked out")

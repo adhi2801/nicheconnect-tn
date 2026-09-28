@@ -2,17 +2,21 @@
 
 import uuid
 from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import event
 
 from app.core.rate_limit import limiter
-from app.db.session import get_db
+from app.core.taxonomy import CURRENCY
+from app.db.session import engine, get_db
 from app.main import app
 from app.modules.auth import public_router
 from app.modules.auth.dependencies import get_now
 from app.modules.auth.models.creator import Creator
+from app.modules.auth.models.rate_card import CreatorChannel, CreatorPackage
 from tests.factories import FIXED_NOW, build_creator
 
 URL = "/api/v1/creators/by-handle"
@@ -26,6 +30,20 @@ PUBLIC_FIELDS = {
     "languages",
     "bio",
     "member_since",
+    "channels",
+    "packages",
+}
+# A channel on the open internet is its link and nothing else (D-042).
+PUBLIC_CHANNEL_FIELDS = {"platform", "profile_url"}
+PUBLIC_PACKAGE_FIELDS = {
+    "platform",
+    "format",
+    "title",
+    "description",
+    "price_paise",
+    "currency",
+    "delivery_days",
+    "usage_rights_days",
 }
 
 
@@ -53,6 +71,52 @@ def make_creator(db, **overrides) -> Creator:
     db.add(creator)
     db.flush()
     return creator
+
+
+def add_channel(db, creator: Creator, platform: str = "instagram", **overrides):
+    fields = {
+        "profile_url": f"https://{platform}.com/{creator.handle}",
+        "followers": 48_213,
+        "average_views": 9_731,
+        "figures_as_of": FIXED_NOW.date(),
+    }
+    fields.update(overrides)
+    channel = CreatorChannel(creator_id=creator.id, platform=platform, **fields)
+    db.add(channel)
+    db.flush()
+    return channel
+
+
+def add_package(db, creator: Creator, position: int = 0, **overrides):
+    fields = {
+        "platform": "instagram",
+        "format": "reel",
+        "title": f"Reel {position}",
+        "description": None,
+        "price_paise": 800_000,
+        "currency": CURRENCY,
+        "delivery_days": 5,
+        "usage_rights_days": 30,
+    }
+    fields.update(overrides)
+    package = CreatorPackage(creator_id=creator.id, position=position, **fields)
+    db.add(package)
+    db.flush()
+    return package
+
+
+@contextmanager
+def count_queries() -> Iterator[list[str]]:
+    statements: list[str] = []
+
+    def before_cursor_execute(conn, cursor, statement, parameters, context, many):
+        statements.append(statement)
+
+    event.listen(engine, "before_cursor_execute", before_cursor_execute)
+    try:
+        yield statements
+    finally:
+        event.remove(engine, "before_cursor_execute", before_cursor_execute)
 
 
 def assert_problem(response, status: int, code: str) -> dict:
@@ -184,6 +248,146 @@ def test_an_old_etag_gets_the_new_profile(client, db):
 
     assert response.status_code == 200
     assert response.json()["city"] == "Madurai"
+
+
+# --- channels and prices (D-042, D-055) ----------------------------------
+
+
+def test_channels_appear_as_links_only(client, db):
+    creator = make_creator(db, handle="priya.eats")
+    add_channel(db, creator, "instagram")
+    add_channel(db, creator, "youtube")
+
+    body = client.get(f"{URL}/priya.eats").json()
+
+    assert body["channels"] == [
+        {"platform": "instagram", "profile_url": "https://instagram.com/priya.eats"},
+        {"platform": "youtube", "profile_url": "https://youtube.com/priya.eats"},
+    ]
+    for channel in body["channels"]:
+        assert set(channel) == PUBLIC_CHANNEL_FIELDS
+
+
+def test_our_copy_of_a_follower_count_never_appears(client, db):
+    """D-042: anyone can read the real number at the source; we do not
+    republish the creator's claim under our name."""
+    creator = make_creator(db, handle="priya.eats", rate_card_public_at=FIXED_NOW)
+    add_channel(db, creator, followers=48_213, average_views=9_731)
+    add_package(db, creator)
+
+    text = client.get(f"{URL}/priya.eats").text
+
+    for forbidden in ("48213", "9731", "followers", "average_views", "figures_as_of"):
+        assert forbidden not in text
+
+
+def test_prices_stay_off_the_page_until_the_creator_publishes_them(client, db):
+    creator = make_creator(db, handle="priya.eats")
+    add_package(db, creator, price_paise=1_234_500)
+
+    response = client.get(f"{URL}/priya.eats")
+
+    assert response.json()["packages"] == []
+    assert "1234500" not in response.text
+
+
+def test_published_prices_appear_in_the_creators_order(client, db):
+    creator = make_creator(db, handle="priya.eats", rate_card_public_at=FIXED_NOW)
+    add_package(db, creator, position=2, title="Story set", format="story")
+    add_package(db, creator, position=0, title="1 Instagram Reel", price_paise=800_000)
+
+    packages = client.get(f"{URL}/priya.eats").json()["packages"]
+
+    assert [p["title"] for p in packages] == ["1 Instagram Reel", "Story set"]
+    assert packages[0] == {
+        "platform": "instagram",
+        "format": "reel",
+        "title": "1 Instagram Reel",
+        "description": None,
+        "price_paise": 800_000,
+        "currency": CURRENCY,
+        "delivery_days": 5,
+        "usage_rights_days": 30,
+    }
+    for package in packages:
+        assert set(package) == PUBLIC_PACKAGE_FIELDS
+
+
+def test_a_profile_with_nothing_added_has_empty_lists(client, db):
+    make_creator(db, handle="priya.eats", rate_card_public_at=FIXED_NOW)
+
+    body = client.get(f"{URL}/priya.eats").json()
+
+    assert body["channels"] == []
+    assert body["packages"] == []
+
+
+def test_publishing_prices_does_not_publish_the_passport(client, db):
+    """Two separate consents: prices on, Passport off, is still a 404."""
+    creator = make_creator(
+        db,
+        handle="priya.eats",
+        passport_published_at=None,
+        rate_card_public_at=FIXED_NOW,
+    )
+    add_package(db, creator)
+
+    assert_problem(client.get(f"{URL}/priya.eats"), 404, "profile_not_found")
+
+
+def test_another_creators_channels_and_prices_never_appear(client, db):
+    priya = make_creator(db, handle="priya.eats", rate_card_public_at=FIXED_NOW)
+    arun = make_creator(db, handle="arun.fit", rate_card_public_at=FIXED_NOW)
+    add_channel(db, arun)
+    add_package(db, arun, title="Arun reel")
+    add_package(db, priya, title="Priya reel")
+
+    body = client.get(f"{URL}/priya.eats").json()
+
+    assert body["channels"] == []
+    assert [p["title"] for p in body["packages"]] == ["Priya reel"]
+
+
+@pytest.mark.parametrize(
+    "edit",
+    [
+        pytest.param(lambda db, c, p: setattr(p, "price_paise", 900_000), id="price"),
+        pytest.param(lambda db, c, p: add_channel(db, c, "youtube"), id="channel-added"),
+        pytest.param(
+            lambda db, c, p: setattr(c, "rate_card_public_at", None),
+            id="prices-unpublished",
+        ),
+    ],
+)
+def test_editing_a_channel_or_price_changes_the_etag(client, db, edit):
+    """They live in other tables, so the profile's own timestamp would not
+    notice; a cached page must not keep showing an old price."""
+    creator = make_creator(db, handle="priya.eats", rate_card_public_at=FIXED_NOW)
+    package = add_package(db, creator)
+    stale = client.get(f"{URL}/priya.eats").headers["etag"]
+
+    edit(db, creator, package)
+    db.flush()
+    response = client.get(f"{URL}/priya.eats", headers={"If-None-Match": stale})
+
+    assert response.status_code == 200
+    assert response.headers["etag"] != stale
+
+
+def test_the_number_of_queries_does_not_grow_with_packages(client, db):
+    creator = make_creator(db, handle="priya.eats", rate_card_public_at=FIXED_NOW)
+    add_channel(db, creator)
+    add_package(db, creator, position=0)
+    with count_queries() as one:
+        assert client.get(f"{URL}/priya.eats").status_code == 200
+
+    add_channel(db, creator, "youtube")
+    for position in range(1, 10):
+        add_package(db, creator, position=position)
+    with count_queries() as ten:
+        assert len(client.get(f"{URL}/priya.eats").json()["packages"]) == 10
+
+    assert len(ten) == len(one)
 
 
 # --- the publication switch ----------------------------------------------

@@ -12,6 +12,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.modules.deal_memo import record_service as record
 from app.modules.deal_memo.exceptions import (
     MemoStatusConflict,
     ProofAlreadyDecided,
@@ -53,6 +54,22 @@ def submit_proof(
         **fields,
     )
     db.add(proof)
+    db.flush()  # the record names the submission, so it needs its id
+    # The link and note are typed, so the record keeps their fingerprints.
+    record.append(
+        db,
+        memo,
+        kind="proof_submitted",
+        actor_role="creator",
+        now=now,
+        facts={
+            "proof_id": str(proof.id),
+            "format": proof.format,
+            "disclosure_confirmed": proof.disclosure_confirmed,
+            "content_url_sha256": record.fingerprint(proof.content_url),
+            "note_sha256": record.fingerprint(proof.note) if proof.note else None,
+        },
+    )
     # The line between a cancellation that counts and one that does not (D-026).
     if memo.work_started_at is None:
         memo.work_started_at = now
@@ -81,6 +98,17 @@ def settle_if_overdue(
         proof.approved_at = approval_deadline(memo, proof)
         proof.auto_approved = True
         proof.updated_at = now
+        # Took effect at the deadline; recorded now, when it was noticed. The
+        # record shows both rather than pretending we saw it at the time.
+        record.append(
+            db,
+            memo,
+            kind="proof_auto_approved",
+            actor_role="system",
+            now=now,
+            occurred_at=proof.approved_at,
+            facts={"proof_id": str(proof.id)},
+        )
         _notify_other_side(
             db, memo, to="creator", notification_type="proof_auto_approved", now=now
         )
@@ -105,6 +133,14 @@ def approve_proof(
     proof.status = "approved"
     proof.approved_at = now
     proof.updated_at = now
+    record.append(
+        db,
+        memo,
+        kind="proof_approved",
+        actor_role="brand",
+        now=now,
+        facts={"proof_id": str(proof.id)},
+    )
     _notify_other_side(
         db, memo, to="creator", notification_type="proof_approved", now=now
     )
@@ -126,6 +162,14 @@ def request_revision(
     proof.status = "revision_requested"
     proof.revision_note = note
     proof.updated_at = now
+    record.append(
+        db,
+        memo,
+        kind="proof_revision_requested",
+        actor_role="brand",
+        now=now,
+        facts={"proof_id": str(proof.id), "note_sha256": record.fingerprint(note)},
+    )
     _notify_other_side(
         db, memo, to="creator", notification_type="proof_revision_requested", now=now
     )
