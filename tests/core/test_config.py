@@ -230,3 +230,54 @@ def test_the_example_values_load():
 
     assert settings.environment == "local"
     assert settings.cors_origins == ()
+
+
+# --- the login code provider (D-058) ------------------------------------------------
+
+
+def msg91(**overrides: Any) -> dict[str, Any]:
+    values: dict[str, Any] = {
+        "otp_sender": "msg91",
+        "msg91_auth_key": "a-real-looking-msg91-auth-key",
+        "msg91_whatsapp_number": "919876543210",
+    }
+    values.update(overrides)
+    return values
+
+
+def assert_startup_refused(message: str, **overrides: Any) -> None:
+    with pytest.raises(ValidationError, match=message):
+        load(**overrides)
+
+
+def test_the_fake_sender_needs_no_provider_settings():
+    settings = load()
+
+    assert settings.otp_sender == "fake"
+    assert settings.msg91_auth_key is None
+
+
+def test_a_complete_msg91_configuration_loads():
+    settings = load(**msg91())
+
+    assert settings.otp_sender == "msg91"
+    assert settings.msg91_otp_template == "login_code"
+
+
+@pytest.mark.parametrize("key", [None, "", "change-me-msg91"])
+def test_msg91_without_a_real_key_stops_the_app(key):
+    assert_startup_refused("MSG91_AUTH_KEY", **msg91(msg91_auth_key=key))
+
+
+@pytest.mark.parametrize("number", [None, "+919876543210", "9876543210", "91987654321"])
+def test_msg91_needs_the_number_as_msg91_writes_it(number):
+    assert_startup_refused("MSG91_WHATSAPP_NUMBER", **msg91(msg91_whatsapp_number=number))
+
+
+@pytest.mark.parametrize("template", ["Login Code", "login-code", ""])
+def test_msg91_template_must_be_a_whatsapp_template_name(template):
+    assert_startup_refused("MSG91_OTP_TEMPLATE", **msg91(msg91_otp_template=template))
+
+
+def test_an_unknown_sender_stops_the_app():
+    assert_rejected("otp_sender", otp_sender="carrier_pigeon")

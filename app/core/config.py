@@ -22,6 +22,15 @@ PLAIN_HTTP_ENVIRONMENTS = frozenset({"local", "test"})
 HOST_NAME = re.compile(r"[a-z0-9-]+(\.[a-z0-9-]+)*")
 DEFAULT_PORTS = {"http": 80, "https": 443}
 
+# How login codes reach a phone (D-058). "fake" keeps them in memory and only
+# runs in local and test; "msg91" sends them by WhatsApp through MSG91.
+OtpSenderName = Literal["fake", "msg91"]
+# The WhatsApp number registered with MSG91, as MSG91 writes it: country code
+# then number, digits only (e.g. 919876543210).
+MSG91_NUMBER = re.compile(r"91[6-9][0-9]{9}")
+# WhatsApp template names: lower case letters, digits and underscores.
+WHATSAPP_TEMPLATE_NAME = re.compile(r"[a-z0-9_]{1,512}")
+
 
 def split_origins(raw: str) -> tuple[str, ...]:
     """The comma-separated setting as a list, blanks dropped, repeats removed."""
@@ -102,6 +111,13 @@ class Settings(BaseSettings):
     # Background jobs (D-060). Off unless this instance should run them;
     # several instances may, since DBOS shares the work between them.
     run_jobs: bool = False
+    # Login codes (D-058). The MSG91 settings are required only when
+    # otp_sender is "msg91", and checked at startup when they are.
+    otp_sender: OtpSenderName = "fake"
+    msg91_auth_key: SecretStr | None = None
+    msg91_whatsapp_number: str | None = None
+    msg91_otp_template: str = "login_code"
+    msg91_template_language: str = Field(default="en", pattern=r"^[a-z]{2}(_[A-Z]{2})?$")
 
     @field_validator("cors_allowed_origins")
     @classmethod
@@ -133,6 +149,28 @@ class Settings(BaseSettings):
         if value.get_secret_value().startswith(PLACEHOLDER_PREFIX):
             raise ValueError("still the .env.example placeholder; generate a real key")
         return value
+
+    @model_validator(mode="after")
+    def msg91_is_usable(self) -> "Settings":
+        """A half-configured provider fails at startup, not at a user's login."""
+        if self.otp_sender != "msg91":
+            return self
+        key = self.msg91_auth_key.get_secret_value() if self.msg91_auth_key else ""
+        if not key or key.startswith(PLACEHOLDER_PREFIX):
+            raise ValueError("otp_sender is msg91, so MSG91_AUTH_KEY must be set")
+        if not self.msg91_whatsapp_number or not MSG91_NUMBER.fullmatch(
+            self.msg91_whatsapp_number
+        ):
+            raise ValueError(
+                "otp_sender is msg91, so MSG91_WHATSAPP_NUMBER must be the "
+                "registered number as digits, e.g. 919876543210"
+            )
+        if not WHATSAPP_TEMPLATE_NAME.fullmatch(self.msg91_otp_template):
+            raise ValueError(
+                "MSG91_OTP_TEMPLATE must be a WhatsApp template name: "
+                "lower case letters, digits and underscores"
+            )
+        return self
 
     @model_validator(mode="after")
     def keys_must_differ(self) -> "Settings":
