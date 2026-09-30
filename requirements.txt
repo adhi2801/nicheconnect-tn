@@ -32,3 +32,11 @@ cryptography==50.0.1
 # Pinned directly: until the runtime and developer lists were split it only
 # arrived through a developer tool, and the app could not start without it.
 certifi==2026.7.22
+# Proof files in S3 (D-065): signs the upload and view links and checks the
+# objects. AWS's own library; signing requests by hand is security code we
+# should not own.
+boto3==1.43.105
+# Re-encodes every uploaded image so no GPS location or hidden data reaches a
+# brand (D-065). Security releases are frequent: pip-audit fails CI until it
+# is upgraded, which is the point.
+pillow==12.3.0

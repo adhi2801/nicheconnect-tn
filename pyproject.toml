@@ -71,7 +71,7 @@ strict = true
 [[tool.mypy.overrides]]
 # Third-party packages without type information. Listing them is better than
 # ignore_missing_imports globally, which would also hide our own mistakes.
-module = ["slowapi.*", "pgvector.*", "limits.*"]
+module = ["slowapi.*", "pgvector.*", "limits.*", "boto3.*", "botocore.*", "moto.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

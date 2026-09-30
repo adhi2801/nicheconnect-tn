@@ -297,3 +297,23 @@ def test_msg91_template_must_be_a_whatsapp_template_name(template):
 
 def test_an_unknown_sender_stops_the_app():
     assert_rejected("otp_sender", otp_sender="carrier_pigeon")
+
+
+# --- proof files (D-065) ---------------------------------------------------------------
+
+
+def test_an_empty_uploads_bucket_means_none():
+    assert load(uploads_bucket="").uploads_bucket is None
+    assert (
+        load(uploads_bucket="colyv-prod-uploads").uploads_bucket == "colyv-prod-uploads"
+    )
+
+
+@pytest.mark.parametrize("bucket", ["UPPER", "a", "-starts-badly", "has space", "s3://x"])
+def test_an_invalid_bucket_name_is_refused(bucket):
+    assert_rejected("uploads_bucket", uploads_bucket=bucket)
+
+
+@pytest.mark.parametrize("region", ["mumbai", "AP-SOUTH-1", "ap-south", ""])
+def test_an_invalid_region_is_refused(region):
+    assert_rejected("aws_region", aws_region=region)

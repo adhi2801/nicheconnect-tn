@@ -16,3 +16,6 @@ coverage==7.16.1
 # of requests from it and checks every answer. 4.27.5 rather than the newest
 # 4.28.0: a tool that gates merges gets to settle for a few days first.
 schemathesis==4.27.5
+# Imitates S3 in tests, so the storage code is tested without AWS (D-065).
+# Never in an image.
+moto==5.2.3
