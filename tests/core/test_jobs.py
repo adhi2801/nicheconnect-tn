@@ -17,7 +17,7 @@ from app.core import jobs
 from app.core.config import settings
 from app.db.session import SessionLocal
 from app.main import app
-from app.modules.deal_memo import anchor_jobs, anchor_service
+from app.modules.deal_memo import anchor_jobs, anchor_service, proof_cleaning_jobs
 from app.modules.deal_memo.anchor_models import DealRecordCheckpoint, DealRecordTimestamp
 from app.modules.deal_memo.timestamp_authority import Stamp
 
@@ -95,6 +95,33 @@ def test_the_workflow_writes_and_stamps_the_days_checkpoint(launched):
         ).all()
     assert checkpoint.leaf_count == 0  # nothing was recorded before 2020
     assert sorted(authorities) == ["digicert", "sectigo"]
+
+
+def test_proof_files_are_cleaned_every_minute_with_no_backfill(launched):
+    """A missed minute needs no replay: the next run takes whatever is queued."""
+    schedule = DBOS.get_schedule(proof_cleaning_jobs.SCHEDULE_NAME)
+
+    assert schedule is not None
+    assert schedule["schedule"] == proof_cleaning_jobs.EVERY_MINUTE_CRON == "* * * * *"
+
+
+def test_the_cleaning_workflow_runs_through_dbos(launched, monkeypatch):
+    runs = []
+    monkeypatch.setattr(
+        proof_cleaning_jobs,
+        "run_cleaning",
+        lambda scheduled_at: runs.append(scheduled_at),
+    )
+
+    proof_cleaning_jobs.clean_proof_files(SCHEDULED, None)
+
+    assert runs == [SCHEDULED]
+
+
+def test_a_cleaning_run_with_nothing_queued_does_nothing(launched):
+    run = proof_cleaning_jobs.run_cleaning(SCHEDULED)
+
+    assert run.cleaned == run.rejected == 0
 
 
 def test_dbos_keeps_its_state_in_its_own_schema(launched):

@@ -584,3 +584,12 @@ Newest entries at the bottom.
 - Chosen: (1) the server re-encodes every image; (2) the stand-in plus moto, SeaweedFS later when frontend work needs a local S3.
 - Reason: (1) the only option where a mistake in an app or a web upload cannot leak a creator's home location; re-encoding also defuses files disguised as images. (2) nothing unmaintained, no new service before anyone needs it.
 - Consequences / follow-ups: (1) New packages: boto3 and Pillow (runtime), moto (development). Pillow's frequent security releases must be taken promptly; pip-audit fails CI until they are. (2) One new table, `proof_file`; a proof's link becomes optional. (3) Images only in the pilot: JPEG, PNG, WebP, 10 MB each, 10 per proof; video stays a link. (4) Infrastructure: the bucket's CORS, the task role limited to the uploads prefix, a one-day expiry for abandoned uploads; not applied until AWS exists. (5) How long proof files are kept is a validation pack question; the deal record keeps only fingerprints, so files can be deleted without breaking it.
+
+## D-066: The deal record seals the clean copy of every proof file
+- Date: 2026-10-01
+- Approved by: Adhi, in this session ("yes", to the recommendation after seeing it). **Not reviewed by the other founder** (D-051).
+- Context: D-065 cleans every proof image of location and hidden data, keeps only the clean copy and deletes the original. The fingerprint sealed at submission is the original's, so on its own the record would point at a file that no longer exists, and nothing would prove which file a brand actually saw.
+- Options considered: A) a new record entry kind, `proof_file_cleaned`, sealing the clean copy's fingerprint beside the original's · B) record only the original's fingerprint
+- Chosen: A.
+- Reason: every file a brand sees stays provable, from the record alone, without trusting us.
+- Consequences / follow-ups: (1) Migration `f276d2c6ce1e` widens the record's kind check, added NOT VALID and validated after commit; its downgrade refuses while any such entry exists, since the record is append-only. (2) Entries are made by `system`, one per cleaned file, after the proof's own entry. (3) A file refused by the cleaner is not recorded; the creator sees it as rejected on the proof. Recording refusals would need another kind and another decision.
