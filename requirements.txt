@@ -15,7 +15,7 @@ pgvector==0.5.0
 redis==8.1.0
 pydantic-settings==2.15.0
 slowapi==0.1.10
-PyJWT==2.14.0
+PyJWT==2.15.0
 # The app's HTTP client (the MSG91 sender, the timestamp authorities) and
 # Starlette's test client. The original httpx is no longer maintained (D-047).
 httpx2==2.13.0
