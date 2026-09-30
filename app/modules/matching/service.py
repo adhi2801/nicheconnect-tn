@@ -214,14 +214,21 @@ def find_creators_for_campaign(
         .scalar_subquery()
     )
 
-    campaign_vector = db.scalar(
-        select(CampaignEmbedding.embedding).where(
-            CampaignEmbedding.campaign_id == campaign.id
-        )
+    # The vector is read inside the query, never fetched and sent back: as a
+    # parameter its 1,024 numbers cost about 50 ms a call, read in SQL about
+    # 1 ms (measured 30 September). Only whether it exists is asked first,
+    # since that decides the order.
+    has_vector = bool(
+        db.scalar(select(exists().where(CampaignEmbedding.campaign_id == campaign.id)))
+    )
+    campaign_vector = (
+        select(CampaignEmbedding.embedding)
+        .where(CampaignEmbedding.campaign_id == campaign.id)
+        .scalar_subquery()
     )
     distance = (
         CreatorEmbedding.embedding.cosine_distance(campaign_vector)
-        if campaign_vector is not None
+        if has_vector
         else null()
     )
 
@@ -241,7 +248,7 @@ def find_creators_for_campaign(
     # a list rather than passed conditionally, because `order_by(None, ...)`
     # emits a literal `ORDER BY NULL`, which Postgres refuses.
     order: list[Any] = []
-    if campaign_vector is not None:
+    if has_vector:
         order.append(nulls_last(distance.asc()))
     order += [desc("accepted_deals"), Creator.id]
     query = query.order_by(*order).limit(limit)
@@ -311,14 +318,21 @@ def find_campaigns_for_creator(
     `record_day` is the Tamil Nadu date the payment records are read as of,
     as on the brand's reliability page; `today` is the date applying checks.
     """
-    creator_vector = db.scalar(
-        select(CreatorEmbedding.embedding).where(
-            CreatorEmbedding.creator_id == creator.id
-        )
+    # The vector is read inside the query, never fetched and sent back: as a
+    # parameter its 1,024 numbers cost about 50 ms a call, read in SQL about
+    # 1 ms (measured 30 September). Only whether it exists is asked first,
+    # since that decides the order.
+    has_vector = bool(
+        db.scalar(select(exists().where(CreatorEmbedding.creator_id == creator.id)))
+    )
+    creator_vector = (
+        select(CreatorEmbedding.embedding)
+        .where(CreatorEmbedding.creator_id == creator.id)
+        .scalar_subquery()
     )
     distance = (
         CampaignEmbedding.embedding.cosine_distance(creator_vector)
-        if creator_vector is not None
+        if has_vector
         else null()
     )
     already_applied = exists().where(
@@ -343,7 +357,7 @@ def find_campaigns_for_creator(
     # last rather than disappearing. Newest first breaks ties, and orders the
     # whole list when the creator has no vector at all.
     order: list[Any] = []
-    if creator_vector is not None:
+    if has_vector:
         order.append(nulls_last(distance.asc()))
     order += [Campaign.created_at.desc(), Campaign.id]
     rows = db.execute(query.order_by(*order).limit(limit)).all()
