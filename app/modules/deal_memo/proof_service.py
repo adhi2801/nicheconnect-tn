@@ -66,7 +66,9 @@ def submit_proof(
             "proof_id": str(proof.id),
             "format": proof.format,
             "disclosure_confirmed": proof.disclosure_confirmed,
-            "content_url_sha256": record.fingerprint(proof.content_url),
+            "content_url_sha256": (
+                record.fingerprint(proof.content_url) if proof.content_url else None
+            ),
             "note_sha256": record.fingerprint(proof.note) if proof.note else None,
         },
     )
