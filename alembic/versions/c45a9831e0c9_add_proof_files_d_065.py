@@ -71,10 +71,16 @@ def upgrade() -> None:
     op.create_index('ix_proof_file_deal_memo_id', 'proof_file', ['deal_memo_id'], unique=False)
     op.create_index('ix_proof_file_proof_id', 'proof_file', ['proof_id'], unique=False)
     op.create_index('ix_proof_file_uploader_account_id', 'proof_file', ['uploader_account_id'], unique=False)
-    op.alter_column('deliverable_proof', 'content_url',
-               existing_type=sa.VARCHAR(length=500),
-               nullable=True)
     # ### end Alembic commands ###
+    # Deliberate (D-065): a proof may be files alone. Squawk warns that clients
+    # may expect a value; none reads this yet (no frontend exists, D-053), and
+    # the API contract declares it nullable from this change on.
+    # One statement with its comment, so Squawk reads the ignore as applying
+    # to exactly this line.
+    op.execute(
+        "-- squawk-ignore ban-drop-not-null\n"
+        "ALTER TABLE deliverable_proof ALTER COLUMN content_url DROP NOT NULL"
+    )
 
 
 def downgrade() -> None:
