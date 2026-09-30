@@ -3,6 +3,8 @@
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.modules.auth.schemas import PublicCreatorSummary
+from app.modules.campaigns.schemas import CampaignRead
+from app.modules.payment_status.schemas import BrandReliabilityRead
 
 
 class MatchReasonsRead(BaseModel):
@@ -58,6 +60,59 @@ class CreatorMatchesRead(BaseModel):
             "False when the campaign has no embedding yet, so the order comes "
             "from the facts alone. Say so in the interface rather than showing "
             "an unranked list as if it were ranked"
+        ),
+        examples=[True],
+    )
+
+
+# --- the creator's side --------------------------------------------------------
+
+
+class CampaignMatchReasonsRead(BaseModel):
+    """Why this campaign was suggested to a creator, in facts they can check."""
+
+    shared_niches: list[str] = Field(
+        description="Niches this campaign and the creator have in common",
+        examples=[["food"]],
+    )
+    city: str = Field(
+        description="The creator's city, which is one the campaign named",
+        examples=["Madurai"],
+    )
+    similarity: float | None = Field(
+        description=(
+            "How close the brief reads to the creator's profile, from 0 to 1. "
+            "**Null when either side has not been indexed yet** (a creator is "
+            "indexed once they publish their Passport); the list is then "
+            "newest first"
+        ),
+        examples=[0.79],
+    )
+    brand_payments: BrandReliabilityRead = Field(
+        description=(
+            "How this brand pays, exactly as its reliability page says. The "
+            "figures are null below three completed deals, meaning **not "
+            "enough to say**, never zero; `currently_overdue` is always "
+            "reported"
+        )
+    )
+
+
+class CampaignMatchRead(BaseModel):
+    """One suggested campaign, and why."""
+
+    campaign: CampaignRead
+    reasons: CampaignMatchReasonsRead
+
+
+class CampaignMatchesRead(BaseModel):
+    """Campaigns suggested to the signed-in creator, best first."""
+
+    matches: list[CampaignMatchRead]
+    ranked_by_similarity: bool = Field(
+        description=(
+            "False when the creator has no embedding yet, so the list is "
+            "newest first. Say so rather than presenting it as a ranking"
         ),
         examples=[True],
     )

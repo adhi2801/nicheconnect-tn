@@ -1349,6 +1349,102 @@
         "title": "CampaignCreate",
         "type": "object"
       },
+      "CampaignMatchRead": {
+        "description": "One suggested campaign, and why.",
+        "properties": {
+          "campaign": {
+            "$ref": "#/components/schemas/CampaignRead"
+          },
+          "reasons": {
+            "$ref": "#/components/schemas/CampaignMatchReasonsRead"
+          }
+        },
+        "required": [
+          "campaign",
+          "reasons"
+        ],
+        "title": "CampaignMatchRead",
+        "type": "object"
+      },
+      "CampaignMatchReasonsRead": {
+        "description": "Why this campaign was suggested to a creator, in facts they can check.",
+        "properties": {
+          "brand_payments": {
+            "$ref": "#/components/schemas/BrandReliabilityRead",
+            "description": "How this brand pays, exactly as its reliability page says. The figures are null below three completed deals, meaning **not enough to say**, never zero; `currently_overdue` is always reported"
+          },
+          "city": {
+            "description": "The creator's city, which is one the campaign named",
+            "examples": [
+              "Madurai"
+            ],
+            "title": "City",
+            "type": "string"
+          },
+          "shared_niches": {
+            "description": "Niches this campaign and the creator have in common",
+            "examples": [
+              [
+                "food"
+              ]
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Shared Niches",
+            "type": "array"
+          },
+          "similarity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How close the brief reads to the creator's profile, from 0 to 1. **Null when either side has not been indexed yet** (a creator is indexed once they publish their Passport); the list is then newest first",
+            "examples": [
+              0.79
+            ],
+            "title": "Similarity"
+          }
+        },
+        "required": [
+          "shared_niches",
+          "city",
+          "similarity",
+          "brand_payments"
+        ],
+        "title": "CampaignMatchReasonsRead",
+        "type": "object"
+      },
+      "CampaignMatchesRead": {
+        "description": "Campaigns suggested to the signed-in creator, best first.",
+        "properties": {
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/CampaignMatchRead"
+            },
+            "title": "Matches",
+            "type": "array"
+          },
+          "ranked_by_similarity": {
+            "description": "False when the creator has no embedding yet, so the list is newest first. Say so rather than presenting it as a ranking",
+            "examples": [
+              true
+            ],
+            "title": "Ranked By Similarity",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "matches",
+          "ranked_by_similarity"
+        ],
+        "title": "CampaignMatchesRead",
+        "type": "object"
+      },
       "CampaignRead": {
         "description": "A campaign as the API returns it.",
         "properties": {
@@ -8456,6 +8552,104 @@
         "summary": "Browse open campaigns",
         "tags": [
           "campaigns"
+        ]
+      }
+    },
+    "/api/v1/campaigns/discover/for-me": {
+      "get": {
+        "description": "Open campaigns worth the signed-in creator's time, best first, each with the reasons it was suggested, including **how the brand pays** (the same record as `GET /brands/{id}/reliability`).\n\nOnly campaigns that name the creator's city and share one of their niches, whose applications are still open, from brands that are not suspended, and that the creator has not already applied to.\n\nA creator who has not published their Passport has no embedding yet, so `ranked_by_similarity` is false and the list is newest first. Nothing about the creator is shown to anyone by this call.",
+        "operationId": "list_campaigns_for_me_api_v1_campaigns_discover_for_me_get",
+        "parameters": [
+          {
+            "description": "How many campaigns to suggest",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "How many campaigns to suggest",
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignMatchesRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No token, or the token is not valid"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only a creator may ask for campaign suggestions"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The creator profile has not been created yet"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A query parameter is invalid"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Campaigns that suit me",
+        "tags": [
+          "matching"
         ]
       }
     },
