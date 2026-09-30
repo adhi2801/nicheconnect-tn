@@ -42,7 +42,10 @@ resource "aws_secretsmanager_secret" "msg91" {
 
 resource "aws_secretsmanager_secret_version" "msg91" {
   secret_id     = aws_secretsmanager_secret.msg91.id
-  secret_string = "not-set-yet"
+  # Starts with "change-me", which the app refuses as an MSG91 key: choosing
+  # otp_sender = "msg91" before the real key is pasted stops the app at
+  # startup, and ECS rolls the deploy back, instead of every login failing.
+  secret_string = "change-me-paste-the-msg91-auth-key"
   lifecycle {
     ignore_changes = [secret_string]
   }

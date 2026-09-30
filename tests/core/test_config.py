@@ -1,3 +1,4 @@
+import re
 import secrets
 from pathlib import Path
 from typing import Any
@@ -267,6 +268,21 @@ def test_a_complete_msg91_configuration_loads():
 @pytest.mark.parametrize("key", [None, "", "change-me-msg91"])
 def test_msg91_without_a_real_key_stops_the_app(key):
     assert_startup_refused("MSG91_AUTH_KEY", **msg91(msg91_auth_key=key))
+
+
+def test_the_placeholder_aws_holds_before_the_key_is_pasted_stops_the_app():
+    """infra/ fills the MSG91 secret with a placeholder until a founder pastes
+    the real key. If msg91 were chosen first, that placeholder must stop the
+    app at startup, so a deploy rolls back rather than failing every login."""
+    secrets_tf = (Path(__file__).parents[2] / "infra/modules/app/secrets.tf").read_text()
+    placeholder = re.search(
+        r'resource "aws_secretsmanager_secret_version" "msg91".*?secret_string\s*=\s*"([^"]+)"',
+        secrets_tf,
+        re.S,
+    )
+
+    assert placeholder is not None
+    assert_startup_refused("MSG91_AUTH_KEY", **msg91(msg91_auth_key=placeholder.group(1)))
 
 
 @pytest.mark.parametrize("number", [None, "+919876543210", "9876543210", "91987654321"])
