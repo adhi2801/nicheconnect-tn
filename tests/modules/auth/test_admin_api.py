@@ -166,13 +166,31 @@ def test_an_unknown_account_is_not_found_and_nothing_is_logged(client, db, admin
     assert log_rows(db) == []
 
 
-def test_an_admin_never_sees_codes_tokens_or_fees(client, db, admin, creator):
-    text = client.get(
-        f"{ADMIN}/accounts/{creator.account_id}", params=REASON, headers=admin.headers
-    ).text
+def field_names(value) -> set[str]:
+    """Every key in a JSON document, at any depth."""
+    if isinstance(value, dict):
+        return set(value) | {
+            name for item in value.values() for name in field_names(item)
+        }
+    if isinstance(value, list):
+        return {name for item in value for name in field_names(item)}
+    return set()
 
+
+def test_an_admin_never_sees_codes_tokens_or_fees(client, db, admin, creator):
+    """No field that carries any of these, at any depth.
+
+    Field names, not the raw text: ids are hexadecimal, so "fee" turns up
+    inside a random id now and then, which made the text check fail at random.
+    """
+    body = client.get(
+        f"{ADMIN}/accounts/{creator.account_id}", params=REASON, headers=admin.headers
+    ).json()
+
+    names = field_names(body)
+    assert names  # the check reads a real answer, not an empty one
     for forbidden in ("code_hash", "token", "fee", "price", "otp"):
-        assert forbidden not in text
+        assert not [name for name in names if forbidden in name], forbidden
 
 
 # --- suspending and restoring ----------------------------------------------------------
