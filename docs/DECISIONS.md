@@ -531,6 +531,15 @@ Newest entries at the bottom.
 - Reason: B breaks constraint 3 the first time someone must be suspended, and leaves no record of who did what.
 - Consequences / follow-ups: (1) `account.role` admits `admin`; admins are created only by `scripts/make_admin.py`, never by login; login with role admin never creates an account and answers exactly as a wrong code when none exists. (2) `account.suspended_at` and `suspension_reason`, checked on every request; a suspended creator leaves search, matching and the public page, a suspended brand's campaigns leave discovery, and existing deals stay usable by the other party. (3) `report` with one open report per reporter per subject, and `admin_action`, append-only by trigger, logging every admin action and every view of an account's details. (4) The downgrade refuses while any admin exists. (5) Exports: suspension status and the reports a person made are exported; the admin log is not, with the reason printed in every export. (6) **Open for the validation pack:** how long reports and the admin log are kept, whether a suspended person must be offered an appeal, and whether a person may see admin log entries about them.
 
+## D-062: Hosting on AWS Mumbai, with files in S3
+- Date: 2026-09-27
+- Approved by: Adhi, in this session ("a", to option A of `docs/DECISION_HOSTING.md`). **Not reviewed by the other founder** (D-051).
+- Context: Nothing was deployed, so no user could reach the backend, and the MSG91 sender and the daily checkpoint (D-060) had nowhere to run.
+- Options considered: A) AWS Mumbai · B) DigitalOcean Bangalore · (Google Cloud Mumbai set aside: its pgvector was last reported inside CVE-2026-3172's range)
+- Chosen: A.
+- Reason: Every need is met by a managed service in one Indian region: RDS PostgreSQL 18 with pgvector 0.8.2, the release that fixes CVE-2026-3172; ElastiCache Valkey 9.1, matching D-048; ECS Fargate containers with room for DBOS and the embedding model; private S3 with signed uploads; Secrets Manager. It grows without a move. B's pgvector version could not be confirmed.
+- Consequences / follow-ups: (1) Staging and production as separate environments; staging can be switched off. (2) Estimated at about $175 a month for both before GST and credits; **an estimate from published prices, to be confirmed in AWS's calculator before anything is opened**. (3) **Only Adhi can:** open the account in the company's name, secure the root user with MFA and never use it, apply for AWS Activate credits, and decide who gets access. (4) **Still separate decisions:** OpenTofu as the infrastructure-as-code tool (a new dependency); where traces go (plan 4.5). (5) A restore from backup is tested before the first real user. (6) Whether DPDP ever requires Indian storage stays a validation-pack question; this choice does not depend on the answer.
+
 ## D-063: How the app is packaged and deployed: OpenTofu, split requirements, one image
 - Date: 2026-09-27
 - Approved by: Adhi, in this session ("all 3", then "yes" to pinning certifi, each after seeing the proposal). **Not reviewed by the other founder** (D-051).
