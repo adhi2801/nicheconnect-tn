@@ -20,17 +20,27 @@ import hashlib
 import threading
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from http import HTTPStatus
 from typing import Any, Protocol
 
 from app.core.config import settings
+from app.core.errors import DomainError
 
 # Outside AWS nothing is uploaded for real, so the stand-in is only allowed
 # where nobody's files are at stake.
 MEMORY_STORE_ENVIRONMENTS = frozenset({"local", "test"})
 
 
-class StorageNotConfigured(RuntimeError):
-    """No bucket is set in an environment that must have one."""
+class StorageNotConfigured(DomainError):
+    """No bucket is set in an environment that must have one.
+
+    A 503 in the one error format: uploads are unavailable on this server,
+    which is ours to fix, not the person's.
+    """
+
+    status_code = HTTPStatus.SERVICE_UNAVAILABLE
+    code = "uploads_unavailable"
+    title = "File uploads are not available right now"
 
 
 class ObjectTooLarge(ValueError):

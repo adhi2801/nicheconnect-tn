@@ -98,3 +98,32 @@ class RecordDoesNotMatchCheckpoint(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "record_does_not_match_checkpoint"
     title = "The deal record no longer matches its stamped daily checkpoint"
+
+
+# --- proof files (D-065) --------------------------------------------------------
+
+
+class TooManyPendingUploads(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "too_many_pending_uploads"
+    title = "Finish or submit the uploads already started before starting more"
+
+
+class ProofFileNotFound(DomainError):
+    # Someone else's file, a file on another deal, or one already used: all
+    # the same answer, so nothing about other files is confirmed.
+    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
+    code = "proof_file_not_found"
+    title = "A file in this proof is not one of your uploads for this deal"
+
+
+class ProofFileNotUploaded(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "proof_file_not_uploaded"
+    title = "A file in this proof has not finished uploading"
+
+
+class ProofNeedsEvidence(DomainError):
+    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
+    code = "proof_needs_evidence"
+    title = "A proof needs a link to the post, at least one file, or both"

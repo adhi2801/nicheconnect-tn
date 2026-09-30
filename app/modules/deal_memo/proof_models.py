@@ -12,7 +12,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.db.base import Base
@@ -127,6 +127,15 @@ class DeliverableProof(Base):
         nullable=False, server_default=text("false")
     )
     revision_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The files filed with this proof (D-065), in upload order. "selectin":
+    # a list of proofs loads every proof's files in one more query, never
+    # one query per proof.
+    files: Mapped[list["ProofFile"]] = relationship(
+        "ProofFile",
+        order_by="ProofFile.created_at",
+        lazy="selectin",
+        viewonly=True,
+    )
     # Set when a link check finds the post gone (D-024, D-030).
     content_removed_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     last_checked_at: Mapped[datetime | None] = mapped_column(
