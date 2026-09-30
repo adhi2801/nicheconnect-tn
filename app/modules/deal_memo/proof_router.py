@@ -5,23 +5,29 @@ from datetime import datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Path, Request, Response, status
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy.orm import Session
 
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.literals import ensure_same_values
-from app.core.rate_limit import rate_limit
+from app.core.rate_limit import per_account, rate_limit
+from app.core.storage import FileStore, get_file_store
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
-from app.modules.deal_memo import proof_service
+from app.modules.campaigns.dependencies import CurrentCreatorProfile
+from app.modules.deal_memo import proof_file_service, proof_service
 from app.modules.deal_memo.dependencies import (
     BrandMemo,
     CreatorMemo,
     visible_memo_for_account,
 )
 from app.modules.deal_memo.proof_models import (
+    MAX_FILES_PER_PROOF,
+    MAX_PROOF_FILE_BYTES,
     NOTE_MAX_LENGTH,
+    PROOF_FILE_STATUSES,
+    PROOF_FILE_TYPES,
     PROOF_FORMATS,
     PROOF_STATUSES,
     URL_MAX_LENGTH,
@@ -29,6 +35,9 @@ from app.modules.deal_memo.proof_models import (
 
 WRITE_LIMIT = "30 per minute"
 READ_LIMIT = "60 per minute"
+# Per person, not per address (D-065): a proof takes at most 10 files, so 30
+# an hour covers three full attempts and stops anyone filling the bucket.
+UPLOAD_LIMIT = "30 per hour"
 
 router = APIRouter(
     prefix="/api/v1/deal-memos", tags=["proof"], route_class=IdempotentRoute
@@ -39,6 +48,10 @@ ProofStatus = Literal["submitted", "approved", "revision_requested"]
 
 ensure_same_values("ProofFormat", ProofFormat, PROOF_FORMATS)
 ensure_same_values("ProofStatus", ProofStatus, PROOF_STATUSES)
+ProofFileType = Literal["image/jpeg", "image/png", "image/webp"]
+ProofFileStatus = Literal["pending", "attached", "cleaned", "rejected"]
+ensure_same_values("ProofFileType", ProofFileType, PROOF_FILE_TYPES)
+ensure_same_values("ProofFileStatus", ProofFileStatus, PROOF_FILE_STATUSES)
 
 MemoId = Annotated[uuid.UUID, Path(description="The memo's id")]
 ProofId = Annotated[uuid.UUID, Path(description="The proof submission's id")]
@@ -52,22 +65,86 @@ _COMMON_ERRORS: ResponseDocs = {
 
 
 class ProofCreate(BaseModel):
-    """What the creator submits. The link is the evidence that lasts."""
+    """What the creator submits: a link, files, or both (D-065).
+
+    A link proves the post is live; files survive it being deleted and show
+    reach and insights, which have no link.
+    """
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     content_url: Annotated[
-        str,
+        str | None,
         Field(
             pattern=r"^https://.+",
             max_length=URL_MAX_LENGTH,
             description="Public link to the live post",
             examples=["https://www.instagram.com/reel/abc123/"],
         ),
-    ]
+    ] = None
+    file_ids: Annotated[
+        list[uuid.UUID],
+        Field(
+            max_length=MAX_FILES_PER_PROOF,
+            description=(
+                f"Up to {MAX_FILES_PER_PROOF} finished uploads from "
+                "`POST /deal-memos/{memo_id}/proof/uploads`, in the order to show them"
+            ),
+        ),
+    ] = []
     format: ProofFormat
     note: Annotated[str | None, Field(max_length=NOTE_MAX_LENGTH)] = None
     disclosure_confirmed: bool = False
+
+    @model_validator(mode="after")
+    def some_evidence(self) -> "ProofCreate":
+        if not self.content_url and not self.file_ids:
+            raise ValueError("give content_url, file_ids, or both")
+        if len(set(self.file_ids)) != len(self.file_ids):
+            raise ValueError("each file may appear once")
+        return self
+
+
+class ProofUploadCreate(BaseModel):
+    """The file the creator is about to upload, described before it is sent."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    content_type: ProofFileType
+    size_bytes: Annotated[
+        int,
+        Field(ge=1, le=MAX_PROOF_FILE_BYTES, description="Exact size, in bytes"),
+    ]
+    sha256: Annotated[
+        str,
+        Field(
+            pattern=r"^[0-9a-f]{64}$",
+            description="SHA-256 of the file, lowercase hex. Storage refuses any other file",
+            examples=["9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"],
+        ),
+    ]
+
+
+class ProofUploadRead(BaseModel):
+    """Where and how to upload: POST every one of `fields`, then the file, to `url`."""
+
+    upload_id: uuid.UUID = Field(description="Give this in `file_ids` when submitting")
+    url: str
+    fields: dict[str, str] = Field(
+        description="Send each as a form field, unchanged, before the file itself"
+    )
+    expires_at: datetime
+
+
+class ProofFileSummary(BaseModel):
+    """A file on a proof. `cleaned` is the only state a brand can open."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    content_type: ProofFileType
+    size_bytes: int
+    status: ProofFileStatus
 
 
 class RevisionRequest(BaseModel):
@@ -88,7 +165,8 @@ class ProofRead(BaseModel):
 
     id: uuid.UUID
     deal_memo_id: uuid.UUID
-    content_url: str
+    content_url: str | None
+    files: list[ProofFileSummary]
     format: ProofFormat
     note: str | None
     disclosure_confirmed: bool
@@ -102,19 +180,78 @@ class ProofRead(BaseModel):
 
 
 @router.post(
+    "/{memo_id}/proof/uploads",
+    status_code=status.HTTP_201_CREATED,
+    response_model=ProofUploadRead,
+    summary="Start uploading a proof file",
+    description=(
+        "Describe a screenshot or photo (type, exact size, SHA-256) and get a "
+        "signed form to upload it **straight to storage**, valid for 10 "
+        "minutes. Storage refuses any file that does not match the "
+        "description. Then give `upload_id` in `file_ids` when submitting proof."
+        "\n\nJPEG, PNG or WebP, up to 10 MB. Only the creator, only on an "
+        "accepted memo, at most 20 unfinished uploads per memo, 30 an hour per "
+        "account. Every image is cleaned of location and hidden data before a "
+        "brand can see it."
+    ),
+    responses={
+        **_COMMON_ERRORS,
+        409: problem_doc("The memo is not accepted, or too many uploads are unfinished"),
+        422: problem_doc("The type, size or fingerprint is invalid"),
+        503: problem_doc("File uploads are not available right now"),
+    },
+)
+@rate_limit(UPLOAD_LIMIT, key=per_account)
+def start_proof_upload(
+    request: Request,
+    body: ProofUploadCreate,
+    memo: CreatorMemo,
+    creator: CurrentCreatorProfile,
+    store: Annotated[FileStore, Depends(get_file_store)],
+    db: Session = Depends(get_db),
+    now: datetime = Depends(get_now),
+) -> ProofUploadRead:
+    requested = proof_file_service.request_upload(
+        db,
+        store,
+        memo,
+        creator.account_id,
+        content_type=body.content_type,
+        size_bytes=body.size_bytes,
+        sha256=body.sha256,
+        now=now,
+    )
+    return ProofUploadRead(
+        upload_id=requested.file.id,
+        url=requested.form.url,
+        fields=requested.form.fields,
+        expires_at=requested.form.expires_at,
+    )
+
+
+@router.post(
     "/{memo_id}/proof",
     status_code=status.HTTP_201_CREATED,
     response_model=ProofRead,
     summary="Submit proof of the work",
     description=(
-        "The creator gives the public link to the live post. Submitting also "
-        "marks that work has started, which decides how a later cancellation "
-        "counts. One submission waits for review at a time."
+        "The creator gives the public link to the live post, files uploaded "
+        "through `POST .../proof/uploads`, or both. Each file's fingerprint is "
+        "sealed into the deal record with the proof. Submitting also marks "
+        "that work has started, which decides how a later cancellation counts. "
+        "One submission waits for review at a time."
     ),
     responses={
         **_COMMON_ERRORS,
-        409: problem_doc("The memo is not accepted, or proof is already waiting"),
-        422: problem_doc("A field is missing or invalid"),
+        409: problem_doc(
+            "The memo is not accepted, proof is already waiting, or a file has "
+            "not finished uploading"
+        ),
+        422: problem_doc(
+            "A field is missing or invalid, there is neither a link nor a file, "
+            "or a file is not one of your uploads for this deal"
+        ),
+        503: problem_doc("File uploads are not available right now"),
     },
 )
 @rate_limit(WRITE_LIMIT)
@@ -123,10 +260,25 @@ def submit_proof(
     response: Response,
     body: ProofCreate,
     memo: CreatorMemo,
+    creator: CurrentCreatorProfile,
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> ProofRead:
-    proof = proof_service.submit_proof(db, memo, body.model_dump(), now)
+    fields = body.model_dump(exclude={"file_ids"})
+    if body.file_ids:
+        # The store is asked for only when there are files, so a link-only
+        # proof still works on a server whose uploads are unavailable.
+        proof = proof_service.submit_proof(
+            db,
+            memo,
+            fields,
+            now,
+            store=get_file_store(),
+            file_ids=body.file_ids,
+            uploader_account_id=creator.account_id,
+        )
+    else:
+        proof = proof_service.submit_proof(db, memo, fields, now)
     response.headers["Location"] = f"/api/v1/deal-memos/{memo.id}/proof/{proof.id}"
     return ProofRead.model_validate(proof)
 
