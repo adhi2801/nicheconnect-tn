@@ -112,12 +112,12 @@ One error shape for every non-2xx response (RFC 9457 Problem Details):
 - Structured JSON logs in staging and production; readable logs locally.
 - Every request gets a `request_id` (from the `X-Request-ID` header or generated), returned in the response header and included in every log line and error body.
 - Log events, not data: `campaign.created campaign_id=… brand_id=…`. **Never log** phone numbers, emails, OTPs, tokens, passwords, bank or UPI details, or full request bodies.
-- `/healthz` answers "is the process up"; `/readyz` checks database and Redis connectivity with short timeouts.
+- `/healthz` answers "is the process up"; `/readyz` checks database and Valkey connectivity with short timeouts.
 - Errors go to Sentry once deployed, with PII scrubbing on.
 
 ## 10. Code style
 
-- Python 3.12, type hints on every function signature and return value.
+- Python 3.12 today; 3.14 with uv is locked (D-047) and not yet built (`docs/BACKEND_COMPLETE.md` item 1). Type hints on every function signature and return value.
 - Formatting and linting: ruff (format + lint). Type checking: mypy in strict mode for `app/`. Adopted in D-037, configured in `pyproject.toml`, and enforced in CI.
 - Functions do one thing; about 40 lines is a smell worth questioning.
 - Names say what things are: `get_open_campaigns_for_brand`, not `get_data`.

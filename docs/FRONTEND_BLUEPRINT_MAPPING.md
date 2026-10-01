@@ -1,5 +1,7 @@
 # Frontend Blueprint → backend mapping
 
+**Updated 1 October 2026:** this mapping predates two changes. It assumes a creator Android app and a brand web dashboard; the direction since is three clients each serving both roles (D-046, awaiting Erode Harish). And the product is English only (D-054). Read it for the screen-to-API mapping, which still holds; read `docs/standards/frontend.md` and `docs/PLATFORM_AND_TECH_PLAN.md` section 2 for the platforms.
+
 Every screen in the NicheConnect TN Frontend Blueprint (18 September 2026, 40 screens), and what this repository must provide for it.
 
 Read with `docs/PRODUCT_BACKLOG.md` (build order) and `docs/PLAYBOOK_GAPS.md` (what neither document covers). Decisions live in `docs/DECISIONS.md`.
