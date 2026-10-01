@@ -31,6 +31,18 @@ FROM ${PYTHON_IMAGE} AS api
 # A fixed, unprivileged user: the app never needs root, so it never has it.
 RUN groupadd --system --gid 10001 app \
     && useradd --system --uid 10001 --gid app --home-dir /srv --no-create-home app
+# Debian security fixes the pinned base does not carry yet (D-068): OpenSSL
+# (9 CVEs, one High) and PCRE2 (one High), published after the base was
+# built on 19 September. Exact versions, upgrade only, so the build stays
+# reproducible. Remove this step when the base digest moves to an image
+# that already has these versions or newer; Grype will say if it is early.
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends --only-upgrade \
+        openssl=3.5.7-1~deb13u3 \
+        libssl3t64=3.5.7-1~deb13u3 \
+        openssl-provider-legacy=3.5.7-1~deb13u3 \
+        libpcre2-8-0=10.46-1~deb13u3 \
+    && rm -rf /var/lib/apt/lists/*
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1

@@ -602,3 +602,12 @@ Newest entries at the bottom.
 - Chosen: A.
 - Reason: the record and the screen must always agree, and keeping the creator's order costs one small column.
 - Consequences / follow-ups: (1) Migration `608541cc4a4e`: `position` smallint, empty exactly while pending, 0 to 9 otherwise, unique per proof; checks NOT VALID then validated after commit, the unique index built CONCURRENTLY. (2) It fills existing attached files with their upload order inside the same migration. database.md section 6 puts backfills in their own migration; the approved plan did not, since `proof_file` has never been deployed or merged and holds no real data. (3) The proof's files, the view links (step 5) and the data export carry this order; the export lists `position`. (4) The downgrade drops the column; files fall back to upload order.
+
+## D-068: Patch OpenSSL and PCRE2 in the API image until the base image catches up
+- Date: 2026-10-01
+- Approved by: Adhi, in this session ("A", to the decision after seeing it). **Not reviewed by the other founder** (D-051).
+- Context: CI's image scan (D-064) started failing on `main` with no change of ours: Debian published fixes for OpenSSL 3.5.7 (9 CVEs, one High) and PCRE2 10.46 (one High) after our pinned base, `python:3.12-slim-trixie` of 19 September, was built. Docker had not rebuilt that image yet, so moving the pin could not help.
+- Options considered: A) install the fixed versions, exactly, in the Dockerfile's api stage · B) wait for Docker's rebuild, then move the pin · C) accept the risk in `.grype.yaml`
+- Chosen: A.
+- Reason: D-047's rule is that security fixes are taken at once. OpenSSL carries our outgoing TLS (S3, MSG91, the timestamp authorities), so it is not a risk to accept, and waiting leaves `main` red and the image flawed for days.
+- Consequences / follow-ups: (1) One `apt-get install --only-upgrade` step with exact versions (`openssl`, `libssl3t64`, `openssl-provider-legacy` 3.5.7-1~deb13u3; `libpcre2-8-0` 10.46-1~deb13u3), apt's lists removed after. The embeddings image inherits it. (2) **Remove the step** when the base digest moves to an image that already carries these versions or newer. (3) The `build` stage is not patched: it is thrown away and never ships.
