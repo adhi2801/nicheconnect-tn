@@ -14,7 +14,7 @@ Three things it does **not** mean:
 
 - **Not "live".** Going live needs the AWS account and the founder steps in `infra/README.md`; that runs alongside the frontend.
 - **Not "nothing more will ever be built".** Features after launch are normal. Complete means a frontend can be built against a contract that will not move under it.
-- **Not "every idea built".** An idea becomes a section 3 item only by a decision; otherwise it waits in `docs/PRODUCT_BACKLOG.md`.
+- **Not "every idea built".** An item is in section 3 because launch quality or the frontend needs it. Novelties that are not needed for launch live in `docs/COMPETITIVE_LANDSCAPE.md` section 6, and ideas in `docs/PRODUCT_BACKLOG.md`. The founders can defer any section 3 item past launch by a recorded decision.
 
 ## 2. Where we are
 
