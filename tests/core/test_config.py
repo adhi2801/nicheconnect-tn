@@ -360,3 +360,8 @@ def test_the_key_never_appears_when_settings_are_printed():
 
     assert "sk-ant-do-not-show" not in repr(settings)
     assert "sk-ant-do-not-show" not in str(settings.model_dump())
+
+
+@pytest.mark.parametrize("limit", [0, -1, 10_001])
+def test_the_daily_reading_limit_must_be_sensible(limit):
+    assert_rejected("proof_reading_daily_limit", proof_reading_daily_limit=limit)

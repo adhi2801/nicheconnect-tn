@@ -17,7 +17,12 @@ from app.core import jobs
 from app.core.config import settings
 from app.db.session import SessionLocal
 from app.main import app
-from app.modules.deal_memo import anchor_jobs, anchor_service, proof_cleaning_jobs
+from app.modules.deal_memo import (
+    anchor_jobs,
+    anchor_service,
+    proof_cleaning_jobs,
+    proof_reading_jobs,
+)
 from app.modules.deal_memo.anchor_models import DealRecordCheckpoint, DealRecordTimestamp
 from app.modules.deal_memo.timestamp_authority import Stamp
 
@@ -122,6 +127,36 @@ def test_a_cleaning_run_with_nothing_queued_does_nothing(launched):
     run = proof_cleaning_jobs.run_cleaning(SCHEDULED)
 
     assert run.cleaned == run.rejected == 0
+
+
+def test_proof_files_are_read_every_minute_with_no_backfill(launched):
+    schedule = DBOS.get_schedule(proof_reading_jobs.SCHEDULE_NAME)
+
+    assert schedule is not None
+    assert schedule["schedule"] == proof_reading_jobs.EVERY_MINUTE_CRON == "* * * * *"
+
+
+def test_the_reading_workflow_runs_through_dbos(launched, monkeypatch):
+    runs = []
+    monkeypatch.setattr(
+        proof_reading_jobs,
+        "run_reading",
+        lambda scheduled_at: runs.append(scheduled_at),
+    )
+
+    proof_reading_jobs.read_proof_files(SCHEDULED, None)
+
+    assert runs == [SCHEDULED]
+
+
+def test_a_reading_run_while_switched_off_does_nothing(launched):
+    """The default until the validation pack answers (D-070): no reader, no call."""
+    assert settings.proof_reading_enabled is False
+
+    run = proof_reading_jobs.run_reading(SCHEDULED)
+
+    assert run.read == run.no_numbers == run.failed == run.skipped == 0
+    assert run.stopped_at_limit is False
 
 
 def test_dbos_keeps_its_state_in_its_own_schema(launched):

@@ -132,6 +132,9 @@ class Settings(BaseSettings):
     proof_reader_model: str = Field(
         default="claude-opus-5-5", pattern=r"^claude-[a-z0-9]+(-[a-z0-9]+)*$"
     )
+    # The most screenshots read in any 24 hours: a ceiling on the bill if
+    # something loops. The job stops at it; no request ever waits on it.
+    proof_reading_daily_limit: int = Field(default=300, ge=1, le=10_000)
 
     @field_validator("anthropic_api_key", mode="before")
     @classmethod
