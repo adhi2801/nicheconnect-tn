@@ -8,7 +8,7 @@ reviewer can see it, instead of passing unnoticed.
 
 When a change is intended, refresh the copy and commit it with the change:
 
-    venv\\Scripts\\python.exe -m tests.openapi_snapshot
+    uv run python -m tests.openapi_snapshot
 """
 
 import json

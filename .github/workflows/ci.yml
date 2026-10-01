@@ -71,10 +71,12 @@ jobs:
           # commit of history.
           fetch-depth: 0
 
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      # uv installs Python (the version in .python-version) and exactly what
+      # uv.lock pins (D-072). uv itself is pinned too, so CI and laptops run
+      # the same resolver.
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          python-version: "3.12"
-          cache: pip
+          version: "0.12.21"
 
       # D-047 locks zizmor as the workflow auditor. It reads the files in
       # .github/workflows and fails on unpinned actions, over-broad
@@ -82,17 +84,20 @@ jobs:
       # dependencies install because it needs none of them, so a workflow
       # problem is reported in seconds rather than after the whole suite.
       #
-      # Pinned but deliberately not in requirements.txt, like pip-audit
-      # below: it is a CI tool and has no business in the running app.
+      # Pinned but deliberately not in the project's dependencies, like
+      # pip-audit below: uvx runs it in an environment of its own, so a CI tool
+      # never touches the app's.
       - name: Audit the workflows
-        run: |
-          pip install zizmor==1.30.1
-          zizmor --persona=regular .github/workflows/
+        run: uvx zizmor@1.30.1 --persona=regular .github/workflows/
 
+      # --locked fails the job if uv.lock is out of step with pyproject.toml,
+      # so a dependency change can never reach main without its lock. The
+      # environment then comes first on PATH, so every later step runs the
+      # locked tools with no prefix.
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+          uv sync --locked
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
 
       # testing.md gate 2 (D-037). Cheapest checks first: a style or lint
       # failure should not wait behind a database and the whole test suite.
@@ -118,7 +123,7 @@ jobs:
       # database: Alembic emits the SQL offline.
       - name: Lint new migrations for locks
         run: |
-          pip install squawk-cli==2.65.0
+          uv pip install squawk-cli==2.65.0
           git fetch --no-tags origin main:refs/remotes/origin/main || true
           python -m scripts.lint_new_migrations origin/main
 
@@ -183,10 +188,11 @@ jobs:
           schemathesis run http://127.0.0.1:8099/openapi.json \
             --max-time 120 --workers 4 --warnings off -c not_a_server_error
 
-      # testing.md gate 6. Reads the pinned set in requirements-dev.txt (which
-      # includes requirements.txt, so both lists are checked), resolves
-      # everything those pins drag in, and checks the lot against the Python
-      # advisory database. --strict means a package it cannot check fails the
+      # testing.md gate 6. Checks exactly what uv.lock installs: every package
+      # of the app and its tools, direct or not, exported from the lock (the
+      # ml group stays out, D-052), against the Python advisory database.
+      # --no-deps: the lock already names every package, so nothing is
+      # resolved again. --strict means a package it cannot check fails the
       # build instead of being passed over quietly.
       #
       # This blocks merge on ANY known vulnerability, not only high and
@@ -195,12 +201,12 @@ jobs:
       # (CLAUDE.md section 7). To accept one knowingly, add --ignore-vuln
       # <ID> here with a comment saying who decided and why.
       #
-      # pip-audit is pinned but deliberately not in requirements.txt: it is a
+      # pip-audit is pinned but deliberately not a project dependency: it is a
       # CI tool, and its own dependencies have no business in the running app.
       - name: Audit dependencies for known vulnerabilities
         run: |
-          pip install pip-audit==2.10.1
-          pip-audit --requirement requirements-dev.txt --strict --desc
+          uv export --locked --no-emit-project --format requirements-txt --no-hashes > audit-requirements.txt
+          uvx pip-audit@2.10.1 --requirement audit-requirements.txt --no-deps --disable-pip --strict --desc
 
   # The images the app ships in (D-063), built and scanned for known
   # vulnerabilities on every push (D-064). Its own job, so it runs alongside

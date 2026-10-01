@@ -116,7 +116,7 @@ class ProofCreate(BaseModel):
     disclosure_confirmed: bool = False
 
     @model_validator(mode="after")
-    def some_evidence(self) -> "ProofCreate":
+    def some_evidence(self) -> ProofCreate:
         if not self.content_url and not self.file_ids:
             raise ValueError("give content_url, file_ids, or both")
         if len(set(self.file_ids)) != len(self.file_ids):
@@ -183,7 +183,7 @@ class ProofFileView(BaseModel):
         )
     )
     url_expires_at: datetime | None
-    reading: "ProofReadingView | None" = Field(
+    reading: ProofReadingView | None = Field(
         description="The numbers read from this screenshot, once read. Empty until then"
     )
 

@@ -26,8 +26,8 @@ service; it tracks payment **status** only (brand pays creator directly).
 ```bash
 cp .env.example .env          # fill in real values, never commit .env
 docker compose up -d          # starts Postgres (pgvector) + Valkey
-pip install -r requirements-dev.txt   # the app, plus the tools that check it
-uvicorn app.main:app --reload
+uv sync                       # installs Python 3.14 and exactly what uv.lock pins (D-072)
+uv run uvicorn app.main:app --reload
 ```
 
 Health check: `GET http://localhost:8000/healthz` → `{"status": "ok"}`
@@ -35,8 +35,8 @@ Health check: `GET http://localhost:8000/healthz` → `{"status": "ok"}`
 ## Migrations
 
 ```bash
-alembic revision --autogenerate -m "describe the change"
-alembic upgrade head
+uv run alembic revision --autogenerate -m "describe the change"
+uv run alembic upgrade head
 ```
 
 Never edit the database by hand — every schema change goes through a migration.
@@ -44,7 +44,7 @@ Never edit the database by hand — every schema change goes through a migration
 ## Tests
 
 ```bash
-pytest
+uv run pytest
 ```
 
 Tests roll back everything they create, so they can run against a database
@@ -53,15 +53,15 @@ that already holds sample data.
 ## Sample data and performance
 
 ```bash
-python scripts/seed_dev_data.py --reset          # realistic Tamil Nadu data
-python scripts/measure_performance.py --explain  # p95 per list endpoint + query plans
-python scripts/dev_login.py +919000000001        # an access token for a sample account
+uv run python scripts/seed_dev_data.py --reset          # realistic Tamil Nadu data
+uv run python scripts/measure_performance.py --explain  # p95 per list endpoint + query plans
+uv run python scripts/dev_login.py +919000000001        # an access token for a sample account
 ```
 
 All three refuse to run unless `ENVIRONMENT=local`. Login codes are never
 logged, so `dev_login.py` is how to call the API as a signed-in brand or
 creator on a laptop: it prints only the token, so
-`$token = python scripts\dev_login.py +919000000001` captures it (D-059).
+`$token = uv run python scripts\dev_login.py +919000000001` captures it (D-059).
 
 Sample phones are
 `+9190000xxxxx` and emails end in `@example.com`, so no sample row can ever

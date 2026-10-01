@@ -114,12 +114,13 @@ Developers use **Windows PowerShell 5**: give commands one per line and never jo
 
 ```powershell
 docker compose up -d                          # Postgres (pgvector) + Valkey
-pip install -r requirements-dev.txt           # the app plus its checking tools (D-063)
-uvicorn app.main:app --reload                 # http://localhost:8000/healthz
-alembic revision --autogenerate -m "message"
-alembic upgrade head
-pytest
-python scripts\dev_login.py +919000000001     # access token for a sample account (local only)
+uv sync                                       # Python 3.14 and the locked dependencies (D-072)
+uv run uvicorn app.main:app --reload          # http://localhost:8000/healthz
+uv run alembic revision --autogenerate -m "message"
+uv run alembic upgrade head
+uv run pytest
+uv run python scripts\dev_login.py +919000000001   # access token for a sample account (local only)
+uv add <package>==<version>                   # a new dependency, only after its approval (section 5)
 ```
 
 ---

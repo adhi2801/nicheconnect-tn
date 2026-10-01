@@ -220,6 +220,6 @@ def test_the_contract_matches_the_committed_copy():
     )
     pytest.fail(
         "The API contract changed. If that is intended, refresh the committed copy "
-        "and commit it with the change: venv\\Scripts\\python.exe -m "
+        "and commit it with the change: uv run python -m "
         f"tests.openapi_snapshot\nPaths: {changed}\nSchemas: {schemas}"
     )

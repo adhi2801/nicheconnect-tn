@@ -30,8 +30,8 @@ Every run with --spend is real API calls that cost real money, about one to
 three rupees per screenshot per model. Without --spend it only checks the set
 and prints what the run would cost at most:
 
-    venv\\Scripts\\python.exe scripts\\score_proof_reader.py local\\reader-test-set
-    venv\\Scripts\\python.exe scripts\\score_proof_reader.py local\\reader-test-set --spend
+    uv run python scripts\\score_proof_reader.py local\\reader-test-set
+    uv run python scripts\\score_proof_reader.py local\\reader-test-set --spend
 """
 
 import argparse

@@ -249,7 +249,7 @@ class BrandProfileUpdate(BaseModel):
     email: BrandEmail | None = None
 
     @model_validator(mode="after")
-    def at_least_one_field(self) -> "BrandProfileUpdate":
+    def at_least_one_field(self) -> BrandProfileUpdate:
         if not self.model_fields_set:
             raise PydanticCustomError("empty_update", "Send at least one field to change")
         return self
@@ -288,7 +288,7 @@ class CreatorProfileUpdate(BaseModel):
     bio: Bio | None = None
 
     @model_validator(mode="after")
-    def at_least_one_field(self) -> "CreatorProfileUpdate":
+    def at_least_one_field(self) -> CreatorProfileUpdate:
         if not self.model_fields_set:
             raise PydanticCustomError("empty_update", "Send at least one field to change")
         return self
@@ -347,10 +347,10 @@ class PublicCreatorSummary(BaseModel):
 class PublicCreatorRead(PublicCreatorSummary):
     """The public Creator Passport: the profile, links, and published prices."""
 
-    channels: "list[PublicChannelRead]" = Field(
+    channels: list[PublicChannelRead] = Field(
         description="Links to the creator's channels. Never a follower count (D-042)"
     )
-    packages: "list[PublicPackageRead]" = Field(
+    packages: list[PublicPackageRead] = Field(
         description=(
             "Prices, only when the creator has chosen to publish them (D-055). "
             "Empty otherwise, which looks the same as having none"
@@ -591,7 +591,7 @@ class PackageUpdate(BaseModel):
     position: Annotated[int | None, Field(default=None, ge=0, le=19)]
 
     @model_validator(mode="after")
-    def at_least_one_field(self) -> "PackageUpdate":
+    def at_least_one_field(self) -> PackageUpdate:
         if not self.model_fields_set:
             raise PydanticCustomError("empty_update", "Send at least one field to change")
         return self

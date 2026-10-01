@@ -274,7 +274,7 @@ class ClaudeReader:
                     }
                 ],
             )
-        except (anthropic.APIError, ValidationError):
+        except anthropic.APIError, ValidationError:
             # Retries are already spent by the SDK (API_MAX_RETRIES); an
             # answer that does not fit the shape is the same failure to us.
             return self._failed("api_error")

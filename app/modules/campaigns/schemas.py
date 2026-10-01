@@ -87,7 +87,7 @@ class CampaignCreate(BaseModel):
     applications_close_on: date | None = None
 
     @model_validator(mode="after")
-    def check_budget(self) -> "CampaignCreate":
+    def check_budget(self) -> CampaignCreate:
         _check_budget(self.campaign_type, self.budget_min_paise, self.budget_max_paise)
         return self
 
@@ -108,7 +108,7 @@ class CampaignUpdate(BaseModel):
     applications_close_on: date | None = None
 
     @model_validator(mode="after")
-    def at_least_one_field(self) -> "CampaignUpdate":
+    def at_least_one_field(self) -> CampaignUpdate:
         if not self.model_fields_set:
             raise PydanticCustomError("empty_update", "Send at least one field to change")
         return self

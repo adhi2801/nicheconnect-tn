@@ -5,7 +5,7 @@ person cannot log in through the API on a laptop (docs/DECISION_LOCAL_LOGIN.md,
 option A, D-059). This mints a token directly, with the same function the
 login endpoint uses. Nothing in the running app changes.
 
-    venv\\Scripts\\python.exe scripts\\dev_login.py +919000000001
+    uv run python scripts\\dev_login.py +919000000001
 
 It refuses to run unless ENVIRONMENT=local, and refuses a number outside the
 seed script's fake range unless --any-phone is given, so it is not casually

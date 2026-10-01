@@ -31,7 +31,7 @@ Also gather:
 - Test commands actually run this session, and their results
 - `docs/DECISIONS.md` entries added today
 - Any migrations under `alembic/versions/` added or changed
-- Any change to `requirements.txt`
+- Any change to `pyproject.toml`'s dependencies or `uv.lock`
 
 ---
 
@@ -44,7 +44,7 @@ Also gather:
 | No secrets staged or unstaged | Look for `.env`, `*.pem`, `*.key`, `id_rsa`, lines like `SECRET_KEY=`, `API_KEY=`, `TOKEN=` with real values, and anything under `venv/` | **STOP.** Unstage it and suggest a `.gitignore` entry |
 | Restricted vocabulary | Search the changed files for the four banned terms in `CLAUDE.md` section 2 | **STOP.** List the file and line numbers |
 | No large or generated files | Files over 5 MB, `__pycache__`, build output | **STOP** |
-| Dependencies approved | Every new package in `requirements.txt` has an approval in this session or in `docs/DECISIONS.md` | **STOP.** List the unapproved packages |
+| Dependencies approved | Every new package in `pyproject.toml` has an approval in this session or in `docs/DECISIONS.md` | **STOP.** List the unapproved packages |
 | Migrations reviewed | Every new migration was shown to and approved by a founder | **STOP** |
 
 ---

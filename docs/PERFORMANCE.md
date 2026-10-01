@@ -207,9 +207,9 @@ for its own decision. **Trigger:** 20,000 deals, or a measured proof p95 above
 
 ```powershell
 docker compose up -d
-venv\Scripts\python.exe -m alembic upgrade head
-venv\Scripts\python.exe scripts\seed_dev_data.py
-venv\Scripts\python.exe scripts\measure_performance.py --runs 100 --deals 30
+uv run alembic upgrade head
+uv run python scripts\seed_dev_data.py
+uv run python scripts\measure_performance.py --runs 100 --deals 30
 ```
 
 Add `--explain` to see the query plans behind each endpoint and confirm the

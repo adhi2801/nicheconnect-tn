@@ -85,7 +85,7 @@ class MemoUpdate(BaseModel):
     extra_terms: ExtraTerms | None = None
 
     @model_validator(mode="after")
-    def at_least_one_field(self) -> "MemoUpdate":
+    def at_least_one_field(self) -> MemoUpdate:
         if not self.model_fields_set:
             raise PydanticCustomError("empty_update", "Send at least one field to change")
         return self

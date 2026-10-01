@@ -143,7 +143,7 @@ class Settings(BaseSettings):
         return None if value == "" else value
 
     @model_validator(mode="after")
-    def proof_reading_is_usable(self) -> "Settings":
+    def proof_reading_is_usable(self) -> Settings:
         """Reading switched on without a key fails at startup, not per file."""
         if not self.proof_reading_enabled:
             return self
@@ -192,7 +192,7 @@ class Settings(BaseSettings):
         return value
 
     @model_validator(mode="after")
-    def msg91_is_usable(self) -> "Settings":
+    def msg91_is_usable(self) -> Settings:
         """A half-configured provider fails at startup, not at a user's login."""
         if self.otp_sender != "msg91":
             return self
@@ -214,7 +214,7 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
-    def keys_must_differ(self) -> "Settings":
+    def keys_must_differ(self) -> Settings:
         if self.secret_key.get_secret_value() == self.otp_hash_key.get_secret_value():
             raise ValueError("secret_key and otp_hash_key must be different keys")
         return self

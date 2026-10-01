@@ -105,9 +105,9 @@ def clean_image(data: bytes, content_type: str) -> Cleaned:
                 image = ImageOps.exif_transpose(opened)
     except Refused:
         raise
-    except (Image.DecompressionBombError, Image.DecompressionBombWarning):
+    except Image.DecompressionBombError, Image.DecompressionBombWarning:
         raise Refused("too_many_pixels") from None
-    except (UnidentifiedImageError, OSError, ValueError, SyntaxError):
+    except UnidentifiedImageError, OSError, ValueError, SyntaxError:
         # Not an image, truncated, or corrupt: Pillow raises any of these.
         raise Refused("not_an_image") from None
 

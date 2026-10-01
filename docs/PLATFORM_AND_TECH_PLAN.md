@@ -214,7 +214,7 @@ Locked by both founders on 22 September 2026 (D-047; Erode Harish's approval rel
 | API fuzz testing | Schemathesis 4.x | **Locked** (Erode Harish told first: `requirements.txt` is shared) |
 | CI supply chain | Current action versions, pinned to commit SHAs, and zizmor | **Locked** (Adhi's track: `.github/workflows/`) |
 | Errors and traces | Sentry for errors (already in `docs/standards/backend.md`); OpenTelemetry for traces | **Locked; not built**: nothing is wired yet (`docs/BACKEND_COMPLETE.md` items 2 and 3) |
-| Python and packaging | Python 3.14; uv | **Locked; not built**: we still run 3.12 and pip (`docs/BACKEND_COMPLETE.md` item 1) |
+| Python and packaging | Python 3.14; uv | **Locked**; **built** 1 October (D-072): Python 3.14.7, `uv.lock` with hashes, in CI and the images |
 | Database | PostgreSQL 18 (19 after its first minor update); UUIDv7 for new tables; exact image tags; pgvector 0.8.2 or newer | **Locked**; **built** 23 September (D-049), UUIDv7 awaiting the first new table |
 | Search | Hybrid Tamil search inside Postgres | **Withdrawn** by D-054 (English only). English search inside Postgres is a founder decision when search needs more than today's filters |
 | Migration safety | Squawk | **Locked**; **built** 23 September (D-050), on added migrations only |
@@ -229,7 +229,7 @@ Locked by both founders on 22 September 2026 (D-047; Erode Harish's approval rel
 | Item | We run | Current best | Why move | Status | When |
 |---|---|---|---|---|---|
 | Python | 3.12 | **3.14** (the standard build) | Faster, newer language features. **Not the free-threaded 3.14t yet:** libraries such as orjson silently turn the GIL back on | Recommended | Now, after the library upgrade |
-| Packaging | pip + `requirements.txt` | **uv + `uv.lock`** | The same dependency graph everywhere; 10 to 100 times faster installs. Changes `CLAUDE.md` section 4 commands and CI, so both founders | Recommended | Now, with Python 3.14 |
+| Packaging | **uv + `uv.lock`** (D-072) | — | The same dependency graph everywhere, every package hash-checked | **Built** 1 October | Done |
 | uvicorn | 0.30.6 | **0.53.0** | Two years of fixes | Recommended | Now |
 | SQLAlchemy | 2.0.35 | **2.0.54**; **2.1** once released (rc2 now; native `uuidv7()` in batched inserts) | Fixes; 2.1 later | Recommended | Now; 2.1 Watch |
 | Alembic | 1.13.2 | **1.20.0** | Fixes | Recommended | Now |

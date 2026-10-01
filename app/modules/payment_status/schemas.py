@@ -171,7 +171,7 @@ class BulkMarkPaidRequest(BaseModel):
     )
 
     @model_validator(mode="after")
-    def each_deal_once(self) -> "BulkMarkPaidRequest":
+    def each_deal_once(self) -> BulkMarkPaidRequest:
         # Two rows for one deal would make "which reference is the real one"
         # a question the order of the list answers. Refuse it instead.
         memo_ids = [row.memo_id for row in self.payments]
