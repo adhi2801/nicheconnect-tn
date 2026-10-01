@@ -198,5 +198,39 @@ def for_brand(db: Session, brand_id: uuid.UUID, today: date) -> ReliabilityRecor
     return build_record(payments, brand_id, today, disputed)
 
 
+def for_brands(
+    db: Session, brand_ids: set[uuid.UUID], today: date
+) -> dict[uuid.UUID, ReliabilityRecord]:
+    """Several brands' records at once, for a list that shows one per row.
+
+    Two queries whatever the number of brands: one for every payment, one for
+    their live disputes. Calling `for_brand` per row would be one query per
+    brand, the N+1 that backend.md rules out. Each record is built by the same
+    `build_record`, so a brand reads identically here and on its own.
+    """
+    if not brand_ids:
+        return {}
+    rows = db.execute(
+        select(Campaign.brand_id, PaymentStatus)
+        .join(Application, Application.campaign_id == Campaign.id)
+        .join(DealMemo, DealMemo.application_id == Application.id)
+        .join(PaymentStatus, PaymentStatus.deal_memo_id == DealMemo.id)
+        .where(Campaign.brand_id.in_(brand_ids))
+        .order_by(PaymentStatus.due_on, PaymentStatus.id)
+    ).tuples()
+    by_brand: dict[uuid.UUID, list[PaymentStatus]] = {
+        brand_id: [] for brand_id in brand_ids
+    }
+    for brand_id, payment in rows:
+        by_brand[brand_id].append(payment)
+    disputed = disputes.open_payment_ids(
+        db, {p.id for payments in by_brand.values() for p in payments}, today
+    )
+    return {
+        brand_id: build_record(payments, brand_id, today, disputed)
+        for brand_id, payments in by_brand.items()
+    }
+
+
 def brand_exists(db: Session, brand_id: uuid.UUID) -> bool:
     return db.scalar(select(Brand.id).where(Brand.id == brand_id)) is not None

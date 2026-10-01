@@ -51,6 +51,26 @@ database since deleted, stayed flat:
 
 The script keeps 5 rounds, and says why next to `BULK_ROUNDS`.
 
+## Matching, both directions (30 September)
+
+Measured after `scripts/refresh_embeddings.py` built real Qwen3 vectors for
+the seed (94 published creators, 150 campaigns). 100 runs each; each case
+uses the creator or campaign with the most candidates.
+
+| Endpoint | Candidates | p50 ms | p95 ms | Budget | Verdict |
+| --- | --- | --- | --- | --- | --- |
+| `GET /campaigns/discover/for-me`, creator with an embedding | 18 | 19.7 | 39.7 | 300 | OK |
+| `GET /campaigns/discover/for-me`, creator without one | 19 | 19.4 | 27.7 | 300 | OK |
+| `GET /campaigns/{id}/matches` (brand) | 20 | 31.5 | 50.6 | 300 | OK |
+
+**Ranking by embeddings first cost 4 times more than not ranking:** 81 ms p50
+and 101 ms p95 for the creator's list, on only 18 rows. The code fetched the
+1,024-number vector into Python and sent it back as a query parameter, and
+that round trip alone took about 50 ms. Reading the vector inside the query
+takes about 1 ms. Both directions now do that, and ask first only whether a
+vector exists. The brand side had the same pattern: 59.6 ms p95 on
+25 September.
+
 ## Reads
 
 | Endpoint | p50 ms | p95 ms | Budget | Verdict |

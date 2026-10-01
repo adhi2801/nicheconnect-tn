@@ -575,3 +575,30 @@ Newest entries at the bottom.
 - Chosen: A, A, A.
 - Reason: Grype has no compromise history and a checksum-pinned binary cannot be swapped quietly. Pinning the model revision is the same rule as every other dependency, and makes laptops, CI and AWS run the same weights. Moving to 3.14 would still leave 4 of the 10, and our code uses none of the affected modules except base64 in the page cursor, which parses strictly after decoding (read, not tested).
 - Consequences / follow-ups: (1) CI's new `image` job builds the API image and fails on any fixable vulnerability of any severity; for pull requests to main it also builds the embeddings image and reports without failing (D-052). (2) `MODEL_REVISION` in `embedder.py` must equal the Dockerfile's `ARG MODEL_REVISION`; a test enforces it. (3) The 10 accepted CPython entries name version 3.12.14, so any Python change brings them back for review; remove them at the Python 3.14 upgrade (D-047), keeping any it does not fix. (4) A new advisory can turn CI red with no code change; the fix is a newer base digest, or a reasoned entry in `.grype.yaml`.
+
+## D-065: Proof of delivery as files: signed uploads to S3, every image cleaned on the server
+- Date: 2026-09-30
+- Approved by: Adhi, in this session ("approve A", to the recommendation in `docs/PROPOSAL_PROOF_FILES.md`, after seeing it: option A for both decisions, the three packages, the table and the infrastructure). **Not reviewed by the other founder** (D-051).
+- Context: Proof is a pasted link, which disappears when a post is deleted, and brands ask for screenshots of reach that have no link (backlog E3). D-062 already settled that files go straight from the phone to S3 through signed uploads.
+- Options considered: (1) images as uploaded, apps strip location, or the server re-encodes every image · (2) tests against an in-memory stand-in plus moto, or SeaweedFS/Garage in docker-compose now (MinIO stopped publishing free images in October 2025)
+- Chosen: (1) the server re-encodes every image; (2) the stand-in plus moto, SeaweedFS later when frontend work needs a local S3.
+- Reason: (1) the only option where a mistake in an app or a web upload cannot leak a creator's home location; re-encoding also defuses files disguised as images. (2) nothing unmaintained, no new service before anyone needs it.
+- Consequences / follow-ups: (1) New packages: boto3 and Pillow (runtime), moto (development). Pillow's frequent security releases must be taken promptly; pip-audit fails CI until they are. (2) One new table, `proof_file`; a proof's link becomes optional. (3) Images only in the pilot: JPEG, PNG, WebP, 10 MB each, 10 per proof; video stays a link. (4) Infrastructure: the bucket's CORS, the task role limited to the uploads prefix, a one-day expiry for abandoned uploads; not applied until AWS exists. (5) How long proof files are kept is a validation pack question; the deal record keeps only fingerprints, so files can be deleted without breaking it.
+
+## D-066: The deal record seals the clean copy of every proof file
+- Date: 2026-10-01
+- Approved by: Adhi, in this session ("yes", to the recommendation after seeing it). **Not reviewed by the other founder** (D-051).
+- Context: D-065 cleans every proof image of location and hidden data, keeps only the clean copy and deletes the original. The fingerprint sealed at submission is the original's, so on its own the record would point at a file that no longer exists, and nothing would prove which file a brand actually saw.
+- Options considered: A) a new record entry kind, `proof_file_cleaned`, sealing the clean copy's fingerprint beside the original's · B) record only the original's fingerprint
+- Chosen: A.
+- Reason: every file a brand sees stays provable, from the record alone, without trusting us.
+- Consequences / follow-ups: (1) Migration `f276d2c6ce1e` widens the record's kind check, added NOT VALID and validated after commit; its downgrade refuses while any such entry exists, since the record is append-only. (2) Entries are made by `system`, one per cleaned file, after the proof's own entry. (3) A file refused by the cleaner is not recorded; the creator sees it as rejected on the proof. Recording refusals would need another kind and another decision.
+
+## D-067: A proof shows its files in the order the creator chose, the order the record seals
+- Date: 2026-10-01
+- Approved by: Adhi, in this session ("A", to the decision and schema request after seeing them). **Not reviewed by the other founder** (D-051).
+- Context: Submitting proof promised files "in the order to show them", and the deal record sealed them in that order, but they were shown in upload order. Uploaded A then B and submitted as B, A, the record said B, A and the brand saw A, B: evidence that reads differently on screen and in the record.
+- Options considered: A) a `position` column on `proof_file`, set when a file joins a proof, and one order everywhere · B) no schema change: drop the promise, show and seal in upload order
+- Chosen: A.
+- Reason: the record and the screen must always agree, and keeping the creator's order costs one small column.
+- Consequences / follow-ups: (1) Migration `608541cc4a4e`: `position` smallint, empty exactly while pending, 0 to 9 otherwise, unique per proof; checks NOT VALID then validated after commit, the unique index built CONCURRENTLY. (2) It fills existing attached files with their upload order inside the same migration. database.md section 6 puts backfills in their own migration; the approved plan did not, since `proof_file` has never been deployed or merged and holds no real data. (3) The proof's files, the view links (step 5) and the data export carry this order; the export lists `position`. (4) The downgrade drops the column; files fall back to upload order.

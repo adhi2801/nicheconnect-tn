@@ -6,16 +6,21 @@ day-3 reminder later, but the outcome never waits for one.
 """
 
 import uuid
+from collections.abc import Sequence
 from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.errors import DomainError
+from app.core.storage import FileStore
+from app.modules.deal_memo import proof_file_service
 from app.modules.deal_memo import record_service as record
 from app.modules.deal_memo.exceptions import (
     MemoStatusConflict,
     ProofAlreadyDecided,
+    ProofNeedsEvidence,
     ProofNotFound,
 )
 from app.modules.deal_memo.models import DealMemo
@@ -25,9 +30,20 @@ from app.modules.payment_status import service as payments
 
 
 def submit_proof(
-    db: Session, memo: DealMemo, fields: dict[str, Any], now: datetime
+    db: Session,
+    memo: DealMemo,
+    fields: dict[str, Any],
+    now: datetime,
+    *,
+    store: FileStore | None = None,
+    file_ids: Sequence[uuid.UUID] = (),
+    uploader_account_id: uuid.UUID | None = None,
 ) -> DeliverableProof:
     """Record the creator's evidence, and mark that work has started.
+
+    Evidence is a link, files (D-065), or both; never neither. Files are
+    attached in the same transaction as the proof, so a proof never exists
+    with half its files.
 
     Raises MemoStatusConflict unless the memo is accepted, and
     ProofNotSubmitted-free: a second open submission is refused by the database.
@@ -46,6 +62,12 @@ def submit_proof(
         db.rollback()
         raise ProofAlreadyDecided("This memo already has proof waiting for review.")
 
+    if not fields.get("content_url") and not file_ids:
+        db.rollback()
+        raise ProofNeedsEvidence()
+    if file_ids and (store is None or uploader_account_id is None):
+        raise ValueError("attaching files needs the store and the uploader")
+
     proof = DeliverableProof(
         deal_memo_id=memo.id,
         status="submitted",
@@ -55,6 +77,15 @@ def submit_proof(
     )
     db.add(proof)
     db.flush()  # the record names the submission, so it needs its id
+    files = []
+    if file_ids and store is not None and uploader_account_id is not None:
+        try:
+            files = proof_file_service.attach(
+                db, store, memo, proof, list(file_ids), uploader_account_id, now
+            )
+        except DomainError:
+            db.rollback()
+            raise
     # The link and note are typed, so the record keeps their fingerprints.
     record.append(
         db,
@@ -66,8 +97,13 @@ def submit_proof(
             "proof_id": str(proof.id),
             "format": proof.format,
             "disclosure_confirmed": proof.disclosure_confirmed,
-            "content_url_sha256": record.fingerprint(proof.content_url),
+            "content_url_sha256": (
+                record.fingerprint(proof.content_url) if proof.content_url else None
+            ),
             "note_sha256": record.fingerprint(proof.note) if proof.note else None,
+            # Each file as declared and as S3 enforced it on upload (D-065).
+            # Only when there are files, so a link-only entry reads as before.
+            **({"files": proof_file_service.record_facts(files)} if files else {}),
         },
     )
     # The line between a cancellation that counts and one that does not (D-026).

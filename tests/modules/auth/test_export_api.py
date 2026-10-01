@@ -51,6 +51,7 @@ FIELD_LISTS: dict[str, tuple[str, ...]] = {
     "application": campaigns_service.APPLICATION_EXPORT_FIELDS,
     "deal_memo": deal_memo_service.MEMO_EXPORT_FIELDS,
     "deliverable_proof": deal_memo_service.PROOF_EXPORT_FIELDS,
+    "proof_file": deal_memo_service.PROOF_FILE_EXPORT_FIELDS,
     "notification": notifications_service.EXPORT_FIELDS,
     "payment_status": payment_service.EXPORT_FIELDS,
     "dispute": disputes_service.DISPUTE_EXPORT_FIELDS,

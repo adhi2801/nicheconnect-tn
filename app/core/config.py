@@ -118,6 +118,18 @@ class Settings(BaseSettings):
     msg91_whatsapp_number: str | None = None
     msg91_otp_template: str = "login_code"
     msg91_template_language: str = Field(default="en", pattern=r"^[a-z]{2}(_[A-Z]{2})?$")
+    # Proof files (D-065): the private bucket infra/ creates, and its region.
+    # Unset in local and test, which use the in-memory store instead.
+    uploads_bucket: str | None = Field(
+        default=None, pattern=r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
+    )
+    aws_region: str = Field(default="ap-south-1", pattern=r"^[a-z]{2}(-[a-z]+)+-\d$")
+
+    @field_validator("uploads_bucket", mode="before")
+    @classmethod
+    def empty_bucket_is_no_bucket(cls, value: object) -> object:
+        # `UPLOADS_BUCKET=` in .env means "none", not a bucket named "".
+        return None if value == "" else value
 
     @field_validator("cors_allowed_origins")
     @classmethod

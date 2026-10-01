@@ -67,6 +67,9 @@ def added_migrations(base: str) -> list[Path]:
         ],
         capture_output=True,
         text=True,
+        # UTF-8 explicitly: Windows would decode with its own code page and
+        # crash on Squawk's output, silently skipping the migration.
+        encoding="utf-8",
         check=False,
     )
     if result.returncode != 0:
@@ -114,6 +117,9 @@ def sql_for(down: str, revision: str) -> str:
         [sys.executable, "-m", "alembic", "upgrade", f"{down}:{revision}", "--sql"],
         capture_output=True,
         text=True,
+        # UTF-8 explicitly: Windows would decode with its own code page and
+        # crash on Squawk's output, silently skipping the migration.
+        encoding="utf-8",
         check=False,
     )
     if result.returncode != 0:
@@ -123,6 +129,10 @@ def sql_for(down: str, revision: str) -> str:
 
 
 def main() -> int:
+    # A Windows console cannot print Squawk's emoji in its own code page.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     base = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_BASE
     migrations = added_migrations(base)
     if not migrations:
@@ -138,7 +148,11 @@ def main() -> int:
         sql_file.write_text(sql_for(down, revision), encoding="utf-8")
         try:
             result = subprocess.run(  # noqa: S603 - fixed argv, resolved path
-                [squawk, str(sql_file)], capture_output=True, text=True, check=False
+                [squawk, str(sql_file)],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                check=False,
             )
         finally:
             sql_file.unlink(missing_ok=True)

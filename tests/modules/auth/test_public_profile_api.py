@@ -141,7 +141,10 @@ def test_anyone_can_read_a_profile_without_logging_in(client, db):
     assert body["display_name"] == creator.display_name
     assert body["city"] == "Coimbatore"
     assert body["niches"] == creator.niches
-    assert body["member_since"] == "2026-09"
+    # The month the account was made, from the database's clock: never a
+    # fixed month, or this fails the day the calendar turns.
+    db.refresh(creator)
+    assert body["member_since"] == creator.created_at.strftime("%Y-%m")
 
 
 def test_the_response_carries_exactly_the_agreed_fields(client, db):

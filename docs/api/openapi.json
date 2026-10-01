@@ -1349,6 +1349,102 @@
         "title": "CampaignCreate",
         "type": "object"
       },
+      "CampaignMatchRead": {
+        "description": "One suggested campaign, and why.",
+        "properties": {
+          "campaign": {
+            "$ref": "#/components/schemas/CampaignRead"
+          },
+          "reasons": {
+            "$ref": "#/components/schemas/CampaignMatchReasonsRead"
+          }
+        },
+        "required": [
+          "campaign",
+          "reasons"
+        ],
+        "title": "CampaignMatchRead",
+        "type": "object"
+      },
+      "CampaignMatchReasonsRead": {
+        "description": "Why this campaign was suggested to a creator, in facts they can check.",
+        "properties": {
+          "brand_payments": {
+            "$ref": "#/components/schemas/BrandReliabilityRead",
+            "description": "How this brand pays, exactly as its reliability page says. The figures are null below three completed deals, meaning **not enough to say**, never zero; `currently_overdue` is always reported"
+          },
+          "city": {
+            "description": "The creator's city, which is one the campaign named",
+            "examples": [
+              "Madurai"
+            ],
+            "title": "City",
+            "type": "string"
+          },
+          "shared_niches": {
+            "description": "Niches this campaign and the creator have in common",
+            "examples": [
+              [
+                "food"
+              ]
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Shared Niches",
+            "type": "array"
+          },
+          "similarity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How close the brief reads to the creator's profile, from 0 to 1. **Null when either side has not been indexed yet** (a creator is indexed once they publish their Passport); the list is then newest first",
+            "examples": [
+              0.79
+            ],
+            "title": "Similarity"
+          }
+        },
+        "required": [
+          "shared_niches",
+          "city",
+          "similarity",
+          "brand_payments"
+        ],
+        "title": "CampaignMatchReasonsRead",
+        "type": "object"
+      },
+      "CampaignMatchesRead": {
+        "description": "Campaigns suggested to the signed-in creator, best first.",
+        "properties": {
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/CampaignMatchRead"
+            },
+            "title": "Matches",
+            "type": "array"
+          },
+          "ranked_by_similarity": {
+            "description": "False when the creator has no embedding yet, so the list is newest first. Say so rather than presenting it as a ranking",
+            "examples": [
+              true
+            ],
+            "title": "Ranked By Similarity",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "matches",
+          "ranked_by_similarity"
+        ],
+        "title": "CampaignMatchesRead",
+        "type": "object"
+      },
       "CampaignRead": {
         "description": "A campaign as the API returns it.",
         "properties": {
@@ -4556,22 +4652,40 @@
       },
       "ProofCreate": {
         "additionalProperties": false,
-        "description": "What the creator submits. The link is the evidence that lasts.",
+        "description": "What the creator submits: a link, files, or both (D-065).\n\nA link proves the post is live; files survive it being deleted and show\nreach and insights, which have no link.",
         "properties": {
           "content_url": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "pattern": "^https://.+",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Public link to the live post",
             "examples": [
               "https://www.instagram.com/reel/abc123/"
             ],
-            "maxLength": 500,
-            "pattern": "^https://.+",
-            "title": "Content Url",
-            "type": "string"
+            "title": "Content Url"
           },
           "disclosure_confirmed": {
             "default": false,
             "title": "Disclosure Confirmed",
             "type": "boolean"
+          },
+          "file_ids": {
+            "default": [],
+            "description": "Up to 10 finished uploads from `POST /deal-memos/{memo_id}/proof/uploads`, in the order to show them",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "File Ids",
+            "type": "array"
           },
           "format": {
             "enum": [
@@ -4598,10 +4712,137 @@
           }
         },
         "required": [
-          "content_url",
           "format"
         ],
         "title": "ProofCreate",
+        "type": "object"
+      },
+      "ProofFileSummary": {
+        "description": "A file on a proof. `cleaned` is the only state a brand can open.",
+        "properties": {
+          "content_type": {
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "image/webp"
+            ],
+            "title": "Content Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "attached",
+              "cleaned",
+              "rejected"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "content_type",
+          "size_bytes",
+          "status"
+        ],
+        "title": "ProofFileSummary",
+        "type": "object"
+      },
+      "ProofFileView": {
+        "description": "A file on a proof, and a link to open it once it has been cleaned.",
+        "properties": {
+          "content_type": {
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "image/webp"
+            ],
+            "title": "Content Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "fingerprint_mismatch",
+                  "not_an_image",
+                  "too_many_pixels",
+                  "missing"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why a rejected file cannot be shown",
+            "title": "Rejection Reason"
+          },
+          "size_bytes": {
+            "description": "The size of what the link opens",
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "attached",
+              "cleaned",
+              "rejected"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Opens the cleaned image. Only cleaned files have one. It works for a few minutes and must not be stored: ask again for a fresh one",
+            "title": "Url"
+          },
+          "url_expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url Expires At"
+          }
+        },
+        "required": [
+          "id",
+          "content_type",
+          "size_bytes",
+          "status",
+          "rejection_reason",
+          "url",
+          "url_expires_at"
+        ],
+        "title": "ProofFileView",
         "type": "object"
       },
       "ProofRead": {
@@ -4635,8 +4876,15 @@
             "title": "Content Removed On"
           },
           "content_url": {
-            "title": "Content Url",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Url"
           },
           "created_at": {
             "format": "date-time",
@@ -4651,6 +4899,13 @@
           "disclosure_confirmed": {
             "title": "Disclosure Confirmed",
             "type": "boolean"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/ProofFileSummary"
+            },
+            "title": "Files",
+            "type": "array"
           },
           "format": {
             "enum": [
@@ -4709,6 +4964,7 @@
           "id",
           "deal_memo_id",
           "content_url",
+          "files",
           "format",
           "note",
           "disclosure_confirmed",
@@ -4721,6 +4977,80 @@
           "updated_at"
         ],
         "title": "ProofRead",
+        "type": "object"
+      },
+      "ProofUploadCreate": {
+        "additionalProperties": false,
+        "description": "The file the creator is about to upload, described before it is sent.",
+        "properties": {
+          "content_type": {
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "image/webp"
+            ],
+            "title": "Content Type",
+            "type": "string"
+          },
+          "sha256": {
+            "description": "SHA-256 of the file, lowercase hex. Storage refuses any other file",
+            "examples": [
+              "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+            ],
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size_bytes": {
+            "description": "Exact size, in bytes",
+            "maximum": 10485760.0,
+            "minimum": 1.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "content_type",
+          "size_bytes",
+          "sha256"
+        ],
+        "title": "ProofUploadCreate",
+        "type": "object"
+      },
+      "ProofUploadRead": {
+        "description": "Where and how to upload: POST every one of `fields`, then the file, to `url`.",
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Send each as a form field, unchanged, before the file itself",
+            "title": "Fields",
+            "type": "object"
+          },
+          "upload_id": {
+            "description": "Give this in `file_ids` when submitting",
+            "format": "uuid",
+            "title": "Upload Id",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "upload_id",
+          "url",
+          "fields",
+          "expires_at"
+        ],
+        "title": "ProofUploadRead",
         "type": "object"
       },
       "PublicChannelRead": {
@@ -8456,6 +8786,104 @@
         "summary": "Browse open campaigns",
         "tags": [
           "campaigns"
+        ]
+      }
+    },
+    "/api/v1/campaigns/discover/for-me": {
+      "get": {
+        "description": "Open campaigns worth the signed-in creator's time, best first, each with the reasons it was suggested, including **how the brand pays** (the same record as `GET /brands/{id}/reliability`).\n\nOnly campaigns that name the creator's city and share one of their niches, whose applications are still open, from brands that are not suspended, and that the creator has not already applied to.\n\nA creator who has not published their Passport has no embedding yet, so `ranked_by_similarity` is false and the list is newest first. Nothing about the creator is shown to anyone by this call.",
+        "operationId": "list_campaigns_for_me_api_v1_campaigns_discover_for_me_get",
+        "parameters": [
+          {
+            "description": "How many campaigns to suggest",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "How many campaigns to suggest",
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignMatchesRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No token, or the token is not valid"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only a creator may ask for campaign suggestions"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The creator profile has not been created yet"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A query parameter is invalid"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Campaigns that suit me",
+        "tags": [
+          "matching"
         ]
       }
     },
@@ -13513,7 +13941,7 @@
         ]
       },
       "post": {
-        "description": "The creator gives the public link to the live post. Submitting also marks that work has started, which decides how a later cancellation counts. One submission waits for review at a time.",
+        "description": "The creator gives the public link to the live post, files uploaded through `POST .../proof/uploads`, or both. Each file's fingerprint is sealed into the deal record with the proof. Submitting also marks that work has started, which decides how a later cancellation counts. One submission waits for review at a time.",
         "operationId": "submit_proof_api_v1_deal_memos__memo_id__proof_post",
         "parameters": [
           {
@@ -13614,7 +14042,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "The memo is not accepted, or proof is already waiting. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+            "description": "The memo is not accepted, proof is already waiting, or a file has not finished uploading. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
           },
           "422": {
             "content": {
@@ -13625,7 +14053,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "A field is missing or invalid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+            "description": "A field is missing or invalid, there is neither a link nor a file, or a file is not one of your uploads for this deal. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
           },
           "429": {
             "content": {
@@ -13647,7 +14075,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+            "description": "File uploads are not available right now. Or: Can't guarantee this request runs only once right now. Safe to retry"
           }
         },
         "security": [
@@ -13656,6 +14084,156 @@
           }
         ],
         "summary": "Submit proof of the work",
+        "tags": [
+          "proof"
+        ]
+      }
+    },
+    "/api/v1/deal-memos/{memo_id}/proof/uploads": {
+      "post": {
+        "description": "Describe a screenshot or photo (type, exact size, SHA-256) and get a signed form to upload it **straight to storage**, valid for 10 minutes. Storage refuses any file that does not match the description. Then give `upload_id` in `file_ids` when submitting proof.\n\nJPEG, PNG or WebP, up to 10 MB. Only the creator, only on an accepted memo, at most 20 unfinished uploads per memo, 30 an hour per account. Every image is cleaned of location and hidden data before a brand can see it.",
+        "operationId": "start_proof_upload_api_v1_deal_memos__memo_id__proof_uploads_post",
+        "parameters": [
+          {
+            "description": "The memo's id",
+            "in": "path",
+            "name": "memo_id",
+            "required": true,
+            "schema": {
+              "description": "The memo's id",
+              "format": "uuid",
+              "title": "Memo Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProofUploadCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProofUploadRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "This account type cannot use this endpoint"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such memo, or it is not yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The memo is not accepted, or too many uploads are unfinished. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The type, size or fingerprint is invalid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "File uploads are not available right now. Or: Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start uploading a proof file",
         "tags": [
           "proof"
         ]
@@ -13798,6 +14376,128 @@
           }
         ],
         "summary": "Approve the proof",
+        "tags": [
+          "proof"
+        ]
+      }
+    },
+    "/api/v1/deal-memos/{memo_id}/proof/{proof_id}/files": {
+      "get": {
+        "description": "Every file on the proof, in the order the creator chose, each cleaned one with a link to open it, valid for 5 minutes. Only the brand and the creator on the deal can ask. A file still being cleaned has no link yet; it is usually ready within a minute. Only the cleaned copy is ever shown, to either side: the original, with its location data, is never served.",
+        "operationId": "view_proof_files_api_v1_deal_memos__memo_id__proof__proof_id__files_get",
+        "parameters": [
+          {
+            "description": "The memo's id",
+            "in": "path",
+            "name": "memo_id",
+            "required": true,
+            "schema": {
+              "description": "The memo's id",
+              "format": "uuid",
+              "title": "Memo Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The proof submission's id",
+            "in": "path",
+            "name": "proof_id",
+            "required": true,
+            "schema": {
+              "description": "The proof submission's id",
+              "format": "uuid",
+              "title": "Proof Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProofFileView"
+                  },
+                  "title": "Response View Proof Files Api V1 Deal Memos  Memo Id  Proof  Proof Id  Files Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "This account type cannot use this endpoint"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such memo or proof, or it is not yours"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "File uploads are not available right now"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Open the files on a proof",
         "tags": [
           "proof"
         ]

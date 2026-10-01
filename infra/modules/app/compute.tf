@@ -68,11 +68,28 @@ resource "aws_iam_role_policy" "task_uploads" {
   role = aws_iam_role.task.id
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
-      Resource = ["${aws_s3_bucket.uploads.arn}/*"]
-    }]
+    Statement = [
+      {
+        # Proof files only (D-065): sign uploads and view links, check, read,
+        # write the clean copy, delete. Nothing outside that prefix.
+        Sid      = "ProofFiles"
+        Effect   = "Allow"
+        Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+        Resource = ["${aws_s3_bucket.uploads.arn}/proof-files/*"]
+      },
+      {
+        # Without this S3 answers a missing file with 403, not 404, and the
+        # app could not tell "never uploaded" from "not allowed": a creator
+        # who abandoned an upload would get a server error, and the cleaner
+        # could not mark a vanished file as missing. No prefix condition:
+        # the check behind a 404 is not documented to carry one, and the
+        # bucket holds nothing but these random keys.
+        Sid      = "TellMissingFromForbidden"
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = [aws_s3_bucket.uploads.arn]
+      },
+    ]
   })
 }
 

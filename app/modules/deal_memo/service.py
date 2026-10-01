@@ -35,13 +35,15 @@ from app.modules.deal_memo.exceptions import (
     PaidMemoNeedsFee,
 )
 from app.modules.deal_memo.models import DealMemo
-from app.modules.deal_memo.proof_models import DeliverableProof
+from app.modules.deal_memo.proof_models import DeliverableProof, ProofFile
 from app.modules.deal_memo.record_models import DealRecordEntry
 from app.modules.notifications import service as notifications
 
 # Tables this module answers for in a data export (see
 # tests/modules/auth/test_export_api.py, which fails if one is missed).
-EXPORTED_TABLES = frozenset({"deal_memo", "deliverable_proof", "deal_record_entry"})
+EXPORTED_TABLES = frozenset(
+    {"deal_memo", "deliverable_proof", "proof_file", "deal_record_entry"}
+)
 
 # The deal record (D-057). The seals are exported as `seal` and
 # `previous_seal`: they are public by design, and naming them so keeps the
@@ -94,6 +96,24 @@ PROOF_EXPORT_FIELDS = allow(
     "last_checked_at",
     "created_at",
     "updated_at",
+)
+# What is known about each proof file (D-065). Not the storage keys: they are
+# our internal addresses, and the files are opened through the app's links.
+PROOF_FILE_EXPORT_FIELDS = allow(
+    "id",
+    "deal_memo_id",
+    "proof_id",
+    "position",
+    "content_type",
+    "size_bytes",
+    "sha256",
+    "status",
+    "clean_sha256",
+    "clean_size_bytes",
+    "rejection_reason",
+    "attached_at",
+    "cleaned_at",
+    "created_at",
 )
 
 # Who may make each move, and where it leads.
@@ -443,6 +463,17 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
             ).all()
         )
 
+    files: list[ProofFile] = []
+    if memo_ids:
+        files = list(
+            db.scalars(
+                select(ProofFile)
+                .where(ProofFile.deal_memo_id.in_(memo_ids))
+                .order_by(ProofFile.created_at, ProofFile.id)
+                .limit(MAX_ROWS_PER_SECTION + 1)
+            ).all()
+        )
+
     entries: list[DealRecordEntry] = []
     if memo_ids:
         entries = list(
@@ -471,6 +502,18 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
             purpose="Proof of published work filed against those memos, and its review.",
             objects=proofs,
             fields=PROOF_EXPORT_FIELDS,
+        ),
+        build_section(
+            "proof_files",
+            table="proof_file",
+            purpose=(
+                "Screenshots and photos filed as proof on those deals: type, "
+                "size and fingerprints, the declared one and the cleaned copy's "
+                "after location and other hidden data were removed. The files "
+                "themselves are opened in the app."
+            ),
+            objects=files,
+            fields=PROOF_FILE_EXPORT_FIELDS,
         ),
         build_section(
             "deal_record",
