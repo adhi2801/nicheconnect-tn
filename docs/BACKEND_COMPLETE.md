@@ -20,7 +20,7 @@ Three things it does **not** mean:
 
 Built and tested on `main`: Phases A, B and D of the backlog, C1 to C4, E3 and E4 (`docs/PRODUCT_BACKLOG.md`); creator search, the admin side, results read from proof (D-070, switched off), the deal record with its daily outside timestamp, proof files, and AWS described as code. **1,973 tests, 98.44% coverage**, API fuzzing, migration and image scanning in CI.
 
-**Section 3 holds 20 items. Section 4 holds 8 that wait on someone outside the code.**
+**Section 3 holds 22 items. Section 4 holds 8 that wait on someone outside the code.**
 
 ## 3. Left to build: no outside wait, a decision first
 
@@ -72,6 +72,13 @@ From `docs/PLATFORM_AND_TECH_PLAN.md` section 2.7 and the platform plan:
 | 18 | **Notification preferences**: quiet hours, a daily digest, a choice per event | No nagging (one of the 13 banned dark patterns); urgent deal events still arrive at once | Database; a decision |
 | 19 | **Typical response times from real data** ("brands usually reply within N days") | Known waiting lowers anxiety; computed from existing timestamps, never invented | A decision on thresholds |
 | 20 | **Milestones from real records** ("10 deals, all delivered on time") | Earned, true and shareable; never a streak that punishes rest | A decision on which |
+
+### 3.6 From go to market (`docs/GO_TO_MARKET.md`)
+
+| # | Item | Why | Gate |
+|---|---|---|---|
+| 21 | **Invite and source attribution**: who invited whom, where a sign-up came from | Measures every channel and growth loop; rewards a creator who brings a brand | Database; privacy |
+| 22 | **City and niche aggregates for public pages**: counts and medians only, behind thresholds | City pages and the quarterly rate summary, cited by search and AI search | A decision; privacy; D-036 consent and D-056 thresholds |
 
 ## 4. Blocked from outside the code
 
