@@ -139,6 +139,42 @@ resource "aws_s3_bucket_lifecycle_configuration" "uploads" {
       noncurrent_days = 30 # old versions kept a month, then gone
     }
   }
+  # Proof originals, as the phone sent them, location data and all (D-065).
+  # Where two rules overlap S3 applies the shorter, so these beat "tidy".
+  rule {
+    id     = "proof-originals"
+    status = "Enabled"
+    filter {
+      prefix = "proof-files/incoming/"
+    }
+    expiration {
+      days = 1 # an upload asked for and never submitted
+    }
+    noncurrent_version_expiration {
+      # The cleaner deletes each original once its clean copy exists. With
+      # versioning on, that delete only hides it; without this rule it could
+      # still be recovered for a month. One day is the least S3 allows.
+      noncurrent_days = 1
+    }
+  }
+}
+
+# The website uploads proof straight to the bucket (D-062), so the browser
+# must be allowed to. The phone apps need no rule. None until the dashboard
+# has an address, like the API's own list (D-044).
+resource "aws_s3_bucket_cors_configuration" "uploads" {
+  count  = length(local.browser_origins) > 0 ? 1 : 0
+  bucket = aws_s3_bucket.uploads.id
+  cors_rule {
+    allowed_methods = ["POST", "GET"] # the signed upload form, and a signed view link
+    allowed_origins = local.browser_origins
+    allowed_headers = ["*"]
+    max_age_seconds = 3600
+  }
+}
+
+locals {
+  browser_origins = compact([for origin in split(",", var.cors_allowed_origins) : trimspace(origin)])
 }
 
 resource "aws_s3_bucket_policy" "uploads" {
