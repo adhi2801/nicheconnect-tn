@@ -42,6 +42,10 @@ PROMPT_VERSION = "2026-10-01.1"
 # thinks, so effort is the control; the test set (D-070, step 2) checks this
 # level reads every number right before anything relies on it.
 READER_EFFORT = "low"
+# Models that refuse the effort setting with an error (Anthropic's reference,
+# 1 October 2026): they are sent none, and think only if asked, which a
+# reader does not.
+MODELS_WITHOUT_EFFORT = frozenset({"claude-haiku-4-5", "claude-sonnet-4-5"})
 MAX_TOKENS = 8000
 # The API takes up to 10 MB per image, base64 encoded (Anthropic's vision
 # documentation, 1 October 2026). Base64 grows bytes by 4/3; a margin below.
@@ -154,6 +158,13 @@ def fit_for_api(image: bytes, content_type: str) -> tuple[bytes, str] | None:
     return None
 
 
+def effort_options(model: str) -> dict[str, Any]:
+    """The effort setting, for the models that take one."""
+    if model in MODELS_WITHOUT_EFFORT:
+        return {}
+    return {"output_config": {"effort": READER_EFFORT}}
+
+
 def clean_handle(handle: str | None) -> str | None:
     if not handle:
         return None
@@ -240,8 +251,8 @@ class ClaudeReader:
                 model=self.model,
                 max_tokens=MAX_TOKENS,
                 system=SYSTEM_PROMPT,
-                output_config={"effort": READER_EFFORT},
                 output_format=ScreenshotNumbers,
+                **effort_options(self.model),
                 messages=[
                     {
                         "role": "user",

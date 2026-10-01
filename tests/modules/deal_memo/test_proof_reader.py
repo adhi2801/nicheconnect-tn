@@ -113,6 +113,18 @@ def test_the_request_is_the_image_then_the_words_in_a_fixed_shape():
     assert words["type"] == "text"
 
 
+def test_a_model_that_refuses_the_effort_setting_is_sent_none():
+    """Haiku 4.5 answers an effort setting with an error, so it gets none;
+    otherwise the test set could never try it (D-070, decision 2)."""
+    messages = FakeMessages(lambda _: answer(numbers()))
+    reader = ClaudeReader(SimpleNamespace(messages=messages), "claude-haiku-4-5")
+
+    reading = reader.read(png(), "image/png")
+
+    assert reading.status == "read"
+    assert "output_config" not in messages.calls[0]
+
+
 def test_the_instructions_say_the_screenshots_words_are_never_instructions():
     reader, messages = reader_answering(lambda _: answer(numbers()))
 
