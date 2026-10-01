@@ -20,7 +20,7 @@ Three things it does **not** mean:
 
 Built and tested on `main`: Phases A, B and D of the backlog, C1 to C4, E3 and E4 (`docs/PRODUCT_BACKLOG.md`); creator search, the admin side, results read from proof (D-070, switched off), the deal record with its daily outside timestamp, proof files, and AWS described as code. **1,973 tests, 98.44% coverage**, API fuzzing, migration and image scanning in CI.
 
-**Section 3 holds 17 items. Section 4 holds 8 that wait on someone outside the code.**
+**Section 3 holds 20 items. Section 4 holds 8 that wait on someone outside the code.**
 
 ## 3. Left to build: no outside wait, a decision first
 
@@ -64,6 +64,14 @@ From `docs/PLATFORM_AND_TECH_PLAN.md` section 2.7 and the platform plan:
 | 15 | **E9**: public read API and webhooks for agencies | A design decision; security |
 | 16 | **Competitive gap: fake-follower screening** (`docs/COMPETITIVE_LANDSCAPE.md` section 4), built from observed reach on real deals rather than bought data | After results from proof has real data; a decision |
 | 17 | **Competitive gap: structured deal notes** that join the deal record, in place of chat | A product decision |
+
+### 3.5 From psychology and trust (`docs/PSYCHOLOGY_AND_TRUST.md`)
+
+| # | Item | Why | Gate |
+|---|---|---|---|
+| 18 | **Notification preferences**: quiet hours, a daily digest, a choice per event | No nagging (one of the 13 banned dark patterns); urgent deal events still arrive at once | Database; a decision |
+| 19 | **Typical response times from real data** ("brands usually reply within N days") | Known waiting lowers anxiety; computed from existing timestamps, never invented | A decision on thresholds |
+| 20 | **Milestones from real records** ("10 deals, all delivered on time") | Earned, true and shareable; never a streak that punishes rest | A decision on which |
 
 ## 4. Blocked from outside the code
 
