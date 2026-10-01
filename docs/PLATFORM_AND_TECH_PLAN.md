@@ -8,7 +8,7 @@
 
 - **English only (D-054, 23 September).** Every Tamil-language feature and test below is **withdrawn**, and kept as a record of what was planned: Tamil voice (A9, D5), Tamil answers in phone assistants (D17's language), hybrid Tamil search, the Tamil test set for models, and Tamil fonts. "Tamil Nadu", our region, is unaffected. English replacements, such as an English model test set, are founder decisions, not assumed here. Models for results from proof are already chosen by an English test set (D-070).
 - **The roadmap (section 5) is brought up to date**: much of "Now" and "Next" is built. What is left to build before the frontend is `docs/BACKEND_COMPLETE.md`.
-- **One difference from the baseline, recorded rather than hidden:** section 4.0 locks Pydantic AI v2 as the interface every AI feature goes through. The first AI feature (results from proof, D-070, approved 1 October) uses Anthropic's own library behind an interface of our own (`app/modules/deal_memo/proof_reader.py`), the alternative section 4.4 names. Pydantic AI is not installed. Which way later AI features go is a founder decision.
+- **One difference from the baseline, recorded rather than hidden:** section 4.0 locks Pydantic AI v2 as the interface every AI feature goes through. The first AI feature (results from proof, D-070, approved 1 October) uses Anthropic's own library behind an interface of our own (`app/modules/deal_memo/proof_reader.py`), the alternative section 4.4 names. Pydantic AI is not installed. **Settled by D-071:** our own thin interface stays, and the baseline row below says so; Pydantic AI comes in when a second provider or agent features do.
 
 **Nothing here overrides `CLAUDE.md`.** Every item still goes through its approval gate. The constraints hold throughout: we never hold or move money, no personal data in embeddings, and compliance details come from the validation pack, never from research like this.
 
@@ -220,7 +220,7 @@ Locked by both founders on 22 September 2026 (D-047; Erode Harish's approval rel
 | Migration safety | Squawk | **Locked**; **built** 23 September (D-050), on added migrations only |
 | Cache and rate limits | Valkey 9.1.2 or newer | **Locked**; **built** 23 September (D-048) |
 | Background jobs | DBOS | **Locked**; **built** (D-060): the daily record checkpoint, proof cleaning and proof reading run on it |
-| AI | Pydantic AI v2 as our interface; Claude, each model chosen by measurement on our own test set | **Locked**; the first AI feature (D-070) uses Anthropic's library behind our own interface instead (see the note at the top). Sarvam and the Tamil test set **withdrawn** by D-054 |
+| AI | **Our own thin interface** behind each AI feature (amended by D-071 from Pydantic AI v2); Claude, each model chosen by measurement on our own test set | **Locked**; built with the first AI feature (D-070). Pydantic AI is adopted when a second provider or agent features arrive. Sarvam and the Tamil test set **withdrawn** by D-054 |
 | Frontend | The stack in 4.3: Expo SDK 57, Next.js 16.3.6 or newer, TypeScript 7, Expo UI, Tailwind v4 with shadcn/ui, NativeWind, PowerSync, Playwright, Maestro | **Locked**; every version re-checked when the frontend starts. D-046 (platforms and roles) is separate |
 | Not locked yet | Hosting, where traces go, the login provider, the lint tool (Biome or Oxlint), the API client generator (Hey API or Orval), the Tamil fonts (chosen by testing) | Open |
 

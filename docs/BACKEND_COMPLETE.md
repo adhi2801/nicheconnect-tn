@@ -20,7 +20,7 @@ Three things it does **not** mean:
 
 Built and tested on `main`: Phases A, B and D of the backlog, C1 to C4, E3 and E4 (`docs/PRODUCT_BACKLOG.md`); creator search, the admin side, results read from proof (D-070, switched off), the deal record with its daily outside timestamp, proof files, and AWS described as code. **1,973 tests, 98.44% coverage**, API fuzzing, migration and image scanning in CI.
 
-**Section 3 holds 22 items. Section 4 holds 8 that wait on someone outside the code.**
+**Section 3 holds 20 items. Section 4 holds 8 that wait on someone outside the code.** Section 5 lists what the founders declined or deferred.
 
 ## 3. Left to build: no outside wait, a decision first
 
@@ -53,7 +53,6 @@ From `docs/PLATFORM_AND_TECH_PLAN.md` section 2.7 and the platform plan:
 | 9 | **Device tokens for push**, recording each token's kind (Android, iPhone, Live Activity) | Push is how the app earns its install (A4); the frontend cannot register without it | Database |
 | 10 | **Login codes in the formats phones fill in by themselves** (Android SMS Retriever with the app's hash; the web one-time-code line) | Android 17 holds back ordinary code messages for three hours | The domain (item 4) and the login provider |
 | 11 | **Scoped tokens for assistants and agents** (App Intents, AppFunctions, WebMCP, MCP) | Every assistant calls our API; each needs its own token with limited permissions | Security |
-| 12 | **The public receipt check** (W4): anyone verifies a deal receipt without an account | Trust that works outside our platform. Verification exists for the parties today; a public page needs a privacy decision on what it shows | Decision; privacy |
 | 13 | **Team seats for brands and agencies** (W11) | Real businesses have more than one person; changes the account model, so it belongs before the frontend | Both founders; database; security |
 
 ### 3.4 Backlog items still open
@@ -69,16 +68,15 @@ From `docs/PLATFORM_AND_TECH_PLAN.md` section 2.7 and the platform plan:
 
 | # | Item | Why | Gate |
 |---|---|---|---|
-| 18 | **Notification preferences**: quiet hours, a daily digest, a choice per event | No nagging (one of the 13 banned dark patterns); urgent deal events still arrive at once | Database; a decision |
-| 19 | **Typical response times from real data** ("brands usually reply within N days") | Known waiting lowers anxiety; computed from existing timestamps, never invented | A decision on thresholds |
-| 20 | **Milestones from real records** ("10 deals, all delivered on time") | Earned, true and shareable; never a streak that punishes rest | A decision on which |
+| 18 | **Notification preferences** (approved, D-071): quiet hours, a daily digest, a choice per event | No nagging (one of the 13 banned dark patterns); urgent deal events still arrive at once | Database; a decision |
+| 19 | **Typical response times from real data** (approved, D-071; shown only from 5 examples) ("brands usually reply within N days") | Known waiting lowers anxiety; computed from existing timestamps, never invented | A decision on thresholds |
 
 ### 3.6 From go to market (`docs/GO_TO_MARKET.md`)
 
 | # | Item | Why | Gate |
 |---|---|---|---|
-| 21 | **Invite and source attribution**: who invited whom, where a sign-up came from | Measures every channel and growth loop; rewards a creator who brings a brand | Database; privacy |
-| 22 | **City and niche aggregates for public pages**: counts and medians only, behind thresholds | City pages and the quarterly rate summary, cited by search and AI search | A decision; privacy; D-036 consent and D-056 thresholds |
+| 21 | **Invite and source attribution** (approved, D-071): who invited whom, where a sign-up came from | Measures every channel and growth loop; rewards a creator who brings a brand | Database; privacy |
+| 22 | **City and niche aggregates for public pages** (approved, D-071: backend now, published once a city has the data): counts and medians only, behind thresholds | City pages and the quarterly rate summary, cited by search and AI search | A decision; privacy; D-036 consent and D-056 thresholds |
 
 ## 4. Blocked from outside the code
 
@@ -93,7 +91,14 @@ From `docs/PLATFORM_AND_TECH_PLAN.md` section 2.7 and the platform plan:
 | Going live | The AWS account and the founder steps in `infra/README.md` |
 | Real login codes | The MSG91 account |
 
-## 5. Keeping this file true
+## 5. Declined or deferred past launch
+
+| Was | Item | Decision |
+|---|---|---|
+| 12 | The public receipt check | **Declined** (D-071): a deal is private between the brand and the creator. Each party can still check its own record from the export (`docs/DEAL_RECORD_VERIFY.md`) |
+| 20 | Milestones from real records | **After launch** (D-071): they mean nothing until real deals exist |
+
+## 6. Keeping this file true
 
 - Updated in the same pull request as any work that moves an item. An item leaves section 3 only when it is built and tested, or deferred by a recorded decision.
 - Re-checked against the code whenever `docs/PRODUCT_BACKLOG.md` is.
