@@ -611,3 +611,12 @@ Newest entries at the bottom.
 - Chosen: A.
 - Reason: D-047's rule is that security fixes are taken at once. OpenSSL carries our outgoing TLS (S3, MSG91, the timestamp authorities), so it is not a risk to accept, and waiting leaves `main` red and the image flawed for days.
 - Consequences / follow-ups: (1) One `apt-get install --only-upgrade` step with exact versions (`openssl`, `libssl3t64`, `openssl-provider-legacy` 3.5.7-1~deb13u3; `libpcre2-8-0` 10.46-1~deb13u3), apt's lists removed after. The embeddings image inherits it. (2) **Remove the step** when the base digest moves to an image that already carries these versions or newer. (3) The `build` stage is not patched: it is thrown away and never ships.
+
+## D-069: Erode Harish's review and approval of D-055 to D-068, relayed by Adhi
+- Date: 2026-10-01
+- Approved by: Erode Harish, **relayed by Adhi** in this session ("for everything till now whatever you have asked erode as reviewed and approved", then, asked whether Harish had actually seen and approved them, "yes he approved everything"). Harish did not confirm in a session here, the same footing as D-047 and D-051.
+- Context: Since D-051 Adhi has built the backend alone, and every entry from D-055 to D-068 says it was not reviewed by the other founder. Those entries stay as written; the log is append-only, and this entry is what changes their standing.
+- Options considered: A) record the relayed approval of all fourteen · B) leave them marked unreviewed
+- Chosen: A.
+- Reason: Adhi relayed Harish's approval of everything raised so far, after being told the record would say "relayed".
+- Consequences / follow-ups: (1) D-055 to D-068 count as approved by both founders, by relay: the rate card schema, fair-rate guidance, the deal record and its daily outside timestamp, WhatsApp login through MSG91, local developer login, DBOS, the admin side, hosting on AWS Mumbai, packaging and deployment with OpenTofu, image scanning with Grype, proof files and their cleaning, the clean copy sealed in the record, proof file order, and the image's OpenSSL and PCRE2 fix. (2) PRs #32, #33 and #34, already merged, are covered by this entry; their descriptions said unreviewed and are not edited. (3) Work after this entry is unreviewed again until a founder says otherwise, and reports and PRs keep saying so (CLAUDE.md section 0).
