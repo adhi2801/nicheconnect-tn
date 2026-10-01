@@ -14383,7 +14383,7 @@
     },
     "/api/v1/deal-memos/{memo_id}/proof/{proof_id}/files": {
       "get": {
-        "description": "Every file on the proof, in upload order, each cleaned one with a link to open it, valid for 5 minutes. Only the brand and the creator on the deal can ask. A file still being cleaned has no link yet; it is usually ready within a minute. Only the cleaned copy is ever shown, to either side: the original, with its location data, is never served.",
+        "description": "Every file on the proof, in the order the creator chose, each cleaned one with a link to open it, valid for 5 minutes. Only the brand and the creator on the deal can ask. A file still being cleaned has no link yet; it is usually ready within a minute. Only the cleaned copy is ever shown, to either side: the original, with its location data, is never served.",
         "operationId": "view_proof_files_api_v1_deal_memos__memo_id__proof__proof_id__files_get",
         "parameters": [
           {

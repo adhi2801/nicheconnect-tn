@@ -593,3 +593,12 @@ Newest entries at the bottom.
 - Chosen: A.
 - Reason: every file a brand sees stays provable, from the record alone, without trusting us.
 - Consequences / follow-ups: (1) Migration `f276d2c6ce1e` widens the record's kind check, added NOT VALID and validated after commit; its downgrade refuses while any such entry exists, since the record is append-only. (2) Entries are made by `system`, one per cleaned file, after the proof's own entry. (3) A file refused by the cleaner is not recorded; the creator sees it as rejected on the proof. Recording refusals would need another kind and another decision.
+
+## D-067: A proof shows its files in the order the creator chose, the order the record seals
+- Date: 2026-10-01
+- Approved by: Adhi, in this session ("A", to the decision and schema request after seeing them). **Not reviewed by the other founder** (D-051).
+- Context: Submitting proof promised files "in the order to show them", and the deal record sealed them in that order, but they were shown in upload order. Uploaded A then B and submitted as B, A, the record said B, A and the brand saw A, B: evidence that reads differently on screen and in the record.
+- Options considered: A) a `position` column on `proof_file`, set when a file joins a proof, and one order everywhere · B) no schema change: drop the promise, show and seal in upload order
+- Chosen: A.
+- Reason: the record and the screen must always agree, and keeping the creator's order costs one small column.
+- Consequences / follow-ups: (1) Migration `608541cc4a4e`: `position` smallint, empty exactly while pending, 0 to 9 otherwise, unique per proof; checks NOT VALID then validated after commit, the unique index built CONCURRENTLY. (2) It fills existing attached files with their upload order inside the same migration. database.md section 6 puts backfills in their own migration; the approved plan did not, since `proof_file` has never been deployed or merged and holds no real data. (3) The proof's files, the view links (step 5) and the data export carry this order; the export lists `position`. (4) The downgrade drops the column; files fall back to upload order.

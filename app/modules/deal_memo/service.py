@@ -103,6 +103,7 @@ PROOF_FILE_EXPORT_FIELDS = allow(
     "id",
     "deal_memo_id",
     "proof_id",
+    "position",
     "content_type",
     "size_bytes",
     "sha256",

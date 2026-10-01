@@ -136,7 +136,7 @@ def attach(
         ).all()
     }
     files = []
-    for file_id in file_ids:
+    for position, file_id in enumerate(file_ids):
         file = found.get(file_id)
         if file is None:
             raise ProofFileNotFound()
@@ -147,6 +147,8 @@ def attach(
             raise ProofFileNotUploaded()
         file.status = "attached"
         file.proof_id = proof.id
+        # The order given is the order shown and the order sealed (D-067).
+        file.position = position
         file.attached_at = now
         file.updated_at = now
         files.append(file)

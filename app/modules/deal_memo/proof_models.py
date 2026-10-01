@@ -7,8 +7,10 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    SmallInteger,
     String,
     Text,
+    UniqueConstraint,
     text,
 )
 from sqlalchemy.dialects.postgresql import UUID
@@ -127,12 +129,13 @@ class DeliverableProof(Base):
         nullable=False, server_default=text("false")
     )
     revision_note: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # The files filed with this proof (D-065), in upload order. "selectin":
+    # The files filed with this proof (D-065), in the order the creator
+    # chose, the same order the deal record seals (D-067). "selectin":
     # a list of proofs loads every proof's files in one more query, never
     # one query per proof.
     files: Mapped[list["ProofFile"]] = relationship(
         "ProofFile",
-        order_by="ProofFile.created_at",
+        order_by="ProofFile.position",
         lazy="selectin",
         viewonly=True,
     )
@@ -198,6 +201,20 @@ class ProofFile(Base):
             "AND clean_size_bytes IS NOT NULL AND cleaned_at IS NOT NULL)",
             name="cleaned_has_copy",
         ),
+        # A place in the proof exactly once the file has joined one (D-067):
+        # 0 is shown first. A rejected file keeps its place, as it keeps its
+        # proof.
+        CheckConstraint(
+            "(status = 'pending') = (position IS NULL)",
+            name="position_once_attached",
+        ),
+        CheckConstraint(
+            f"position IS NULL OR position BETWEEN 0 AND {MAX_FILES_PER_PROOF - 1}",
+            name="position_in_range",
+        ),
+        # Two files never share a place. Pending rows have neither a proof
+        # nor a place, and NULLs never collide.
+        UniqueConstraint("proof_id", "position"),
         # Rejected exactly when there is a reason.
         CheckConstraint(
             "(status = 'rejected') = (rejection_reason IS NOT NULL)",
@@ -245,6 +262,9 @@ class ProofFile(Base):
     clean_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     clean_size_bytes: Mapped[int | None] = mapped_column(nullable=True)
     rejection_reason: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # Where the creator put it in the proof, from 0 (D-067). Empty while
+    # pending: an upload has no place until a proof takes it.
+    position: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     attached_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

@@ -12,12 +12,14 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 from PIL import Image
+from sqlalchemy import select
 
 from app.core import storage
 from app.modules.deal_memo import proof_cleaning_service as cleaning
 from app.modules.deal_memo.proof_file_service import VIEW_LINK_LIFETIME
 from app.modules.deal_memo.proof_models import ProofFile
 from app.modules.deal_memo.proof_router import READ_LIMIT
+from app.modules.deal_memo.record_models import DealRecordEntry
 from tests.deal_flow import LINK, MEMOS_URL, User, accepted_memo, brand_user, creator_user
 
 NOT_AN_IMAGE = b"%PDF-1.7 pretending to be a png"
@@ -154,21 +156,36 @@ def test_a_rejected_file_says_why_and_has_no_link(client, db, clock, deal):
     )
 
 
-def test_files_come_in_upload_order(client, db, clock, deal):
-    _, creator, memo_id = deal
+def test_files_show_in_the_order_the_creator_chose_as_the_record_seals_them(
+    client, db, clock, deal
+):
+    """D-067: uploaded A then B, submitted as B, A; every view says B, A."""
+    brand, creator, memo_id = deal
     first = upload(client, clock, creator, memo_id, png())
     clock.advance(timedelta(seconds=1))
     second = upload(client, clock, creator, memo_id, png((1, 2, 3)))
-    client.post(
+    response = client.post(
         f"{MEMOS_URL}/{memo_id}/proof",
-        json={"format": "post", "file_ids": [first, second]},
+        json={"format": "post", "file_ids": [second, first]},
         headers=creator.headers,
     )
-    [proof] = client.get(f"{MEMOS_URL}/{memo_id}/proof", headers=creator.headers).json()
+    assert response.status_code == 201, response.text
+    proof_id = response.json()["id"]
+    chosen = [second, first]
 
-    files = files_of(client, creator, memo_id, proof["id"]).json()
-
-    assert [f["id"] for f in files] == [first, second]
+    assert [f["id"] for f in response.json()["files"]] == chosen
+    for user in (brand, creator):
+        [listed] = client.get(f"{MEMOS_URL}/{memo_id}/proof", headers=user.headers).json()
+        assert [f["id"] for f in listed["files"]] == chosen
+        opened = files_of(client, user, memo_id, proof_id).json()
+        assert [f["id"] for f in opened] == chosen
+    entry = db.scalars(
+        select(DealRecordEntry).where(
+            DealRecordEntry.deal_memo_id == memo_id,
+            DealRecordEntry.kind == "proof_submitted",
+        )
+    ).one()
+    assert [f["file_id"] for f in entry.facts["files"]] == chosen
 
 
 def test_a_link_only_proof_has_no_files(client, deal):

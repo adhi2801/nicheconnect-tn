@@ -337,7 +337,7 @@ def list_proof(
     response_model=list[ProofFileView],
     summary="Open the files on a proof",
     description=(
-        "Every file on the proof, in upload order, each cleaned one with a link "
+        "Every file on the proof, in the order the creator chose, each cleaned one with a link "
         "to open it, valid for 5 minutes. Only the brand and the creator on the "
         "deal can ask. A file still being cleaned has no link yet; it is usually "
         "ready within a minute. Only the cleaned copy is ever shown, to either "

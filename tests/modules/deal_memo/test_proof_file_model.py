@@ -93,6 +93,7 @@ def test_a_cleaned_file_carries_its_clean_copy(db, memo, uploader):
         uploader,
         status="cleaned",
         proof_id=proof.id,
+        position=0,
         attached_at=FIXED_NOW,
         clean_key="proof-files/clean/x.png",
         clean_sha256=SHA,
@@ -114,7 +115,9 @@ def test_a_proof_may_now_have_no_link(db, memo):
 @pytest.mark.parametrize(
     ("overrides", "constraint"),
     [
-        ({"status": "lost"}, "ck_proof_file_status_allowed"),
+        # A place, so the status check is the one that speaks: Postgres
+        # tests checks in name order, and "position" comes before "status".
+        ({"status": "lost", "position": 0}, "ck_proof_file_status_allowed"),
         ({"content_type": "image/gif"}, "ck_proof_file_content_type_allowed"),
         ({"content_type": "video/mp4"}, "ck_proof_file_content_type_allowed"),
         ({"size_bytes": 0}, "ck_proof_file_size_in_range"),
@@ -173,7 +176,9 @@ def test_a_clean_copy_without_the_cleaned_status_is_refused(db, memo, uploader):
 
 def test_rejected_needs_a_reason_and_a_reason_needs_rejected(db, memo, uploader):
     refused(
-        db, a_file(memo, uploader, status="rejected"), "ck_proof_file_rejected_has_reason"
+        db,
+        a_file(memo, uploader, status="rejected", position=0),
+        "ck_proof_file_rejected_has_reason",
     )
     refused(
         db,
@@ -185,7 +190,13 @@ def test_rejected_needs_a_reason_and_a_reason_needs_rejected(db, memo, uploader)
 def test_an_unknown_rejection_reason_is_refused(db, memo, uploader):
     refused(
         db,
-        a_file(memo, uploader, status="rejected", rejection_reason="felt_like_it"),
+        a_file(
+            memo,
+            uploader,
+            status="rejected",
+            position=0,
+            rejection_reason="felt_like_it",
+        ),
         "ck_proof_file_rejection_reason_allowed",
     )
 
@@ -201,12 +212,75 @@ def test_two_rows_cannot_claim_one_stored_object(db, memo, uploader):
     )
 
 
+# --- a file's place in its proof (D-067) ---------------------------------------------------
+
+
+def on_proof(memo, uploader, proof, position) -> ProofFile:
+    return a_file(
+        memo,
+        uploader,
+        status="attached",
+        proof_id=proof.id,
+        attached_at=FIXED_NOW,
+        position=position,
+    )
+
+
+def test_a_pending_upload_has_no_place_yet(db, memo, uploader):
+    refused(
+        db, a_file(memo, uploader, position=0), "ck_proof_file_position_once_attached"
+    )
+
+
+def test_a_file_on_a_proof_must_have_a_place(db, memo, uploader):
+    proof = a_proof(db, memo)
+    refused(
+        db,
+        on_proof(memo, uploader, proof, position=None),
+        "ck_proof_file_position_once_attached",
+    )
+
+
+@pytest.mark.parametrize("position", [-1, 10])
+def test_a_place_outside_the_ten_is_refused(db, memo, uploader, position):
+    proof = a_proof(db, memo)
+    refused(
+        db, on_proof(memo, uploader, proof, position), "ck_proof_file_position_in_range"
+    )
+
+
+def test_two_files_cannot_share_a_place_on_one_proof(db, memo, uploader):
+    proof = a_proof(db, memo)
+    db.add(on_proof(memo, uploader, proof, position=0))
+    db.flush()
+
+    refused(db, on_proof(memo, uploader, proof, position=0), "uq_proof_file_proof_id")
+
+
+def test_the_same_place_on_two_proofs_is_fine(db, memo, uploader):
+    # One proof waits for review at a time; the earlier one was sent back.
+    first = a_proof(db, memo, status="revision_requested", revision_note="Add the label.")
+    second = a_proof(db, memo)
+    db.add_all(
+        [
+            on_proof(memo, uploader, first, position=0),
+            on_proof(memo, uploader, second, position=0),
+        ]
+    )
+    db.flush()
+
+
 def test_a_proof_with_files_cannot_be_deleted(db, memo, uploader):
     """RESTRICT: evidence stays with the deal."""
     proof = a_proof(db, memo)
     db.add(
         a_file(
-            memo, uploader, status="attached", proof_id=proof.id, attached_at=FIXED_NOW
+            memo,
+            uploader,
+            status="attached",
+            proof_id=proof.id,
+            position=0,
+            attached_at=FIXED_NOW,
         )
     )
     db.flush()
@@ -238,6 +312,7 @@ def test_both_sides_of_the_deal_get_the_files_in_their_export(db, memo, uploader
         [exported] = sections["proof_files"].records
         assert exported["id"] == str(row.id)
         assert exported["sha256"] == SHA
+        assert exported["position"] is None  # still pending
         # Our internal addresses stay internal.
         assert "storage_key" not in exported
         assert "clean_key" not in exported
