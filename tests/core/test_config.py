@@ -365,3 +365,24 @@ def test_the_key_never_appears_when_settings_are_printed():
 @pytest.mark.parametrize("limit", [0, -1, 10_001])
 def test_the_daily_reading_limit_must_be_sensible(limit):
     assert_rejected("proof_reading_daily_limit", proof_reading_daily_limit=limit)
+
+
+def test_the_placeholder_aws_holds_before_the_claude_key_is_pasted_stops_the_app():
+    """infra/ fills the Claude key's secret with a placeholder until a founder
+    pastes the real key. Reading switched on before that must stop the app at
+    startup, so the deploy rolls back rather than every reading failing."""
+    secrets_tf = (Path(__file__).parents[2] / "infra/modules/app/secrets.tf").read_text()
+    placeholder = re.search(
+        r'resource "aws_secretsmanager_secret_version" "anthropic".*?secret_string\s*=\s*"([^"]+)"',
+        secrets_tf,
+        re.S,
+    )
+
+    assert placeholder is not None
+    assert_startup_refused(
+        "ANTHROPIC_API_KEY",
+        proof_reading_enabled=True,
+        anthropic_api_key=placeholder.group(1),
+    )
+    # Switched off, the placeholder is harmless: the app starts.
+    assert load(anthropic_api_key=placeholder.group(1)).proof_reading_enabled is False

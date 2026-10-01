@@ -56,6 +56,11 @@ variable "msg91_whatsapp_number" {
   default = ""
 }
 
+variable "proof_reading_enabled" {
+  type    = bool
+  default = false
+}
+
 module "app" {
   source = "../../modules/app"
 
@@ -77,6 +82,7 @@ module "app" {
 
   otp_sender            = var.otp_sender
   msg91_whatsapp_number = var.msg91_whatsapp_number
+  proof_reading_enabled = var.proof_reading_enabled
 }
 
 output "app" {

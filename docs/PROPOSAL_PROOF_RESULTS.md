@@ -1,6 +1,6 @@
 # Proposal: results a brand can trust, read from the proof (competitive #4)
 
-**Status: approved 1 October 2026 (D-070). Being built, step by step (section 8).**
+**Status: approved 1 October 2026 (D-070); steps 1 to 6 built the same day on `feature/proof-results`. Off by a setting until the validation pack answers (section 6); the model is chosen once the test set exists (step 2).**
 
 ## 1. Why
 

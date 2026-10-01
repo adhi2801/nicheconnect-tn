@@ -61,6 +61,13 @@ protection and two weeks of backups.
 9. **Test a restore from backup** before the first real user (D-062).
 10. **Production**: the same steps in `infra/envs/production`.
 
+**Later, not part of going live: results read from proof (D-070).** Off
+until the validation pack says a creator's insights may go to a processor.
+Then paste the Claude API key into the secret named in
+`anthropic_secret_name`, and apply again with
+`-var "proof_reading_enabled=true"`. Switched on before the key is pasted,
+the app refuses to start and ECS rolls the deploy back.
+
 ## Rules
 
 - **State holds every generated password.** It lives only in the encrypted
