@@ -1,7 +1,7 @@
 """Proof endpoints: the creator shows the work, the brand reviews it (D-024, D-025)."""
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Path, Request, Response, status
@@ -16,7 +16,11 @@ from app.core.storage import FileStore, get_file_store
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.campaigns.dependencies import CurrentCreatorProfile
-from app.modules.deal_memo import proof_file_service, proof_service
+from app.modules.deal_memo import (
+    proof_file_service,
+    proof_reading_service,
+    proof_service,
+)
 from app.modules.deal_memo.dependencies import (
     BrandMemo,
     CreatorMemo,
@@ -32,6 +36,11 @@ from app.modules.deal_memo.proof_models import (
     PROOF_FORMATS,
     PROOF_STATUSES,
     URL_MAX_LENGTH,
+)
+from app.modules.deal_memo.proof_reading_models import (
+    CREATOR_NOTE_MAX_LENGTH,
+    READING_METRICS,
+    ProofFileReading,
 )
 
 WRITE_LIMIT = "30 per minute"
@@ -60,6 +69,11 @@ ensure_same_values("ProofFileRejection", ProofFileRejection, PROOF_FILE_REJECTIO
 
 MemoId = Annotated[uuid.UUID, Path(description="The memo's id")]
 ProofId = Annotated[uuid.UUID, Path(description="The proof submission's id")]
+FileId = Annotated[uuid.UUID, Path(description="The proof file's id")]
+ReadingMetric = Literal[
+    "views", "reach", "impressions", "likes", "comments", "saves", "shares"
+]
+ensure_same_values("ReadingMetric", ReadingMetric, READING_METRICS)
 
 _COMMON_ERRORS: ResponseDocs = {
     401: problem_doc("No access token, or it is invalid or expired"),
@@ -169,6 +183,118 @@ class ProofFileView(BaseModel):
         )
     )
     url_expires_at: datetime | None
+    reading: "ProofReadingView | None" = Field(
+        description="The numbers read from this screenshot, once read. Empty until then"
+    )
+
+
+class ProofReadingNumbers(BaseModel):
+    views: int | None
+    reach: int | None
+    impressions: int | None
+    likes: int | None
+    comments: int | None
+    saves: int | None
+    shares: int | None
+
+
+class ProofReadingChecks(BaseModel):
+    """Plain rules against facts we hold. Empty means nothing to compare."""
+
+    handle_matches: bool | None = Field(
+        description="The handle on the screenshot is the creator's linked channel"
+    )
+    date_within_deal: bool | None = Field(
+        description=(
+            "The post date is on or after the day the memo was accepted, "
+            "and not in the future"
+        )
+    )
+    numbers_consistent: bool | None = Field(
+        description=(
+            "Likes, comments, saves, shares and reach are not above views, "
+            "and reach is not above impressions"
+        )
+    )
+
+
+class ProofReadingView(BaseModel):
+    """What a proof screenshot said, read by AI and checked by us (D-070).
+
+    **Read from a screenshot, never verified.** A screenshot can be edited;
+    the checks say whether it agrees with what we hold, not that it is true.
+    """
+
+    source: Literal["read_from_screenshot"] = Field(
+        description="Always this: the numbers come from the creator's screenshot"
+    )
+    status: Literal["read", "no_numbers"] = Field(
+        description="`no_numbers`: not an insights screen, or one showing none"
+    )
+    platform: Literal["instagram", "youtube", "other"] | None
+    handle: str | None
+    post_date: date | None
+    numbers: ProofReadingNumbers
+    abbreviated: list[ReadingMetric] = Field(
+        description="Shown abbreviated on screen (such as 12.5K), so not exact"
+    )
+    checks: ProofReadingChecks
+    stated_followers: int | None = Field(
+        description="What the creator said about this channel when it was read"
+    )
+    stated_average_views: int | None
+    views_against_stated: float | None = Field(
+        description=(
+            "Views read (or reach, when views are not shown) over the creator's "
+            "stated average views: 1.0 is what they claim, 9.0 nine times it"
+        )
+    )
+    creator_marked_at: datetime | None = Field(
+        description="When the creator said this reading is wrong; kept beside it"
+    )
+    creator_note: str | None
+    read_at: datetime
+
+
+class MisreadMark(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    note: Annotated[
+        str,
+        Field(
+            min_length=5,
+            max_length=CREATOR_NOTE_MAX_LENGTH,
+            description="What is wrong, in the creator's words",
+            examples=["Reach is 31,040, not 31,400."],
+        ),
+    ]
+
+
+def reading_view(row: ProofFileReading | None) -> ProofReadingView | None:
+    if row is None:
+        return None
+    return ProofReadingView.model_validate(
+        {
+            "source": "read_from_screenshot",
+            "status": row.status,
+            "platform": row.platform,
+            "handle": row.handle,
+            "post_date": row.post_date,
+            "numbers": {metric: getattr(row, metric) for metric in READING_METRICS},
+            "abbreviated": list(row.abbreviated),
+            "checks": {
+                "handle_matches": row.handle_matches,
+                "date_within_deal": row.date_within_deal,
+                "numbers_consistent": row.numbers_consistent,
+            },
+            "stated_followers": row.stated_followers,
+            "stated_average_views": row.stated_average_views,
+            "views_against_stated": proof_reading_service.views_against_stated(row),
+            "creator_marked_at": row.creator_marked_at,
+            "creator_note": row.creator_note,
+            "read_at": row.read_at,
+        }
+    )
 
 
 class RevisionRequest(BaseModel):
@@ -362,6 +488,7 @@ def view_proof_files(
     memo = visible_memo_for_account(db, memo_id, account.id, account.role)
     proof = proof_service.get_for_memo(db, memo, proof_id, now)
     files = list(proof.files)
+    readings = proof_reading_service.shown_readings(db, [file.id for file in files])
     # Asked for only when something can be opened, as when submitting.
     store = get_file_store() if proof_file_service.has_viewable(files) else None
     # Each link opens a private file on its own: never kept by a browser
@@ -377,10 +504,45 @@ def view_proof_files(
                 "rejection_reason": view.file.rejection_reason,
                 "url": view.url,
                 "url_expires_at": view.expires_at,
+                "reading": reading_view(readings.get(view.file.id)),
             }
         )
         for view in proof_file_service.view_links(store, files, now)
     ]
+
+
+@router.post(
+    "/{memo_id}/proof/{proof_id}/files/{file_id}/reading/mark",
+    response_model=ProofReadingView,
+    summary="Say a reading is wrong",
+    description=(
+        "The creator marks the numbers read from their screenshot as misread, "
+        "with a note. The note is kept beside the reading for both sides to see, "
+        "never in place of it. Once per reading, and only on numbers that were read."
+    ),
+    responses={
+        **_COMMON_ERRORS,
+        404: problem_doc("No such memo or proof, or that file on it has not been read"),
+        409: problem_doc("No numbers were read, or this reading is already marked"),
+        422: problem_doc("The note is missing, too short or too long"),
+    },
+)
+@rate_limit(WRITE_LIMIT)
+def mark_reading_misread(
+    request: Request,
+    body: MisreadMark,
+    proof_id: ProofId,
+    file_id: FileId,
+    memo: CreatorMemo,
+    db: Session = Depends(get_db),
+    now: datetime = Depends(get_now),
+) -> ProofReadingView:
+    proof = proof_service.get_for_memo(db, memo, proof_id, now)
+    row = proof_reading_service.mark_misread(db, proof, file_id, body.note, now)
+    view = reading_view(row)
+    if view is None:  # pragma: no cover - mark_misread always returns a row
+        raise RuntimeError("a marked reading must exist")
+    return view
 
 
 @router.post(

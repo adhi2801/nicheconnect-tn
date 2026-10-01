@@ -56,6 +56,9 @@ RECORD_KINDS: tuple[str, ...] = (
     # A proof file was cleaned of location and hidden data; seals the copy a
     # brand actually sees (D-065).
     "proof_file_cleaned",
+    # The numbers read from a cleaned proof file, and how they checked out
+    # against what we hold (D-070). Never "verified".
+    "proof_results_read",
     "payment_opened",
     "payment_marked_paid",
     "payment_confirmed",

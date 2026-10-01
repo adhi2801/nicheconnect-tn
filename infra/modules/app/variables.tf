@@ -141,3 +141,21 @@ variable "msg91_otp_template" {
   type    = string
   default = "login_code"
 }
+
+# --- results read from proof (D-070) ------------------------------------------------
+
+variable "proof_reading_enabled" {
+  type        = bool
+  default     = false
+  description = "true once the validation pack allows it and the Claude key is in its secret. Until the key is pasted, true stops the app at startup."
+}
+
+variable "proof_reader_model" {
+  type        = string
+  default     = "claude-opus-5-5"
+  description = "The Claude model that reads proof screenshots, chosen by scripts/score_proof_reader.py."
+  validation {
+    condition     = can(regex("^claude-[a-z0-9]+(-[a-z0-9]+)*$", var.proof_reader_model))
+    error_message = "proof_reader_model must be a Claude model id, such as claude-opus-5-5."
+  }
+}

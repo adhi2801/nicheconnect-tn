@@ -602,3 +602,30 @@ Newest entries at the bottom.
 - Chosen: A.
 - Reason: the record and the screen must always agree, and keeping the creator's order costs one small column.
 - Consequences / follow-ups: (1) Migration `608541cc4a4e`: `position` smallint, empty exactly while pending, 0 to 9 otherwise, unique per proof; checks NOT VALID then validated after commit, the unique index built CONCURRENTLY. (2) It fills existing attached files with their upload order inside the same migration. database.md section 6 puts backfills in their own migration; the approved plan did not, since `proof_file` has never been deployed or merged and holds no real data. (3) The proof's files, the view links (step 5) and the data export carry this order; the export lists `position`. (4) The downgrade drops the column; files fall back to upload order.
+
+## D-068: Patch OpenSSL and PCRE2 in the API image until the base image catches up
+- Date: 2026-10-01
+- Approved by: Adhi, in this session ("A", to the decision after seeing it). **Not reviewed by the other founder** (D-051).
+- Context: CI's image scan (D-064) started failing on `main` with no change of ours: Debian published fixes for OpenSSL 3.5.7 (9 CVEs, one High) and PCRE2 10.46 (one High) after our pinned base, `python:3.12-slim-trixie` of 19 September, was built. Docker had not rebuilt that image yet, so moving the pin could not help.
+- Options considered: A) install the fixed versions, exactly, in the Dockerfile's api stage · B) wait for Docker's rebuild, then move the pin · C) accept the risk in `.grype.yaml`
+- Chosen: A.
+- Reason: D-047's rule is that security fixes are taken at once. OpenSSL carries our outgoing TLS (S3, MSG91, the timestamp authorities), so it is not a risk to accept, and waiting leaves `main` red and the image flawed for days.
+- Consequences / follow-ups: (1) One `apt-get install --only-upgrade` step with exact versions (`openssl`, `libssl3t64`, `openssl-provider-legacy` 3.5.7-1~deb13u3; `libpcre2-8-0` 10.46-1~deb13u3), apt's lists removed after. The embeddings image inherits it. (2) **Remove the step** when the base digest moves to an image that already carries these versions or newer. (3) The `build` stage is not patched: it is thrown away and never ships.
+
+## D-069: Erode Harish's review and approval of D-055 to D-068, relayed by Adhi
+- Date: 2026-10-01
+- Approved by: Erode Harish, **relayed by Adhi** in this session ("for everything till now whatever you have asked erode as reviewed and approved", then, asked whether Harish had actually seen and approved them, "yes he approved everything"). Harish did not confirm in a session here, the same footing as D-047 and D-051.
+- Context: Since D-051 Adhi has built the backend alone, and every entry from D-055 to D-068 says it was not reviewed by the other founder. Those entries stay as written; the log is append-only, and this entry is what changes their standing.
+- Options considered: A) record the relayed approval of all fourteen · B) leave them marked unreviewed
+- Chosen: A.
+- Reason: Adhi relayed Harish's approval of everything raised so far, after being told the record would say "relayed".
+- Consequences / follow-ups: (1) D-055 to D-068 count as approved by both founders, by relay: the rate card schema, fair-rate guidance, the deal record and its daily outside timestamp, WhatsApp login through MSG91, local developer login, DBOS, the admin side, hosting on AWS Mumbai, packaging and deployment with OpenTofu, image scanning with Grype, proof files and their cleaning, the clean copy sealed in the record, proof file order, and the image's OpenSSL and PCRE2 fix. (2) PRs #32, #33 and #34, already merged, are covered by this entry; their descriptions said unreviewed and are not edited. (3) Work after this entry is unreviewed again until a founder says otherwise, and reports and PRs keep saying so (CLAUDE.md section 0).
+
+## D-070: Results a brand can trust, read from the proof: build layers 1 to 3
+- Date: 2026-10-01
+- Approved by: Adhi, in this session ("Approve A", to the recommendation in `docs/PROPOSAL_PROOF_RESULTS.md` after seeing it: decision 1 option A, the model rule of decision 2, the dependency, the schema and the infrastructure). **Not reviewed by the other founder.**
+- Context: Brands pay for reach and receive screenshots that can be edited ("the Screenshot Portfolio Scam"); the platforms' own numbers need each creator's login to an app Meta has reviewed. Proof files and their sealed fingerprints exist since D-065 and D-066. Competitive item #4: nobody holds deal, delivery, payment and result in one record.
+- Options considered: (1) A) read, check and seal every proof screenshot now · B) wait for platform connections only · C) brands type numbers in themselves; (2) the model: Opus 5.5, Sonnet 5.5 or Haiku 4.5
+- Chosen: (1) A, with platform-verified numbers as a later layer; (2) Opus 5.5 until a test set of real screenshots, with their true numbers written down, shows which model reads every number right at what cost.
+- Reason: results for every deal and any size of brand, checked against facts we hold and sealed, which no competitor has; the model chosen by measurement, not by price or guess.
+- Consequences / follow-ups: (1) New runtime package `anthropic` 1.11.0 (needs httpx2 2.x, which D-047 pins). (2) Off by a setting (`PROOF_READING_ENABLED`) in every real environment until the validation pack says whether a creator's insights may go to a processor (constraint 6); on, the app refuses to start without `ANTHROPIC_API_KEY`. (3) A screenshot reading is never called verified: Anthropic's vision documentation says Claude cannot tell a real image from a fake one. (4) One table, `proof_file_reading`, and one record kind, `proof_results_read`, come with step 3; the key goes in Secrets Manager with step 6. (5) Only the clean copy is ever sent; Anthropic states it does not train on uploaded images and does not keep them beyond the request. (6) Automatic fallback to another model on a refusal is not enabled: a refusal is recorded as a failed reading, never a guess.

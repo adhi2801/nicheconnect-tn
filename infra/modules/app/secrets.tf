@@ -51,6 +51,25 @@ resource "aws_secretsmanager_secret_version" "msg91" {
   }
 }
 
+# The Claude API key that reads proof screenshots (D-070), pasted in by a
+# founder like the MSG91 key, and never overwritten by OpenTofu.
+resource "aws_secretsmanager_secret" "anthropic" {
+  name                    = "${local.name}/anthropic-api-key"
+  description             = "Claude API key for reading proof screenshots, pasted in by a founder (D-070)"
+  recovery_window_in_days = 7
+}
+
+resource "aws_secretsmanager_secret_version" "anthropic" {
+  secret_id = aws_secretsmanager_secret.anthropic.id
+  # Starts with "change-me", which the app refuses as a key: switching
+  # proof_reading_enabled on before the real key is pasted stops the app at
+  # startup, and ECS rolls the deploy back, instead of every reading failing.
+  secret_string = "change-me-paste-the-anthropic-api-key"
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
+
 # --- image registries ---------------------------------------------------------------
 
 resource "aws_ecr_repository" "image" {

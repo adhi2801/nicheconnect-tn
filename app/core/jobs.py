@@ -17,7 +17,7 @@ from dbos import DBOS, DBOSConfig
 from fastapi import FastAPI
 
 from app.core.config import settings
-from app.modules.deal_memo import anchor_jobs, proof_cleaning_jobs
+from app.modules.deal_memo import anchor_jobs, proof_cleaning_jobs, proof_reading_jobs
 
 DBOS_SCHEMA = "dbos"
 
@@ -35,7 +35,11 @@ def start(*, schema: str = DBOS_SCHEMA) -> None:
     """Launch DBOS and put every schedule in place."""
     DBOS(config=dbos_config(schema=schema))
     DBOS.launch()
-    DBOS.apply_schedules(anchor_jobs.schedules() + proof_cleaning_jobs.schedules())
+    DBOS.apply_schedules(
+        anchor_jobs.schedules()
+        + proof_cleaning_jobs.schedules()
+        + proof_reading_jobs.schedules()
+    )
 
 
 def stop() -> None:

@@ -40,3 +40,7 @@ boto3==1.43.105
 # brand (D-065). Security releases are frequent: pip-audit fails CI until it
 # is upgraded, which is the point.
 pillow==12.3.0
+# Reads the numbers on cleaned proof screenshots, in a background job only
+# (D-070). Anthropic's own library: image input, structured output, retries
+# with backoff. Built on httpx2 2.x, the same client the app pins above.
+anthropic==1.11.0

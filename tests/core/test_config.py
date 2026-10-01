@@ -317,3 +317,72 @@ def test_an_invalid_bucket_name_is_refused(bucket):
 @pytest.mark.parametrize("region", ["mumbai", "AP-SOUTH-1", "ap-south", ""])
 def test_an_invalid_region_is_refused(region):
     assert_rejected("aws_region", aws_region=region)
+
+
+# --- results read from proof (D-070) ---------------------------------------------------
+
+
+def test_proof_reading_is_off_by_default_and_needs_no_key():
+    settings = load()
+
+    assert settings.proof_reading_enabled is False
+    assert settings.anthropic_api_key is None
+    assert settings.proof_reader_model == "claude-opus-5-5"
+
+
+def test_proof_reading_on_with_a_key_loads():
+    settings = load(
+        proof_reading_enabled=True, anthropic_api_key="sk-ant-a-real-looking-key"
+    )
+
+    assert settings.anthropic_api_key is not None
+    assert settings.anthropic_api_key.get_secret_value() == "sk-ant-a-real-looking-key"
+
+
+@pytest.mark.parametrize("key", [None, "", "change-me-anthropic"])
+def test_proof_reading_on_without_a_real_key_stops_the_app(key):
+    assert_startup_refused(
+        "ANTHROPIC_API_KEY", proof_reading_enabled=True, anthropic_api_key=key
+    )
+
+
+def test_an_empty_key_line_means_no_key():
+    assert load(anthropic_api_key="").anthropic_api_key is None
+
+
+@pytest.mark.parametrize("model", ["gpt-5", "Claude-Opus", "claude-", ""])
+def test_the_reader_model_must_be_a_claude_model_id(model):
+    assert_rejected("proof_reader_model", proof_reader_model=model)
+
+
+def test_the_key_never_appears_when_settings_are_printed():
+    settings = load(proof_reading_enabled=True, anthropic_api_key="sk-ant-do-not-show")
+
+    assert "sk-ant-do-not-show" not in repr(settings)
+    assert "sk-ant-do-not-show" not in str(settings.model_dump())
+
+
+@pytest.mark.parametrize("limit", [0, -1, 10_001])
+def test_the_daily_reading_limit_must_be_sensible(limit):
+    assert_rejected("proof_reading_daily_limit", proof_reading_daily_limit=limit)
+
+
+def test_the_placeholder_aws_holds_before_the_claude_key_is_pasted_stops_the_app():
+    """infra/ fills the Claude key's secret with a placeholder until a founder
+    pastes the real key. Reading switched on before that must stop the app at
+    startup, so the deploy rolls back rather than every reading failing."""
+    secrets_tf = (Path(__file__).parents[2] / "infra/modules/app/secrets.tf").read_text()
+    placeholder = re.search(
+        r'resource "aws_secretsmanager_secret_version" "anthropic".*?secret_string\s*=\s*"([^"]+)"',
+        secrets_tf,
+        re.S,
+    )
+
+    assert placeholder is not None
+    assert_startup_refused(
+        "ANTHROPIC_API_KEY",
+        proof_reading_enabled=True,
+        anthropic_api_key=placeholder.group(1),
+    )
+    # Switched off, the placeholder is harmless: the app starts.
+    assert load(anthropic_api_key=placeholder.group(1)).proof_reading_enabled is False

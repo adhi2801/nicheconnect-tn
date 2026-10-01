@@ -45,3 +45,8 @@ output "msg91_secret_name" {
   value       = aws_secretsmanager_secret.msg91.name
   description = "Paste the MSG91 auth key here, then set otp_sender = msg91"
 }
+
+output "anthropic_secret_name" {
+  value       = aws_secretsmanager_secret.anthropic.name
+  description = "Paste the Claude API key here, then set proof_reading_enabled = true (D-070)"
+}

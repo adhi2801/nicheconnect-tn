@@ -127,3 +127,25 @@ class ProofNeedsEvidence(DomainError):
     status_code = HTTPStatus.UNPROCESSABLE_ENTITY
     code = "proof_needs_evidence"
     title = "A proof needs a link to the post, at least one file, or both"
+
+
+class ProofReadingNotFound(DomainError):
+    # A file not on this proof gets the same answer: nothing about other
+    # deals' files is confirmed.
+    status_code = HTTPStatus.NOT_FOUND
+    code = "proof_reading_not_found"
+    title = "That file on this proof has not been read"
+
+
+class ProofReadingNotMarkable(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "proof_reading_not_markable"
+    title = "Only numbers that were read from the screenshot can be marked as misread"
+
+
+class ProofReadingAlreadyMarked(DomainError):
+    # Once: the mark sits next to the reading for good, so the brand never
+    # sees a note that changes after they read it.
+    status_code = HTTPStatus.CONFLICT
+    code = "proof_reading_already_marked"
+    title = "This reading has already been marked as misread"

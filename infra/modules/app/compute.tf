@@ -51,9 +51,13 @@ resource "aws_iam_role_policy" "execution_secrets" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect   = "Allow"
-      Action   = ["secretsmanager:GetSecretValue"]
-      Resource = [aws_secretsmanager_secret.app.arn, aws_secretsmanager_secret.msg91.arn]
+      Effect = "Allow"
+      Action = ["secretsmanager:GetSecretValue"]
+      Resource = [
+        aws_secretsmanager_secret.app.arn,
+        aws_secretsmanager_secret.msg91.arn,
+        aws_secretsmanager_secret.anthropic.arn,
+      ]
     }]
   })
 }
@@ -110,6 +114,9 @@ locals {
     { name = "MSG91_WHATSAPP_NUMBER", value = var.msg91_whatsapp_number },
     { name = "MSG91_OTP_TEMPLATE", value = var.msg91_otp_template },
     { name = "UPLOADS_BUCKET", value = aws_s3_bucket.uploads.bucket },
+    # Results read from proof (D-070): off until the validation pack answers.
+    { name = "PROOF_READING_ENABLED", value = tostring(var.proof_reading_enabled) },
+    { name = "PROOF_READER_MODEL", value = var.proof_reader_model },
   ]
 
   secrets = concat(
@@ -118,6 +125,7 @@ locals {
       { name = key, valueFrom = "${aws_secretsmanager_secret.app.arn}:${key}::" }
     ],
     [{ name = "MSG91_AUTH_KEY", valueFrom = aws_secretsmanager_secret.msg91.arn }],
+    [{ name = "ANTHROPIC_API_KEY", valueFrom = aws_secretsmanager_secret.anthropic.arn }],
   )
 
   network = {
