@@ -2,6 +2,8 @@
 
 **Version 2, researched 21 September 2026.** It replaces the first pass from the same morning, which covered 8 platforms. This one covers about 20: Indian, global, and the free tools inside Instagram and YouTube. Every fact has a source at the bottom. Where something is our judgement rather than a fact, it says so. Where version 1 was wrong, section 9 says what changed.
 
+**Updated 1 October 2026:** section 4 is now the plan to close every gap, with statuses checked against the code. Sections 2, 5 and 6 still read as of 21 September; where they say "not built", section 4 is current.
+
 **How to read it:** sections 1–2 are the conclusion. Section 3 lists who is out there. Sections 4–5 cover what they have that we lack, and what we have that they lack. Section 6 is the ranked list of what to build, each with the approval it needs.
 
 ---
@@ -74,23 +76,29 @@ The honest summary: **polish is bought with money, but trust is built from facts
 
 ---
 
-## 4. What they have that we do not
+## 4. Closing every gap: beaten, not matched
 
-This list is honest: these are real gaps, not dismissals.
+**Updated 1 October 2026, status checked against the code.** The goal is not
+to be one more platform with the same list. Every feature a competitor has is
+a gap to close **with something theirs cannot do**, or a deliberate refusal
+for a stated reason. Matching them is the floor, never the target.
 
-| Feature | Who has it | Should we? | What it needs |
-|---|---|---|---|
-| **Creator rate card and media kit** | YouTube (free), Collabstr packages, Passionfroot, Beacons | **Yes, first.** It is table stakes now that YouTube gives it away. It also makes the Passport link worth sharing | Creator columns (Erode Harish's track), a decision |
-| **Audience size and verified stats** | Everyone | **Yes.** Without it fair-rate guidance would mislead | Self-reported first, clearly labelled; verified later via platform APIs |
-| **Price guidance** | Collabstr calculator, Qoruz cost checker, YouTube Desired Rates | **Yes, better than theirs:** built from *agreed* fees on real deals, with sample size | Audience size first (above) |
-| **Fraud / fake-follower screening** | Reelax, Collabstr, Winkl | **Yes, later.** India's fraud rate makes it valuable | Third-party data or platform APIs; cost decision |
-| **Campaign results** (reach, engagement, sales) | Wobb pixel, Collabstr analytics, Influencer.in, JioStarverse | **Yes, minimal:** we already hold the proof links | Platform API decision (Instagram's Graph API needs the creator's login) |
-| **In-app chat** | Wobb, Collabstr, Passionfroot | **Decide.** Brands and creators already live on WhatsApp (D-022 chose WhatsApp alerts) | Product decision: chat, or structured deal notes plus WhatsApp links |
-| **Disclosure check at submission** | BigBang.Social compliance verifier; ASCI's own tool | **Yes, carefully.** We record the creator's confirmation today; checking the post is the next step | **Validation pack** (constraint 6), never invented; post access via API |
-| **Affiliate / commission tracking** | Wobb, Instagram native affiliate | **Later.** The commission campaign type exists; tracking links do not | Decision on link tracking |
-| **Creator-to-creator collaboration** | Wobb "Wobble" | **Later** (backlog E5, creator collectives) | Group applications need their own model |
-| **AI matching** | Kofluence, YouTube (Gemini), JioStarverse | **Yes, Phase D**, but only *within our own marketplace* | Already planned; pgvector (Data track) |
-| **Bulk payouts** | Reelax | **No.** We never move money. The equivalent we *can* build is bulk "mark paid" with reference matching | API only, no new table |
+| Their feature | Who has it | Us, today | How ours beats theirs | What is left |
+|---|---|---|---|---|
+| **Rate card and media kit** | YouTube, Collabstr, Passionfroot, Beacons | **Closed** (D-055) | Price **and** the creator's delivery and payment record on one link; theirs show a price with nothing behind it | Nothing |
+| **Price guidance** | Collabstr calculator, Qoruz, YouTube Desired Rates | **Closed, step 1** (D-056) | Published prices, five creators or nothing, with the sample size shown; theirs are estimates | Step 2: agreed fees from real deals, which only we hold |
+| **Bulk payouts** | Reelax | **Closed, our way**: bulk "mark paid" with payment references | The same speed for a brand paying many creators, without us ever touching the money, so no licence, no float, no risk to the creator | Nothing. Moving money stays refused (constraint 1) |
+| **AI matching** | Kofluence, YouTube (Gemini), JioStarverse | **Closed, both ways** (Phase D) | Every match says **why**: shared niches, city, accepted deals; theirs are black boxes | Nothing |
+| **Audience size and stats** | Everyone | **Half**: self-reported, dated, labelled (D-055) | A number with its date and its source, never passed off as verified | Observed numbers from proof (below), then platform-verified |
+| **Campaign results** | Wobb, Collabstr, Influencer.in, JioStarverse | **Proposed** (`PROPOSAL_PROOF_RESULTS.md`) | Read from every proof, checked against the creator's own claims, **sealed** so nobody changes them later; across deals, *stated against observed* on the Passport. Nobody has results inside a tamper-evident deal record | Approval |
+| **Fake-follower screening** | Reelax, Collabstr, Winkl | **Open** | Planned to go further: not a score bought from a data vendor, but observed reach on real deals against stated reach (from results, above), which a bought follower cannot fake | Results first, then a decision on outside data |
+| **Disclosure check** | BigBang.Social, ASCI's tool | **Half**: the creator's confirmation is recorded | Checked at proof time and sealed with the proof, so a dispute shows what was declared | **Validation pack** (constraint 6) |
+| **In-app chat** | Wobb, Collabstr, Passionfroot | **Open** | Planned: structured deal notes that join the deal record, so what was agreed is provable, plus WhatsApp for the talk itself. Their chats prove nothing | A product decision |
+| **Affiliate and sales tracking** | Wobb pixel, Instagram affiliate | **Open** | Planned: commission deals (already a campaign type) with sales sealed in the record, so a brand cannot under-report and a creator cannot over-claim | A decision on link tracking |
+| **Creator collaborations** | Wobb "Wobble" | **Open** (E5) | Planned: group deals where each creator's delivery and payment stays individually on record; theirs blur who delivered | A model for group applications |
+
+**Score on 1 October 2026:** of eleven, **four closed**, two half, one
+proposed, four open. Every open one has a stated way to beat, not match.
 
 ## 5. What we have that they do not
 
