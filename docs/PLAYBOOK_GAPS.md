@@ -1,5 +1,7 @@
 # What the playbook does not cover
 
+**Updated 1 October 2026:** the product is English only (D-054), so the Tamil parts of this file are withdrawn and kept as a record: Tamil support tickets measured separately (section 3), bilingual consent (section 8) and the Tamil glossary (section 12). Two survive in English form: support that can answer a Tamil speaker is a founder decision, not a product language; and **people will still type Tamil words in English letters (Tanglish), so search must cope with it**. Section 15 now shows which decisions have been made.
+
 The Product, Design & Build Playbook v1.0 (17 September 2026) answers: what the market looks like on Android, which features set us apart, how the product should look and behave, and what to build it with. It does that well, and this file does not repeat it.
 
 This file covers the rest of what a business like this needs before launch. Everything here is a **proposal for founder decision**, never a decision already taken. Recorded decisions live in `docs/DECISIONS.md`; build order lives in `docs/PRODUCT_BACKLOG.md`.
@@ -204,3 +206,21 @@ The playbook's phases stop at v2. Worth naming now, so today's decisions do not 
 | 11 | Hosting, availability target, monthly budget | Deployment |
 | 12 | Support channels, hours and response targets | Launch readiness |
 | 13 | Validation pack answers: DPDP retention and consent, ASCI rules, GST and TDS, minors, advertising restrictions | Everything marked above |
+
+**Status on 1 October 2026**, checked against `docs/DECISIONS.md`:
+
+| # | Decision | Status |
+|---|---|---|
+| 1 | Money amounts | **Decided**: whole paise (D-015) |
+| 2 | Pricing model and pilot prices | **Proposed**: `docs/REVENUE_RESEARCH.md`; prices set after the brand interviews |
+| 3 | Launch city and pilot targets | **Proposed**: Coimbatore or Madurai, `docs/GO_TO_MARKET.md` section 3 |
+| 4 | Campaign types | **Settled**: paid, barter, commission, local business (`docs/PRODUCT_BACKLOG.md` section 4) |
+| 5 | Proof, approval window, cancellation, late payment | **Decided**: D-024 to D-027, proof as files D-065 |
+| 6 | Reliability score rules | **Decided**: D-034 (brands), D-038 and D-039 (creators) |
+| 7 | Dispute process | **Decided**: we record, we do not judge (D-028, D-035) |
+| 8 | Identity checks for each side | **Open** |
+| 9 | Refused campaign categories | **Open** |
+| 10 | Media storage and job runner | **Decided**: S3 (D-062, D-065), DBOS (D-060) |
+| 11 | Hosting, availability target, monthly budget | **Hosting decided**: AWS Mumbai (D-062); the availability target is open; the budget is estimated in `docs/REVENUE_RESEARCH.md` section 5 |
+| 12 | Support channels, hours and response targets | **Open** |
+| 13 | Validation pack answers | **Open**, and the launch blocker (`docs/BACKEND_COMPLETE.md` section 4) |

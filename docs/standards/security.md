@@ -52,7 +52,7 @@ Rules marked **(decision)** need a recorded decision before first use.
 | Write endpoints (create/update) | 30 / minute | user |
 | Search and matching | 30 / minute | user |
 
-- Storage moves from memory to Redis before more than one app process runs (D-003).
+- Rate-limit storage is shared in Valkey (D-003, D-048), so every app process counts the same limit.
 - A 429 includes `Retry-After` and the standard error body.
 - Limits are tuned from real traffic, not guessed upward.
 

@@ -57,7 +57,7 @@ State these as facts from git, not as blame.
 
 NicheConnect TN is a Tamil Nadu-focused brand↔creator marketplace. This repo is the **backend only** (FastAPI).
 
-**Build order (approved):** backend first, to completion. UI/UX design and all frontend work (brand web dashboard, creator mobile app) start only after the backend is complete.
+**Build order (approved):** backend first, to completion. UI/UX design and all frontend work (a website, an Android app and an iOS app, each serving brands and creators: D-046, Adhi's direction, awaiting Erode Harish) start only after the backend is complete.
 
 - This repo contains **no frontend code**. Don't create UI, screens, or frontend scaffolding here.
 - Design the API around the product's domain (brands, creators, campaigns, applications, deal memos, payment status), not around assumed screens.
@@ -68,7 +68,7 @@ NicheConnect TN is a Tamil Nadu-focused brand↔creator marketplace. This repo i
 | Founder | Track | Owns these areas (nobody else edits them the same day) |
 |---|---|---|
 | **Adhi** | API | `app/main.py`, `app/core/` (config, rate limiting, security), `app/modules/*/router.py`, `app/modules/*/schemas.py`, `app/modules/*/service.py`, `.github/workflows/`, API docs |
-| **Erode Harish** | Data | `app/db/`, `app/modules/*/models*`, `alembic/`, seed scripts, pgvector and Redis wiring, query performance |
+| **Erode Harish** | Data | `app/db/`, `app/modules/*/models*`, `alembic/`, seed scripts, pgvector and Valkey wiring, query performance |
 
 Shared, and only ever edited by one person at a time with the other told first: `CLAUDE.md`, `docs/standards/`, `docs/DECISIONS.md`, `requirements.txt`, `docker-compose.yml`, `.env.example`.
 
@@ -100,8 +100,8 @@ Never violate these, even if asked. If a request would break one, stop and say w
 ## 3. Architecture (approved)
 
 - **Modular monolith:** one deployable FastAPI app. No microservices, event sourcing, CQRS, service mesh, or additional deployable services without both founders' approval.
-- **Modules:** `app/modules/{auth, campaigns, matching, deal_memo, payment_status, notifications}`. Inside a module: `router.py` (HTTP) → `service.py` (rules) → `models.py` (DB), plus `schemas.py`.
-- **Stack:** PostgreSQL + pgvector · Redis (limits, cache, jobs) · Alembic · pytest + httpx · GitHub Actions.
+- **Modules:** `app/modules/{auth, campaigns, matching, deal_memo, payment_status, disputes, notifications}`. Inside a module: `router.py` (HTTP) → `service.py` (rules) → `models.py` (DB), plus `schemas.py`.
+- **Stack:** PostgreSQL 18 + pgvector · Valkey (rate limits, idempotency; D-048) · DBOS (background jobs; D-060) · S3 (proof files; D-065) · Alembic · pytest + httpx2 · GitHub Actions · AWS Mumbai, described in OpenTofu (D-062, D-063). The locked baseline is `docs/PLATFORM_AND_TECH_PLAN.md` section 4.0; what is still to build is `docs/BACKEND_COMPLETE.md`.
 - **Matching (later):** SentenceTransformers embeddings + pgvector cosine similarity, as in InterviewCoach AI.
 - **External calls** (WhatsApp, Claude API): retry with backoff; never block a request on them.
 - **Scale posture:** build for pilot scale first. Do not introduce Kafka or other brokers, Kubernetes, multi-region, service mesh, GraphQL, or dedicated vector/search databases without both founders' approval. Future-scale ideas go in `docs/ARCHITECTURE_SCALE.md` as proposals with explicit migration triggers, never straight into code.
@@ -113,7 +113,7 @@ Never violate these, even if asked. If a request would break one, stop and say w
 Developers use **Windows PowerShell 5**: give commands one per line and never join them with `&&`.
 
 ```powershell
-docker compose up -d                          # Postgres (pgvector) + Redis
+docker compose up -d                          # Postgres (pgvector) + Valkey
 pip install -r requirements-dev.txt           # the app plus its checking tools (D-063)
 uvicorn app.main:app --reload                 # http://localhost:8000/healthz
 alembic revision --autogenerate -m "message"
