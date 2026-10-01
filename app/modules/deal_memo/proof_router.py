@@ -26,6 +26,7 @@ from app.modules.deal_memo.proof_models import (
     MAX_FILES_PER_PROOF,
     MAX_PROOF_FILE_BYTES,
     NOTE_MAX_LENGTH,
+    PROOF_FILE_REJECTIONS,
     PROOF_FILE_STATUSES,
     PROOF_FILE_TYPES,
     PROOF_FORMATS,
@@ -52,6 +53,10 @@ ProofFileType = Literal["image/jpeg", "image/png", "image/webp"]
 ProofFileStatus = Literal["pending", "attached", "cleaned", "rejected"]
 ensure_same_values("ProofFileType", ProofFileType, PROOF_FILE_TYPES)
 ensure_same_values("ProofFileStatus", ProofFileStatus, PROOF_FILE_STATUSES)
+ProofFileRejection = Literal[
+    "fingerprint_mismatch", "not_an_image", "too_many_pixels", "missing"
+]
+ensure_same_values("ProofFileRejection", ProofFileRejection, PROOF_FILE_REJECTIONS)
 
 MemoId = Annotated[uuid.UUID, Path(description="The memo's id")]
 ProofId = Annotated[uuid.UUID, Path(description="The proof submission's id")]
@@ -145,6 +150,25 @@ class ProofFileSummary(BaseModel):
     content_type: ProofFileType
     size_bytes: int
     status: ProofFileStatus
+
+
+class ProofFileView(BaseModel):
+    """A file on a proof, and a link to open it once it has been cleaned."""
+
+    id: uuid.UUID
+    content_type: ProofFileType
+    size_bytes: int = Field(description="The size of what the link opens")
+    status: ProofFileStatus
+    rejection_reason: ProofFileRejection | None = Field(
+        description="Why a rejected file cannot be shown"
+    )
+    url: str | None = Field(
+        description=(
+            "Opens the cleaned image. Only cleaned files have one. It works for "
+            "a few minutes and must not be stored: ask again for a fresh one"
+        )
+    )
+    url_expires_at: datetime | None
 
 
 class RevisionRequest(BaseModel):
@@ -305,6 +329,57 @@ def list_proof(
     return [
         ProofRead.model_validate(proof)
         for proof in proof_service.list_for_memo(db, memo, now)
+    ]
+
+
+@router.get(
+    "/{memo_id}/proof/{proof_id}/files",
+    response_model=list[ProofFileView],
+    summary="Open the files on a proof",
+    description=(
+        "Every file on the proof, in upload order, each cleaned one with a link "
+        "to open it, valid for 5 minutes. Only the brand and the creator on the "
+        "deal can ask. A file still being cleaned has no link yet; it is usually "
+        "ready within a minute. Only the cleaned copy is ever shown, to either "
+        "side: the original, with its location data, is never served."
+    ),
+    responses={
+        **_COMMON_ERRORS,
+        404: problem_doc("No such memo or proof, or it is not yours"),
+        503: problem_doc("File uploads are not available right now"),
+    },
+)
+@rate_limit(READ_LIMIT, key=per_account)
+def view_proof_files(
+    request: Request,
+    response: Response,
+    memo_id: MemoId,
+    proof_id: ProofId,
+    account: CurrentAccount,
+    db: Session = Depends(get_db),
+    now: datetime = Depends(get_now),
+) -> list[ProofFileView]:
+    memo = visible_memo_for_account(db, memo_id, account.id, account.role)
+    proof = proof_service.get_for_memo(db, memo, proof_id, now)
+    files = list(proof.files)
+    # Asked for only when something can be opened, as when submitting.
+    store = get_file_store() if proof_file_service.has_viewable(files) else None
+    # Each link opens a private file on its own: never kept by a browser
+    # or a proxy.
+    response.headers["Cache-Control"] = "no-store"
+    return [
+        ProofFileView.model_validate(
+            {
+                "id": view.file.id,
+                "content_type": view.file.content_type,
+                "size_bytes": view.file.clean_size_bytes or view.file.size_bytes,
+                "status": view.file.status,
+                "rejection_reason": view.file.rejection_reason,
+                "url": view.url,
+                "url_expires_at": view.expires_at,
+            }
+        )
+        for view in proof_file_service.view_links(store, files, now)
     ]
 
 

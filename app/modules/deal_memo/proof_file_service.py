@@ -1,4 +1,4 @@
-"""Proof files before they join a proof: asking to upload, and attaching (D-065).
+"""Proof files: asking to upload, attaching, and opening them (D-065).
 
 The order matters and is enforced, not hoped for:
 
@@ -38,6 +38,9 @@ UPLOAD_FORM_LIFETIME = timedelta(minutes=10)
 # Unfinished uploads one deal may hold at once: a proof takes at most 10
 # files, so 20 leaves room for retries without letting anyone fill a bucket.
 MAX_PENDING_UPLOADS_PER_MEMO = 20
+# Long enough to open a proof and look at it; a link copied out of a page or
+# a log is useless soon after (D-065). Asking again gives fresh links.
+VIEW_LINK_LIFETIME = timedelta(minutes=5)
 INCOMING_PREFIX = "proof-files/incoming"
 
 
@@ -141,6 +144,43 @@ def attach(
         file.updated_at = now
         files.append(file)
     return files
+
+
+@dataclass(frozen=True)
+class FileView:
+    """A file on a proof, with a link to open it when there is one to open."""
+
+    file: ProofFile
+    url: str | None
+    expires_at: datetime | None
+
+
+def has_viewable(files: list[ProofFile]) -> bool:
+    """Whether any file is cleaned, so opening it needs the store at all."""
+    return any(file.status == "cleaned" for file in files)
+
+
+def view_links(
+    store: FileStore | None, files: list[ProofFile], now: datetime
+) -> list[FileView]:
+    """A short-lived link for each cleaned file; none for anything else.
+
+    Only the clean copy is ever linked, for the creator too: the original,
+    location and all, is never served, and is deleted once cleaned. Signing
+    happens here, on our side, with no request to storage.
+    """
+    views = []
+    for file in files:
+        if file.status != "cleaned" or file.clean_key is None or store is None:
+            views.append(FileView(file=file, url=None, expires_at=None))
+            continue
+        url = store.view_url(
+            file.clean_key,
+            expires_in=VIEW_LINK_LIFETIME,
+            filename=file.clean_key.rsplit("/", 1)[-1],
+        )
+        views.append(FileView(file=file, url=url, expires_at=now + VIEW_LINK_LIFETIME))
+    return views
 
 
 def record_facts(files: list[ProofFile]) -> list[dict[str, object]]:

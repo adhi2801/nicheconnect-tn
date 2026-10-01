@@ -4758,6 +4758,93 @@
         "title": "ProofFileSummary",
         "type": "object"
       },
+      "ProofFileView": {
+        "description": "A file on a proof, and a link to open it once it has been cleaned.",
+        "properties": {
+          "content_type": {
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "image/webp"
+            ],
+            "title": "Content Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "fingerprint_mismatch",
+                  "not_an_image",
+                  "too_many_pixels",
+                  "missing"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why a rejected file cannot be shown",
+            "title": "Rejection Reason"
+          },
+          "size_bytes": {
+            "description": "The size of what the link opens",
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "attached",
+              "cleaned",
+              "rejected"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Opens the cleaned image. Only cleaned files have one. It works for a few minutes and must not be stored: ask again for a fresh one",
+            "title": "Url"
+          },
+          "url_expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url Expires At"
+          }
+        },
+        "required": [
+          "id",
+          "content_type",
+          "size_bytes",
+          "status",
+          "rejection_reason",
+          "url",
+          "url_expires_at"
+        ],
+        "title": "ProofFileView",
+        "type": "object"
+      },
       "ProofRead": {
         "properties": {
           "approved_at": {
@@ -14289,6 +14376,128 @@
           }
         ],
         "summary": "Approve the proof",
+        "tags": [
+          "proof"
+        ]
+      }
+    },
+    "/api/v1/deal-memos/{memo_id}/proof/{proof_id}/files": {
+      "get": {
+        "description": "Every file on the proof, in upload order, each cleaned one with a link to open it, valid for 5 minutes. Only the brand and the creator on the deal can ask. A file still being cleaned has no link yet; it is usually ready within a minute. Only the cleaned copy is ever shown, to either side: the original, with its location data, is never served.",
+        "operationId": "view_proof_files_api_v1_deal_memos__memo_id__proof__proof_id__files_get",
+        "parameters": [
+          {
+            "description": "The memo's id",
+            "in": "path",
+            "name": "memo_id",
+            "required": true,
+            "schema": {
+              "description": "The memo's id",
+              "format": "uuid",
+              "title": "Memo Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The proof submission's id",
+            "in": "path",
+            "name": "proof_id",
+            "required": true,
+            "schema": {
+              "description": "The proof submission's id",
+              "format": "uuid",
+              "title": "Proof Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProofFileView"
+                  },
+                  "title": "Response View Proof Files Api V1 Deal Memos  Memo Id  Proof  Proof Id  Files Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "This account type cannot use this endpoint"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such memo or proof, or it is not yours"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "File uploads are not available right now"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Open the files on a proof",
         "tags": [
           "proof"
         ]
