@@ -1,20 +1,18 @@
 # Competitive landscape
 
-**Version 2, researched 21 September 2026.** It replaces the first pass from the same morning, which covered 8 platforms. This one covers about 20: Indian, global, and the free tools inside Instagram and YouTube. Every fact has a source at the bottom. Where something is our judgement rather than a fact, it says so. Where version 1 was wrong, section 9 says what changed.
+**Version 3, 1 October 2026.** Version 2 (21 September) researched about 20 platforms: Indian, global, and the free tools inside Instagram and YouTube. Version 3 re-checks the market, brings every status in line with the code, and replaces the old build list with the novelties that come next (section 6). Every fact has a source at the bottom. Where something is our judgement rather than a fact, it says so. Section 9 says what changed in each version.
 
-**Updated 1 October 2026:** section 4 is now the plan to close every gap, with statuses checked against the code. Sections 2, 5 and 6 still read as of 21 September; where they say "not built", section 4 is current.
-
-**How to read it:** sections 1–2 are the conclusion. Section 3 lists who is out there. Sections 4–5 cover what they have that we lack, and what we have that they lack. Section 6 is the ranked list of what to build, each with the approval it needs.
+**How to read it:** sections 1–2 are the conclusion. Section 3 lists who is out there. Section 4 closes every gap they have over us; section 5 is what we have that they lack. Section 6 is the novelties next: things nobody has, each with the approval it needs.
 
 ---
 
 ## 1. The conclusion, in five points
 
-1. **Discovery is now free and owned by the platforms.** Instagram's Creator Marketplace went worldwide at the end of January 2026, free, with no cut taken. YouTube relaunched Creator Partnerships in India in March 2026, with AI matching, media kits and creator rate cards built into YouTube Studio. Indian databases already list 1–7 million creators. **We should not compete on finding creators.**
+1. **Discovery is now free and owned by the platforms.** Instagram's Creator Marketplace went worldwide at the end of January 2026, free, with no cut taken. YouTube relaunched Creator Partnerships in India in March 2026, with AI matching, media kits and creator rate cards built into YouTube Studio. On **15 September 2026 Meta took its Creator Marketing Hub worldwide**, with a messaging API for outreach, Facebook creators in the same API, and creator search through Meta's AI business assistant. Indian databases already list 1–7 million creators. **We should not compete on finding creators.**
 2. **Neither Meta nor YouTube touches the deal itself.** Meta's marketplace leaves "payment, contracts, and usage rights" to "direct agreement between the brand and creator, not inside the platform". The terms, the delivery, the payment and what happens when one goes wrong: **that gap is our whole product.**
 3. **Every competitor that deals with payment does it by moving the money.** Collabstr holds the brand's payment until delivery. Reelax, Influencer.in, Wobb and Kofluence process payouts. We never hold or move money (CLAUDE.md constraint 1). Our answer is a **record**: who paid on time, who delivered on time, and what each side said when it went wrong. **Nobody else publishes either half of that record.**
 4. **The market's trust problem is enormous and measurable.** Payment cycles run 60–90 days. Two out of three Indian Instagram creators show fake-follower inflation. 42% of brands say they have paid an influencer later found to have heavy fake followings. Both sides price in the risk. A record of real behaviour is worth more here than anywhere.
-5. **Nobody reviewed offers a Tamil-language product.** Qoruz and Reelax let a brand *filter* creators by 12 languages, and Social Beat, based in Chennai, runs Tamil campaigns as an agency. In every source reviewed, though, language is something to search by, never the language the product itself speaks. Tamil Nadu has 63 million internet users, and regional micro-creators earn 2–3× the engagement of metro macro-creators at about a tenth of the cost per post.
+5. **Local, not by language any more.** Version 2 found nobody offering Tamil as the product's own language. On 23 September we chose English only (D-054), so that separation is given up, knowingly. What stays local is presence: one city made dense first (`docs/GO_TO_MARKET.md`), Indian formats, and a record of local deals. Regional micro-creators still earn 2–3× the engagement of metro macro-creators at about a tenth of the cost per post.
 
 **Position, unchanged from version 1 and now better supported: Instagram and YouTube are where brands and creators meet. We are where the deal is kept honest.**
 
@@ -27,13 +25,13 @@ This is our judgement. The research shows what the well-funded players compete o
 | What big platforms signal with | What it costs them | Where we stand |
 |---|---|---|
 | Huge creator databases (7M, 12M profiles) | Crawling, data deals, sales teams | **Deliberately not competing.** Meta and YouTube give this away |
-| Live media kits, rate cards, instant analytics | Platform API integrations | Rate cards and media kit: **not built** (section 6, #1) |
-| "Verified" badges and fraud screening | Third-party data | **Not built** (section 6, #6) |
+| Live media kits, rate cards, instant analytics | Platform API integrations | Rate cards and media kit **built** (D-055); results read from proof **built** (D-070) |
+| "Verified" badges and fraud screening | Third-party data | **Open**: built from observed reach on real deals instead of bought data (section 4) |
 | Handling payouts | Money-handling licences and liability | **Never**, by design |
-| Speed, reliability, no lost work | Engineering discipline | **Built and measured:** worst p95 is 28% of budget; retries safe on every write; 1,052 tests; strict types |
-| Trust you can check | Nobody has built it | **Built:** brand payment record, creator delivery record, neutral dispute record |
+| Speed, reliability, no lost work | Engineering discipline | **Built and measured:** retries safe on every write; 1,973 tests at 98% coverage; API fuzzing; strict types; budgets in `docs/PERFORMANCE.md` |
+| Trust you can check | Nobody has built it | **Built:** brand payment record, creator delivery record, neutral dispute record, and a deal record nobody can quietly change (D-057, D-060) |
 
-The honest summary: **polish is bought with money, but trust is built from facts.** On facts we are already ahead of everyone reviewed. On polish we are behind by design: the build order puts the frontend after the backend (D-004). The features in section 6 close the gap the frontend alone cannot.
+The honest summary: **polish is bought with money, but trust is built from facts.** On facts we are already ahead of everyone reviewed. On polish we are behind by design: the build order puts the frontend after the backend (D-004), and `docs/standards/frontend.md` sets the bar it must meet. The novelties in section 6 widen the lead on facts.
 
 ---
 
@@ -102,36 +100,43 @@ proposed, four open. Every open one has a stated way to beat, not match.
 
 ## 5. What we have that they do not
 
+Status checked against the code on `main`, 1 October 2026.
+
 | Ours | Status | Why nobody else has it |
 |---|---|---|
 | **Brand payment record**: on-time share, median days to pay, unpaid deals, and debts owed now that "new" cannot hide | Built (D-034) | Platforms that move money have no reason to show a brand's record. Platforms that don't have no data |
 | **Creator delivery record**: delivered, on time, disclosure confirmed, no-shows counted by the calendar | Built (D-038, D-039) | Collabstr has star reviews, which are opinions. Nobody records what actually happened |
+| **A deal record nobody can quietly change**: append-only, chained, stamped daily by outside timestamp authorities, checkable by anyone with the export | Built (D-057, D-060) | Every competitor's history is rows it can edit |
+| **Proof as files, cleaned of location and hidden data, sealed in the record** | Built (D-065, D-066, D-067) | Others keep files as uploaded, or keep links that die with the post |
+| **Results read from proof, checked against the creator's own claims, sealed** | Built, switched off until the validation pack (D-070) | Results elsewhere need a platform connection or an agency; nobody checks them against the creator's stated reach |
 | **Neutral dispute timeline** both sides can export | Built (D-035) | Others either judge disputes or have none |
 | **Deal memo with an agreed date and an approval clock** | Built (D-024–D-026, D-039) | Contracts elsewhere are enterprise features |
-| **Retry-safe on every write** (patchy 4G) | Built (D-040, branch `feature/retry-safety`) | Invisible, until a duplicate campaign or a false "already done" costs a user |
+| **Matching that explains itself, both ways** | Built (Phase D) | Kofluence, YouTube and Meta match with a black box |
+| **Fair-rate guidance**: published prices, five creators or nothing | Built (D-056) | Calculators elsewhere estimate |
+| **Retry-safe on every write** (patchy 4G) | Built (D-040) | Invisible, until a duplicate campaign or a false "already done" costs a user |
 | **Consent-first public Passport**, no contact details | Built (D-036) | **Reelax hands out creators' phone numbers.** We never will |
-| **Why-am-I-rejected feedback** with sample sizes | Built (D-041, branch `feature/application-feedback`) | Nobody tells creators the pattern behind their rejections |
-| **No subscription, no commission** | By design | We never touch the money, so there is nothing to take a cut of. How we *do* earn is a founder decision, not yet made |
-| **Tamil as the product's language** | Planned (frontend, after the backend) | Competitors treat language as a search filter |
+| **Why-am-I-rejected feedback** with sample sizes | Built (D-041) | Nobody tells creators the pattern behind their rejections |
+| **No cut of any deal** | By design | We never touch the money (constraint 1). How we earn: `docs/REVENUE_RESEARCH.md`, a founder decision |
 
 ---
 
-## 6. What to build to beat them, ranked
+## 6. Novelties next: things nobody has
 
-Ranked by what it does for trust and for the small Tamil Nadu business, then by cost. **Nothing here is approved.** Each item says what it needs.
+Version 2's build list is done: rate cards (D-055), fair-rate guidance (D-056), bulk mark-paid with payment references, results from proof (D-070) and matching (Phase D) are built; the disclosure check waits on the validation pack. What comes next is not catching up but **things no competitor reviewed has**. Ranked by what they add to trust, then by cost. **Nothing here is approved.**
 
-| # | Build | Beats | Needs |
+| # | Novelty | Why nobody has it | Needs |
 |---|---|---|---|
-| 1 | **Rate card and media kit on the Creator Passport**: packages with prices, audience size (labelled self-reported), and delivery and payment records attached. A brand sees price *and* proof of reliability on one link | YouTube Media Kit, Collabstr packages, Passionfroot storefront: none of them can show a *record* next to the price | Creator columns: **Erode Harish** and both founders |
-| 2 | **Fair-rate guidance** from agreed fees on real deals, by niche, city and audience band, always with sample size and date | Collabstr's calculator and Qoruz's cost checker, which estimate; ours would be *observed* | #1's audience size; a decision on the minimum sample |
-| 3 | **Payment reconciliation for busy brands**: bulk "mark paid", and matching of UPI references (RRN) against what brands claim | Reelax bulk payouts, with no money moved | API only; a decision on the matching rules (D-027 left room for it) |
-| 4 | **Campaign results from proof links**: reach and engagement read back from the posts already on record | Wobb, Collabstr, Influencer.in analytics | Platform API decision; it closes deal → delivery → payment → *result*, which nobody else holds end to end |
-| 5 | **Disclosure check at proof submission** | BigBang.Social's verifier | **Validation pack** (constraint 6), then post access |
-| 6 | **Authenticity signals** (fake followers) | Reelax, Winkl, Collabstr | Third-party data; cost decision |
-| 7 | **Matching within our marketplace** (Phase D) | Kofluence, YouTube, JioStarverse | Planned; Data track |
-| 8 | **Tamil throughout** (frontend), plus Tamil WhatsApp templates | Everyone | Frontend phase (D-004); WhatsApp provider decision |
+| 1 | **Stated against observed on the Passport**: "says 12,000 average views; median reach read from proof across 9 deals, 10,400" | Needs both a creator's own claims and sealed results from real deals; only we hold both | Results from proof switched on; a decision (it touches the public Passport) |
+| 2 | **Camera signatures checked before cleaning**: a proof photo signed by its camera (C2PA Content Credentials) is checked first, and "unedited since capture" is sealed in the record; then the file is cleaned as now | Pixel 10 phones sign every photo; Instagram strips the signatures on upload; our cleaner would strip them too. **Adoption is small today** (Samsung signs only AI-edited images; under 1% of news images carry it), so this is an edge, not a fix | A dependency; a decision |
+| 3 | **A deal receipt anyone can check**, without an account | Trust that works outside our platform | `docs/BACKEND_COMPLETE.md` item 12 |
+| 4 | **A free quarterly city rate summary**, from anonymous aggregates | We hold published and agreed prices; journalists, agencies and AI search cite it | `docs/GO_TO_MARKET.md` section 7; item 22 |
+| 5 | **Fake-follower signals from observed reach**, not bought data | Observed reach on real deals cannot be bought | Results from proof with real data |
+| 6 | **Structured deal notes that join the record**, in place of chat | Chats prove nothing; a note in the record does | A product decision |
+| 7 | **Feedback revealed only when both sides have answered**, if feedback is ever added | Removes retaliation, the flaw of two-sided reviews | `docs/PSYCHOLOGY_AND_TRUST.md` section 3 |
+| 8 | **A notification budget and quiet hours** | Competitors compete for attention; we respect it | Item 18 in `docs/BACKEND_COMPLETE.md` |
+| 9 | **Answers inside the phone's assistant**: "has Chennai Bakes paid me?" | Android AppFunctions and iOS App Intents call our API | `docs/PLATFORM_AND_TECH_PLAN.md` A11; Watch |
 
-**What to deliberately not build:** an internet-wide creator database; anything that holds or moves money; exposing contact details; star ratings or reviews in place of the records (opinions can be bought, dated facts cannot); a subscription price wall for small businesses (the business model is a founder decision).
+**What to deliberately not build:** an internet-wide creator database; anything that holds or moves money; exposing contact details; star ratings or reviews in place of the records (opinions can be bought, dated facts cannot); any of the 13 dark patterns India bans (`docs/PSYCHOLOGY_AND_TRUST.md` section 2); an install wall.
 
 ---
 
@@ -157,7 +162,11 @@ This is recorded for awareness, **not as rules for our product**: constraint 6 s
 
 Our `disclosure_confirmed` records the creator's statement. Whether that is enough is a validation-pack question.
 
-## 9. What changed since version 1
+## 9. What changed in each version
+
+**Version 3 (1 October 2026):** Meta's Creator Marketing Hub went worldwide on 15 September 2026, still leaving the deal to the two parties; Tamil as the product's language was dropped (D-054); version 2's build list is built, so section 6 is now novelties; section 4 became a plan to close every gap; camera signatures (C2PA) found to be stripped by our own cleaner, which section 6 turns into a novelty.
+
+**Version 2 (21 September 2026):**
 
 | Version 1 said | Version 2 finds |
 |---|---|
@@ -169,6 +178,14 @@ Our `disclosure_confirmed` records the creator's statement. Whether that is enou
 ---
 
 ## Sources
+
+Version 3:
+
+- [Meta enhances Instagram and Facebook tools for creator collaborations](https://www.buzzincontent.com/news/meta-enhances-instagram-and-facebook-tools-for-creator-collaborations-11069426), [Meta Ads updates, September 2026](https://adsuploader.com/blog/meta-ads-updates), [Instagram Creator Marketplace, 2026 (Grynow)](https://www.grynow.in/blog/instagram-creator-marketplace.html)
+- [Reelax using AI to fix India's influencer bottlenecks (ANI, August 2026)](https://aninews.in/news/business/reelax-influencer-marketing-platform-is-using-ai-and-automation-to-fix-indias-influencer-marketing-bottlenecks20260817122554/), [Kofluence 2026 report](https://www.adgully.com/post/15568/kofluence-launches-2026-influencer-marketing-report)
+- [C2PA adoption in 2026: hardware and verification reality](https://www.softwareseni.com/c2pa-adoption-in-2026-hardware-platforms-and-verification-reality/), [Google Pixel 10 Content Credentials](https://c2paviewer.com/articles/google-c2pa-pixel-10), [Content Credentials on Instagram and other platforms](https://www.lumethic.com/en/articles/content-credentials-social-media-platforms), [Content Credentials (Wikipedia)](https://en.wikipedia.org/wiki/Content_Credentials)
+
+Version 2:
 
 Version 2:
 
