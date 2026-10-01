@@ -20,8 +20,9 @@ What the product needs from this repository, in the order we should build it.
 
 ## 2. Built so far
 
-Checked against the code on 23 September 2026, not from memory: 64 endpoints,
-20 migrations, 1173 tests passing.
+Checked against the code on 1 October 2026 (`main` at `50899f6`, after PRs
+#32 to #34 merged), not from memory: 90 operations in the API contract, 28
+migrations, 1,829 tests passing (run that day, coverage 98.42%).
 
 | Capability | Status | Where |
 |---|---|---|
@@ -35,6 +36,17 @@ Checked against the code on 23 September 2026, not from memory: 64 endpoints,
 | One error format, request IDs, rate limits, safe settings | Tested | `app/core/` (D-003, D-012) |
 | Repeat-safe writes (`Idempotency-Key`) | Tested | `app/core/idempotency.py` (D-040) |
 | Data export | Tested | `app/modules/auth/export_service.py` |
+| Rate card and media kit on the Passport | Tested | D-055, `rate_card_*`, `media_kit_*` |
+| Fair-rate guidance, step 1 | Tested | D-056, `rate_guidance_*` |
+| Proof as files: signed uploads, every image cleaned of location data, short-lived view links, the creator's order kept | Tested | D-065, D-066, D-067, `proof_file_*`, `proof_cleaning_*` |
+| Campaigns matched to a creator (the creator's side of matching) | Tested | `app/modules/matching/` (`find_campaigns_for_creator`) |
+| A deal record nobody can quietly rewrite, with a daily outside timestamp | Tested | D-057, D-060, `app/modules/deal_memo/record_*`, `anchor_*` |
+| Creator search for brands | Tested | `app/modules/auth/search_*` |
+| Admin side: admin role, suspension, reports, admin log | Tested | D-061, `admin_*`, `report_*`, `suspension.py` |
+| Login codes by WhatsApp through MSG91 | Tested against a fake MSG91 only | D-058, `app/modules/auth/msg91_sender.py` |
+| Local login for developers and design | Tested | D-059, `scripts/dev_login.py` |
+| Background jobs (DBOS) | Tested | D-060, `app/core/jobs.py` |
+| Deployment: AWS as code, two images, image scanning | Validated and built, **not applied** | D-062, D-063, D-064, `infra/`, `Dockerfile` |
 | API fuzz testing, migration linting, measured budgets | Tested | D-047, D-050, `docs/PERFORMANCE.md` |
 
 ---
@@ -42,7 +54,7 @@ Checked against the code on 23 September 2026, not from memory: 64 endpoints,
 ## 3. Build order
 
 Each phase is only useful once the one before it exists. **Status is from the
-code**, checked 23 September 2026.
+code**, checked 1 October 2026.
 
 ### Phase A — the marketplace core — **done**
 | # | Item | Status | Notes |
@@ -61,14 +73,14 @@ code**, checked 23 September 2026.
 | B4 | Brand payment-reliability score | **Done** | D-034, D-035 |
 | B5 | Disputes with an evidence timeline | **Done** | D-036; no verdict is ever recorded |
 
-### Phase C — trust and fairness features — **2 of 5**
+### Phase C — trust and fairness features — **4 of 5**
 | # | Item | Status | Notes |
 |---|---|---|---|
-| C1 | Tamper-evident record of deal and payment events | **Not started** | Append-only, chained. Needs a new table: Data track, and a schema decision |
+| C1 | Tamper-evident record of deal and payment events | **Done** | D-057: append-only and chained; D-060: a daily checkpoint stamped by outside timestamp authorities. `docs/DEAL_RECORD_VERIFY.md` shows how anyone can check it |
 | C2 | Creator Passport: public read-only profile | **Done** | D-036 |
-| C3 | Fair-rate guidance | **Not started** | Proposed only, in `docs/PROPOSAL_PASSPORT_RATE_CARD.md`; rate card decision 1 is still open |
+| C3 | Fair-rate guidance | **Done, step 1** | D-056: published asking prices, five creators or nothing. Built on the rate card (D-055). Later steps use agreed deal prices |
 | C4 | Structured rejection reasons and profile guidance | **Done** | D-041 |
-| C5 | Usage-rights expiry reminders | **Blocked** | The window is stored; the reminder needs the job runner |
+| C5 | Usage-rights expiry reminders | **Blocked** | The window is stored and the job runner exists (D-060); the reminder waits on notification delivery (E1) |
 
 ### Phase D — matching — **done**
 Built 23–25 September (D-052). `app/modules/matching/` was an empty package;
@@ -81,18 +93,16 @@ the endpoint, with 55 tests.
 | D2 | pgvector similarity search for campaign ↔ creator | **Done** | `GET /api/v1/campaigns/{id}/matches`, p95 59.6 ms against a 300 ms budget. No ANN index: an exact scan over the filtered set is faster and always exactly right at this size |
 | D3 | Explainable results: the reasons behind every match | **Done** | Shared niches, city, accepted deals, and the similarity score. Structural filter first, so the reasons are facts rather than a model's opinion |
 
-**Still to do here, and both wait on other things:** embeddings are refreshed
-by `scripts/refresh_embeddings.py` on a schedule, because no job runner is
-chosen (D-047 locks DBOS, nothing is installed). And the creator-facing
-direction — campaigns matched to a creator — is not built; only the brand
-side is.
+**Done since 30 September:** the creator-facing direction, campaigns matched
+to a creator, is built, so matching works both ways. Embeddings are refreshed daily by their own image as a
+scheduled AWS task (D-063), outside the API; that runs once AWS exists.
 
-### Phase E — reach and workflow — **1 of 9**
+### Phase E — reach and workflow — **2 of 9, 2 more partly done**
 | # | Item | Status | Notes |
 |---|---|---|---|
-| E1 | Notifications module: WhatsApp and SMS behind one interface | **Records only** | Rows are written; nothing is delivered. Provider undecided, which is also why nobody can log in off a laptop |
+| E1 | Notifications module: WhatsApp and SMS behind one interface | **Half** | Provider chosen (D-058, MSG91) and **login codes** go by WhatsApp. Other notifications are still records only: delivering them needs WhatsApp templates approved by Meta, then a DBOS job (D-060) |
 | E2 | WhatsApp actions (apply, accept, upload proof) | **Not started** | Needs E1 |
-| E3 | Offline-first write contract | **Half** | `Idempotency-Key` is done (D-040); resumable uploads are not, and proof is a URL rather than a file |
+| E3 | Offline-first write contract | **Done** | `Idempotency-Key` (D-040), and proof as files (D-065): signed uploads straight to S3, so a slow connection never goes through our server. The bucket's rules are in `infra/`, not yet applied |
 | E4 | Campaign types: barter, commission, local-business | **Done** | `CAMPAIGN_TYPES` in `app/modules/campaigns/models.py` |
 | E5 | City leaderboards, festival templates, creator collectives | **Not started** | Group applications need their own model |
 | E6 | Invoices and yearly earnings statement | **Blocked** | needs validation pack (GST, TDS) |
@@ -102,42 +112,45 @@ side is.
 
 ### Where that leaves us
 
-**16 of the 26 items are done, about 62%.** Phases A, B and D are complete.
+**18 of the 26 items are done, about 69%.** Phases A, B and D are complete,
+and C lacks only C5. Creator search, the admin side and deployment were built
+outside this list.
 
-Of the **10 that remain**, the split matters more than the count:
+Of the **8 that remain**, the split matters more than the count:
 
 | | Items | Why |
 |---|---|---|
-| **Buildable now** | C1, E5, E9 | Need a decision Claude can make and record, nothing external |
-| **Waiting on an account or a decision** | C3, C5, E1, E2, E3 | The notification provider, the job runner, media storage, the rate card |
+| **Buildable now, after a founder decision** | E5, E9, and results read from proof (competitive #4, `docs/PROPOSAL_PROOF_RESULTS.md`) | Nothing external; each needs its design approved |
+| **Waiting on an account** | E1, then E2 and C5 | Meta must approve our WhatsApp templates, which needs Meta business verification, which needs the company |
 | **Waiting on the validation pack** | E6, E7, E8 | GST, TDS, ASCI and retention. `CLAUDE.md` constraint 6: ask, never invent |
 
-**E1 is the one that matters most.** Until a notification provider exists,
-nobody can log in outside a developer's laptop, so all 65 endpoints are
-unreachable by a real person. It is one decision, and it also unblocks E2
-and C5.
+**Nothing is live yet.** The code for real logins exists (D-058), but
+until the AWS account, the MSG91 account and Meta verification exist, no real
+person can reach any endpoint. Those are founder steps, listed in
+`infra/README.md` and D-058.
 
-**Two launch blockers sit outside this list.** In-app account deletion does
-not exist and no app store will accept either app without it (that is E8,
-and E8 is validation-pack blocked). And DPDP consent-manager rules land
-13 November 2026.
+**Three launch blockers sit outside this list.** In-app account deletion does
+not exist and no app store will accept either app without it (E8, validation
+pack). DPDP consent-manager rules land 13 November 2026. And **how we earn is
+not decided** (`docs/PLAYBOOK_GAPS.md` section 1): no plan, price or invoice
+exists in the code.
 
 ---
 
 ## 4. Decisions needed before the phases above
 
-Checked 23 September 2026. **Four of the seven are still open, and each one
-blocks a whole phase.**
+Checked 1 October 2026. **All seven are settled.** The decisions now
+blocking work are listed under "Where that leaves us" above.
 
 | Decision | Blocks | Status |
 |---|---|---|
 | Money amounts: whole paise or decimal | A1 | **Settled:** whole paise, throughout the schema |
 | Campaign types for the pilot | A1, E4 | **Settled:** paid, barter, commission, local business |
 | Per-phone verify limit | Security hardening | **Done:** `MAX_VERIFY_ATTEMPTS_PER_WINDOW` in `app/modules/auth/service.py` |
-| Job runner (for notifications and reminders) | E1, C5 | **Open.** No background worker exists. DBOS is locked as the choice (D-047) but nothing is installed |
-| Notification provider (WhatsApp or SMS, and which company) | E1, C5, and real OTP delivery | **Open, and the most expensive one.** Until it is chosen **nobody can log in outside a developer's laptop** |
-| Media storage (proof uploads) | E3 | **Open.** Proof is currently a URL the creator pastes, not a file we hold |
-| How a developer logs in locally | Developer experience | **Open.** Codes are never logged, by design |
+| Job runner (for notifications and reminders) | E1, C5 | **Settled:** DBOS (D-060), running inside the API |
+| Notification provider (WhatsApp or SMS, and which company) | E1, C5, and real OTP delivery | **Settled:** MSG91, WhatsApp first (D-058). Waits on the accounts only a founder can open |
+| Media storage (proof uploads) | E3 | **Settled and built:** S3 in AWS Mumbai (D-062), proof files (D-065) |
+| How a developer logs in locally | Developer experience | **Settled:** `scripts/dev_login.py` (D-059) |
 
 ---
 
@@ -150,7 +163,8 @@ blocks a whole phase.**
 | Add the migration downgrade check to CI | **Done** (`.github/workflows/ci.yml`) |
 | Seed script with realistic data | **Done** (`scripts/seed_dev_data.py`) |
 | Performance budgets measured, not estimated | **Done** for reads (`docs/PERFORMANCE.md`). **Writes are still unmeasured**, and so is anything under load |
-| Backup and one tested restore | **Not started.** Waits on the hosting decision |
+| Backup and one tested restore | **Configured, not tested.** Point-in-time backups are in `infra/`; a restore is tested before the first real user (D-062), once the AWS account exists |
+| Container images built and scanned for vulnerabilities in CI | **Done** (D-063, D-064) |
 
 ---
 
