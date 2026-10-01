@@ -36,13 +36,20 @@ from app.modules.deal_memo.exceptions import (
 )
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof, ProofFile
+from app.modules.deal_memo.proof_reading_models import ProofFileReading
 from app.modules.deal_memo.record_models import DealRecordEntry
 from app.modules.notifications import service as notifications
 
 # Tables this module answers for in a data export (see
 # tests/modules/auth/test_export_api.py, which fails if one is missed).
 EXPORTED_TABLES = frozenset(
-    {"deal_memo", "deliverable_proof", "proof_file", "deal_record_entry"}
+    {
+        "deal_memo",
+        "deliverable_proof",
+        "proof_file",
+        "proof_file_reading",
+        "deal_record_entry",
+    }
 )
 
 # The deal record (D-057). The seals are exported as `seal` and
@@ -114,6 +121,36 @@ PROOF_FILE_EXPORT_FIELDS = allow(
     "attached_at",
     "cleaned_at",
     "created_at",
+)
+# What was read from each proof screenshot, how it checked out, and what the
+# creator said about it (D-070). Not the token counts: they are our cost of
+# reading, not anything about the person.
+PROOF_FILE_READING_EXPORT_FIELDS = allow(
+    "id",
+    "proof_file_id",
+    "status",
+    "failure",
+    "model",
+    "prompt_version",
+    "platform",
+    "handle",
+    "post_date",
+    "views",
+    "reach",
+    "impressions",
+    "likes",
+    "comments",
+    "saves",
+    "shares",
+    "abbreviated",
+    "handle_matches",
+    "date_within_deal",
+    "numbers_consistent",
+    "stated_followers",
+    "stated_average_views",
+    "creator_marked_at",
+    "creator_note",
+    "read_at",
 )
 
 # Who may make each move, and where it leads.
@@ -474,6 +511,18 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
             ).all()
         )
 
+    readings: list[ProofFileReading] = []
+    if memo_ids:
+        readings = list(
+            db.scalars(
+                select(ProofFileReading)
+                .join(ProofFile, ProofFile.id == ProofFileReading.proof_file_id)
+                .where(ProofFile.deal_memo_id.in_(memo_ids))
+                .order_by(ProofFileReading.read_at, ProofFileReading.id)
+                .limit(MAX_ROWS_PER_SECTION + 1)
+            ).all()
+        )
+
     entries: list[DealRecordEntry] = []
     if memo_ids:
         entries = list(
@@ -514,6 +563,18 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
             ),
             objects=files,
             fields=PROOF_FILE_EXPORT_FIELDS,
+        ),
+        build_section(
+            "proof_file_readings",
+            table="proof_file_reading",
+            purpose=(
+                "The numbers read from those screenshots (views, reach and the "
+                "rest), which model read them, how they compared with what we "
+                "hold, and any note the creator added. Read from a screenshot, "
+                "never verified."
+            ),
+            objects=readings,
+            fields=PROOF_FILE_READING_EXPORT_FIELDS,
         ),
         build_section(
             "deal_record",
