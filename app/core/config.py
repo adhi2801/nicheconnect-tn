@@ -124,6 +124,32 @@ class Settings(BaseSettings):
         default=None, pattern=r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
     )
     aws_region: str = Field(default="ap-south-1", pattern=r"^[a-z]{2}(-[a-z]+)+-\d$")
+    # Results read from proof (D-070). Off until the validation pack says
+    # whether a creator's insights may go to a processor (constraint 6).
+    # On, it needs the key, checked at startup.
+    proof_reading_enabled: bool = False
+    anthropic_api_key: SecretStr | None = None
+    proof_reader_model: str = Field(
+        default="claude-opus-5-5", pattern=r"^claude-[a-z0-9]+(-[a-z0-9]+)*$"
+    )
+
+    @field_validator("anthropic_api_key", mode="before")
+    @classmethod
+    def empty_key_is_no_key(cls, value: object) -> object:
+        # `ANTHROPIC_API_KEY=` in .env means "none", not an empty key.
+        return None if value == "" else value
+
+    @model_validator(mode="after")
+    def proof_reading_is_usable(self) -> "Settings":
+        """Reading switched on without a key fails at startup, not per file."""
+        if not self.proof_reading_enabled:
+            return self
+        key = self.anthropic_api_key.get_secret_value() if self.anthropic_api_key else ""
+        if not key or key.startswith(PLACEHOLDER_PREFIX):
+            raise ValueError(
+                "proof_reading_enabled is on, so ANTHROPIC_API_KEY must be set"
+            )
+        return self
 
     @field_validator("uploads_bucket", mode="before")
     @classmethod

@@ -1,6 +1,6 @@
 # Proposal: results a brand can trust, read from the proof (competitive #4)
 
-**Status: proposed, 1 October 2026. Nothing here is built or approved.**
+**Status: approved 1 October 2026 (D-070). Being built, step by step (section 8).**
 
 ## 1. Why
 
@@ -92,7 +92,7 @@ DECISION NEEDED 2: Which Claude model reads the screenshots
 Context:  The cost per image scales with the model (section 7). Reading
           numbers off a clean screenshot is extraction, not reasoning.
 Option A: Claude Opus 5.5 (the current default) | + the most accurate
-          | − the highest cost, about ₹2–3 an image (estimate)
+          | − the highest cost, about ₹2–3.5 an image (estimate)
 Option B: Claude Sonnet 5.5 | + about half the cost
 Option C: Claude Haiku 4.5 | + about a quarter of the cost | − the oldest
 Recommended: decide on measurement, not guesswork: step 2 below builds a test
@@ -154,20 +154,24 @@ code. Not applied until AWS exists.
 
 ## 7. Cost
 
-Estimates from published prices, to be replaced by measured numbers in step 2:
+Estimates, corrected on 1 October 2026 against Anthropic's vision
+documentation, to be replaced by measured numbers in step 2:
 
-- A phone screenshot is scaled to about 1,568 pixels on its long side, roughly
-  1,500 input tokens, plus about 1,000 tokens of instructions: about 2,500 in.
-  Output, including the model's thinking, about 500 to 1,000 tokens.
-- **Opus 5.5** ($4 in, $20 out per million tokens): $0.010 in plus $0.010 to
-  $0.020 out, about **$0.02 to $0.03, ₹2 to ₹3 an image** (at ₹88 to the
-  dollar). Sonnet 5.5 about half; Haiku 4.5 about a quarter. **Batch API**:
-  half again.
-- A proof of 3 screenshots: about ₹5 to ₹8 on Opus; about ₹1 on Haiku with
-  batching.
-- 1,000 proofs of 3 screenshots a month: about ₹5,000 to ₹8,000 on Opus,
-  about ₹650 to ₹1,000 on Haiku with batching. Caching the fixed
-  instructions lowers both.
+- An image costs one token per 28×28 pixel square. Opus 5.5 reads images up
+  to 2,576 pixels on the long side at full sharpness, so a 1080×2400 phone
+  screenshot is about **3,400 image tokens**, plus about 600 of instructions:
+  about 4,000 in. Output, with the model's thinking at low effort, about 300 to
+  1,000 tokens.
+- **Opus 5.5** ($4 in, $20 out per million tokens): about $0.016 in plus
+  $0.006 to $0.020 out, **$0.02 to $0.04, ₹2 to ₹3.5 an image** (at ₹88 to the
+  dollar).
+- **Haiku 4.5** reads at most 1,568 pixels on the long side, so the same
+  screenshot is about 1,500 image tokens at a quarter of the price per token:
+  well under ₹0.5 an image. Smaller text may be harder to read at that size,
+  which is exactly what the test set measures. Sonnet 5.5 sits between.
+- **Batch API**: half of any of these, with numbers appearing within hours.
+- 1,000 proofs of 3 screenshots a month: about ₹6,000 to ₹10,000 on Opus 5.5,
+  about ₹1,000 or less on Haiku 4.5, before batching.
 - A daily spend ceiling in settings stops the job, never a request, if
   something loops.
 
