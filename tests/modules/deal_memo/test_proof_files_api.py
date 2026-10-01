@@ -6,6 +6,7 @@ upload it through the form, attach it to a proof.
 """
 
 import hashlib
+import uuid
 from collections.abc import Iterator
 from datetime import timedelta
 
@@ -13,7 +14,10 @@ import pytest
 from sqlalchemy import select
 
 from app.core import storage
-from app.modules.deal_memo.proof_file_service import MAX_PENDING_UPLOADS_PER_MEMO
+from app.modules.deal_memo.proof_file_service import (
+    ABANDONED_AFTER,
+    MAX_PENDING_UPLOADS_PER_MEMO,
+)
 from app.modules.deal_memo.proof_models import MAX_PROOF_FILE_BYTES, ProofFile
 from app.modules.deal_memo.record_models import DealRecordEntry
 from tests.deal_flow import LINK, MEMOS_URL, User, accepted_memo, brand_user, creator_user
@@ -151,26 +155,46 @@ def test_uploads_need_an_accepted_memo(client, deal):
     assert_problem(start_upload(client, creator, memo_id), 409, "memo_status_conflict")
 
 
-def test_unfinished_uploads_are_capped_per_deal(client, db, deal):
-    _, creator, memo_id = deal
-    # Rows written directly: the hourly rate limit would stop the API first,
-    # and this is about the per-deal cap behind it.
-    for n in range(MAX_PENDING_UPLOADS_PER_MEMO):
+def pending_rows(db, creator: User, memo_id: str, created_at) -> None:
+    """A deal's worth of unfinished uploads, written directly: the hourly rate
+    limit would stop the API first, and these tests are about the per-deal
+    cap behind it."""
+    for _ in range(MAX_PENDING_UPLOADS_PER_MEMO):
         db.add(
             ProofFile(
                 deal_memo_id=memo_id,
                 uploader_account_id=creator.account_id,
-                storage_key=f"proof-files/incoming/cap-{n}",
+                storage_key=f"proof-files/incoming/cap-{uuid.uuid4().hex}",
                 content_type="image/png",
                 size_bytes=1,
                 sha256="a" * 64,
+                created_at=created_at,
+                updated_at=created_at,
             )
         )
     db.flush()
 
+
+def test_unfinished_uploads_are_capped_per_deal(client, db, clock, deal):
+    _, creator, memo_id = deal
+    pending_rows(db, creator, memo_id, created_at=clock.now - timedelta(hours=23))
+
     assert_problem(
         start_upload(client, creator, memo_id), 409, "too_many_pending_uploads"
     )
+
+
+def test_uploads_abandoned_over_a_day_ago_no_longer_count(client, db, clock, deal):
+    """Storage has deleted them by then; a deal is never shut out for good."""
+    _, creator, memo_id = deal
+    pending_rows(
+        db,
+        creator,
+        memo_id,
+        created_at=clock.now - ABANDONED_AFTER - timedelta(seconds=1),
+    )
+
+    assert start_upload(client, creator, memo_id).status_code == 201
 
 
 def test_uploads_are_rate_limited_per_account(client, deal):

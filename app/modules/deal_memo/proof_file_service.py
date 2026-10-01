@@ -38,6 +38,11 @@ UPLOAD_FORM_LIFETIME = timedelta(minutes=10)
 # Unfinished uploads one deal may hold at once: a proof takes at most 10
 # files, so 20 leaves room for retries without letting anyone fill a bucket.
 MAX_PENDING_UPLOADS_PER_MEMO = 20
+# The bucket deletes an upload never submitted after a day (infra, rule
+# "proof-originals"), so an older pending row has nothing behind it and no
+# longer counts against the cap above. Without this, 20 abandoned uploads
+# would shut a deal out of uploading for good.
+ABANDONED_AFTER = timedelta(days=1)
 # Long enough to open a proof and look at it; a link copied out of a page or
 # a log is useless soon after (D-065). Asking again gives fresh links.
 VIEW_LINK_LIFETIME = timedelta(minutes=5)
@@ -66,7 +71,9 @@ def request_upload(
         raise MemoStatusConflict("Files can only be uploaded for an accepted memo.")
     pending = db.scalar(
         select(func.count(ProofFile.id)).where(
-            ProofFile.deal_memo_id == memo.id, ProofFile.status == "pending"
+            ProofFile.deal_memo_id == memo.id,
+            ProofFile.status == "pending",
+            ProofFile.created_at > now - ABANDONED_AFTER,
         )
     )
     if (pending or 0) >= MAX_PENDING_UPLOADS_PER_MEMO:
