@@ -43,8 +43,13 @@ from app.core.storage import FileStore, ObjectTooLarge
 from app.modules.auth.models.rate_card import CreatorChannel
 from app.modules.campaigns.models import Application
 from app.modules.deal_memo import record_service as record
+from app.modules.deal_memo.exceptions import (
+    ProofReadingAlreadyMarked,
+    ProofReadingNotFound,
+    ProofReadingNotMarkable,
+)
 from app.modules.deal_memo.models import DealMemo
-from app.modules.deal_memo.proof_models import ProofFile
+from app.modules.deal_memo.proof_models import DeliverableProof, ProofFile
 from app.modules.deal_memo.proof_reader import Reading, ScreenshotReader
 from app.modules.deal_memo.proof_reading_models import ProofFileReading
 
@@ -353,3 +358,72 @@ def read_due(
         skipped=outcomes.count(SKIPPED),
         stopped_at_limit=False,
     )
+
+
+# --- showing readings, and the creator's mark (step 5) -------------------------------------
+
+
+def views_against_stated(row: ProofFileReading) -> float | None:
+    """Views read, or reach when no views were shown, over the creator's own
+    stated average views at the time of reading. None with nothing to compare.
+
+    1.0 is exactly what they claim; 0.1 is a tenth of it; 9.0 is nine times.
+    """
+    observed = row.views if row.views is not None else row.reach
+    if observed is None or not row.stated_average_views:
+        return None
+    return round(observed / row.stated_average_views, 2)
+
+
+def shown_readings(
+    db: Session, file_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, ProofFileReading]:
+    """The readings to show for these files, in one query.
+
+    A failed reading is not shown: to both sides that file is simply not read
+    yet, and it may still be retried.
+    """
+    if not file_ids:
+        return {}
+    rows = db.scalars(
+        select(ProofFileReading).where(
+            ProofFileReading.proof_file_id.in_(file_ids),
+            ProofFileReading.status != FAILED,
+        )
+    ).all()
+    return {row.proof_file_id: row for row in rows}
+
+
+def mark_misread(
+    db: Session,
+    proof: DeliverableProof,
+    file_id: uuid.UUID,
+    note: str,
+    now: datetime,
+) -> ProofFileReading:
+    """The creator says this reading is wrong. Kept beside it, never instead.
+
+    Once per reading, and only on numbers that were read. Commits.
+    """
+    row = db.scalars(
+        select(ProofFileReading)
+        .join(ProofFile, ProofFile.id == ProofFileReading.proof_file_id)
+        .where(
+            ProofFile.id == file_id,
+            ProofFile.proof_id == proof.id,
+            ProofFileReading.status != FAILED,
+        )
+        .with_for_update(of=ProofFileReading)
+    ).first()
+    if row is None:
+        raise ProofReadingNotFound()
+    if row.status != READ:
+        raise ProofReadingNotMarkable()
+    if row.creator_marked_at is not None:
+        raise ProofReadingAlreadyMarked()
+    row.creator_marked_at = now
+    row.creator_note = note
+    row.updated_at = now
+    db.commit()
+    db.refresh(row)
+    return row

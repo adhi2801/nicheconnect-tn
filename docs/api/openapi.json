@@ -3746,6 +3746,26 @@
         "title": "MemoUpdate",
         "type": "object"
       },
+      "MisreadMark": {
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "description": "What is wrong, in the creator's words",
+            "examples": [
+              "Reach is 31,040, not 31,400."
+            ],
+            "maxLength": 500,
+            "minLength": 5,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "title": "MisreadMark",
+        "type": "object"
+      },
       "NarrowedTo": {
         "description": "Which filters the figures actually used. Null means \"all of them\".",
         "properties": {
@@ -4775,6 +4795,17 @@
             "title": "Id",
             "type": "string"
           },
+          "reading": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProofReadingView"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The numbers read from this screenshot, once read. Empty until then"
+          },
           "rejection_reason": {
             "anyOf": [
               {
@@ -4840,7 +4871,8 @@
           "status",
           "rejection_reason",
           "url",
-          "url_expires_at"
+          "url_expires_at",
+          "reading"
         ],
         "title": "ProofFileView",
         "type": "object"
@@ -4977,6 +5009,310 @@
           "updated_at"
         ],
         "title": "ProofRead",
+        "type": "object"
+      },
+      "ProofReadingChecks": {
+        "description": "Plain rules against facts we hold. Empty means nothing to compare.",
+        "properties": {
+          "date_within_deal": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The post date is on or after the day the memo was accepted, and not in the future",
+            "title": "Date Within Deal"
+          },
+          "handle_matches": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The handle on the screenshot is the creator's linked channel",
+            "title": "Handle Matches"
+          },
+          "numbers_consistent": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Likes, comments, saves, shares and reach are not above views, and reach is not above impressions",
+            "title": "Numbers Consistent"
+          }
+        },
+        "required": [
+          "handle_matches",
+          "date_within_deal",
+          "numbers_consistent"
+        ],
+        "title": "ProofReadingChecks",
+        "type": "object"
+      },
+      "ProofReadingNumbers": {
+        "properties": {
+          "comments": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comments"
+          },
+          "impressions": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Impressions"
+          },
+          "likes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Likes"
+          },
+          "reach": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reach"
+          },
+          "saves": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saves"
+          },
+          "shares": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shares"
+          },
+          "views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views"
+          }
+        },
+        "required": [
+          "views",
+          "reach",
+          "impressions",
+          "likes",
+          "comments",
+          "saves",
+          "shares"
+        ],
+        "title": "ProofReadingNumbers",
+        "type": "object"
+      },
+      "ProofReadingView": {
+        "description": "What a proof screenshot said, read by AI and checked by us (D-070).\n\n**Read from a screenshot, never verified.** A screenshot can be edited;\nthe checks say whether it agrees with what we hold, not that it is true.",
+        "properties": {
+          "abbreviated": {
+            "description": "Shown abbreviated on screen (such as 12.5K), so not exact",
+            "items": {
+              "enum": [
+                "views",
+                "reach",
+                "impressions",
+                "likes",
+                "comments",
+                "saves",
+                "shares"
+              ],
+              "type": "string"
+            },
+            "title": "Abbreviated",
+            "type": "array"
+          },
+          "checks": {
+            "$ref": "#/components/schemas/ProofReadingChecks"
+          },
+          "creator_marked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the creator said this reading is wrong; kept beside it",
+            "title": "Creator Marked At"
+          },
+          "creator_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creator Note"
+          },
+          "handle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handle"
+          },
+          "numbers": {
+            "$ref": "#/components/schemas/ProofReadingNumbers"
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "enum": [
+                  "instagram",
+                  "youtube",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platform"
+          },
+          "post_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Post Date"
+          },
+          "read_at": {
+            "format": "date-time",
+            "title": "Read At",
+            "type": "string"
+          },
+          "source": {
+            "const": "read_from_screenshot",
+            "description": "Always this: the numbers come from the creator's screenshot",
+            "title": "Source",
+            "type": "string"
+          },
+          "stated_average_views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stated Average Views"
+          },
+          "stated_followers": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the creator said about this channel when it was read",
+            "title": "Stated Followers"
+          },
+          "status": {
+            "description": "`no_numbers`: not an insights screen, or one showing none",
+            "enum": [
+              "read",
+              "no_numbers"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "views_against_stated": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Views read (or reach, when views are not shown) over the creator's stated average views: 1.0 is what they claim, 9.0 nine times it",
+            "title": "Views Against Stated"
+          }
+        },
+        "required": [
+          "source",
+          "status",
+          "platform",
+          "handle",
+          "post_date",
+          "numbers",
+          "abbreviated",
+          "checks",
+          "stated_followers",
+          "stated_average_views",
+          "views_against_stated",
+          "creator_marked_at",
+          "creator_note",
+          "read_at"
+        ],
+        "title": "ProofReadingView",
         "type": "object"
       },
       "ProofUploadCreate": {
@@ -14498,6 +14834,180 @@
           }
         ],
         "summary": "Open the files on a proof",
+        "tags": [
+          "proof"
+        ]
+      }
+    },
+    "/api/v1/deal-memos/{memo_id}/proof/{proof_id}/files/{file_id}/reading/mark": {
+      "post": {
+        "description": "The creator marks the numbers read from their screenshot as misread, with a note. The note is kept beside the reading for both sides to see, never in place of it. Once per reading, and only on numbers that were read.",
+        "operationId": "mark_reading_misread_api_v1_deal_memos__memo_id__proof__proof_id__files__file_id__reading_mark_post",
+        "parameters": [
+          {
+            "description": "The proof submission's id",
+            "in": "path",
+            "name": "proof_id",
+            "required": true,
+            "schema": {
+              "description": "The proof submission's id",
+              "format": "uuid",
+              "title": "Proof Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The proof file's id",
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "description": "The proof file's id",
+              "format": "uuid",
+              "title": "File Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The memo's id",
+            "in": "path",
+            "name": "memo_id",
+            "required": true,
+            "schema": {
+              "description": "The memo's id",
+              "format": "uuid",
+              "title": "Memo Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MisreadMark"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProofReadingView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "This account type cannot use this endpoint"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such memo or proof, or that file on it has not been read"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No numbers were read, or this reading is already marked. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The note is missing, too short or too long. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Say a reading is wrong",
         "tags": [
           "proof"
         ]
