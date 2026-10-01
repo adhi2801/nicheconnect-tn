@@ -15,6 +15,7 @@ from sqlalchemy import CursorResult, select, text, update
 from sqlalchemy.orm import Session
 
 from app.modules.auth.exceptions import (
+    AccountSuspended,
     InvalidToken,
     OtpInvalid,
     OtpSendLimitReached,
@@ -200,9 +201,19 @@ def verify_otp(
         raise OtpInvalid()
 
     account = db.scalars(select(Account).where(Account.phone == phone)).first()
+    if role == "admin" and (account is None or account.role != "admin"):
+        # Login never creates an admin, and must not reveal who is one: this
+        # is answered exactly as a wrong code, attempt used and all (D-061).
+        challenge.attempts += 1
+        db.commit()
+        raise OtpInvalid()
     if account is not None and account.role != role:
         db.rollback()
         raise RoleMismatch()
+    if account is not None and account.suspended_at is not None:
+        # The code is right, so the person is told; it stays unused (D-061).
+        db.rollback()
+        raise AccountSuspended.because(account.suspension_reason)
 
     is_new_account = account is None
     if account is None:
@@ -231,7 +242,7 @@ def _issue_session(
 ) -> LoginResult:
     """Create one session in `family_id` and return its tokens."""
     refresh_token = new_refresh_token()
-    refresh_expires_at = now + refresh_token_ttl()
+    refresh_expires_at = now + refresh_token_ttl(account.role)
     db.add(
         AuthSession(
             account_id=account.id,
@@ -287,6 +298,11 @@ def refresh_session(db: Session, refresh_token: str, now: datetime) -> LoginResu
     auth_session.used_at = now
     auth_session.updated_at = now
     account = db.get_one(Account, auth_session.account_id)
+    if account.suspended_at is not None:
+        # A suspension ends every session; this catches any it missed.
+        _revoke_family(db, auth_session.family_id, now)
+        db.commit()
+        raise AccountSuspended.because(account.suspension_reason)
     result = _issue_session(db, account, auth_session.family_id, now)
     db.commit()
     return result

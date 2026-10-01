@@ -90,3 +90,73 @@ class ProfileUrlDoesNotMatchPlatform(DomainError):
     status_code = HTTPStatus.UNPROCESSABLE_ENTITY
     code = "profile_url_platform_mismatch"
     title = "That link is not on the platform you chose"
+
+
+class InvalidSearch(DomainError):
+    # Filters that cannot all be true at once: answering with an empty list
+    # would look like "no creators" rather than "you asked for nothing".
+    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
+    code = "invalid_search"
+    title = "Those search filters contradict each other"
+
+
+class AccountSuspended(DomainError):
+    # Told plainly, with the category of reason, never the admin's own note
+    # (D-061). 403 rather than 401: the credentials are fine, the account is not.
+    status_code = HTTPStatus.FORBIDDEN
+    code = "account_suspended"
+    title = "This account is suspended"
+
+    @classmethod
+    def because(cls, reason: str | None) -> "AccountSuspended":
+        return cls(f"Reason: {(reason or 'other').replace('_', ' ')}.")
+
+
+class ReportSubjectNotFound(DomainError):
+    status_code = HTTPStatus.NOT_FOUND
+    code = "report_subject_not_found"
+    title = "There is nothing with that id to report"
+
+
+class CannotReportYourself(DomainError):
+    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
+    code = "cannot_report_yourself"
+    title = "You cannot report your own profile or campaign"
+
+
+class AdminNotFound(DomainError):
+    # Every admin route answers anyone who is not an admin exactly like a
+    # route that does not exist, so the admin API cannot be found by probing.
+    status_code = HTTPStatus.NOT_FOUND
+    code = "not_found"
+    title = "Not found"
+
+
+class AdminTargetNotAllowed(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "admin_target_not_allowed"
+    title = "Admins are suspended and restored by a founder, not by another admin"
+
+
+class AlreadySuspended(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "already_suspended"
+    title = "This account is already suspended"
+
+
+class NotSuspended(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "not_suspended"
+    title = "This account is not suspended"
+
+
+class ReportNotFound(DomainError):
+    status_code = HTTPStatus.NOT_FOUND
+    code = "report_not_found"
+    title = "No such report"
+
+
+class ReportAlreadyResolved(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "report_already_resolved"
+    title = "This report has already been resolved"

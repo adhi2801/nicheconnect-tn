@@ -14,6 +14,7 @@ from app.core.rate_limit import limiter
 from app.core.request_id import RequestIdMiddleware
 from app.core.security_headers import SecurityHeadersMiddleware
 from app.core.unexpected_error import UnexpectedErrorMiddleware
+from app.modules.auth.admin_router import router as admin_router
 from app.modules.auth.attention_router import router as attention_router
 from app.modules.auth.dependencies import idempotency_identity
 from app.modules.auth.export_router import router as export_router
@@ -22,7 +23,9 @@ from app.modules.auth.profile_router import brand_router, creator_router
 from app.modules.auth.public_router import router as public_router
 from app.modules.auth.rate_card_router import router as rate_card_router
 from app.modules.auth.rate_guidance_router import router as rate_guidance_router
+from app.modules.auth.report_router import router as report_router
 from app.modules.auth.router import router as auth_router
+from app.modules.auth.search_router import router as search_router
 from app.modules.campaigns.application_router import router as applications_router
 from app.modules.campaigns.router import router as campaigns_router
 from app.modules.deal_memo.delivery_router import router as delivery_router
@@ -90,6 +93,9 @@ app.include_router(attention_router)
 # Public: the Creator Passport, readable without logging in.
 app.include_router(public_router)
 app.include_router(rate_card_router)
+app.include_router(search_router)
+app.include_router(report_router)
+app.include_router(admin_router)
 app.include_router(media_kit_router)
 app.include_router(rate_guidance_router)
 app.include_router(campaigns_router)

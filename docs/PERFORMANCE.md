@@ -7,12 +7,49 @@ is where they live.
 **Budgets** (`docs/standards/backend.md` section 6): p95 ≤ 300 ms for reads,
 ≤ 500 ms for writes, on seeded local data.
 
-**Last measured:** 26 September 2026, on PostgreSQL 18.6 with pgvector 0.8.6
+**Last measured:** 30 September 2026 for creator search and reports (next
+section); 26 September 2026 for everything else, on PostgreSQL 18.6 with pgvector 0.8.6
 (D-049), seeded with 10 brands, 200 creators, 150 campaigns, 785
 applications and 958 rate card packages. 100 runs per read. For writes: 30
 whole deals, 5 bank bulk transfers of 25 rows, and 30 rounds of rate card
 edits. All from one run, on a developer laptop under Docker Desktop for
 Windows.
+
+## Added 30 September: creator search and reports
+
+Built after the 26 September run, so measured separately: same seed (200
+creators, 94 with a published Passport, 958 packages), 100 runs per read, 30
+reports, one run on the same laptop.
+
+| Endpoint | p50 ms | p95 ms | Budget | Verdict |
+| --- | --- | --- | --- | --- |
+| `GET /creators` (search, no filter) | 12.7 | 16.6 | 300 | OK |
+| `GET /creators?niche&city` | 14.0 | 17.1 | 300 | OK |
+| `GET /creators?platform&followers` | 15.4 | 19.8 | 300 | OK |
+| `GET /creators?max_price&format` | 15.3 | 23.4 | 300 | OK |
+| `GET /creators?q` (words) | 14.2 | 18.6 | 300 | OK |
+| `POST /reports` | 12.7 | 15.2 | 500 | OK |
+
+Search is the query a brand runs most, and every shape of it uses under a
+tenth of the read budget. The same run re-measured every endpoint below; all
+stayed inside budget and close to the 26 September figures.
+
+**One number looked worse and was not.** The bulk mark-paid read 357 ms p50
+and 459 ms p95 in that run, against 289 and 314 on 26 September. Twenty
+rounds showed each call slower than the last: 292 ms rising to 477 ms. The
+cause is the measurement, not the code. Every request in the script runs in
+a savepoint of one transaction that is rolled back, and each bulk row adds a
+savepoint of its own, so the rounds pile hundreds of subtransactions into one
+transaction; past 64, PostgreSQL's visibility checks slow down. The same 20
+rounds with every request committed, as in production, in a throwaway
+database since deleted, stayed flat:
+
+| Bulk mark-paid, 25 rows, 20 rounds | p50 ms | p95 ms | Range ms |
+| --- | --- | --- | --- |
+| Inside one rolled-back transaction | 379 | 477 | 291–477, rising |
+| Each request committed | 283 | 341 | 269–341, flat |
+
+The script keeps 5 rounds, and says why next to `BULK_ROUNDS`.
 
 ## Reads
 
@@ -132,9 +169,12 @@ for its own decision. **Trigger:** 20,000 deals, or a measured proof p95 above
 
 ## What is not measured yet
 
-- **Writes beyond the deal, disputes, bulk mark-paid and the rate card.**
-  Profile and campaign edits are single-row writes of the same kind, but they
-  are not in the script yet.
+- **Writes beyond the deal, disputes, bulk mark-paid, the rate card and
+  reports.** Profile and campaign edits are single-row writes of the same
+  kind, but they are not in the script yet.
+- **The admin side** (D-061). Admins are few and their screens are not on a
+  user's path; the report queue and account lookup are the ones to add when
+  the pilot has admins.
 - **Under load.** These are sequential requests from one client. The plan
   (section 4.5) wants a repeatable load test before launch; it does not exist.
 - **At real scale.** 150 campaigns is a pilot-sized seed, not a year of
@@ -154,3 +194,24 @@ venv\Scripts\python.exe scripts\measure_performance.py --runs 100 --deals 30
 
 Add `--explain` to see the query plans behind each endpoint and confirm the
 indexes are used.
+
+## Creator search at 10,000 creators
+
+`GET /api/v1/creators`, measured on 27 September with **10,000 extra published
+creators and 34,920 packages** inserted inside a transaction and rolled back
+afterwards, 30 runs per search:
+
+| Search | p50 ms | p95 ms | Budget |
+| --- | --- | --- | --- |
+| No filters | 17.7 | 19.5 | 300 |
+| Niche and city | 16.0 | 22.7 | 300 |
+| Instagram, 10k to 50k followers | 18.7 | 29.8 | 300 |
+| Reels under ₹10,000 | 32.2 | 37.6 | 300 |
+| All of those together | 32.6 | 37.0 | 300 |
+| Words in handle, name or bio | 39.0 | 60.6 | 300 |
+
+No index was added: the slowest, a word search with no text index, uses a
+fifth of the budget at fifty times the pilot's size. **Trigger for a trigram
+index on the searched text:** a measured word-search p95 above 150 ms, or
+100,000 published creators. It would be a migration, so it needs its own
+approval.

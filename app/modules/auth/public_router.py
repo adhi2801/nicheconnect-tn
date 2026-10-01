@@ -31,6 +31,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
+from app.modules.auth import suspension
 from app.modules.auth.exceptions import ProfileNotFound
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.models.rate_card import CreatorChannel, CreatorPackage
@@ -140,7 +141,12 @@ def read_public_profile(
         raise ProfileNotFound() from None
 
     creator = db.scalars(select(Creator).where(Creator.handle == normalised)).first()
-    if creator is None or not passport_is_public(creator):
+    if (
+        creator is None
+        or not passport_is_public(creator)
+        # Suspended looks exactly like never published (D-061).
+        or suspension.is_suspended(db, creator.account_id)
+    ):
         raise ProfileNotFound()
 
     # Three queries at most, however many channels or packages there are.

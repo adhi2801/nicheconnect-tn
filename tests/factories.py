@@ -91,7 +91,7 @@ def build_auth_session(db: Session, **overrides: Any) -> AuthSession:
     fields: dict[str, Any] = {
         "family_id": uuid.uuid4(),
         "token_hash": fake_token_hash(),
-        "expires_at": FIXED_NOW + refresh_token_ttl(),
+        "expires_at": FIXED_NOW + refresh_token_ttl("creator"),
     }
     fields.update(overrides)
     # Not setdefault, for the same reason as build_brand above.

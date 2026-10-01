@@ -107,6 +107,14 @@ def summarise(name: str, timings: list[float], budget: int) -> dict:
     }
 
 
+# Kept low on purpose. Every request here runs in a savepoint of one
+# transaction that is rolled back, and each bulk row adds a savepoint of its
+# own, so the rounds pile hundreds of subtransactions into one transaction.
+# Past 64, PostgreSQL's visibility checks slow down, and each round reads
+# slower than the last: 292 ms rising to 477 ms over 20 rounds on
+# 30 September. The same 20 rounds with every request committed, as in
+# production, stayed flat at 269-341 ms. A slow bulk number here is worth
+# re-checking with real commits before it is believed.
 BULK_ROUNDS = 5
 # The most a brand may send in one call: the worst case is the one that matters.
 BULK_ROWS = MAX_BULK_MARK_PAID
@@ -125,6 +133,8 @@ def measure_writes(
        the bulk mark-paid.
     3. `deals` rounds of rate card writes, by a creator made for the run:
        the seeded creators may already hold the ten-package limit.
+    4. `deals` reports, by that same creator, each about a different
+       campaign: a second report of the same thing only returns the first.
     """
     timings: dict[str, list[float]] = defaultdict(list)
     due_on = (now + timedelta(days=60)).date().isoformat()
@@ -348,6 +358,20 @@ def measure_writes(
                 f"{cards}/rate-card/unpublish",
                 rate_card_headers,
             )
+
+        reported = db.scalars(select(Campaign.id).limit(deals)).all()
+        for campaign_id in reported:
+            write(
+                "POST /reports",
+                "/api/v1/reports",
+                rate_card_headers,
+                {
+                    "subject_kind": "campaign",
+                    "subject_id": str(campaign_id),
+                    "category": "spam",
+                    "note": "Measured, then rolled back.",
+                },
+            )
     finally:
         app.dependency_overrides.pop(get_db, None)
         db.close()
@@ -527,6 +551,32 @@ def main() -> int:
             brand_headers,
             args.runs,
             READ_BUDGET_MS,
+        ),
+        # Creator search: the query a brand runs most. Each filter joins or
+        # scans something different, so each shape is timed on its own.
+        *(
+            measure(
+                client,
+                name,
+                "GET",
+                f"/api/v1/creators{query}",
+                brand_headers,
+                args.runs,
+                READ_BUDGET_MS,
+            )
+            for name, query in (
+                ("GET /creators (search, no filter)", ""),
+                ("GET /creators?niche&city", "?niche=food&city=Madurai"),
+                (
+                    "GET /creators?platform&followers",
+                    "?platform=instagram&min_followers=10000&max_followers=100000",
+                ),
+                (
+                    "GET /creators?max_price&format",
+                    "?max_price_paise=1500000&format=reel",
+                ),
+                ("GET /creators?q (words)", "?q=food"),
+            )
         ),
     ]
     results += measure_writes(args.deals, brand_headers, creator_headers, now)

@@ -28,7 +28,7 @@ def test_valid_session_is_saved_unused_and_active(db):
     db.refresh(auth_session)
 
     assert auth_session.id is not None
-    assert auth_session.expires_at == FIXED_NOW + refresh_token_ttl()
+    assert auth_session.expires_at == FIXED_NOW + refresh_token_ttl("creator")
     assert auth_session.used_at is None
     assert auth_session.revoked_at is None
     assert auth_session.created_at is not None

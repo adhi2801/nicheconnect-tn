@@ -77,7 +77,8 @@ def test_code_must_be_six_plain_digits(code):
     assert error_messages(exc_info) == {"code": "Enter the 6-digit code we sent you"}
 
 
-@pytest.mark.parametrize("role", ["admin", "Brand", ""])
+# "admin" became a real role in D-061; "superuser" never exists.
+@pytest.mark.parametrize("role", ["superuser", "Brand", ""])
 def test_unknown_role_is_rejected(role):
     with pytest.raises(ValidationError) as exc_info:
         OtpVerifyIn(phone="9876543210", code="123456", role=role)

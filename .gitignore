@@ -14,3 +14,12 @@ venv/
 coverage.json
 # Schemathesis keeps its test database and replay state here (D-047).
 .schemathesis/
+
+# OpenTofu (D-063). Its working folder is rebuilt by `tofu init`; state holds
+# every generated password and lives only in the encrypted state bucket; a
+# variables file may hold real values. None of them belongs in git.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+crash.log

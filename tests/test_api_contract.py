@@ -35,6 +35,11 @@ PUBLIC = {
     ("GET", "/api/v1/creators/by-handle/{handle}"): "the public Creator Passport (D-036)",
 }
 
+# The admin API answers anyone who is not an admin, a caller without a token
+# included, exactly as a path that does not exist: 404, never 401, so it
+# cannot be found by probing (D-061). Held to that instead of to 401.
+ADMIN_PREFIX = "/api/v1/admin/"
+
 PROBLEM_TYPE = "application/problem+json"
 WRITE_METHODS = {"post", "patch", "put", "delete"}
 
@@ -73,7 +78,8 @@ def test_every_other_operation_refuses_a_request_without_a_token():
             url = re.sub(r"\{[^}]+\}", str(uuid.uuid4()), path)
             body = {} if method.lower() in WRITE_METHODS else None
             response = client.request(method, url, json=body)
-            if response.status_code != 401:
+            expected = 404 if path.startswith(ADMIN_PREFIX) else 401
+            if response.status_code != expected:
                 reachable.append(f"{label(method, path)} -> {response.status_code}")
     finally:
         limiter.enabled = True
@@ -123,7 +129,9 @@ def test_every_operation_behind_a_login_documents_401():
     missing = [
         label(method, path)
         for method, path, op in operations()
-        if (method, path) not in PUBLIC and "401" not in op["responses"]
+        if (method, path) not in PUBLIC
+        # Admin routes document the 404 they give instead (D-061).
+        and ("404" if path.startswith(ADMIN_PREFIX) else "401") not in op["responses"]
     ]
 
     assert missing == [], missing

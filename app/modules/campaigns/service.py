@@ -27,6 +27,7 @@ from app.core.export import (
 from app.core.pagination import Slice, build_slice, older_than_cursor
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
+from app.modules.auth.suspension import brand_is_active, brand_is_suspended
 from app.modules.campaigns.exceptions import (
     AlreadyApplied,
     ApplicationsClosed,
@@ -201,7 +202,11 @@ def discover_campaigns(
     min_budget_paise: int | None = None,
 ) -> Slice[Campaign]:
     """Open campaigns for creators to browse, with optional filters."""
-    query = select(Campaign).where(Campaign.status == "open")
+    query = select(Campaign).where(
+        Campaign.status == "open",
+        # A suspended brand's campaigns leave discovery (D-061).
+        brand_is_active(Campaign.brand_id),
+    )
     if city is not None:
         query = query.where(Campaign.cities.any_() == city)
     if niche is not None:
@@ -279,7 +284,8 @@ def apply_to_campaign(
     if campaign is None:
         db.rollback()
         raise CampaignNotFound()
-    if campaign.status != "open":
+    if campaign.status != "open" or brand_is_suspended(db, campaign.brand_id):
+        # A suspended brand's campaign cannot be applied to, even by its id.
         db.rollback()
         raise CampaignNotOpen()
     if (

@@ -15,8 +15,15 @@ from app.db.base import Base
 # Only a SHA-256 of the token is stored, never the token itself.
 
 
-def refresh_token_ttl() -> timedelta:
-    """How long a refresh token lasts. One source: settings (D-008)."""
+# An admin can suspend people and read phone numbers, so a stolen admin
+# session must not last a month (D-061).
+ADMIN_REFRESH_TOKEN_DAYS = 1
+
+
+def refresh_token_ttl(role: str) -> timedelta:
+    """How long a refresh token lasts. One source: settings (D-008), or a day for admins."""
+    if role == "admin":
+        return timedelta(days=ADMIN_REFRESH_TOKEN_DAYS)
     return timedelta(days=settings.refresh_token_expire_days)
 
 

@@ -18,8 +18,14 @@ from pydantic_core import PydanticCustomError
 from app.core.attention import BRAND_KINDS, CREATOR_KINDS, AttentionList
 from app.core.literals import ensure_same_values
 from app.core.taxonomy import CURRENCY, LANGUAGES, MAX_NICHES, Language, Niche
-from app.modules.auth.models.account import PHONE_PATTERN
+from app.modules.auth.models.account import (
+    ACCOUNT_ROLES,
+    PHONE_PATTERN,
+    REPORT_CATEGORIES,
+)
+from app.modules.auth.models.admin_action import ADMIN_ACTIONS
 from app.modules.auth.models.creator import BIO_MAX_LENGTH, HANDLE_PATTERN
+from app.modules.auth.models.report import REPORT_SUBJECTS
 
 # The media kit nests the delivery record as its own module defines it, so
 # the two can never describe the same numbers differently.
@@ -102,7 +108,8 @@ OtpCode = Annotated[
         examples=["042917"],
     ),
 ]
-Role = Literal["brand", "creator"]
+# "admin" logs in like everyone else but is never created by login (D-061).
+Role = Literal["brand", "creator", "admin"]
 
 
 class OtpRequestIn(BaseModel):
@@ -120,7 +127,13 @@ class OtpVerifyIn(BaseModel):
 
     phone: IndianMobile
     code: OtpCode
-    role: Role = Field(description="Which app is logging in", examples=["creator"])
+    role: Role = Field(
+        description=(
+            "Which app is logging in. `admin` logs in only to an admin account "
+            "that already exists; it never creates one"
+        ),
+        examples=["creator"],
+    )
 
 
 class AccountSummary(BaseModel):
@@ -701,3 +714,140 @@ class RateGuidanceRead(BaseModel):
         description="Date of the oldest follower count behind the figures"
     )
     as_of: date = Field(description="The day these figures were worked out")
+
+
+# --- brands searching for creators -------------------------------------------
+
+
+class SearchChannelRead(BaseModel):
+    """A channel's size, as the creator stated it and when."""
+
+    platform: ChannelPlatform
+    followers: int
+    figures_as_of: date
+    self_reported: Literal[True] = Field(
+        default=True,
+        description="Always true. The creator's number, never verified by us",
+    )
+
+
+class CreatorSearchResultRead(BaseModel):
+    """One creator in a brand's search: enough to decide whether to open the media kit."""
+
+    creator_id: uuid.UUID
+    handle: str
+    display_name: str
+    city: str
+    niches: list[str]
+    bio: str | None
+    member_since: str = Field(examples=["2026-09"])
+    channels: list[SearchChannelRead]
+    from_price_paise: int | None = Field(
+        description=(
+            "The cheapest package that answers the search (of the format and "
+            "platform asked for, if any). Null when the creator lists none"
+        )
+    )
+    currency: str
+
+
+# --- reports and the admin side (D-061) ------------------------------------------
+
+ReportSubject = Literal["creator", "brand", "campaign"]
+ReportCategory = Literal["fake_profile", "spam", "abuse", "non_payment", "other"]
+AdminNote = Annotated[str, Field(min_length=3, max_length=1000)]
+
+
+class ReportCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    subject_kind: ReportSubject
+    subject_id: uuid.UUID
+    category: ReportCategory
+    note: Annotated[str | None, Field(default=None, max_length=1000)]
+
+
+class ReportRead(BaseModel):
+    """A report, as the person who made it sees it. Who handled it is not shown."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    subject_kind: ReportSubject
+    subject_id: uuid.UUID
+    category: ReportCategory
+    note: str | None
+    status: Literal["open", "actioned", "dismissed"]
+    created_at: datetime
+
+
+class AdminReportRead(ReportRead):
+    reporter_account_id: uuid.UUID
+    resolved_at: datetime | None
+    resolution_note: str | None
+
+
+class AdminProfileRead(BaseModel):
+    kind: Literal["brand", "creator"]
+    id: uuid.UUID
+    name: str = Field(description="The brand's name, or the creator's display name")
+    handle: str | None = Field(description="A creator's handle")
+
+
+class AdminAccountRead(BaseModel):
+    """An account as an admin sees it. Viewing it is written to the admin log."""
+
+    id: uuid.UUID
+    role: Role
+    phone: str
+    created_at: datetime
+    suspended_at: datetime | None
+    suspension_reason: ReportCategory | None
+    profile: AdminProfileRead | None
+    deals: int = Field(description="Deal memos this account is a party to")
+    reports_about_open: int
+    reports_about_total: int
+    reports_made: int
+
+
+class SuspendIn(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    reason: ReportCategory = Field(description="The category the person is told")
+    note: AdminNote = Field(
+        description="Why, for the admin log. The person never sees it"
+    )
+
+
+class RestoreIn(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    note: AdminNote
+
+
+class ResolveReportIn(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    outcome: Literal["actioned", "dismissed"]
+    note: AdminNote
+
+
+class AdminActionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    admin_account_id: uuid.UUID
+    action: Literal["view_account", "suspend", "restore", "resolve_report"]
+    subject_account_id: uuid.UUID | None
+    report_id: uuid.UUID | None
+    note: str | None
+    created_at: datetime
+
+
+# The API's lists must be exactly the database's, or startup fails.
+ensure_same_values("Role", Role, ACCOUNT_ROLES)
+ensure_same_values("ReportCategory", ReportCategory, REPORT_CATEGORIES)
+ensure_same_values("ReportSubject", ReportSubject, REPORT_SUBJECTS)
+ensure_same_values(
+    "AdminActionKind", AdminActionRead.model_fields["action"].annotation, ADMIN_ACTIONS
+)

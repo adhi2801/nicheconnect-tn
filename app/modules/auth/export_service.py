@@ -32,6 +32,7 @@ from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.models.rate_card import CreatorChannel, CreatorPackage
+from app.modules.auth.models.report import Report
 from app.modules.campaigns import service as campaigns
 from app.modules.deal_memo import service as deal_memos
 from app.modules.disputes import service as disputes
@@ -55,6 +56,7 @@ EXPORTED_TABLES = frozenset(
         # that happened to them (D-055).
         "creator_channel",
         "creator_package",
+        "report",
     }
 )
 
@@ -83,6 +85,14 @@ NOT_EXPORTED: dict[str, str] = {
         "text: only that single fingerprint and a count. The proof that ties "
         "your own deal to it is available for each of your deals on its own."
     ),
+    "admin_action": (
+        "Our staff's log of what they did and when they looked at an "
+        "account's details, kept so we can answer who looked at yours and "
+        "why. It records staff actions rather than anything you gave us, and "
+        "whether it must be shown to you is a question we have put to our "
+        "legal checklist rather than guessed. You can ask us, and we will tell "
+        "you what it says about your account."
+    ),
     "deal_record_timestamp": (
         "Independent timestamp authorities' signed statements that a day's "
         "fingerprint existed at a given time. They say nothing about any one "
@@ -90,7 +100,29 @@ NOT_EXPORTED: dict[str, str] = {
     ),
 }
 
-ACCOUNT_EXPORT_FIELDS = allow("id", "phone", "role", "created_at", "updated_at")
+ACCOUNT_EXPORT_FIELDS = allow(
+    "id",
+    "phone",
+    "role",
+    # Whether we suspended you, and the category of reason (D-061). The
+    # admin's own note is not here: it is in the admin log, section below.
+    "suspended_at",
+    "suspension_reason",
+    "created_at",
+    "updated_at",
+)
+# Reports this person made (D-061): their own statements. Who they reported
+# is an id and a kind, never the other person's details.
+REPORT_EXPORT_FIELDS = allow(
+    "id",
+    "subject_kind",
+    "subject_id",
+    "category",
+    "note",
+    "status",
+    "resolved_at",
+    "created_at",
+)
 
 BRAND_EXPORT_FIELDS = allow("id", "name", "email", "created_at", "updated_at")
 
@@ -240,6 +272,27 @@ def _account_sections(db: Session, account: Account) -> list[ExportedSection]:
                 fields=PACKAGE_EXPORT_FIELDS,
             )
         )
+
+    reports = list(
+        db.scalars(
+            select(Report)
+            .where(Report.reporter_account_id == account.id)
+            .order_by(Report.created_at, Report.id)
+            .limit(MAX_ROWS_PER_SECTION + 1)
+        ).all()
+    )
+    sections.append(
+        build_section(
+            "reports_made",
+            table="report",
+            purpose=(
+                "Profiles and campaigns you reported to us, and what became of "
+                "each report. Who handled it is not included."
+            ),
+            objects=reports,
+            fields=REPORT_EXPORT_FIELDS,
+        )
+    )
 
     sessions = list(
         db.scalars(

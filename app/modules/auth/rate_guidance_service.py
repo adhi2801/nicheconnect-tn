@@ -33,6 +33,7 @@ from app.core.taxonomy import CURRENCY, Niche
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.models.rate_card import CreatorChannel, CreatorPackage
 from app.modules.auth.schemas import AudienceBand
+from app.modules.auth.suspension import account_is_active
 
 MIN_CREATORS = 5
 
@@ -117,6 +118,9 @@ def for_group(
             CreatorPackage.format == package_format,
             CreatorPackage.currency == CURRENCY,
             Creator.rate_card_public_at.is_not(None),
+            # A suspended creator's prices stop counting (D-061): a fake
+            # profile's numbers must not shape what others are told is fair.
+            account_is_active(Creator.account_id),
             CreatorChannel.followers >= low,
             CreatorChannel.followers < high if high is not None else true(),
         )

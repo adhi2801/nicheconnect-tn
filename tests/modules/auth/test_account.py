@@ -49,7 +49,8 @@ def test_badly_formatted_phone_is_rejected(db, phone):
     )
 
 
-@pytest.mark.parametrize("role", ["admin", "Brand", ""])
+# "admin" became a real role in D-061; "superuser" never exists.
+@pytest.mark.parametrize("role", ["superuser", "Brand", ""])
 def test_unknown_role_is_rejected(db, role):
     assert_rejected_by(
         db, Account(phone=fake_phone(), role=role), "ck_account_role_allowed"
