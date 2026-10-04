@@ -42,7 +42,7 @@ If the tests can't run (Docker off, for example), say so and mark the test state
 
 ## Phase 2: Work out where the project stands
 
-Map what exists against the phase plan (Phase 1 foundation, Phase 2 core schema and auth, Phase 3 marketplace endpoints and privacy, Phase 4 API hardening, Phase 5 matching, Phase 6 deal memo, payment status and notifications, Phase 7 deployment).
+Map what exists against the roadmap the repository actually holds: the phases A to E in `docs/PRODUCT_BACKLOG.md` section 3, and what is left before the frontend in `docs/BACKEND_COMPLETE.md`. Use their names and numbers, never a phase plan that is not in the repository.
 
 For each phase, decide **Done / In progress / Not started**, and say what evidence proves it. Never mark something done because it was assigned; it's done when the code, the tests and a merged pull request exist.
 

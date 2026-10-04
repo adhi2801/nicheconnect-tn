@@ -225,7 +225,7 @@ We're building a product people trust with their business and income. Quality is
 **The bar, in one screen:**
 
 - **Correct first.** Every input validated, every failure path handled, no unhandled exceptions reach a user.
-- **Secure by default.** Every read and write checks that the caller owns the object. No secrets in code. No PII in logs or embeddings.
+- **Secure by default.** Every read and write checks that the caller may see or change that object: its owner, a party to it (both sides of a deal), or anyone, where it is public by design (an open campaign, a consented Passport). Changes are for its owner or a party, never just anyone signed in. No secrets in code. No PII in logs or embeddings.
 - **Fast by design.** Pilot API budget: p95 ≤ 300 ms for reads and ≤ 500 ms for writes, measured locally with seeded data. No N+1 queries; every foreign key indexed.
 - **Tested for real.** Success, validation failure, permission failure and not-found cases for every endpoint. Database tests run against real Postgres.
 - **Readable.** Type hints everywhere. Clear names. Small functions. A new developer understands a file in 5 minutes.
@@ -241,7 +241,7 @@ If a standard conflicts with a founder's explicit instruction, point out the con
 
 - [ ] Follows sections 2, 3 and 6, and the relevant `docs/standards/` file
 - [ ] Tests for success and failure cases, run in this session and passing
-- [ ] Public endpoints rate limited, with ownership checks on every object
+- [ ] Public endpoints rate limited, with an access check on every object (owner, party, or public by design)
 - [ ] Error format, pagination and naming match `docs/standards/backend.md`
 - [ ] Schema changes only via a reviewed migration with a working downgrade
 - [ ] No new dependency without a recorded approval
