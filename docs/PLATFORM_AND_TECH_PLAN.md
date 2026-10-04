@@ -214,7 +214,7 @@ Locked by both founders on 22 September 2026 (D-047; Erode Harish's approval rel
 | API fuzz testing | Schemathesis 4.x | **Locked** (Erode Harish told first: `requirements.txt` is shared) |
 | CI supply chain | Current action versions, pinned to commit SHAs, and zizmor | **Locked** (Adhi's track: `.github/workflows/`) |
 | Errors and traces | Sentry for errors (already in `docs/standards/backend.md`); OpenTelemetry for traces | **Locked; not built**: nothing is wired yet (`docs/BACKEND_COMPLETE.md` items 2 and 3) |
-| Python and packaging | Python 3.14; uv | **Locked**; **built** 1 October (D-072): Python 3.14.7, `uv.lock` with hashes, in CI and the images |
+| Python and packaging | Python 3.14; uv | **Locked**; **built** 1 October (D-072): Python 3.14.8 (D-074), `uv.lock` with hashes, in CI and the images |
 | Database | PostgreSQL 18 (19 after its first minor update); UUIDv7 for new tables; exact image tags; pgvector 0.8.2 or newer | **Locked**; **built** 23 September (D-049), UUIDv7 awaiting the first new table |
 | Search | Hybrid Tamil search inside Postgres | **Withdrawn** by D-054 (English only). English search inside Postgres is a founder decision when search needs more than today's filters |
 | Migration safety | Squawk | **Locked**; **built** 23 September (D-050), on added migrations only |

@@ -10,34 +10,30 @@
 # Accepted risks. Each entry is ONE vulnerability in ONE exact package
 # version, never a pattern, and says why it is accepted and when it goes.
 #
-# All four below are in CPython 3.14.7 itself, the newest 3.14 release on
-# 1 October 2026 (D-072). Grype lists them as fixed, but only in 3.15
-# pre-releases; no 3.14 release carries the fix, so there is nothing to
-# upgrade to on 3.14. Because each entry names version 3.14.7, any change of
-# Python brings all four back into the scan to be judged again.
+# All three below are in CPython 3.14.8 itself, the newest 3.14 release on
+# 4 October 2026 (D-072). Grype lists them as fixed, but only in 3.15; no
+# 3.14 release carries the fix, so there is nothing to upgrade to on 3.14.
+# Because each entry names version 3.14.8, any change of Python brings all
+# three back into the scan to be judged again.
 #
-# The upgrade from 3.12.14 fixed the other six this file used to accept
-# (tarfile filters, two base64 decoding flaws, http.cookies, imaplib,
-# pkgutil).
+# 3.14.8 fixed five that this file accepted or CI caught on 3.14.7
+# (urllib.request's password manager, stringprep, zipfile, and two tarfile
+# path flaws); the upgrade from 3.12.14 had fixed six before that.
 #
-# Checked against our code on 1 October 2026: nothing in app/, scripts/ or
-# alembic/ imports stringprep, poplib, zipfile or the lzma, bz2 and zstd
-# decompressors, encodes with the idna codec, or uses urllib.request's
-# password managers. The image's health check calls urllib.request.urlopen
-# on localhost with no stored credentials, which the HTTPPasswordMgr flaw
-# needs. That is a reading of the code, not a test.
+# Checked against our code on 4 October 2026: nothing in app/, scripts/,
+# alembic/ or the Dockerfile imports tarfile, tempfile or poplib, or calls
+# shutil.rmtree. That is a reading of the code, not a test. pip, which uses
+# tarfile, is removed from the image (Dockerfile), and uv installs from
+# wheels pinned by hash at build time.
 #
 # Remove each entry when a 3.14 release carries its fix.
 ignore:
-  - vulnerability: CVE-2026-15806
-    package: { name: python, version: 3.14.7, type: binary }
-    reason: "urllib.request HTTPPasswordMgr scheme matching; no password manager is used anywhere."
+  - vulnerability: CVE-2026-87910
+    package: { name: python, version: 3.14.8, type: binary }
+    reason: "tarfile link fallback ignores one filter result; we never extract tar archives."
   - vulnerability: CVE-2025-15367
-    package: { name: python, version: 3.14.7, type: binary }
+    package: { name: python, version: 3.14.8, type: binary }
     reason: "poplib command injection; not used."
-  - vulnerability: CVE-2026-17084
-    package: { name: python, version: 3.14.7, type: binary }
-    reason: "stringprep Unicode table version (IDNA 2003); not used, and our outbound hosts are ASCII."
-  - vulnerability: CVE-2026-15310
-    package: { name: python, version: 3.14.7, type: binary }
-    reason: "zipfile decompression pre-allocation; we never open zip files."
+  - vulnerability: CVE-2026-12345
+    package: { name: python, version: 3.14.8, type: binary }
+    reason: "tempfile.TemporaryDirectory cleanup race; we create no temporary directories."

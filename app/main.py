@@ -7,6 +7,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from app.core import cors, jobs, openapi
 from app.core.body_limit import BodyLimitMiddleware
 from app.core.config import settings
+from app.core.error_tracking import init_error_tracking
 from app.core.errors import problem_doc, problem_response, register_error_handlers
 from app.core.health import HealthRead, ReadinessRead, run_readiness_checks
 from app.core.idempotent_route import set_identity_resolver
@@ -38,6 +39,10 @@ from app.modules.notifications.router import router as notifications_router
 from app.modules.payment_status.brand_router import router as reliability_router
 from app.modules.payment_status.bulk_router import router as bulk_payments_router
 from app.modules.payment_status.router import router as payment_router
+
+# Before the app exists, so the error tracker sees it built (D-074). Off
+# unless SENTRY_DSN is set.
+init_error_tracking(settings)
 
 # The API describes itself at /docs, /redoc and /openapi.json everywhere but
 # production (D-044). The frontend builds from the committed copy in

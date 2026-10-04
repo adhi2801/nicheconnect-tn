@@ -64,6 +64,10 @@ dependencies = [
     # Reads the numbers on cleaned proof screenshots, in a background job only
     # (D-070). Built on httpx2 2.x, the same client the app pins above.
     "anthropic==1.11.0",
+    # Error tracking (D-074): every unexpected error and every error log line
+    # reaches a founder with its stack trace, scrubbed of personal data first
+    # (app/core/error_tracking.py). Off unless SENTRY_DSN is set.
+    "sentry-sdk==2.71.0",
 ]
 
 [dependency-groups]

@@ -17,10 +17,10 @@
 # The base is pinned by digest, not by tag, so the same bytes build every
 # time; a newer base is a reviewed change (D-047's upgrade rule).
 
-ARG PYTHON_IMAGE=python:3.14-slim-trixie@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d
+ARG PYTHON_IMAGE=python:3.14.8-slim-trixie@sha256:c3e521df8b2b498a7a682e7e18676771cb80c6b75b8699af886b2d554ce40151
 # uv, which installs exactly what uv.lock pins (D-072). Astral's own image,
 # pinned by digest like the base: a moved tag can never change the build.
-ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.12.21@sha256:a7aed3216253ee804de3e2d8afa5073baa1a177335345d43845cd4165e43b711
+ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.12.23@sha256:61d393e44e249f2e4b526b6c7ddcecce245946826e608e11c93ad4f5bba55b21
 
 FROM ${UV_IMAGE} AS uv
 
