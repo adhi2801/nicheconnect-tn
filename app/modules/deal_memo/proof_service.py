@@ -47,8 +47,19 @@ def submit_proof(
     with half its files.
 
     Raises MemoStatusConflict unless the memo is accepted, and
-    ProofNotSubmitted-free: a second open submission is refused by the database.
+    ProofAlreadyDecided while another submission waits for review.
+
+    The memo's row is locked and read again first: two submissions at once
+    would otherwise both find nothing waiting, and the database's rule of one
+    open submission would refuse the second as a raw error, a 500. Locked,
+    the second waits, then sees the first, or a memo cancelled meanwhile.
     """
+    db.scalars(
+        select(DealMemo)
+        .where(DealMemo.id == memo.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).one()
     if memo.status != "accepted":
         db.rollback()
         raise MemoStatusConflict("Proof can only be submitted for an accepted memo.")

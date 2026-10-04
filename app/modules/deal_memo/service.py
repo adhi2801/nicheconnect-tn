@@ -234,7 +234,18 @@ def create_memo(
     """Draft a memo for an accepted application.
 
     Raises ApplicationNotAccepted, MemoAlreadyExists, and the fee errors.
+
+    The application's row is locked and read again first: two requests at
+    once would otherwise both find no memo, and the database's unique rule
+    would refuse the second as a raw error, a 500, instead of the conflict
+    the API documents. Locked, the second waits and finds the first's memo.
     """
+    db.scalars(
+        select(Application)
+        .where(Application.id == application.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).one()
     if application.status != "accepted":
         db.rollback()
         raise ApplicationNotAccepted()
