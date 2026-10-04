@@ -67,6 +67,18 @@ def list_channels(db: Session, creator: Creator) -> list[CreatorChannel]:
     )
 
 
+def _one_writer_at_a_time(db: Session, creator: Creator) -> None:
+    """Lock the creator's row: their rate-card writes then happen in turn.
+
+    Each write below checks before it inserts ("is there a channel already?",
+    "how many packages?"). Two requests at once would both pass the check:
+    two first saves of a channel collided on the unique rule as a raw 500,
+    and a creator at nine packages adding two ended with eleven. Locked, the
+    second request waits for the first to commit, then checks what is there.
+    """
+    db.execute(select(Creator.id).where(Creator.id == creator.id).with_for_update())
+
+
 def save_channel(
     db: Session,
     creator: Creator,
@@ -86,6 +98,7 @@ def save_channel(
     numbers were gathered today.
     """
     check_profile_url(platform, profile_url)
+    _one_writer_at_a_time(db, creator)
 
     channel = db.scalars(
         select(CreatorChannel).where(
@@ -153,6 +166,7 @@ def _owned_package(
 
 def create_package(db: Session, creator: Creator, **fields: object) -> CreatorPackage:
     """Add a package, up to the limit."""
+    _one_writer_at_a_time(db, creator)
     count = (
         db.scalar(
             select(func.count(CreatorPackage.id)).where(
