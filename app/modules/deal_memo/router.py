@@ -29,7 +29,10 @@ from app.modules.deal_memo.schemas import (
     MemoRead,
     MemoStatus,
     MemoUpdate,
+    MemoWithStageRead,
+    with_stage,
 )
+from app.modules.deal_memo.stage import stages_for
 
 WRITE_LIMIT = "30 per minute"
 READ_LIMIT = "60 per minute"
@@ -41,6 +44,10 @@ router = APIRouter(
 Limit = Annotated[int, Query(ge=1, le=MAX_LIMIT, description="Rows per page")]
 Cursor = Annotated[str | None, Query(description="From a previous page's next_cursor")]
 StatusFilter = Annotated[MemoStatus | None, Query(alias="status")]
+CampaignFilter = Annotated[
+    uuid.UUID | None,
+    Query(description="Only the deals on this campaign, as for a campaign's board"),
+]
 
 _COMMON_ERRORS: ResponseDocs = {
     401: problem_doc("No access token, or it is invalid or expired"),
@@ -49,9 +56,11 @@ _COMMON_ERRORS: ResponseDocs = {
 }
 
 
-def _page(result: Slice[DealMemo]) -> Page[MemoRead]:
-    return Page[MemoRead](
-        items=[MemoRead.model_validate(row) for row in result.rows],
+def _page(db: Session, result: Slice[DealMemo], now: datetime) -> Page[MemoWithStageRead]:
+    # Every row's stage in a fixed number of queries, never one per row.
+    stages = stages_for(db, result.rows, now)
+    return Page[MemoWithStageRead](
+        items=[with_stage(row, stages[row.id]) for row in result.rows],
         next_cursor=result.next_cursor,
     )
 
@@ -92,11 +101,12 @@ def create_memo(
 
 @router.get(
     "/mine",
-    response_model=Page[MemoRead],
+    response_model=Page[MemoWithStageRead],
     summary="List my deal memos",
     description=(
         "For a brand, memos on its own campaigns, drafts included. For a creator, "
-        "memos sent to them; drafts are not theirs to see."
+        "memos sent to them; drafts are not theirs to see. Each carries the "
+        "deal's `stage` and the side it is `waiting_on`, worked out as of now."
     ),
     responses={
         401: problem_doc("No access token, or it is invalid or expired"),
@@ -110,30 +120,43 @@ def list_my_memos(
     request: Request,
     account: CurrentAccount,
     memo_status: StatusFilter = None,
+    campaign_id: CampaignFilter = None,
     limit: Limit = DEFAULT_LIMIT,
     cursor: Cursor = None,
     db: Session = Depends(get_db),
-) -> Page[MemoRead]:
+    now: datetime = Depends(get_now),
+) -> Page[MemoWithStageRead]:
     if account.role == "brand":
         brand = get_brand_for_account(db, account.id)
         result = service.list_for_brand(
-            db, brand, limit=limit, cursor=cursor, status=memo_status
+            db,
+            brand,
+            limit=limit,
+            cursor=cursor,
+            status=memo_status,
+            campaign_id=campaign_id,
         )
     else:
         creator = get_creator_for_account(db, account.id)
         result = service.list_for_creator(
-            db, creator, limit=limit, cursor=cursor, status=memo_status
+            db,
+            creator,
+            limit=limit,
+            cursor=cursor,
+            status=memo_status,
+            campaign_id=campaign_id,
         )
-    return _page(result)
+    return _page(db, result, now)
 
 
 @router.get(
     "/{memo_id}",
-    response_model=MemoRead,
+    response_model=MemoWithStageRead,
     summary="Read one deal memo",
     description=(
         "The owning brand sees it in any status; the creator sees it once it has "
-        "been sent. Anyone else gets 404."
+        "been sent. Anyone else gets 404. Carries the deal's `stage` and the "
+        "side it is `waiting_on`, worked out as of now."
     ),
     responses={**_COMMON_ERRORS, 404: problem_doc("No such memo, or not yours")},
 )
@@ -143,10 +166,10 @@ def read_memo(
     memo_id: uuid.UUID,
     account: CurrentAccount,
     db: Session = Depends(get_db),
-) -> MemoRead:
-    return MemoRead.model_validate(
-        visible_memo_for_account(db, memo_id, account.id, account.role)
-    )
+    now: datetime = Depends(get_now),
+) -> MemoWithStageRead:
+    memo = visible_memo_for_account(db, memo_id, account.id, account.role)
+    return with_stage(memo, stages_for(db, [memo], now)[memo.id])
 
 
 @router.patch(

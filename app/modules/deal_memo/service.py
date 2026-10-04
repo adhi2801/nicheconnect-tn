@@ -440,8 +440,9 @@ def list_for_brand(
     limit: int,
     cursor: str | None = None,
     status: str | None = None,
+    campaign_id: uuid.UUID | None = None,
 ) -> Slice[DealMemo]:
-    """Memos on the brand's own campaigns."""
+    """Memos on the brand's own campaigns, or on one of them."""
     query = (
         select(DealMemo)
         .join(Application, Application.id == DealMemo.application_id)
@@ -450,6 +451,8 @@ def list_for_brand(
     )
     if status is not None:
         query = query.where(DealMemo.status == status)
+    if campaign_id is not None:
+        query = query.where(Application.campaign_id == campaign_id)
     return _paginate(db, query, limit, cursor)
 
 
@@ -460,6 +463,7 @@ def list_for_creator(
     limit: int,
     cursor: str | None = None,
     status: str | None = None,
+    campaign_id: uuid.UUID | None = None,
 ) -> Slice[DealMemo]:
     """Memos sent to this creator. Drafts are not theirs to see yet."""
     query = (
@@ -469,6 +473,8 @@ def list_for_creator(
     )
     if status is not None:
         query = query.where(DealMemo.status == status)
+    if campaign_id is not None:
+        query = query.where(Application.campaign_id == campaign_id)
     return _paginate(db, query, limit, cursor)
 
 

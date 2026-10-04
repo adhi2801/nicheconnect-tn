@@ -390,6 +390,40 @@
         "title": "AdminReportRead",
         "type": "object"
       },
+      "ApplicationCountsRead": {
+        "description": "How many applications are in each status. Every status, zeros included.",
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "integer"
+          },
+          "rejected": {
+            "title": "Rejected",
+            "type": "integer"
+          },
+          "shortlisted": {
+            "title": "Shortlisted",
+            "type": "integer"
+          },
+          "submitted": {
+            "title": "Submitted",
+            "type": "integer"
+          },
+          "withdrawn": {
+            "title": "Withdrawn",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "submitted",
+          "shortlisted",
+          "accepted",
+          "rejected",
+          "withdrawn"
+        ],
+        "title": "ApplicationCountsRead",
+        "type": "object"
+      },
       "ApplicationCreate": {
         "additionalProperties": false,
         "description": "What a creator sends to apply.",
@@ -1574,6 +1608,60 @@
         "title": "CampaignRead",
         "type": "object"
       },
+      "CampaignSummaryRead": {
+        "description": "One campaign at a glance, for its board and the Campaigns list.\n\n`deals_agreed` counts deals agreed and not cancelled; \"2 of 6 deals\nfinished\" is `deals_finished` of `deals_agreed`. `complete` is worked\nout, never stored: closed, at least one deal agreed, every agreed deal\nfinished and no memo left unanswered.",
+        "properties": {
+          "applications": {
+            "$ref": "#/components/schemas/ApplicationCountsRead"
+          },
+          "campaign_id": {
+            "format": "uuid",
+            "title": "Campaign Id",
+            "type": "string"
+          },
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "deals_agreed": {
+            "title": "Deals Agreed",
+            "type": "integer"
+          },
+          "deals_by_stage": {
+            "$ref": "#/components/schemas/DealStageCountsRead"
+          },
+          "deals_finished": {
+            "title": "Deals Finished",
+            "type": "integer"
+          },
+          "deals_waiting_on_brand": {
+            "title": "Deals Waiting On Brand",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "open",
+              "closed",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "campaign_id",
+          "status",
+          "applications",
+          "deals_by_stage",
+          "deals_agreed",
+          "deals_finished",
+          "deals_waiting_on_brand",
+          "complete"
+        ],
+        "title": "CampaignSummaryRead",
+        "type": "object"
+      },
       "CampaignUpdate": {
         "additionalProperties": false,
         "description": "Fields a brand may change. Anything left out stays as it is.",
@@ -2628,6 +2716,55 @@
           "entries"
         ],
         "title": "DealRecordRead",
+        "type": "object"
+      },
+      "DealStageCountsRead": {
+        "description": "How many deals stand at each stage, worked out as of the request.",
+        "properties": {
+          "agreed": {
+            "title": "Agreed",
+            "type": "integer"
+          },
+          "cancelled": {
+            "title": "Cancelled",
+            "type": "integer"
+          },
+          "declined": {
+            "title": "Declined",
+            "type": "integer"
+          },
+          "draft": {
+            "title": "Draft",
+            "type": "integer"
+          },
+          "finished": {
+            "title": "Finished",
+            "type": "integer"
+          },
+          "in_progress": {
+            "title": "In Progress",
+            "type": "integer"
+          },
+          "memo_sent": {
+            "title": "Memo Sent",
+            "type": "integer"
+          },
+          "payment": {
+            "title": "Payment",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "draft",
+          "memo_sent",
+          "agreed",
+          "in_progress",
+          "payment",
+          "finished",
+          "declined",
+          "cancelled"
+        ],
+        "title": "DealStageCountsRead",
         "type": "object"
       },
       "DisputeClose": {
@@ -3746,6 +3883,243 @@
         "title": "MemoUpdate",
         "type": "object"
       },
+      "MemoWithStageRead": {
+        "description": "A memo, with where the deal stands and whose move it is (D-076).\n\nWorked out from the memo, its proof and its payment as of the request,\nnever stored. The five stages a deal passes through are `memo_sent`,\n`agreed`, `in_progress`, `payment`, `finished`; `draft`, `declined` and\n`cancelled` sit outside them. A barter deal is `finished` once its work\nis approved; a paid one only when the creator confirms the money arrived.",
+        "properties": {
+          "accepted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted At"
+          },
+          "application_id": {
+            "format": "uuid",
+            "title": "Application Id",
+            "type": "string"
+          },
+          "approval_window_days": {
+            "title": "Approval Window Days",
+            "type": "integer"
+          },
+          "cancellation_fee_paise": {
+            "title": "Cancellation Fee Paise",
+            "type": "integer"
+          },
+          "cancellation_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "withdrawn_early",
+                  "cancelled_by_brand",
+                  "cancelled_by_creator"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancellation Kind"
+          },
+          "cancelled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancelled At"
+          },
+          "content_due_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Due On"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "currency": {
+            "const": "INR",
+            "default": "INR",
+            "title": "Currency",
+            "type": "string"
+          },
+          "deliverables": {
+            "title": "Deliverables",
+            "type": "string"
+          },
+          "disclosure_required": {
+            "title": "Disclosure Required",
+            "type": "boolean"
+          },
+          "extra_terms": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Terms"
+          },
+          "fee_amount_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fee Amount Paise"
+          },
+          "has_open_dispute": {
+            "title": "Has Open Dispute",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "payment_due_days": {
+            "title": "Payment Due Days",
+            "type": "integer"
+          },
+          "revision_count": {
+            "title": "Revision Count",
+            "type": "integer"
+          },
+          "sent_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sent At"
+          },
+          "stage": {
+            "enum": [
+              "draft",
+              "memo_sent",
+              "agreed",
+              "in_progress",
+              "payment",
+              "finished",
+              "declined",
+              "cancelled"
+            ],
+            "title": "Stage",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "sent",
+              "change_requested",
+              "accepted",
+              "declined",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "usage_rights_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usage Rights Days"
+          },
+          "waiting_on": {
+            "anyOf": [
+              {
+                "enum": [
+                  "brand",
+                  "creator"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The side whose move it is; null once the deal has ended",
+            "title": "Waiting On"
+          },
+          "work_started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Work Started At"
+          }
+        },
+        "required": [
+          "id",
+          "application_id",
+          "deliverables",
+          "fee_amount_paise",
+          "cancellation_fee_paise",
+          "approval_window_days",
+          "payment_due_days",
+          "usage_rights_days",
+          "content_due_on",
+          "disclosure_required",
+          "extra_terms",
+          "status",
+          "revision_count",
+          "sent_at",
+          "accepted_at",
+          "work_started_at",
+          "cancelled_at",
+          "cancellation_kind",
+          "created_at",
+          "updated_at",
+          "stage",
+          "waiting_on",
+          "has_open_dispute"
+        ],
+        "title": "MemoWithStageRead",
+        "type": "object"
+      },
       "MisreadMark": {
         "additionalProperties": false,
         "properties": {
@@ -4416,11 +4790,11 @@
         "title": "Page[CreatorSearchResultRead]",
         "type": "object"
       },
-      "Page_MemoRead_": {
+      "Page_MemoWithStageRead_": {
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/MemoRead"
+              "$ref": "#/components/schemas/MemoWithStageRead"
             },
             "title": "Items",
             "type": "array"
@@ -4441,7 +4815,7 @@
         "required": [
           "items"
         ],
-        "title": "Page[MemoRead]",
+        "title": "Page[MemoWithStageRead]",
         "type": "object"
       },
       "Page_NotificationRead_": {
@@ -10526,6 +10900,112 @@
         ]
       }
     },
+    "/api/v1/campaigns/{campaign_id}/summary": {
+      "get": {
+        "description": "For the owning brand: applications by status, deals by stage, how many deals are agreed and finished, how many wait on the brand, and whether the campaign is complete. Worked out as of now, never stored.",
+        "operationId": "campaign_summary_api_v1_campaigns__campaign_id__summary_get",
+        "parameters": [
+          {
+            "description": "The campaign's id",
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "description": "The campaign's id",
+              "format": "uuid",
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignSummaryRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only brand accounts can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such campaign, or it is not yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The brand profile has not been created yet"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "A campaign at a glance",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
     "/api/v1/creators": {
       "get": {
         "description": "Creators who published their Passport, filtered by any combination of words in their handle, name or bio; niche; city; a platform and an audience size on it; and a price limit, optionally for one format. Every audience filter must hold for one channel, and every price filter for one package. Follower counts are the creator's own statement, dated, never verified. Newest profiles first; pass `next_cursor` back as `cursor` for the next page. Brands only.",
@@ -12756,7 +13236,7 @@
     },
     "/api/v1/deal-memos/mine": {
       "get": {
-        "description": "For a brand, memos on its own campaigns, drafts included. For a creator, memos sent to them; drafts are not theirs to see.",
+        "description": "For a brand, memos on its own campaigns, drafts included. For a creator, memos sent to them; drafts are not theirs to see. Each carries the deal's `stage` and the side it is `waiting_on`, worked out as of now.",
         "operationId": "list_my_memos_api_v1_deal_memos_mine_get",
         "parameters": [
           {
@@ -12781,6 +13261,25 @@
                 }
               ],
               "title": "Status"
+            }
+          },
+          {
+            "description": "Only the deals on this campaign, as for a campaign's board",
+            "in": "query",
+            "name": "campaign_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only the deals on this campaign, as for a campaign's board",
+              "title": "Campaign Id"
             }
           },
           {
@@ -12821,7 +13320,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Page_MemoRead_"
+                  "$ref": "#/components/schemas/Page_MemoWithStageRead_"
                 }
               }
             },
@@ -12885,7 +13384,7 @@
     },
     "/api/v1/deal-memos/{memo_id}": {
       "get": {
-        "description": "The owning brand sees it in any status; the creator sees it once it has been sent. Anyone else gets 404.",
+        "description": "The owning brand sees it in any status; the creator sees it once it has been sent. Anyone else gets 404. Carries the deal's `stage` and the side it is `waiting_on`, worked out as of now.",
         "operationId": "read_memo_api_v1_deal_memos__memo_id__get",
         "parameters": [
           {
@@ -12904,7 +13403,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MemoRead"
+                  "$ref": "#/components/schemas/MemoWithStageRead"
                 }
               }
             },

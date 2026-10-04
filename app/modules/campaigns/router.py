@@ -22,12 +22,16 @@ from app.modules.campaigns.dependencies import CurrentBrandProfile, OwnedCampaig
 from app.modules.campaigns.exceptions import CampaignNotFound
 from app.modules.campaigns.models import Campaign
 from app.modules.campaigns.schemas import (
+    ApplicationCountsRead,
     CampaignCreate,
     CampaignRead,
     CampaignStatus,
+    CampaignSummaryRead,
     CampaignType,
     CampaignUpdate,
+    DealStageCountsRead,
 )
+from app.modules.campaigns.summary import summarise
 
 WRITE_LIMIT = "30 per minute"
 READ_LIMIT = "60 per minute"
@@ -209,6 +213,43 @@ def update_campaign(
     changes = body.model_dump(exclude_unset=True)
     return CampaignRead.model_validate(
         service.update_campaign(db, campaign, changes, now)
+    )
+
+
+@router.get(
+    "/{campaign_id}/summary",
+    response_model=CampaignSummaryRead,
+    summary="A campaign at a glance",
+    description=(
+        "For the owning brand: applications by status, deals by stage, how many "
+        "deals are agreed and finished, how many wait on the brand, and whether "
+        "the campaign is complete. Worked out as of now, never stored."
+    ),
+    responses={
+        401: problem_doc("No access token, or it is invalid or expired"),
+        403: problem_doc("Only brand accounts can do this"),
+        404: problem_doc("No such campaign, or it is not yours"),
+        409: problem_doc("The brand profile has not been created yet"),
+        429: problem_doc("Too many requests; see the Retry-After header"),
+    },
+)
+@rate_limit(READ_LIMIT)
+def campaign_summary(
+    request: Request,
+    campaign: OwnedCampaign,
+    db: Session = Depends(get_db),
+    now: datetime = Depends(get_now),
+) -> CampaignSummaryRead:
+    found = summarise(db, campaign, now)
+    return CampaignSummaryRead(
+        campaign_id=found.campaign_id,
+        status=found.status,
+        applications=ApplicationCountsRead(**found.applications),
+        deals_by_stage=DealStageCountsRead(**found.deals_by_stage),
+        deals_agreed=found.deals_agreed,
+        deals_finished=found.deals_finished,
+        deals_waiting_on_brand=found.deals_waiting_on_brand,
+        complete=found.complete,
     )
 
 
