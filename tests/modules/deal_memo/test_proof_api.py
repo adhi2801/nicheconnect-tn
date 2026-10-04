@@ -1,9 +1,10 @@
 """Proof of work: submitted, reviewed, or approved by the clock (D-024, D-025)."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import pytest
 
+from app.core.clock import IST
 from app.modules.deal_memo.models import DealMemo
 from tests.deal_flow import (
     LINK,
@@ -211,12 +212,16 @@ def test_proof_approves_itself_when_the_window_passes(client, db, clock):
     memo_id = accepted_memo(client, brand, creator)
     submit(client, creator, memo_id)
 
-    clock.advance(timedelta(days=7))
+    # Sent 17 Sep at 17:30 IST: the 7 whole days end at midnight IST that
+    # starts 25 Sep, which is 24 Sep 18:30 UTC (D-025).
+    clock.advance(timedelta(days=7, hours=6, minutes=30))
     [proof] = client.get(f"{MEMOS_URL}/{memo_id}/proof", headers=creator.headers).json()
 
     assert proof["status"] == "approved"
     assert proof["auto_approved"] is True
-    assert proof["approved_at"].startswith("2026-09-24")  # exactly 7 days later
+    assert datetime.fromisoformat(proof["approved_at"]) == datetime(
+        2026, 9, 25, 0, 0, tzinfo=IST
+    )
     assert "proof_auto_approved" in notification_types(client, creator)
 
 
@@ -231,12 +236,102 @@ def test_it_does_not_approve_itself_a_day_early(client, db, clock):
     assert proof["status"] == "submitted"
 
 
+def test_it_does_not_approve_itself_a_minute_before_midnight(client, db, clock):
+    """The last whole day is the brand's to the end (D-025)."""
+    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    memo_id = accepted_memo(client, brand, creator)
+    submit(client, creator, memo_id)
+
+    # 24 Sep, 23:59 IST: the seventh whole day is not over.
+    clock.advance(timedelta(days=7, hours=6, minutes=29))
+    [proof] = client.get(f"{MEMOS_URL}/{memo_id}/proof", headers=brand.headers).json()
+
+    assert proof["status"] == "submitted"
+
+
+@pytest.mark.parametrize(("hour", "minute"), [(0, 30), (23, 0)])
+def test_late_night_and_early_morning_proof_get_the_same_deadline(
+    client, db, clock, hour, minute
+):
+    """Counted in calendar days, so 23:00 loses nothing to 00:30 (D-025)."""
+    clock.now = datetime(2026, 9, 17, hour, minute, tzinfo=IST)
+    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    memo_id = accepted_memo(client, brand, creator)
+    submit(client, creator, memo_id)
+
+    clock.now = datetime(2026, 9, 24, 23, 59, tzinfo=IST)
+    [waiting] = client.get(f"{MEMOS_URL}/{memo_id}/proof", headers=brand.headers).json()
+    clock.now = datetime(2026, 9, 25, 0, 0, tzinfo=IST)
+    [settled] = client.get(f"{MEMOS_URL}/{memo_id}/proof", headers=brand.headers).json()
+
+    assert waiting["status"] == "submitted"
+    assert settled["status"] == "approved"
+
+
+def revise(client, brand: User, memo_id: str, proof_id: str) -> None:
+    response = client.post(
+        f"{MEMOS_URL}/{memo_id}/proof/{proof_id}/request-revision",
+        json={"note": "Please add the ad label to the caption."},
+        headers=brand.headers,
+    )
+    assert response.status_code == 200, response.text
+
+
+def test_only_the_first_request_for_changes_restarts_the_clock(client, db, clock):
+    """D-025: a second request is allowed, but buys the brand no more time.
+
+    Before, every resubmission started a fresh window, so a brand could keep
+    asking for changes and never let the proof approve itself.
+    """
+    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    memo_id = accepted_memo(client, brand, creator)
+    first = submit(client, creator, memo_id).json()["id"]
+    revise(client, brand, memo_id, first)
+
+    # The first request restarts the clock: the resubmission's own day counts.
+    clock.advance(timedelta(days=1))
+    second = submit(client, creator, memo_id).json()["id"]  # 18 Sep
+    revise(client, brand, memo_id, second)
+    clock.advance(timedelta(days=5))
+    third = submit(client, creator, memo_id).json()["id"]  # 23 Sep
+
+    # Still the clock that started on 18 Sep: decide by the end of 25 Sep.
+    clock.now = datetime(2026, 9, 25, 23, 59, tzinfo=IST)
+    statuses = {
+        p["id"]: p["status"]
+        for p in client.get(f"{MEMOS_URL}/{memo_id}/proof", headers=brand.headers).json()
+    }
+    assert statuses[third] == "submitted"
+    clock.now = datetime(2026, 9, 26, 0, 0, tzinfo=IST)
+    statuses = {
+        p["id"]: p["status"]
+        for p in client.get(f"{MEMOS_URL}/{memo_id}/proof", headers=brand.headers).json()
+    }
+    assert statuses[third] == "approved"
+
+
+def test_the_resubmission_after_the_first_request_gets_a_full_window(client, db, clock):
+    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    memo_id = accepted_memo(client, brand, creator)
+    first = submit(client, creator, memo_id).json()["id"]  # 17 Sep
+    clock.advance(timedelta(days=6))
+    revise(client, brand, memo_id, first)
+    second = submit(client, creator, memo_id).json()["id"]  # 23 Sep
+
+    # Its own seven whole days: until the end of 30 Sep.
+    clock.now = datetime(2026, 9, 30, 23, 59, tzinfo=IST)
+    [latest, _] = client.get(f"{MEMOS_URL}/{memo_id}/proof", headers=brand.headers).json()
+
+    assert (latest["id"], latest["status"]) == (second, "submitted")
+
+
 def test_the_agreed_window_is_what_counts(client, db, clock):
     brand, creator = brand_user(db, clock), creator_user(db, clock)
     memo_id = accepted_memo(client, brand, creator, approval_window_days=3)
     submit(client, creator, memo_id)
 
-    clock.advance(timedelta(days=3))
+    # Midnight IST after the third whole day.
+    clock.advance(timedelta(days=3, hours=6, minutes=30))
     [proof] = client.get(f"{MEMOS_URL}/{memo_id}/proof", headers=brand.headers).json()
 
     assert proof["status"] == "approved"

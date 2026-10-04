@@ -85,7 +85,12 @@ class DeliveryRecord:
     barter_deals_not_delivered: int
 
 
-def is_approved(memo: DealMemo, proof: DeliverableProof, now: datetime) -> bool:
+def is_approved(
+    memo: DealMemo,
+    proof: DeliverableProof,
+    history: list[DeliverableProof],
+    now: datetime,
+) -> bool:
     """Approved, including by the clock (D-025).
 
     Auto-approval is written lazily, when somebody next reads the proof, so a
@@ -95,7 +100,7 @@ def is_approved(memo: DealMemo, proof: DeliverableProof, now: datetime) -> bool:
     """
     if proof.status == "approved":
         return True
-    return proof.status == "submitted" and now >= approval_deadline(memo, proof)
+    return proof.status == "submitted" and now >= approval_deadline(memo, proof, history)
 
 
 def classify(memo: DealMemo, proofs: list[DeliverableProof], now: datetime) -> Outcome:
@@ -105,7 +110,7 @@ def classify(memo: DealMemo, proofs: list[DeliverableProof], now: datetime) -> O
             return Outcome.NOT_DELIVERED
         return Outcome.NOT_COUNTED
 
-    if any(is_approved(memo, proof, now) for proof in proofs):
+    if any(is_approved(memo, proof, proofs, now) for proof in proofs):
         return Outcome.DELIVERED
     if any(proof.status == "submitted" for proof in proofs):
         # Waiting on the brand's review, not on the creator.
@@ -136,7 +141,7 @@ def _on_time(memo: DealMemo, proofs: list[DeliverableProof]) -> bool:
 def _disclosure_confirmed(
     memo: DealMemo, proofs: list[DeliverableProof], now: datetime
 ) -> bool:
-    approved = [proof for proof in proofs if is_approved(memo, proof, now)]
+    approved = [proof for proof in proofs if is_approved(memo, proof, proofs, now)]
     return all(proof.disclosure_confirmed for proof in approved)
 
 

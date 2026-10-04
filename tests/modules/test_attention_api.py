@@ -230,9 +230,10 @@ def test_proof_to_review_is_due_the_day_it_would_approve_itself(client, db, cloc
         7,
     )
 
-    # The window runs out: the proof approves itself, and nothing is left
-    # for the brand to decide. The clock settles it, not a scheduled job.
-    clock.advance(timedelta(days=7))
+    # The window runs out at midnight IST that ends 24 Sep: the proof
+    # approves itself, and nothing is left for the brand to decide. The
+    # clock settles it, not a scheduled job.
+    clock.advance(timedelta(days=7, hours=6, minutes=30))
     assert items_of(client, brand, "review_proof") == []
 
 

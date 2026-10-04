@@ -21,7 +21,7 @@ from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.delivery_record import is_approved
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof
-from app.modules.deal_memo.proof_service import approval_deadline
+from app.modules.deal_memo.proof_service import approval_deadline, approval_last_day
 
 
 def for_brand(db: Session, brand_id: uuid.UUID, now: datetime) -> list[AttentionItem]:
@@ -79,25 +79,42 @@ def for_brand(db: Session, brand_id: uuid.UUID, now: datetime) -> list[Attention
         )
 
     # Proof waiting for a decision, until it approves itself.
-    for proof, memo, campaign_id, title, handle in db.execute(
-        select(DeliverableProof, DealMemo, Campaign.id, Campaign.title, Creator.handle)
-        .join(DealMemo, DealMemo.id == DeliverableProof.deal_memo_id)
-        .join(Application, Application.id == DealMemo.application_id)
-        .join(Campaign, Campaign.id == Application.campaign_id)
-        .join(Creator, Creator.id == Application.creator_id)
-        .where(
-            Campaign.brand_id == brand_id,
-            DealMemo.status == "accepted",
-            DeliverableProof.status == "submitted",
+    waiting = (
+        db.execute(
+            select(
+                DeliverableProof, DealMemo, Campaign.id, Campaign.title, Creator.handle
+            )
+            .join(DealMemo, DealMemo.id == DeliverableProof.deal_memo_id)
+            .join(Application, Application.id == DealMemo.application_id)
+            .join(Campaign, Campaign.id == Application.campaign_id)
+            .join(Creator, Creator.id == Application.creator_id)
+            .where(
+                Campaign.brand_id == brand_id,
+                DealMemo.status == "accepted",
+                DeliverableProof.status == "submitted",
+            )
         )
-    ).tuples():
-        deadline = approval_deadline(memo, proof)
+        .tuples()
+        .all()
+    )
+    # Each deadline depends on the memo's earlier submissions (D-025): all of
+    # them in one more query, never one per memo.
+    history: dict[uuid.UUID, list[DeliverableProof]] = {}
+    if waiting:
+        for earlier in db.scalars(
+            select(DeliverableProof).where(
+                DeliverableProof.deal_memo_id.in_({memo.id for _, memo, *_ in waiting})
+            )
+        ):
+            history.setdefault(earlier.deal_memo_id, []).append(earlier)
+    for proof, memo, campaign_id, title, handle in waiting:
+        deadline = approval_deadline(memo, proof, history[memo.id])
         if now >= deadline:
             continue  # already approved by the clock; nothing left to decide
         items.append(
             AttentionItem(
                 kind="review_proof",
-                due_on=india_date(deadline),
+                due_on=approval_last_day(memo, proof, history[memo.id]),
                 campaign_id=campaign_id,
                 campaign_title=title,
                 counterparty=handle,
@@ -179,7 +196,7 @@ def _work_waiting(
     memo: DealMemo, proofs: list[DeliverableProof], now: datetime
 ) -> str | None:
     """What an accepted deal still needs from the creator, if anything."""
-    if any(is_approved(memo, proof, now) for proof in proofs):
+    if any(is_approved(memo, proof, proofs, now) for proof in proofs):
         return None  # delivered
     if any(proof.status == "submitted" for proof in proofs):
         return None  # waiting on the brand, not the creator
