@@ -28,9 +28,10 @@ from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.models import DealMemo
+from app.modules.deal_memo.record_models import DealRecordEntry
 from app.modules.disputes import service as disputes
 from app.modules.disputes.event_models import DisputeEvent
-from app.modules.disputes.exceptions import DisputeAlreadyOpen
+from app.modules.disputes.exceptions import DisputeAlreadyClosed, DisputeAlreadyOpen
 from app.modules.disputes.models import Dispute
 from app.modules.payment_status import service as payments
 from app.modules.payment_status.exceptions import (
@@ -277,3 +278,119 @@ def test_a_race_never_leaves_two_disputes_on_one_payment(payment):
         ).all()
 
     assert len(rows) == 1
+
+
+# --- closing a dispute, and adding to one (review finding, PR #11) ---------------
+
+
+@pytest.fixture
+def slow_record(monkeypatch):
+    """Hold each request between its check and its commit for a moment.
+
+    Without it the race window is a few milliseconds, threads rarely overlap,
+    and a test of an unsafe service passes by luck. A busy database or a slow
+    network holds that window open in production; this does the same here,
+    so the test fails every time the code is unsafe.
+    """
+    import time
+
+    original = disputes.record.append_for_payment
+
+    def slow(*args, **kwargs):
+        # Entries are held longer than the close, so a close commits first
+        # while entries that already passed their check are still in flight:
+        # the case the review describes, made certain rather than likely.
+        time.sleep(0.4 if kwargs.get("kind") == "dispute_entry_added" else 0.1)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(disputes.record, "append_for_payment", slow)
+
+
+def open_dispute(payment_id) -> None:
+    with SessionLocal() as session:
+        disputes.open_for_payment(
+            session, payment_id, opened_by="creator", reason="x" * 40, now=NOW
+        )
+        session.commit()
+
+
+def closed_events(payment_id) -> list[DisputeEvent]:
+    with SessionLocal() as session:
+        return list(
+            session.scalars(
+                select(DisputeEvent)
+                .join(Dispute, Dispute.id == DisputeEvent.dispute_id)
+                .where(Dispute.payment_status_id == payment_id)
+                .order_by(DisputeEvent.id)
+            ).all()
+        )
+
+
+def test_only_one_of_four_simultaneous_closes_wins(payment, slow_record):
+    """Each close read "still open" before any of them committed, so all four
+    won: four contradictory closed events, and the last outcome silently
+    replaced the first."""
+    open_dispute(payment)
+    outcomes = [
+        "resolved_paid",
+        "resolved_withdrawn",
+        "resolved_informally",
+        "resolved_paid",
+    ]
+
+    results = run_at_once(
+        lambda s: disputes.close(
+            s,
+            disputes.get_for_payment(s, payment),
+            outcome=outcomes.pop(),
+            actor_role="brand",
+            now=NOW,
+        ),
+        AT_ONCE,
+    )
+
+    won, refused, unexpected = split(results, DisputeAlreadyClosed)
+    assert unexpected == [], f"a raw database error reached the caller: {unexpected}"
+    assert won == 1
+    assert refused == AT_ONCE - 1
+    events = closed_events(payment)
+    assert [e.kind for e in events].count("closed") == 1
+
+
+def test_nothing_is_added_to_a_dispute_after_it_closes(payment, slow_record):
+    """An entry that read "still open" just before a close committed used to
+    land after it, so the finished record grew a new entry."""
+    open_dispute(payment)
+    jobs = ["close", "entry", "entry", "entry"]
+
+    def one(s):
+        dispute = disputes.get_for_payment(s, payment)
+        if jobs.pop() == "close":
+            return disputes.close(
+                s, dispute, outcome="resolved_paid", actor_role="brand", now=NOW
+            )
+        return disputes.add_entry(
+            s,
+            dispute,
+            actor_role="creator",
+            now=NOW,
+            note="One more thing, on the record.",
+        )
+
+    results = run_at_once(one, AT_ONCE)
+
+    _, _, unexpected = split(results, DisputeAlreadyClosed)
+    assert unexpected == [], f"a raw database error reached the caller: {unexpected}"
+    # The deal record numbers every step in the order it committed, so it
+    # is the referee: nothing may follow the close.
+    with SessionLocal() as session:
+        memo_id = session.get(PaymentStatus, payment).deal_memo_id
+        kinds = list(
+            session.scalars(
+                select(DealRecordEntry.kind)
+                .where(DealRecordEntry.deal_memo_id == memo_id)
+                .order_by(DealRecordEntry.sequence)
+            ).all()
+        )
+    after_close = kinds[kinds.index("dispute_closed") + 1 :]
+    assert after_close == []
