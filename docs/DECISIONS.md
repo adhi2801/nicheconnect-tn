@@ -647,3 +647,12 @@ Newest entries at the bottom.
 - Chosen: 2, with Python 3.14.7 (the newest 3.14, on laptops through uv and in the images through `python:3.14-slim-trixie`, pinned by digest) and uv 0.12.21 (pinned in CI, and copied into the build stage from Astral's image, pinned by digest).
 - Reason: one source of truth, so a dependency cannot be added in one file and missed in another; every machine installs the same bytes; a tampered download fails its hash; `--locked` stops a change reaching main without its lock.
 - Consequences / follow-ups: (1) `requirements.txt`, `requirements-dev.txt` and `requirements-ml.txt` are gone; their packages, pins and reasons are in `pyproject.toml` (the app, a `dev` group, an `ml` group), and torch still comes only from PyTorch's CPU index. (2) Commands change: `uv sync`, `uv run …` (`CLAUDE.md` section 4, README, the scripts). Laptops use `.venv`; the old `venv` can be deleted once a founder has run `uv sync`. (3) CI installs with `setup-uv` pinned to a commit (v10.2.0); zizmor and pip-audit run through `uvx`, still outside the app's dependencies; pip-audit checks the lock exported in full, with no re-resolution. (4) On 3.14, ruff removed 16 quoted type hints that lazy annotations (PEP 649) make unnecessary; the full suite proved Pydantic reads them correctly. (5) The images: the app environment has no pip at all, and uv is not shipped. (6) `.grype.yaml`: the upgrade fixed 6 of the 10 CPython flaws accepted for 3.12.14; the 4 that 3.14.7 still has (stringprep, poplib, zipfile, urllib's password managers) are accepted for exactly 3.14.7, re-checked against the code. (7) The OpenSSL and PCRE2 step from D-068 stays: the 3.14 image has the same base as the 3.12 one.
+
+## D-073: D-004 was approved by Adhi
+- Date: 2026-10-04
+- Approved by: Adhi, in this session ("approved by me"), answering who approved D-004, whose entry still read `Approved by: <founder name>`.
+- Context: A review finding (PR #6, P2) noted that D-004 had no named approver while standards treated it as settled. The log is append-only, so the old line stays as written and this entry completes it.
+- Options considered: A) record Adhi as D-004's approver · B) mark D-004 as never approved
+- Chosen: A.
+- Reason: Adhi stated that he approved it. Its rule also stands through D-053, which amended it with a recorded approval.
+- Consequences / follow-ups: D-004 (backend first, frontend code after the backend is complete, as amended by D-053) is a decided rule with a named approver. Review finding #3 in `docs/REVIEW_FINDINGS.md` is resolved.

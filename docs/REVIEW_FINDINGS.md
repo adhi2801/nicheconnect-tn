@@ -31,7 +31,7 @@ So the code since 21 September has had one reader: the session that wrote it. Se
 | # | PR | Finding | Status | Evidence |
 |---|---|---|---|---|
 | 1 | #4 | Tests on an unmigrated database fail with UndefinedTable and no explanation | **Fixed now** | `ded827e`: pytest checks the migration first and stops with one line naming the fix; proved by migrating one step down |
-| 3 | #6 | D-004 still says `Approved by: <founder name>` | **Needs a decision** | The rule stands through D-053, which amended it with a recorded approval; who approved the original D-004 is for Adhi to say, never for a session to guess |
+| 3 | #6 | D-004 still says `Approved by: <founder name>` | Resolved | D-073: Adhi approved it (4 Oct); the log is append-only, so the new entry completes the old one |
 | 4 | #6 | "Every read checks the caller owns the object" would forbid legitimate shared reads | Docs fixed | `ded827e`: `CLAUDE.md` now says the owner, a party, or public by design |
 | 6 | #7 | The per-phone limit on wrong guesses could be dodged across IP addresses | Already fixed | D-018: guesses are counted per phone in the database, whatever the address; 4 tests |
 | 8 | #9 | The approval deadline counted 24-hour blocks, not calendar days ending at midnight IST | **Fixed now** | `f978a3a`, as D-025 requires; 23:00 and 00:30 submissions now share a deadline |
@@ -46,7 +46,7 @@ So the code since 21 September has had one reader: the session that wrote it. Se
 | 21 | #34 | A creator at nine packages adding two at once ended with eleven | **Fixed now** | `bc34345`: four simultaneous adds gave thirteen packages, 3 runs in 3; now exactly ten |
 | 22 | #34 | Two first saves of a channel at once: one got a 500 | **Fixed now** | `bc34345`: three of four raised a raw IntegrityError; now all four succeed as one row |
 
-**Totals:** 10 fixed now, 8 already fixed or resolved, 2 documentation fixes, 2 for a decision; and 5 more races found by the audit below, all fixed.
+**Totals:** 10 fixed now, 9 already fixed or resolved, 2 documentation fixes, 1 for a decision; and 5 more races found by the audit below, all fixed.
 
 ## How the race conditions were proved
 
@@ -68,6 +68,6 @@ Checked and found safe: applying to a campaign twice (the unique rule's error is
 
 ## What next
 
-1. **The two decisions above** (#3, #10).
+1. **The decision above** (#10). #3 was answered by D-073.
 2. **A review of everything since 21 September**, which no bot and no second founder has read: trigger CodeRabbit by hand on the open pull request (a comment `@coderabbitai review`), and run a full review in a session. The check-then-write pattern has now been searched for across the whole codebase (above); other kinds of bug have not.
 3. **Codex's credits** are a founder's decision: restore them, or rely on the other two.
