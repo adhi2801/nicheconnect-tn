@@ -148,6 +148,9 @@ def change_status(
     db: Session, campaign: Campaign, new_status: str, now: datetime
 ) -> Campaign:
     """Move a campaign to `new_status`, or raise CampaignStatusConflict."""
+    # Locked and read again before the check: two moves at once would both
+    # pass it, and the last write would silently win (review audit, 4 Oct).
+    db.refresh(campaign, attribute_names=["status"], with_for_update=True)
     if new_status not in ALLOWED_TRANSITIONS[campaign.status]:
         db.rollback()
         raise CampaignStatusConflict(
@@ -341,6 +344,9 @@ def change_application_status(
     rejection_note: str | None = None,
 ) -> Application:
     """Move an application on, or raise ApplicationStatusConflict."""
+    # Locked and read again before the check: two moves at once would both
+    # pass it, and the last write would silently win (review audit, 4 Oct).
+    db.refresh(application, attribute_names=["status"], with_for_update=True)
     if new_status not in APPLICATION_TRANSITIONS[application.status]:
         db.rollback()
         raise ApplicationStatusConflict(

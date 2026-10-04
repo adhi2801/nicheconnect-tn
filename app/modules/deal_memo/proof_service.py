@@ -232,6 +232,11 @@ def approve_proof(
     db: Session, memo: DealMemo, proof: DeliverableProof, now: datetime
 ) -> DeliverableProof:
     """The brand approves. Raises ProofAlreadyDecided if it is settled."""
+    # Locked and read again before the check: two moves at once would both
+    # pass it, and the last write would silently win (review audit, 4 Oct).
+    # Approval opens the payment clock, so approving while changes are being
+    # requested would leave a payment running on proof sent back.
+    db.refresh(proof, attribute_names=["status"], with_for_update=True)
     settle_if_overdue(db, memo, proof, now)
     if proof.status != "submitted":
         db.rollback()
@@ -261,6 +266,9 @@ def request_revision(
     db: Session, memo: DealMemo, proof: DeliverableProof, note: str, now: datetime
 ) -> DeliverableProof:
     """The brand asks for a change, which lets the creator submit again."""
+    # Locked and read again before the check: two moves at once would both
+    # pass it, and the last write would silently win (review audit, 4 Oct).
+    db.refresh(proof, attribute_names=["status"], with_for_update=True)
     settle_if_overdue(db, memo, proof, now)
     if proof.status != "submitted":
         db.rollback()

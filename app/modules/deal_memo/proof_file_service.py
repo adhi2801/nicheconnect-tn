@@ -67,6 +67,9 @@ def request_upload(
     now: datetime,
 ) -> RequestedUpload:
     """A pending file and the signed form to upload it with."""
+    # The memo is locked first, so two uploads asked for at once are counted
+    # one after the other and the per-deal cap holds (review audit, 4 Oct).
+    db.refresh(memo, attribute_names=["status"], with_for_update=True)
     if memo.status != "accepted":
         raise MemoStatusConflict("Files can only be uploaded for an accepted memo.")
     pending = db.scalar(

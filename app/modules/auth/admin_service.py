@@ -189,7 +189,7 @@ def suspend(
     now: datetime,
 ) -> Account:
     """Stop the account at once, and end every session it has."""
-    account = _target(db, admin, account_id)
+    account = _target(db, admin, account_id)  # read with its row locked
     if account.suspended_at is not None:
         db.rollback()
         raise AlreadySuspended()

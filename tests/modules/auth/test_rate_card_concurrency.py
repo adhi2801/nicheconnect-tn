@@ -79,20 +79,6 @@ def creator() -> Iterator[uuid.UUID]:
             session.commit()
 
 
-@pytest.fixture
-def slow_writes() -> Iterator[None]:
-    """Hold every write for a moment just before it reaches the database."""
-
-    def hold(*args: object) -> None:
-        time.sleep(0.2)
-
-    event.listen(Session, "before_flush", hold)
-    try:
-        yield
-    finally:
-        event.remove(Session, "before_flush", hold)
-
-
 def test_the_package_limit_holds_against_simultaneous_adds(
     creator, slow_writes_after_setup
 ):

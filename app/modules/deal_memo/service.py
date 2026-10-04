@@ -341,6 +341,15 @@ def change_status(
 
     Raises MemoStatusConflict when that side may not make that move from here.
     """
+    # Locked and read again before the check: two moves at once would both
+    # pass it, and the last write would silently win (review audit, 4 Oct).
+    # revision_count too: two change requests at once would add one each to
+    # the same old count.
+    db.refresh(
+        memo,
+        attribute_names=["status", "revision_count", "work_started_at"],
+        with_for_update=True,
+    )
     allowed = BRAND_TRANSITIONS if actor == "brand" else CREATOR_TRANSITIONS
     if new_status not in allowed[memo.status]:
         db.rollback()
