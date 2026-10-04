@@ -21,7 +21,9 @@ from app.modules.deal_memo.models import (
     MAX_WINDOW_DAYS,
     MEMO_STATUSES,
     TERMS_MAX_LENGTH,
+    DealMemo,
 )
+from app.modules.deal_memo.stage import DEAL_SIDES, DEAL_STAGES, DealStage
 
 MemoStatus = Literal[
     "draft", "sent", "change_requested", "accepted", "declined", "cancelled"
@@ -85,7 +87,7 @@ class MemoUpdate(BaseModel):
     extra_terms: ExtraTerms | None = None
 
     @model_validator(mode="after")
-    def at_least_one_field(self) -> "MemoUpdate":
+    def at_least_one_field(self) -> MemoUpdate:
         if not self.model_fields_set:
             raise PydanticCustomError("empty_update", "Send at least one field to change")
         return self
@@ -132,6 +134,48 @@ class MemoRead(BaseModel):
     cancellation_kind: CancellationKind | None
     created_at: datetime
     updated_at: datetime
+
+
+DealStageName = Literal[
+    "draft",
+    "memo_sent",
+    "agreed",
+    "in_progress",
+    "payment",
+    "finished",
+    "declined",
+    "cancelled",
+]
+DealSide = Literal["brand", "creator"]
+
+ensure_same_values("DealStageName", DealStageName, DEAL_STAGES)
+ensure_same_values("DealSide", DealSide, DEAL_SIDES)
+
+
+class MemoWithStageRead(MemoRead):
+    """A memo, with where the deal stands and whose move it is (D-076).
+
+    Worked out from the memo, its proof and its payment as of the request,
+    never stored. The five stages a deal passes through are `memo_sent`,
+    `agreed`, `in_progress`, `payment`, `finished`; `draft`, `declined` and
+    `cancelled` sit outside them. A barter deal is `finished` once its work
+    is approved; a paid one only when the creator confirms the money arrived.
+    """
+
+    stage: DealStageName
+    waiting_on: DealSide | None = Field(
+        description="The side whose move it is; null once the deal has ended"
+    )
+    has_open_dispute: bool
+
+
+def with_stage(memo: DealMemo, found: DealStage) -> MemoWithStageRead:
+    return MemoWithStageRead(
+        **MemoRead.model_validate(memo).model_dump(),
+        stage=found.stage,
+        waiting_on=found.waiting_on,
+        has_open_dispute=found.has_open_dispute,
+    )
 
 
 DeliveryStatus = Literal["new_creator_no_history_yet", "has_delivery_history"]

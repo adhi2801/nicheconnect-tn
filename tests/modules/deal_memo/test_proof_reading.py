@@ -191,6 +191,28 @@ def test_a_handle_that_is_not_the_creators_channel_is_flagged(client, db, clock,
     assert reading_for(db, file_id).handle_matches is False
 
 
+def test_a_youtube_channel_link_without_a_handle_leaves_the_check_empty(
+    client, db, clock, deal
+):
+    """Review finding, PR #35: a /channel/ link names no handle, so the check
+    cannot pass or fail. It is left empty, never marked as a mismatch."""
+    _, creator, memo_id = deal
+    channel(
+        db,
+        creator,
+        clock,
+        platform="youtube",
+        profile_url="https://www.youtube.com/channel/UC1234567890",
+    )
+    [file_id] = cleaned(client, db, clock, creator, memo_id)
+
+    run(db, clock, FakeReader(platform="youtube", handle="priyaeats"))
+
+    row = reading_for(db, file_id)
+    assert row.handle_matches is None
+    assert row.stated_followers == 12000  # the channel is still known
+
+
 def test_a_post_dated_before_the_deal_is_flagged(client, db, clock, deal):
     _, creator, memo_id = deal
     [file_id] = cleaned(client, db, clock, creator, memo_id)

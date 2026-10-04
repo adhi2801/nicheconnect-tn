@@ -4,6 +4,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from app.db.session import engine
+from tests import migration_check
 
 
 @pytest.fixture
@@ -22,3 +23,10 @@ def db() -> Iterator[Session]:
         session.close()
         outer_transaction.rollback()
         connection.close()
+
+
+def pytest_sessionstart(session: pytest.Session) -> None:
+    """Stop at once, naming the fix, if the database is not migrated."""
+    found = migration_check.check(engine)
+    if found:
+        pytest.exit(found, returncode=3)

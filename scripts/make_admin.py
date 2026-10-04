@@ -3,9 +3,9 @@
 Admins are never created by login and there is no API to promote anyone
 (D-061). A founder runs this against the database, with access to it:
 
-    venv\\Scripts\\python.exe scripts\\make_admin.py +919876543210
-    venv\\Scripts\\python.exe scripts\\make_admin.py +919876543210 --suspend abuse
-    venv\\Scripts\\python.exe scripts\\make_admin.py +919876543210 --restore
+    uv run python scripts\\make_admin.py +919876543210
+    uv run python scripts\\make_admin.py +919876543210 --suspend abuse
+    uv run python scripts\\make_admin.py +919876543210 --restore
 
 Outside ENVIRONMENT=local it also needs --yes, so a mistyped command aimed at
 the live database cannot make somebody an admin. A phone that already belongs

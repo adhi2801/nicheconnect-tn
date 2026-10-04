@@ -117,6 +117,10 @@ locals {
     # Results read from proof (D-070): off until the validation pack answers.
     { name = "PROOF_READING_ENABLED", value = tostring(var.proof_reading_enabled) },
     { name = "PROOF_READER_MODEL", value = var.proof_reader_model },
+    # Error tracking (D-074): off while empty. The release is the image's git
+    # commit, so each error names the build that produced it.
+    { name = "SENTRY_DSN", value = var.sentry_dsn },
+    { name = "APP_RELEASE", value = var.image_tag },
   ]
 
   secrets = concat(

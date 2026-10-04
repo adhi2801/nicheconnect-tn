@@ -164,7 +164,7 @@ None of this is approved; each is a gated decision (`CLAUDE.md` section 5).
 
 ## 8. The 90-day pilot, with checkpoints
 
-**City:** one, Coimbatore or Madurai (a founder decision).
+**City: Coimbatore** (D-071; reasons in `docs/GO_TO_MARKET.md` section 3).
 
 | By | Target (proposal) | If we miss it |
 |---|---|---|
@@ -182,6 +182,7 @@ None of this is approved; each is a gated decision (`CLAUDE.md` section 5).
 5. Would you rather pay per campaign or a monthly amount? Which feels safer?
 6. At ₹999 a month for three campaigns, would you try it this month? What would stop you?
 7. Would a public record of which brands pay creators on time change anything for you?
+8. Would the app in Tamil, rather than English, change anything for you? (D-071: the pilot decides whether D-054 is revisited.)
 
 The answers set the real prices. **Asking beats guessing:** the prices above are starting points, not conclusions.
 

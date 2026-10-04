@@ -25,9 +25,9 @@ Words we never use, here or anywhere: "escrow", "wallet", "guaranteed funds", "s
 
 ## 3. The first city: what "dense enough" means
 
-**City:** Coimbatore or Madurai (a founder decision, `docs/REVENUE_RESEARCH.md` section 9).
+**City: Coimbatore** (D-071): about twice Madurai's population and spending, a café boom, Tamil Nadu's second quick-commerce market, CODISSIA's 7,000+ member businesses, and Tiruppur's clothing brands next door; a founder can be there in person.
 
-**Proposed atomic network, to test:** three niches the city is known for (for example restaurants and food, salons and beauty, textiles and fashion), **30 active brands and 150 creators** across them. The test that it is dense enough is the pilot's own: **3 or more suitable applications within 72 hours of a campaign** (revenue research, day 60).
+**The atomic network, to test (D-071):** three niches, **food and cafés, fashion and textiles, beauty and salons**, **30 active brands and 150 creators** across them. The test that it is dense enough is the pilot's own: **3 or more suitable applications within 72 hours of a campaign** (revenue research, day 60).
 
 **Why three niches, not every niche:** a food creator with ten restaurant campaigns nearby stays; the same creator with one campaign each in ten niches does not.
 
@@ -58,7 +58,6 @@ Creators come where paid work is, so the job is **quality and density, not volum
 | Loop | How it spreads | Status |
 |---|---|---|
 | **Passport in the bio** | Every creator's link shows our page to their followers, brands included | Passport built (D-036); public pages and embeds are frontend (W1, W9) |
-| **Deal receipts** | A creator shares "paid on time by Chennai Bakes" with the receipt's check link; the brand is proud to be named | Receipt check is item 12 of `docs/BACKEND_COMPLETE.md` |
 | **A brand's on-time record** | A brand shows its record to recruit better creators | Built (D-034); public display is a decision |
 | **Creator invites a brand** | A creator who works with a shop brings it on for its first campaign | Needs invite attribution (section 10); reward is a decision |
 | **City pages** | "Food creators in Coimbatore", with real, aggregate numbers, found by search and AI search | Frontend (W1); an aggregate endpoint is a decision (section 10) |
@@ -106,7 +105,7 @@ Both are added to `docs/BACKEND_COMPLETE.md`.
 
 ## 11. Decisions this file asks for
 
-1. The pilot city and its three niches.
+1. ~~The pilot city and its three niches.~~ **Decided (D-071):** Coimbatore; food and cafés, fashion and textiles, beauty and salons.
 2. Whether the atomic network targets (30 brands, 150 creators) are right, after the interviews.
 3. Referral rewards: whether, and what (recognition and service only).
 4. Whether a brand's on-time record may be shown publicly, or only to creators.

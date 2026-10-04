@@ -33,9 +33,10 @@ DEFAULT_BASE = "origin/main"
 def squawk_command() -> str:
     """Where squawk is, whichever way it was installed.
 
-    pip puts it beside the interpreter, which on Windows is venv/Scripts and
-    is not on PATH unless the virtual environment is activated. CI installs
-    it onto PATH. Look next to this interpreter first, then fall back.
+    `uv pip install` puts it beside the interpreter, which on Windows is
+    .venv/Scripts and is not on PATH unless the environment is activated. CI
+    puts the environment on PATH. Look next to this interpreter first, then
+    fall back.
     """
     beside = Path(sys.executable).parent
     for name in ("squawk", "squawk.exe"):
@@ -46,7 +47,7 @@ def squawk_command() -> str:
     if found:
         return found
     print(
-        "squawk not found. Install it with: pip install squawk-cli==2.65.0",
+        "squawk not found. Install it with: uv pip install squawk-cli==2.65.0",
         file=sys.stderr,
     )
     raise SystemExit(2)

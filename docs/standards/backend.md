@@ -48,7 +48,7 @@ Each module under `app/modules/<name>/` owns its own files:
   `{"items": [...], "next_cursor": "<opaque or null>"}`
 - **Filtering and sorting:** explicit, allow-listed query parameters only (`?status=open&sort=-created_at`). Unknown parameters return 422.
 - **Idempotency:** every `POST` and `PATCH` outside `/api/v1/auth/` accepts an `Idempotency-Key` header, by building its router with `route_class=IdempotentRoute` (D-040). A repeated key returns the original response. A test fails if any new write is missing it. Login is excluded until decided separately.
-- **OpenAPI is the contract.** Every route has a `summary`, a `response_model`, documented error responses and request/response examples. `/docs` must stay accurate enough for the future frontend to build against. A committed copy lives in `docs/api/openapi.json`, and `tests/test_api_contract.py` fails when the running app differs from it. When a change is intended, refresh it with `venv\Scripts\python.exe -m tests.openapi_snapshot` and commit it with the change, so every contract change is a visible diff in review. The same test file checks, across every operation: a login is required except on a named public list; every operation has a summary, a description and a documented success shape; 401, 422 and 429 are documented where they apply; and every error is documented as Problem Details.
+- **OpenAPI is the contract.** Every route has a `summary`, a `response_model`, documented error responses and request/response examples. `/docs` must stay accurate enough for the future frontend to build against. A committed copy lives in `docs/api/openapi.json`, and `tests/test_api_contract.py` fails when the running app differs from it. When a change is intended, refresh it with `uv run python -m tests.openapi_snapshot` and commit it with the change, so every contract change is a visible diff in review. The same test file checks, across every operation: a login is required except on a named public list; every operation has a summary, a description and a documented success shape; 401, 422 and 429 are documented where they apply; and every error is documented as Problem Details.
 
 ## 3. Errors
 
@@ -112,12 +112,12 @@ One error shape for every non-2xx response (RFC 9457 Problem Details):
 - Structured JSON logs in staging and production; readable logs locally.
 - Every request gets a `request_id` (from the `X-Request-ID` header or generated), returned in the response header and included in every log line and error body.
 - Log events, not data: `campaign.created campaign_id=… brand_id=…`. **Never log** phone numbers, emails, OTPs, tokens, passwords, bank or UPI details, or full request bodies.
-- `/healthz` answers "is the process up"; `/readyz` checks database and Redis connectivity with short timeouts.
+- `/healthz` answers "is the process up"; `/readyz` checks database and Valkey connectivity with short timeouts.
 - Errors go to Sentry once deployed, with PII scrubbing on.
 
 ## 10. Code style
 
-- Python 3.12, type hints on every function signature and return value.
+- Python 3.14, installed and pinned by uv (D-072). Type hints on every function signature and return value.
 - Formatting and linting: ruff (format + lint). Type checking: mypy in strict mode for `app/`. Adopted in D-037, configured in `pyproject.toml`, and enforced in CI.
 - Functions do one thing; about 40 lines is a smell worth questioning.
 - Names say what things are: `get_open_campaigns_for_brand`, not `get_data`.

@@ -27,6 +27,15 @@ def fake_phone() -> str:
     return f"+9199999{next(_sequence):05d}"
 
 
+def unique_test_phone() -> str:
+    """A valid Indian mobile no other row is using, even across test runs.
+
+    For rows a test really commits: `fake_phone` restarts its counter with
+    every process, so a committed row from an earlier run would collide.
+    """
+    return f"+9199{uuid.uuid4().int % 10**8:08d}"
+
+
 def create_account(db: Session, role: str, **overrides: Any) -> Account:
     """Save an account and return it, so profiles can link to its id."""
     fields: dict[str, Any] = {"phone": fake_phone(), "role": role}

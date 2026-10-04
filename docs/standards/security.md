@@ -52,7 +52,7 @@ Rules marked **(decision)** need a recorded decision before first use.
 | Write endpoints (create/update) | 30 / minute | user |
 | Search and matching | 30 / minute | user |
 
-- Storage moves from memory to Redis before more than one app process runs (D-003).
+- Rate-limit storage is shared in Valkey (D-003, D-048), so every app process counts the same limit.
 - A 429 includes `Retry-After` and the standard error body.
 - Limits are tuned from real traffic, not guessed upward.
 
@@ -80,7 +80,7 @@ Rules marked **(decision)** need a recorded decision before first use.
 
 ## 8. Dependencies and supply chain
 
-- Every dependency is pinned and approved (CLAUDE.md section 5): what the app runs in `requirements.txt`, the tools that check it in `requirements-dev.txt` (D-063). Only the first reaches a server.
+- Every dependency is pinned and approved (CLAUDE.md section 5): what the app runs in `pyproject.toml`'s dependencies, the tools that check it in its `dev` group (D-063), every package and its hashes locked in `uv.lock` (D-072). Only the first reaches a server.
 - CI runs `pip-audit` on every push (D-031). Any known vulnerability blocks merge, not only high or critical ones, because most Python advisories carry no severity rating.
 - Prefer well-maintained libraries with recent releases and many users. Avoid packages abandoned for over a year.
 - Enable GitHub Dependabot alerts and secret scanning on the repository.

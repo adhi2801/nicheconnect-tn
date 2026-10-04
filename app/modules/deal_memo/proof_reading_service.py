@@ -307,7 +307,7 @@ def read_one(
             db.rollback()
             try:
                 image = store.read(clean_key, max_bytes=MAX_CLEAN_BYTES)
-            except (KeyError, ObjectTooLarge):
+            except KeyError, ObjectTooLarge:
                 logger.warning("proof file %s: its clean copy cannot be read", file_id)
                 return SKIPPED
             reading = reader.read(image, content_type)

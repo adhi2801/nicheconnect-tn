@@ -159,3 +159,13 @@ variable "proof_reader_model" {
     error_message = "proof_reader_model must be a Claude model id, such as claude-opus-5-5."
   }
 }
+
+variable "sentry_dsn" {
+  type        = string
+  default     = ""
+  description = "Where errors are sent (D-074). Empty means error tracking is off. A DSN can only send errors in, never read them, so it is a setting, not a secret."
+  validation {
+    condition     = var.sentry_dsn == "" || can(regex("^https://[0-9a-f]{32}@[a-z0-9.-]+/[0-9]+$", var.sentry_dsn))
+    error_message = "sentry_dsn must be empty or a Sentry DSN, https://<key>@<host>/<project>."
+  }
+}

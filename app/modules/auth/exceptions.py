@@ -108,7 +108,7 @@ class AccountSuspended(DomainError):
     title = "This account is suspended"
 
     @classmethod
-    def because(cls, reason: str | None) -> "AccountSuspended":
+    def because(cls, reason: str | None) -> AccountSuspended:
         return cls(f"Reason: {(reason or 'other').replace('_', ' ')}.")
 
 

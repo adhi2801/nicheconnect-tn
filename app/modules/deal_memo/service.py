@@ -234,7 +234,18 @@ def create_memo(
     """Draft a memo for an accepted application.
 
     Raises ApplicationNotAccepted, MemoAlreadyExists, and the fee errors.
+
+    The application's row is locked and read again first: two requests at
+    once would otherwise both find no memo, and the database's unique rule
+    would refuse the second as a raw error, a 500, instead of the conflict
+    the API documents. Locked, the second waits and finds the first's memo.
     """
+    db.scalars(
+        select(Application)
+        .where(Application.id == application.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).one()
     if application.status != "accepted":
         db.rollback()
         raise ApplicationNotAccepted()
@@ -330,6 +341,15 @@ def change_status(
 
     Raises MemoStatusConflict when that side may not make that move from here.
     """
+    # Locked and read again before the check: two moves at once would both
+    # pass it, and the last write would silently win (review audit, 4 Oct).
+    # revision_count too: two change requests at once would add one each to
+    # the same old count.
+    db.refresh(
+        memo,
+        attribute_names=["status", "revision_count", "work_started_at"],
+        with_for_update=True,
+    )
     allowed = BRAND_TRANSITIONS if actor == "brand" else CREATOR_TRANSITIONS
     if new_status not in allowed[memo.status]:
         db.rollback()
@@ -420,8 +440,9 @@ def list_for_brand(
     limit: int,
     cursor: str | None = None,
     status: str | None = None,
+    campaign_id: uuid.UUID | None = None,
 ) -> Slice[DealMemo]:
-    """Memos on the brand's own campaigns."""
+    """Memos on the brand's own campaigns, or on one of them."""
     query = (
         select(DealMemo)
         .join(Application, Application.id == DealMemo.application_id)
@@ -430,6 +451,8 @@ def list_for_brand(
     )
     if status is not None:
         query = query.where(DealMemo.status == status)
+    if campaign_id is not None:
+        query = query.where(Application.campaign_id == campaign_id)
     return _paginate(db, query, limit, cursor)
 
 
@@ -440,6 +463,7 @@ def list_for_creator(
     limit: int,
     cursor: str | None = None,
     status: str | None = None,
+    campaign_id: uuid.UUID | None = None,
 ) -> Slice[DealMemo]:
     """Memos sent to this creator. Drafts are not theirs to see yet."""
     query = (
@@ -449,6 +473,8 @@ def list_for_creator(
     )
     if status is not None:
         query = query.where(DealMemo.status == status)
+    if campaign_id is not None:
+        query = query.where(Application.campaign_id == campaign_id)
     return _paginate(db, query, limit, cursor)
 
 

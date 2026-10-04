@@ -133,7 +133,7 @@ class DeliverableProof(Base):
     # chose, the same order the deal record seals (D-067). "selectin":
     # a list of proofs loads every proof's files in one more query, never
     # one query per proof.
-    files: Mapped[list["ProofFile"]] = relationship(
+    files: Mapped[list[ProofFile]] = relationship(
         "ProofFile",
         order_by="ProofFile.position",
         lazy="selectin",

@@ -7,12 +7,13 @@ day-3 reminder later, but the outcome never waits for one.
 
 import uuid
 from collections.abc import Sequence
-from datetime import datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.clock import IST, india_date
 from app.core.errors import DomainError
 from app.core.storage import FileStore
 from app.modules.deal_memo import proof_file_service
@@ -46,8 +47,19 @@ def submit_proof(
     with half its files.
 
     Raises MemoStatusConflict unless the memo is accepted, and
-    ProofNotSubmitted-free: a second open submission is refused by the database.
+    ProofAlreadyDecided while another submission waits for review.
+
+    The memo's row is locked and read again first: two submissions at once
+    would otherwise both find nothing waiting, and the database's rule of one
+    open submission would refuse the second as a raw error, a 500. Locked,
+    the second waits, then sees the first, or a memo cancelled meanwhile.
     """
+    db.scalars(
+        select(DealMemo)
+        .where(DealMemo.id == memo.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).one()
     if memo.status != "accepted":
         db.rollback()
         raise MemoStatusConflict("Proof can only be submitted for an accepted memo.")
@@ -116,22 +128,81 @@ def submit_proof(
     return proof
 
 
-def approval_deadline(memo: DealMemo, proof: DeliverableProof) -> datetime:
-    """When an unreviewed submission approves itself (D-025)."""
-    return proof.created_at + timedelta(days=memo.approval_window_days)
+def review_clock_start(
+    proof: DeliverableProof, history: Sequence[DeliverableProof]
+) -> datetime:
+    """When this submission's review clock started (D-025).
+
+    The first submission starts a clock, and so does the one that follows
+    the brand's first request for changes. Any later resubmission runs on
+    the clock that first request restarted: asking again does not buy the
+    brand more time. `history` is every submission on the memo, in any order.
+    """
+    key = (proof.created_at, proof.id)
+    earlier = sorted(
+        (p for p in history if (p.created_at, p.id) < key),
+        key=lambda p: (p.created_at, p.id),
+    )
+    if len(earlier) <= 1:
+        return proof.created_at
+    return earlier[1].created_at
+
+
+def approval_deadline(
+    memo: DealMemo, proof: DeliverableProof, history: Sequence[DeliverableProof]
+) -> datetime:
+    """When an unreviewed submission approves itself (D-025).
+
+    Counted in whole Tamil Nadu calendar days, as D-025 says: the window
+    ends at midnight IST after its last full day, so proof sent at 23:00
+    loses nothing to proof sent at 00:30 the same day. `history` is required
+    on purpose: without it a resubmission cannot be told from a first one.
+    """
+    last_day = approval_last_day(memo, proof, history)
+    return datetime.combine(last_day + timedelta(days=1), time.min, tzinfo=IST)
+
+
+def approval_last_day(
+    memo: DealMemo, proof: DeliverableProof, history: Sequence[DeliverableProof]
+) -> date:
+    """The last whole day the brand has to decide, in Tamil Nadu (D-025).
+
+    What a person is told ("decide by 24 Sep"): the deadline itself is the
+    midnight that ends this day, which would read as the day after.
+    """
+    first_day = india_date(review_clock_start(proof, history))
+    return first_day + timedelta(days=memo.approval_window_days)
+
+
+def _history(db: Session, memo: DealMemo) -> list[DeliverableProof]:
+    return list(
+        db.scalars(
+            select(DeliverableProof).where(DeliverableProof.deal_memo_id == memo.id)
+        ).all()
+    )
 
 
 def settle_if_overdue(
-    db: Session, memo: DealMemo, proof: DeliverableProof, now: datetime
+    db: Session,
+    memo: DealMemo,
+    proof: DeliverableProof,
+    now: datetime,
+    history: Sequence[DeliverableProof] | None = None,
 ) -> DeliverableProof:
     """Approve a submission whose window has passed, and say so.
 
     Called whenever a submission is read or acted on, so the outcome never
-    depends on a scheduled job having run.
+    depends on a scheduled job having run. Pass `history` when the memo's
+    submissions are already loaded; otherwise they are read here.
     """
-    if proof.status == "submitted" and now >= approval_deadline(memo, proof):
+    if proof.status != "submitted":
+        return proof
+    deadline = approval_deadline(
+        memo, proof, history if history is not None else _history(db, memo)
+    )
+    if now >= deadline:
         proof.status = "approved"
-        proof.approved_at = approval_deadline(memo, proof)
+        proof.approved_at = deadline
         proof.auto_approved = True
         proof.updated_at = now
         # Took effect at the deadline; recorded now, when it was noticed. The
@@ -161,6 +232,11 @@ def approve_proof(
     db: Session, memo: DealMemo, proof: DeliverableProof, now: datetime
 ) -> DeliverableProof:
     """The brand approves. Raises ProofAlreadyDecided if it is settled."""
+    # Locked and read again before the check: two moves at once would both
+    # pass it, and the last write would silently win (review audit, 4 Oct).
+    # Approval opens the payment clock, so approving while changes are being
+    # requested would leave a payment running on proof sent back.
+    db.refresh(proof, attribute_names=["status"], with_for_update=True)
     settle_if_overdue(db, memo, proof, now)
     if proof.status != "submitted":
         db.rollback()
@@ -190,6 +266,9 @@ def request_revision(
     db: Session, memo: DealMemo, proof: DeliverableProof, note: str, now: datetime
 ) -> DeliverableProof:
     """The brand asks for a change, which lets the creator submit again."""
+    # Locked and read again before the check: two moves at once would both
+    # pass it, and the last write would silently win (review audit, 4 Oct).
+    db.refresh(proof, attribute_names=["status"], with_for_update=True)
     settle_if_overdue(db, memo, proof, now)
     if proof.status != "submitted":
         db.rollback()
@@ -224,7 +303,7 @@ def list_for_memo(db: Session, memo: DealMemo, now: datetime) -> list[Deliverabl
         ).all()
     )
     for proof in proofs:
-        settle_if_overdue(db, memo, proof, now)
+        settle_if_overdue(db, memo, proof, now, history=proofs)
     return proofs
 
 

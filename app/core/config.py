@@ -135,6 +135,20 @@ class Settings(BaseSettings):
     # The most screenshots read in any 24 hours: a ceiling on the bill if
     # something loops. The job stops at it; no request ever waits on it.
     proof_reading_daily_limit: int = Field(default=300, ge=1, le=10_000)
+    # Error tracking (D-074). Unset means off, which is right for local and
+    # test. A DSN only lets a program send errors in, never read them, which
+    # is why Sentry treats it as public; it is still a setting, never code.
+    sentry_dsn: str | None = Field(
+        default=None, pattern=r"^https://[0-9a-f]{32}@[a-z0-9.-]+/[0-9]+$"
+    )
+    # Which build an error came from: the image's git commit, set by infra/.
+    app_release: str | None = Field(default=None, pattern=r"^[A-Za-z0-9._+-]{1,200}$")
+
+    @field_validator("sentry_dsn", "app_release", mode="before")
+    @classmethod
+    def empty_is_unset(cls, value: object) -> object:
+        # `SENTRY_DSN=` in .env means "off", not an address that is "".
+        return None if value == "" else value
 
     @field_validator("anthropic_api_key", mode="before")
     @classmethod
@@ -143,7 +157,7 @@ class Settings(BaseSettings):
         return None if value == "" else value
 
     @model_validator(mode="after")
-    def proof_reading_is_usable(self) -> "Settings":
+    def proof_reading_is_usable(self) -> Settings:
         """Reading switched on without a key fails at startup, not per file."""
         if not self.proof_reading_enabled:
             return self
@@ -192,7 +206,7 @@ class Settings(BaseSettings):
         return value
 
     @model_validator(mode="after")
-    def msg91_is_usable(self) -> "Settings":
+    def msg91_is_usable(self) -> Settings:
         """A half-configured provider fails at startup, not at a user's login."""
         if self.otp_sender != "msg91":
             return self
@@ -214,7 +228,7 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
-    def keys_must_differ(self) -> "Settings":
+    def keys_must_differ(self) -> Settings:
         if self.secret_key.get_secret_value() == self.otp_hash_key.get_secret_value():
             raise ValueError("secret_key and otp_hash_key must be different keys")
         return self

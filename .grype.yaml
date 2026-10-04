@@ -10,48 +10,30 @@
 # Accepted risks. Each entry is ONE vulnerability in ONE exact package
 # version, never a pattern, and says why it is accepted and when it goes.
 #
-# All ten below are in CPython 3.12.14 itself, the newest 3.12 release on
-# 30 September 2026. Grype lists them as fixed, but only in 3.13, 3.14 or
-# 3.15; no 3.12 release carries the fix, so there is nothing to upgrade to
-# on 3.12. Because each entry names version 3.12.14, any change of Python
-# brings all ten back into the scan to be judged again.
+# All three below are in CPython 3.14.8 itself, the newest 3.14 release on
+# 4 October 2026 (D-072). Grype lists them as fixed, but only in 3.15; no
+# 3.14 release carries the fix, so there is nothing to upgrade to on 3.14.
+# Because each entry names version 3.14.8, any change of Python brings all
+# three back into the scan to be judged again.
 #
-# Checked against our code on 30 September 2026: nothing in app/, scripts/
-# or alembic/ imports tarfile, imaplib, poplib, stringprep, zipfile,
-# http.cookies or urllib.request. base64 is used by the page cursor
-# (app/core/pagination.py), which strictly parses whatever it decodes; that
-# is a reading of the code, not a test.
+# 3.14.8 fixed five that this file accepted or CI caught on 3.14.7
+# (urllib.request's password manager, stringprep, zipfile, and two tarfile
+# path flaws); the upgrade from 3.12.14 had fixed six before that.
 #
-# Remove at the Python 3.14 upgrade (D-047), keeping any the upgrade does
-# not fix.
+# Checked against our code on 4 October 2026: nothing in app/, scripts/,
+# alembic/ or the Dockerfile imports tarfile, tempfile or poplib, or calls
+# shutil.rmtree. That is a reading of the code, not a test. pip, which uses
+# tarfile, is removed from the image (Dockerfile), and uv installs from
+# wheels pinned by hash at build time.
+#
+# Remove each entry when a 3.14 release carries its fix.
 ignore:
-  - vulnerability: CVE-2026-82049
-    package: { name: python, version: 3.12.14, type: binary }
-    reason: "High. tarfile extraction filters; we never extract archives."
-  - vulnerability: CVE-2025-12781
-    package: { name: python, version: 3.12.14, type: binary }
-    reason: "base64 accepts +/ despite altchars; the cursor decoder parses strictly after decoding."
-  - vulnerability: CVE-2026-3446
-    package: { name: python, version: 3.12.14, type: binary }
-    reason: "base64 stops at the first padded quad; the cursor decoder parses strictly after decoding."
-  - vulnerability: CVE-2026-6019
-    package: { name: python, version: 3.12.14, type: binary }
-    reason: "http.cookies Morsel.js_output; not used."
-  - vulnerability: CVE-2026-15806
-    package: { name: python, version: 3.12.14, type: binary }
-    reason: "urllib.request HTTPPasswordMgr scheme matching; not used."
-  - vulnerability: CVE-2025-15366
-    package: { name: python, version: 3.12.14, type: binary }
-    reason: "imaplib command injection; not used."
+  - vulnerability: CVE-2026-87910
+    package: { name: python, version: 3.14.8, type: binary }
+    reason: "tarfile link fallback ignores one filter result; we never extract tar archives."
   - vulnerability: CVE-2025-15367
-    package: { name: python, version: 3.12.14, type: binary }
+    package: { name: python, version: 3.14.8, type: binary }
     reason: "poplib command injection; not used."
-  - vulnerability: CVE-2026-17084
-    package: { name: python, version: 3.12.14, type: binary }
-    reason: "stringprep Unicode table version; not used."
-  - vulnerability: CVE-2026-15310
-    package: { name: python, version: 3.12.14, type: binary }
-    reason: "zipfile decompression pre-allocation; we never open zip files."
-  - vulnerability: CVE-2026-3479
-    package: { name: python, version: 3.12.14, type: binary }
-    reason: "Negligible and DISPUTED by CPython: pkgutil.get_data docs, not a flaw."
+  - vulnerability: CVE-2026-12345
+    package: { name: python, version: 3.14.8, type: binary }
+    reason: "tempfile.TemporaryDirectory cleanup race; we create no temporary directories."

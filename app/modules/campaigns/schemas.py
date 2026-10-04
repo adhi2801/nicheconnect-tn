@@ -87,7 +87,7 @@ class CampaignCreate(BaseModel):
     applications_close_on: date | None = None
 
     @model_validator(mode="after")
-    def check_budget(self) -> "CampaignCreate":
+    def check_budget(self) -> CampaignCreate:
         _check_budget(self.campaign_type, self.budget_min_paise, self.budget_max_paise)
         return self
 
@@ -108,7 +108,7 @@ class CampaignUpdate(BaseModel):
     applications_close_on: date | None = None
 
     @model_validator(mode="after")
-    def at_least_one_field(self) -> "CampaignUpdate":
+    def at_least_one_field(self) -> CampaignUpdate:
         if not self.model_fields_set:
             raise PydanticCustomError("empty_update", "Send at least one field to change")
         return self
@@ -235,3 +235,48 @@ class ApplicationFeedbackRead(BaseModel):
     passport_published: bool = Field(
         description="A fact, not a to-do: publishing is the creator's choice (D-036)"
     )
+
+
+# --- a campaign at a glance (D-076) --------------------------------------------------------
+
+
+class ApplicationCountsRead(BaseModel):
+    """How many applications are in each status. Every status, zeros included."""
+
+    submitted: int
+    shortlisted: int
+    accepted: int
+    rejected: int
+    withdrawn: int
+
+
+class DealStageCountsRead(BaseModel):
+    """How many deals stand at each stage, worked out as of the request."""
+
+    draft: int
+    memo_sent: int
+    agreed: int
+    in_progress: int
+    payment: int
+    finished: int
+    declined: int
+    cancelled: int
+
+
+class CampaignSummaryRead(BaseModel):
+    """One campaign at a glance, for its board and the Campaigns list.
+
+    `deals_agreed` counts deals agreed and not cancelled; "2 of 6 deals
+    finished" is `deals_finished` of `deals_agreed`. `complete` is worked
+    out, never stored: closed, at least one deal agreed, every agreed deal
+    finished and no memo left unanswered.
+    """
+
+    campaign_id: uuid.UUID
+    status: CampaignStatus
+    applications: ApplicationCountsRead
+    deals_by_stage: DealStageCountsRead
+    deals_agreed: int
+    deals_finished: int
+    deals_waiting_on_brand: int
+    complete: bool
