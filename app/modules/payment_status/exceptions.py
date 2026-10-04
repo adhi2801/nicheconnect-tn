@@ -51,3 +51,9 @@ class BarterMemoHasNoPayment(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "barter_memo_has_no_payment"
     title = "A barter deal has no payment to record"
+
+
+class NotAPaymentParty(DomainError):
+    status_code = HTTPStatus.FORBIDDEN
+    code = "not_a_payment_party"
+    title = "Only brand and creator accounts have payments"

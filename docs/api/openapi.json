@@ -4472,6 +4472,229 @@
         "title": "Page[NotificationRead]",
         "type": "object"
       },
+      "Page_PaymentListItem_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PaymentListItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as ?cursor= to get the next page",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[PaymentListItem]",
+        "type": "object"
+      },
+      "PaymentBucketRead": {
+        "properties": {
+          "amount_paise": {
+            "minimum": 0.0,
+            "title": "Amount Paise",
+            "type": "integer"
+          },
+          "count": {
+            "minimum": 0.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "currency": {
+            "default": "INR",
+            "title": "Currency",
+            "type": "string"
+          }
+        },
+        "required": [
+          "count",
+          "amount_paise"
+        ],
+        "title": "PaymentBucketRead",
+        "type": "object"
+      },
+      "PaymentListItem": {
+        "description": "A payment record plus the deal it belongs to, so a list needs no\nsecond call per row.",
+        "properties": {
+          "amount_paise": {
+            "title": "Amount Paise",
+            "type": "integer"
+          },
+          "brand_id": {
+            "format": "uuid",
+            "title": "Brand Id",
+            "type": "string"
+          },
+          "brand_name": {
+            "title": "Brand Name",
+            "type": "string"
+          },
+          "campaign_id": {
+            "format": "uuid",
+            "title": "Campaign Id",
+            "type": "string"
+          },
+          "campaign_title": {
+            "title": "Campaign Title",
+            "type": "string"
+          },
+          "confirmed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "creator_display_name": {
+            "title": "Creator Display Name",
+            "type": "string"
+          },
+          "creator_handle": {
+            "title": "Creator Handle",
+            "type": "string"
+          },
+          "creator_id": {
+            "format": "uuid",
+            "title": "Creator Id",
+            "type": "string"
+          },
+          "currency": {
+            "default": "INR",
+            "title": "Currency",
+            "type": "string"
+          },
+          "days_overdue": {
+            "title": "Days Overdue",
+            "type": "integer"
+          },
+          "deal_memo_id": {
+            "format": "uuid",
+            "title": "Deal Memo Id",
+            "type": "string"
+          },
+          "due_on": {
+            "format": "date",
+            "title": "Due On",
+            "type": "string"
+          },
+          "has_open_dispute": {
+            "title": "Has Open Dispute",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "marked_paid_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marked Paid At"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "enum": [
+                  "upi",
+                  "bank_transfer",
+                  "cash"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
+          },
+          "reference_auto_matchable": {
+            "title": "Reference Auto Matchable",
+            "type": "boolean"
+          },
+          "state": {
+            "enum": [
+              "due",
+              "late",
+              "unpaid",
+              "paid",
+              "unconfirmed",
+              "confirmed"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "deal_memo_id",
+          "amount_paise",
+          "due_on",
+          "state",
+          "days_overdue",
+          "method",
+          "reference",
+          "reference_auto_matchable",
+          "marked_paid_at",
+          "confirmed_at",
+          "has_open_dispute",
+          "created_at",
+          "updated_at",
+          "campaign_id",
+          "campaign_title",
+          "creator_id",
+          "creator_handle",
+          "creator_display_name",
+          "brand_id",
+          "brand_name"
+        ],
+        "title": "PaymentListItem",
+        "type": "object"
+      },
       "PaymentRead": {
         "description": "A payment record, with its state read from the dates.\n\n`state` is not a stored column. It is worked out from `due_on`,\n`marked_paid_at` and `confirmed_at` against today, so it can never be\nstale (see models.py).",
         "properties": {
@@ -4602,6 +4825,37 @@
           "updated_at"
         ],
         "title": "PaymentRead",
+        "type": "object"
+      },
+      "PaymentTotalsRead": {
+        "description": "How many payments, and how much, in each view, as of `as_of`.\n\n`overdue` is the part of `to_pay` past its due date. It is always\nreturned, zero included, so a screen can never hide it.",
+        "properties": {
+          "as_of": {
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "awaiting_confirmation": {
+            "$ref": "#/components/schemas/PaymentBucketRead"
+          },
+          "finished": {
+            "$ref": "#/components/schemas/PaymentBucketRead"
+          },
+          "overdue": {
+            "$ref": "#/components/schemas/PaymentBucketRead"
+          },
+          "to_pay": {
+            "$ref": "#/components/schemas/PaymentBucketRead"
+          }
+        },
+        "required": [
+          "as_of",
+          "to_pay",
+          "overdue",
+          "awaiting_confirmation",
+          "finished"
+        ],
+        "title": "PaymentTotalsRead",
         "type": "object"
       },
       "ProblemDetails": {
@@ -16259,6 +16513,216 @@
         "summary": "Mark one as read",
         "tags": [
           "notifications"
+        ]
+      }
+    },
+    "/api/v1/payments/mine": {
+      "get": {
+        "description": "Every payment across the caller's deals, newest first, each with its campaign, creator and brand, so a screen needs no call per row. `state` is worked out from the dates, as for a single payment.",
+        "operationId": "list_my_payments_api_v1_payments_mine_get",
+        "parameters": [
+          {
+            "description": "`to_pay`: not yet marked as sent. `awaiting_confirmation`: marked as sent, not yet confirmed as arrived. `finished`: confirmed. Leave out for all of them.",
+            "in": "query",
+            "name": "view",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "to_pay",
+                    "awaiting_confirmation",
+                    "finished"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`to_pay`: not yet marked as sent. `awaiting_confirmation`: marked as sent, not yet confirmed as arrived. `finished`: confirmed. Leave out for all of them.",
+              "title": "View"
+            }
+          },
+          {
+            "description": "Rows per page",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Rows per page",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "From a previous page's next_cursor",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "From a previous page's next_cursor",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_PaymentListItem_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only brand and creator accounts have payments"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The profile has not been created yet"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A query parameter or the cursor is invalid"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List my payments",
+        "tags": [
+          "payment"
+        ]
+      }
+    },
+    "/api/v1/payments/mine/totals": {
+      "get": {
+        "description": "How many payments, and how much, are to pay, overdue, awaiting confirmation and finished, across all the caller's deals. Overdue is always returned, zero included.",
+        "operationId": "my_payment_totals_api_v1_payments_mine_totals_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentTotalsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only brand and creator accounts have payments"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The profile has not been created yet"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Totals of my payments",
+        "tags": [
+          "payment"
         ]
       }
     },

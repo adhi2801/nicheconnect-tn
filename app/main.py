@@ -38,6 +38,7 @@ from app.modules.matching.router import router as matching_router
 from app.modules.notifications.router import router as notifications_router
 from app.modules.payment_status.brand_router import router as reliability_router
 from app.modules.payment_status.bulk_router import router as bulk_payments_router
+from app.modules.payment_status.mine_router import router as my_payments_router
 from app.modules.payment_status.router import router as payment_router
 
 # Before the app exists, so the error tracker sees it built (D-074). Off
@@ -111,6 +112,7 @@ app.include_router(deal_record_router)
 app.include_router(proof_router)
 app.include_router(payment_router)
 app.include_router(bulk_payments_router)
+app.include_router(my_payments_router)
 app.include_router(reliability_router)
 app.include_router(delivery_router)
 app.include_router(disputes_router)
