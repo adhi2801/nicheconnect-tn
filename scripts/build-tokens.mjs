@@ -24,4 +24,5 @@ for (const [k, v] of Object.entries(t.space)) dart += `  static const double s${
 for (const [k, v] of Object.entries(t.radius)) dart += `  static const double r${k[0].toUpperCase()}${k.slice(1)} = ${v};\n`;
 dart += `  static const motionFast = Duration(milliseconds: ${t.motion.fast});\n  static const motionBase = Duration(milliseconds: ${t.motion.base});\n  static const motionSlow = Duration(milliseconds: ${t.motion.slow});\n}\n`;
 writeFileSync(new URL("colyv_tokens.dart", out), dart);
+try { writeFileSync(new URL("../apps/mobile/lib/colyv_tokens.dart", import.meta.url), dart); } catch {}
 console.log("tokens written");
