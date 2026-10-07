@@ -1,0 +1,31 @@
+@import "tailwindcss";
+@import "../../../../packages/tokens/tokens.css";
+
+/* Tailwind reads the shared tokens, so a colour or radius is changed in tokens/tokens.json only. */
+@theme inline {
+  --color-ground: var(--c-ground);
+  --color-surface: var(--c-surface);
+  --color-sunk: var(--c-surface-sunk);
+  --color-ink: var(--c-ink);
+  --color-muted: var(--c-ink-muted);
+  --color-line: var(--c-line);
+  --color-accent: var(--c-accent);
+  --color-on-accent: var(--c-on-accent);
+  --color-ok: var(--c-ok);
+  --color-warn: var(--c-warn);
+  --color-bad: var(--c-bad);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+  --font-sans: var(--font-geist-sans), var(--f-sans);
+  --font-mono: var(--font-geist-mono), var(--f-numeric);
+}
+
+body {
+  background: var(--c-ground);
+  color: var(--c-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
