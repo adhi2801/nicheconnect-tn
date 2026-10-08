@@ -20,7 +20,7 @@ Three things it does **not** mean:
 
 Built and tested on `main`: Phases A, B and D of the backlog, C1 to C4, E3 and E4 (`docs/PRODUCT_BACKLOG.md`); creator search, the admin side, results read from proof (D-070, switched off), the deal record with its daily outside timestamp, proof files, and AWS described as code. **1,973 tests, 98.44% coverage**, API fuzzing, migration and image scanning in CI.
 
-**Section 3 holds 20 items. Section 4 holds 8 that wait on someone outside the code.** Item 1, Python 3.14 and uv, was built on 1 October (D-072); item 2, error tracking with Sentry, on 4 October (D-074). Also built on 4 October, from the website wireframes' backend requests: one list of a party's payments with totals (D-075), and each deal's stage with whose move it is, plus a per-campaign summary with Complete (D-076). Items 19 and 22 were built on 8 October: typical response times (D-077) and city figures for public pages (D-078). Items 18 and 21, notification preferences and invite attribution, were built on 8 October (D-079, D-080), from `docs/PROPOSAL_NOTIFICATION_PREFERENCES_AND_ATTRIBUTION.md`. Section 5 lists what the founders declined or deferred.
+**Section 3 holds 20 items, plus 20 proposed in 3.8. Section 4 holds 8 that wait on someone outside the code.** Item 1, Python 3.14 and uv, was built on 1 October (D-072); item 2, error tracking with Sentry, on 4 October (D-074). Also built on 4 October, from the website wireframes' backend requests: one list of a party's payments with totals (D-075), and each deal's stage with whose move it is, plus a per-campaign summary with Complete (D-076). Items 19 and 22 were built on 8 October: typical response times (D-077) and city figures for public pages (D-078). Items 18 and 21, notification preferences and invite attribution, were built on 8 October (D-079, D-080), from `docs/PROPOSAL_NOTIFICATION_PREFERENCES_AND_ATTRIBUTION.md`. Section 5 lists what the founders declined or deferred.
 
 ## 3. Left to build: no outside wait, a decision first
 
@@ -82,6 +82,35 @@ Built already from the same list: deal stage and campaign summary (D-076), the p
 | 26 | **Deliverables as a list**, one row per deliverable, on campaigns and memos | The deal pass tracks each deliverable; also step 2 of fair-rate guidance (D-056) | A product decision; database |
 | 27 | **Draft first**: a creator sends a draft, the brand approves it, then it is posted | Proposed in the wireframes; changes the proof flow and its clock (D-025) | A product decision; database |
 | 28 | **When a brand first answered an application** | Needed to measure how fast brands reply (D-077 could not) | Database (one column) |
+
+### 3.8 From the billion-dollar gap research (8 October, `docs/BILLION_DOLLAR_GAP.md`)
+
+**Proposed, not approved.** Each needs its gate before it is built; evidence, fit with our rules, and size are in the research file.
+
+| # | Item | Gate |
+|---|---|---|
+| 29 | Connected Instagram and YouTube accounts: numbers from the platform | Security, database, dependency; Meta App Review and Google verification first |
+| 30 | Results fetched from the platform at proof time | After 29 |
+| 31 | Audience authenticity signals from real data (replaces 16's plan) | After 29 |
+| 32 | A UPI pay link on every payment; the money never passes through us | A founder decision on storing UPI IDs |
+| 33 | The barter tax tracker against the ₹20,000 TDS line | Validation pack wording |
+| 35 | Aadhaar eSign on the deal memo, optional | Legal; dependency |
+| 36 | Verified business from GST | Dependency, security |
+| 37 | A usage-rights ledger, with Meta partnership-ad permissions | Database |
+| 38 | Sales from commission deals: tracked links, codes, a Shopify app | Founders; dependency; database |
+| 39 | Content pre-check against the memo and ASCI rules, flags only | Validation pack (ASCI) |
+| 40 | A campaign brief from a few sentences | |
+| 41 | An MCP server for brands' and creators' own AI assistants | Security; after 11 |
+| 42 | Work together again in one tap | |
+| 43 | Campaign alerts for creators | Database |
+| 44 | Counter-offers on quotes | Database |
+| 45 | Creator availability | Database |
+| 46 | An agency workspace | Founders, security, database |
+| 47 | A campaign report a brand can hand to its boss | |
+| 48 | Readiness for ISO 27001 or SOC 2 | Founders |
+| 49 | A public status page and service levels | Infrastructure |
+
+Item 34, payment confirmation from bank statements, was researched and set aside: Account Aggregator data goes only to regulated financial entities.
 
 ## 4. Blocked from outside the code
 
