@@ -17,7 +17,7 @@ Two defences, because one is not enough:
 
 Nothing here embeds anything. It builds the string an embedding would be made
 from, so that string can be tested on its own, before any model or extension
-exists (docs/PROPOSAL_MATCHING.md, step 1).
+exists (docs/decided/PROPOSAL_MATCHING.md, step 1).
 """
 
 from typing import Any

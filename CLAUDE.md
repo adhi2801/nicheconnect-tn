@@ -34,7 +34,7 @@ Recorded as D-051 and D-053.
 3. **Do not write a new migration for `payment_status`, disputes or the Passport column.** Two migrations in flight would fork the chain (section 1).
 4. **Your review is what blocks every merge to `main`.** Review **PR #13** (`feature/attention`), starting with migrations 17–20. It contains all of PR #11 and everything since, so Adhi proposes closing #11 and reviewing only #13. Do you agree?
 5. After #13, review the PR from `chore/cors-and-docs`, which is stacked on it: the CORS allow-list, 500 errors with every header, and the API docs off in production (D-044, D-045). It touches no Data-track file and adds no migration.
-6. **Rate card decision 1** (`docs/PROPOSAL_PASSPORT_RATE_CARD.md`): two new tables and one column. It needs both founders, and the tables are yours to build. What is your decision?
+6. **Rate card decision 1** (`docs/decided/PROPOSAL_PASSPORT_RATE_CARD.md`): two new tables and one column. It needs both founders, and the tables are yours to build. What is your decision?
 7. After #13 merges, run `pip install -r requirements.txt`: it adds ruff, mypy and pytest-cov (D-037), and CI fails on lint, formatting, types and coverage without them. Shared files Adhi edited on 22 September: `.env.example` (new optional `CORS_ALLOWED_ORIGINS`), `docs/DECISIONS.md` (D-044, D-045) and `docs/standards/security.md`.
 8. The full account is in the reports under `docs/reports/` dated 2026-09-21 and 2026-09-22, on those branches.
 
@@ -210,6 +210,24 @@ We're learning the codebase as we build it. For each file:
 ## 7. Quality bar
 
 We're building a product people trust with their business and income. Quality is never traded for speed. When a shortcut is tempting, name the trade-off and ask.
+
+### 7.0 The bar: world-class by default (Adhi's standing order, 8 October 2026)
+
+The target is a product at the level of the best companies in the world. **This is the default for every task; no founder should have to ask for it again.**
+
+- **Best, not good enough.** Pick the highest-quality option and say why. Name the trade-off only when one exists.
+- **Researched, with dates.** Before any non-trivial choice (a library, a rule, a design, a number), check current sources and how the leading companies do it. Put the sources in the doc or the commit.
+- **Beat the best, not the average.** For each feature, name the strongest competitor's version and say how ours is better (`docs/COMPETITIVE_LANDSCAPE.md`).
+- **Proven, not claimed.**
+  - Every fix has a test that fails without it: break the code, watch the test fail, restore it.
+  - Every list has a test proving it makes no query per row.
+  - Every number comes from a tool.
+- **The whole job, in one change.** That means the code, its tests, the decision entry, the OpenAPI snapshot, the data export, `docs/BACKEND_COMPLETE.md` and `docs/README.md`.
+- **Keep moving.** After each piece, propose the next most valuable item and carry on within the gates.
+- **Brutally honest.** Say what is weak, unmeasured or unreviewed, every time.
+- **Never a shortcut around section 2 or section 5.** World-class includes the constraints and the approvals.
+
+Which doc is for what, and when each is read: `docs/README.md`.
 
 **Before writing code in an area, read its standard.** These files are binding:
 

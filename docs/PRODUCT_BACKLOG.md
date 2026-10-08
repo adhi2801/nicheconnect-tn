@@ -120,7 +120,7 @@ Of the **8 that remain**, the split matters more than the count:
 
 | | Items | Why |
 |---|---|---|
-| **Buildable now, after a founder decision** | E5, E9, and results read from proof (competitive #4, `docs/PROPOSAL_PROOF_RESULTS.md`) | Nothing external; each needs its design approved |
+| **Buildable now, after a founder decision** | E5, E9, and results read from proof (competitive #4, `docs/decided/PROPOSAL_PROOF_RESULTS.md`) | Nothing external; each needs its design approved |
 | **Waiting on an account** | E1, then E2 and C5 | Meta must approve our WhatsApp templates, which needs Meta business verification, which needs the company |
 | **Waiting on the validation pack** | E6, E7, E8 | GST, TDS, ASCI and retention. `CLAUDE.md` constraint 6: ask, never invent |
 

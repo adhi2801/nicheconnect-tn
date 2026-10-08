@@ -40,7 +40,7 @@ So the code since 21 September has had one reader: the session that wrote it. Se
 | 11 | #9 | Two simultaneous proof submissions: one got a 500 | **Fixed now** | `a3528fe`, same pattern as #9 |
 | 13 | #10 | `assign-task` measured progress against a phase plan the repository does not hold | Docs fixed | `ded827e`: it uses the backlog's phases A to E and `docs/BACKEND_COMPLETE.md` |
 | 16 | #11 | Retrying a lost approval returned 409 instead of the original success | Already fixed | D-040 (`f047a6e`): a test retries an approval with one key and gets the original 200; another checks every write accepts a key |
-| 17 | #35 | The handle check cannot judge a YouTube `/channel/` link | Already handled; docs fixed | The check is left empty, never failed; `ded827e` adds the test and states the rule in `docs/PROPOSAL_PROOF_RESULTS.md` |
+| 17 | #35 | The handle check cannot judge a YouTube `/channel/` link | Already handled; docs fixed | The check is left empty, never failed; `ded827e` adds the test and states the rule in `docs/decided/PROPOSAL_PROOF_RESULTS.md` |
 | 18 | #35 | The post-date check has no defined end | Already handled; docs fixed | It is on or after acceptance and not in the future, in IST; the optional due date is not a bound. Stated in the proposal, `ded827e` |
 | 20 | #34 | A finished upload never submitted would stay in the bucket forever | Already fixed | `8ab4f0b` (1 Oct): the bucket expires anything in `proof-files/incoming/` after a day |
 | 21 | #34 | A creator at nine packages adding two at once ended with eleven | **Fixed now** | `bc34345`: four simultaneous adds gave thirteen packages, 3 runs in 3; now exactly ten |
