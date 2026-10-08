@@ -37,6 +37,9 @@ from app.modules.deal_memo.response_times_router import router as response_times
 from app.modules.deal_memo.router import router as deal_memos_router
 from app.modules.disputes.router import router as disputes_router
 from app.modules.matching.router import router as matching_router
+from app.modules.notifications.preference_router import (
+    router as notification_preferences_router,
+)
 from app.modules.notifications.router import router as notifications_router
 from app.modules.payment_status.brand_router import router as reliability_router
 from app.modules.payment_status.bulk_router import router as bulk_payments_router
@@ -111,6 +114,7 @@ app.include_router(rate_guidance_router)
 app.include_router(campaigns_router)
 app.include_router(applications_router)
 app.include_router(notifications_router)
+app.include_router(notification_preferences_router)
 app.include_router(deal_memos_router)
 app.include_router(deal_record_router)
 app.include_router(proof_router)

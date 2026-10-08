@@ -20,7 +20,7 @@ rules are enforced here rather than trusted to each caller:
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time
 from typing import Any
 
 # Enough for any pilot account, small enough that one request cannot exhaust
@@ -71,6 +71,10 @@ def to_json_value(value: Any) -> Any:
         return moment.astimezone(UTC).isoformat().replace("+00:00", "Z")
     if isinstance(value, date):
         return value.isoformat()
+    if isinstance(value, time):
+        # A time of day with no date, such as the start of quiet hours. It is
+        # Tamil Nadu time by definition, so no offset is attached.
+        return value.isoformat(timespec="minutes")
     if isinstance(value, (list, tuple)):
         return [to_json_value(item) for item in value]
     if isinstance(value, dict):

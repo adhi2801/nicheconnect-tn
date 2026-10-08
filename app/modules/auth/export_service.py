@@ -36,6 +36,7 @@ from app.modules.auth.models.report import Report
 from app.modules.campaigns import service as campaigns
 from app.modules.deal_memo import service as deal_memos
 from app.modules.disputes import service as disputes
+from app.modules.notifications import preference_service as notification_preferences
 from app.modules.notifications import service as notifications
 from app.modules.payment_status import service as payments
 
@@ -326,6 +327,7 @@ def collect_sections(db: Session, account: Account) -> list[ExportedSection]:
         *payments.export_for_account(db, account.id),
         *disputes.export_for_account(db, account.id),
         *notifications.export_for_account(db, account.id),
+        *notification_preferences.export_for_account(db, account.id),
     ]
 
 
@@ -362,6 +364,7 @@ def exported_tables() -> frozenset[str]:
         | campaigns.EXPORTED_TABLES
         | deal_memos.EXPORTED_TABLES
         | notifications.EXPORTED_TABLES
+        | notification_preferences.EXPORTED_TABLES
         | payments.EXPORTED_TABLES
         | disputes.EXPORTED_TABLES
     )
