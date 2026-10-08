@@ -21,6 +21,7 @@ from app.modules.deal_memo.proof_models import ProofFile
 from app.modules.deal_memo.proof_router import READ_LIMIT
 from app.modules.deal_memo.record_models import DealRecordEntry
 from tests.deal_flow import LINK, MEMOS_URL, User, accepted_memo, brand_user, creator_user
+from tests.query_counts import queries_for
 
 NOT_AN_IMAGE = b"%PDF-1.7 pretending to be a png"
 
@@ -313,3 +314,31 @@ def test_without_storage_only_opening_a_cleaned_file_answers_503(
     clean(db, clock)
 
     assert_problem(files_of(client, brand, memo_id, waiting), 503, "uploads_unavailable")
+
+
+# --- no query per row (testing.md section 1) ----------------------------------
+
+
+def test_more_files_cost_no_more_queries(client, db, clock):
+    brand = brand_user(db, clock)
+
+    def proof_of(count: int) -> tuple[str, str]:
+        creator = creator_user(db, clock)
+        memo_id = accepted_memo(client, brand, creator)
+        colours = [(20 + 40 * index, 120, 200) for index in range(count)]
+        proof_id = proof_with(
+            client, clock, creator, memo_id, *(png(colour) for colour in colours)
+        )
+        clean(db, clock)
+        return memo_id, proof_id
+
+    one_memo, one_proof = proof_of(1)
+    four_memo, four_proof = proof_of(4)
+    one = queries_for(
+        client, f"{MEMOS_URL}/{one_memo}/proof/{one_proof}/files", brand.headers
+    )
+    four = queries_for(
+        client, f"{MEMOS_URL}/{four_memo}/proof/{four_proof}/files", brand.headers
+    )
+
+    assert one == four, f"{one} queries for 1 file, {four} for 4"

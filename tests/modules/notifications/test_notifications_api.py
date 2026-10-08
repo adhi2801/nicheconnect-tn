@@ -14,6 +14,7 @@ from app.modules.auth.dependencies import get_now
 from app.modules.auth.tokens import create_access_token
 from app.modules.notifications.models import Notification
 from tests.factories import FIXED_NOW, build_brand, build_creator
+from tests.query_counts import queries_for
 
 CAMPAIGNS_URL = "/api/v1/campaigns"
 URL = "/api/v1/notifications"
@@ -381,3 +382,28 @@ def test_stored_row_matches_the_api(client, db, clock):
     assert db.scalars(
         select(Notification).where(Notification.account_id == brand.account_id)
     ).all() == [stored]
+
+
+# --- no query per row (testing.md section 1) ----------------------------------
+
+
+def test_a_longer_list_costs_no_more_queries(client, db, clock):
+    creator = creator_user(db, clock, handle="counted.eats")
+
+    def notify(count: int) -> None:
+        for _ in range(count):
+            db.add(
+                Notification(
+                    account_id=creator.account_id,
+                    notification_type="memo_sent",
+                    details={"campaign_title": "Pongal sweets launch"},
+                )
+            )
+        db.flush()
+
+    notify(2)
+    short = queries_for(client, URL, creator.headers)
+    notify(18)
+    long = queries_for(client, URL, creator.headers)
+
+    assert short == long, f"{short} queries for 2 notifications, {long} for 20"

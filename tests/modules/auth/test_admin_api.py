@@ -12,6 +12,7 @@ from app.modules.auth.models.admin_action import AdminAction
 from app.modules.auth.models.creator import Creator
 from tests.deal_flow import User, brand_user, creator_user
 from tests.factories import FIXED_NOW, build_auth_session, create_account
+from tests.query_counts import queries_for
 
 ADMIN = "/api/v1/admin"
 REASON = {"reason": "Caller asked about their account"}
@@ -439,3 +440,40 @@ def test_the_log_pages_newest_first(client, db, clock, admin):
 
     subjects = [e["subject_account_id"] for e in first["items"] + second["items"]]
     assert subjects == list(reversed(viewed))
+
+
+# --- no query per row (testing.md section 1) ----------------------------------
+
+
+def test_a_longer_report_queue_costs_no_more_queries(client, db, clock, admin):
+    reporter = brand_user(db, clock)
+
+    def report_some(count: int) -> None:
+        for _ in range(count):
+            target = creator_user(db, clock)
+            file_report(client, reporter, creator_profile_id(db, target))
+
+    report_some(2)
+    short = queries_for(client, f"{ADMIN}/reports", admin.headers)
+    report_some(8)
+    long = queries_for(client, f"{ADMIN}/reports", admin.headers)
+
+    assert short == long, f"{short} queries for 2 reports, {long} for 10"
+
+
+def test_a_longer_admin_log_costs_no_more_queries(client, db, clock, admin):
+    def view_some(count: int) -> None:
+        for _ in range(count):
+            user = creator_user(db, clock)
+            client.get(
+                f"{ADMIN}/accounts/{user.account_id}",
+                params=REASON,
+                headers=admin.headers,
+            )
+
+    view_some(2)
+    short = queries_for(client, f"{ADMIN}/actions", admin.headers)
+    view_some(8)
+    long = queries_for(client, f"{ADMIN}/actions", admin.headers)
+
+    assert short == long, f"{short} queries for 2 entries, {long} for 10"
