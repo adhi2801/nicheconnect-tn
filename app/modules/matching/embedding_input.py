@@ -75,6 +75,9 @@ CREATOR_NOT_EMBEDDED = frozenset(
         "passport_published_at",
         # A consent timestamp, not a description of anybody's work (D-055).
         "rate_card_public_at",
+        # A date that changes often and means nothing about the creator's
+        # work; matching filters and ranks on it directly (D-083).
+        "booked_until",
         "created_at",
         "updated_at",
     }
