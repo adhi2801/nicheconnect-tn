@@ -14,6 +14,7 @@ from app.core.idempotent_route import set_identity_resolver
 from app.core.rate_limit import limiter
 from app.core.request_id import RequestIdMiddleware
 from app.core.security_headers import SecurityHeadersMiddleware
+from app.core.security_txt import router as security_txt_router
 from app.core.unexpected_error import UnexpectedErrorMiddleware
 from app.modules.auth.admin_router import router as admin_router
 from app.modules.auth.attention_router import router as attention_router
@@ -96,6 +97,7 @@ app.add_middleware(RequestIdMiddleware)
 # middlewares above generate on their own.
 app.add_middleware(SecurityHeadersMiddleware)
 
+app.include_router(security_txt_router)
 app.include_router(auth_router)
 app.include_router(brand_router)
 app.include_router(creator_router)

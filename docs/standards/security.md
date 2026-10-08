@@ -82,7 +82,7 @@ Examples:
 - Secrets live only in environment variables: `.env` locally (gitignored), AWS Secrets Manager in staging and production (`infra/`).
 - Never in code, tests, logs, commit messages, reports or screenshots. The app refuses to start on a placeholder value.
 - A leaked secret is rotated at once, even if the commit was deleted.
-- **Secret scanning blocks a push:** GitHub push protection on the repository, plus a scanner in CI **(not yet built)**.
+- **Secret scanning blocks a merge:** Gitleaks reads the whole git history on every CI run (D-082); findings that are not secrets are listed one by one, by exact fingerprint, in `.gitleaksignore`. GitHub push protection on the repository stops most before they are pushed **(a founder switches it on in the repository settings)**.
 
 ## 7. Personal data and privacy (DPDP)
 
@@ -116,13 +116,13 @@ Examples:
 - **Images:**
   - Slim base images pinned by digest; the app's environment has no pip.
   - Grype blocks merge on any fixable vulnerability; accepted risks are listed one by one with a reason and an expiry condition (D-064, D-074).
-- **Dependency updates:** a Dependabot (or Renovate) configuration so updates arrive as pull requests **(not yet built)**.
+- **Dependency updates:** Dependabot proposes updates weekly as pull requests, for Python, the CI actions, the base images, Compose and OpenTofu, each held 7 days after release before it is proposed; security fixes come at once (`.github/dependabot.yml`, D-082). Each still needs a founder's approval to merge.
 - **To add before launch:**
-  - an SBOM (CycloneDX) for every image, published with each release **(not yet built)**;
-  - signed images with provenance (Sigstore cosign, SLSA build level 2) **(not yet built)**.
+  - an SBOM (CycloneDX) of the API image, written by Syft on every CI run and kept 90 days (D-082); published with each release once releases exist;
+  - signed images with provenance (Sigstore cosign, SLSA build level 2) **(not yet built: waits for a registry to push images to, D-063)**.
 - **Least privilege in AWS:** the app's IAM role can reach only its own bucket and its own secrets; the database user has no superuser rights.
-- **Incident response (not yet built):** one page covering who is called, how to rotate every secret, how to take the API down safely, and how to tell people, rehearsed once before launch.
-- **Disclosure:** a `SECURITY.md` and `/.well-known/security.txt` (RFC 9116), so a researcher knows how to reach us **(not yet built)**.
+- **Incident response:** `docs/INCIDENT_RESPONSE.md` covers who is called, how to rotate every secret, how to take the API down safely, and how to tell people (D-082). **Rehearsal not yet done**: once on staging before launch.
+- **Disclosure:** `SECURITY.md` (report privately through GitHub, response targets, safe harbour) and `/.well-known/security.txt` (RFC 9116) on the API, whose `Expires` a test makes us renew (D-082). **A founder switches on private vulnerability reporting in the repository settings.**
 
 ## 10. Before production (checklist)
 
@@ -133,7 +133,9 @@ Examples:
 - [ ] Database user without superuser rights, verified in staging
 - [ ] Backups enabled and one restore tested (`database.md` section 8)
 - [ ] Dependency audit and image scan clean on the release commit
-- [ ] Secret scanning and Dependabot on
-- [ ] `SECURITY.md`, `security.txt`, incident plan rehearsed
+- [x] Secret scanning in CI and Dependabot configured (D-082)
+- [ ] Push protection and private vulnerability reporting switched on in the repository settings
+- [x] `SECURITY.md`, `security.txt`, incident plan written (D-082)
+- [ ] Incident plan rehearsed on staging
 - [ ] An outside penetration test of the API, findings fixed or accepted by a founder **(decision: who and when)**
 - [ ] The validation pack's DPDP items in force (consent, retention, breach notice)

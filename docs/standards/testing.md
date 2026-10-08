@@ -85,16 +85,17 @@ tests/
 ## 9. CI gates (merge is blocked unless all pass)
 
 1. The workflows audited (zizmor)
-2. Locked dependencies installed (`uv sync --locked`)
-3. Lint and format check (ruff)
-4. Type check (mypy strict)
-5. New migrations linted for locks (Squawk)
-6. Migrations applied, undone and redone on a fresh database; models match the database
-7. The full suite: no failures, no unexplained skips; banned money words included (`test_banned_terms.py`)
-8. Coverage floors, overall and per `service.py`
-9. The API fuzzed against its contract (Schemathesis)
-10. Dependency audit (pip-audit)
-11. Images built and scanned; any fixable vulnerability blocks (Grype)
+2. The git history scanned for secrets (Gitleaks)
+3. Locked dependencies installed (`uv sync --locked`)
+4. Lint and format check (ruff)
+5. Type check (mypy strict)
+6. New migrations linted for locks (Squawk)
+7. Migrations applied, undone and redone on a fresh database; models match the database
+8. The full suite: no failures, no unexplained skips; banned money words included (`test_banned_terms.py`)
+9. Coverage floors, overall and per `service.py`
+10. The API fuzzed against its contract (Schemathesis)
+11. Dependency audit (pip-audit)
+12. Images built and scanned; any fixable vulnerability blocks (Grype); the API image's bill of materials written (Syft)
 
 ## 10. Honesty
 

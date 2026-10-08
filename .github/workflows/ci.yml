@@ -90,6 +90,26 @@ jobs:
       - name: Audit the workflows
         run: uvx zizmor@1.30.1 --persona=regular .github/workflows/
 
+      # Secret scanning (security.md section 6, D-082). Gitleaks reads every
+      # commit on the branch, not only the latest files, because a key deleted
+      # in a later commit is still in the history anyone with the repository
+      # can read. Installed like Grype: the release binary, pinned by version
+      # AND checksum (the checksum comes from the release's
+      # gitleaks_<version>_checksums.txt). Chosen over TruffleHog because it
+      # never sends a found key to an outside service to test it.
+      # Findings that are not secrets are listed one by one, by exact
+      # fingerprint, in .gitleaksignore.
+      - name: Scan the history for secrets
+        env:
+          GITLEAKS_VERSION: "8.30.1"
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          archive="$RUNNER_TEMP/gitleaks.tar.gz"
+          curl -sSfL -o "$archive"             "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  ${archive}" | sha256sum --check --strict
+          tar -xzf "$archive" -C "$RUNNER_TEMP" gitleaks
+          "$RUNNER_TEMP/gitleaks" git --redact --no-banner --exit-code 1 .
+
       # --locked fails the job if uv.lock is out of step with pyproject.toml,
       # so a dependency change can never reach main without its lock. The
       # environment then comes first on PATH, so every later step runs the
@@ -250,6 +270,33 @@ jobs:
 
       - name: Fail on any fixable vulnerability in the API image
         run: grype docker:nicheconnect-api:ci -c .grype.yaml --only-fixed --fail-on negligible
+
+      # The image's bill of materials (security.md section 9, D-082): every
+      # package inside it, as CycloneDX, kept with the run for 90 days so
+      # "were we running the affected version on that date?" has an answer.
+      # Syft is Anchore's, like Grype, installed the same way. Signing the
+      # image waits for a registry to push it to (infra, D-063).
+      - name: Install Syft
+        env:
+          SYFT_VERSION: "1.54.0"
+          SYFT_SHA256: 54a87372498168b2d033e876fd41fa4e8035b872699e525a57046e1f2f09c860
+        run: |
+          archive="$RUNNER_TEMP/syft.tar.gz"
+          curl -sSfL -o "$archive"             "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz"
+          echo "${SYFT_SHA256}  ${archive}" | sha256sum --check --strict
+          tar -xzf "$archive" -C "$RUNNER_TEMP" syft
+
+      - name: Write the API image's bill of materials
+        run: |
+          "$RUNNER_TEMP/syft" scan docker:nicheconnect-api:ci             -o cyclonedx-json=sbom-api.cdx.json -q
+          python3 -c "import json; d = json.load(open('sbom-api.cdx.json')); assert d['bomFormat'] == 'CycloneDX' and d['components'], 'empty SBOM'"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sbom-api
+          path: sbom-api.cdx.json
+          retention-days: 90
+          if-no-files-found: error
 
       # The embeddings image carries CPU torch and the 1.2 GB model, so it is
       # built only for pull requests to main. Its scan reports and does not

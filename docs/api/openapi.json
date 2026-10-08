@@ -7351,6 +7351,39 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/.well-known/security.txt": {
+      "get": {
+        "description": "RFC 9116: where to report a vulnerability, in which language, and the disclosure policy. Plain text, the same for everyone.",
+        "operationId": "security_txt__well_known_security_txt_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The security.txt file"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {},
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "summary": "How to report a security problem",
+        "tags": [
+          "public"
+        ]
+      }
+    },
     "/api/v1/admin/accounts": {
       "get": {
         "description": "Give exactly one of `phone` or `handle`, and a `reason`. Every account returned is written to the admin log as viewed, with the reason.",

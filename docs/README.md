@@ -51,8 +51,10 @@ Every file here has one job. If two files start doing the same job, one of them 
 | File | What it is |
 |---|---|
 | `api/openapi.json` | The API contract the frontend builds against; tests fail if the app differs |
+| `INCIDENT_RESPONSE.md` | **What to do when something goes wrong**: who acts, rotating each secret, taking the API down, telling people |
 | `../infra/README.md` | How the AWS setup is created and run |
 | `../README.md` | How to run the project |
+| `../SECURITY.md` | How a researcher reports a vulnerability, and what we promise them |
 
 ## Keeping this true
 
