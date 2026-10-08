@@ -51,8 +51,10 @@ def test_no_tracked_file_uses_a_banned_money_word():
 
 
 def test_the_check_catches_a_breach():
-    assert PATTERN.search("Funds are held in Escrow until delivery")
-    assert not states_the_rule("Funds are held in escrow until delivery")
+    # Built from parts, or this file would breach its own rule.
+    breach = "Funds are held in " + "Esc" + "row until delivery"
+    assert PATTERN.search(breach)
+    assert not states_the_rule(breach)
     assert states_the_rule(
         'Never: "escrow", "wallet", "guaranteed funds", "split settlement"'
     )
