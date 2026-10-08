@@ -142,6 +142,8 @@ CREATOR_EXPORT_FIELDS = allow(
     # The other consent: whether their prices are on the open internet, and
     # when they said so (D-055). Same reasoning as the line above.
     "rate_card_public_at",
+    # "Booked until", as they set it (D-083).
+    "booked_until",
     "created_at",
     "updated_at",
 )

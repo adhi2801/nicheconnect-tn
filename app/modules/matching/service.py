@@ -22,6 +22,7 @@ from typing import Any, Protocol
 from sqlalchemy import desc, exists, func, null, nulls_last, or_, select
 from sqlalchemy.orm import Session
 
+from app.modules.auth import availability_service as availability
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import account_is_active, brand_is_active
 from app.modules.campaigns.models import Application, Campaign
@@ -175,6 +176,8 @@ class MatchReasons:
     city: str
     accepted_deals: int
     similarity: float | None
+    # None when the creator is taking work today (D-083).
+    booked_until: date | None = None
 
 
 @dataclass(frozen=True)
@@ -184,7 +187,7 @@ class CreatorMatch:
 
 
 def find_creators_for_campaign(
-    db: Session, campaign: Campaign, *, limit: int
+    db: Session, campaign: Campaign, *, limit: int, today: date
 ) -> list[CreatorMatch]:
     """Creators worth showing a brand for this campaign, best first.
 
@@ -205,6 +208,10 @@ def find_creators_for_campaign(
     `similarity` null. Embedding inside a request is not an option: the model
     takes 23 seconds to load and a single vector over 200 ms, both beyond the
     budget (see embedder.py).
+
+    **Free before booked.** Creators taking work `today` come first; a booked
+    creator still appears, after them, with the date (D-083), because a
+    campaign may run after the booking ends.
     """
     accepted_deals = (
         select(func.count(DealMemo.id))
@@ -247,7 +254,8 @@ def find_creators_for_campaign(
     # no embedding sorts last rather than disappearing. The clause is built as
     # a list rather than passed conditionally, because `order_by(None, ...)`
     # emits a literal `ORDER BY NULL`, which Postgres refuses.
-    order: list[Any] = []
+    booked = availability.free_on(today).is_(False)
+    order: list[Any] = [booked]
     if has_vector:
         order.append(nulls_last(distance.asc()))
     order += [desc("accepted_deals"), Creator.id]
@@ -265,6 +273,9 @@ def find_creators_for_campaign(
                     accepted_deals=deals,
                     # Cosine distance on normalised vectors: 0 is identical.
                     similarity=None if d is None else round(1.0 - float(d), 4),
+                    booked_until=availability.booked_until_shown(
+                        creator.booked_until, today
+                    ),
                 ),
             )
         )

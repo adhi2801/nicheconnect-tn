@@ -1,5 +1,7 @@
 """What a match looks like on the wire (D-052, backlog D3)."""
 
+from datetime import date
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.modules.auth.schemas import PublicCreatorSummary
@@ -41,6 +43,14 @@ class MatchReasonsRead(BaseModel):
             "still worth reading"
         ),
         examples=[0.83],
+    )
+    booked_until: date | None = Field(
+        default=None,
+        description=(
+            "The last day the creator is not taking new work, or null if they "
+            "are taking work today. Creators taking work come first"
+        ),
+        examples=[None],
     )
 
 

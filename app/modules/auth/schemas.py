@@ -794,6 +794,9 @@ class CreatorSearchResultRead(BaseModel):
         )
     )
     currency: str
+    booked_until: date | None = Field(
+        description="The last day the creator is not taking new work; null if taking work today"
+    )
 
 
 # --- reports and the admin side (D-061) ------------------------------------------
@@ -960,3 +963,29 @@ class SignupCountRead(BaseModel):
     source: str
     role: Literal["brand", "creator", "admin"]
     accounts: int
+
+
+# --- availability (D-083) -----------------------------------------------------
+
+
+class AvailabilityUpdate(BaseModel):
+    """The whole setting, replaced: a date, or null for taking work."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    booked_until: date | None = Field(
+        description=(
+            "The last Tamil Nadu day you are not taking new work, from today "
+            "to a year ahead. Null if you are taking work."
+        ),
+        examples=["2026-11-20"],
+    )
+
+
+class AvailabilityRead(BaseModel):
+    booked_until: date | None = Field(
+        description="Null when taking work today; a date already past reads as null"
+    )
+    available_from: date = Field(
+        description="The first Tamil Nadu day the creator is taking work"
+    )

@@ -33,6 +33,7 @@ FIELDS = {
     "channels",
     "from_price_paise",
     "currency",
+    "booked_until",
 }
 
 
@@ -334,3 +335,54 @@ def test_it_is_rate_limited(client, brand):
         assert client.get(URL, headers=brand.headers).status_code == 200
 
     assert client.get(URL, headers=brand.headers).status_code == 429
+
+
+# --- availability (D-083) -------------------------------------------------------------
+
+
+def booked(db, row: Creator, until) -> Creator:
+    row.booked_until = until
+    db.flush()
+    return row
+
+
+def test_each_result_says_until_when_the_creator_is_booked(client, db, brand):
+    free = creator(db, handle="free.one")
+    busy = booked(
+        db, creator(db, handle="busy.one"), FIXED_NOW.date() + timedelta(days=30)
+    )
+    was_busy = booked(
+        db, creator(db, handle="was.busy"), FIXED_NOW.date() - timedelta(days=1)
+    )
+
+    items = client.get(URL, headers=brand.headers).json()["items"]
+
+    shown = {item["handle"]: item["booked_until"] for item in items}
+    assert shown == {
+        free.handle: None,
+        busy.handle: (FIXED_NOW.date() + timedelta(days=30)).isoformat(),
+        was_busy.handle: None,  # the date has passed: taking work again
+    }
+
+
+def test_available_on_keeps_only_creators_free_that_day(client, db, brand):
+    free = creator(db, handle="free.two")
+    until_oct = booked(
+        db, creator(db, handle="until.oct"), FIXED_NOW.date().replace(month=10, day=5)
+    )
+
+    def handles(day: str) -> set[str]:
+        response = client.get(URL, params={"available_on": day}, headers=brand.headers)
+        assert response.status_code == 200, response.text
+        return {item["handle"] for item in response.json()["items"]}
+
+    assert handles("2026-10-05") == {free.handle}  # booked through the 5th
+    assert handles("2026-10-06") == {free.handle, until_oct.handle}
+
+
+def test_available_on_must_be_a_date(client, brand):
+    response = client.get(
+        URL, params={"available_on": "next week"}, headers=brand.headers
+    )
+
+    assert response.status_code == 422

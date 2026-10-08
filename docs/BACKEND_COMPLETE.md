@@ -20,7 +20,7 @@ Three things it does **not** mean:
 
 Built and tested on `main`: Phases A, B and D of the backlog, C1 to C4, E3 and E4 (`docs/PRODUCT_BACKLOG.md`); creator search, the admin side, results read from proof (D-070, switched off), the deal record with its daily outside timestamp, proof files, and AWS described as code. **1,973 tests, 98.44% coverage**, API fuzzing, migration and image scanning in CI.
 
-**Section 3 holds 20 items, plus 20 proposed in 3.8. Section 4 holds 8 that wait on someone outside the code.** Item 1, Python 3.14 and uv, was built on 1 October (D-072); item 2, error tracking with Sentry, on 4 October (D-074). Also built on 4 October, from the website wireframes' backend requests: one list of a party's payments with totals (D-075), and each deal's stage with whose move it is, plus a per-campaign summary with Complete (D-076). Items 19 and 22 were built on 8 October: typical response times (D-077) and city figures for public pages (D-078). Items 18 and 21, notification preferences and invite attribution, were built on 8 October (D-079, D-080), from `docs/decided/PROPOSAL_NOTIFICATION_PREFERENCES_AND_ATTRIBUTION.md`. Section 5 lists what the founders declined or deferred.
+**Section 3 holds 20 items, plus 19 in 3.8, approved by Adhi on 8 October ("approve all"). Section 4 holds 8 that wait on someone outside the code.** Item 1, Python 3.14 and uv, was built on 1 October (D-072); item 2, error tracking with Sentry, on 4 October (D-074). Also built on 4 October, from the website wireframes' backend requests: one list of a party's payments with totals (D-075), and each deal's stage with whose move it is, plus a per-campaign summary with Complete (D-076). Items 19 and 22 were built on 8 October: typical response times (D-077) and city figures for public pages (D-078). Items 18 and 21, notification preferences and invite attribution, were built on 8 October (D-079, D-080), from `docs/decided/PROPOSAL_NOTIFICATION_PREFERENCES_AND_ATTRIBUTION.md`. Also on 8 October: every list now has a query-count test, and the security items owed before launch were built (D-082): secret scanning in CI, the image's SBOM, Dependabot, `SECURITY.md`, `security.txt` and the incident plan. Section 5 lists what the founders declined or deferred.
 
 ## 3. Left to build: no outside wait, a decision first
 
@@ -85,7 +85,7 @@ Built already from the same list: deal stage and campaign summary (D-076), the p
 
 ### 3.8 From the billion-dollar gap research (8 October, `docs/BILLION_DOLLAR_GAP.md`)
 
-**Proposed, not approved.** Each needs its gate before it is built; evidence, fit with our rules, and size are in the research file.
+**Approved by Adhi on 8 October** ("approve all, build them all in the best order"). Items that need an outside answer (a platform review, a provider account, the validation pack, a both-founder decision) are built as far as that answer allows; evidence, fit with our rules, and size are in the research file.
 
 | # | Item | Gate |
 |---|---|---|
@@ -104,11 +104,12 @@ Built already from the same list: deal stage and campaign summary (D-076), the p
 | 42 | Work together again in one tap | |
 | 43 | Campaign alerts for creators | Database |
 | 44 | Counter-offers on quotes | Database |
-| 45 | Creator availability | Database |
 | 46 | An agency workspace | Founders, security, database |
 | 47 | A campaign report a brand can hand to its boss | |
 | 48 | Readiness for ISO 27001 or SOC 2 | Founders |
 | 49 | A public status page and service levels | Infrastructure |
+
+Built from 3.8 on 8 October: 45, creator availability (D-083).
 
 Item 34, payment confirmation from bank statements, was researched and set aside: Account Aggregator data goes only to regulated financial entities.
 

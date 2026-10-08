@@ -1054,6 +1054,62 @@
         "title": "AttentionRead",
         "type": "object"
       },
+      "AvailabilityRead": {
+        "properties": {
+          "available_from": {
+            "description": "The first Tamil Nadu day the creator is taking work",
+            "format": "date",
+            "title": "Available From",
+            "type": "string"
+          },
+          "booked_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when taking work today; a date already past reads as null",
+            "title": "Booked Until"
+          }
+        },
+        "required": [
+          "booked_until",
+          "available_from"
+        ],
+        "title": "AvailabilityRead",
+        "type": "object"
+      },
+      "AvailabilityUpdate": {
+        "additionalProperties": false,
+        "description": "The whole setting, replaced: a date, or null for taking work.",
+        "properties": {
+          "booked_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The last Tamil Nadu day you are not taking new work, from today to a year ahead. Null if you are taking work.",
+            "examples": [
+              "2026-11-20"
+            ],
+            "title": "Booked Until"
+          }
+        },
+        "required": [
+          "booked_until"
+        ],
+        "title": "AvailabilityUpdate",
+        "type": "object"
+      },
       "BrandProfileCreate": {
         "additionalProperties": false,
         "properties": {
@@ -2637,6 +2693,19 @@
             ],
             "title": "Bio"
           },
+          "booked_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The last day the creator is not taking new work; null if taking work today",
+            "title": "Booked Until"
+          },
           "channels": {
             "items": {
               "$ref": "#/components/schemas/SearchChannelRead"
@@ -2702,7 +2771,8 @@
           "member_since",
           "channels",
           "from_price_paise",
-          "currency"
+          "currency",
+          "booked_until"
         ],
         "title": "CreatorSearchResultRead",
         "type": "object"
@@ -3592,6 +3662,22 @@
             ],
             "title": "Accepted Deals",
             "type": "integer"
+          },
+          "booked_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The last day the creator is not taking new work, or null if they are taking work today. Creators taking work come first",
+            "examples": [
+              null
+            ],
+            "title": "Booked Until"
           },
           "city": {
             "description": "The creator's city, which is one the campaign named",
@@ -11945,7 +12031,7 @@
     },
     "/api/v1/creators": {
       "get": {
-        "description": "Creators who published their Passport, filtered by any combination of words in their handle, name or bio; niche; city; a platform and an audience size on it; and a price limit, optionally for one format. Every audience filter must hold for one channel, and every price filter for one package. Follower counts are the creator's own statement, dated, never verified. Newest profiles first; pass `next_cursor` back as `cursor` for the next page. Brands only.",
+        "description": "Creators who published their Passport, filtered by any combination of words in their handle, name or bio; niche; city; a platform and an audience size on it; and a price limit, optionally for one format. Every audience filter must hold for one channel, and every price filter for one package. Follower counts are the creator's own statement, dated, never verified. Newest profiles first; pass `next_cursor` back as `cursor` for the next page. Each result says until when the creator is booked, if they are; `available_on` keeps only creators free that day. Brands only.",
         "operationId": "search_creators_api_v1_creators_get",
         "parameters": [
           {
@@ -12115,6 +12201,25 @@
               ],
               "description": "Only packages of this format count",
               "title": "Format"
+            }
+          },
+          {
+            "description": "Only creators not booked on this Tamil Nadu day",
+            "in": "query",
+            "name": "available_on",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only creators not booked on this Tamil Nadu day",
+              "title": "Available On"
             }
           },
           {
@@ -12624,6 +12729,177 @@
         "summary": "Create my creator profile",
         "tags": [
           "profiles"
+        ]
+      }
+    },
+    "/api/v1/creators/me/availability": {
+      "get": {
+        "description": "Whether you are taking new work, and from when. Signed-in brands see the same date in search and in suggested creators; it is never on your public Passport.",
+        "operationId": "read_availability_api_v1_creators_me_availability_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvailabilityRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only a creator may use this endpoint"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "You have not created a creator profile yet"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My availability",
+        "tags": [
+          "availability"
+        ]
+      },
+      "put": {
+        "description": "\"Booked until 20 Nov\": the last day you are not taking new work, from today to a year ahead; null when you are taking work. Nothing is blocked: brands can still reach you and you can still apply.",
+        "operationId": "set_availability_api_v1_creators_me_availability_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AvailabilityUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvailabilityRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only a creator may use this endpoint"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "You have not created a creator profile yet"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The date is in the past or more than a year ahead"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set my availability",
+        "tags": [
+          "availability"
         ]
       }
     },

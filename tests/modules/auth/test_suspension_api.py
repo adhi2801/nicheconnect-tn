@@ -159,11 +159,17 @@ def test_a_suspended_creator_is_never_suggested(db, brand, creator):
     db.add(campaign)
     db.flush()
     before = [
-        m.creator.id for m in matching.find_creators_for_campaign(db, campaign, limit=10)
+        m.creator.id
+        for m in matching.find_creators_for_campaign(
+            db, campaign, limit=10, today=FIXED_NOW.date()
+        )
     ]
     suspend(db, creator.account_id)
     after = [
-        m.creator.id for m in matching.find_creators_for_campaign(db, campaign, limit=10)
+        m.creator.id
+        for m in matching.find_creators_for_campaign(
+            db, campaign, limit=10, today=FIXED_NOW.date()
+        )
     ]
 
     assert row.id in before

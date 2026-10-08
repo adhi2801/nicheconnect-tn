@@ -160,3 +160,11 @@ class ReportAlreadyResolved(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "report_already_resolved"
     title = "This report has already been resolved"
+
+
+class InvalidAvailability(DomainError):
+    # A "booked until" in the past would say nothing, and one more than a
+    # year ahead is almost certainly a typo for this year (D-083).
+    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
+    code = "invalid_availability"
+    title = "That date cannot be your booked-until date"

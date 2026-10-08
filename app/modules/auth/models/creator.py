@@ -1,8 +1,9 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKeyConstraint,
     Index,
@@ -103,6 +104,11 @@ class Creator(Base):
     rate_card_public_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # "Booked until 20 Nov" (D-083): the last Tamil Nadu day the creator is
+    # not taking new work. NULL means taking work. A date already past means
+    # the same, and every read treats it so (availability_service), so it
+    # never needs clearing. Nothing personal: a date, nothing about why.
+    booked_until: Mapped[date | None] = mapped_column(Date, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

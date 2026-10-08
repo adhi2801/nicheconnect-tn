@@ -19,6 +19,7 @@ from app.core.unexpected_error import UnexpectedErrorMiddleware
 from app.modules.auth.admin_router import router as admin_router
 from app.modules.auth.attention_router import router as attention_router
 from app.modules.auth.attribution_router import router as attribution_router
+from app.modules.auth.availability_router import router as availability_router
 from app.modules.auth.city_figures_router import router as city_figures_router
 from app.modules.auth.dependencies import idempotency_identity
 from app.modules.auth.export_router import router as export_router
@@ -109,6 +110,7 @@ app.include_router(public_router)
 # Public: city figures for city pages (D-078).
 app.include_router(city_figures_router)
 app.include_router(rate_card_router)
+app.include_router(availability_router)
 app.include_router(search_router)
 app.include_router(report_router)
 app.include_router(admin_router)
