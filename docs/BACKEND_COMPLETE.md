@@ -20,7 +20,7 @@ Three things it does **not** mean:
 
 Built and tested on `main`: Phases A, B and D of the backlog, C1 to C4, E3 and E4 (`docs/PRODUCT_BACKLOG.md`); creator search, the admin side, results read from proof (D-070, switched off), the deal record with its daily outside timestamp, proof files, and AWS described as code. **1,973 tests, 98.44% coverage**, API fuzzing, migration and image scanning in CI.
 
-**Section 3 holds 14 items. Section 4 holds 8 that wait on someone outside the code.** Item 1, Python 3.14 and uv, was built on 1 October (D-072); item 2, error tracking with Sentry, on 4 October (D-074). Also built on 4 October, from the website wireframes' backend requests: one list of a party's payments with totals (D-075), and each deal's stage with whose move it is, plus a per-campaign summary with Complete (D-076). Items 19 and 22 were built on 8 October: typical response times (D-077) and city figures for public pages (D-078). Items 18 and 21, notification preferences and invite attribution, were built on 8 October (D-079, D-080), from `docs/PROPOSAL_NOTIFICATION_PREFERENCES_AND_ATTRIBUTION.md`. Section 5 lists what the founders declined or deferred.
+**Section 3 holds 20 items. Section 4 holds 8 that wait on someone outside the code.** Item 1, Python 3.14 and uv, was built on 1 October (D-072); item 2, error tracking with Sentry, on 4 October (D-074). Also built on 4 October, from the website wireframes' backend requests: one list of a party's payments with totals (D-075), and each deal's stage with whose move it is, plus a per-campaign summary with Complete (D-076). Items 19 and 22 were built on 8 October: typical response times (D-077) and city figures for public pages (D-078). Items 18 and 21, notification preferences and invite attribution, were built on 8 October (D-079, D-080), from `docs/PROPOSAL_NOTIFICATION_PREFERENCES_AND_ATTRIBUTION.md`. Section 5 lists what the founders declined or deferred.
 
 ## 3. Left to build: no outside wait, a decision first
 
@@ -64,13 +64,24 @@ From `docs/PLATFORM_AND_TECH_PLAN.md` section 2.7 and the platform plan:
 
 ### 3.5 From psychology and trust (`docs/PSYCHOLOGY_AND_TRUST.md`)
 
-| # | Item | Why | Gate |
-|---|---|---|---|
+All built: notification preferences (18, D-079) and typical response times (19, D-077).
 
 ### 3.6 From go to market (`docs/GO_TO_MARKET.md`)
 
+All built: invite and source attribution (21, D-080) and city figures (22, D-078).
+
+### 3.7 From the website wireframes (4 October, `docs/standards/ux.md` section 7)
+
+Built already from the same list: deal stage and campaign summary (D-076), the payments list (D-075). Still open:
+
 | # | Item | Why | Gate |
 |---|---|---|---|
+| 23 | **The pilot join list**: a waitlist endpoint for the landing page's Join form | The form has nowhere to send; consent wording is the validation pack's | Database; DPDP consent text |
+| 24 | **The date a memo was declined** | The deal pass shows when each step happened; a decline has no date today | Database (one column) |
+| 25 | **The creator's message with a change request** on a memo | The memo editor's banner shows what the creator asked for; it is not stored | Database (one column) |
+| 26 | **Deliverables as a list**, one row per deliverable, on campaigns and memos | The deal pass tracks each deliverable; also step 2 of fair-rate guidance (D-056) | A product decision; database |
+| 27 | **Draft first**: a creator sends a draft, the brand approves it, then it is posted | Proposed in the wireframes; changes the proof flow and its clock (D-025) | A product decision; database |
+| 28 | **When a brand first answered an application** | Needed to measure how fast brands reply (D-077 could not) | Database (one column) |
 
 ## 4. Blocked from outside the code
 
