@@ -851,3 +851,45 @@ ensure_same_values("ReportSubject", ReportSubject, REPORT_SUBJECTS)
 ensure_same_values(
     "AdminActionKind", AdminActionRead.model_fields["action"].annotation, ADMIN_ACTIONS
 )
+
+
+# --- city figures for public pages (D-078) -------------------------------------------------
+
+
+class CityCountRead(BaseModel):
+    city: str = Field(description="As most of its creators spell it")
+    published_creators: int
+
+
+class AskingPriceRead(BaseModel):
+    """The median asking price for one platform and format in a city.
+
+    Each creator counts once; only groups of five creators or more appear.
+    """
+
+    platform: ChannelPlatform
+    format: PackageFormat
+    creators: int
+    median_paise: int
+    currency: str = CURRENCY
+
+
+class NicheCountRead(BaseModel):
+    niche: Niche
+    creators: int | None = Field(description="Null below five: not enough to say")
+
+
+class CityFiguresRead(BaseModel):
+    """One city's public figures: counts and medians, five or nothing.
+
+    Every count rests on creators who published their Passport, or on open
+    campaigns; nothing comes from a deal. **Null means "not enough to say"
+    and must never be shown as zero.**
+    """
+
+    city: str
+    min_count: int = Field(description="The smallest count any figure is shown for")
+    published_creators: int | None
+    creators_by_niche: list[NicheCountRead]
+    open_campaigns: int | None
+    asking_prices: list[AskingPriceRead]

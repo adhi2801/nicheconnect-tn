@@ -33,6 +33,8 @@ PUBLIC = {
         "/api/v1/auth/logout",
     ): "the refresh token in the body is the credential; always 204",
     ("GET", "/api/v1/creators/by-handle/{handle}"): "the public Creator Passport (D-036)",
+    ("GET", "/api/v1/cities"): "cities with public figures (D-078)",
+    ("GET", "/api/v1/cities/{city}/figures"): "a city's public figures (D-078)",
 }
 
 # The admin API answers anyone who is not an admin, a caller without a token

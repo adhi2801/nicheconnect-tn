@@ -723,6 +723,53 @@
         "title": "ApplicationReject",
         "type": "object"
       },
+      "AskingPriceRead": {
+        "description": "The median asking price for one platform and format in a city.\n\nEach creator counts once; only groups of five creators or more appear.",
+        "properties": {
+          "creators": {
+            "title": "Creators",
+            "type": "integer"
+          },
+          "currency": {
+            "default": "INR",
+            "title": "Currency",
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "post",
+              "reel",
+              "story",
+              "short",
+              "video",
+              "live",
+              "other"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "median_paise": {
+            "title": "Median Paise",
+            "type": "integer"
+          },
+          "platform": {
+            "enum": [
+              "instagram",
+              "youtube"
+            ],
+            "title": "Platform",
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform",
+          "format",
+          "creators",
+          "median_paise"
+        ],
+        "title": "AskingPriceRead",
+        "type": "object"
+      },
       "AttentionItemRead": {
         "description": "One thing waiting on the caller. The words belong to the frontend.",
         "properties": {
@@ -1118,6 +1165,25 @@
           "median_days_to_pay"
         ],
         "title": "BrandReliabilityRead",
+        "type": "object"
+      },
+      "BrandResponseTimesRead": {
+        "description": "How long creators wait for this brand to decide on their work.\n\nAn approval by the clock counts, at the moment the window ended.",
+        "properties": {
+          "brand_id": {
+            "format": "uuid",
+            "title": "Brand Id",
+            "type": "string"
+          },
+          "work_reviewed": {
+            "$ref": "#/components/schemas/ResponseTimeRead"
+          }
+        },
+        "required": [
+          "brand_id",
+          "work_reviewed"
+        ],
+        "title": "BrandResponseTimesRead",
         "type": "object"
       },
       "BulkMarkPaidRead": {
@@ -1975,6 +2041,85 @@
         "title": "CheckpointTimestampRead",
         "type": "object"
       },
+      "CityCountRead": {
+        "properties": {
+          "city": {
+            "description": "As most of its creators spell it",
+            "title": "City",
+            "type": "string"
+          },
+          "published_creators": {
+            "title": "Published Creators",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "city",
+          "published_creators"
+        ],
+        "title": "CityCountRead",
+        "type": "object"
+      },
+      "CityFiguresRead": {
+        "description": "One city's public figures: counts and medians, five or nothing.\n\nEvery count rests on creators who published their Passport, or on open\ncampaigns; nothing comes from a deal. **Null means \"not enough to say\"\nand must never be shown as zero.**",
+        "properties": {
+          "asking_prices": {
+            "items": {
+              "$ref": "#/components/schemas/AskingPriceRead"
+            },
+            "title": "Asking Prices",
+            "type": "array"
+          },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "creators_by_niche": {
+            "items": {
+              "$ref": "#/components/schemas/NicheCountRead"
+            },
+            "title": "Creators By Niche",
+            "type": "array"
+          },
+          "min_count": {
+            "description": "The smallest count any figure is shown for",
+            "title": "Min Count",
+            "type": "integer"
+          },
+          "open_campaigns": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open Campaigns"
+          },
+          "published_creators": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published Creators"
+          }
+        },
+        "required": [
+          "city",
+          "min_count",
+          "published_creators",
+          "creators_by_niche",
+          "open_campaigns",
+          "asking_prices"
+        ],
+        "title": "CityFiguresRead",
+        "type": "object"
+      },
       "CreatorDeliveryRead": {
         "description": "How a creator delivers, from what happened rather than from opinions.\n\nThe mirror of a brand's payment record (D-038). The shares are `null`\nuntil three scored deals have completed. **Null means \"not enough to\nsay\" and must never be shown as zero**: the two mean opposite things.\n\n`currently_overdue` is reported whatever the status, so \"new\" can never\nhide work a brand is still waiting for. Barter deals are shown in their\nown counts and never scored (D-026).",
         "properties": {
@@ -2392,6 +2537,29 @@
           }
         },
         "title": "CreatorProfileUpdate",
+        "type": "object"
+      },
+      "CreatorResponseTimesRead": {
+        "description": "How long brands wait for this creator to answer a memo, and to confirm\na payment arrived.",
+        "properties": {
+          "creator_id": {
+            "format": "uuid",
+            "title": "Creator Id",
+            "type": "string"
+          },
+          "memo_answered": {
+            "$ref": "#/components/schemas/ResponseTimeRead"
+          },
+          "payment_confirmed": {
+            "$ref": "#/components/schemas/ResponseTimeRead"
+          }
+        },
+        "required": [
+          "creator_id",
+          "memo_answered",
+          "payment_confirmed"
+        ],
+        "title": "CreatorResponseTimesRead",
         "type": "object"
       },
       "CreatorSearchResultRead": {
@@ -4183,6 +4351,44 @@
           "city"
         ],
         "title": "NarrowedTo",
+        "type": "object"
+      },
+      "NicheCountRead": {
+        "properties": {
+          "creators": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null below five: not enough to say",
+            "title": "Creators"
+          },
+          "niche": {
+            "enum": [
+              "food",
+              "fashion",
+              "beauty",
+              "tech",
+              "travel",
+              "fitness",
+              "education",
+              "entertainment",
+              "finance",
+              "lifestyle"
+            ],
+            "title": "Niche",
+            "type": "string"
+          }
+        },
+        "required": [
+          "niche",
+          "creators"
+        ],
+        "title": "NicheCountRead",
         "type": "object"
       },
       "NotificationRead": {
@@ -6586,6 +6792,39 @@
           "note"
         ],
         "title": "ResolveReportIn",
+        "type": "object"
+      },
+      "ResponseTimeRead": {
+        "description": "How long one kind of answer usually takes, from the deal record.\n\n`median_hours` is null until there are five examples (D-071). **Null\nmeans \"not enough to say\" and must never be shown as zero.** `examples`\nis always returned so the figure can be weighed.",
+        "properties": {
+          "examples": {
+            "minimum": 0.0,
+            "title": "Examples",
+            "type": "integer"
+          },
+          "median_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Hours"
+          },
+          "min_examples": {
+            "description": "Examples needed before a figure is shown",
+            "title": "Min Examples",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "examples",
+          "median_hours",
+          "min_examples"
+        ],
+        "title": "ResponseTimeRead",
         "type": "object"
       },
       "RestoreIn": {
@@ -9311,6 +9550,91 @@
         ]
       }
     },
+    "/api/v1/brands/{brand_id}/response-times": {
+      "get": {
+        "description": "From work submitted to approved or sent back; an approval by the clock counts at the moment the review window ended. Measured from the deal record, never estimated. `median_hours` is null until there are five examples, meaning **not enough to say**, and must not be shown as zero; `examples` is always returned.",
+        "operationId": "brand_response_times_api_v1_brands__brand_id__response_times_get",
+        "parameters": [
+          {
+            "description": "The brand's id",
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "description": "The brand's id",
+              "format": "uuid",
+              "title": "Brand Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandResponseTimesRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such brand"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The id is not a valid id"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "How long this brand takes to decide on work",
+        "tags": [
+          "reliability"
+        ]
+      }
+    },
     "/api/v1/campaigns": {
       "get": {
         "description": "Every campaign owned by the signed-in brand, newest first.",
@@ -11003,6 +11327,150 @@
         "summary": "A campaign at a glance",
         "tags": [
           "campaigns"
+        ]
+      }
+    },
+    "/api/v1/cities": {
+      "get": {
+        "description": "Every city with at least five creators who published their Passport, largest first: the cities a public page can be made for. Cached for an hour, with an ETag.",
+        "operationId": "list_cities_api_v1_cities_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "if-none-match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-None-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CityCountRead"
+                  },
+                  "title": "Response List Cities Api V1 Cities Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "summary": "Cities with public figures",
+        "tags": [
+          "public"
+        ]
+      }
+    },
+    "/api/v1/cities/{city}/figures": {
+      "get": {
+        "description": "Counts and medians for one city: published creators, by niche, open campaigns, and median asking prices by platform and format. Any figure resting on fewer than five is `null`, meaning **not enough to say**, and must not be shown as zero; a city nobody has joined answers the same way rather than 404. Nothing is built from a deal. Cached for an hour, with an ETag.",
+        "operationId": "city_figures_api_v1_cities__city__figures_get",
+        "parameters": [
+          {
+            "description": "A city name as people write it; matched without regard to case",
+            "in": "path",
+            "name": "city",
+            "required": true,
+            "schema": {
+              "description": "A city name as people write it; matched without regard to case",
+              "examples": [
+                "Coimbatore"
+              ],
+              "maxLength": 60,
+              "minLength": 2,
+              "pattern": "^[A-Za-z][A-Za-z .'-]*$",
+              "title": "City",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "if-none-match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-None-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CityFiguresRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "That is not a city name"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "summary": "A city's public figures",
+        "tags": [
+          "public"
         ]
       }
     },
@@ -13081,6 +13549,102 @@
         "summary": "A creator's media kit",
         "tags": [
           "media kit"
+        ]
+      }
+    },
+    "/api/v1/creators/{creator_id}/response-times": {
+      "get": {
+        "description": "From a memo sent to its answer (accepted, declined or a change requested), and from a payment marked as sent to the creator confirming it arrived. Measured from the deal record, never estimated. `median_hours` is null until there are five examples, meaning **not enough to say**, and must not be shown as zero; `examples` is always returned.",
+        "operationId": "creator_response_times_api_v1_creators__creator_id__response_times_get",
+        "parameters": [
+          {
+            "description": "The creator's id",
+            "in": "path",
+            "name": "creator_id",
+            "required": true,
+            "schema": {
+              "description": "The creator's id",
+              "format": "uuid",
+              "title": "Creator Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatorResponseTimesRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only brands, or the creator themself, can read this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such creator"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The id is not a valid id"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "How long this creator takes to answer",
+        "tags": [
+          "reliability"
         ]
       }
     },

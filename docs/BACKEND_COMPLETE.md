@@ -20,7 +20,7 @@ Three things it does **not** mean:
 
 Built and tested on `main`: Phases A, B and D of the backlog, C1 to C4, E3 and E4 (`docs/PRODUCT_BACKLOG.md`); creator search, the admin side, results read from proof (D-070, switched off), the deal record with its daily outside timestamp, proof files, and AWS described as code. **1,973 tests, 98.44% coverage**, API fuzzing, migration and image scanning in CI.
 
-**Section 3 holds 18 items. Section 4 holds 8 that wait on someone outside the code.** Item 1, Python 3.14 and uv, was built on 1 October (D-072); item 2, error tracking with Sentry, on 4 October (D-074). Also built on 4 October, from the website wireframes' backend requests: one list of a party's payments with totals (D-075), and each deal's stage with whose move it is, plus a per-campaign summary with Complete (D-076). Section 5 lists what the founders declined or deferred.
+**Section 3 holds 16 items. Section 4 holds 8 that wait on someone outside the code.** Item 1, Python 3.14 and uv, was built on 1 October (D-072); item 2, error tracking with Sentry, on 4 October (D-074). Also built on 4 October, from the website wireframes' backend requests: one list of a party's payments with totals (D-075), and each deal's stage with whose move it is, plus a per-campaign summary with Complete (D-076). Items 19 and 22 were built on 8 October: typical response times (D-077) and city figures for public pages (D-078). Items 18 and 21 are written up for approval in `docs/PROPOSAL_NOTIFICATION_PREFERENCES_AND_ATTRIBUTION.md`. Section 5 lists what the founders declined or deferred.
 
 ## 3. Left to build: no outside wait, a decision first
 
@@ -67,14 +67,12 @@ From `docs/PLATFORM_AND_TECH_PLAN.md` section 2.7 and the platform plan:
 | # | Item | Why | Gate |
 |---|---|---|---|
 | 18 | **Notification preferences** (approved, D-071): quiet hours, a daily digest, a choice per event | No nagging (one of the 13 banned dark patterns); urgent deal events still arrive at once | Database; a decision |
-| 19 | **Typical response times from real data** (approved, D-071; shown only from 5 examples) ("brands usually reply within N days") | Known waiting lowers anxiety; computed from existing timestamps, never invented | A decision on thresholds |
 
 ### 3.6 From go to market (`docs/GO_TO_MARKET.md`)
 
 | # | Item | Why | Gate |
 |---|---|---|---|
 | 21 | **Invite and source attribution** (approved, D-071): who invited whom, where a sign-up came from | Measures every channel and growth loop; rewards a creator who brings a brand | Database; privacy |
-| 22 | **City and niche aggregates for public pages** (approved, D-071: backend now, published once a city has the data): counts and medians only, behind thresholds | City pages and the quarterly rate summary, cited by search and AI search | A decision; privacy; D-036 consent and D-056 thresholds |
 
 ## 4. Blocked from outside the code
 
