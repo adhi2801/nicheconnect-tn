@@ -17,6 +17,7 @@ from app.core.security_headers import SecurityHeadersMiddleware
 from app.core.unexpected_error import UnexpectedErrorMiddleware
 from app.modules.auth.admin_router import router as admin_router
 from app.modules.auth.attention_router import router as attention_router
+from app.modules.auth.attribution_router import router as attribution_router
 from app.modules.auth.city_figures_router import router as city_figures_router
 from app.modules.auth.dependencies import idempotency_identity
 from app.modules.auth.export_router import router as export_router
@@ -109,6 +110,7 @@ app.include_router(rate_card_router)
 app.include_router(search_router)
 app.include_router(report_router)
 app.include_router(admin_router)
+app.include_router(attribution_router)
 app.include_router(media_kit_router)
 app.include_router(rate_guidance_router)
 app.include_router(campaigns_router)

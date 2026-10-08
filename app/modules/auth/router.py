@@ -9,6 +9,7 @@ from app.core.errors import problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth import service
+from app.modules.auth.attribution_service import Arrival
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.auth.schemas import (
     AccountRead,
@@ -72,7 +73,8 @@ def request_code(
     summary="Log in with a one-time code",
     description=(
         "Checks the latest code sent to the phone. A new number gets an account with "
-        "the given role. Returns a 15-minute access token and a 30-day refresh token. "
+        "the given role, and `arrival` (optional) records how it found us; a "
+        "returning login ignores `arrival`. Returns a 15-minute access token and a 30-day refresh token. "
         "Limit: 10 requests per 10 minutes per IP address; each code allows 5 attempts."
     ),
     responses={
@@ -90,7 +92,10 @@ def verify_code(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> LoginTokens:
-    result = service.verify_otp(db, body.phone, body.code, body.role, now)
+    arrival = Arrival(**body.arrival.model_dump()) if body.arrival is not None else None
+    result = service.verify_otp(
+        db, body.phone, body.code, body.role, now, arrival=arrival
+    )
     # Tokens must never be cached by browsers or proxies.
     response.headers["Cache-Control"] = "no-store"
     return LoginTokens(

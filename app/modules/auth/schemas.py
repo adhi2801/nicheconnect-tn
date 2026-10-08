@@ -24,6 +24,7 @@ from app.modules.auth.models.account import (
     REPORT_CATEGORIES,
 )
 from app.modules.auth.models.admin_action import ADMIN_ACTIONS
+from app.modules.auth.models.attribution import ARRIVAL_SOURCES
 from app.modules.auth.models.creator import BIO_MAX_LENGTH, HANDLE_PATTERN
 from app.modules.auth.models.report import REPORT_SUBJECTS
 
@@ -122,6 +123,46 @@ class OtpRequestAccepted(BaseModel):
     expires_in_seconds: int = Field(examples=[300])
 
 
+ArrivalSource = Literal[
+    "passport_link", "instagram", "whatsapp", "event", "search", "other"
+]
+
+# The sources a person may name. `invite` comes only from a valid code, and
+# `not_given` only from silence.
+ensure_same_values(
+    "ArrivalSource",
+    ArrivalSource,
+    tuple(s for s in ARRIVAL_SOURCES if s not in ("invite", "not_given")),
+)
+
+
+class ArrivalIn(BaseModel):
+    """How a new person found us (D-080). Read only when the login creates the
+    account; a returning login ignores it, so nobody can rewrite how they came."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    invite_code: str | None = Field(
+        default=None,
+        max_length=16,
+        pattern=r"^[A-Za-z0-9 -]+$",
+        description=(
+            "Someone's invite code, as typed. An unknown code is ignored, never "
+            "refused: a typo must not block sign-up"
+        ),
+        examples=["K7PQ2XMA"],
+    )
+    source: ArrivalSource | None = Field(
+        default=None, description="Where the person says they heard of us"
+    )
+    campaign_tag: str | None = Field(
+        default=None,
+        pattern=r"^[a-z0-9-]{1,40}$",
+        description="The label on the link or poster they came from",
+        examples=["codissia-oct"],
+    )
+
+
 class OtpVerifyIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -133,6 +174,10 @@ class OtpVerifyIn(BaseModel):
             "that already exists; it never creates one"
         ),
         examples=["creator"],
+    )
+    arrival: ArrivalIn | None = Field(
+        default=None,
+        description="Optional, and read only when this login creates the account",
     )
 
 
@@ -893,3 +938,25 @@ class CityFiguresRead(BaseModel):
     creators_by_niche: list[NicheCountRead]
     open_campaigns: int | None
     asking_prices: list[AskingPriceRead]
+
+
+# --- invitations and arrival (D-080) ---------------------------------------------------------
+
+
+class InviteCodeRead(BaseModel):
+    code: str = Field(description="Eight characters; no 0, O, 1 or I")
+    created_at: datetime
+
+
+class InviteCountsRead(BaseModel):
+    """How many joined with my code. Counts only, never who (D-080)."""
+
+    brands: int
+    creators: int
+
+
+class SignupCountRead(BaseModel):
+    week_starting: date = Field(description="A Monday, Tamil Nadu time")
+    source: str
+    role: Literal["brand", "creator", "admin"]
+    accounts: int

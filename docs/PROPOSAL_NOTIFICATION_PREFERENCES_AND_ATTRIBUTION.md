@@ -1,6 +1,6 @@
 # Proposal: notification preferences, and invite and source attribution
 
-**Status: proposed, 8 October 2026. Not built.** Both were approved in principle by D-071 ("built before launch"); each needs a new table, so each needs a schema approval (`CLAUDE.md` section 5) before code. Attribution also touches sign-up, which is the security gate. Items 18 and 21 in `docs/BACKEND_COMPLETE.md`.
+**Status: approved and built, 8 October 2026** (D-079, D-080), with the recommended option in each decision. Kept as the record of what was proposed. Both were approved in principle by D-071 ("built before launch"); each needs a new table, so each needs a schema approval (`CLAUDE.md` section 5) before code. Attribution also touches sign-up, which is the security gate. Items 18 and 21 in `docs/BACKEND_COMPLETE.md`.
 
 ---
 
