@@ -143,8 +143,14 @@ class Settings(BaseSettings):
     )
     # Which build an error came from: the image's git commit, set by infra/.
     app_release: str | None = Field(default=None, pattern=r"^[A-Za-z0-9._+-]{1,200}$")
+    # The version of the notice a creator reads before giving their UPI ID
+    # (D-085). Its wording comes from the validation pack (constraint 6);
+    # until it exists this stays unset, and adding a UPI ID is off.
+    upi_notice_version: str | None = Field(
+        default=None, pattern=r"^[A-Za-z0-9._-]{1,40}$"
+    )
 
-    @field_validator("sentry_dsn", "app_release", mode="before")
+    @field_validator("sentry_dsn", "app_release", "upi_notice_version", mode="before")
     @classmethod
     def empty_is_unset(cls, value: object) -> object:
         # `SENTRY_DSN=` in .env means "off", not an address that is "".

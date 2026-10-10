@@ -14,7 +14,10 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # An exact runner image, never ubuntu-latest: GitHub moves that label
+    # to Ubuntu 26 from 19 October 2026, and a CI that changes under us is
+    # not reproducible (D-086). Moved on purpose, with a decision.
+    runs-on: ubuntu-24.04
 
     services:
       # PostgreSQL 18 with pgvector 0.8.6, pinned exactly (D-049). Never
@@ -163,8 +166,19 @@ jobs:
 
       # Coverage is measured on the same run, and the 80% overall floor in
       # pyproject.toml fails it (testing.md section 5).
+      # A failing test's name and first error line also go out as ::error
+      # annotations, which anyone can read on the pull request and through
+      # the API. The full log is visible only to repository admins, and a
+      # red run nobody can read cannot be fixed by anyone else (10 October
+      # 2026). The exit status is pytest's own, unchanged.
       - name: Run tests
-        run: pytest -x --tb=short --cov --cov-report=term
+        run: |
+          set +e
+          pytest -x --tb=short --cov --cov-report=term -rfE 2>&1 | tee pytest.log
+          status=${PIPESTATUS[0]}
+          grep -E '^(FAILED|ERROR) ' pytest.log | cut -c1-500 | sed 's/^/::error title=Test failed::/'
+          grep -E '^E  ' pytest.log | head -n 5 | cut -c1-500 | sed 's/^/::error title=First error::/'
+          exit "$status"
 
       # The other half of testing.md section 5: every service.py at 90% or
       # more. coverage.py has no per-file floor, so this reads its report.
@@ -229,11 +243,24 @@ jobs:
           uv export --locked --no-emit-project --format requirements-txt --no-hashes > audit-requirements.txt
           uvx pip-audit@2.10.1 --requirement audit-requirements.txt --no-deps --disable-pip --strict --desc
 
+      # Every dependency's licence is one we approved (legal.md section
+      # 3.15, D-086). An allow-list, not a deny-list, so a new or unknown
+      # licence fails until someone reads it. Permissive licences, plus the
+      # weak copyleft ones a library may carry when we use it unchanged:
+      # LGPL-3.0 (psycopg) and MPL-2.0 (certifi, pathspec, hypothesis).
+      # GPL and AGPL are not on it: they need a decision first. Spelled as
+      # each package declares it; a new spelling of an approved licence is
+      # added here, in review.
+      - name: Check dependency licences
+        env:
+          ALLOWED: "MIT;MIT License;MIT-0;MIT-CMU;MIT AND PSF-2.0;PSF-2.0;BSD License;BSD-2-Clause;BSD-3-Clause;Apache Software License;Apache-2.0;Apache-2.0 OR BSD-2-Clause;Apache-2.0 OR BSD-3-Clause;MPL-2.0;Mozilla Public License 2.0 (MPL 2.0);LGPL-3.0-only;ISC;ISC License (ISCL)"
+        run: uvx pip-licenses@5.5.5 --python .venv/bin/python --from=mixed --allow-only="$ALLOWED"
+
   # The images the app ships in (D-063), built and scanned for known
   # vulnerabilities on every push (D-064). Its own job, so it runs alongside
   # the tests rather than after them.
   image:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -314,13 +341,49 @@ jobs:
         if: github.event_name == 'pull_request'
         run: grype docker:nicheconnect-embeddings:ci -c .grype.yaml
 
+  # The OpenTofu files that describe AWS (D-062), checked on every push:
+  # formatted, and each environment valid against its locked providers.
+  # Until 10 October 2026 nothing checked them, so a typo surfaced only at
+  # deploy time (D-086). No AWS credentials: validation reads the files
+  # only. OpenTofu is installed like Gitleaks, pinned by version and
+  # checksum (tofu_<version>_SHA256SUMS on the release).
+  infrastructure:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install OpenTofu
+        env:
+          TOFU_VERSION: "1.12.6"
+          TOFU_SHA256: 50a6106fa4de523d09c87af85f3db1dd47535fc005727fdca6852146476b88ec
+        run: |
+          archive="$RUNNER_TEMP/tofu.tar.gz"
+          curl -sSfL -o "$archive"             "https://github.com/opentofu/opentofu/releases/download/v${TOFU_VERSION}/tofu_${TOFU_VERSION}_linux_amd64.tar.gz"
+          echo "${TOFU_SHA256}  ${archive}" | sha256sum --check --strict
+          tar -xzf "$archive" -C "$RUNNER_TEMP" tofu
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Check formatting
+        run: tofu fmt -check -recursive infra
+
+      - name: Validate every environment
+        run: |
+          for dir in infra/bootstrap infra/envs/staging infra/envs/production; do
+            echo "::group::$dir"
+            tofu -chdir="$dir" init -backend=false -input=false -lockfile=readonly
+            tofu -chdir="$dir" validate
+            echo "::endgroup::"
+          done
+
   # SECURITY.md and /.well-known/security.txt send researchers to GitHub's
   # private vulnerability reporting. Switched off, that link leads nowhere
   # and a report has nowhere private to go, so CI checks the setting itself
   # (D-082; found off on 10 October). Its own job, so a failure here never
   # hides behind, or is hidden by, a test failure.
   repository-settings:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Private vulnerability reporting is on
         env:

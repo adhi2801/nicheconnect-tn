@@ -189,6 +189,13 @@ for its own decision. **Trigger:** 20,000 deals, or a measured proof p95 above
 
 ## What is not measured yet
 
+- **Everything built from 8 to 10 October 2026**:
+  - availability (D-083);
+  - invitations and repeat deals (D-084);
+  - UPI pay details (D-085);
+  - blocking (item 59).
+
+  The block check also adds a condition to every search, discovery and matching query, so **the search, discovery and matching figures above predate it** and must be measured again before anyone relies on them. Query-count tests prove none of these adds a query per row; only a timed run proves they stay inside the budget.
 - **Writes beyond the deal, disputes, bulk mark-paid, the rate card and
   reports.** Profile and campaign edits are single-row writes of the same
   kind, but they are not in the script yet.
@@ -200,8 +207,9 @@ for its own decision. **Trigger:** 20,000 deals, or a measured proof p95 above
 - **At real scale.** 150 campaigns is a pilot-sized seed, not a year of
   trading. The figures say the queries are not accidentally quadratic; they
   do not say what happens at a hundred times the rows.
-- **Anywhere but a laptop.** No hosting is chosen, so there is no staging
-  number. A managed database across a network will not look like this.
+- **Anywhere but a laptop.** Hosting is chosen (AWS Mumbai, D-062) but not
+  yet deployed, so there is no staging number. A managed database across a
+  network will not look like this.
 
 ## Running it yourself
 

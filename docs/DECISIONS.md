@@ -773,3 +773,67 @@ Newest entries at the bottom.
      - both sides' exports carry the new fields.
   6. A new test compares every CHECK in the models with the migrated database, which `alembic check` does not do.
   7. Tests: 83 new API tests and 2 concurrency tests. Sixteen rules were each shown to fail when broken.
+
+## D-085: The UPI pay link, with the creator's UPI ID stored by consent
+- Date: 2026-10-10
+- Approved by: Adhi. Item 32 of `docs/BILLION_DOLLAR_GAP.md` was approved on 8 October ("approve all"), with its gate named as a founder decision on storing UPI IDs. After the plan to store them was put to him on 10 October, he confirmed it ("carry on working next").
+- Context: A brand pays a creator by copying an amount and a UPI ID by hand, the most error-prone step in a deal. `docs/standards/database.md` section 4 forbade storing UPI identifiers without a founder decision.
+- Options considered: A) store the creator's UPI ID with consent, and give the brand on the deal NPCI's `upi://pay` link while the payment is open · B) no stored ID: the creator types it into each deal · C) leave payment details off the platform.
+- Chosen: A.
+- Reason: It removes the step where money goes to the wrong place, and the money still moves only between the two banks (constraint 1). The design, its choices and its threat model are in `docs/decided/PROPOSAL_UPI_PAY_LINK.md`.
+- Consequences / follow-ups:
+  1. Table `creator_upi` (migration `e39beab4e841`), separate from `creator`, one row per creator. Its checks refuse a malformed ID and a phone-number ID. The downgrade refuses while any row exists, since each row is a consent record.
+  2. `GET`, `PUT` and `DELETE /api/v1/creators/me/upi`, and `GET /api/v1/deal-memos/{id}/payment/pay-details` for the deal's brand while the payment is open (20 a minute).
+  3. Rules:
+     - no link above UPI's ₹1 lakh limit between people;
+     - person-to-person fields only;
+     - a UPI ID set in the last 24 hours is flagged to the brand.
+  4. Off until the validation pack's notice exists: setting `UPI_NOTICE_VERSION` (`.env.example`, `infra/`) switches it on. Withdrawing always works.
+  5. In the creator's data export.
+  6. Tests: 51, and 13 rules shown to fail when broken.
+  7. Owed: the notice wording, and trying the link on real phones with the main UPI apps before launch.
+  8. `database.md` section 4 now names this decision.
+
+## D-086: Adults only; contact details flagged, not hidden; 180-day logs; four CI checks
+- Date: 2026-10-10
+- Approved by: Adhi, in this session ("approve all"), on the four decisions put to him after the legal and trust-and-safety standards.
+- Context: The legal research (`docs/standards/legal.md`) and the trust-and-safety review (`docs/standards/trust-and-safety.md`) found decisions only a founder could make, and CI gaps.
+- Options considered and chosen:
+  1. **Adults only** (chosen), over allowing minors with parental consent. A contract with a minor is void in India, and DPDP requires verified parental consent for their data. Creating a profile takes a date of birth, checked against today in Tamil Nadu. Only `account.adult_confirmed_at` is kept (migration `5cf8639be443`), never the date: the least the rule needs.
+  2. **Contact details flagged, not hidden**, until there is an in-app chat to talk through instead (item 60).
+  3. **Logs kept 180 days** (chosen), over 30, as CERT-In requires. OpenTofu refuses less.
+  4. **CI** (all chosen):
+     - every job on `ubuntu-24.04`, never `ubuntu-latest`;
+     - a new `infrastructure` job running `tofu fmt -check` and `tofu validate` on every environment, OpenTofu 1.12.6 pinned by checksum;
+     - a licence allow-list (pip-licenses 5.5.5) that fails on anything not approved;
+     - proof and evidence links from a published host list (item 57).
+- Reason: each closes a gap the research found, with the smallest change that does.
+- Consequences / follow-ups:
+  - Creating a profile now requires `date_of_birth`. No client exists yet (D-053), so tightening the contract costs nothing today.
+  - Lawyer question 2 in `legal.md` section 4 asks whether a declared date is enough.
+  - The persuasion levers we use, and the line each must not cross, are written into `legal.md` section 3.5.
+
+## D-087: The founders' weekly numbers, as an admin view
+- Date: 2026-10-10
+- Approved by: Adhi, in this session ("carry on with the remaining docs then item 63"), for item 63, which the survival playbook proposed the same day.
+- Context: `docs/SURVIVAL_PLAYBOOK.md` section 4 names the numbers that say each week whether the first city is dense enough and the business alive. They could only be counted by hand.
+- Options considered: A) one admin endpoint, worked out from the records on every read · B) a stored daily snapshot table · C) counting by hand from the export.
+- Chosen: A.
+- Reason: "worked out, never stored" (`backend.md` section 2) keeps the numbers from drifting from the records, and it costs a fixed number of queries whatever the size. B would add a job and a second truth; C does not survive a busy week.
+- Consequences / follow-ups:
+  1. `GET /api/v1/admin/numbers`: admins only (404 for anyone else), 20 a minute. Any 1 to 90 Tamil Nadu days ending on `ending_on`, beside the same length before, optionally for one city.
+  2. What it reports:
+     - new and active brands and creators;
+     - campaigns posted, and the fill rate (an agreed deal within 14 days);
+     - median hours to a first application;
+     - applications sent and accepted so far, and invitations;
+     - deals agreed, their value, and the repeat share;
+     - payments confirmed, and the share paid on time.
+  3. Policy written into the code:
+     - every rate is null below five examples;
+     - a campaign counts towards the fill rate only once it is 14 days old;
+     - a campaign still in draft is not counted;
+     - a repeat is any deal between a pair that agreed one before.
+  4. Totals only, naming no one, so reading it writes no admin log entry (D-061).
+  5. A campaign's publishing time is not stored, so `created_at` stands in for it. A campaign kept long in draft looks slower to fill than it was.
+  6. Tests: 19; ten rules each shown to fail when broken. Mutation testing found that nothing checked the period's last day at Tamil Nadu midnight, and a test now does.

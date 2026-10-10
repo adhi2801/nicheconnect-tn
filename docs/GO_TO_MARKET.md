@@ -1,6 +1,6 @@
 # Go to market: how we win the first city, then the next
 
-**Researched 1 October 2026.** It completes `docs/REVENUE_RESEARCH.md` (what we charge, the arithmetic, the 90-day pilot and its checkpoints) and does not repeat it. This file is **how people hear of us, why they join, and why they bring others.** Nothing here is decided; each choice in section 11 is a founder decision.
+**Researched 1 October 2026; statuses brought up to date 10 October 2026.** It completes `docs/REVENUE_RESEARCH.md` (what we charge, the arithmetic, the 90-day pilot and its checkpoints) and does not repeat it. This file is **how people hear of us, why they join, and why they bring others.** Nothing here is decided; each choice in section 11 is a founder decision.
 
 ---
 
@@ -20,6 +20,7 @@
 | **Creators** | **"See which brands pay on time, before you say yes."** | Brand payment records are public to creators (D-034) |
 | **Brands** | **"Creators who deliver, with proof you can check."** | Delivery records (D-038), proof files cleaned and sealed (D-065, D-066), results read from proof (D-070) |
 | **Both** | **"Every deal on the record. Nobody can quietly change it."** | The deal record, stamped daily by outside authorities (D-057, D-060) |
+| **Creators, against scams** | **"A brand that asks you for a fee gets flagged. You never pay to get a deal here."** | Fee requests in a brief, note or memo carry a warning beside them (item 60); fake-brand fee scams are the most reported creator scam in India (`docs/standards/trust-and-safety.md` section 2) |
 
 Words we never use, here or anywhere: "escrow", "wallet", "guaranteed funds", "split settlement", or any promise that we pay, hold or protect money (constraint 1). We show who paid; we never promise payment.
 
@@ -47,7 +48,7 @@ Words we never use, here or anywhere: "escrow", "wallet", "guaranteed funds", "s
 
 Creators come where paid work is, so the job is **quality and density, not volume**.
 
-- **Invite by campaign**: when a brand posts, a founder personally invites suitable local creators to that campaign. A real paid campaign is the best invitation there is.
+- **Invite by campaign**: when a brand posts, a founder (and soon the brand itself) invites suitable local creators through the product (D-084). Every invitation is on the record, and the creator answers in one tap. A real paid campaign is the best invitation there is.
 - **The Passport as a tool on its own**: creators set up a free professional profile and rate card even before a campaign fits them. It earns its place in their bio.
 - **Colleges and creator circles in the pilot city**: talks on pricing your work and getting paid on time, which is useful whether or not anyone signs up.
 - **A WhatsApp community per city** for announcements only: new campaigns, the monthly meetup. Opt-in, with no daily noise (`docs/PSYCHOLOGY_AND_TRUST.md` section 5).
@@ -59,8 +60,10 @@ Creators come where paid work is, so the job is **quality and density, not volum
 |---|---|---|
 | **Passport in the bio** | Every creator's link shows our page to their followers, brands included | Passport built (D-036); public pages and embeds are frontend (W1, W9) |
 | **A brand's on-time record** | A brand shows its record to recruit better creators | Built (D-034); public display is a decision |
-| **Creator invites a brand** | A creator who works with a shop brings it on for its first campaign | Needs invite attribution (section 10); reward is a decision |
-| **City pages** | "Food creators in Coimbatore", with real, aggregate numbers, found by search and AI search | Frontend (W1); an aggregate endpoint is a decision (section 10) |
+| **Creator invites a brand** | A creator who works with a shop brings it on for its first campaign | Attribution built (D-080); reward is a decision |
+| **Brand invites creators** | A brand that finds a creator in search invites them in one tap; the creator sees a real offer, not a cold message | Built (D-084) |
+| **Work together again** | A finished deal becomes the next one in one tap, with the memo drafted: repeat deals are where a marketplace compounds | Built (D-084) |
+| **City pages** | "Food creators in Coimbatore", with real, aggregate numbers, found by search and AI search | City figures built (D-078); the pages are frontend (W1) |
 
 Referral rewards, if any, are recognition and service (a brand's first campaign on us), never money paid to creators by us (constraint 1), and never a better ranking (rankings are not for sale).
 
@@ -98,10 +101,9 @@ Checkpoints and what we do if we miss them: `docs/REVENUE_RESEARCH.md` section 8
 
 | Item | Why | Gate |
 |---|---|---|
-| **Invite and source attribution**: who invited whom, and where a sign-up came from | Measure each channel and loop in section 6; reward a creator who brings a brand | Database; privacy (no personal data beyond what is needed) |
-| **City and niche aggregates for public pages**: counts and medians only, with thresholds | City pages and the quarterly summary (section 7) | A decision; privacy; the consent rules of D-036 and the thresholds of D-056 |
-
-Both are added to `docs/BACKEND_COMPLETE.md`.
+| Invite and source attribution: who invited whom, and where a sign-up came from | Measure each channel and loop in section 6; reward a creator who brings a brand | **Built** (D-080) |
+| City and niche aggregates for public pages: counts and medians only, with thresholds | City pages and the quarterly summary (section 7) | **Built** (D-078) |
+| **The founders' weekly numbers**: campaign fill rate, application success, repeat rate, paid on time | Knowing each week whether the city is dense enough (`docs/SURVIVAL_PLAYBOOK.md` section 4) | **Built** (D-087, `GET /api/v1/admin/numbers`) |
 
 ## 11. Decisions this file asks for
 
@@ -110,6 +112,7 @@ Both are added to `docs/BACKEND_COMPLETE.md`.
 3. Referral rewards: whether, and what (recognition and service only).
 4. Whether a brand's on-time record may be shown publicly, or only to creators.
 5. The quarterly rate summary: yes or no, and its thresholds.
+6. **The decision date** (`docs/SURVIVAL_PLAYBOOK.md` section 5): what the numbers must show by the end of the pilot, written down now, so continuing or changing course is decided on facts.
 
 ---
 

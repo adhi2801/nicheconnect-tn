@@ -17,7 +17,7 @@ from app.core.taxonomy import CURRENCY
 from app.db.session import engine
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.models.rate_card import CreatorChannel, CreatorPackage
-from app.modules.auth.search_router import READ_LIMIT
+from app.modules.auth.search_router import SEARCH_LIMIT
 from tests.deal_flow import User, brand_user, creator_user
 from tests.factories import FIXED_NOW, build_creator
 
@@ -331,7 +331,7 @@ def test_contradictory_filters_are_refused_not_answered_with_nothing(client, bra
 
 
 def test_it_is_rate_limited(client, brand):
-    for _ in range(int(READ_LIMIT.split()[0])):
+    for _ in range(int(SEARCH_LIMIT.split()[0])):
         assert client.get(URL, headers=brand.headers).status_code == 200
 
     assert client.get(URL, headers=brand.headers).status_code == 429

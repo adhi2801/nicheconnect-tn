@@ -71,3 +71,18 @@ Checked and found safe: applying to a campaign twice (the unique rule's error is
 1. **The decision above** (#10). #3 was answered by D-073.
 2. **A review of everything since 21 September**, which no bot and no second founder has read: trigger CodeRabbit by hand on the open pull request (a comment `@coderabbitai review`), and run a full review in a session. The check-then-write pattern has now been searched for across the whole codebase (above); other kinds of bug have not.
 3. **Codex's credits** are a founder's decision: restore them, or rely on the other two.
+
+## Still true on 10 October 2026
+
+Nothing in "What next" has happened. The unreviewed code has grown, with only the session that wrote it as its reader:
+- adults only, availability, invitations and repeat deals;
+- the UPI pay link;
+- blocking, daily ceilings, the link and text checks;
+- the legal and trust-and-safety standards.
+
+What has caught real bugs since is the automated net:
+- **CI**, run on a fresh database: a block filter that read every campaign's brand (`docs/standards/testing.md` section 2);
+- **mutation testing by hand**: two text-flag guards that each hid the other;
+- **the new document check**: a decision cited eleven times and never made, and a file `CLAUDE.md` required that never existed.
+
+None of that is a second reader. Step 2 above is still the most valuable review there is: comment `@coderabbitai review` on the open pull request, and have Erode Harish read it before it merges.

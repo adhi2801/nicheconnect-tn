@@ -50,7 +50,7 @@ Rules marked **(decision)** need a recorded founder decision before first use.
 
 - Tables with a `vector` column never contain raw PII (phone, email, bank, UPI, government IDs, legal names) (constraint 2).
 - Embedding input is built by one function that reads only allow-listed, non-PII fields, and a test proves PII is excluded.
-- Bank and UPI identifiers are not stored unless a founder decision says otherwise.
+- Bank and UPI identifiers are not stored unless a founder decision says otherwise. UPI IDs: D-085, in `creator_upi` only, with consent, never a phone number.
 - Every column holding personal data is in the person's data export, or listed in `export_service.NOT_EXPORTED` with the reason; a test fails if a table is neither.
 
 ## 5. Indexes

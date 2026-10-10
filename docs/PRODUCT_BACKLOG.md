@@ -20,9 +20,11 @@ What the product needs from this repository, in the order we should build it.
 
 ## 2. Built so far
 
-Checked against the code on 1 October 2026 (`main` at `50899f6`, after PRs
-#32 to #34 merged), not from memory: 90 operations in the API contract, 28
-migrations, 1,829 tests passing (run that day, coverage 98.42%).
+Checked against the code on 10 October 2026 (branch `fix/review-findings`
+at `5c275d9`, not yet merged to `main`), not from memory: 118 operations in
+the API contract, 36 migrations, 2,520 tests passing with 2 skipped (run that
+day; coverage 98.6% at the last coverage run). On 1 October it was 90
+operations, 28 migrations and 1,829 tests.
 
 | Capability | Status | Where |
 |---|---|---|
@@ -48,13 +50,23 @@ migrations, 1,829 tests passing (run that day, coverage 98.42%).
 | Background jobs (DBOS) | Tested | D-060, `app/core/jobs.py` |
 | Deployment: AWS as code, two images, image scanning | Validated and built, **not applied** | D-062, D-063, D-064, `infra/`, `Dockerfile` |
 | API fuzz testing, migration linting, measured budgets | Tested | D-047, D-050, `docs/PERFORMANCE.md` |
+| Python 3.14 with uv; error tracking scrubbed of personal data | Tested | D-072, D-074 |
+| One list of my payments with totals; each deal's stage and whose move; a campaign at a glance | Tested | D-075, D-076 |
+| Typical response times; city figures for public pages | Tested | D-077, D-078 |
+| Notification preferences; invite and source attribution | Tested | D-079, D-080 |
+| Secret scanning, SBOM, Dependabot, SECURITY.md, security.txt, the incident plan | Tested | D-082 |
+| Creator availability ("booked until") in search and matching | Tested | D-083 |
+| Brands invite creators; work together again | Tested | D-084 |
+| The UPI pay link, the UPI ID stored by consent | Tested, **switched off** until the consent notice exists | D-085 |
+| Adults only; 180-day logs; licence and infrastructure checks in CI | Tested | D-086 |
+| Safety: links only to known hosts, daily ceilings, blocking, warnings on fee requests and early contact details, the breadth behind each record | Tested | Items 57 to 61, `docs/standards/trust-and-safety.md` |
 
 ---
 
 ## 3. Build order
 
 Each phase is only useful once the one before it exists. **Status is from the
-code**, checked 1 October 2026.
+code**, checked 10 October 2026.
 
 ### Phase A — the marketplace core — **done**
 | # | Item | Status | Notes |
@@ -68,10 +80,10 @@ code**, checked 1 October 2026.
 | # | Item | Status | Notes |
 |---|---|---|---|
 | B1 | `deal_memo` table, accept flow both sides | **Done** | Terms, deliverables, usage-rights window |
-| B2 | `payment_status`: brand marks paid, creator confirms | **Done** | Never implies we hold money (D-033) |
+| B2 | `payment_status`: brand marks paid, creator confirms | **Done** | Never implies we hold money (D-027, D-032, D-033) |
 | B3 | Payment reference (UTR) recorded and matched | **Done** | Repeat-proof confirmation |
-| B4 | Brand payment-reliability score | **Done** | D-034, D-035 |
-| B5 | Disputes with an evidence timeline | **Done** | D-036; no verdict is ever recorded |
+| B4 | Brand payment-reliability score | **Done** | D-034 |
+| B5 | Disputes with an evidence timeline | **Done** | D-028, D-035; no verdict is ever recorded |
 
 ### Phase C — trust and fairness features — **4 of 5**
 | # | Item | Status | Notes |

@@ -26,6 +26,7 @@ Applies to auth, permissions, secrets, personal data, rate limiting and dependen
   - Every view of an account's details and every admin action is written to the admin log with a reason.
 - A suspended account is refused at login, on refresh and on every request.
 - **Sign-up details** (D-080) are read only by the login that creates the account, so nobody can rewrite them afterwards.
+- **Adults only** (D-086): creating a profile checks a date of birth against today in Tamil Nadu and keeps only the time of the confirmation, never the date.
 
 ## 2. Authorization
 
@@ -35,6 +36,7 @@ Applies to auth, permissions, secrets, personal data, rate limiting and dependen
 - Filters use the authenticated account from the token, never an owner id from the body or query. The person's own things live under `/me/...` with no id at all.
 - Status transitions check the actor: only the brand marks a payment as sent; only the creator confirms it arrived.
 - Admin endpoints answer 404 to anyone who is not an admin.
+- **A block is respected everywhere one account could reach another** (item 59): no invitation, repeat or application either way, and neither appears in the other's search, matches or discovery. The check is a condition inside each query, and every refusal reads as not found, so a block is never revealed. A new route that reaches someone respects blocks in the same change, with a test in `tests/modules/auth/test_block_api.py`.
 
 ## 3. OWASP API Security Top 10 (2023)
 
@@ -45,8 +47,8 @@ Applies to auth, permissions, secrets, personal data, rate limiting and dependen
 | API3 Broken object property level authorization | Separate create/update/read schemas, `extra="forbid"`, hand-built public responses | Schema tests; contract fuzzing |
 | API4 Unrestricted resource consumption | Rate limits, pagination caps, 1 MB body limit, statement timeouts, daily ceilings on paid APIs | Limit tests; 413 tests |
 | API5 Broken function level authorization | Role checks on every route; admin routes separate and 404 | Role tests |
-| API6 Unrestricted access to sensitive business flows | Extra limits on code sending, applications, bulk payments | Limit tests |
-| API7 Server-side request forgery | No user-supplied URL is fetched; proof links are stored, never fetched | Code review |
+| API6 Unrestricted access to sensitive business flows | Extra limits on code sending, applications, bulk payments; **a daily ceiling per account on everything that reaches another person** (item 58) | Limit tests; `tests/modules/test_daily_ceilings.py` reads the registered limits |
+| API7 Server-side request forgery | No user-supplied URL is fetched; proof and evidence links are stored, never fetched, and accepted only from a published host list with phishing shapes refused (item 57, `app/core/links.py`) | `tests/core/test_links.py` |
 | API8 Security misconfiguration | Security headers on every response, CORS allow-list, docs off in production (D-044) | Header tests, 500s included |
 | API9 Improper inventory management | Committed OpenAPI contract; a test fails on any unannounced change | Contract tests |
 | API10 Unsafe consumption of APIs | Timeouts, validation of third-party responses, bounded retries | Sender and reader tests |
@@ -73,6 +75,7 @@ Examples:
 | Search and matching | 30 / minute | account |
 | Public pages | 60 / minute | IP |
 
+- Every limit counts the signed-in account, or the address when there is none (the limiter's default since 10 October 2026; before, most counted the address). Anything that reaches another person also has a daily ceiling (`trust-and-safety.md` rule 2).
 - Counters live in Valkey (D-003, D-048), shared by every process.
 - A 429 carries `Retry-After` and the standard error body.
 - Limits are tuned from real traffic, never guessed upward.
@@ -91,7 +94,7 @@ Examples:
 - Contact details are never shown on public pages; the Passport has none (D-036).
 - **Consent is a recorded event with a timestamp, never a default** (D-036: nobody is public until they choose).
 - Consent wording, retention periods, deletion, and the consent-manager rules that take effect on 13 November 2026 follow the validation pack (constraint 6). Nothing is invented.
-- **A personal-data breach is reported to the Data Protection Board and to the people affected within the time the DPDP Rules set** (the validation pack confirms the clock). The response plan is in section 9 **(not yet built)**.
+- **A personal-data breach is reported to the Data Protection Board and to the people affected within the time the DPDP Rules set** (the validation pack confirms the clock), and a cyber incident to CERT-In within 6 hours. The plan is `docs/INCIDENT_RESPONSE.md`; the law behind both is `docs/standards/legal.md` sections 3.1 and 3.2.
 - Account deletion is tested end to end once the policy is decided (E8).
 
 ## 8. Transport and headers
@@ -117,9 +120,9 @@ Examples:
   - Slim base images pinned by digest; the app's environment has no pip.
   - Grype blocks merge on any fixable vulnerability; accepted risks are listed one by one with a reason and an expiry condition (D-064, D-074).
 - **Dependency updates:** Dependabot proposes updates weekly as pull requests, for Python, the CI actions, the base images, Compose and OpenTofu, each held 7 days after release before it is proposed; security fixes come at once (`.github/dependabot.yml`, D-082). Each still needs a founder's approval to merge. **Dependabot reads its settings only from the default branch, so it starts once `.github/dependabot.yml` is merged to `main`.**
-- **To add before launch:**
-  - an SBOM (CycloneDX) of the API image, written by Syft on every CI run and kept 90 days (D-082); published with each release once releases exist;
-  - signed images with provenance (Sigstore cosign, SLSA build level 2) **(not yet built: waits for a registry to push images to, D-063)**.
+- **Licences:** every dependency's licence is on an approved list, checked in CI (D-086).
+- **SBOM:** a CycloneDX bill of materials of the API image, written by Syft on every CI run and kept 90 days (D-082); published with each release once releases exist.
+- **To add before launch:** signed images with provenance (Sigstore cosign, SLSA build level 2) **(not yet built: waits for a registry to push images to, D-063)**.
 - **Least privilege in AWS:** the app's IAM role can reach only its own bucket and its own secrets; the database user has no superuser rights.
 - **Incident response:** `docs/INCIDENT_RESPONSE.md` covers who is called, how to rotate every secret, how to take the API down safely, and how to tell people (D-082). A test fails if a secret the app is given, or a password OpenTofu generates, has no rotation step (`tests/test_incident_response.py`). **Rehearsal not yet done**: once on staging before launch.
 - **Disclosure:** `SECURITY.md` (report privately through GitHub, response targets, safe harbour) and `/.well-known/security.txt` (RFC 9116) on the API, whose `Expires` a test makes us renew (D-082). **A founder switches on private vulnerability reporting in the repository settings**; CI fails until it is on (testing.md gate 13).
@@ -134,7 +137,7 @@ Examples:
 - [ ] Backups enabled and one restore tested (`database.md` section 8)
 - [ ] Dependency audit and image scan clean on the release commit
 - [x] Secret scanning in CI and Dependabot configured (D-082)
-- [ ] Push protection and private vulnerability reporting switched on in the repository settings
+- [x] Push protection and private vulnerability reporting switched on in the repository settings (Adhi, 10 October 2026; private reporting confirmed through GitHub's API, and CI checks it on every run)
 - [x] `SECURITY.md`, `security.txt`, incident plan written (D-082)
 - [ ] Incident plan rehearsed on staging
 - [ ] An outside penetration test of the API, findings fixed or accepted by a founder **(decision: who and when)**

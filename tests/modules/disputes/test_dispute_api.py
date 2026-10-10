@@ -16,7 +16,7 @@ from tests.query_counts import queries_for
 
 RRN = "412345678901"
 REASON = "The payment was marked sent on 8 September but nothing has reached my account."
-RECEIPT = "https://example.com/upi-receipt.png"
+RECEIPT = "https://drive.google.com/file/d/1UpiReceipt/view"
 
 
 def dispute_url(memo_id: str) -> str:
@@ -381,3 +381,18 @@ def test_a_longer_timeline_costs_no_more_queries(client, deal):
     timeline = client.get(url, headers=deal["creator"].headers).json()["timeline"]
     assert len(timeline) == 5
     assert five_entries == one_entry
+
+
+def test_evidence_off_the_known_hosts_is_refused(client, deal):
+    raise_dispute(client, deal)
+
+    response = client.post(
+        f"{dispute_url(deal['memo_id'])}/entries",
+        json={
+            "note": "Receipt here.",
+            "evidence_url": "https://upi-receipt-check.in/r/1",
+        },
+        headers=deal["brand"].headers,
+    )
+
+    assert response.status_code == 422

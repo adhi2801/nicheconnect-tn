@@ -9,6 +9,8 @@ Every file here has one job. If two files start doing the same job, one of them 
 | `standards/backend.md` | Any endpoint, service, schema, error or background job |
 | `standards/database.md` | Any table, migration, index or query |
 | `standards/security.md` | Anything touching login, access, secrets, personal data, rate limits or dependencies |
+| `standards/trust-and-safety.md` | Anything that lets one person reach, pay, judge or be judged by another, and every way someone could scam another person or us |
+| `standards/legal.md` | Anything touching the law: personal data and consent, what we say about people, ranking, payments, tax, content rights, messages, minors, and every Confirm question for the lawyer and CA |
 | `standards/testing.md` | Any test, CI change, or claim that something is tested |
 | `standards/frontend.md` | Any web or app work (after the backend is complete) |
 | `standards/ux.md` | Any design, flow or copy, and backend choices that shape them |
@@ -36,6 +38,9 @@ Every file here has one job. If two files start doing the same job, one of them 
 |---|---|
 | `BILLION_DOLLAR_GAP.md` | What the best platforms have that we do not, as proposed backend items (8 October) |
 | `COMPETITIVE_LANDSCAPE.md` | Every competitor, in India and worldwide, and what we have that they do not |
+| `ARCHITECTURE_SCALE.md` | Scaling later: each proposal with the measured trigger that would justify it, cheapest step first |
+| `research/` | Notes from conversations with real brands and creators, and the Mom Test template for taking them |
+| `SURVIVAL_PLAYBOOK.md` | How startups like ours die and the rules that keep us alive: default alive, the numbers to watch weekly, money without selling the company, and founder pay growing step by step (10 October) |
 | `GO_TO_MARKET.md` | Coimbatore first: how the pilot finds its first brands and creators |
 | `PSYCHOLOGY_AND_TRUST.md` | What makes people trust a marketplace with their money and work |
 | `REVENUE_RESEARCH.md` | How we could earn, never by touching deal money |

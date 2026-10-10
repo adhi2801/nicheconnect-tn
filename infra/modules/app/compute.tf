@@ -120,6 +120,9 @@ locals {
     # Error tracking (D-074): off while empty. The release is the image's git
     # commit, so each error names the build that produced it.
     { name = "SENTRY_DSN", value = var.sentry_dsn },
+    # Adding a UPI ID (D-085): off while empty, until the validation pack's
+    # notice exists.
+    { name = "UPI_NOTICE_VERSION", value = var.upi_notice_version },
     { name = "APP_RELEASE", value = var.image_tag },
   ]
 

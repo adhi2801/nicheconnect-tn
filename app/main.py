@@ -20,10 +20,12 @@ from app.modules.auth.admin_router import router as admin_router
 from app.modules.auth.attention_router import router as attention_router
 from app.modules.auth.attribution_router import router as attribution_router
 from app.modules.auth.availability_router import router as availability_router
+from app.modules.auth.block_router import router as block_router
 from app.modules.auth.city_figures_router import router as city_figures_router
 from app.modules.auth.dependencies import idempotency_identity
 from app.modules.auth.export_router import router as export_router
 from app.modules.auth.media_kit_router import router as media_kit_router
+from app.modules.auth.numbers_router import router as numbers_router
 from app.modules.auth.profile_router import brand_router, creator_router
 from app.modules.auth.public_router import router as public_router
 from app.modules.auth.rate_card_router import router as rate_card_router
@@ -50,6 +52,7 @@ from app.modules.payment_status.brand_router import router as reliability_router
 from app.modules.payment_status.bulk_router import router as bulk_payments_router
 from app.modules.payment_status.mine_router import router as my_payments_router
 from app.modules.payment_status.router import router as payment_router
+from app.modules.payment_status.upi_router import router as upi_router
 
 # Before the app exists, so the error tracker sees it built (D-074). Off
 # unless SENTRY_DSN is set.
@@ -113,9 +116,11 @@ app.include_router(public_router)
 app.include_router(city_figures_router)
 app.include_router(rate_card_router)
 app.include_router(availability_router)
+app.include_router(block_router)
 app.include_router(search_router)
 app.include_router(report_router)
 app.include_router(admin_router)
+app.include_router(numbers_router)
 app.include_router(attribution_router)
 app.include_router(media_kit_router)
 app.include_router(rate_guidance_router)
@@ -129,6 +134,7 @@ app.include_router(deal_record_router)
 app.include_router(repeat_router)
 app.include_router(proof_router)
 app.include_router(payment_router)
+app.include_router(upi_router)
 app.include_router(bulk_payments_router)
 app.include_router(my_payments_router)
 app.include_router(reliability_router)

@@ -4,11 +4,12 @@ import uuid
 from datetime import date, datetime
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 from pydantic_core import PydanticCustomError
 
 from app.core.literals import ensure_same_values
 from app.core.taxonomy import CURRENCY
+from app.core.text_flags import FieldFlag, field_flags
 from app.modules.deal_memo.delivery_record import (
     HAS_HISTORY,
     NO_HISTORY_YET,
@@ -136,6 +137,24 @@ class MemoRead(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    @computed_field(  # type: ignore[prop-decorator]  # pydantic documents this
+        description=(
+            "Warnings on the free text above, worked out on every read: a request "
+            "for money from a creator, or contact details before a deal is agreed "
+            "(item 60). Show each beside its field; never hide the text"
+        )
+    )
+    @property
+    def text_flags(self) -> list[FieldFlag]:
+        # The brand writes the memo and the creator reads it: a request for a
+        # fee or deposit in its terms is the scam to catch. The two are
+        # already matched, so contact details are no longer a warning.
+        return field_flags(
+            {"deliverables": self.deliverables, "extra_terms": self.extra_terms},
+            money=True,
+            contact=False,
+        )
+
 
 DealStageName = Literal[
     "draft",
@@ -227,6 +246,12 @@ class CreatorDeliveryRead(BaseModel):
     )
     barter_deals_delivered: int
     barter_deals_not_delivered: int
+    distinct_brands: int = Field(
+        description=(
+            "How many different brands the completed deals were with. Show it beside "
+            "the figures: twelve deals with one brand say less than twelve across nine"
+        )
+    )
 
 
 def to_delivery_read(record: DeliveryRecord) -> CreatorDeliveryRead:
@@ -241,6 +266,7 @@ def to_delivery_read(record: DeliveryRecord) -> CreatorDeliveryRead:
         disclosure_confirmed_share=record.disclosure_confirmed_share,
         barter_deals_delivered=record.barter_deals_delivered,
         barter_deals_not_delivered=record.barter_deals_not_delivered,
+        distinct_brands=record.distinct_brands,
     )
 
 

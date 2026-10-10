@@ -28,6 +28,7 @@ from app.core.export import (
     to_json_value,
 )
 from app.modules.auth import attribution_service as attribution
+from app.modules.auth import block_service as blocks
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.brand import Brand
@@ -40,6 +41,7 @@ from app.modules.disputes import service as disputes
 from app.modules.notifications import preference_service as notification_preferences
 from app.modules.notifications import service as notifications
 from app.modules.payment_status import service as payments
+from app.modules.payment_status import upi_service as upi
 
 # Bumped whenever the shape of the file changes, so a reader can tell which
 # version it is looking at.
@@ -110,6 +112,9 @@ ACCOUNT_EXPORT_FIELDS = allow(
     # admin's own note is not here: it is in the admin log, section below.
     "suspended_at",
     "suspension_reason",
+    # When you confirmed you are 18 or over (D-086). The date of birth
+    # itself was never kept.
+    "adult_confirmed_at",
     "created_at",
     "updated_at",
 )
@@ -326,9 +331,11 @@ def collect_sections(db: Session, account: Account) -> list[ExportedSection]:
     return [
         *_account_sections(db, account),
         *attribution.export_for_account(db, account.id),
+        *blocks.export_for_account(db, account.id),
         *campaigns.export_for_account(db, account.id),
         *deal_memos.export_for_account(db, account.id),
         *payments.export_for_account(db, account.id),
+        *upi.export_for_account(db, account.id),
         *disputes.export_for_account(db, account.id),
         *notifications.export_for_account(db, account.id),
         *notification_preferences.export_for_account(db, account.id),
@@ -366,11 +373,13 @@ def exported_tables() -> frozenset[str]:
     return (
         EXPORTED_TABLES
         | attribution.EXPORTED_TABLES
+        | blocks.EXPORTED_TABLES
         | campaigns.EXPORTED_TABLES
         | deal_memos.EXPORTED_TABLES
         | notifications.EXPORTED_TABLES
         | notification_preferences.EXPORTED_TABLES
         | payments.EXPORTED_TABLES
+        | upi.EXPORTED_TABLES
         | disputes.EXPORTED_TABLES
     )
 

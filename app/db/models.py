@@ -5,6 +5,7 @@ from app.modules.auth.models.attribution import (
     InviteCode,  # noqa: F401
 )
 from app.modules.auth.models.auth_session import AuthSession  # noqa: F401
+from app.modules.auth.models.block import AccountBlock  # noqa: F401
 from app.modules.auth.models.brand import Brand  # noqa: F401
 from app.modules.auth.models.creator import Creator  # noqa: F401
 from app.modules.auth.models.otp_challenge import OtpChallenge  # noqa: F401
@@ -36,3 +37,4 @@ from app.modules.notifications.preference_models import (
     NotificationPreference,  # noqa: F401
 )
 from app.modules.payment_status.models import PaymentStatus  # noqa: F401
+from app.modules.payment_status.upi_models import CreatorUpi  # noqa: F401

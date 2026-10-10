@@ -25,6 +25,7 @@ from app.core.export import (
     build_section,
 )
 from app.core.pagination import Slice, build_slice, older_than_cursor
+from app.modules.auth.blocks import blocked_between, not_blocked_with_brand
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import brand_is_active, brand_is_suspended
@@ -208,6 +209,7 @@ def discover_campaigns(
     niche: str | None = None,
     campaign_type: str | None = None,
     min_budget_paise: int | None = None,
+    viewer_account_id: uuid.UUID | None = None,
 ) -> Slice[Campaign]:
     """Open campaigns for creators to browse, with optional filters."""
     query = select(Campaign).where(
@@ -215,6 +217,9 @@ def discover_campaigns(
         # A suspended brand's campaigns leave discovery (D-061).
         brand_is_active(Campaign.brand_id),
     )
+    if viewer_account_id is not None:
+        # So do those of a brand either side has blocked (item 59).
+        query = query.where(not_blocked_with_brand(viewer_account_id, Campaign.brand_id))
     if city is not None:
         query = query.where(Campaign.cities.any_() == city)
     if niche is not None:
@@ -317,6 +322,14 @@ def apply_to_campaign(
         # A suspended brand's campaign cannot be applied to, even by its id.
         db.rollback()
         raise CampaignNotOpen()
+    brand_account_id = _brand_account_id(db, campaign)
+    if brand_account_id is not None and blocked_between(
+        db, creator.account_id, brand_account_id
+    ):
+        # Blocked either way (item 59): it reads as not found, so the block
+        # is never revealed.
+        db.rollback()
+        raise CampaignNotFound()
     if (
         campaign.applications_close_on is not None
         and now.date() > campaign.applications_close_on

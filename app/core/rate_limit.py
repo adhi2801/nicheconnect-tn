@@ -7,14 +7,18 @@ from starlette.requests import Request
 from app.core.client_ip import client_ip
 from app.core.config import settings
 
-# Keyed by the caller's address, which behind a trusted proxy is the real
-# client rather than the proxy (app/core/client_ip.py).
+# Keyed by the signed-in account, or by the caller's address when there is
+# none (security.md section 5: "IP, or the account once signed in"). Until
+# 10 October 2026 every limit without an explicit key counted by address:
+# an office behind one address shared one limit, and one person escaped
+# theirs by changing networks. The address is the real client's behind a
+# trusted proxy (app/core/client_ip.py).
 #
 # Counters live where RATE_LIMIT_STORAGE_URI says. In memory they are per
 # process, so two processes would each allow the full limit; Redis shares one
 # count across every process (D-003).
 limiter = Limiter(
-    key_func=client_ip,
+    key_func=lambda request: per_account(request),
     default_limits=["60/minute"],
     storage_uri=settings.rate_limit_storage_uri,
 )

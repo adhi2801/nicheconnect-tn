@@ -23,6 +23,7 @@ from sqlalchemy import desc, exists, func, null, nulls_last, or_, select
 from sqlalchemy.orm import Session
 
 from app.modules.auth import availability_service as availability
+from app.modules.auth.blocks import not_blocked_with_brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import account_is_active, brand_is_active
 from app.modules.campaigns.models import Application, Campaign
@@ -246,6 +247,8 @@ def find_creators_for_campaign(
             Creator.passport_published_at.is_not(None),
             # A suspended creator is never suggested (D-061).
             account_is_active(Creator.account_id),
+            # Nor one either side has blocked (item 59).
+            not_blocked_with_brand(Creator.account_id, campaign.brand_id),
             Creator.city.in_(campaign.cities),
             Creator.niches.overlap(campaign.niches),
         )
@@ -355,6 +358,7 @@ def find_campaigns_for_creator(
         .where(
             Campaign.status == "open",
             brand_is_active(Campaign.brand_id),
+            not_blocked_with_brand(creator.account_id, Campaign.brand_id),
             or_(
                 Campaign.applications_close_on.is_(None),
                 Campaign.applications_close_on >= today,

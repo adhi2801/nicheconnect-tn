@@ -13,6 +13,7 @@ Each file here was written to get a decision. The decision is recorded in `docs/
 | `PROPOSAL_PROOF_FILES.md` | D-065 to D-067 |
 | `PROPOSAL_PROOF_RESULTS.md` | D-070 |
 | `PROPOSAL_NOTIFICATION_PREFERENCES_AND_ATTRIBUTION.md` | D-079, D-080 |
+| `PROPOSAL_UPI_PAY_LINK.md` | D-085 |
 | `DECISION_LOCAL_LOGIN.md` | D-059 |
 | `DECISION_NOTIFICATION_PROVIDER.md` | D-058 |
 | `DECISION_HOSTING.md` | D-062 |

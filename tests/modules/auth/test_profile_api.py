@@ -17,6 +17,8 @@ from tests.factories import FIXED_NOW, create_account
 BRAND_URL = "/api/v1/brands/me"
 CREATOR_URL = "/api/v1/creators/me"
 CAMPAIGNS_URL = "/api/v1/campaigns"
+# FIXED_NOW is 17 September 2026 in Tamil Nadu.
+ADULT = "1999-04-14"
 
 
 @pytest.fixture
@@ -43,7 +45,7 @@ def login(db, now, role: str) -> dict[str, str]:
 
 
 def brand_body(**overrides) -> dict:
-    body = {"name": "Amma Sweets", "email": "hello@ammasweets.in"}
+    body = {"name": "Amma Sweets", "email": "hello@ammasweets.in", "date_of_birth": ADULT}
     body.update(overrides)
     return body
 
@@ -55,6 +57,7 @@ def creator_body(**overrides) -> dict:
         "city": "Coimbatore",
         "niches": ["food", "travel"],
         "bio": "Street food across Tamil Nadu.",
+        "date_of_birth": ADULT,
     }
     body.update(overrides)
     return body
@@ -325,3 +328,109 @@ def test_profile_rows_match_what_the_api_returned(client, db, now):
     stored = db.get(Creator, body["id"])
     assert stored.handle == body["handle"]
     assert stored.niches == body["niches"]
+
+
+# --- adults only (D-086) -----------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("born", "allowed"),
+    [
+        ("2008-09-17", True),  # 18 today, in Tamil Nadu
+        ("2008-09-18", False),  # 18 tomorrow
+        ("2012-01-01", False),
+        ("1960-05-05", True),
+    ],
+)
+@pytest.mark.parametrize("role", ["brand", "creator"])
+def test_only_adults_create_a_profile(client, db, now, role, born, allowed):
+    url, body = (
+        (BRAND_URL, brand_body) if role == "brand" else (CREATOR_URL, creator_body)
+    )
+
+    response = client.post(
+        url, json=body(date_of_birth=born), headers=login(db, now, role)
+    )
+
+    if allowed:
+        assert response.status_code == 201, response.text
+    else:
+        assert_problem(response, 422, "must_be_18_or_over")
+
+
+def test_the_day_is_the_tamil_nadu_day(client, db):
+    # 20:00 UTC on 16 September is already the 17th in Tamil Nadu.
+    late = FIXED_NOW.replace(day=16, hour=20)
+    app.dependency_overrides[get_now] = lambda: late
+
+    response = client.post(
+        CREATOR_URL,
+        json=creator_body(date_of_birth="2008-09-17"),
+        headers=login(db, late, "creator"),
+    )
+
+    assert response.status_code == 201, response.text
+
+
+def test_a_date_of_birth_is_required(client, db, now):
+    body = creator_body()
+    del body["date_of_birth"]
+
+    response = client.post(CREATOR_URL, json=body, headers=login(db, now, "creator"))
+
+    assert response.status_code == 422
+
+
+def test_only_the_confirmation_is_kept_never_the_date(client, db, now):
+    from app.modules.auth.models.account import Account
+
+    headers = login(db, now, "creator")
+    client.post(CREATOR_URL, json=creator_body(), headers=headers)
+
+    account = db.scalars(
+        select(Account).join(Creator, Creator.account_id == Account.id)
+    ).first()
+    exported = client.get("/api/v1/me/export", headers=headers).text
+    columns = {column.name for column in Account.__table__.columns} | {
+        column.name for column in Creator.__table__.columns
+    }
+
+    assert account is not None and account.adult_confirmed_at == now
+    assert not any("birth" in name for name in columns)
+    assert "1999-04-14" not in exported
+
+
+def test_someone_refused_for_age_is_not_marked_adult(client, db, now):
+    from app.modules.auth.models.account import Account
+
+    account = create_account(db, "creator")
+    token, _ = create_access_token(account.id, "creator", now)
+
+    client.post(
+        CREATOR_URL,
+        json=creator_body(date_of_birth="2012-01-01"),
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    confirmed = db.scalar(
+        select(Account.id).where(
+            Account.id == account.id, Account.adult_confirmed_at.is_not(None)
+        )
+    )
+    assert confirmed is None
+
+
+@pytest.mark.parametrize(
+    ("born", "today", "adult"),
+    [
+        ("2008-02-29", "2026-02-28", False),
+        ("2008-02-29", "2026-03-01", True),
+        ("2008-03-01", "2026-03-01", True),
+    ],
+)
+def test_a_leap_day_birthday_turns_18_on_1_march(born, today, adult):
+    from datetime import date
+
+    from app.modules.auth.profiles import is_adult
+
+    assert is_adult(date.fromisoformat(born), date.fromisoformat(today)) is adult

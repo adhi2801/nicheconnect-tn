@@ -114,9 +114,17 @@ variable "embeddings_memory" {
   description = "The embedding model needs about 2.5 GB once loaded (D-052)."
 }
 
+# CERT-In's Directions of 28 April 2022 require every company to keep the
+# logs of its systems for 180 days, in India (D-086, legal.md section 3.2).
+# The log group is in Mumbai; this keeps them long enough. Lower only with
+# a decision that names the legal answer allowing it.
 variable "log_retention_days" {
   type    = number
-  default = 30
+  default = 180
+  validation {
+    condition     = var.log_retention_days >= 180
+    error_message = "log_retention_days must be at least 180: CERT-In requires 180 days of logs."
+  }
 }
 
 # --- login codes (D-058) ------------------------------------------------------------
@@ -167,5 +175,15 @@ variable "sentry_dsn" {
   validation {
     condition     = var.sentry_dsn == "" || can(regex("^https://[0-9a-f]{32}@[a-z0-9.-]+/[0-9]+$", var.sentry_dsn))
     error_message = "sentry_dsn must be empty or a Sentry DSN, https://<key>@<host>/<project>."
+  }
+}
+
+variable "upi_notice_version" {
+  type        = string
+  default     = ""
+  description = "The version of the UPI notice creators read (D-085). Empty keeps adding a UPI ID off; set it once the validation pack supplies the wording."
+  validation {
+    condition     = var.upi_notice_version == "" || can(regex("^[A-Za-z0-9._-]{1,40}$", var.upi_notice_version))
+    error_message = "upi_notice_version must be empty, or 1 to 40 letters, digits, dots, dashes or underscores."
   }
 }

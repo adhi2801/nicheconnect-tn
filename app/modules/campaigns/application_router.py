@@ -38,6 +38,9 @@ from app.modules.campaigns.schemas import (
 
 WRITE_LIMIT = "30 per minute"
 READ_LIMIT = "60 per minute"
+# A ceiling per day as well as per minute (trust-and-safety.md rule 2, item 58):
+# a per-minute limit stops a script, not a person spamming by hand all day.
+APPLY_LIMIT = "30 per minute;30 per day"
 
 # route_class: every POST here accepts an Idempotency-Key header, so a
 # creator whose connection dropped can retry safely (backend.md section 2).
@@ -80,7 +83,7 @@ def _page(result: Slice[Application]) -> Page[ApplicationRead]:
         422: problem_doc("A field is missing or invalid"),
     },
 )
-@rate_limit(WRITE_LIMIT)
+@rate_limit(APPLY_LIMIT)
 def apply_to_campaign(
     request: Request,
     response: Response,

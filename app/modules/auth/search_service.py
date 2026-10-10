@@ -35,6 +35,7 @@ from sqlalchemy.orm import Session
 from app.core.pagination import Slice, build_slice, older_than_cursor
 from app.core.taxonomy import CURRENCY
 from app.modules.auth import availability_service as availability
+from app.modules.auth.blocks import not_blocked
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.models.rate_card import CreatorChannel, CreatorPackage
 from app.modules.auth.schemas import ChannelPlatform
@@ -53,6 +54,8 @@ class CreatorSearch:
     package_format: str | None = None
     # Only creators not booked on this Tamil Nadu day (D-083).
     available_on: date | None = None
+    # Who is searching: creators either side has blocked are left out (item 59).
+    viewer_account_id: uuid.UUID | None = None
 
 
 @dataclass(frozen=True)
@@ -81,6 +84,8 @@ def _filtered(search: CreatorSearch) -> Select[tuple[Creator]]:
         # A suspended creator is not found (D-061).
         account_is_active(Creator.account_id),
     )
+    if search.viewer_account_id is not None:
+        query = query.where(not_blocked(search.viewer_account_id, Creator.account_id))
 
     if search.available_on is not None:
         query = query.where(availability.free_on(search.available_on))

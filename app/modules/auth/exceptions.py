@@ -162,9 +162,31 @@ class ReportAlreadyResolved(DomainError):
     title = "This report has already been resolved"
 
 
+class MustBeAnAdult(DomainError):
+    # Adults only (D-086): a contract with a minor is void in India, and a
+    # minor's data needs verified parental consent (legal.md section 3.10).
+    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
+    code = "must_be_18_or_over"
+    title = "You must be 18 or over to use this service"
+
+
 class InvalidAvailability(DomainError):
     # A "booked until" in the past would say nothing, and one more than a
     # year ahead is almost certainly a typo for this year (D-083).
     status_code = HTTPStatus.UNPROCESSABLE_ENTITY
     code = "invalid_availability"
     title = "That date cannot be your booked-until date"
+
+
+class BlockTargetNotFound(DomainError):
+    # Only the other side can be blocked: a creator blocks brands, a brand
+    # blocks creators (item 59).
+    status_code = HTTPStatus.NOT_FOUND
+    code = "block_target_not_found"
+    title = "There is nobody with that id you could block"
+
+
+class BlockNotFound(DomainError):
+    status_code = HTTPStatus.NOT_FOUND
+    code = "block_not_found"
+    title = "That block does not exist, or it is not yours"

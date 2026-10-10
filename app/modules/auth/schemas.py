@@ -280,11 +280,24 @@ CreatorLanguages = Annotated[list[Language], Field(min_length=1)]
 Bio = Annotated[str, Field(max_length=BIO_MAX_LENGTH)]
 
 
+DateOfBirth = Annotated[
+    date,
+    Field(
+        description=(
+            "Used once, to confirm you are 18 or over, and never stored: we "
+            "keep only when you confirmed it"
+        ),
+        examples=["1999-04-14"],
+    ),
+]
+
+
 class BrandProfileCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     name: BrandName
     email: BrandEmail
+    date_of_birth: DateOfBirth
 
 
 class BrandProfileUpdate(BaseModel):
@@ -320,6 +333,7 @@ class CreatorProfileCreate(BaseModel):
     niches: CreatorNiches
     languages: CreatorLanguages = list(LANGUAGES)
     bio: Bio | None = None
+    date_of_birth: DateOfBirth
 
 
 class CreatorProfileUpdate(BaseModel):
@@ -990,3 +1004,99 @@ class AvailabilityRead(BaseModel):
     available_from: date = Field(
         description="The first Tamil Nadu day the creator is taking work"
     )
+
+
+# --- blocking (item 59) -----------------------------------------------------------------
+
+
+class BlockCreate(BaseModel):
+    """Whom to block. A creator names a brand; a brand names a creator."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    brand_id: uuid.UUID | None = Field(
+        default=None, description="For a creator: the brand to block, from a campaign"
+    )
+    creator_id: uuid.UUID | None = Field(
+        default=None, description="For a brand: the creator to block, from search"
+    )
+
+    @model_validator(mode="after")
+    def exactly_one(self) -> BlockCreate:
+        if (self.brand_id is None) == (self.creator_id is None):
+            raise PydanticCustomError(
+                "block_names_one", "Give brand_id or creator_id, exactly one"
+            )
+        return self
+
+
+class BlockRead(BaseModel):
+    """A block you placed. The other side is never told."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    brand_id: uuid.UUID | None
+    creator_id: uuid.UUID | None
+    name: str = Field(description="The brand's name, or the creator's handle")
+    created_at: datetime
+
+
+# --- the founders' weekly numbers (item 63) ----------------------------------------------
+
+
+class PeriodNumbersRead(BaseModel):
+    """One period's numbers. Every rate is null below five examples."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    from_on: date = Field(description="First Tamil Nadu day of the period")
+    to_on: date = Field(description="Last Tamil Nadu day of the period")
+    new_brands: int = Field(description="Brand profiles created (all cities)")
+    new_creators: int
+    active_brands: int = Field(
+        description="Brands that posted a campaign or agreed a deal"
+    )
+    active_creators: int = Field(description="Creators who applied or agreed a deal")
+    campaigns_posted: int = Field(description="Campaigns created and no longer in draft")
+    campaigns_old_enough_to_judge: int = Field(
+        description="Of those, posted at least 14 days before the period ended"
+    )
+    campaigns_filled_within_14_days: int
+    campaign_fill_rate: float | None = Field(
+        description="Filled of old enough to judge; the headline number for density"
+    )
+    median_hours_to_first_application: float | None
+    applications_sent: int = Field(description="Applications creators chose to send")
+    applications_accepted_so_far: int
+    application_success_so_far: float | None = Field(
+        description="Accepted so far; recent applications may still be decided"
+    )
+    invitations_sent: int
+    deals_agreed: int = Field(description="Deal memos accepted by both sides")
+    value_of_deals_agreed_paise: int = Field(
+        description="The fees of those deals. Paid brand to creator, never through us"
+    )
+    repeat_deals: int = Field(
+        description="Deals between a brand and a creator who had agreed one before"
+    )
+    repeat_share: float | None
+    payments_confirmed: int = Field(description="Payments the creator confirmed arriving")
+    paid_on_time: int = Field(description="Of those, marked paid by the due date")
+    paid_on_time_share: float | None
+
+
+class FounderNumbersRead(BaseModel):
+    """The founders' weekly numbers, beside the period before them.
+
+    `docs/SURVIVAL_PLAYBOOK.md` section 4 says what each tells you. Totals
+    only: nothing here names or describes a person.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    as_of: date
+    days: int
+    city: str | None = Field(description="Lower-cased; null means every city")
+    current: PeriodNumbersRead
+    previous: PeriodNumbersRead

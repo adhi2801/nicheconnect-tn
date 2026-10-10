@@ -18,6 +18,9 @@ Applies to all code. "Tested" in any report means the tests below ran in that se
 | Personal data | The export includes it (or the exclusion is listed); it reaches no log, error report or embedding |
 | Background job | Success, retry on failure, safe when run twice |
 | Public endpoint | Listed in the contract test's public list with its reason; cache headers and 304 if cacheable |
+| A route that lets one account reach another | Listed in `tests/modules/test_daily_ceilings.py` (a daily ceiling per account), and refused across a block in `tests/modules/auth/test_block_api.py` |
+| Free text another person reads | Its `text_flags`: what must flag and, just as carefully, ordinary wording that must not |
+| A document | Its decision numbers, paths and links exist (`tests/test_docs.py`, run on every change) |
 
 ## 2. Proving a test can fail
 
@@ -27,6 +30,10 @@ For every fix, every concurrency rule and every query-count test, **break the co
 - switch off the scrubbing and watch the error-report test see the phone number.
 
 A test never seen failing has not been shown to test anything.
+
+Two lessons from 10 October 2026, now rules:
+- **At least two of every kind in a query's test.** A filter that forgot to tie a subquery to its row passed every test with one campaign in the database. With several, it failed, but first only on CI. A test of anything that joins or filters builds two or more of each thing involved (brands, campaigns, creators), so a missing join condition cannot pass by luck.
+- **One guard, one test.** Two defences that each cover the other (an email pattern that excluded UPI IDs, and a step that removed emails first) let either be deleted without any test failing. Mutation testing found it. Keep the clearer guard, and give each remaining one a test of its own.
 
 Mutation testing tools (mutmut) automate this for the rule-heavy modules (payment state, deal stage, approval clock) **(not yet used; a dependency decision)**.
 
@@ -44,7 +51,10 @@ tests/
     test_<feature>_model.py    database constraints
     test_<feature>_concurrency.py
   test_api_contract.py     every operation against the committed contract
-  test_banned_terms.py     the money words, across every tracked file
+  test_banned_terms.py     the money words, across every file and every commit message
+  test_check_constraints.py  every CHECK in the models matches the migrated database
+  test_docs.py             every document's decision numbers, paths and links exist
+  test_incident_response.py  every secret the app is given has a rotation step
 ```
 
 - Test names describe behaviour: `test_a_returning_login_cannot_rewrite_how_it_arrived`, not `test_attribution_2`.
@@ -60,6 +70,7 @@ tests/
   - the moment between check and write is held open (a slow `before_flush` hook, 0.1 to 0.4 s), so the bad ordering happens on every run, not by luck;
   - they assert exactly one success, the rest clean domain errors, and a consistent final state.
 - Factories for data; no hard-coded shared rows.
+- **CI is the truth.** A failure that appears only in CI is reproduced, not guessed at: the committed code (`git archive HEAD`) in a Linux container on Python 3.14, against a freshly migrated empty database, sharing the Valkey container's network so `localhost` means what it means on CI. CI's annotations name each failing test and its first error lines, readable without admin rights.
 
 ## 5. External services and time
 
@@ -91,12 +102,15 @@ tests/
 5. Type check (mypy strict)
 6. New migrations linted for locks (Squawk)
 7. Migrations applied, undone and redone on a fresh database; models match the database
-8. The full suite: no failures, no unexplained skips. It includes the banned money words in every file and every commit message (`test_banned_terms.py`). Files git does not track yet are scanned too, so a laptop sees what CI will. It also checks that the incident plan can rotate every secret the app is given (`test_incident_response.py`)
+8. The full suite: no failures, no unexplained skips. It includes the banned money words in every file and every commit message (`test_banned_terms.py`). Files git does not track yet are scanned too, so a laptop sees what CI will. It also checks that the incident plan can rotate every secret the app is given (`test_incident_response.py`). Every document's decision numbers, file paths and links must exist (`test_docs.py`)
 9. Coverage floors, overall and per `service.py`
 10. The API fuzzed against its contract (Schemathesis)
-11. Dependency audit (pip-audit)
+11. Dependency audit (pip-audit), and every dependency's licence on the approved list (pip-licenses, D-086)
 12. Images built and scanned; any fixable vulnerability blocks (Grype); the API image's bill of materials written (Syft)
 13. Private vulnerability reporting switched on for the repository, since `SECURITY.md` sends researchers there (its own job, `repository-settings`)
+14. The OpenTofu files formatted and every environment valid against its locked providers (its own job, `infrastructure`, D-086)
+
+Every job runs on an exact runner image (`ubuntu-24.04`), never `ubuntu-latest`, so CI cannot change under us (D-086).
 
 ## 10. Honesty
 

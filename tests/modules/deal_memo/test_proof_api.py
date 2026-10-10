@@ -153,7 +153,9 @@ def test_brand_asks_for_a_fix_and_the_creator_resubmits(client, db, clock):
         json={"note": "The ad label is missing from the caption."},
         headers=brand.headers,
     ).json()
-    again = submit(client, creator, memo_id, content_url="https://example.com/fixed")
+    again = submit(
+        client, creator, memo_id, content_url="https://www.instagram.com/reel/fixed/"
+    )
 
     assert sent_back["status"] == "revision_requested"
     assert sent_back["revision_note"] == "The ad label is missing from the caption."
@@ -401,7 +403,7 @@ def test_submissions_are_listed_newest_first(client, db, clock):
     )
     clock.advance(timedelta(hours=3))
     second = submit(
-        client, creator, memo_id, content_url="https://example.com/second"
+        client, creator, memo_id, content_url="https://www.instagram.com/reel/second/"
     ).json()["id"]
 
     listed = client.get(f"{MEMOS_URL}/{memo_id}/proof", headers=brand.headers).json()
@@ -432,3 +434,15 @@ def test_a_longer_proof_history_costs_no_more_queries(client, db, clock):
     long = queries_for(client, url, brand.headers)
 
     assert short == long, f"{short} queries for 1 submission, {long} for 5"
+
+
+def test_a_proof_link_off_the_known_platforms_is_refused(client, db, clock):
+    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    memo_id = accepted_memo(client, brand, creator)
+
+    response = submit(
+        client, creator, memo_id, content_url="https://instagram-login.help/reel/1"
+    )
+
+    assert response.status_code == 422
+    assert response.json()["errors"][0]["field"] == "content_url"

@@ -65,7 +65,14 @@ def create_brand_profile(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> BrandProfileRead:
-    profile = profiles.create_profile(db, Brand, account.id, body.model_dump(), now)
+    profile = profiles.create_profile(
+        db,
+        Brand,
+        account.id,
+        body.model_dump(exclude={"date_of_birth"}),
+        now,
+        born_on=body.date_of_birth,
+    )
     response.headers["Location"] = "/api/v1/brands/me"
     return BrandProfileRead.model_validate(profile)
 
@@ -146,7 +153,14 @@ def create_creator_profile(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> CreatorProfileRead:
-    profile = profiles.create_profile(db, Creator, account.id, body.model_dump(), now)
+    profile = profiles.create_profile(
+        db,
+        Creator,
+        account.id,
+        body.model_dump(exclude={"date_of_birth"}),
+        now,
+        born_on=body.date_of_birth,
+    )
     response.headers["Location"] = "/api/v1/creators/me"
     return CreatorProfileRead.model_validate(profile)
 

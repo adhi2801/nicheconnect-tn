@@ -26,6 +26,9 @@ from app.modules.matching.schemas import (
 from app.modules.payment_status.schemas import to_reliability_read
 
 READ_LIMIT = "60 per minute"
+# security.md section 5: search and matching are 30 a minute, and capped per
+# day too, since reading every creator is how a directory gets scraped (item 58).
+SEARCH_LIMIT = "30 per minute;600 per day"
 
 DEFAULT_MATCHES = 20
 MAX_MATCHES = 50
@@ -61,7 +64,7 @@ _COMMON_ERRORS: ResponseDocs = {
         422: problem_doc("A query parameter is invalid"),
     },
 )
-@rate_limit(READ_LIMIT)
+@rate_limit(SEARCH_LIMIT)
 def list_matches_for_campaign(
     request: Request,
     campaign: OwnedCampaign,
@@ -123,7 +126,7 @@ def list_matches_for_campaign(
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@rate_limit(READ_LIMIT)
+@rate_limit(SEARCH_LIMIT)
 def list_campaigns_for_me(
     request: Request,
     creator: CurrentCreatorProfile,
