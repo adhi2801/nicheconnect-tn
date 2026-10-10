@@ -36,6 +36,7 @@ CREATOR_KINDS: tuple[str, ...] = (
     "resubmit_work",
     "deliver_work",
     "answer_memo",
+    "answer_invitation",
 )
 # Between two items due the same day, the one about money or a dispute
 # first: those are the ones that turn into a record against somebody.
@@ -51,6 +52,7 @@ _PRIORITY = {
             "resubmit_work",
             "deliver_work",
             "answer_memo",
+            "answer_invitation",
             "revise_memo",
             "draft_memo",
             "review_applications",

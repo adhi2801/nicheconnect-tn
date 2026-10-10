@@ -23,6 +23,7 @@ from app.modules.deal_memo.models import (
     TERMS_MAX_LENGTH,
     DealMemo,
 )
+from app.modules.deal_memo.response_times import MIN_EXAMPLES, ResponseTime
 from app.modules.deal_memo.stage import DEAL_SIDES, DEAL_STAGES, DealStage
 
 MemoStatus = Literal[
@@ -346,3 +347,46 @@ class DealRecordProofRead(BaseModel):
         description="False while no authority has stamped the root yet: a visible gap"
     )
     timestamps: list[CheckpointTimestampRead]
+
+
+# --- typical response times (D-077) --------------------------------------------------------
+
+
+class ResponseTimeRead(BaseModel):
+    """How long one kind of answer usually takes, from the deal record.
+
+    `median_hours` is null until there are five examples (D-071). **Null
+    means "not enough to say" and must never be shown as zero.** `examples`
+    is always returned so the figure can be weighed.
+    """
+
+    examples: int = Field(ge=0)
+    median_hours: float | None
+    min_examples: int = Field(description="Examples needed before a figure is shown")
+
+
+def to_response_time_read(found: ResponseTime) -> ResponseTimeRead:
+    return ResponseTimeRead(
+        examples=found.examples,
+        median_hours=found.median_hours,
+        min_examples=MIN_EXAMPLES,
+    )
+
+
+class BrandResponseTimesRead(BaseModel):
+    """How long creators wait for this brand to decide on their work.
+
+    An approval by the clock counts, at the moment the window ended.
+    """
+
+    brand_id: uuid.UUID
+    work_reviewed: ResponseTimeRead
+
+
+class CreatorResponseTimesRead(BaseModel):
+    """How long brands wait for this creator to answer a memo, and to confirm
+    a payment arrived."""
+
+    creator_id: uuid.UUID
+    memo_answered: ResponseTimeRead
+    payment_confirmed: ResponseTimeRead

@@ -1,56 +1,70 @@
 # UX Standard
 
-**Status: for later**, with one exception. UI/UX design starts after the backend is complete (D-004). But **backend decisions that shape the experience** (error messages, status names, what data exists, how fast things respond) follow this file now.
+Applies to research, flows, the design system, copy and accessibility, and to **backend choices that shape the experience** (error messages, status names, what data exists, how fast things respond), which follow this file now. The bar is `CLAUDE.md` section 7.0.
+
+**Timing (D-053, amending D-004):** research, flows and the design system may be worked on now. No frontend code starts until the backend is complete. Designs are checked against `docs/api/openapi.json`: a screen that needs a field the API does not answer is a backend request, not a frontend decision.
 
 ---
 
 ## 1. Principles
 
-1. **Trust first.** Brands and creators are risking money and reputation. Every screen makes clear who is who, what was agreed, and what happens next.
-2. **Clear over clever.** Plain words, obvious actions, no mystery icons.
-3. **Local by default.** Built for Tamil Nadu: Indian formats, familiar patterns such as WhatsApp for updates. **The product speaks English only** (D-054, 23 September 2026); it was to be bilingual, and that was dropped.
-4. **Fast to value.** A brand posts a first campaign, and a creator applies to a first campaign, in under 5 minutes.
-5. **Honest status.** Payment status shows exactly what's known: "Brand marked as paid on 12 Sep", never implying the platform moved or holds money.
+1. **Trust first.** Brands and creators risk money and reputation. Every screen makes clear who is who, what was agreed, what happens next, and whose move it is (the deal's `stage` and `waiting_on`, D-076).
+2. **Facts, never verdicts.** Records show what happened with its date and source ("self-reported, as of 3 Oct", "marked as paid by the brand on 12 Oct"); "not enough to say" is a designed state, never a zero (D-027, D-038).
+3. **Clear over clever.** Plain words, obvious actions, no mystery icons.
+4. **Local by default.** Built for Tamil Nadu: Indian formats (₹, lakh and crore, DD Mon), the patterns people already use, such as WhatsApp. English only (D-054); every string in a message catalogue so a second language needs no rewrite.
+5. **Fast to value.** A brand posts a first campaign, and a creator applies to a first campaign, in under 5 minutes.
+6. **Calm.** No dark patterns: no fake urgency, no hidden costs, no nagging. Night-time pings wait for morning unless a deadline is running (D-079).
+7. **Honest about money.** Payment status says what each side reported, never implying the platform moved or holds money (constraint 1).
+
+The design direction (Modern Tamil, `docs/DESIGN_DIRECTION.md`) is proposed and awaits both founders.
 
 ## 2. Research and validation
 
-- Before designing a flow: 5+ conversations with real target users (brands and creators separately), recorded in `docs/research/`.
-- Every major flow is usability-tested with at least 5 users before it's built, and again before launch.
-- Success is measured: task completion rate ≥ 90% and no critical confusion points on core journeys.
+- Before designing a flow: at least 5 conversations with real target users (brands and creators separately), notes in `docs/research/`.
+- **The five-second test** on any visual direction: what is this, and would you trust it with a deal? 10 brand owners and 10 creators.
+- Every core journey is usability-tested with at least 5 users before it is built, and again before launch.
+- **Measured success** (Google's HEART framework, on the core journeys):
+  - task completion of at least 90%;
+  - no critical confusion point;
+  - time to first campaign and first application under 5 minutes;
+  - after launch: retention, repeat deals, and payment confirmation time.
 
 ## 3. Core journeys (designed and tested first)
 
-1. Creator sign-up and profile setup
-2. Brand sign-up and first campaign post
-3. Creator discovers and applies to a matching campaign
-4. Brand reviews applicants and shortlists
-5. Deal memo sent, reviewed and accepted by both sides
-6. Brand marks the payment as sent; creator confirms receipt or raises a dispute
+1. Creator sign-up and profile, Passport published by choice
+2. Brand sign-up and first campaign
+3. Creator finds and applies to a matching campaign
+4. Brand reviews applicants: Passport, delivery record, fair-rate range, response times
+5. Deal memo sent, revised and accepted
+6. Work submitted, reviewed (or approved by the clock), with the approval window always visible
+7. Brand marks the payment as sent; creator confirms receipt or raises a dispute
 
 ## 4. Design system
 
-- One token-based design system for web and mobile: colour, typography, spacing scale, radii, elevation and motion.
-- Components are documented with every state: default, hover/pressed, focus, disabled, loading, error.
-- No one-off styles in screens. A missing component gets added to the system first.
+- One token source (W3C Design Tokens format) for web and both apps: colour, type, spacing, radii, elevation, motion (`frontend.md` section 8).
+- Every component documented in every state: default, pressed, focus, disabled, loading, error, empty.
+- No one-off styles. A missing component is added to the system first.
 
 ## 5. Every screen
 
-- Handles loading, empty (with a helpful next action), error (what happened and how to fix it) and success.
+- Handles loading (skeleton within 100 ms), empty (with a helpful next action), error (what happened and how to fix it), success, and **"not enough to say"** where a figure can be null.
 - Has one primary action.
-- Works at 360 px wide (common Android width) up to large desktop.
-- Meets the accessibility rules in `frontend.md` section 5.
+- Works from 360 px wide to large desktop, at 200% text size.
+- Meets WCAG 2.2 AA (`frontend.md` section 6). Motion respects "reduce motion".
+- Shows the 429 wait time and keeps what the person typed on any error.
 
 ## 6. Writing (microcopy)
 
 - Buttons say what happens: "Send deal memo", not "Submit".
-- Errors say what went wrong and how to fix it, with no blame and no technical jargon: "This campaign closed on 15 Sep. Browse open campaigns."
-- Payment language describes facts only: "marked as paid", "confirmed received", "disputed". Never language suggesting the platform handles or protects money (see CLAUDE.md section 2).
-- Copy is English and reviewed by a fluent speaker. It lives in message files (`messages/en.json`), never written into a component, so a second language stays possible later without a rewrite (D-054).
+- Errors say what went wrong and how to fix it, without blame or jargon: "This campaign closed on 15 Sep. Browse open campaigns."
+- Every date is unambiguous: "due 12 Oct", "approves itself at midnight on 9 Oct".
+- Payment language states facts only: "marked as paid", "confirmed received", "disputed". The four banned money words never appear (a test enforces it).
+- Copy lives in message files, reviewed by a fluent speaker.
 
 ## 7. What this means for the backend now
 
-- Error `code` values and messages from `backend.md` section 3 are written so the UI can show them directly.
-- Status values have clear, user-meaningful names (`shortlisted`, `marked_paid_by_brand`), not internal jargon.
-- Timestamps are returned for every state change so the UI can show "what happened when".
-- List endpoints support the filters the core journeys need, and meet the performance budgets.
-- Nothing in the API forces the UI to make many calls to render one screen. If it does, raise it.
+- Error `code` values and messages (`backend.md` section 3) are written so a screen can show them directly.
+- Status values are user-meaningful (`shortlisted`, `awaiting_confirmation`), not internal jargon.
+- Every state change has a timestamp, so a screen can show "what happened when".
+- **A screen needs at most two calls.** If it needs more, the backend adds what is missing (the deal stage, the payments list and the campaign summary were built this way, D-075 and D-076).
+- Every list meets the performance budgets and supports the filters the core journeys need.

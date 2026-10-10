@@ -45,6 +45,7 @@ def for_account(db: Session, account: Account, now: datetime) -> AttentionList:
         creator = get_creator_for_account(db, account.id)
         kinds = CREATOR_KINDS
         found = [
+            *campaigns.for_creator(db, creator.id),
             *deal_memos.for_creator(db, creator.id, now),
             *payments.for_creator(db, creator.id, today),
             *disputes.for_creator(db, creator.id, today),

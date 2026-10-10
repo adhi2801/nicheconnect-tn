@@ -1,0 +1,9 @@
+# Findings the secret scanner reports that are not secrets, one per line by
+# exact fingerprint (commit:file:rule:line), so a new secret on any other line
+# still fails CI (security.md section 6). Each says what it is.
+#
+# Example idempotency keys in tests: plain UUIDs a client invents per request,
+# never credentials.
+d2a3414f56855b97123bdc5f57309c262c0aab4e:tests/modules/payment_status/test_payment_api.py:generic-api-key:315
+a946a9299afe8a590fa6d707bbb2c8a66b6637d5:tests/core/test_idempotency.py:generic-api-key:31
+a946a9299afe8a590fa6d707bbb2c8a66b6637d5:tests/core/test_idempotency.py:generic-api-key:290

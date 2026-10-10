@@ -22,6 +22,10 @@ from tests import openapi_snapshot
 PUBLIC = {
     ("GET", "/healthz"): "a deployment platform's liveness probe",
     ("GET", "/readyz"): "a deployment platform's readiness probe",
+    (
+        "GET",
+        "/.well-known/security.txt",
+    ): "how a researcher reports a vulnerability (RFC 9116)",
     ("POST", "/api/v1/auth/otp/request"): "how a login starts",
     ("POST", "/api/v1/auth/otp/verify"): "how a login finishes",
     (
@@ -33,6 +37,8 @@ PUBLIC = {
         "/api/v1/auth/logout",
     ): "the refresh token in the body is the credential; always 204",
     ("GET", "/api/v1/creators/by-handle/{handle}"): "the public Creator Passport (D-036)",
+    ("GET", "/api/v1/cities"): "cities with public figures (D-078)",
+    ("GET", "/api/v1/cities/{city}/figures"): "a city's public figures (D-078)",
 }
 
 # The admin API answers anyone who is not an admin, a caller without a token
@@ -104,9 +110,13 @@ def test_every_successful_answer_has_a_documented_shape():
     missing = []
     for method, path, op in operations():
         success = {code: r for code, r in op["responses"].items() if code.startswith("2")}
+        # JSON nearly everywhere; plain text for /.well-known/security.txt.
         described = all(
             code == "204"
-            or r.get("content", {}).get("application/json", {}).get("schema")
+            or (
+                r.get("content")
+                and all(media.get("schema") for media in r["content"].values())
+            )
             for code, r in success.items()
         )
         if not success or not described:

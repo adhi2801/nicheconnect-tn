@@ -15,6 +15,9 @@ Who is searchable follows decisions already made, not new ones:
   about strangers, and only signed-in brands can search.
 - **Follower counts are the creator's own**, never verified, and every
   result says so with the date they were stated (D-042).
+- **Availability informs; it hides only when asked.** Every result carries
+  the creator's "booked until" date; `available_on` keeps only creators free
+  that day (D-083).
 
 Results come newest profile first with the one cursor style every list uses
 (backend.md section 2). Three queries a page, whatever the page size: the
@@ -31,6 +34,7 @@ from sqlalchemy.orm import Session
 
 from app.core.pagination import Slice, build_slice, older_than_cursor
 from app.core.taxonomy import CURRENCY
+from app.modules.auth import availability_service as availability
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.models.rate_card import CreatorChannel, CreatorPackage
 from app.modules.auth.schemas import ChannelPlatform
@@ -47,6 +51,8 @@ class CreatorSearch:
     max_followers: int | None = None
     max_price_paise: int | None = None
     package_format: str | None = None
+    # Only creators not booked on this Tamil Nadu day (D-083).
+    available_on: date | None = None
 
 
 @dataclass(frozen=True)
@@ -76,6 +82,8 @@ def _filtered(search: CreatorSearch) -> Select[tuple[Creator]]:
         account_is_active(Creator.account_id),
     )
 
+    if search.available_on is not None:
+        query = query.where(availability.free_on(search.available_on))
     if search.text:
         pattern = _like(search.text.strip())
         query = query.where(

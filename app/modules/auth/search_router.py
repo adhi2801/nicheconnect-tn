@@ -1,17 +1,20 @@
 """Brands searching for creators, over HTTP. The rules live in `search_service`."""
 
+from datetime import date, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
+from app.core.clock import india_date
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
 from app.core.rate_limit import rate_limit
 from app.core.taxonomy import CURRENCY, Niche
 from app.db.session import get_db
+from app.modules.auth import availability_service as availability
 from app.modules.auth import search_service as service
-from app.modules.auth.dependencies import CurrentBrand
+from app.modules.auth.dependencies import CurrentBrand, get_now
 from app.modules.auth.exceptions import InvalidSearch
 from app.modules.auth.schemas import (
     ChannelPlatform,
@@ -34,7 +37,7 @@ _ERRORS: ResponseDocs = {
 }
 
 
-def _to_read(result: service.SearchResult) -> CreatorSearchResultRead:
+def _to_read(result: service.SearchResult, today: date) -> CreatorSearchResultRead:
     creator = result.creator
     return CreatorSearchResultRead(
         creator_id=creator.id,
@@ -54,6 +57,7 @@ def _to_read(result: service.SearchResult) -> CreatorSearchResultRead:
         ],
         from_price_paise=result.lowest_price_paise,
         currency=CURRENCY,
+        booked_until=availability.booked_until_shown(creator.booked_until, today),
     )
 
 
@@ -68,7 +72,9 @@ def _to_read(result: service.SearchResult) -> CreatorSearchResultRead:
         "Every audience filter must hold for one channel, and every price "
         "filter for one package. Follower counts are the creator's own "
         "statement, dated, never verified. Newest profiles first; pass "
-        "`next_cursor` back as `cursor` for the next page. Brands only."
+        "`next_cursor` back as `cursor` for the next page. Each result says "
+        "until when the creator is booked, if they are; `available_on` keeps "
+        "only creators free that day. Brands only."
     ),
     responses=_ERRORS,
 )
@@ -94,8 +100,13 @@ def search_creators(
     format: Annotated[
         PackageFormat | None, Query(description="Only packages of this format count")
     ] = None,
+    available_on: Annotated[
+        date | None,
+        Query(description="Only creators not booked on this Tamil Nadu day"),
+    ] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_LIMIT)] = DEFAULT_LIMIT,
     cursor: str | None = None,
+    now: datetime = Depends(get_now),
 ) -> Page[CreatorSearchResultRead]:
     if (
         min_followers is not None
@@ -114,8 +125,12 @@ def search_creators(
             max_followers=max_followers,
             max_price_paise=max_price_paise,
             package_format=format,
+            available_on=available_on,
         ),
         limit=limit,
         cursor=cursor,
     )
-    return Page(items=[_to_read(r) for r in result.rows], next_cursor=result.next_cursor)
+    today = india_date(now)
+    return Page(
+        items=[_to_read(r, today) for r in result.rows], next_cursor=result.next_cursor
+    )

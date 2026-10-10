@@ -20,6 +20,7 @@ from app.modules.auth.dependencies import get_now
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.tokens import create_access_token
 from tests.factories import FIXED_NOW, build_creator, create_account
+from tests.query_counts import queries_for
 
 CHANNELS = "/api/v1/creators/me/channels"
 PACKAGES = "/api/v1/creators/me/packages"
@@ -344,3 +345,37 @@ def test_a_creator_without_a_profile_is_404(client, db):
     response = client.get(CHANNELS, headers={"Authorization": f"Bearer {token}"})
 
     assert response.status_code == 404
+
+
+# --- no query per row (testing.md section 1) ----------------------------------
+
+
+def test_a_full_rate_card_costs_no_more_queries_than_one_package(client, db):
+    _, headers = creator_login(db)
+    client.post(PACKAGES, json=package_body(), headers=headers)
+
+    one = queries_for(client, PACKAGES, headers)
+    for position in range(1, 10):
+        client.post(
+            PACKAGES,
+            json=package_body(title=f"Package {position}", position=position),
+            headers=headers,
+        )
+    ten = queries_for(client, PACKAGES, headers)
+
+    assert one == ten, f"{one} queries for 1 package, {ten} for 10"
+
+
+def test_both_channels_cost_no_more_queries_than_one(client, db):
+    _, headers = creator_login(db)
+    client.put(f"{CHANNELS}/instagram", json=channel_body(), headers=headers)
+
+    one = queries_for(client, CHANNELS, headers)
+    client.put(
+        f"{CHANNELS}/youtube",
+        json=channel_body(profile_url="https://www.youtube.com/@priyaeats"),
+        headers=headers,
+    )
+    two = queries_for(client, CHANNELS, headers)
+
+    assert one == two, f"{one} queries for 1 channel, {two} for 2"

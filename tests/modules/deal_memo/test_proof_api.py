@@ -15,6 +15,7 @@ from tests.deal_flow import (
     brand_user,
     creator_user,
 )
+from tests.query_counts import queries_for
 
 
 def submit(client, creator: User, memo_id: str, **overrides):
@@ -406,3 +407,28 @@ def test_submissions_are_listed_newest_first(client, db, clock):
     listed = client.get(f"{MEMOS_URL}/{memo_id}/proof", headers=brand.headers).json()
 
     assert [item["id"] for item in listed] == [second, first]
+
+
+# --- no query per row (testing.md section 1) ----------------------------------
+
+
+def test_a_longer_proof_history_costs_no_more_queries(client, db, clock):
+    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    memo_id = accepted_memo(client, brand, creator)
+    url = f"{MEMOS_URL}/{memo_id}/proof"
+
+    def send_back_and_resubmit() -> None:
+        proof_id = submit(client, creator, memo_id).json()["id"]
+        client.post(
+            f"{url}/{proof_id}/request-revision",
+            json={"note": "The ad label is missing from the caption."},
+            headers=brand.headers,
+        )
+
+    send_back_and_resubmit()
+    short = queries_for(client, url, brand.headers)
+    for _ in range(4):
+        send_back_and_resubmit()
+    long = queries_for(client, url, brand.headers)
+
+    assert short == long, f"{short} queries for 1 submission, {long} for 5"

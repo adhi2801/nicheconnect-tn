@@ -26,6 +26,7 @@ from tests.deal_flow import (
     brand_user,
     creator_user,
 )
+from tests.query_counts import queries_for
 
 REFERENCE = "412345678901"
 DOMAIN = bytes([*b"deal-record/v1", 10])  # the prefix, ending in a newline
@@ -469,3 +470,18 @@ def test_the_script_in_the_verification_guide_works(
     assert capsys.readouterr().out.strip() == (
         f"Every seal matches. Latest seal: {record['latest_seal']}"
     )
+
+
+# --- cost ------------------------------------------------------------------------------
+
+
+def test_a_longer_record_costs_no_more_queries(client, db, clock, brand, creator):
+    short = accepted_memo(client, brand, creator)
+    long = paid_deal(client, brand, creator_user(db, clock))
+    assert len(record_of(client, brand, short)["entries"]) == 2
+    assert len(record_of(client, brand, long)["entries"]) == 7
+
+    two_entries = queries_for(client, f"{MEMOS_URL}/{short}/record", brand.headers)
+    seven_entries = queries_for(client, f"{MEMOS_URL}/{long}/record", brand.headers)
+
+    assert seven_entries == two_entries

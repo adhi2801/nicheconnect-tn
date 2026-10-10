@@ -1,5 +1,9 @@
 from app.modules.auth.models.account import Account  # noqa: F401
 from app.modules.auth.models.admin_action import AdminAction  # noqa: F401
+from app.modules.auth.models.attribution import (
+    AccountAttribution,  # noqa: F401
+    InviteCode,  # noqa: F401
+)
 from app.modules.auth.models.auth_session import AuthSession  # noqa: F401
 from app.modules.auth.models.brand import Brand  # noqa: F401
 from app.modules.auth.models.creator import Creator  # noqa: F401
@@ -28,4 +32,7 @@ from app.modules.matching.models import (
     CreatorEmbedding,  # noqa: F401
 )
 from app.modules.notifications.models import Notification  # noqa: F401
+from app.modules.notifications.preference_models import (
+    NotificationPreference,  # noqa: F401
+)
 from app.modules.payment_status.models import PaymentStatus  # noqa: F401

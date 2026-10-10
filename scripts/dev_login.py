@@ -1,7 +1,7 @@
 """Print an access token for a local account, so a developer can use the API.
 
 Locally, login codes are kept in the server's memory and never logged, so a
-person cannot log in through the API on a laptop (docs/DECISION_LOCAL_LOGIN.md,
+person cannot log in through the API on a laptop (docs/decided/DECISION_LOCAL_LOGIN.md,
 option A, D-059). This mints a token directly, with the same function the
 login endpoint uses. Nothing in the running app changes.
 

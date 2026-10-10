@@ -69,8 +69,11 @@ def list_matches_for_campaign(
         int, Query(ge=1, le=MAX_MATCHES, description="How many creators to suggest")
     ] = DEFAULT_MATCHES,
     db: Session = Depends(get_db),
+    now: datetime = Depends(get_now),
 ) -> CreatorMatchesRead:
-    matches = service.find_creators_for_campaign(db, campaign, limit=limit)
+    matches = service.find_creators_for_campaign(
+        db, campaign, limit=limit, today=india_date(now)
+    )
     return CreatorMatchesRead(
         # Every row carries the same answer, so read it off the first one;
         # with no rows there is nothing to have ranked either way.

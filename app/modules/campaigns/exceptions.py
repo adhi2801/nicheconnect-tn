@@ -71,3 +71,32 @@ class ApplicationStatusConflict(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "application_status_conflict"
     title = "This application is not in a state where that is allowed"
+
+
+# --- invitations (D-084) -----------------------------------------------------
+
+
+class CreatorNotFound(DomainError):
+    # Also for a suspended creator: they are out of search (D-061), and
+    # saying "suspended" would tell a brand something private.
+    status_code = HTTPStatus.NOT_FOUND
+    code = "creator_not_found"
+    title = "That creator does not exist"
+
+
+class AlreadyOnCampaign(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "creator_already_on_campaign"
+    title = "This creator has already applied to or been invited to this campaign"
+
+
+class InvitationLimitReached(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "invitation_limit_reached"
+    title = "This campaign has as many unanswered invitations as it may have"
+
+
+class InvitationPending(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "invitation_pending"
+    title = "You have been invited to this campaign: accept the invitation instead"

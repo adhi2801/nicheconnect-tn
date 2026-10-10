@@ -683,3 +683,93 @@ Newest entries at the bottom.
 - Chosen: A.
 - Reason: one definition, consistent with the rules already built: approval counts the clock (D-025, through `is_approved`), a barter deal finishes when its work is approved (D-026), a paid deal finishes only when the creator confirms the money arrived (D-027). B would be a second copy of facts already stored, free to drift; C is three copies.
 - Consequences / follow-ups: (1) `app/modules/deal_memo/stage.py`: `stage` is one of `draft`, `memo_sent`, `agreed`, `in_progress`, `payment`, `finished`, `declined`, `cancelled`; `waiting_on` is `brand`, `creator` or null once ended; `has_open_dispute`. (2) `GET /deal-memos/mine` and `GET /deal-memos/{id}` now carry them (fields added, nothing removed); `/mine` takes `campaign_id`, for a campaign's board. Writes still answer the plain memo. (3) `GET /campaigns/{id}/summary`, owning brand only: applications by status, deals by stage (every status and stage, zeros included), `deals_agreed`, `deals_finished`, `deals_waiting_on_brand`, `complete` (closed, at least one deal agreed, every agreed deal finished, no memo unanswered). (4) No table, column or migration. Stages for a whole page or campaign take a fixed number of queries; tests prove it and fail when a per-row lookup is added. 37 tests: every rule without a database, one deal walked through all five stages, and Complete in each case.
+
+## D-077: Typical response times, measured from the deal record
+- Date: 2026-10-08
+- Approved by: Adhi: item approved in D-071 ("typical response times from real data, shown only from 5 examples"); built on 8 October on his instruction to carry on with the next items.
+- Context: Known waiting lowers anxiety (`docs/PSYCHOLOGY_AND_TRUST.md`); each side should know how long the other usually takes, without anything invented.
+- Options considered: A) measure from the deal record's dated, sealed entries · B) from notification timestamps · C) from status-change columns
+- Chosen: A.
+- Reason: the deal record is the one complete, ordered history of who did what when; notifications are a delivery log, and status columns keep only the latest change.
+- Consequences / follow-ups: (1) `GET /api/v1/brands/{id}/response-times` (any signed-in account, as the payment record): work submitted to approved or sent back, an approval by the clock counting at the window's end. `GET /api/v1/creators/{id}/response-times` (brands or the creator, as the delivery record): memo sent to answered, and payment marked sent to confirmed. (2) Median in hours to a tenth; null below 5 examples; `examples` always returned. Requests still waiting are not counted; a memo withdrawn before an answer is left out. (3) **Not measured: how fast a brand answers an application**: only the latest status change is stored, so a figure would be a guess. Measuring it needs a first-decision timestamp, a schema change for a later decision. (4) No table, no migration. 22 tests.
+
+## D-078: City figures for public pages: counts and medians, five or nothing
+- Date: 2026-10-08
+- Approved by: Adhi: item approved in D-071 ("city and niche aggregates for public pages, backend now, published once a city has the data"); built on 8 October on his instruction to carry on.
+- Context: City pages are how search and AI answer engines find a local marketplace (`docs/GO_TO_MARKET.md`); the frontend needs the figures' shape now.
+- Options considered: what counts: A) published Passports, published rate cards and open campaigns only · B) also figures from deals
+- Chosen: A.
+- Reason: published creators chose to be seen (D-036), published prices chose to be shown (D-056), open campaigns are public by design. Deals are private between their parties (D-071 declined even a public receipt), so no public figure is built from one.
+- Consequences / follow-ups: (1) `GET /api/v1/cities` (cities with at least 5 published creators, largest first) and `GET /api/v1/cities/{city}/figures` (published creators, by niche, open campaigns, median asking price by platform and format): public, no login, 60 a minute, cached an hour with an ETag. (2) Five or nothing: any figure on fewer than 5 is null, never zero; medians only, never a minimum or maximum; each creator counts once in a price. (3) Suspended accounts and their brands' campaigns never count (D-061). Cities match without regard to case or spaces and show the spelling most creators used. (4) No table, no migration. 15 tests. (5) Publishing city pages is a frontend and SEO step; the figures stay null until a city has the data.
+
+## D-079: Notification preferences, with urgent events never held
+- Date: 2026-10-08
+- Approved by: Adhi, in this session ("approve all", after `docs/PROPOSAL_NOTIFICATION_PREFERENCES_AND_ATTRIBUTION.md` section 1 with its schema and the defaults decision). Item approved in principle by D-071.
+- Context: More than six notifications a week makes users 3.4 times as likely to uninstall within 30 days (D-071). Push and WhatsApp delivery are not built; the preferences decide how they will be.
+- Options considered: defaults: A) quiet hours 22:00 to 08:00 Tamil Nadu time on for everyone, digest off · B) no quiet hours until set
+- Chosen: A.
+- Reason: only non-urgent notifications are ever held, and those can wait until morning.
+- Consequences / follow-ups: (1) Table `notification_preference` (migration `636f06a7e2dc`), one row per account, written only on save; no row means the defaults. (2) `GET` and `PUT /api/v1/me/notification-preferences`; PUT replaces the whole set in one insert-or-update, so a retry or two saves at once are safe. (3) Urgent types (`memo_sent`, `proof_submitted`, `proof_revision_requested`, `payment_marked_paid`) cannot be muted: the API answers 422 and the database's own check refuses it. (4) `preference_service.decide` is the rule the future sender must call: urgent now, muted in the app only, daily digest at its hour, otherwise held through quiet hours; tested before any sender exists. (5) Preferences govern delivery outside the app only; the in-app list keeps everything. (6) In the data export; the export now writes times of day as `HH:MM`. 32 tests.
+
+## D-080: Invite and source attribution, written once at sign-up; inviters see counts only
+- Date: 2026-10-08
+- Approved by: Adhi, in this session ("approve all", after `docs/PROPOSAL_NOTIFICATION_PREFERENCES_AND_ATTRIBUTION.md` section 2 with its schema, the sign-up change, and the decision on what an inviter sees). Item approved in principle by D-071.
+- Context: Attribution not recorded at sign-up can never be recovered (D-071); the pilot's question is which channel brings brands and creators.
+- Options considered: what an inviter sees: A) counts only · B) names of who joined
+- Chosen: A.
+- Reason: B tells one person that another joined, a DPDP question for the validation pack; A loses nothing a reward would need. Widening later is one endpoint; narrowing after names were shown is impossible.
+- Consequences / follow-ups: (1) Tables `invite_code` and `account_attribution` (migration `8c960d1db341`), new and empty; existing accounts have no row. (2) `POST /auth/otp/verify` takes an optional `arrival` (invite code, source, campaign tag), **read only by the login that creates the account**, in that login's own transaction; a returning login cannot rewrite it. An unknown code is ignored, never refused. A valid code makes the source `invite`; `invite` and `not_given` cannot be claimed. (3) `GET /api/v1/me/invite-code` (eight characters with no 0, O, 1 or I; made on first request, the same after, safe against two first requests at once), `GET /api/v1/me/invites` (brands and creators joined, counts only), `GET /api/v1/admin/signups` (per week from Monday, Tamil Nadu time, source and role; counts only, so no admin log entry). (4) The database refuses a misreadable code and a code without an invitation. (5) The downgrade refuses while any attribution exists. (6) In the export, without the inviter's code. (7) **Rewards are not built**: what they are, and their tax treatment, is for the founders and the validation pack. 32 tests.
+
+## D-081: The world-class bar written down once; the docs given one index; the standards raised
+- Date: 2026-10-08
+- Approved by: Adhi, in this session ("make the md files to the level of the best billion dollar ... i am fed of repeating the standards"; "i mean all md files ... are you using all the md files").
+- Context: Adhi had to restate his quality bar session after session; 39 markdown files had no index; 13 decided proposals sat beside live plans; four lists of work overlapped; several standards still marked as open decisions that were settled weeks ago; and testing.md listed a banned-term CI gate that did not exist.
+- Options considered: A) write the bar into `CLAUDE.md`, index the docs, archive what is decided, raise each standard against named best practice, and build the missing gate · B) leave the files and restate the bar in each session
+- Chosen: A.
+- Reason: `CLAUDE.md` is read at the start of every session, so a bar written there never needs repeating; an index tells anyone which file is binding and which is history.
+- Consequences / follow-ups: (1) `CLAUDE.md` section 7.0, "The bar: world-class by default". (2) `docs/README.md` indexes every doc by job: rules, record, plan, research, reference. (3) The 10 `PROPOSAL_*` and 3 `DECISION_*` papers already built moved to `docs/decided/`, with a map; references updated outside this append-only log. (4) `backend.md`, `database.md`, `security.md`, `testing.md` and `ux.md` rewritten: settled decisions recorded as settled; added the API evolution rules (additive only in v1; `Deprecation` and `Sunset` headers), the lock-then-check rule, the query-count rule, the destructive-downgrade rule, operations and restore drills, ASVS 5.0 Level 2 as the security target with a control map and threat modelling, the "prove a test can fail" rule, and the real list of 11 CI gates. Owed items are marked "not yet built" rather than claimed: secret scanning in CI, Dependabot, an SBOM, signed images, `SECURITY.md` and `security.txt`, an incident plan, a restore drill, a penetration test. (5) `tests/test_banned_terms.py` enforces the money-words rule across every tracked file, shown to catch a breach.
+
+## D-082: The security items owed before launch, built: secret scanning, an SBOM, Dependabot, SECURITY.md, security.txt, the incident plan
+- Date: 2026-10-08
+- Approved by: Adhi, in this session ("approve all, build them all in the best order", answering the question whether to build secret scanning, Dependabot and `SECURITY.md` now, which changes CI).
+- Context: D-081's rewrite of `docs/standards/security.md` marked these as owed and not built. Each is small, and each is expected of any service businesses trust.
+- Options considered: secret scanner: A) Gitleaks, installed from the release binary pinned by version and checksum · B) TruffleHog, which tests a found key by calling the service it belongs to. SBOM: A) Syft, Anchore's, like Grype · B) none until releases exist. Updates: A) Dependabot with a 7-day cooldown · B) Renovate, a third-party app with write access.
+- Chosen: A in each.
+- Reason: Gitleaks never sends a found key anywhere; a pinned checksum cannot be moved the way a tag can (the reason for D-064). Syft matches Grype's install and vendor. Dependabot is GitHub's own, needs no extra app with write access, and its cooldown keeps hijacked releases (tj-actions March 2025, Trivy March 2026) out while security fixes still arrive at once.
+- Consequences / follow-ups: (1) CI scans the whole git history with Gitleaks 8.30.1 before installing anything; the three findings on the existing history were example idempotency keys in tests, listed by exact fingerprint in `.gitleaksignore`; shown to catch a planted key. (2) The image job writes the API image's CycloneDX SBOM with Syft 1.54.0 and keeps it 90 days (`actions/upload-artifact` v7.0.1, pinned to its SHA; v7.0.2 was a day old). (3) `.github/dependabot.yml`: uv, GitHub Actions, Docker, Compose and OpenTofu, weekly, 7-day cooldown, minor and patch grouped for Python; every update still needs founder approval to merge. (4) `SECURITY.md`: private reports through GitHub, response targets, scope, safe harbour, no bounty yet. (5) `GET /.well-known/security.txt` (RFC 9116): public, 60 a minute, cached a day; `Expires` 30 April 2027, and a test fails 30 days before it lapses as the renewal reminder. (6) `docs/INCIDENT_RESPONSE.md`: roles, the first hour, rotating each secret, taking the API down, DPDP notice (the clock from the validation pack), the write-up; **not yet rehearsed**. (7) Founder steps in the repository settings: switch on push protection and private vulnerability reporting. (8) Signing images waits for a registry (D-063). zizmor finds nothing in the workflow.
+
+## D-083: Creator availability, "booked until": shown to brands, informs and never blocks
+- Date: 2026-10-08
+- Approved by: Adhi, in this session ("approve all, build them all in the best order"), for item 45 of `docs/BILLION_DOLLAR_GAP.md` with its gate (database).
+- Context: Brands invite and shortlist creators who cannot take the work, and creators get applications nobody can act on; both find out only in a WhatsApp reply. A creator's own "booked until" date answers it before anyone asks.
+- Options considered: A) one date, "booked until", that informs search and matching and blocks nothing · B) a calendar of bookable slots, as Passionfroot sells to newsletter and B2B creators · C) a yes/no switch
+- Chosen: A.
+- Reason: a single date is what an Instagram or YouTube creator in Tamil Nadu actually knows, and it is enough to rank and filter. B is richer and fits ad slots in newsletters, not reels; it can grow from A if pilot creators ask. C cannot say when they are free again. Passionfroot's slot calendar remains stronger for slot-sold media; ours is stronger in that it feeds straight into who a brand sees first.
+- Consequences / follow-ups: (1) Column `creator.booked_until` (migration `f74cbe0d42c9`), nullable, no default, no index (only ever a filter on rows other conditions pick); the downgrade drops it, a preference the creator can set again. (2) `GET` and `PUT /api/v1/creators/me/availability`: from today to a year ahead, in Tamil Nadu days; null clears it. A passed date reads as taking work, worked out on every read, never cleared by a job. (3) Creator search returns each result's `booked_until` and takes `available_on` to keep only creators free that day. (4) A campaign's suggested creators put those taking work today first, booked ones after with the date. (5) **Not on the public Passport**: creators published it before this existed. (6) Nothing blocks: a booked creator can apply and be contacted. (7) In the creator's data export. 23 new tests; the four rules each shown to fail when broken.
+
+## D-084: Brands invite creators, and "work together again" is a repeat invitation
+- Date: 2026-10-10
+- Approved by: Adhi, in this session, choosing option A for item 42 of `docs/BILLION_DOLLAR_GAP.md` ("A"), with its gate (database).
+- Context: Every deal began with a creator applying. A brand that found the right creator in search, or wanted last month's creator again, could only hope they applied. Item 42 had been written up as "nothing new stored"; that was wrong, because a memo needs an accepted application and a brand had no way to create one.
+- Options considered: A) a brand invites a creator to an open campaign, as an `application` row with origin 'invited'; "work together again" is an invitation naming the earlier deal, and accepting it drafts the memo from that deal's terms · B) a rebook button that only copies the old campaign as a new draft, leaving the creator to find it and apply.
+- Chosen: A.
+- Reason: B still waits on the creator to notice and apply; A puts the offer in front of them, and it also serves invitations from search, which impact.com and Skeepers both offer (their help pages, read 10 October 2026). As on impact.com's marketplace, accepting an invitation needs nothing more from the creator: the brand already chose them (help.impact.com, read 10 October 2026). Ours goes further for repeats: the memo arrives drafted with the agreed terms, and the brand sees the creator's delivery record (D-038) before choosing to repeat.
+- Consequences / follow-ups:
+  1. Migration `2c3bf71783d2` changes `application`:
+     - adds `origin`, `invitation_note`, `decline_reason` and `repeat_of_application_id` (FK to `application`, RESTRICT, partial index);
+     - makes `pitch` nullable, tied to the origin by a check;
+     - adds the statuses 'invited' and 'declined';
+     - adds the four invitation notification types, which a person may mute.
+     
+     Every check is added NOT VALID and validated after the transaction, and the index is built concurrently. The downgrade refuses while any invitation exists.
+  2. `POST /campaigns/{id}/invitations` (brand), `POST /applications/{id}/accept-invitation`, `/decline-invitation` with a reason code (creator), `/withdraw-invitation` (brand), and `POST /deal-memos/{id}/repeat` (brand; an agreed, uncancelled deal whose fee suits the new campaign's type).
+  3. Moves now depend on who makes them, so a creator declines an invitation and never withdraws the brand's offer.
+  4. Policy: at most 25 unanswered invitations per campaign, held by a lock on the campaign row. There is no expiry: an invitation lasts while its campaign is open, and accepting needs it open and its brand not suspended.
+  5. What changes for other features:
+     - the creator's to-do list gains `answer_invitation`;
+     - the brand's `draft_memo` item now also covers a memo written but never sent, which had been a gap;
+     - creator feedback leaves invitations out;
+     - the campaign summary counts `invited` and `declined`;
+     - both sides' exports carry the new fields.
+  6. A new test compares every CHECK in the models with the migrated database, which `alembic check` does not do.
+  7. Tests: 83 new API tests and 2 concurrency tests. Sixteen rules were each shown to fail when broken.

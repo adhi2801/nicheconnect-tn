@@ -397,6 +397,16 @@
             "title": "Accepted",
             "type": "integer"
           },
+          "declined": {
+            "description": "Invitations the creator said no to",
+            "title": "Declined",
+            "type": "integer"
+          },
+          "invited": {
+            "description": "Invitations still waiting for an answer",
+            "title": "Invited",
+            "type": "integer"
+          },
           "rejected": {
             "title": "Rejected",
             "type": "integer"
@@ -419,7 +429,9 @@
           "shortlisted",
           "accepted",
           "rejected",
-          "withdrawn"
+          "withdrawn",
+          "invited",
+          "declined"
         ],
         "title": "ApplicationCountsRead",
         "type": "object"
@@ -483,7 +495,9 @@
                 "shortlisted",
                 "accepted",
                 "rejected",
-                "withdrawn"
+                "withdrawn",
+                "invited",
+                "declined"
               ]
             },
             "title": "By Status",
@@ -578,6 +592,7 @@
         "type": "object"
       },
       "ApplicationRead": {
+        "description": "A creator on a campaign, whether they applied or were invited.\n\n`origin` says which. An invitation has no `pitch`; it may carry the\nbrand's `invitation_note`. `repeat_of_application_id` names the earlier\ndeal a repeat invitation repeats. Clients must tolerate statuses they do\nnot know: `invited` and `declined` were added on 10 October 2026.",
         "properties": {
           "campaign_id": {
             "format": "uuid",
@@ -600,14 +615,58 @@
             "title": "Currency",
             "type": "string"
           },
+          "decline_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "timing",
+                  "budget",
+                  "not_a_fit",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decline Reason"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
           },
-          "pitch": {
-            "title": "Pitch",
+          "invitation_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invitation Note"
+          },
+          "origin": {
+            "enum": [
+              "applied",
+              "invited"
+            ],
+            "title": "Origin",
             "type": "string"
+          },
+          "pitch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for an invitation",
+            "title": "Pitch"
           },
           "quoted_amount_paise": {
             "anyOf": [
@@ -650,13 +709,27 @@
             ],
             "title": "Rejection Reason"
           },
+          "repeat_of_application_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repeat Of Application Id"
+          },
           "status": {
             "enum": [
               "submitted",
               "shortlisted",
               "accepted",
               "rejected",
-              "withdrawn"
+              "withdrawn",
+              "invited",
+              "declined"
             ],
             "title": "Status",
             "type": "string"
@@ -676,11 +749,15 @@
           "id",
           "campaign_id",
           "creator_id",
+          "origin",
           "pitch",
+          "invitation_note",
+          "repeat_of_application_id",
           "quoted_amount_paise",
           "status",
           "rejection_reason",
           "rejection_note",
+          "decline_reason",
           "status_changed_at",
           "created_at",
           "updated_at"
@@ -721,6 +798,114 @@
           "reason"
         ],
         "title": "ApplicationReject",
+        "type": "object"
+      },
+      "ArrivalIn": {
+        "additionalProperties": false,
+        "description": "How a new person found us (D-080). Read only when the login creates the\naccount; a returning login ignores it, so nobody can rewrite how they came.",
+        "properties": {
+          "campaign_tag": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z0-9-]{1,40}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The label on the link or poster they came from",
+            "examples": [
+              "codissia-oct"
+            ],
+            "title": "Campaign Tag"
+          },
+          "invite_code": {
+            "anyOf": [
+              {
+                "maxLength": 16,
+                "pattern": "^[A-Za-z0-9 -]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Someone's invite code, as typed. An unknown code is ignored, never refused: a typo must not block sign-up",
+            "examples": [
+              "K7PQ2XMA"
+            ],
+            "title": "Invite Code"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "passport_link",
+                  "instagram",
+                  "whatsapp",
+                  "event",
+                  "search",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where the person says they heard of us",
+            "title": "Source"
+          }
+        },
+        "title": "ArrivalIn",
+        "type": "object"
+      },
+      "AskingPriceRead": {
+        "description": "The median asking price for one platform and format in a city.\n\nEach creator counts once; only groups of five creators or more appear.",
+        "properties": {
+          "creators": {
+            "title": "Creators",
+            "type": "integer"
+          },
+          "currency": {
+            "default": "INR",
+            "title": "Currency",
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "post",
+              "reel",
+              "story",
+              "short",
+              "video",
+              "live",
+              "other"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "median_paise": {
+            "title": "Median Paise",
+            "type": "integer"
+          },
+          "platform": {
+            "enum": [
+              "instagram",
+              "youtube"
+            ],
+            "title": "Platform",
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform",
+          "format",
+          "creators",
+          "median_paise"
+        ],
+        "title": "AskingPriceRead",
         "type": "object"
       },
       "AttentionItemRead": {
@@ -831,7 +1016,8 @@
               "payment_overdue",
               "resubmit_work",
               "deliver_work",
-              "answer_memo"
+              "answer_memo",
+              "answer_invitation"
             ],
             "title": "Kind",
             "type": "string"
@@ -904,7 +1090,8 @@
                 "payment_overdue",
                 "resubmit_work",
                 "deliver_work",
-                "answer_memo"
+                "answer_memo",
+                "answer_invitation"
               ]
             },
             "title": "Counts",
@@ -944,6 +1131,62 @@
           "items"
         ],
         "title": "AttentionRead",
+        "type": "object"
+      },
+      "AvailabilityRead": {
+        "properties": {
+          "available_from": {
+            "description": "The first Tamil Nadu day the creator is taking work",
+            "format": "date",
+            "title": "Available From",
+            "type": "string"
+          },
+          "booked_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when taking work today; a date already past reads as null",
+            "title": "Booked Until"
+          }
+        },
+        "required": [
+          "booked_until",
+          "available_from"
+        ],
+        "title": "AvailabilityRead",
+        "type": "object"
+      },
+      "AvailabilityUpdate": {
+        "additionalProperties": false,
+        "description": "The whole setting, replaced: a date, or null for taking work.",
+        "properties": {
+          "booked_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The last Tamil Nadu day you are not taking new work, from today to a year ahead. Null if you are taking work.",
+            "examples": [
+              "2026-11-20"
+            ],
+            "title": "Booked Until"
+          }
+        },
+        "required": [
+          "booked_until"
+        ],
+        "title": "AvailabilityUpdate",
         "type": "object"
       },
       "BrandProfileCreate": {
@@ -1118,6 +1361,25 @@
           "median_days_to_pay"
         ],
         "title": "BrandReliabilityRead",
+        "type": "object"
+      },
+      "BrandResponseTimesRead": {
+        "description": "How long creators wait for this brand to decide on their work.\n\nAn approval by the clock counts, at the moment the window ended.",
+        "properties": {
+          "brand_id": {
+            "format": "uuid",
+            "title": "Brand Id",
+            "type": "string"
+          },
+          "work_reviewed": {
+            "$ref": "#/components/schemas/ResponseTimeRead"
+          }
+        },
+        "required": [
+          "brand_id",
+          "work_reviewed"
+        ],
+        "title": "BrandResponseTimesRead",
         "type": "object"
       },
       "BulkMarkPaidRead": {
@@ -1975,6 +2237,85 @@
         "title": "CheckpointTimestampRead",
         "type": "object"
       },
+      "CityCountRead": {
+        "properties": {
+          "city": {
+            "description": "As most of its creators spell it",
+            "title": "City",
+            "type": "string"
+          },
+          "published_creators": {
+            "title": "Published Creators",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "city",
+          "published_creators"
+        ],
+        "title": "CityCountRead",
+        "type": "object"
+      },
+      "CityFiguresRead": {
+        "description": "One city's public figures: counts and medians, five or nothing.\n\nEvery count rests on creators who published their Passport, or on open\ncampaigns; nothing comes from a deal. **Null means \"not enough to say\"\nand must never be shown as zero.**",
+        "properties": {
+          "asking_prices": {
+            "items": {
+              "$ref": "#/components/schemas/AskingPriceRead"
+            },
+            "title": "Asking Prices",
+            "type": "array"
+          },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "creators_by_niche": {
+            "items": {
+              "$ref": "#/components/schemas/NicheCountRead"
+            },
+            "title": "Creators By Niche",
+            "type": "array"
+          },
+          "min_count": {
+            "description": "The smallest count any figure is shown for",
+            "title": "Min Count",
+            "type": "integer"
+          },
+          "open_campaigns": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open Campaigns"
+          },
+          "published_creators": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published Creators"
+          }
+        },
+        "required": [
+          "city",
+          "min_count",
+          "published_creators",
+          "creators_by_niche",
+          "open_campaigns",
+          "asking_prices"
+        ],
+        "title": "CityFiguresRead",
+        "type": "object"
+      },
       "CreatorDeliveryRead": {
         "description": "How a creator delivers, from what happened rather than from opinions.\n\nThe mirror of a brand's payment record (D-038). The shares are `null`\nuntil three scored deals have completed. **Null means \"not enough to\nsay\" and must never be shown as zero**: the two mean opposite things.\n\n`currently_overdue` is reported whatever the status, so \"new\" can never\nhide work a brand is still waiting for. Barter deals are shown in their\nown counts and never scored (D-026).",
         "properties": {
@@ -2394,6 +2735,29 @@
         "title": "CreatorProfileUpdate",
         "type": "object"
       },
+      "CreatorResponseTimesRead": {
+        "description": "How long brands wait for this creator to answer a memo, and to confirm\na payment arrived.",
+        "properties": {
+          "creator_id": {
+            "format": "uuid",
+            "title": "Creator Id",
+            "type": "string"
+          },
+          "memo_answered": {
+            "$ref": "#/components/schemas/ResponseTimeRead"
+          },
+          "payment_confirmed": {
+            "$ref": "#/components/schemas/ResponseTimeRead"
+          }
+        },
+        "required": [
+          "creator_id",
+          "memo_answered",
+          "payment_confirmed"
+        ],
+        "title": "CreatorResponseTimesRead",
+        "type": "object"
+      },
       "CreatorSearchResultRead": {
         "description": "One creator in a brand's search: enough to decide whether to open the media kit.",
         "properties": {
@@ -2407,6 +2771,19 @@
               }
             ],
             "title": "Bio"
+          },
+          "booked_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The last day the creator is not taking new work; null if taking work today",
+            "title": "Booked Until"
           },
           "channels": {
             "items": {
@@ -2473,7 +2850,8 @@
           "member_since",
           "channels",
           "from_price_paise",
-          "currency"
+          "currency",
+          "booked_until"
         ],
         "title": "CreatorSearchResultRead",
         "type": "object"
@@ -3185,6 +3563,100 @@
         "title": "HealthRead",
         "type": "object"
       },
+      "InvitationCreate": {
+        "additionalProperties": false,
+        "description": "A brand invites one creator to one of its open campaigns (D-084).",
+        "properties": {
+          "creator_id": {
+            "description": "From search or a match",
+            "format": "uuid",
+            "title": "Creator Id",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "description": "A few words from the brand, shown with the invitation",
+                "examples": [
+                  "Loved your Madurai food walks. Our Pongal box would suit them."
+                ],
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "required": [
+          "creator_id"
+        ],
+        "title": "InvitationCreate",
+        "type": "object"
+      },
+      "InvitationDecline": {
+        "additionalProperties": false,
+        "description": "Why a creator said no. A code, so the brand sees it clearly.",
+        "properties": {
+          "reason": {
+            "enum": [
+              "timing",
+              "budget",
+              "not_a_fit",
+              "other"
+            ],
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "InvitationDecline",
+        "type": "object"
+      },
+      "InviteCodeRead": {
+        "properties": {
+          "code": {
+            "description": "Eight characters; no 0, O, 1 or I",
+            "title": "Code",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "created_at"
+        ],
+        "title": "InviteCodeRead",
+        "type": "object"
+      },
+      "InviteCountsRead": {
+        "description": "How many joined with my code. Counts only, never who (D-080).",
+        "properties": {
+          "brands": {
+            "title": "Brands",
+            "type": "integer"
+          },
+          "creators": {
+            "title": "Creators",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "brands",
+          "creators"
+        ],
+        "title": "InviteCountsRead",
+        "type": "object"
+      },
       "LoggedOutAll": {
         "properties": {
           "sessions_ended": {
@@ -3324,6 +3796,22 @@
             ],
             "title": "Accepted Deals",
             "type": "integer"
+          },
+          "booked_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The last day the creator is not taking new work, or null if they are taking work today. Creators taking work come first",
+            "examples": [
+              null
+            ],
+            "title": "Booked Until"
           },
           "city": {
             "description": "The creator's city, which is one the campaign named",
@@ -4185,6 +4673,266 @@
         "title": "NarrowedTo",
         "type": "object"
       },
+      "NicheCountRead": {
+        "properties": {
+          "creators": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null below five: not enough to say",
+            "title": "Creators"
+          },
+          "niche": {
+            "enum": [
+              "food",
+              "fashion",
+              "beauty",
+              "tech",
+              "travel",
+              "fitness",
+              "education",
+              "entertainment",
+              "finance",
+              "lifestyle"
+            ],
+            "title": "Niche",
+            "type": "string"
+          }
+        },
+        "required": [
+          "niche",
+          "creators"
+        ],
+        "title": "NicheCountRead",
+        "type": "object"
+      },
+      "NotificationPreferencesIn": {
+        "additionalProperties": false,
+        "description": "The whole set of preferences. Saving replaces them all, so a retry is safe.",
+        "properties": {
+          "digest": {
+            "description": "`daily` collects every non-urgent notification into one a day",
+            "enum": [
+              "off",
+              "daily"
+            ],
+            "title": "Digest",
+            "type": "string"
+          },
+          "digest_hour": {
+            "description": "The digest's hour, Tamil Nadu time",
+            "maximum": 23.0,
+            "minimum": 0.0,
+            "title": "Digest Hour",
+            "type": "integer"
+          },
+          "muted_types": {
+            "description": "Kept in the app only, never sent. Urgent types are refused.",
+            "items": {
+              "enum": [
+                "application_received",
+                "application_withdrawn",
+                "application_shortlisted",
+                "application_accepted",
+                "application_rejected",
+                "memo_sent",
+                "memo_accepted",
+                "memo_declined",
+                "memo_change_requested",
+                "memo_cancelled",
+                "proof_submitted",
+                "proof_approved",
+                "proof_auto_approved",
+                "proof_revision_requested",
+                "payment_marked_paid",
+                "payment_confirmed",
+                "invitation_received",
+                "invitation_accepted",
+                "invitation_declined",
+                "invitation_withdrawn"
+              ],
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Muted Types",
+            "type": "array"
+          },
+          "quiet_from": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A time of day in Tamil Nadu, to the minute (`22:00`). Both ends or neither; a window may cross midnight.",
+            "examples": [
+              "22:00"
+            ],
+            "title": "Quiet From"
+          },
+          "quiet_until": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A time of day in Tamil Nadu, to the minute (`22:00`). Both ends or neither; a window may cross midnight.",
+            "examples": [
+              "08:00"
+            ],
+            "title": "Quiet Until"
+          }
+        },
+        "required": [
+          "quiet_from",
+          "quiet_until",
+          "digest",
+          "digest_hour",
+          "muted_types"
+        ],
+        "title": "NotificationPreferencesIn",
+        "type": "object"
+      },
+      "NotificationPreferencesRead": {
+        "description": "How this person is told things outside the app.\n\nThe in-app list keeps every notification whatever is set here. The types\nin `always_sent` arrive at once whatever is set, because a deadline runs\nagainst the reader.",
+        "properties": {
+          "always_sent": {
+            "items": {
+              "enum": [
+                "application_received",
+                "application_withdrawn",
+                "application_shortlisted",
+                "application_accepted",
+                "application_rejected",
+                "memo_sent",
+                "memo_accepted",
+                "memo_declined",
+                "memo_change_requested",
+                "memo_cancelled",
+                "proof_submitted",
+                "proof_approved",
+                "proof_auto_approved",
+                "proof_revision_requested",
+                "payment_marked_paid",
+                "payment_confirmed",
+                "invitation_received",
+                "invitation_accepted",
+                "invitation_declined",
+                "invitation_withdrawn"
+              ],
+              "type": "string"
+            },
+            "title": "Always Sent",
+            "type": "array"
+          },
+          "digest": {
+            "enum": [
+              "off",
+              "daily"
+            ],
+            "title": "Digest",
+            "type": "string"
+          },
+          "digest_hour": {
+            "title": "Digest Hour",
+            "type": "integer"
+          },
+          "is_default": {
+            "description": "True until the person saves their own",
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "muted_types": {
+            "items": {
+              "enum": [
+                "application_received",
+                "application_withdrawn",
+                "application_shortlisted",
+                "application_accepted",
+                "application_rejected",
+                "memo_sent",
+                "memo_accepted",
+                "memo_declined",
+                "memo_change_requested",
+                "memo_cancelled",
+                "proof_submitted",
+                "proof_approved",
+                "proof_auto_approved",
+                "proof_revision_requested",
+                "payment_marked_paid",
+                "payment_confirmed",
+                "invitation_received",
+                "invitation_accepted",
+                "invitation_declined",
+                "invitation_withdrawn"
+              ],
+              "type": "string"
+            },
+            "title": "Muted Types",
+            "type": "array"
+          },
+          "quiet_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "HH:MM, Tamil Nadu time",
+            "title": "Quiet From"
+          },
+          "quiet_until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "HH:MM, Tamil Nadu time",
+            "title": "Quiet Until"
+          },
+          "saved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saved At"
+          }
+        },
+        "required": [
+          "quiet_from",
+          "quiet_until",
+          "digest",
+          "digest_hour",
+          "muted_types",
+          "always_sent",
+          "is_default",
+          "saved_at"
+        ],
+        "title": "NotificationPreferencesRead",
+        "type": "object"
+      },
       "NotificationRead": {
         "description": "One notification. The app renders the wording from `type` and `details`,\nso the same row can be shown in Tamil or English.",
         "properties": {
@@ -4244,7 +4992,11 @@
               "proof_auto_approved",
               "proof_revision_requested",
               "payment_marked_paid",
-              "payment_confirmed"
+              "payment_confirmed",
+              "invitation_received",
+              "invitation_accepted",
+              "invitation_declined",
+              "invitation_withdrawn"
             ],
             "title": "Notification Type",
             "type": "string"
@@ -4312,6 +5064,17 @@
       "OtpVerifyIn": {
         "additionalProperties": false,
         "properties": {
+          "arrival": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ArrivalIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional, and read only when this login creates the account"
+          },
           "code": {
             "description": "The 6-digit code sent to the phone",
             "examples": [
@@ -6443,6 +7206,40 @@
         "title": "RefreshIn",
         "type": "object"
       },
+      "RepeatCreate": {
+        "additionalProperties": false,
+        "description": "Work together again: the same creator, invited to another open campaign.",
+        "properties": {
+          "campaign_id": {
+            "description": "One of your open campaigns",
+            "format": "uuid",
+            "title": "Campaign Id",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "description": "A few words from the brand, shown with the invitation",
+                "examples": [
+                  "Loved your Madurai food walks. Our Pongal box would suit them."
+                ],
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "required": [
+          "campaign_id"
+        ],
+        "title": "RepeatCreate",
+        "type": "object"
+      },
       "ReportCreate": {
         "additionalProperties": false,
         "properties": {
@@ -6588,6 +7385,39 @@
         "title": "ResolveReportIn",
         "type": "object"
       },
+      "ResponseTimeRead": {
+        "description": "How long one kind of answer usually takes, from the deal record.\n\n`median_hours` is null until there are five examples (D-071). **Null\nmeans \"not enough to say\" and must never be shown as zero.** `examples`\nis always returned so the figure can be weighed.",
+        "properties": {
+          "examples": {
+            "minimum": 0.0,
+            "title": "Examples",
+            "type": "integer"
+          },
+          "median_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Hours"
+          },
+          "min_examples": {
+            "description": "Examples needed before a figure is shown",
+            "title": "Min Examples",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "examples",
+          "median_hours",
+          "min_examples"
+        ],
+        "title": "ResponseTimeRead",
+        "type": "object"
+      },
       "RestoreIn": {
         "additionalProperties": false,
         "properties": {
@@ -6694,6 +7524,41 @@
         "title": "SearchChannelRead",
         "type": "object"
       },
+      "SignupCountRead": {
+        "properties": {
+          "accounts": {
+            "title": "Accounts",
+            "type": "integer"
+          },
+          "role": {
+            "enum": [
+              "brand",
+              "creator",
+              "admin"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "week_starting": {
+            "description": "A Monday, Tamil Nadu time",
+            "format": "date",
+            "title": "Week Starting",
+            "type": "string"
+          }
+        },
+        "required": [
+          "week_starting",
+          "source",
+          "role",
+          "accounts"
+        ],
+        "title": "SignupCountRead",
+        "type": "object"
+      },
       "SuspendIn": {
         "additionalProperties": false,
         "properties": {
@@ -6756,6 +7621,39 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/.well-known/security.txt": {
+      "get": {
+        "description": "RFC 9116: where to report a vulnerability, in which language, and the disclosure policy. Plain text, the same for everyone.",
+        "operationId": "security_txt__well_known_security_txt_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The security.txt file"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {},
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "summary": "How to report a security problem",
+        "tags": [
+          "public"
+        ]
+      }
+    },
     "/api/v1/admin/accounts": {
       "get": {
         "description": "Give exactly one of `phone` or `handle`, and a `reason`. Every account returned is written to the admin log as viewed, with the reason.",
@@ -7553,6 +8451,86 @@
         ]
       }
     },
+    "/api/v1/admin/signups": {
+      "get": {
+        "description": "New accounts per week (from Monday, Tamil Nadu time), per source and role, newest week first. Counts only: no account is named, so nothing is written to the admin log.",
+        "operationId": "signups_api_v1_admin_signups_get",
+        "parameters": [
+          {
+            "description": "How many weeks back",
+            "in": "query",
+            "name": "weeks",
+            "required": false,
+            "schema": {
+              "default": 12,
+              "description": "How many weeks back",
+              "maximum": 52,
+              "minimum": 1,
+              "title": "Weeks",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SignupCountRead"
+                  },
+                  "title": "Response Signups Api V1 Admin Signups Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not found, which is also the answer for anyone who is not an admin"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "weeks is out of range"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Sign-ups by source and week",
+        "tags": [
+          "invitations"
+        ]
+      }
+    },
     "/api/v1/applications/me": {
       "get": {
         "description": "Everything the signed-in creator has applied to, newest first.",
@@ -7570,7 +8548,9 @@
                     "shortlisted",
                     "accepted",
                     "rejected",
-                    "withdrawn"
+                    "withdrawn",
+                    "invited",
+                    "declined"
                   ],
                   "type": "string"
                 },
@@ -7988,6 +8968,286 @@
         ]
       }
     },
+    "/api/v1/applications/{application_id}/accept-invitation": {
+      "post": {
+        "description": "The signed-in creator says yes. The invitation becomes `accepted`, and the brand is told. For a repeat of an earlier deal, the deal memo is drafted from that deal's terms for the brand to date and send.",
+        "operationId": "accept_invitation_api_v1_applications__application_id__accept_invitation_post",
+        "parameters": [
+          {
+            "description": "The application's id",
+            "in": "path",
+            "name": "application_id",
+            "required": true,
+            "schema": {
+              "description": "The application's id",
+              "format": "uuid",
+              "title": "Application Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "This account type cannot use this endpoint"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such invitation, or it is not yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "It is not an invitation waiting for an answer, or the campaign is no longer open. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Accept an invitation",
+        "tags": [
+          "invitations"
+        ]
+      }
+    },
+    "/api/v1/applications/{application_id}/decline-invitation": {
+      "post": {
+        "description": "The signed-in creator says no, with a reason the brand sees, as a creator sees the brand's reason for a rejection. This is final.",
+        "operationId": "decline_invitation_api_v1_applications__application_id__decline_invitation_post",
+        "parameters": [
+          {
+            "description": "The application's id",
+            "in": "path",
+            "name": "application_id",
+            "required": true,
+            "schema": {
+              "description": "The application's id",
+              "format": "uuid",
+              "title": "Application Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationDecline"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "This account type cannot use this endpoint"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such invitation, or it is not yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "It is not an invitation waiting for an answer, or the campaign is no longer open. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The reason is missing or not one of the allowed values. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Decline an invitation",
+        "tags": [
+          "invitations"
+        ]
+      }
+    },
     "/api/v1/applications/{application_id}/reject": {
       "post": {
         "description": "Says no, with a reason the creator can see. A reason is required: \"no campaigns and no idea why\" is the complaint this avoids.",
@@ -8398,6 +9658,136 @@
         ]
       }
     },
+    "/api/v1/applications/{application_id}/withdraw-invitation": {
+      "post": {
+        "description": "The signed-in brand takes back an invitation the creator has not answered yet. The creator is told. This is final.",
+        "operationId": "withdraw_invitation_api_v1_applications__application_id__withdraw_invitation_post",
+        "parameters": [
+          {
+            "description": "The application's id",
+            "in": "path",
+            "name": "application_id",
+            "required": true,
+            "schema": {
+              "description": "The application's id",
+              "format": "uuid",
+              "title": "Application Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "This account type cannot use this endpoint"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such invitation, or it is not for your campaign"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "It is not an invitation waiting for an answer. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Withdraw an invitation",
+        "tags": [
+          "invitations"
+        ]
+      }
+    },
     "/api/v1/auth/logout": {
       "post": {
         "description": "Ends the login the refresh token belongs to, including tokens it was rotated from. Always returns 204, even for an unknown token, so nobody can test whether a token exists. Limit: 30 requests per minute per IP address.",
@@ -8619,7 +10009,7 @@
     },
     "/api/v1/auth/otp/verify": {
       "post": {
-        "description": "Checks the latest code sent to the phone. A new number gets an account with the given role. Returns a 15-minute access token and a 30-day refresh token. Limit: 10 requests per 10 minutes per IP address; each code allows 5 attempts.",
+        "description": "Checks the latest code sent to the phone. A new number gets an account with the given role, and `arrival` (optional) records how it found us; a returning login ignores `arrival`. Returns a 15-minute access token and a 30-day refresh token. Limit: 10 requests per 10 minutes per IP address; each code allows 5 attempts.",
         "operationId": "verify_code_api_v1_auth_otp_verify_post",
         "requestBody": {
           "content": {
@@ -9306,6 +10696,91 @@
           }
         ],
         "summary": "How this brand pays",
+        "tags": [
+          "reliability"
+        ]
+      }
+    },
+    "/api/v1/brands/{brand_id}/response-times": {
+      "get": {
+        "description": "From work submitted to approved or sent back; an approval by the clock counts at the moment the review window ended. Measured from the deal record, never estimated. `median_hours` is null until there are five examples, meaning **not enough to say**, and must not be shown as zero; `examples` is always returned.",
+        "operationId": "brand_response_times_api_v1_brands__brand_id__response_times_get",
+        "parameters": [
+          {
+            "description": "The brand's id",
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "description": "The brand's id",
+              "format": "uuid",
+              "title": "Brand Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandResponseTimesRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such brand"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The id is not a valid id"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "How long this brand takes to decide on work",
         "tags": [
           "reliability"
         ]
@@ -10110,7 +11585,9 @@
                     "shortlisted",
                     "accepted",
                     "rejected",
-                    "withdrawn"
+                    "withdrawn",
+                    "invited",
+                    "declined"
                   ],
                   "type": "string"
                 },
@@ -10649,6 +12126,156 @@
         ]
       }
     },
+    "/api/v1/campaigns/{campaign_id}/invitations": {
+      "post": {
+        "description": "Invites one creator, found in search or in a campaign's matches, to one of the signed-in brand's open campaigns. The creator is told at once and answers in one tap; accepting makes the invitation `accepted`, ready for the deal memo. A campaign may have at most 25 invitations waiting for an answer at once. An invitation lasts while the campaign is open.",
+        "operationId": "invite_creator_api_v1_campaigns__campaign_id__invitations_post",
+        "parameters": [
+          {
+            "description": "The campaign's id",
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "description": "The campaign's id",
+              "format": "uuid",
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "This account type cannot use this endpoint"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such campaign or creator, or the campaign is not yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The brand profile is missing, the campaign is not open, the creator already applied or was invited, or the campaign has 25 invitations waiting. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A field is missing or invalid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Invite a creator to my campaign",
+        "tags": [
+          "invitations"
+        ]
+      }
+    },
     "/api/v1/campaigns/{campaign_id}/matches": {
       "get": {
         "description": "Creators worth approaching for one of the signed-in brand's own campaigns, best first, each with the reasons it was suggested.\n\nOnly creators in a city the campaign named, in at least one of its niches, **and who have published their Creator Passport**. A creator who has not published is not discoverable here; that is their choice to make and it is not overridden by a brand searching (D-036).\n\nIf the campaign has not been indexed yet, `ranked_by_similarity` is false and `similarity` is null on every row: the list is ordered by the facts alone and is still worth reading.",
@@ -11006,9 +12633,153 @@
         ]
       }
     },
+    "/api/v1/cities": {
+      "get": {
+        "description": "Every city with at least five creators who published their Passport, largest first: the cities a public page can be made for. Cached for an hour, with an ETag.",
+        "operationId": "list_cities_api_v1_cities_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "if-none-match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-None-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CityCountRead"
+                  },
+                  "title": "Response List Cities Api V1 Cities Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "summary": "Cities with public figures",
+        "tags": [
+          "public"
+        ]
+      }
+    },
+    "/api/v1/cities/{city}/figures": {
+      "get": {
+        "description": "Counts and medians for one city: published creators, by niche, open campaigns, and median asking prices by platform and format. Any figure resting on fewer than five is `null`, meaning **not enough to say**, and must not be shown as zero; a city nobody has joined answers the same way rather than 404. Nothing is built from a deal. Cached for an hour, with an ETag.",
+        "operationId": "city_figures_api_v1_cities__city__figures_get",
+        "parameters": [
+          {
+            "description": "A city name as people write it; matched without regard to case",
+            "in": "path",
+            "name": "city",
+            "required": true,
+            "schema": {
+              "description": "A city name as people write it; matched without regard to case",
+              "examples": [
+                "Coimbatore"
+              ],
+              "maxLength": 60,
+              "minLength": 2,
+              "pattern": "^[A-Za-z][A-Za-z .'-]*$",
+              "title": "City",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "if-none-match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-None-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CityFiguresRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "That is not a city name"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "summary": "A city's public figures",
+        "tags": [
+          "public"
+        ]
+      }
+    },
     "/api/v1/creators": {
       "get": {
-        "description": "Creators who published their Passport, filtered by any combination of words in their handle, name or bio; niche; city; a platform and an audience size on it; and a price limit, optionally for one format. Every audience filter must hold for one channel, and every price filter for one package. Follower counts are the creator's own statement, dated, never verified. Newest profiles first; pass `next_cursor` back as `cursor` for the next page. Brands only.",
+        "description": "Creators who published their Passport, filtered by any combination of words in their handle, name or bio; niche; city; a platform and an audience size on it; and a price limit, optionally for one format. Every audience filter must hold for one channel, and every price filter for one package. Follower counts are the creator's own statement, dated, never verified. Newest profiles first; pass `next_cursor` back as `cursor` for the next page. Each result says until when the creator is booked, if they are; `available_on` keeps only creators free that day. Brands only.",
         "operationId": "search_creators_api_v1_creators_get",
         "parameters": [
           {
@@ -11178,6 +12949,25 @@
               ],
               "description": "Only packages of this format count",
               "title": "Format"
+            }
+          },
+          {
+            "description": "Only creators not booked on this Tamil Nadu day",
+            "in": "query",
+            "name": "available_on",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only creators not booked on this Tamil Nadu day",
+              "title": "Available On"
             }
           },
           {
@@ -11687,6 +13477,177 @@
         "summary": "Create my creator profile",
         "tags": [
           "profiles"
+        ]
+      }
+    },
+    "/api/v1/creators/me/availability": {
+      "get": {
+        "description": "Whether you are taking new work, and from when. Signed-in brands see the same date in search and in suggested creators; it is never on your public Passport.",
+        "operationId": "read_availability_api_v1_creators_me_availability_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvailabilityRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only a creator may use this endpoint"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "You have not created a creator profile yet"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My availability",
+        "tags": [
+          "availability"
+        ]
+      },
+      "put": {
+        "description": "\"Booked until 20 Nov\": the last day you are not taking new work, from today to a year ahead; null when you are taking work. Nothing is blocked: brands can still reach you and you can still apply.",
+        "operationId": "set_availability_api_v1_creators_me_availability_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AvailabilityUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvailabilityRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only a creator may use this endpoint"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "You have not created a creator profile yet"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The date is in the past or more than a year ahead"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set my availability",
+        "tags": [
+          "availability"
         ]
       }
     },
@@ -13081,6 +15042,102 @@
         "summary": "A creator's media kit",
         "tags": [
           "media kit"
+        ]
+      }
+    },
+    "/api/v1/creators/{creator_id}/response-times": {
+      "get": {
+        "description": "From a memo sent to its answer (accepted, declined or a change requested), and from a payment marked as sent to the creator confirming it arrived. Measured from the deal record, never estimated. `median_hours` is null until there are five examples, meaning **not enough to say**, and must not be shown as zero; `examples` is always returned.",
+        "operationId": "creator_response_times_api_v1_creators__creator_id__response_times_get",
+        "parameters": [
+          {
+            "description": "The creator's id",
+            "in": "path",
+            "name": "creator_id",
+            "required": true,
+            "schema": {
+              "description": "The creator's id",
+              "format": "uuid",
+              "title": "Creator Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatorResponseTimesRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only brands, or the creator themself, can read this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such creator"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The id is not a valid id"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "How long this creator takes to answer",
+        "tags": [
+          "reliability"
         ]
       }
     },
@@ -16128,6 +18185,156 @@
         ]
       }
     },
+    "/api/v1/deal-memos/{memo_id}/repeat": {
+      "post": {
+        "description": "Invites the creator of this deal to another of the signed-in brand's open campaigns, as a repeat of it. The deal must be one both sides agreed and nobody cancelled. When the creator accepts, the new deal memo is drafted with this deal's terms (everything but the due date, which the brand sets before sending). Answers with the invitation.",
+        "operationId": "repeat_deal_api_v1_deal_memos__memo_id__repeat_post",
+        "parameters": [
+          {
+            "description": "The memo's id",
+            "in": "path",
+            "name": "memo_id",
+            "required": true,
+            "schema": {
+              "description": "The memo's id",
+              "format": "uuid",
+              "title": "Memo Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepeatCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only a brand may repeat a deal"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such deal or campaign, or it is not yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The brand profile is missing, the deal was not agreed or was cancelled, its fee does not suit the campaign's type, the campaign is not open, the creator is already on it, or it has 25 invitations waiting. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A field is missing or invalid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Work together again",
+        "tags": [
+          "deal memos"
+        ]
+      }
+    },
     "/api/v1/deal-memos/{memo_id}/request-change": {
       "post": {
         "description": "Sends it back with a message. Only the first request restarts the approval clock (D-025), and the count says how many have been made.",
@@ -16644,6 +18851,253 @@
         "summary": "Download my data",
         "tags": [
           "privacy"
+        ]
+      }
+    },
+    "/api/v1/me/invite-code": {
+      "get": {
+        "description": "The code to share with people you invite, made the first time it is asked for and the same ever after.",
+        "operationId": "my_invite_code_api_v1_me_invite_code_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteCodeRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only brand and creator accounts invite people"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My invite code",
+        "tags": [
+          "invitations"
+        ]
+      }
+    },
+    "/api/v1/me/invites": {
+      "get": {
+        "description": "Counts of brands and creators only, never who they are.",
+        "operationId": "my_invites_api_v1_me_invites_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteCountsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only brand and creator accounts invite people"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "How many joined with my code",
+        "tags": [
+          "invitations"
+        ]
+      }
+    },
+    "/api/v1/me/notification-preferences": {
+      "get": {
+        "description": "The defaults until saved: quiet hours 22:00 to 08:00 Tamil Nadu time, digest off, nothing muted. They govern delivery outside the app only; the in-app list keeps everything. `always_sent` lists the types that arrive at once whatever is set.",
+        "operationId": "read_preferences_api_v1_me_notification_preferences_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferencesRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read my notification preferences",
+        "tags": [
+          "notifications"
+        ]
+      },
+      "put": {
+        "description": "Saves the whole set, so sending the same body twice is harmless. Urgent types (those in `always_sent`) cannot be muted.",
+        "operationId": "save_preferences_api_v1_me_notification_preferences_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationPreferencesIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferencesRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A field is invalid, or an urgent type was muted"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Replace my notification preferences",
+        "tags": [
+          "notifications"
         ]
       }
     },

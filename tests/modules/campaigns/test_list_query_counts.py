@@ -172,3 +172,39 @@ def test_reading_one_campaign_is_a_handful_of_queries(client, db):
     )
 
     assert count <= 4
+
+
+def test_my_applications_query_count_does_not_grow_with_rows(client, db):
+    from app.modules.campaigns.models import Application
+
+    brand = make_brand(db)
+    creator = build_creator(db)
+    db.add(creator)
+    db.flush()
+    headers = auth(creator.account_id, "creator")
+    url = "/api/v1/applications/me"
+
+    def apply_to(count: int) -> None:
+        for _ in range(count):
+            campaign = build_campaign(db, brand_id=brand.id, status="open")
+            db.add(campaign)
+            db.flush()
+            db.add(
+                Application(
+                    campaign_id=campaign.id,
+                    creator_id=creator.id,
+                    pitch=PITCH,
+                    status="submitted",
+                    status_changed_at=FIXED_NOW,
+                    created_at=FIXED_NOW,
+                    updated_at=FIXED_NOW,
+                )
+            )
+        db.flush()
+
+    apply_to(3)
+    with_three = queries_for(client, url, headers)
+    apply_to(17)
+    with_twenty = queries_for(client, url, headers)
+
+    assert with_three == with_twenty

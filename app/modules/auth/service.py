@@ -14,6 +14,8 @@ from typing import Any, cast
 from sqlalchemy import CursorResult, select, text, update
 from sqlalchemy.orm import Session
 
+from app.modules.auth import attribution_service as attribution
+from app.modules.auth.attribution_service import Arrival
 from app.modules.auth.exceptions import (
     AccountSuspended,
     InvalidToken,
@@ -163,7 +165,12 @@ def _seconds_until_verify_allowed(db: Session, phone: str, now: datetime) -> int
 
 
 def verify_otp(
-    db: Session, phone: str, code: str, role: str, now: datetime
+    db: Session,
+    phone: str,
+    code: str,
+    role: str,
+    now: datetime,
+    arrival: Arrival | None = None,
 ) -> LoginResult:
     """Check a code and log the phone in, creating the account if it is new.
 
@@ -220,6 +227,9 @@ def verify_otp(
         account = Account(phone=phone, role=role)
         db.add(account)
         db.flush()
+        # How they arrived, in this same transaction, and only now: a
+        # returning login never gets here, so it cannot rewrite it (D-080).
+        attribution.record_arrival(db, account, arrival, now)
 
     challenge.consumed_at = now
     # A fresh login starts its own rotation family.

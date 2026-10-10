@@ -21,6 +21,8 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     "memo_declined",
     "memo_change_requested",
     "proof_submitted",
+    "invitation_accepted",
+    "invitation_declined",
     # To the creator
     "application_shortlisted",
     "application_accepted",
@@ -30,6 +32,8 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     "proof_auto_approved",
     "proof_revision_requested",
     "payment_marked_paid",
+    "invitation_received",
+    "invitation_withdrawn",
     # To whichever side did not do it
     "memo_cancelled",
     "payment_confirmed",

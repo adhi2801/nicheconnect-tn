@@ -161,7 +161,7 @@ def test_accepting_and_rejecting_an_application_at_once_gives_one_outcome(
 ):
     def accept(s: Session) -> object:
         return campaigns.change_application_status(
-            s, s.get(Application, shortlisted), "accepted", NOW
+            s, s.get(Application, shortlisted), "accepted", NOW, actor="brand"
         )
 
     def reject(s: Session) -> object:
@@ -170,6 +170,7 @@ def test_accepting_and_rejecting_an_application_at_once_gives_one_outcome(
             s.get(Application, shortlisted),
             "rejected",
             NOW,
+            actor="brand",
             rejection_reason="chose_another_creator",
         )
 

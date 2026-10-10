@@ -27,6 +27,7 @@ from app.core.export import (
     build_section,
     to_json_value,
 )
+from app.modules.auth import attribution_service as attribution
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.brand import Brand
@@ -36,6 +37,7 @@ from app.modules.auth.models.report import Report
 from app.modules.campaigns import service as campaigns
 from app.modules.deal_memo import service as deal_memos
 from app.modules.disputes import service as disputes
+from app.modules.notifications import preference_service as notification_preferences
 from app.modules.notifications import service as notifications
 from app.modules.payment_status import service as payments
 
@@ -140,6 +142,8 @@ CREATOR_EXPORT_FIELDS = allow(
     # The other consent: whether their prices are on the open internet, and
     # when they said so (D-055). Same reasoning as the line above.
     "rate_card_public_at",
+    # "Booked until", as they set it (D-083).
+    "booked_until",
     "created_at",
     "updated_at",
 )
@@ -321,11 +325,13 @@ def collect_sections(db: Session, account: Account) -> list[ExportedSection]:
     """Every section of this account's export, in reading order."""
     return [
         *_account_sections(db, account),
+        *attribution.export_for_account(db, account.id),
         *campaigns.export_for_account(db, account.id),
         *deal_memos.export_for_account(db, account.id),
         *payments.export_for_account(db, account.id),
         *disputes.export_for_account(db, account.id),
         *notifications.export_for_account(db, account.id),
+        *notification_preferences.export_for_account(db, account.id),
     ]
 
 
@@ -359,9 +365,11 @@ def exported_tables() -> frozenset[str]:
     """
     return (
         EXPORTED_TABLES
+        | attribution.EXPORTED_TABLES
         | campaigns.EXPORTED_TABLES
         | deal_memos.EXPORTED_TABLES
         | notifications.EXPORTED_TABLES
+        | notification_preferences.EXPORTED_TABLES
         | payments.EXPORTED_TABLES
         | disputes.EXPORTED_TABLES
     )
