@@ -25,7 +25,7 @@ from app.core.export import (
     build_section,
 )
 from app.core.pagination import Slice, build_slice, older_than_cursor
-from app.modules.auth.blocks import blocked_between, brand_account, not_blocked
+from app.modules.auth.blocks import blocked_between, not_blocked_with_brand
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import brand_is_active, brand_is_suspended
@@ -219,9 +219,7 @@ def discover_campaigns(
     )
     if viewer_account_id is not None:
         # So do those of a brand either side has blocked (item 59).
-        query = query.where(
-            not_blocked(viewer_account_id, brand_account(Campaign.brand_id))
-        )
+        query = query.where(not_blocked_with_brand(viewer_account_id, Campaign.brand_id))
     if city is not None:
         query = query.where(Campaign.cities.any_() == city)
     if niche is not None:

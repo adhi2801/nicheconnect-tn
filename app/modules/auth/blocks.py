@@ -34,9 +34,29 @@ def not_blocked(one: AccountRef, other: AccountRef) -> ColumnElement[bool]:
     )
 
 
-def brand_account(brand_id: AccountRef) -> ColumnElement[Any]:
-    """The account behind a brand, as an expression for the conditions above."""
-    return select(Brand.account_id).where(Brand.id == brand_id).scalar_subquery()
+def not_blocked_with_brand(one: AccountRef, brand_id: AccountRef) -> ColumnElement[bool]:
+    """True unless `one` and the account behind a brand have blocked each other.
+
+    The brand is joined inside the EXISTS, the way `suspension.brand_is_active`
+    does it, so `Campaign.brand_id` correlates to the row being filtered. An
+    earlier version wrapped the brand lookup in a scalar subquery nested in
+    the EXISTS; SQLAlchemy did not correlate it, so it read every campaign's
+    brand, and Postgres refused it as "more than one row" depending on the
+    plan it chose. CI caught it on 10 October 2026, where the laptop did not.
+    """
+    return ~exists().where(
+        Brand.id == brand_id,
+        or_(
+            and_(
+                AccountBlock.blocker_account_id == one,
+                AccountBlock.blocked_account_id == Brand.account_id,
+            ),
+            and_(
+                AccountBlock.blocker_account_id == Brand.account_id,
+                AccountBlock.blocked_account_id == one,
+            ),
+        ),
+    )
 
 
 def blocked_between(db: Session, one: uuid.UUID, other: uuid.UUID) -> bool:

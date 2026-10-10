@@ -356,3 +356,59 @@ def test_unblocked_they_are_suggested(client, db, brand, creator):
 
     assert handle in [m["creator"]["handle"] for m in matches.json()["matches"]]
     assert campaign_id in [m["campaign"]["id"] for m in for_me.json()["matches"]]
+
+
+# --- many brands at once (the bug CI caught on 10 October 2026) ---------------------------
+#
+# The first version looked up a campaign's brand in a subquery that did not
+# correlate to the campaign row, so it read every campaign's brand. With one
+# campaign in the database it happened to work; with several, Postgres
+# refused it as "more than one row" or the wrong campaigns were hidden. These
+# tests have several brands and campaigns, so that shape can never pass.
+
+
+def test_only_the_blocked_brands_campaigns_leave_discovery(client, db, clock, creator):
+    blocked_brand, other_brand = brand_user(db, clock), brand_user(db, clock)
+    hidden = [open_campaign(client, blocked_brand, title=f"Hidden {n}") for n in range(2)]
+    shown = [open_campaign(client, other_brand, title=f"Shown {n}") for n in range(2)]
+    brand_id, _ = ids(db, blocked_brand, creator)
+    client.post(URL, json={"brand_id": brand_id}, headers=creator.headers)
+
+    response = client.get(f"{CAMPAIGNS_URL}/discover", headers=creator.headers)
+
+    assert response.status_code == 200, response.text
+    found = {row["id"] for row in response.json()["items"]}
+    assert set(shown) <= found
+    assert not set(hidden) & found
+
+
+def test_only_the_blocked_brands_campaigns_leave_suggestions(client, db, clock, creator):
+    blocked_brand, other_brand = brand_user(db, clock), brand_user(db, clock)
+    hidden = open_campaign(client, blocked_brand, cities=["Coimbatore"])
+    shown = open_campaign(client, other_brand, cities=["Coimbatore"])
+    brand_id, _ = ids(db, blocked_brand, creator)
+    client.post(URL, json={"brand_id": brand_id}, headers=creator.headers)
+
+    response = client.get(f"{CAMPAIGNS_URL}/discover/for-me", headers=creator.headers)
+
+    assert response.status_code == 200, response.text
+    found = {m["campaign"]["id"] for m in response.json()["matches"]}
+    assert shown in found and hidden not in found
+
+
+def test_the_brand_lookup_is_tied_to_each_campaign():
+    """The SQL itself: the brand inside the check is the campaign's own."""
+    from sqlalchemy import select
+    from sqlalchemy.dialects import postgresql
+
+    from app.modules.auth.blocks import not_blocked_with_brand
+    from app.modules.campaigns.models import Campaign
+
+    sql = str(
+        select(Campaign.id)
+        .where(not_blocked_with_brand(uuid.uuid4(), Campaign.brand_id))
+        .compile(dialect=postgresql.dialect())
+    )
+
+    assert "brand.id = campaign.brand_id" in sql
+    assert "FROM brand, campaign" not in sql
