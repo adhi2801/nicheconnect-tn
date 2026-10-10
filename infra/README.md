@@ -59,7 +59,8 @@ protection and two weeks of backups.
    `msg91_secret_name`, then apply again with `-var "otp_sender=msg91"` and
    `-var "msg91_whatsapp_number=<number>"`.
 9. **Test a restore from backup** before the first real user (D-062).
-10. **Production**: the same steps in `infra/envs/production`.
+10. **Rehearse the incident plan** on staging, end to end, and write the date in `docs/INCIDENT_RESPONSE.md` section 7: a leaked `SECRET_KEY` rotated and confirmed within the hour.
+11. **Production**: the same steps in `infra/envs/production`.
 
 **Later, not part of going live: results read from proof (D-070).** Off
 until the validation pack says a creator's insights may go to a processor.
@@ -67,6 +68,11 @@ Then paste the Claude API key into the secret named in
 `anthropic_secret_name`, and apply again with
 `-var "proof_reading_enabled=true"`. Switched on before the key is pasted,
 the app refuses to start and ECS rolls the deploy back.
+
+**Later, not part of going live: the UPI pay link (D-085).** Off until the
+validation pack supplies the notice creators read before giving their UPI ID.
+Then apply again with `-var "upi_notice_version=<its version>"`. Withdrawing
+a UPI ID works whatever this is set to.
 
 ## Rules
 
@@ -77,6 +83,12 @@ the app refuses to start and ECS rolls the deploy back.
   to its code.
 - **Provider versions are locked** (`.terraform.lock.hcl`, for Linux and
   Windows), so every machine applies with byte-identical providers.
+- **Logs are kept 180 days, in Mumbai**, as CERT-In's Directions require of
+  every company (D-086, `docs/standards/legal.md` section 3.2). The module
+  refuses a shorter `log_retention_days`.
+- **CI checks these files on every push**: `tofu fmt -check` and `tofu
+  validate` on the bootstrap and both environments, against the locked
+  providers, with no AWS credentials (D-086).
 - **A NAT gateway is deliberately not used** (about $35 a month per
   environment). The app's containers have public addresses for outbound calls
   only; their security group accepts nothing except the load balancer. See
