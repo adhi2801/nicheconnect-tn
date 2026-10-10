@@ -14,6 +14,7 @@ Rules marked **(decision)** are open and are decided, with a `docs/DECISIONS.md`
 - **The website is the front door and the desk; the app is the pocket** (`docs/PLATFORM_AND_TECH_PLAN.md` section 2). The website wins on being found, on bulk work and on side-by-side comparison; the app wins on capture, alerts, offline and instant login.
 - **Everyone can see everything on both.** "App only" means a task done better on a phone, never data withheld from the website. No install wall, ever (section 2.5 of the plan: Myntra's 2015 to 2016 lesson).
 - **Android first.** India is 92 to 95% Android. A feature that ships on one platform first ships on Android.
+- **Adults only** (D-086): sign-up asks for the date of birth once, says it is not kept, and nothing is built for minors.
 
 ## 2. Stack (locked, D-047)
 
@@ -108,7 +109,8 @@ Measured, never estimated (`CLAUDE.md` section 7). **Field data** (real users) i
 - **CI runs a pseudo-locale build** (every string accented and 40% longer). A string that appears unchanged was hard-coded; a layout that breaks was not built for longer text. Either fails the build.
 - **Indian formats everywhere, through `Intl` with the `en-IN` locale, never by hand**: `₹1,50,000`, `17 Sep 2026`, and times in IST, because every deadline in this product is a date somebody lives (D-030).
 - **Words that are never allowed**, enforced by a CI check over the catalogue and the code: "escrow", "wallet", "guaranteed funds", "split settlement", or anything implying we hold or move money (`CLAUDE.md` constraint 1).
-- **Results read from proof are always labelled "read from the creator's screenshot"**, never "verified" (D-070). Only platform-verified numbers may say verified.
+- **Results read from proof are always labelled "read from the creator's screenshot"**, never "verified" (D-070). Only platform-verified numbers may say verified, and the same holds for every claim (`docs/standards/legal.md` section 1, rule 3).
+- **No dark patterns.** Every screen is checked against the thirteen banned by the Consumer Protection Authority (`docs/standards/legal.md` section 3.5) before release, and the yearly self-audit the e-commerce rules require from 1 January 2027 is a release step (section 12).
 - Microcopy follows `docs/standards/ux.md` section 6: buttons say what happens; errors say what went wrong and how to fix it.
 
 ## 8. Design system
@@ -131,6 +133,9 @@ Measured, never estimated (`CLAUDE.md` section 7). **Field data** (real users) i
 - **Tokens**: on the website, in `httpOnly`, `Secure`, `SameSite` cookies or in memory, **never `localStorage`**. In the apps, in the platform keystore or keychain only.
 - **A strict Content Security Policy** on the website, with nonces, no inline scripts and Trusted Types; third-party scripts need a recorded reason.
 - **Deep links are validated** before they act. A link can open a screen, never perform an action without the person confirming.
+- **Another person's text is never made clickable.** Links arrive as fields the backend has already checked against its host list (`app/core/links.py`), and the client shows the host before opening one.
+- **Warnings are shown, never suppressed**: every `text_flags` entry renders beside its field (`docs/standards/trust-and-safety.md` section 5).
+- **UPI pay details** (D-085) are shown only on the brand's pay screen, never cached, and never logged. The `upi://pay` link opens the brand's own UPI app, or renders as a QR code on the website. The screen says to check the name the UPI app shows, and flags an ID changed in the last 24 hours (`upi_id_changed_recently`).
 - **No personal data in analytics, logs or crash reports.** Phone numbers, payment references and message text are scrubbed before anything leaves the device.
 - **Big steps are confirmed** with the device's fingerprint or Face ID where the platform offers it: accepting a memo, marking a payment sent (`docs/PLATFORM_AND_TECH_PLAN.md` A15, a security gate when built).
 - **Dependencies** are pinned by lockfile, audited in CI, and licence-checked. A new package follows the same approval gate as the backend (`CLAUDE.md` section 5).
@@ -142,7 +147,7 @@ Measured, never estimated (`CLAUDE.md` section 7). **Field data** (real users) i
 |---|---|---|
 | Unit | Business rules and formatting in the shared core | Every rule, including its failure cases |
 | Component | Key components in every state | Every state in section 8 |
-| End to end | **The core journeys** on the website (Playwright) and both apps (Maestro): sign up; post a campaign; discover and apply; shortlist; send, review and accept a deal memo; submit proof with files; mark a payment sent; confirm receipt or raise a dispute | Pass on every pull request, against the slow-4G profile, and offline where the journey allows |
+| End to end | **The core journeys** on the website (Playwright) and both apps (Maestro): sign up, with the adults-only check; post a campaign; discover and apply; invite, and work together again; shortlist; send, review and accept a deal memo; submit proof with files; pay by UPI link and mark the payment sent; confirm receipt or raise a dispute; block and report | Pass on every pull request, against the slow-4G profile, and offline where the journey allows |
 | Contract | The generated client against `docs/api/openapi.json` | Regenerated in CI; any change is a reviewed diff |
 | Visual | Screenshots of every component and core screen | No unreviewed pixel change |
 | Accessibility | Section 6 | Automated in CI; manual before each release |
@@ -160,6 +165,7 @@ Coverage floor: **90% of the shared core**, measured, never estimated; a high nu
 - **Over-the-air updates** only for JavaScript fixes inside the store's rules; anything native goes through a store release.
 - **Feature flags** for anything risky, so it can be switched off without a release.
 - **Every release can be rolled back**, and the steps are written down before the first one.
+- **Once a year, and before launch: the dark-pattern self-audit** (`docs/standards/legal.md` section 3.4), with its result displayed as the e-commerce rules require from 1 January 2027.
 
 ## 13. Observability and analytics
 
