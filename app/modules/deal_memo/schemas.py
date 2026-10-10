@@ -246,6 +246,12 @@ class CreatorDeliveryRead(BaseModel):
     )
     barter_deals_delivered: int
     barter_deals_not_delivered: int
+    distinct_brands: int = Field(
+        description=(
+            "How many different brands the completed deals were with. Show it beside "
+            "the figures: twelve deals with one brand say less than twelve across nine"
+        )
+    )
 
 
 def to_delivery_read(record: DeliveryRecord) -> CreatorDeliveryRead:
@@ -260,6 +266,7 @@ def to_delivery_read(record: DeliveryRecord) -> CreatorDeliveryRead:
         disclosure_confirmed_share=record.disclosure_confirmed_share,
         barter_deals_delivered=record.barter_deals_delivered,
         barter_deals_not_delivered=record.barter_deals_not_delivered,
+        distinct_brands=record.distinct_brands,
     )
 
 

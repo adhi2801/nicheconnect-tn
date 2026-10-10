@@ -15,6 +15,7 @@ from app.modules.deal_memo.delivery_record import Outcome, classify
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof
 
+BRAND = uuid.uuid4()  # every deal here is with one brand, unless a test says otherwise
 CREATOR = uuid.uuid4()
 ACCEPTED = datetime(2026, 9, 1, 9, 0, tzinfo=UTC)
 DUE_ON = date(2026, 9, 10)
@@ -76,6 +77,7 @@ def build(*deals, now: datetime = NOW):
         {deal.id: proofs for deal, _, proofs in deals},
         CREATOR,
         now,
+        {deal.id: BRAND for deal, _, _ in deals},
     )
 
 
@@ -304,3 +306,36 @@ def test_late_barter_work_is_not_reported_as_overdue():
     assert record.currently_overdue == 0
     assert record.barter_deals_delivered == 0
     assert record.barter_deals_not_delivered == 0
+
+
+# --- different brands (item 61) ----------------------------------------------------------
+
+
+def test_the_record_says_how_many_different_brands_it_rests_on():
+    deals = [delivered(), delivered(), silent()]
+    brands = [uuid.uuid4(), uuid.uuid4(), uuid.uuid4()]
+    brand_of = {deal.id: brands[i % 2] for i, (deal, _, _) in enumerate(deals)}
+
+    record = delivery_record.build_record(
+        [(deal, kind) for deal, kind, _ in deals],
+        {deal.id: proofs for deal, _, proofs in deals},
+        CREATOR,
+        NOW,
+        brand_of,
+    )
+
+    assert record.deals_completed == 3
+    assert record.distinct_brands == 2
+
+
+def test_many_deals_with_one_brand_are_one_brand():
+    assert build(delivered(), delivered(), delivered()).distinct_brands == 1
+
+
+def test_barter_and_unfinished_deals_do_not_count_a_brand():
+    on_barter = delivered(campaign_type="barter")
+    not_due_yet = memo(content_due_on=date(2026, 10, 30)), "paid", []
+
+    record = build(on_barter, not_due_yet)
+
+    assert record.distinct_brands == 0

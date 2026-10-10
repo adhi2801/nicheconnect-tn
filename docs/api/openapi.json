@@ -1426,6 +1426,11 @@
             "title": "Deals Unpaid",
             "type": "integer"
           },
+          "distinct_creators": {
+            "description": "How many different creators the settled deals were with. Show it beside the figures: many deals with one creator say less than the same number across many",
+            "title": "Distinct Creators",
+            "type": "integer"
+          },
           "median_days_to_pay": {
             "anyOf": [
               {
@@ -1465,7 +1470,8 @@
           "deals_unpaid",
           "currently_overdue",
           "paid_on_time_share",
-          "median_days_to_pay"
+          "median_days_to_pay",
+          "distinct_creators"
         ],
         "title": "BrandReliabilityRead",
         "type": "object"
@@ -2492,6 +2498,11 @@
             "description": "Of delivered deals that required an ad disclosure, the share where the creator confirmed it was on the post. The creator's statement, not a judgement of compliance. Null below three completed deals, or when no delivered deal required one",
             "title": "Disclosure Confirmed Share"
           },
+          "distinct_brands": {
+            "description": "How many different brands the completed deals were with. Show it beside the figures: twelve deals with one brand say less than twelve across nine",
+            "title": "Distinct Brands",
+            "type": "integer"
+          },
           "status": {
             "enum": [
               "new_creator_no_history_yet",
@@ -2511,7 +2522,8 @@
           "delivered_on_time_share",
           "disclosure_confirmed_share",
           "barter_deals_delivered",
-          "barter_deals_not_delivered"
+          "barter_deals_not_delivered",
+          "distinct_brands"
         ],
         "title": "CreatorDeliveryRead",
         "type": "object"

@@ -92,24 +92,34 @@ class ReliabilityRecord:
     # the same as zero and must never be rendered as zero.
     paid_on_time_share: float | None
     median_days_to_pay: float | None
+    # How many different creators the settled deals were with (item 61):
+    # many deals with one creator say less than the same number across many.
+    distinct_creators: int
 
     @property
     def has_history(self) -> bool:
         return self.status == HAS_HISTORY
 
 
-def _payments_for_brand(db: Session, brand_id: uuid.UUID) -> list[PaymentStatus]:
-    """Every payment record on this brand's own deals, in one query."""
-    return list(
-        db.scalars(
-            select(PaymentStatus)
-            .join(DealMemo, DealMemo.id == PaymentStatus.deal_memo_id)
-            .join(Application, Application.id == DealMemo.application_id)
-            .join(Campaign, Campaign.id == Application.campaign_id)
-            .where(Campaign.brand_id == brand_id)
-            .order_by(PaymentStatus.due_on, PaymentStatus.id)
-        ).all()
-    )
+def _payments_for_brand(
+    db: Session, brand_id: uuid.UUID
+) -> tuple[list[PaymentStatus], dict[uuid.UUID, uuid.UUID]]:
+    """Every payment record on this brand's own deals, and each one's
+    creator, in one query."""
+    rows = db.execute(
+        select(PaymentStatus, Application.creator_id)
+        .join(DealMemo, DealMemo.id == PaymentStatus.deal_memo_id)
+        .join(Application, Application.id == DealMemo.application_id)
+        .join(Campaign, Campaign.id == Application.campaign_id)
+        .where(Campaign.brand_id == brand_id)
+        .order_by(PaymentStatus.due_on, PaymentStatus.id)
+    ).tuples()
+    payments: list[PaymentStatus] = []
+    creator_of: dict[uuid.UUID, uuid.UUID] = {}
+    for payment, creator_id in rows:
+        payments.append(payment)
+        creator_of[payment.id] = creator_id
+    return payments, creator_of
 
 
 def _days_to_pay(payment: PaymentStatus) -> int:
@@ -138,6 +148,7 @@ def build_record(
     brand_id: uuid.UUID,
     today: date,
     disputed: set[uuid.UUID] | None = None,
+    creator_of: dict[uuid.UUID, uuid.UUID] | None = None,
 ) -> ReliabilityRecord:
     """Work the record out from payment rows. Pure, so it is easy to trust.
 
@@ -188,14 +199,17 @@ def build_record(
         currently_overdue=len(overdue_now),
         paid_on_time_share=on_time_share,
         median_days_to_pay=median_days,
+        distinct_creators=len(
+            {(creator_of or {}).get(payment.id) for payment in settled} - {None}
+        ),
     )
 
 
 def for_brand(db: Session, brand_id: uuid.UUID, today: date) -> ReliabilityRecord:
     """This brand's payment record as of today."""
-    payments = _payments_for_brand(db, brand_id)
+    payments, creator_of = _payments_for_brand(db, brand_id)
     disputed = disputes.open_payment_ids(db, {p.id for p in payments}, today)
-    return build_record(payments, brand_id, today, disputed)
+    return build_record(payments, brand_id, today, disputed, creator_of)
 
 
 def for_brands(
@@ -211,7 +225,7 @@ def for_brands(
     if not brand_ids:
         return {}
     rows = db.execute(
-        select(Campaign.brand_id, PaymentStatus)
+        select(Campaign.brand_id, PaymentStatus, Application.creator_id)
         .join(Application, Application.campaign_id == Campaign.id)
         .join(DealMemo, DealMemo.application_id == Application.id)
         .join(PaymentStatus, PaymentStatus.deal_memo_id == DealMemo.id)
@@ -221,13 +235,15 @@ def for_brands(
     by_brand: dict[uuid.UUID, list[PaymentStatus]] = {
         brand_id: [] for brand_id in brand_ids
     }
-    for brand_id, payment in rows:
+    creator_of: dict[uuid.UUID, uuid.UUID] = {}
+    for brand_id, payment, creator_id in rows:
         by_brand[brand_id].append(payment)
+        creator_of[payment.id] = creator_id
     disputed = disputes.open_payment_ids(
         db, {p.id for payments in by_brand.values() for p in payments}, today
     )
     return {
-        brand_id: build_record(payments, brand_id, today, disputed)
+        brand_id: build_record(payments, brand_id, today, disputed, creator_of)
         for brand_id, payments in by_brand.items()
     }
 

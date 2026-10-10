@@ -138,6 +138,13 @@ class BrandReliabilityRead(BaseModel):
     currently_overdue: int
     paid_on_time_share: float | None
     median_days_to_pay: float | None
+    distinct_creators: int = Field(
+        description=(
+            "How many different creators the settled deals were with. Show it beside "
+            "the figures: many deals with one creator say less than the same number "
+            "across many"
+        )
+    )
 
 
 def to_reliability_read(record: ReliabilityRecord) -> BrandReliabilityRead:
@@ -150,6 +157,7 @@ def to_reliability_read(record: ReliabilityRecord) -> BrandReliabilityRead:
         currently_overdue=record.currently_overdue,
         paid_on_time_share=record.paid_on_time_share,
         median_days_to_pay=record.median_days_to_pay,
+        distinct_creators=record.distinct_creators,
     )
 
 

@@ -125,7 +125,7 @@ Built from 3.8:
 
 | # | Item | Gate |
 |---|---|---|
-| 61 | Records say how many different counterparties they rest on; pairs of accounts sharing a device or network at sign-up are flagged to the admin | Security, database; privacy check (`legal.md` 3.1) |
+| 61 | Pairs of accounts sharing a device or network at sign-up, flagged to the admin. (The other half, counting different counterparties on records, was built 10 October.) Needs storing sign-up addresses, which is personal data | **Founders and lawyer first** (`legal.md` 3.1); security, database |
 | 62 | The login-code message says we never ask for it | MSG91 template, founders |
 | 63 | The founders' weekly numbers (`docs/SURVIVAL_PLAYBOOK.md` section 4) as an admin view: campaign fill rate, application success, time to first application, repeat rate, paid on time, active brands and creators | Security (admin only) |
 

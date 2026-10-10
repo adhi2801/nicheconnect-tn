@@ -79,7 +79,7 @@ Researched 10 October 2026, sources in section 6.
 |---|---|---|
 | A dispute, with entries and evidence links | Both sides on the record; we never judge (D-028, D-035). Evidence links only to known platforms and file hosts (`app/core/links.py`); uploaded evidence is the better end | Built |
 | A report | One open report per reporter per subject (D-061); 10 an hour and 30 a day per account | Built |
-| **Pumped records: deals between accounts one person controls** | Records show how many **different** counterparties they rest on, and a figure resting on one or two counterparties says so. Pairs of accounts sharing a device or network at sign-up are flagged to the admin, never shown publicly | **Owed** |
+| **Pumped records: deals between accounts one person controls** | Records show how many **different** counterparties they rest on: `distinct_brands` on a creator's delivery record, `distinct_creators` on a brand's payment record, so a perfect record built with one partner reads as exactly that. Flagging pairs of accounts that share a device or network at sign-up would need storing sign-up addresses, which is personal data: a founder and lawyer decision first (`legal.md` section 3.1) | Counts built; network flag **Owed** (decision) |
 | Reviews or ratings bought or invented | None exist except records from real deals (`legal.md` section 3.6) | Built |
 
 ### 3.4 Anyone → us

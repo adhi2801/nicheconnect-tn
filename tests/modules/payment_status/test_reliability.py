@@ -266,3 +266,31 @@ def test_the_count_always_travels_with_the_figures():
     assert result.deals_completed == 3
     assert result.deals_paid == 3
     assert result.has_history is True
+
+
+# --- different creators (item 61) ---------------------------------------------------------
+
+
+def test_the_record_says_how_many_different_creators_it_rests_on():
+    payments = [paid_on(5), paid_on(6), never_paid()]
+    for payment in payments:
+        payment.id = uuid.uuid4()  # pure rows: give them the ids a database would
+    first, second = uuid.uuid4(), uuid.uuid4()
+    creator_of = {payments[0].id: first, payments[1].id: first, payments[2].id: second}
+
+    record = reliability.build_record(payments, BRAND, TODAY, None, creator_of)
+
+    assert record.deals_completed == 3
+    assert record.distinct_creators == 2
+
+
+def test_a_payment_not_yet_settled_does_not_count_a_creator():
+    pending = record(due_on=date(2026, 10, 30), id=uuid.uuid4())
+    creator_of = {pending.id: uuid.uuid4()}
+
+    assert (
+        reliability.build_record(
+            [pending], BRAND, TODAY, None, creator_of
+        ).distinct_creators
+        == 0
+    )

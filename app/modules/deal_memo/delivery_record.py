@@ -83,6 +83,10 @@ class DeliveryRecord:
     # Barter, shown and never scored (D-026).
     barter_deals_delivered: int
     barter_deals_not_delivered: int
+    # How many different brands the completed deals were with (item 61).
+    # Twelve deals with one brand say less than twelve across nine, and two
+    # accounts run by one person can only ever make it one.
+    distinct_brands: int
 
 
 def is_approved(
@@ -150,16 +154,19 @@ def build_record(
     proofs_by_memo: dict[uuid.UUID, list[DeliverableProof]],
     creator_id: uuid.UUID,
     now: datetime,
+    brand_of: dict[uuid.UUID, uuid.UUID],
 ) -> DeliveryRecord:
     """Work the record out from rows. Pure, so it is easy to trust.
 
-    `deals` holds each accepted memo with its campaign type.
+    `deals` holds each accepted memo with its campaign type; `brand_of`
+    maps each memo to the brand it was with.
     """
     delivered: list[DealMemo] = []
     not_delivered = 0
     overdue_now = 0
     barter_delivered = 0
     barter_not_delivered = 0
+    completed_with: set[uuid.UUID | None] = set()
     for memo, campaign_type in deals:
         proofs = proofs_by_memo.get(memo.id, [])
         outcome = classify(memo, proofs, now)
@@ -171,8 +178,10 @@ def build_record(
             continue
         if outcome is Outcome.DELIVERED:
             delivered.append(memo)
+            completed_with.add(brand_of.get(memo.id))
         elif outcome is Outcome.NOT_DELIVERED:
             not_delivered += 1
+            completed_with.add(brand_of.get(memo.id))
             # A silent no-show still owes the work; a cancelled deal does not.
             if memo.status != "cancelled":
                 overdue_now += 1
@@ -211,6 +220,7 @@ def build_record(
         disclosure_confirmed_share=disclosure_share,
         barter_deals_delivered=barter_delivered,
         barter_deals_not_delivered=barter_not_delivered,
+        distinct_brands=len(completed_with - {None}),
     )
 
 
@@ -224,10 +234,9 @@ def creator_id_for_account(db: Session, account_id: uuid.UUID) -> uuid.UUID | No
 
 def for_creator(db: Session, creator_id: uuid.UUID, now: datetime) -> DeliveryRecord:
     """This creator's delivery record as of `now`, in two queries."""
-    deals = [
-        (memo, campaign_type)
-        for memo, campaign_type in db.execute(
-            select(DealMemo, Campaign.campaign_type)
+    rows = list(
+        db.execute(
+            select(DealMemo, Campaign.campaign_type, Campaign.brand_id)
             .join(Application, Application.id == DealMemo.application_id)
             .join(Campaign, Campaign.id == Application.campaign_id)
             .where(
@@ -238,7 +247,9 @@ def for_creator(db: Session, creator_id: uuid.UUID, now: datetime) -> DeliveryRe
             )
             .order_by(DealMemo.accepted_at, DealMemo.id)
         ).tuples()
-    ]
+    )
+    deals = [(memo, campaign_type) for memo, campaign_type, _ in rows]
+    brand_of = {memo.id: brand_id for memo, _, brand_id in rows}
     proofs_by_memo: dict[uuid.UUID, list[DeliverableProof]] = defaultdict(list)
     if deals:
         for proof in db.scalars(
@@ -247,4 +258,4 @@ def for_creator(db: Session, creator_id: uuid.UUID, now: datetime) -> DeliveryRe
             .order_by(DeliverableProof.created_at, DeliverableProof.id)
         ):
             proofs_by_memo[proof.deal_memo_id].append(proof)
-    return build_record(deals, proofs_by_memo, creator_id, now)
+    return build_record(deals, proofs_by_memo, creator_id, now, brand_of)
