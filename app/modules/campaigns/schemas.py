@@ -4,11 +4,12 @@ import uuid
 from datetime import date, datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 from pydantic_core import PydanticCustomError
 
 from app.core.literals import ensure_same_values
 from app.core.taxonomy import CURRENCY, MAX_NICHES, Niche
+from app.core.text_flags import FieldFlag, field_flags
 from app.modules.campaigns.models import (
     APPLICATION_ORIGINS,
     APPLICATION_STATUSES,
@@ -138,6 +139,22 @@ class CampaignRead(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    @computed_field(  # type: ignore[prop-decorator]  # pydantic documents this
+        description=(
+            "Warnings on the free text above, worked out on every read: a request "
+            "for money from a creator, or contact details before a deal is agreed "
+            "(item 60). Show each beside its field; never hide the text"
+        )
+    )
+    @property
+    def text_flags(self) -> list[FieldFlag]:
+        # Creators read a brief before any deal: money and contact both count.
+        return field_flags(
+            {"description": self.description, "deliverables": self.deliverables},
+            money=True,
+            contact=True,
+        )
+
 
 # --- applications --------------------------------------------------------
 
@@ -260,6 +277,30 @@ class ApplicationRead(BaseModel):
     status_changed_at: datetime
     created_at: datetime
     updated_at: datetime
+
+    @computed_field(  # type: ignore[prop-decorator]  # pydantic documents this
+        description=(
+            "Warnings on the free text above, worked out on every read: a request "
+            "for money from a creator, or contact details before a deal is agreed "
+            "(item 60). Show each beside its field; never hide the text"
+        )
+    )
+    @property
+    def text_flags(self) -> list[FieldFlag]:
+        before_a_deal = self.status != "accepted"
+        # The brand's words reach a creator: money and contact. A creator
+        # naming their own price in a pitch is ordinary, so only contact.
+        return [
+            *field_flags(
+                {
+                    "invitation_note": self.invitation_note,
+                    "rejection_note": self.rejection_note,
+                },
+                money=True,
+                contact=before_a_deal,
+            ),
+            *field_flags({"pitch": self.pitch}, money=False, contact=before_a_deal),
+        ]
 
 
 class ApplicationFeedbackRead(BaseModel):

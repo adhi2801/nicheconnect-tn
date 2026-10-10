@@ -55,9 +55,9 @@ Researched 10 October 2026, sources in section 6.
 | A deal memo, its extra terms | Accepted terms never change, and the deal record proves it (D-057); the creator can ask for changes or decline | Built |
 | A revision request on proof | One change restarts the clock (D-025); note plain text | Built |
 | Marking a payment sent | Only the creator can confirm it arrived (D-027); the reference shape is checked; a dispute holds the record short of unpaid | Built |
-| **Payment requests disguised in text** ("pay ₹2,000 registration") | **Flag money requests in brief, note, memo and message text** (section 4) | **Owed** |
+| **Payment requests disguised in text** ("pay ₹2,000 registration") | `text_flags` on briefs, invitation and rejection notes, memo terms and revision notes: a request for a fee or deposit is flagged, while ordinary pay ("we pay ₹5,000 per reel") is not (`app/core/text_flags.py`) | Built |
 | **A brand name copying a famous brand** | Verified business from GST (item 36). Until then, no "verified" mark of any kind | **Owed** (item 36) |
-| Contact details in text, pulling the creator off the record | Flag phone numbers, emails, UPI IDs and messaging links in text the other side reads before a deal is agreed (section 4) | **Owed** |
+| Contact details in text, pulling the creator off the record | Phone numbers, emails, UPI IDs and WhatsApp or Telegram links flagged in briefs, pitches and notes until the deal is agreed (D-086: flagged, not hidden) | Built |
 | Repeated contact after a no | **Block** (`POST /me/blocks`): once either side blocks, no invitation, repeat or application starts in either direction, and neither appears in the other's search, matches or discovery. Agreed deals carry on; the blocked side is never told, and every refusal reads as not found | Built |
 
 ### 3.2 Creator → brand
@@ -95,7 +95,7 @@ Researched 10 October 2026, sources in section 6.
 
 ---
 
-## 4. Text and link checks (owed, one design for all of them)
+## 4. Text and link checks (built 10 October 2026, `app/core/text_flags.py` and `app/core/links.py`)
 
 One module, used by every place free text from one person reaches another:
 

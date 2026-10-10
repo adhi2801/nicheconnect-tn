@@ -5,7 +5,7 @@ from datetime import date, datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Path, Request, Response, status
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 from sqlalchemy.orm import Session
 
 from app.core.errors import ResponseDocs, problem_doc
@@ -14,6 +14,7 @@ from app.core.links import ContentLink
 from app.core.literals import ensure_same_values
 from app.core.rate_limit import per_account, rate_limit
 from app.core.storage import FileStore, get_file_store
+from app.core.text_flags import FieldFlag, field_flags
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.campaigns.dependencies import CurrentCreatorProfile
@@ -328,6 +329,20 @@ class ProofRead(BaseModel):
     content_removed_on: datetime | None
     created_at: datetime
     updated_at: datetime
+
+    @computed_field(  # type: ignore[prop-decorator]  # pydantic documents this
+        description=(
+            "Warnings on the free text above, worked out on every read: a request "
+            "for money from a creator, or contact details before a deal is agreed "
+            "(item 60). Show each beside its field; never hide the text"
+        )
+    )
+    @property
+    def text_flags(self) -> list[FieldFlag]:
+        # A revision note is the brand writing to the creator mid-deal.
+        return field_flags(
+            {"revision_note": self.revision_note}, money=True, contact=False
+        )
 
 
 @router.post(

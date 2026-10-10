@@ -739,6 +739,15 @@
             "title": "Status Changed At",
             "type": "string"
           },
+          "text_flags": {
+            "description": "Warnings on the free text above, worked out on every read: a request for money from a creator, or contact details before a deal is agreed (item 60). Show each beside its field; never hide the text",
+            "items": {
+              "$ref": "#/components/schemas/FieldFlag"
+            },
+            "readOnly": true,
+            "title": "Text Flags",
+            "type": "array"
+          },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
@@ -760,7 +769,8 @@
           "decline_reason",
           "status_changed_at",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "text_flags"
         ],
         "title": "ApplicationRead",
         "type": "object"
@@ -1938,6 +1948,15 @@
             "title": "Status",
             "type": "string"
           },
+          "text_flags": {
+            "description": "Warnings on the free text above, worked out on every read: a request for money from a creator, or contact details before a deal is agreed (item 60). Show each beside its field; never hide the text",
+            "items": {
+              "$ref": "#/components/schemas/FieldFlag"
+            },
+            "readOnly": true,
+            "title": "Text Flags",
+            "type": "array"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -1962,7 +1981,8 @@
           "applications_close_on",
           "status",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "text_flags"
         ],
         "title": "CampaignRead",
         "type": "object"
@@ -3654,6 +3674,33 @@
         "title": "FieldError",
         "type": "object"
       },
+      "FieldFlag": {
+        "description": "One warning on one field, for the app to show beside that text.",
+        "properties": {
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "flag": {
+            "description": "asks_for_money: someone is asked to pay a fee or deposit, which never happens here; phone_number, email, upi_id, messaging_link: contact details before a deal is agreed. Clients must tolerate new values",
+            "enum": [
+              "asks_for_money",
+              "phone_number",
+              "email",
+              "upi_id",
+              "messaging_link"
+            ],
+            "title": "Flag",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "flag"
+        ],
+        "title": "FieldFlag",
+        "type": "object"
+      },
       "HealthRead": {
         "description": "The process is up. Says nothing about what it depends on.",
         "properties": {
@@ -4298,6 +4345,15 @@
             "title": "Status",
             "type": "string"
           },
+          "text_flags": {
+            "description": "Warnings on the free text above, worked out on every read: a request for money from a creator, or contact details before a deal is agreed (item 60). Show each beside its field; never hide the text",
+            "items": {
+              "$ref": "#/components/schemas/FieldFlag"
+            },
+            "readOnly": true,
+            "title": "Text Flags",
+            "type": "array"
+          },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
@@ -4347,7 +4403,8 @@
           "cancelled_at",
           "cancellation_kind",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "text_flags"
         ],
         "title": "MemoRead",
         "type": "object"
@@ -4641,6 +4698,15 @@
             "title": "Status",
             "type": "string"
           },
+          "text_flags": {
+            "description": "Warnings on the free text above, worked out on every read: a request for money from a creator, or contact details before a deal is agreed (item 60). Show each beside its field; never hide the text",
+            "items": {
+              "$ref": "#/components/schemas/FieldFlag"
+            },
+            "readOnly": true,
+            "title": "Text Flags",
+            "type": "array"
+          },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
@@ -4709,7 +4775,8 @@
           "updated_at",
           "stage",
           "waiting_on",
-          "has_open_dispute"
+          "has_open_dispute",
+          "text_flags"
         ],
         "title": "MemoWithStageRead",
         "type": "object"
@@ -6597,6 +6664,15 @@
             "title": "Status",
             "type": "string"
           },
+          "text_flags": {
+            "description": "Warnings on the free text above, worked out on every read: a request for money from a creator, or contact details before a deal is agreed (item 60). Show each beside its field; never hide the text",
+            "items": {
+              "$ref": "#/components/schemas/FieldFlag"
+            },
+            "readOnly": true,
+            "title": "Text Flags",
+            "type": "array"
+          },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
@@ -6617,7 +6693,8 @@
           "revision_note",
           "content_removed_on",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "text_flags"
         ],
         "title": "ProofRead",
         "type": "object"
