@@ -28,6 +28,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.modules.auth.blocks import blocked_between
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import is_suspended
@@ -70,7 +71,18 @@ def invite_creator(
         db.rollback()
         raise CampaignNotOpen()
     creator = db.get(Creator, creator_id)
-    if creator is None or is_suspended(db, creator.account_id):
+    brand_account_id = db.scalar(
+        select(Brand.account_id).where(Brand.id == campaign.brand_id)
+    )
+    if (
+        creator is None
+        or is_suspended(db, creator.account_id)
+        # Blocked either way (item 59): not found, so the block stays private.
+        or (
+            brand_account_id is not None
+            and blocked_between(db, brand_account_id, creator.account_id)
+        )
+    ):
         db.rollback()
         raise CreatorNotFound()
     waiting = db.scalar(

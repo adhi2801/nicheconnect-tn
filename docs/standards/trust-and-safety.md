@@ -16,7 +16,7 @@ Status words: **Built** (in the code, with a test), **Owed** (tracked in `docs/B
 4. **Money talk stays on the record.** Nothing in the product ever asks anyone to pay anyone except the brand paying the creator the agreed fee, through their own bank. **A creator never pays to get a deal**: any brief, note or memo text asking a creator for money is flagged (section 4).
 5. **Proof of payment is the receiver's own bank, never a screenshot.** Only the creator can confirm money arrived (D-027), and every screen that asks them says to check their own bank app.
 6. **Records about people resist being gamed.** A figure that makes someone look good or bad counts things that are hard to fake, says how many it rests on (D-038), and never counts the same pair of accounts as independent evidence (section 3.3).
-7. **Everyone can say no and be left alone**: decline, withdraw, mute (D-079), report (D-061), and block (owed, section 3.1).
+7. **Everyone can say no and be left alone**: decline, withdraw, mute (D-079), report (D-061), and block (item 59). A new way of reaching someone must respect blocks in the same change, with a test in `tests/modules/auth/test_block_api.py`.
 8. **We never ask for a login code, a UPI PIN or a password**, in any message, ever. Every login code says so, and so does the app.
 9. **A report is answered.** Reports reach the admin queue with the clocks of the IT Rules (`legal.md` section 3.3), and the reporter learns the outcome.
 
@@ -58,7 +58,7 @@ Researched 10 October 2026, sources in section 6.
 | **Payment requests disguised in text** ("pay ₹2,000 registration") | **Flag money requests in brief, note, memo and message text** (section 4) | **Owed** |
 | **A brand name copying a famous brand** | Verified business from GST (item 36). Until then, no "verified" mark of any kind | **Owed** (item 36) |
 | Contact details in text, pulling the creator off the record | Flag phone numbers, emails, UPI IDs and messaging links in text the other side reads before a deal is agreed (section 4) | **Owed** |
-| Repeated contact after a no | **Block**: a creator blocks a brand; no more invitations, and its campaigns leave their discovery | **Owed** |
+| Repeated contact after a no | **Block** (`POST /me/blocks`): once either side blocks, no invitation, repeat or application starts in either direction, and neither appears in the other's search, matches or discovery. Agreed deals carry on; the blocked side is never told, and every refusal reads as not found | Built |
 
 ### 3.2 Creator → brand
 
@@ -71,7 +71,7 @@ Researched 10 October 2026, sources in section 6.
 | **Bought audiences** | Results read from proof (D-070); connected accounts with platform numbers (items 29–31) | Partly built; **Owed** (29–31) |
 | **A channel that is not theirs** | Proof readings check the handle on the screenshot matches the channel; real ownership needs connected accounts (item 29) | Partly built |
 | Take the goods and vanish | The delivery record counts it (D-038); cancellation kinds (D-026) | Built |
-| Repeated contact after a no | Block, both ways | **Owed** |
+| Repeated contact after a no | Block, both ways (above) | Built |
 
 ### 3.3 Anyone → the records (and so → everyone who reads them)
 

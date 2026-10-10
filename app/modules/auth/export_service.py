@@ -28,6 +28,7 @@ from app.core.export import (
     to_json_value,
 )
 from app.modules.auth import attribution_service as attribution
+from app.modules.auth import block_service as blocks
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.brand import Brand
@@ -330,6 +331,7 @@ def collect_sections(db: Session, account: Account) -> list[ExportedSection]:
     return [
         *_account_sections(db, account),
         *attribution.export_for_account(db, account.id),
+        *blocks.export_for_account(db, account.id),
         *campaigns.export_for_account(db, account.id),
         *deal_memos.export_for_account(db, account.id),
         *payments.export_for_account(db, account.id),
@@ -371,6 +373,7 @@ def exported_tables() -> frozenset[str]:
     return (
         EXPORTED_TABLES
         | attribution.EXPORTED_TABLES
+        | blocks.EXPORTED_TABLES
         | campaigns.EXPORTED_TABLES
         | deal_memos.EXPORTED_TABLES
         | notifications.EXPORTED_TABLES

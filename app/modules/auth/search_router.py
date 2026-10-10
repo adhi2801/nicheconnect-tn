@@ -129,6 +129,7 @@ def search_creators(
             max_price_paise=max_price_paise,
             package_format=format,
             available_on=available_on,
+            viewer_account_id=account.id,
         ),
         limit=limit,
         cursor=cursor,

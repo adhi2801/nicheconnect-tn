@@ -149,6 +149,7 @@ def discover_campaigns(
             niche=niche,
             campaign_type=campaign_type,
             min_budget_paise=min_budget_paise,
+            viewer_account_id=account.id,
         )
     )
 
