@@ -94,9 +94,12 @@ tests/
 8. The full suite: no failures, no unexplained skips. It includes the banned money words in every file and every commit message (`test_banned_terms.py`). Files git does not track yet are scanned too, so a laptop sees what CI will. It also checks that the incident plan can rotate every secret the app is given (`test_incident_response.py`)
 9. Coverage floors, overall and per `service.py`
 10. The API fuzzed against its contract (Schemathesis)
-11. Dependency audit (pip-audit)
+11. Dependency audit (pip-audit), and every dependency's licence on the approved list (pip-licenses, D-086)
 12. Images built and scanned; any fixable vulnerability blocks (Grype); the API image's bill of materials written (Syft)
 13. Private vulnerability reporting switched on for the repository, since `SECURITY.md` sends researchers there (its own job, `repository-settings`)
+14. The OpenTofu files formatted and every environment valid against its locked providers (its own job, `infrastructure`, D-086)
+
+Every job runs on an exact runner image (`ubuntu-24.04`), never `ubuntu-latest`, so CI cannot change under us (D-086).
 
 ## 10. Honesty
 

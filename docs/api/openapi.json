@@ -1192,6 +1192,15 @@
       "BrandProfileCreate": {
         "additionalProperties": false,
         "properties": {
+          "date_of_birth": {
+            "description": "Used once, to confirm you are 18 or over, and never stored: we keep only when you confirmed it",
+            "examples": [
+              "1999-04-14"
+            ],
+            "format": "date",
+            "title": "Date Of Birth",
+            "type": "string"
+          },
           "email": {
             "examples": [
               "hello@ammasweets.in"
@@ -1211,7 +1220,8 @@
         },
         "required": [
           "name",
-          "email"
+          "email",
+          "date_of_birth"
         ],
         "title": "BrandProfileCreate",
         "type": "object"
@@ -2466,6 +2476,15 @@
             "title": "City",
             "type": "string"
           },
+          "date_of_birth": {
+            "description": "Used once, to confirm you are 18 or over, and never stored: we keep only when you confirmed it",
+            "examples": [
+              "1999-04-14"
+            ],
+            "format": "date",
+            "title": "Date Of Birth",
+            "type": "string"
+          },
           "display_name": {
             "examples": [
               "Priya Eats"
@@ -2520,7 +2539,8 @@
           "display_name",
           "handle",
           "city",
-          "niches"
+          "niches",
+          "date_of_birth"
         ],
         "title": "CreatorProfileCreate",
         "type": "object"

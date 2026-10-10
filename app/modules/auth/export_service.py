@@ -111,6 +111,9 @@ ACCOUNT_EXPORT_FIELDS = allow(
     # admin's own note is not here: it is in the admin log, section below.
     "suspended_at",
     "suspension_reason",
+    # When you confirmed you are 18 or over (D-086). The date of birth
+    # itself was never kept.
+    "adult_confirmed_at",
     "created_at",
     "updated_at",
 )

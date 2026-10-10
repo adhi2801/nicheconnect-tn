@@ -81,6 +81,7 @@ def creator(client, db, clock) -> User:
             "city": "Coimbatore",
             "niches": ["food"],
             "bio": "Street food across Tamil Nadu.",
+            "date_of_birth": "1999-04-14",
         },
         headers=user.headers,
     )

@@ -114,9 +114,17 @@ variable "embeddings_memory" {
   description = "The embedding model needs about 2.5 GB once loaded (D-052)."
 }
 
+# CERT-In's Directions of 28 April 2022 require every company to keep the
+# logs of its systems for 180 days, in India (D-086, legal.md section 3.2).
+# The log group is in Mumbai; this keeps them long enough. Lower only with
+# a decision that names the legal answer allowing it.
 variable "log_retention_days" {
   type    = number
-  default = 30
+  default = 180
+  validation {
+    condition     = var.log_retention_days >= 180
+    error_message = "log_retention_days must be at least 180: CERT-In requires 180 days of logs."
+  }
 }
 
 # --- login codes (D-058) ------------------------------------------------------------

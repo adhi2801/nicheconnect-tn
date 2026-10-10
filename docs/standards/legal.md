@@ -53,7 +53,7 @@ Status words in this file:
 | Reasonable security safeguards (Rule 6) | `security.md`, ASVS level 2 | Owed: the items `security.md` lists |
 | Breach: tell the Data Protection Board and every affected person (Rule 7) | `docs/INCIDENT_RESPONSE.md` section 5. Sources describe a detailed report to the Board within 72 hours; the exact clock is a Confirm item | **Confirm** |
 | Erase when the purpose is served or consent is withdrawn; publish retention periods (Rule 8) | Account deletion (E8) waits on the retention answer | **Confirm**, then Owed |
-| **Children (under 18): verifiable parental consent; no tracking, behavioural monitoring or targeted advertising** (Section 9, Rule 10) | See section 3.10: we propose serving adults only | **Founders** decide; **Confirm** |
+| **Children (under 18): verifiable parental consent; no tracking, behavioural monitoring or targeted advertising** (Section 9, Rule 10) | Adults only (D-086, section 3.10) | Built; **Confirm** |
 | A contact for privacy questions and grievances, published (Rule 14) | The grievance officer of section 3.3 can serve both | Owed (founders name the person) |
 | Processors on contract: AWS, Sentry, MSG91, Anthropic | Data processing terms with each, kept with the validation pack | Founders |
 | Data leaving India | Allowed unless the government restricts a country; Sentry and Anthropic process outside India | **Confirm** |
@@ -65,7 +65,7 @@ They apply to **every body corporate**, not only large ones.
 | Duty | What we do | Status |
 |---|---|---|
 | **Report listed cyber incidents to CERT-In within 6 hours of noticing them** | `docs/INCIDENT_RESPONSE.md` section 5 | Built (10 October 2026) |
-| **Keep the logs of all ICT systems for 180 days, within India** | Logs are in CloudWatch in Mumbai, but kept **30 days** (`infra/modules/app/variables.tf`, `log_retention_days`) | **Owed**: raise to 180, a decision (infrastructure) |
+| **Keep the logs of all ICT systems for 180 days, within India** | CloudWatch in Mumbai, kept 180 days, and OpenTofu refuses less (`log_retention_days`, D-086) | Built |
 | Synchronise clocks with NIC or NPL time, or a source that does not deviate from them | ECS and RDS use the Amazon Time Sync Service | **Confirm** that it satisfies the direction |
 | Name a point of contact with CERT-In | A founder | Founders |
 
@@ -118,6 +118,25 @@ Notified 30 November 2023. The Consumer Protection Authority's advisory of June 
 
 Every screen design is checked against this table (`ux.md`), and `docs/PSYCHOLOGY_AND_TRUST.md` uses only the left side's allowed versions.
 
+#### The growth levers we use, hard and on purpose (Adhi, 10 October 2026: "we need to, to survive, in legal ways")
+
+Persuasion is not the enemy; deception is. Every lever below is legal **because the fact behind it is true**, and each one works harder for being true: a marketplace lives on trust, and one fake "3 spots left" found out costs more users than it ever won. The column on the right is the line; crossing it turns the lever into a banned pattern.
+
+| Lever | How we use it | The line |
+|---|---|---|
+| **Social proof** | "14 food creators in Coimbatore applied this week", "Brands paid on time in 92% of 38 deals" | Real counts from the record, with the sample size; never invented, rounded up or borrowed from elsewhere |
+| **Scarcity** | A campaign's real closing date; "25 invitations, 3 left"; "booked until 20 Nov" | Only limits that exist in the product; never a timer that resets |
+| **Urgency** | Reminders before a real deadline: memo answer, proof review, payment due | Only real deadlines, and within each person's notification settings (D-079); never nagging |
+| **Loss aversion** | "Your 4 finished deals are not on your Passport yet", "This payment becomes late tomorrow" | True statements about their own account; never guilt or shame ("No thanks, I don't want more deals" is confirm-shaming) |
+| **Reciprocity** | Free tools that help before we ask for anything: fair-rate guidance, the media kit, the deal record | Free means free; any later charge is shown before commitment, in full |
+| **Commitment, one step at a time** | Profile, then Passport, then first application; progress shown truthfully | Every step can be undone; no step is forced to use another feature |
+| **Endowment** | A creator's record and Passport grow in value the more they deliver, a reason to stay that they earned | Their data stays theirs: the export is always one call (DPDP), so the switching cost is value, never lock-in |
+| **Defaults that serve the person** | A repeat deal arrives pre-filled; reminders start on, and turn off in one tap | A default never spends their money, publishes them, or shares their data |
+| **Anchoring** | Fair-rate guidance shows the real range for their niche and city before they quote (D-056) | Real market data with its sample size; null below the floor |
+| **Status** | Badges for verifiable facts only: "10 deals delivered on time" | Never bought, never given by us by hand, never for anything unchecked |
+| **Referrals** | Invite codes credit who brought whom (D-080) | Any reward is disclosed in full, with its abuse limits designed first (`trust-and-safety.md`) |
+| **Speed** | One tap to repeat, accept, decline or pay | The same one tap to cancel, withdraw or leave |
+
 ### 3.6 Reviews and ratings: IS 19000:2022
 
 The Bureau of Indian Standards' standard for online consumer reviews has applied since 25 November 2022. It is described as **voluntary** as of July 2025, and the government has consulted on making it mandatory. We meet it anyway: our ratings and records come only from real deals between the two parties; they are never bought, never written by us, never hidden for being negative; each shows its date and how many deals it rests on (D-038).
@@ -156,7 +175,7 @@ The Bureau of Indian Standards' standard for online consumer reviews has applied
 | Rule | What it means for us | Status |
 |---|---|---|
 | Indian Contract Act, 1872, with the IT Act section 10A: a contract made electronically is valid | The deal memo is the brand's and creator's contract, and we are not a party to it. The terms of use are ours with each user. A lawyer drafts both | **Confirm** |
-| **A minor cannot contract** (section 11; a contract with a minor is void, and a guardian cannot sign a service contract on a minor's behalf: *Raj Rani v. Prem Adib*, Bombay High Court) | A deal with a 16-year-old creator would be void, and their data needs verified parental consent (section 3.1). **We propose adults only**, with a declared date of birth at sign-up and nothing built for minors | **Founders** decide; **Confirm** |
+| **A minor cannot contract** (section 11; a contract with a minor is void, and a guardian cannot sign a service contract on a minor's behalf: *Raj Rani v. Prem Adib*, Bombay High Court) | **Adults only (D-086).** Creating a profile takes a date of birth, checked against today in Tamil Nadu; only the time of the confirmation is kept, never the date. Nothing is built for minors | Built; **Confirm** that this is enough |
 | Stamp duty on agreements (Indian Stamp Act and Tamil Nadu's rates) | Whether an accepted memo is an "agreement" that needs stamping | **Confirm** |
 | Disputes: governing law, courts (Coimbatore), and arbitration in the terms of use | We record, we never adjudicate (disputes, D-028, D-035) | **Confirm** |
 
@@ -190,7 +209,7 @@ The Rights of Persons with Disabilities Act, 2016 requires accessible informatio
 
 ### 3.15 Open-source licences
 
-Every dependency's licence is known before it is added (`security.md`); a copyleft licence (GPL, AGPL) in the served app needs a decision. Syft's SBOM already lists every licence in the API image on each CI run; **a CI check that fails on an unapproved licence is Owed**.
+Every dependency's licence is known before it is added (`security.md`); a copyleft licence (GPL, AGPL) in the served app needs a decision. Syft's SBOM lists every licence in the API image on each CI run, and **CI fails on any licence not on the approved list** (D-086): permissive licences, plus LGPL-3.0 and MPL-2.0 for libraries used unchanged.
 
 ### 3.16 Our own AI features
 

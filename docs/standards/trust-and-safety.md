@@ -100,7 +100,7 @@ Researched 10 October 2026, sources in section 6.
 One module, used by every place free text from one person reaches another:
 
 - **Money requests in text a creator reads** (briefs, invitation notes, memo terms, revision notes): phrases like "registration fee", "deposit", "pay to", "send ₹", "shipping charge", and a UPI ID or payment link in the text. They are **flagged**, never silently rewritten. The flag is a field the app shows as a warning beside the text ("we never ask creators to pay; if a brand does, report it"), and the brand is told before sending.
-- **Contact details before a deal is agreed**: phone numbers, emails, UPI IDs, and wa.me, t.me or similar links. They are flagged the same way. Whether to **hide** them until a memo is accepted, as Upwork and Fiverr do before a contract, is a founder decision: it protects people, but it adds friction for honest brands.
+- **Contact details before a deal is agreed**: phone numbers, emails, UPI IDs, and wa.me, t.me or similar links. They are flagged the same way. They are **flagged, not hidden** (D-086): hiding them before a memo is accepted, as Upwork and Fiverr do, needs an in-app chat to talk through instead, which we do not have yet. Revisit when one exists.
 - **Links we accept as fields** (proof `content_url`, dispute `evidence_url`): https only (built), and **only hosts on a published list**: the content platforms we support, plus our own file links. Anything else is refused with a message, before anyone clicks it.
 - Flags are worked out on read, from the text, so a better rule applies to old text too ("worked out, never stored", `backend.md` section 2). Every flag pattern has a test with real Tamil Nadu examples, and every false positive found becomes one.
 

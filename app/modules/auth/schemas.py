@@ -280,11 +280,24 @@ CreatorLanguages = Annotated[list[Language], Field(min_length=1)]
 Bio = Annotated[str, Field(max_length=BIO_MAX_LENGTH)]
 
 
+DateOfBirth = Annotated[
+    date,
+    Field(
+        description=(
+            "Used once, to confirm you are 18 or over, and never stored: we "
+            "keep only when you confirmed it"
+        ),
+        examples=["1999-04-14"],
+    ),
+]
+
+
 class BrandProfileCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     name: BrandName
     email: BrandEmail
+    date_of_birth: DateOfBirth
 
 
 class BrandProfileUpdate(BaseModel):
@@ -320,6 +333,7 @@ class CreatorProfileCreate(BaseModel):
     niches: CreatorNiches
     languages: CreatorLanguages = list(LANGUAGES)
     bio: Bio | None = None
+    date_of_birth: DateOfBirth
 
 
 class CreatorProfileUpdate(BaseModel):

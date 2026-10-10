@@ -255,6 +255,7 @@ def test_a_retried_profile_is_created_once(client, db, clock):
             "city": "Coimbatore",
             "niches": ["food"],
             "languages": ["en"],
+            "date_of_birth": "1999-04-14",
         },
     )
 

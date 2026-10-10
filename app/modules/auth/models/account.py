@@ -61,6 +61,12 @@ class Account(Base):
         DateTime(timezone=True), nullable=True
     )
     suspension_reason: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # When the person confirmed they are 18 or over, by giving a date of
+    # birth we checked and did not keep (D-086). NULL for accounts made
+    # before the rule, and until a profile is created.
+    adult_confirmed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

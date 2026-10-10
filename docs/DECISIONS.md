@@ -793,3 +793,22 @@ Newest entries at the bottom.
   6. Tests: 51, and 13 rules shown to fail when broken.
   7. Owed: the notice wording, and trying the link on real phones with the main UPI apps before launch.
   8. `database.md` section 4 now names this decision.
+
+## D-086: Adults only; contact details flagged, not hidden; 180-day logs; four CI checks
+- Date: 2026-10-10
+- Approved by: Adhi, in this session ("approve all"), on the four decisions put to him after the legal and trust-and-safety standards.
+- Context: The legal research (`docs/standards/legal.md`) and the trust-and-safety review (`docs/standards/trust-and-safety.md`) found decisions only a founder could make, and CI gaps.
+- Options considered and chosen:
+  1. **Adults only** (chosen), over allowing minors with parental consent. A contract with a minor is void in India, and DPDP requires verified parental consent for their data. Creating a profile takes a date of birth, checked against today in Tamil Nadu. Only `account.adult_confirmed_at` is kept (migration `5cf8639be443`), never the date: the least the rule needs.
+  2. **Contact details flagged, not hidden**, until there is an in-app chat to talk through instead (item 60).
+  3. **Logs kept 180 days** (chosen), over 30, as CERT-In requires. OpenTofu refuses less.
+  4. **CI** (all chosen):
+     - every job on `ubuntu-24.04`, never `ubuntu-latest`;
+     - a new `infrastructure` job running `tofu fmt -check` and `tofu validate` on every environment, OpenTofu 1.12.6 pinned by checksum;
+     - a licence allow-list (pip-licenses 5.5.5) that fails on anything not approved;
+     - proof and evidence links from a published host list (item 57).
+- Reason: each closes a gap the research found, with the smallest change that does.
+- Consequences / follow-ups:
+  - Creating a profile now requires `date_of_birth`. No client exists yet (D-053), so tightening the contract costs nothing today.
+  - Lawyer question 2 in `legal.md` section 4 asks whether a declared date is enough.
+  - The persuasion levers we use, and the line each must not cross, are written into `legal.md` section 3.5.

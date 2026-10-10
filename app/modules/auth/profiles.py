@@ -5,19 +5,22 @@ An account has exactly one profile, and its role decides which kind.
 """
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.clock import india_date
 from app.modules.auth.exceptions import (
     EmailTaken,
     HandleTaken,
+    MustBeAnAdult,
     ProfileAlreadyExists,
     ProfileNotFound,
 )
+from app.modules.auth.models.account import Account
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 
@@ -55,22 +58,44 @@ def get_profile[Profile: (Brand, Creator)](
     return profile
 
 
+ADULT_AGE = 18
+
+
+def is_adult(born_on: date, today: date) -> bool:
+    """18 or over on `today`. Someone born on 29 February turns 18 on
+    1 March in a year without one."""
+    try:
+        eighteenth = born_on.replace(year=born_on.year + ADULT_AGE)
+    except ValueError:  # 29 February, and the eighteenth year has none
+        eighteenth = date(born_on.year + ADULT_AGE, 3, 1)
+    return eighteenth <= today
+
+
 def create_profile[Profile: (Brand, Creator)](
     db: Session,
     model: type[Profile],
     account_id: uuid.UUID,
     fields: dict[str, Any],
     now: datetime,
+    *,
+    born_on: date,
 ) -> Profile:
-    """Create the account's one profile.
+    """Create the account's one profile, for an adult only (D-086).
 
-    Raises ProfileAlreadyExists, and HandleTaken or EmailTaken when someone
-    else already uses that handle or email.
+    The date of birth is checked against today in Tamil Nadu and then
+    dropped: only the time of the confirmation is kept, on the account, as
+    little as the rule needs. Raises MustBeAnAdult, ProfileAlreadyExists,
+    and HandleTaken or EmailTaken when someone else already uses that handle
+    or email.
     """
+    if not is_adult(born_on, india_date(now)):
+        db.rollback()
+        raise MustBeAnAdult()
     if find_profile(db, model, account_id) is not None:
         db.rollback()
         raise ProfileAlreadyExists()
 
+    db.get_one(Account, account_id).adult_confirmed_at = now
     profile = model(account_id=account_id, created_at=now, updated_at=now, **fields)
     db.add(profile)
     try:
