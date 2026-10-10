@@ -139,7 +139,15 @@ def upgrade() -> None:
     op.add_column('application', sa.Column('invitation_note', sa.Text(), nullable=True))
     op.add_column('application', sa.Column('repeat_of_application_id', sa.UUID(), nullable=True))
     op.add_column('application', sa.Column('decline_reason', sa.String(length=20), nullable=True))
-    op.alter_column('application', 'pitch', existing_type=sa.TEXT(), nullable=True)
+    # Deliberate (D-084): an invitation has no pitch. Squawk warns that
+    # readers may expect a value; the only reader is this app, which handles
+    # null, and the API contract declares it nullable from this change on (no
+    # frontend exists yet, D-053). One statement with its comment, so the
+    # ignore applies to exactly this line, as in c45a9831e0c9.
+    op.execute(
+        "-- squawk-ignore ban-drop-not-null\n"
+        "ALTER TABLE application ALTER COLUMN pitch DROP NOT NULL"
+    )
 
     op.execute(
         f"ALTER TABLE application ADD CONSTRAINT {FOREIGN_KEY} "
