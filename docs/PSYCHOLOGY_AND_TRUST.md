@@ -2,7 +2,7 @@
 
 **Researched 1 October 2026.** Every product decision that touches how people feel (screens, alerts, words, the order things happen in) reads this first. Facts carry sources at the bottom; where something is our judgement, it says so.
 
-**The one idea:** both sides of this market already price in each other's risk. Creators quote higher or demand deposits because brands pay late; brands haggle because creators inflate. **Whoever removes the fear takes the market.** We remove it with facts, not with persuasion.
+**The one idea:** both sides of this market already price in each other's risk. Creators quote higher or demand deposits because brands pay late; brands haggle because creators inflate. **Whoever removes the fear takes the market.** We remove it with facts, and we persuade only with facts that are true: the levers we use on purpose, and the line each must not cross, are in `docs/standards/legal.md` section 3.5.
 
 ---
 
@@ -29,7 +29,7 @@ India's Central Consumer Protection Authority made 13 deceptive designs unfair t
 | Forced action | No task is held hostage to an unrelated one (installing the app, inviting friends, connecting Instagram) |
 | Subscription trap | Cancelling is as easy as joining, from the same screen, in the same number of steps |
 | Interface interference | The safe choice is never hidden or greyed; both choices look like choices |
-| Bait and switch | What a campaign promises is what the memo records (D-024) |
+| Bait and switch | What the two sides agreed is what the memo records, and once accepted it cannot change: the deal record proves it (D-057) |
 | Drip pricing | Any price we charge is shown whole, at the start |
 | Disguised advertisement | Paid placement, if it ever exists, is labelled as paid |
 | Nagging | Every alert is tied to a real event in a deal; a notification budget per person (section 5) |
@@ -46,7 +46,10 @@ India's Central Consumer Protection Authority made 13 deceptive designs unfair t
 | **Facts over opinions** | Star ratings inflate (Airbnb's skew heavily positive) and lose their meaning; two-sided reviews invite retaliation | Records of what happened, with dates: on-time payment share, delivered on time, disputes. Never stars | **Built** (D-034, D-038) |
 | **Proof nobody can quietly change** | Trust needs that the record itself cannot be edited by the platform | The deal record is append-only, chained, and stamped daily by outside authorities | **Built** (D-057, D-060) |
 | **Simultaneous reveal**, if feedback ever exists | Airbnb shows reviews only after both sides submit, or 14 days pass, which discourages tit-for-tat | Any future feedback between the two sides is hidden until both have answered | Proposed |
-| **Fair process, visible** | People accept an outcome they dislike when the process was fair and they could see it (procedural justice, our judgement from long-established research) | Dispute timelines both sides can see and export; no verdict recorded by us (D-036) | **Built** |
+| **Fair process, visible** | People accept an outcome they dislike when the process was fair and they could see it (procedural justice, our judgement from long-established research) | Dispute timelines both sides can see and export; no verdict recorded by us (D-028, D-035) | **Built** |
+| **Safety from each other** | Most marketplace scams start in a message: a fee asked of the seller, or a move off the record (`docs/standards/trust-and-safety.md` section 2) | Requests for money and early contact details flagged where they appear; links only to known hosts; block, both ways, never revealed to the person blocked | **Built** (items 57 to 60) |
+| **Breadth behind a number** | A perfect record from one partner says less than the same record across many, and is how a record is faked | Every record says how many different partners it rests on | **Built** (item 61) |
+| **Saying no, clearly** | A refusal with a reason is easier to accept than silence ("no campaigns and no idea why") | Brands reject with a reason code; creators decline invitations with one (D-084) | **Built** |
 | **Certainty lowers anxiety** | Unknown waiting is felt as longer and worse than known waiting (our judgement from queueing research) | Always show **what happens next and when**: the approval window, the payment clock, the day it becomes overdue | Built in the data; the screens show it |
 | **Thresholds before numbers** | A figure from two deals misleads | Five creators or nothing for price guidance (D-056); minimum deals before a reliability record shows | **Built** |
 | **Honest labels** | A screenshot can be edited; Claude cannot tell a real image from a fake one | "Read from the creator's screenshot", never "verified" (D-070) | **Built** |
@@ -81,8 +84,8 @@ Our rule: **people come back because something real needs them, not because we e
 |---|---|---|
 | A timestamp for every state change | "What happened when" on every screen (`docs/standards/ux.md` section 7) | **Built** |
 | "What needs me" in one call | Alerts tied to real events | **Built** (`/me/attention`) |
-| **Notification preferences: quiet hours, digest, per-event choice** | Section 5; no nagging | **Not built**: needs a table and a decision. Added to `docs/BACKEND_COMPLETE.md` |
-| **Typical response times from real data** ("brands usually reply within N days") | Certainty (section 3) without invention | **Not built**: computed from existing timestamps; a decision on thresholds |
+| Notification preferences: quiet hours, digest, per-event choice | Section 5; no nagging | **Built** (D-079) |
+| Typical response times from real data ("brands usually reply within N days") | Certainty (section 3) without invention | **Built** (D-077) |
 | **Milestones from real records** | Section 4 | **Not built**: derived from existing records; a decision on which |
 | Simultaneous reveal for any two-sided feedback | Section 3 | Only if feedback is ever approved |
 
