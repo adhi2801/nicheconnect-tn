@@ -91,11 +91,12 @@ tests/
 5. Type check (mypy strict)
 6. New migrations linted for locks (Squawk)
 7. Migrations applied, undone and redone on a fresh database; models match the database
-8. The full suite: no failures, no unexplained skips; banned money words included (`test_banned_terms.py`)
+8. The full suite: no failures, no unexplained skips. It includes the banned money words in every file and every commit message (`test_banned_terms.py`). Files git does not track yet are scanned too, so a laptop sees what CI will. It also checks that the incident plan can rotate every secret the app is given (`test_incident_response.py`)
 9. Coverage floors, overall and per `service.py`
 10. The API fuzzed against its contract (Schemathesis)
 11. Dependency audit (pip-audit)
 12. Images built and scanned; any fixable vulnerability blocks (Grype); the API image's bill of materials written (Syft)
+13. Private vulnerability reporting switched on for the repository, since `SECURITY.md` sends researchers there (its own job, `repository-settings`)
 
 ## 10. Honesty
 

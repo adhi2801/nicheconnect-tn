@@ -116,13 +116,13 @@ Examples:
 - **Images:**
   - Slim base images pinned by digest; the app's environment has no pip.
   - Grype blocks merge on any fixable vulnerability; accepted risks are listed one by one with a reason and an expiry condition (D-064, D-074).
-- **Dependency updates:** Dependabot proposes updates weekly as pull requests, for Python, the CI actions, the base images, Compose and OpenTofu, each held 7 days after release before it is proposed; security fixes come at once (`.github/dependabot.yml`, D-082). Each still needs a founder's approval to merge.
+- **Dependency updates:** Dependabot proposes updates weekly as pull requests, for Python, the CI actions, the base images, Compose and OpenTofu, each held 7 days after release before it is proposed; security fixes come at once (`.github/dependabot.yml`, D-082). Each still needs a founder's approval to merge. **Dependabot reads its settings only from the default branch, so it starts once `.github/dependabot.yml` is merged to `main`.**
 - **To add before launch:**
   - an SBOM (CycloneDX) of the API image, written by Syft on every CI run and kept 90 days (D-082); published with each release once releases exist;
   - signed images with provenance (Sigstore cosign, SLSA build level 2) **(not yet built: waits for a registry to push images to, D-063)**.
 - **Least privilege in AWS:** the app's IAM role can reach only its own bucket and its own secrets; the database user has no superuser rights.
-- **Incident response:** `docs/INCIDENT_RESPONSE.md` covers who is called, how to rotate every secret, how to take the API down safely, and how to tell people (D-082). **Rehearsal not yet done**: once on staging before launch.
-- **Disclosure:** `SECURITY.md` (report privately through GitHub, response targets, safe harbour) and `/.well-known/security.txt` (RFC 9116) on the API, whose `Expires` a test makes us renew (D-082). **A founder switches on private vulnerability reporting in the repository settings.**
+- **Incident response:** `docs/INCIDENT_RESPONSE.md` covers who is called, how to rotate every secret, how to take the API down safely, and how to tell people (D-082). A test fails if a secret the app is given, or a password OpenTofu generates, has no rotation step (`tests/test_incident_response.py`). **Rehearsal not yet done**: once on staging before launch.
+- **Disclosure:** `SECURITY.md` (report privately through GitHub, response targets, safe harbour) and `/.well-known/security.txt` (RFC 9116) on the API, whose `Expires` a test makes us renew (D-082). **A founder switches on private vulnerability reporting in the repository settings**; CI fails until it is on (testing.md gate 13).
 
 ## 10. Before production (checklist)
 

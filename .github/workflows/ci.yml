@@ -105,7 +105,8 @@ jobs:
           GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
         run: |
           archive="$RUNNER_TEMP/gitleaks.tar.gz"
-          curl -sSfL -o "$archive"             "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfL -o "$archive" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
           echo "${GITLEAKS_SHA256}  ${archive}" | sha256sum --check --strict
           tar -xzf "$archive" -C "$RUNNER_TEMP" gitleaks
           "$RUNNER_TEMP/gitleaks" git --redact --no-banner --exit-code 1 .
@@ -282,13 +283,15 @@ jobs:
           SYFT_SHA256: 54a87372498168b2d033e876fd41fa4e8035b872699e525a57046e1f2f09c860
         run: |
           archive="$RUNNER_TEMP/syft.tar.gz"
-          curl -sSfL -o "$archive"             "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz"
+          curl -sSfL -o "$archive" \
+            "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz"
           echo "${SYFT_SHA256}  ${archive}" | sha256sum --check --strict
           tar -xzf "$archive" -C "$RUNNER_TEMP" syft
 
       - name: Write the API image's bill of materials
         run: |
-          "$RUNNER_TEMP/syft" scan docker:nicheconnect-api:ci             -o cyclonedx-json=sbom-api.cdx.json -q
+          "$RUNNER_TEMP/syft" scan docker:nicheconnect-api:ci \
+            -o cyclonedx-json=sbom-api.cdx.json -q
           python3 -c "import json; d = json.load(open('sbom-api.cdx.json')); assert d['bomFormat'] == 'CycloneDX' and d['components'], 'empty SBOM'"
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -310,3 +313,30 @@ jobs:
       - name: Report known vulnerabilities in the embeddings image
         if: github.event_name == 'pull_request'
         run: grype docker:nicheconnect-embeddings:ci -c .grype.yaml
+
+  # SECURITY.md and /.well-known/security.txt send researchers to GitHub's
+  # private vulnerability reporting. Switched off, that link leads nowhere
+  # and a report has nowhere private to go, so CI checks the setting itself
+  # (D-082; found off on 10 October). Its own job, so a failure here never
+  # hides behind, or is hidden by, a test failure.
+  repository-settings:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Private vulnerability reporting is on
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          answer=$(curl -sS -w '\n%{http_code}' \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$REPOSITORY/private-vulnerability-reporting")
+          code=$(echo "$answer" | tail -n 1)
+          if [ "$code" != "200" ]; then
+            echo "::error::Could not read the setting: GitHub answered $code."
+            exit 1
+          fi
+          if [ "$(echo "$answer" | head -n -1 | jq -r .enabled)" != "true" ]; then
+            echo "::error::Private vulnerability reporting is off, so SECURITY.md's reporting link leads nowhere. Turn it on: Settings > Advanced Security > Private vulnerability reporting > Enable."
+            exit 1
+          fi
