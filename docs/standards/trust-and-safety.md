@@ -65,7 +65,7 @@ Researched 10 October 2026, sources in section 6.
 | Way | Protection | Status |
 |---|---|---|
 | An application, with a pitch and quote | One per campaign (unique); 20–1,000 characters; plain text. **No daily ceiling per creator** | Built; ceiling **Owed** |
-| Proof: a link and screenshots | Screenshots are cleaned of hidden data and sealed (D-065, D-066); readings check the handle and the date (D-070). **The link may be any https address**, so it can be a phishing page | Built; **link host list Owed** |
+| Proof: a link and screenshots | Screenshots are cleaned of hidden data and sealed (D-065, D-066); readings check the handle and the date (D-070). The link must be on a known content platform, and look-alike hosts, names before an @, ports and punycode are refused (`app/core/links.py`) | Built |
 | A change request on a memo | One message ≤ 1,000 characters | Built |
 | A channel link on the rate card | Only the platform's own hosts (`rate_card_service.py`) | Built |
 | **Bought audiences** | Results read from proof (D-070); connected accounts with platform numbers (items 29–31) | Partly built; **Owed** (29–31) |
@@ -77,7 +77,7 @@ Researched 10 October 2026, sources in section 6.
 
 | Way | Protection | Status |
 |---|---|---|
-| A dispute, with entries and evidence links | Both sides on the record; we never judge (D-028, D-035). **Evidence links may be any https address** | Built; **link host list Owed** |
+| A dispute, with entries and evidence links | Both sides on the record; we never judge (D-028, D-035). Evidence links only to known platforms and file hosts (`app/core/links.py`); uploaded evidence is the better end | Built |
 | A report | One open report per reporter per subject (D-061) | Built; **daily ceiling Owed** |
 | **Pumped records: deals between accounts one person controls** | Records show how many **different** counterparties they rest on, and a figure resting on one or two counterparties says so. Pairs of accounts sharing a device or network at sign-up are flagged to the admin, never shown publicly | **Owed** |
 | Reviews or ratings bought or invented | None exist except records from real deals (`legal.md` section 3.6) | Built |
@@ -101,7 +101,7 @@ One module, used by every place free text from one person reaches another:
 
 - **Money requests in text a creator reads** (briefs, invitation notes, memo terms, revision notes): phrases like "registration fee", "deposit", "pay to", "send ₹", "shipping charge", and a UPI ID or payment link in the text. They are **flagged**, never silently rewritten. The flag is a field the app shows as a warning beside the text ("we never ask creators to pay; if a brand does, report it"), and the brand is told before sending.
 - **Contact details before a deal is agreed**: phone numbers, emails, UPI IDs, and wa.me, t.me or similar links. They are flagged the same way. They are **flagged, not hidden** (D-086): hiding them before a memo is accepted, as Upwork and Fiverr do, needs an in-app chat to talk through instead, which we do not have yet. Revisit when one exists.
-- **Links we accept as fields** (proof `content_url`, dispute `evidence_url`): https only (built), and **only hosts on a published list**: the content platforms we support, plus our own file links. Anything else is refused with a message, before anyone clicks it.
+- **Links we accept as fields** (proof `content_url`, dispute `evidence_url`): **Built** (`app/core/links.py`, item 57). https only, a host on a published list (content platforms for proof, plus well-known file hosts for evidence), and every phishing shape refused: look-alike hosts, a name before an @, ports, punycode and non-Latin letters.
 - Flags are worked out on read, from the text, so a better rule applies to old text too ("worked out, never stored", `backend.md` section 2). Every flag pattern has a test with real Tamil Nadu examples, and every false positive found becomes one.
 
 ---

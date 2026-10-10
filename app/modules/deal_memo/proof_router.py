@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
+from app.core.links import ContentLink
 from app.core.literals import ensure_same_values
 from app.core.rate_limit import per_account, rate_limit
 from app.core.storage import FileStore, get_file_store
@@ -93,7 +94,7 @@ class ProofCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     content_url: Annotated[
-        str | None,
+        ContentLink | None,
         Field(
             pattern=r"^https://.+",
             max_length=URL_MAX_LENGTH,

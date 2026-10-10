@@ -3206,12 +3206,11 @@
           "evidence_url": {
             "anyOf": [
               {
-                "description": "A link to something that supports your account",
+                "description": "A link to something that supports your account: a post, or a file on Google Drive, Google Photos, Dropbox or OneDrive. Other hosts are refused, so nobody is sent to a page pretending to be one",
                 "examples": [
-                  "https://example.com/upi-receipt.png"
+                  "https://drive.google.com/file/d/1AbC/view"
                 ],
                 "maxLength": 500,
-                "pattern": "^https://.+",
                 "type": "string"
               },
               {
@@ -6176,7 +6175,6 @@
             "anyOf": [
               {
                 "maxLength": 500,
-                "pattern": "^https://.+",
                 "type": "string"
               },
               {
