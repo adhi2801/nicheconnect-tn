@@ -102,7 +102,11 @@ def for_city(db: Session, city: str) -> CityFigures:
         ).where(*creators)
     ).one()
 
-    niche = func.unnest(Creator.niches).column_valued("niche")
+    # Each creator's own niches: PostgreSQL joins a function in FROM to the
+    # row before it (LATERAL). joins_implicitly says so to SQLAlchemy, which
+    # otherwise warned of a cartesian product in every test run, and a
+    # warning that is always there hides the one that matters.
+    niche = func.unnest(Creator.niches).column_valued("niche", joins_implicitly=True)
     by_niche: dict[Niche, int | None] = dict.fromkeys(NICHES, None)
     for found, count in db.execute(
         select(niche, func.count()).select_from(Creator).where(*creators).group_by(niche)

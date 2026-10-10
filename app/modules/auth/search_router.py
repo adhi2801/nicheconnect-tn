@@ -24,6 +24,9 @@ from app.modules.auth.schemas import (
 )
 
 READ_LIMIT = "60 per minute"
+# security.md section 5: search and matching are 30 a minute, and capped per
+# day too, since reading every creator is how a directory gets scraped (item 58).
+SEARCH_LIMIT = "30 per minute;600 per day"
 MAX_FOLLOWERS = 1_000_000_000
 MAX_PRICE_PAISE = 10_000_000_000  # ₹10 crore: far above any real package
 
@@ -78,7 +81,7 @@ def _to_read(result: service.SearchResult, today: date) -> CreatorSearchResultRe
     ),
     responses=_ERRORS,
 )
-@rate_limit(READ_LIMIT)
+@rate_limit(SEARCH_LIMIT)
 def search_creators(
     request: Request,
     account: CurrentBrand,

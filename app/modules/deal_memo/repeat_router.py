@@ -16,6 +16,9 @@ from app.modules.deal_memo import repeat_service
 from app.modules.deal_memo.dependencies import BrandMemo
 
 WRITE_LIMIT = "30 per minute"
+# A ceiling per day as well as per minute (trust-and-safety.md rule 2, item 58):
+# a per-minute limit stops a script, not a person spamming by hand all day.
+REPEAT_LIMIT = "30 per minute;100 per day"
 
 router = APIRouter(
     prefix="/api/v1/deal-memos", tags=["deal memos"], route_class=IdempotentRoute
@@ -48,7 +51,7 @@ router = APIRouter(
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@rate_limit(WRITE_LIMIT)
+@rate_limit(REPEAT_LIMIT)
 def repeat_deal(
     request: Request,
     response: Response,

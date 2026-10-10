@@ -73,6 +73,7 @@ Examples:
 | Search and matching | 30 / minute | account |
 | Public pages | 60 / minute | IP |
 
+- Every limit counts the signed-in account, or the address when there is none (the limiter's default since 10 October 2026; before, most counted the address). Anything that reaches another person also has a daily ceiling (`trust-and-safety.md` rule 2).
 - Counters live in Valkey (D-003, D-048), shared by every process.
 - A 429 carries `Retry-After` and the standard error body.
 - Limits are tuned from real traffic, never guessed upward.

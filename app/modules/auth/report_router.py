@@ -17,7 +17,7 @@ from app.modules.auth.schemas import ReportCreate, ReportRead
 
 # Per account, not per address: reporting must not become a way to flood the
 # queue, and an office sharing one address is not one person.
-REPORT_LIMIT = "10 per hour"
+REPORT_LIMIT = "10 per hour;30 per day"
 
 # route_class: a tap repeated on a bad connection files one report (D-040).
 router = APIRouter(

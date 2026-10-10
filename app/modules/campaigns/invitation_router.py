@@ -29,6 +29,9 @@ from app.modules.campaigns.schemas import (
 )
 
 WRITE_LIMIT = "30 per minute"
+# A ceiling per day as well as per minute (trust-and-safety.md rule 2, item 58):
+# a per-minute limit stops a script, not a person spamming by hand all day.
+INVITE_LIMIT = "30 per minute;100 per day"
 
 # route_class: every POST here accepts an Idempotency-Key header, so a retry
 # after a dropped connection never invites twice (backend.md section 2).
@@ -72,7 +75,7 @@ _ANSWER_ERRORS: ResponseDocs = {
         422: problem_doc("A field is missing or invalid"),
     },
 )
-@rate_limit(WRITE_LIMIT)
+@rate_limit(INVITE_LIMIT)
 def invite_creator(
     request: Request,
     response: Response,

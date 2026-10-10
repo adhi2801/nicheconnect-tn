@@ -11,7 +11,7 @@ Status words: **Built** (in the code, with a test), **Owed** (tracked in `docs/B
 ## 1. Rules for everyone building (binding)
 
 1. **Map who can reach whom.** Every proposal lists each way the feature lets one account reach another: a notification, text they read, a link they open, a record about them. Each one gets a row in section 3, with its protection and its test.
-2. **Every way of reaching someone has a daily ceiling per account**, not only a per-minute rate limit. A per-minute limit stops a script, not a person spamming by hand for an hour.
+2. **Every way of reaching someone has a daily ceiling per account**, not only a per-minute rate limit. A per-minute limit stops a script, not a person spamming by hand for an hour. `tests/modules/test_daily_ceilings.py` lists every such route and fails if one loses its ceiling; a new route that reaches someone is added to it in the same change.
 3. **Free text another person reads is untrusted.** It is stored and returned as plain text, never rendered as HTML, and the frontend never turns it into links. A link we accept as a field (proof, evidence) is checked against a list of hosts we know (section 4).
 4. **Money talk stays on the record.** Nothing in the product ever asks anyone to pay anyone except the brand paying the creator the agreed fee, through their own bank. **A creator never pays to get a deal**: any brief, note or memo text asking a creator for money is flagged (section 4).
 5. **Proof of payment is the receiver's own bank, never a screenshot.** Only the creator can confirm money arrived (D-027), and every screen that asks them says to check their own bank app.
@@ -50,7 +50,7 @@ Researched 10 October 2026, sources in section 6.
 | Way | Protection | Status |
 |---|---|---|
 | A campaign brief (title, description, deliverables) | Plain text; open campaigns from a suspended brand disappear (D-061); report a campaign (D-061) | Built |
-| An invitation, with a note | 25 waiting per campaign (D-084); creator declines in one tap; plain text. **No daily ceiling per brand across campaigns** | Built; ceiling **Owed** |
+| An invitation, with a note | 25 waiting per campaign (D-084), and 100 a day per brand across all campaigns, repeats likewise; creator declines in one tap; plain text | Built |
 | A rejection reason and note | Reason is a code; note ≤ 500 characters, plain text | Built |
 | A deal memo, its extra terms | Accepted terms never change, and the deal record proves it (D-057); the creator can ask for changes or decline | Built |
 | A revision request on proof | One change restarts the clock (D-025); note plain text | Built |
@@ -64,7 +64,7 @@ Researched 10 October 2026, sources in section 6.
 
 | Way | Protection | Status |
 |---|---|---|
-| An application, with a pitch and quote | One per campaign (unique); 20–1,000 characters; plain text. **No daily ceiling per creator** | Built; ceiling **Owed** |
+| An application, with a pitch and quote | One per campaign (unique); 20–1,000 characters; plain text; 30 a day per creator | Built |
 | Proof: a link and screenshots | Screenshots are cleaned of hidden data and sealed (D-065, D-066); readings check the handle and the date (D-070). The link must be on a known content platform, and look-alike hosts, names before an @, ports and punycode are refused (`app/core/links.py`) | Built |
 | A change request on a memo | One message ≤ 1,000 characters | Built |
 | A channel link on the rate card | Only the platform's own hosts (`rate_card_service.py`) | Built |
@@ -78,7 +78,7 @@ Researched 10 October 2026, sources in section 6.
 | Way | Protection | Status |
 |---|---|---|
 | A dispute, with entries and evidence links | Both sides on the record; we never judge (D-028, D-035). Evidence links only to known platforms and file hosts (`app/core/links.py`); uploaded evidence is the better end | Built |
-| A report | One open report per reporter per subject (D-061) | Built; **daily ceiling Owed** |
+| A report | One open report per reporter per subject (D-061); 10 an hour and 30 a day per account | Built |
 | **Pumped records: deals between accounts one person controls** | Records show how many **different** counterparties they rest on, and a figure resting on one or two counterparties says so. Pairs of accounts sharing a device or network at sign-up are flagged to the admin, never shown publicly | **Owed** |
 | Reviews or ratings bought or invented | None exist except records from real deals (`legal.md` section 3.6) | Built |
 
@@ -87,7 +87,7 @@ Researched 10 October 2026, sources in section 6.
 | Way | Protection | Status |
 |---|---|---|
 | Many accounts from one person | One account per phone number (unique); login-code limits per phone and network (`security.md` section 5) | Built |
-| Scraping creators | Search and matching are signed-in brands only, 30 a minute; no contact details anywhere | Built; **daily ceiling Owed** |
+| Scraping creators | Search and matching are signed-in brands only, 30 a minute and 600 a day per account; no contact details anywhere | Built |
 | Running up our AI bill | Daily ceiling on proof reading (D-070) | Built |
 | Abusing invite attribution | It carries no reward. **Any reward is designed with its abuse limits first** | Built (no reward) |
 | An admin misusing access | Every view and action in the append-only admin log (D-061) | Built |

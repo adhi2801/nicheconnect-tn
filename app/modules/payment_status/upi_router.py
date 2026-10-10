@@ -20,7 +20,7 @@ from app.modules.payment_status.upi_schemas import PayDetailsRead, UpiRead, UpiS
 WRITE_LIMIT = "30 per minute"
 READ_LIMIT = "60 per minute"
 # Lower than other reads: each answer holds another person's UPI ID.
-PAY_DETAILS_LIMIT = "20 per minute"
+PAY_DETAILS_LIMIT = "20 per minute;200 per day"
 
 # PUT replaces the whole setting and DELETE removes it, so both are
 # idempotent by nature and need no Idempotency-Key (backend.md section 2).

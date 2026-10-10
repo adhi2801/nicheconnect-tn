@@ -35,6 +35,9 @@ from app.modules.campaigns.summary import summarise
 
 WRITE_LIMIT = "30 per minute"
 READ_LIMIT = "60 per minute"
+# A ceiling per day as well as per minute (trust-and-safety.md rule 2, item 58):
+# a per-minute limit stops a script, not a person spamming by hand all day.
+CREATE_LIMIT = "30 per minute;20 per day"
 
 router = APIRouter(
     prefix="/api/v1/campaigns", tags=["campaigns"], route_class=IdempotentRoute
@@ -68,7 +71,7 @@ def _page(result: Slice[Campaign]) -> Page[CampaignRead]:
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@rate_limit(WRITE_LIMIT)
+@rate_limit(CREATE_LIMIT)
 def create_campaign(
     request: Request,
     response: Response,
