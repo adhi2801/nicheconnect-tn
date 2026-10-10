@@ -236,6 +236,7 @@ Which doc is for what, and when each is read: `docs/README.md`.
 | Endpoints, services, schemas, errors, background jobs | `docs/standards/backend.md` |
 | Tables, migrations, indexes, queries, pgvector | `docs/standards/database.md` |
 | Auth, permissions, secrets, PII, rate limits | `docs/standards/security.md` |
+| Anything that lets one person reach, pay, judge or be judged by another; anything someone could use to cheat | `docs/standards/trust-and-safety.md` |
 | Anything touching the law: personal data and consent, what we say about people, ranking, payments, tax, content rights, messages, who may sign up | `docs/standards/legal.md` |
 | Any test, CI, or coverage question | `docs/standards/testing.md` |
 | Web dashboard or mobile app (after backend is complete) | `docs/standards/frontend.md` |

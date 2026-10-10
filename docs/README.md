@@ -9,6 +9,7 @@ Every file here has one job. If two files start doing the same job, one of them 
 | `standards/backend.md` | Any endpoint, service, schema, error or background job |
 | `standards/database.md` | Any table, migration, index or query |
 | `standards/security.md` | Anything touching login, access, secrets, personal data, rate limits or dependencies |
+| `standards/trust-and-safety.md` | Anything that lets one person reach, pay, judge or be judged by another, and every way someone could scam another person or us |
 | `standards/legal.md` | Anything touching the law: personal data and consent, what we say about people, ranking, payments, tax, content rights, messages, minors, and every Confirm question for the lawyer and CA |
 | `standards/testing.md` | Any test, CI change, or claim that something is tested |
 | `standards/frontend.md` | Any web or app work (after the backend is complete) |
