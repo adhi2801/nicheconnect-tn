@@ -16,11 +16,11 @@ Applies to research, flows, the design system, copy and accessibility, and to **
 6. **Calm.** No dark patterns: no fake urgency, no hidden costs, no nagging. Night-time pings wait for morning unless a deadline is running (D-079).
 7. **Honest about money.** Payment status says what each side reported, never implying the platform moved or holds money (constraint 1).
 
-The design direction (Modern Tamil, `docs/DESIGN_DIRECTION.md`) is proposed and awaits both founders.
+The design direction (Modern Tamil, DESIGN_DIRECTION.md on the branch docs/design-direction) is proposed and awaits both founders.
 
 ## 2. Research and validation
 
-- Before designing a flow: at least 5 conversations with real target users (brands and creators separately), notes in `docs/research/`.
+- Before designing a flow: at least 5 conversations with real target users (brands and creators separately), notes in `docs/research/`, using the Mom Test template in `docs/research/README.md`.
 - **The five-second test** on any visual direction: what is this, and would you trust it with a deal? 10 brand owners and 10 creators.
 - Every core journey is usability-tested with at least 5 users before it is built, and again before launch.
 - **Measured success** (Google's HEART framework, on the core journeys):

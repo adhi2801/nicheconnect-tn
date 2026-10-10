@@ -38,6 +38,8 @@ Every file here has one job. If two files start doing the same job, one of them 
 |---|---|
 | `BILLION_DOLLAR_GAP.md` | What the best platforms have that we do not, as proposed backend items (8 October) |
 | `COMPETITIVE_LANDSCAPE.md` | Every competitor, in India and worldwide, and what we have that they do not |
+| `ARCHITECTURE_SCALE.md` | Scaling later: each proposal with the measured trigger that would justify it, cheapest step first |
+| `research/` | Notes from conversations with real brands and creators, and the Mom Test template for taking them |
 | `SURVIVAL_PLAYBOOK.md` | How startups like ours die and the rules that keep us alive: default alive, the numbers to watch weekly, money without selling the company, and founder pay growing step by step (10 October) |
 | `GO_TO_MARKET.md` | Coimbatore first: how the pilot finds its first brands and creators |
 | `PSYCHOLOGY_AND_TRUST.md` | What makes people trust a marketplace with their money and work |
