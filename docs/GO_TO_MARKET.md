@@ -103,7 +103,7 @@ Checkpoints and what we do if we miss them: `docs/REVENUE_RESEARCH.md` section 8
 |---|---|---|
 | Invite and source attribution: who invited whom, and where a sign-up came from | Measure each channel and loop in section 6; reward a creator who brings a brand | **Built** (D-080) |
 | City and niche aggregates for public pages: counts and medians only, with thresholds | City pages and the quarterly summary (section 7) | **Built** (D-078) |
-| **The founders' weekly numbers**: campaign fill rate, application success, repeat rate, paid on time | Knowing each week whether the city is dense enough (`docs/SURVIVAL_PLAYBOOK.md` section 4) | Item 63 in `docs/BACKEND_COMPLETE.md` |
+| **The founders' weekly numbers**: campaign fill rate, application success, repeat rate, paid on time | Knowing each week whether the city is dense enough (`docs/SURVIVAL_PLAYBOOK.md` section 4) | **Built** (D-087, `GET /api/v1/admin/numbers`) |
 
 ## 11. Decisions this file asks for
 

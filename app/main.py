@@ -25,6 +25,7 @@ from app.modules.auth.city_figures_router import router as city_figures_router
 from app.modules.auth.dependencies import idempotency_identity
 from app.modules.auth.export_router import router as export_router
 from app.modules.auth.media_kit_router import router as media_kit_router
+from app.modules.auth.numbers_router import router as numbers_router
 from app.modules.auth.profile_router import brand_router, creator_router
 from app.modules.auth.public_router import router as public_router
 from app.modules.auth.rate_card_router import router as rate_card_router
@@ -119,6 +120,7 @@ app.include_router(block_router)
 app.include_router(search_router)
 app.include_router(report_router)
 app.include_router(admin_router)
+app.include_router(numbers_router)
 app.include_router(attribution_router)
 app.include_router(media_kit_router)
 app.include_router(rate_guidance_router)

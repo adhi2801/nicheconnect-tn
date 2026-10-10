@@ -3713,6 +3713,47 @@
         "title": "FieldFlag",
         "type": "object"
       },
+      "FounderNumbersRead": {
+        "description": "The founders' weekly numbers, beside the period before them.\n\n`docs/SURVIVAL_PLAYBOOK.md` section 4 says what each tells you. Totals\nonly: nothing here names or describes a person.",
+        "properties": {
+          "as_of": {
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Lower-cased; null means every city",
+            "title": "City"
+          },
+          "current": {
+            "$ref": "#/components/schemas/PeriodNumbersRead"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "previous": {
+            "$ref": "#/components/schemas/PeriodNumbersRead"
+          }
+        },
+        "required": [
+          "as_of",
+          "days",
+          "city",
+          "current",
+          "previous"
+        ],
+        "title": "FounderNumbersRead",
+        "type": "object"
+      },
       "HealthRead": {
         "description": "The process is up. Says nothing about what it depends on.",
         "properties": {
@@ -6295,6 +6336,177 @@
         "title": "PaymentTotalsRead",
         "type": "object"
       },
+      "PeriodNumbersRead": {
+        "description": "One period's numbers. Every rate is null below five examples.",
+        "properties": {
+          "active_brands": {
+            "description": "Brands that posted a campaign or agreed a deal",
+            "title": "Active Brands",
+            "type": "integer"
+          },
+          "active_creators": {
+            "description": "Creators who applied or agreed a deal",
+            "title": "Active Creators",
+            "type": "integer"
+          },
+          "application_success_so_far": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Accepted so far; recent applications may still be decided",
+            "title": "Application Success So Far"
+          },
+          "applications_accepted_so_far": {
+            "title": "Applications Accepted So Far",
+            "type": "integer"
+          },
+          "applications_sent": {
+            "description": "Applications creators chose to send",
+            "title": "Applications Sent",
+            "type": "integer"
+          },
+          "campaign_fill_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Filled of old enough to judge; the headline number for density",
+            "title": "Campaign Fill Rate"
+          },
+          "campaigns_filled_within_14_days": {
+            "title": "Campaigns Filled Within 14 Days",
+            "type": "integer"
+          },
+          "campaigns_old_enough_to_judge": {
+            "description": "Of those, posted at least 14 days before the period ended",
+            "title": "Campaigns Old Enough To Judge",
+            "type": "integer"
+          },
+          "campaigns_posted": {
+            "description": "Campaigns created and no longer in draft",
+            "title": "Campaigns Posted",
+            "type": "integer"
+          },
+          "deals_agreed": {
+            "description": "Deal memos accepted by both sides",
+            "title": "Deals Agreed",
+            "type": "integer"
+          },
+          "from_on": {
+            "description": "First Tamil Nadu day of the period",
+            "format": "date",
+            "title": "From On",
+            "type": "string"
+          },
+          "invitations_sent": {
+            "title": "Invitations Sent",
+            "type": "integer"
+          },
+          "median_hours_to_first_application": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Hours To First Application"
+          },
+          "new_brands": {
+            "description": "Brand profiles created (all cities)",
+            "title": "New Brands",
+            "type": "integer"
+          },
+          "new_creators": {
+            "title": "New Creators",
+            "type": "integer"
+          },
+          "paid_on_time": {
+            "description": "Of those, marked paid by the due date",
+            "title": "Paid On Time",
+            "type": "integer"
+          },
+          "paid_on_time_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid On Time Share"
+          },
+          "payments_confirmed": {
+            "description": "Payments the creator confirmed arriving",
+            "title": "Payments Confirmed",
+            "type": "integer"
+          },
+          "repeat_deals": {
+            "description": "Deals between a brand and a creator who had agreed one before",
+            "title": "Repeat Deals",
+            "type": "integer"
+          },
+          "repeat_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repeat Share"
+          },
+          "to_on": {
+            "description": "Last Tamil Nadu day of the period",
+            "format": "date",
+            "title": "To On",
+            "type": "string"
+          },
+          "value_of_deals_agreed_paise": {
+            "description": "The fees of those deals. Paid brand to creator, never through us",
+            "title": "Value Of Deals Agreed Paise",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "from_on",
+          "to_on",
+          "new_brands",
+          "new_creators",
+          "active_brands",
+          "active_creators",
+          "campaigns_posted",
+          "campaigns_old_enough_to_judge",
+          "campaigns_filled_within_14_days",
+          "campaign_fill_rate",
+          "median_hours_to_first_application",
+          "applications_sent",
+          "applications_accepted_so_far",
+          "application_success_so_far",
+          "invitations_sent",
+          "deals_agreed",
+          "value_of_deals_agreed_paise",
+          "repeat_deals",
+          "repeat_share",
+          "payments_confirmed",
+          "paid_on_time",
+          "paid_on_time_share"
+        ],
+        "title": "PeriodNumbersRead",
+        "type": "object"
+      },
       "ProblemDetails": {
         "description": "The error body every non-2xx response uses (for the API docs).",
         "properties": {
@@ -8620,6 +8832,117 @@
           }
         ],
         "summary": "The admin log",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/numbers": {
+      "get": {
+        "description": "How dense the market is and whether the business is alive, for a period of 1 to 90 Tamil Nadu days ending on `ending_on` (today by default), beside the same length before it. Campaign fill rate, time to a first application, application success, repeat deals, payments on time, and active brands and creators. **Every rate is null below five examples**, and a campaign counts towards the fill rate only once it is 14 days old. Optionally for one city. Totals only. Admins only; anyone else gets 404.",
+        "operationId": "founder_numbers_api_v1_admin_numbers_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 7,
+              "maximum": 90,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Last day of the period; today if left out",
+            "in": "query",
+            "name": "ending_on",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Last day of the period; today if left out",
+              "title": "Ending On"
+            }
+          },
+          {
+            "in": "query",
+            "name": "city",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 60,
+                  "minLength": 2,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "City"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FounderNumbersRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not found, which is also the answer for anyone who is not an admin"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A query parameter is not valid"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The founders' weekly numbers",
         "tags": [
           "admin"
         ]

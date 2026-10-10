@@ -51,7 +51,7 @@ Every figure here is from public pages read on 10 October 2026, and eligibility 
 
 ## 4. The numbers we watch every week (and the backend must give us)
 
-Every number comes from the records, never from memory (`CLAUDE.md` section 7.0). **Item 63 in `docs/BACKEND_COMPLETE.md`** builds them as an admin view. Until then, the founders count by hand from the admin and the export.
+Every number comes from the records, never from memory (`CLAUDE.md` section 7.0). **Built (D-087):** `GET /api/v1/admin/numbers` answers each one for any 1 to 90 days, beside the period before, optionally for one city. Every rate is null below five examples, and a campaign counts towards the fill rate only once it is 14 days old.
 
 | Number | What it tells us | Healthy direction |
 |---|---|---|
