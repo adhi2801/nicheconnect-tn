@@ -176,13 +176,13 @@ The market in September 2026: discovery is free inside Instagram and YouTube. Pa
 
 | # | Differentiator | Why nobody else can match it | Technology | Owner | Status | When |
 |---|---|---|---|---|---|---|
-| D1 | **Tamper-proof deal record.** Every memo, proof, payment and dispute event is chained; each side can download a signed deal receipt with a QR anyone can check | Our records become evidence, not a claim | SHA-256 hash chain in Postgres plus Ed25519 signatures. No new vendor | Harish (table), Adhi (API) | Recommended | Next |
+| D1 | **Tamper-proof deal record.** Every memo, proof, payment and dispute event is chained; each side can download a signed deal receipt with a QR anyone can check | Our records become evidence, not a claim | SHA-256 hash chain in Postgres plus Ed25519 signatures. No new vendor | Harish (table), Adhi (API) | **Built** (D-057, D-060); the receipt anyone can check was **declined** (D-071): a deal is private between its parties | Done |
 | D2 | **Verified audience instead of self-reported numbers.** The creator connects Instagram or YouTube; the Passport says "Verified by Instagram, as of <date>" | First-party numbers beat AI estimates | Instagram Graph API (Business/Creator accounts, `instagram_manage_insights`, creator's consent); YouTube Analytics API. **Apply for YouTube's Creator Partnerships API now**: invite-only, and Qoruz already has it in India | Both | Recommended | Next |
-| D3 | **Proof that checks itself, then the results.** Links re-checked on days 1, 7 and 30 (D-024), then real reach on the actual post | Deal, delivery, payment and result, end to end; nobody holds all four | Job runner plus the same platform APIs. Signed photos (C2PA) are not ready: iPhones don't sign photos yet | Both | Proposed (D-024) | Next |
+| D3 | **Proof that checks itself, then the results.** Links re-checked on days 1, 7 and 30 (D-024), then real reach on the actual post | Deal, delivery, payment and result, end to end; nobody holds all four | Job runner plus the same platform APIs. Signed photos (C2PA) are not ready: iPhones don't sign photos yet | Both | **Built, switched off** until the validation pack answers (D-070); platform numbers wait on Meta and Google review (items 29 to 31) | Next |
 | D4 | **ID verified without holding anyone's Aadhaar** | Reelax hands out phone numbers; we verify and expose nothing | DigiLocker with masked Aadhaar and PAN, through a provider | Both | Blocked (validation pack) | Later |
-| D5 | **Tamil voice everywhere** (A9) | Tamil as the interface | Sarvam, Bhashini | Adhi | Recommended | Next |
+| D5 | **Tamil voice everywhere** (A9) | Tamil as the interface | Sarvam, Bhashini | Adhi | **Withdrawn** (D-054: English only) | — |
 | D6 | **AI that helps both sides**: briefs for a bakery owner, pitches for a creator, every memo explained in plain Tamil. It shows the records it used and asks before acting | Every competitor's agent serves only the brand | Claude plus Sarvam, provider-agnostic (section 4.4) | Adhi | Recommended | Next |
-| D7 | **Always the best model**: a Tamil test set scores every new model; we switch on the scores | Models change monthly; loyalty to one brand would leave us behind | Our own evaluation suite | Adhi | Recommended | Next |
+| D7 | **Always the best model**: a Tamil test set scores every new model; we switch on the scores | Models change monthly; loyalty to one brand would leave us behind | Our own evaluation suite | Adhi | **Built for proof reading** (`scripts/score_proof_reader.py`, D-070); the Tamil test set **withdrawn** (D-054) | Next |
 | D8 | **Login with no code to type** (A5) | Faster, cheaper, SIM-swap resistant | Silent network authentication, WhatsApp code, SMS fallback, passkeys | Both (security) | Recommended | Next |
 | D9 | **Works offline** (A6) | Built for patchy 4G | PowerSync | Both | Recommended | Later |
 | D10 | **Deal status on the lock screen** (A3) | Nobody in this space does it | Live Activities, Live Updates | Frontend | Recommended | Later |
@@ -190,7 +190,7 @@ The market in September 2026: discovery is free inside Instagram and YouTube. Pa
 | D12 | **Usable from inside ChatGPT and Claude** (W5) | Shopify and Square do this; nobody in the Indian creator space does | MCP Apps, built on existing endpoints such as `/me/attention` | Adhi | Recommended | Later |
 | D13 | **A Passport that opens instantly** (A10, W1) | Shared on WhatsApp, scanned at a shop | App Clip, fast Next.js page | Frontend | Recommended | Later |
 | D14 | **Truly native feel on each platform, tablets included** | What users expect from each phone | Liquid Glass on iOS (`@callstack/liquid-glass`, native APIs), Material 3 Expressive on Android; Android 17 requires large-screen support | Frontend | Recommended | Later |
-| D15 | **DPDP-ready before the deadlines** | A selling point for brands; penalties go up to ₹250 crore | Consent-manager rules from **13 November 2026**; full compliance by **13 May 2027**. Details from the validation pack | Both | Blocked (validation pack) | Now |
+| D15 | **DPDP-ready before the deadlines** | A selling point for brands; penalties go up to ₹250 crore | Consent-manager rules from **13–14 November 2026**; every core duty by **13–14 May 2027**. The full map is `docs/standards/legal.md` section 3.1; details from the validation pack | Both | Blocked (validation pack) | Now |
 | D16 | **Nothing we don't want**: no internet-wide creator database, no moving money, no star reviews, no fake-follower scores built without the creator's consent | Focus, and our constraints | — | — | Decided in spirit (constraint 1, D-034) | — |
 | D17 | **Answers inside the phone's assistant** (A11): ask Gemini, in Tamil, whether you've been paid | Nobody in this space has done it; Android 17 has only just made it possible | Android AppFunctions, then App Intents on iPhone | Frontend; Adhi (API) | Recommended | Watch; Later |
 | D18 | **A website AI agents can use** (W7) | We would be first in the Indian creator space | WebMCP, on the same API | Frontend; Adhi (API) | Recommended | Watch; Later |
@@ -213,16 +213,16 @@ Locked by both founders on 22 September 2026 (D-047; Erode Harish's approval rel
 | Backend tools | mypy (strict), ruff, pytest, uvicorn | **Locked** (kept; ty, Pyrefly and Granian on the Watch list) |
 | API fuzz testing | Schemathesis 4.x | **Locked** (Erode Harish told first: `requirements.txt` is shared) |
 | CI supply chain | Current action versions, pinned to commit SHAs, and zizmor | **Locked** (Adhi's track: `.github/workflows/`) |
-| Errors and traces | Sentry for errors (already in `docs/standards/backend.md`); OpenTelemetry for traces | **Locked; not built**: nothing is wired yet (`docs/BACKEND_COMPLETE.md` items 2 and 3) |
+| Errors and traces | Sentry for errors; OpenTelemetry for traces | **Locked**; Sentry **built** (D-074); traces **not built** (`docs/BACKEND_COMPLETE.md` item 3) |
 | Python and packaging | Python 3.14; uv | **Locked**; **built** 1 October (D-072): Python 3.14.8 (D-074), `uv.lock` with hashes, in CI and the images |
-| Database | PostgreSQL 18 (19 after its first minor update); UUIDv7 for new tables; exact image tags; pgvector 0.8.2 or newer | **Locked**; **built** 23 September (D-049), UUIDv7 awaiting the first new table |
+| Database | PostgreSQL 18 (19 after its first minor update); UUIDv7 for new tables; exact image tags; pgvector 0.8.2 or newer | **Locked**; **built** 23 September (D-049); UUIDv7 on every table since (`notification_preference`, `creator_upi`, `account_block`) |
 | Search | Hybrid Tamil search inside Postgres | **Withdrawn** by D-054 (English only). English search inside Postgres is a founder decision when search needs more than today's filters |
 | Migration safety | Squawk | **Locked**; **built** 23 September (D-050), on added migrations only |
 | Cache and rate limits | Valkey 9.1.2 or newer | **Locked**; **built** 23 September (D-048) |
 | Background jobs | DBOS | **Locked**; **built** (D-060): the daily record checkpoint, proof cleaning and proof reading run on it |
 | AI | **Our own thin interface** behind each AI feature (amended by D-071 from Pydantic AI v2); Claude, each model chosen by measurement on our own test set | **Locked**; built with the first AI feature (D-070). Pydantic AI is adopted when a second provider or agent features arrive. Sarvam and the Tamil test set **withdrawn** by D-054 |
 | Frontend | The stack in 4.3: Expo SDK 57, Next.js 16.3.6 or newer, TypeScript 7, Expo UI, Tailwind v4 with shadcn/ui, NativeWind, PowerSync, Playwright, Maestro | **Locked**; every version re-checked when the frontend starts. D-046 (platforms and roles) is separate |
-| Not locked yet | Hosting, where traces go, the login provider, the lint tool (Biome or Oxlint), the API client generator (Hey API or Orval), the Tamil fonts (chosen by testing) | Open |
+| Not locked yet | Where traces go, the login provider, the lint tool (Biome or Oxlint), the API client generator (Hey API or Orval). Hosting was decided as AWS Mumbai (D-062); the Tamil fonts were withdrawn with Tamil (D-054) | Open |
 
 ### 4.1 Backend runtime and libraries (API track; each change needs dependency approval, `CLAUDE.md` section 5)
 
