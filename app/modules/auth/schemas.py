@@ -457,6 +457,7 @@ AttentionKind = Literal[
     "resubmit_work",
     "deliver_work",
     "answer_memo",
+    "answer_invitation",
 ]
 
 ensure_same_values("AttentionKind", AttentionKind, (*BRAND_KINDS, *CREATOR_KINDS))

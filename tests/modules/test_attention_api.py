@@ -194,11 +194,21 @@ def test_an_accepted_creator_without_a_memo_is_a_memo_to_draft(client, db, clock
     assert item["application_id"] == application_id
     assert item["counterparty"].startswith("proof")  # the creator's handle
 
-    client.post(
+    memo_id = client.post(
         f"{MEMOS_URL}/for-application/{application_id}",
-        json={"deliverables": "2 reels", "fee_amount_paise": 600_000},
+        json={
+            "deliverables": "2 reels",
+            "fee_amount_paise": 600_000,
+            "content_due_on": AGREED_DUE_ON,
+        },
         headers=brand.headers,
-    )
+    ).json()["id"]
+    # Written but never sent, the creator is still waiting on the brand
+    # (D-084: a repeat deal's memo arrives drafted like this).
+    [item] = items_of(client, brand, "draft_memo")
+    assert item["memo_id"] == memo_id
+
+    client.post(f"{MEMOS_URL}/{memo_id}/send", headers=brand.headers)
     assert items_of(client, brand, "draft_memo") == []
 
 

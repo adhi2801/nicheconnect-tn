@@ -131,7 +131,9 @@ def for_creator(db: Session, creator: Creator, today: date) -> ApplicationFeedba
                 Campaign.budget_max_paise,
             )
             .join(Campaign, Campaign.id == Application.campaign_id)
-            .where(Application.creator_id == creator.id)
+            # Invitations are left out: this is about what the creator chose
+            # to apply to, and how brands answered (D-084).
+            .where(Application.creator_id == creator.id, Application.origin == "applied")
         ).tuples()
     ]
 

@@ -746,3 +746,30 @@ Newest entries at the bottom.
 - Chosen: A.
 - Reason: a single date is what an Instagram or YouTube creator in Tamil Nadu actually knows, and it is enough to rank and filter. B is richer and fits ad slots in newsletters, not reels; it can grow from A if pilot creators ask. C cannot say when they are free again. Passionfroot's slot calendar remains stronger for slot-sold media; ours is stronger in that it feeds straight into who a brand sees first.
 - Consequences / follow-ups: (1) Column `creator.booked_until` (migration `f74cbe0d42c9`), nullable, no default, no index (only ever a filter on rows other conditions pick); the downgrade drops it, a preference the creator can set again. (2) `GET` and `PUT /api/v1/creators/me/availability`: from today to a year ahead, in Tamil Nadu days; null clears it. A passed date reads as taking work, worked out on every read, never cleared by a job. (3) Creator search returns each result's `booked_until` and takes `available_on` to keep only creators free that day. (4) A campaign's suggested creators put those taking work today first, booked ones after with the date. (5) **Not on the public Passport**: creators published it before this existed. (6) Nothing blocks: a booked creator can apply and be contacted. (7) In the creator's data export. 23 new tests; the four rules each shown to fail when broken.
+
+## D-084: Brands invite creators, and "work together again" is a repeat invitation
+- Date: 2026-10-10
+- Approved by: Adhi, in this session, choosing option A for item 42 of `docs/BILLION_DOLLAR_GAP.md` ("A"), with its gate (database).
+- Context: Every deal began with a creator applying. A brand that found the right creator in search, or wanted last month's creator again, could only hope they applied. Item 42 had been written up as "nothing new stored"; that was wrong, because a memo needs an accepted application and a brand had no way to create one.
+- Options considered: A) a brand invites a creator to an open campaign, as an `application` row with origin 'invited'; "work together again" is an invitation naming the earlier deal, and accepting it drafts the memo from that deal's terms · B) a rebook button that only copies the old campaign as a new draft, leaving the creator to find it and apply.
+- Chosen: A.
+- Reason: B still waits on the creator to notice and apply; A puts the offer in front of them, and it also serves invitations from search, which impact.com and Skeepers both offer (their help pages, read 10 October 2026). As on impact.com's marketplace, accepting an invitation needs nothing more from the creator: the brand already chose them (help.impact.com, read 10 October 2026). Ours goes further for repeats: the memo arrives drafted with the agreed terms, and the brand sees the creator's delivery record (D-038) before choosing to repeat.
+- Consequences / follow-ups:
+  1. Migration `2c3bf71783d2` changes `application`:
+     - adds `origin`, `invitation_note`, `decline_reason` and `repeat_of_application_id` (FK to `application`, RESTRICT, partial index);
+     - makes `pitch` nullable, tied to the origin by a check;
+     - adds the statuses 'invited' and 'declined';
+     - adds the four invitation notification types, which a person may mute.
+     
+     Every check is added NOT VALID and validated after the transaction, and the index is built concurrently. The downgrade refuses while any invitation exists.
+  2. `POST /campaigns/{id}/invitations` (brand), `POST /applications/{id}/accept-invitation`, `/decline-invitation` with a reason code (creator), `/withdraw-invitation` (brand), and `POST /deal-memos/{id}/repeat` (brand; an agreed, uncancelled deal whose fee suits the new campaign's type).
+  3. Moves now depend on who makes them, so a creator declines an invitation and never withdraws the brand's offer.
+  4. Policy: at most 25 unanswered invitations per campaign, held by a lock on the campaign row. There is no expiry: an invitation lasts while its campaign is open, and accepting needs it open and its brand not suspended.
+  5. What changes for other features:
+     - the creator's to-do list gains `answer_invitation`;
+     - the brand's `draft_memo` item now also covers a memo written but never sent, which had been a gap;
+     - creator feedback leaves invitations out;
+     - the campaign summary counts `invited` and `declined`;
+     - both sides' exports carry the new fields.
+  6. A new test compares every CHECK in the models with the migrated database, which `alembic check` does not do.
+  7. Tests: 83 new API tests and 2 concurrency tests. Sixteen rules were each shown to fail when broken.

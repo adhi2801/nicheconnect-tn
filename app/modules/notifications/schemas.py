@@ -28,6 +28,10 @@ NotificationType = Literal[
     "proof_revision_requested",
     "payment_marked_paid",
     "payment_confirmed",
+    "invitation_received",
+    "invitation_accepted",
+    "invitation_declined",
+    "invitation_withdrawn",
 ]
 
 ensure_same_values("NotificationType", NotificationType, NOTIFICATION_TYPES)

@@ -10,11 +10,14 @@ from pydantic_core import PydanticCustomError
 from app.core.literals import ensure_same_values
 from app.core.taxonomy import CURRENCY, MAX_NICHES, Niche
 from app.modules.campaigns.models import (
+    APPLICATION_ORIGINS,
     APPLICATION_STATUSES,
     BUDGETED_TYPES,
     CAMPAIGN_TYPES,
+    DECLINE_REASONS,
     DELIVERABLES_MAX_LENGTH,
     DESCRIPTION_MAX_LENGTH,
+    INVITATION_NOTE_MAX_LENGTH,
     MAX_CITIES,
     PITCH_MAX_LENGTH,
     PITCH_MIN_LENGTH,
@@ -139,8 +142,16 @@ class CampaignRead(BaseModel):
 # --- applications --------------------------------------------------------
 
 ApplicationStatus = Literal[
-    "submitted", "shortlisted", "accepted", "rejected", "withdrawn"
+    "submitted",
+    "shortlisted",
+    "accepted",
+    "rejected",
+    "withdrawn",
+    "invited",
+    "declined",
 ]
+ApplicationOrigin = Literal["applied", "invited"]
+DeclineReason = Literal["timing", "budget", "not_a_fit", "other"]
 RejectionReason = Literal[
     "budget_mismatch",
     "audience_mismatch",
@@ -152,6 +163,8 @@ RejectionReason = Literal[
 
 ensure_same_values("ApplicationStatus", ApplicationStatus, APPLICATION_STATUSES)
 ensure_same_values("RejectionReason", RejectionReason, REJECTION_REASONS)
+ensure_same_values("ApplicationOrigin", ApplicationOrigin, APPLICATION_ORIGINS)
+ensure_same_values("DeclineReason", DeclineReason, DECLINE_REASONS)
 
 Pitch = Annotated[
     str,
@@ -183,18 +196,67 @@ class ApplicationReject(BaseModel):
     note: RejectionNote | None = None
 
 
+InvitationNote = Annotated[
+    str,
+    Field(
+        min_length=1,
+        max_length=INVITATION_NOTE_MAX_LENGTH,
+        description="A few words from the brand, shown with the invitation",
+        examples=["Loved your Madurai food walks. Our Pongal box would suit them."],
+    ),
+]
+
+
+class InvitationCreate(BaseModel):
+    """A brand invites one creator to one of its open campaigns (D-084)."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    creator_id: uuid.UUID = Field(description="From search or a match")
+    note: InvitationNote | None = None
+
+
+class RepeatCreate(BaseModel):
+    """Work together again: the same creator, invited to another open campaign."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    campaign_id: uuid.UUID = Field(description="One of your open campaigns")
+    note: InvitationNote | None = None
+
+
+class InvitationDecline(BaseModel):
+    """Why a creator said no. A code, so the brand sees it clearly."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reason: DeclineReason
+
+
 class ApplicationRead(BaseModel):
+    """A creator on a campaign, whether they applied or were invited.
+
+    `origin` says which. An invitation has no `pitch`; it may carry the
+    brand's `invitation_note`. `repeat_of_application_id` names the earlier
+    deal a repeat invitation repeats. Clients must tolerate statuses they do
+    not know: `invited` and `declined` were added on 10 October 2026.
+    """
+
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
     campaign_id: uuid.UUID
     creator_id: uuid.UUID
-    pitch: str
+    origin: ApplicationOrigin
+    pitch: str | None = Field(description="Null for an invitation")
+    invitation_note: str | None
+    repeat_of_application_id: uuid.UUID | None
     quoted_amount_paise: int | None
     currency: Literal["INR"] = CURRENCY
     status: ApplicationStatus
     rejection_reason: RejectionReason | None
     rejection_note: str | None
+    decline_reason: DeclineReason | None
     status_changed_at: datetime
     created_at: datetime
     updated_at: datetime
@@ -248,6 +310,8 @@ class ApplicationCountsRead(BaseModel):
     accepted: int
     rejected: int
     withdrawn: int
+    invited: int = Field(description="Invitations still waiting for an answer")
+    declined: int = Field(description="Invitations the creator said no to")
 
 
 class DealStageCountsRead(BaseModel):

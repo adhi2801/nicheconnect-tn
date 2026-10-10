@@ -221,7 +221,9 @@ def _brand_decision(
         now: datetime = Depends(get_now),
     ) -> ApplicationRead:
         return ApplicationRead.model_validate(
-            service.change_application_status(db, application, new_status, now)
+            service.change_application_status(
+                db, application, new_status, now, actor="brand"
+            )
         )
 
     return endpoint
@@ -270,6 +272,7 @@ def reject_application(
             application,
             "rejected",
             now,
+            actor="brand",
             rejection_reason=body.reason,
             rejection_note=body.note,
         )
@@ -295,5 +298,7 @@ def withdraw_application(
     now: datetime = Depends(get_now),
 ) -> ApplicationRead:
     return ApplicationRead.model_validate(
-        service.change_application_status(db, application, "withdrawn", now)
+        service.change_application_status(
+            db, application, "withdrawn", now, actor="creator"
+        )
     )

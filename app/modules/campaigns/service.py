@@ -39,6 +39,7 @@ from app.modules.campaigns.exceptions import (
     CampaignStatusConflict,
     CreatorProfileRequired,
     FieldNotEditableNow,
+    InvitationPending,
 )
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.notifications import service as notifications
@@ -67,11 +68,15 @@ CAMPAIGN_EXPORT_FIELDS = allow(
 APPLICATION_EXPORT_FIELDS = allow(
     "id",
     "campaign_id",
+    "origin",
     "pitch",
+    "invitation_note",
+    "repeat_of_application_id",
     "quoted_amount_paise",
     "status",
     "rejection_reason",
     "rejection_note",
+    "decline_reason",
     "status_changed_at",
     "created_at",
     "updated_at",
@@ -231,14 +236,32 @@ def discover_campaigns(
 #         │  └────reject─────────┘  └────reject───────> rejected
 #         └────withdraw────────────────withdraw───────> withdrawn
 #
-# The brand shortlists, accepts and rejects; the creator withdraws. Accepted,
-# rejected and withdrawn are final: a new attempt means a new campaign.
-APPLICATION_TRANSITIONS: dict[str, frozenset[str]] = {
-    "submitted": frozenset({"shortlisted", "rejected", "withdrawn"}),
-    "shortlisted": frozenset({"accepted", "rejected", "withdrawn"}),
-    "accepted": frozenset(),
-    "rejected": frozenset(),
-    "withdrawn": frozenset(),
+# The brand shortlists, accepts and rejects; the creator withdraws.
+#
+# And for an invitation (D-084):
+#
+#     invited ──accept (creator)──> accepted
+#        │ └───decline (creator)──> declined
+#        └─────withdraw (brand)───> withdrawn
+#
+# "Withdrawn" means whoever started it took it back. Accepted, rejected,
+# declined and withdrawn are final: a new attempt means a new campaign.
+#
+# Who may make each move matters, not only where it leads: a creator answers
+# an invitation by declining it, never by withdrawing the brand's offer.
+BRAND_MOVES: dict[str, frozenset[str]] = {
+    "submitted": frozenset({"shortlisted", "rejected"}),
+    "shortlisted": frozenset({"accepted", "rejected"}),
+    "invited": frozenset({"withdrawn"}),
+}
+CREATOR_MOVES: dict[str, frozenset[str]] = {
+    "submitted": frozenset({"withdrawn"}),
+    "shortlisted": frozenset({"withdrawn"}),
+    "invited": frozenset({"accepted", "declined"}),
+}
+APPLICATION_MOVES: dict[str, dict[str, frozenset[str]]] = {
+    "brand": BRAND_MOVES,
+    "creator": CREATOR_MOVES,
 }
 
 
@@ -261,13 +284,16 @@ def _creator_account_id(db: Session, application: Application) -> uuid.UUID | No
     )
 
 
-# Which status change tells whom. The brand hears about withdrawals; the
-# creator hears the brand's decisions (D-023).
-STATUS_NOTIFICATIONS: dict[str, tuple[str, str]] = {
-    "shortlisted": ("creator", "application_shortlisted"),
-    "accepted": ("creator", "application_accepted"),
-    "rejected": ("creator", "application_rejected"),
-    "withdrawn": ("brand", "application_withdrawn"),
+# Which move tells whom, keyed by (who moved, the new status). The other
+# side always hears (D-023, D-084).
+STATUS_NOTIFICATIONS: dict[tuple[str, str], tuple[str, str]] = {
+    ("brand", "shortlisted"): ("creator", "application_shortlisted"),
+    ("brand", "accepted"): ("creator", "application_accepted"),
+    ("brand", "rejected"): ("creator", "application_rejected"),
+    ("brand", "withdrawn"): ("creator", "invitation_withdrawn"),
+    ("creator", "withdrawn"): ("brand", "application_withdrawn"),
+    ("creator", "accepted"): ("brand", "invitation_accepted"),
+    ("creator", "declined"): ("brand", "invitation_declined"),
 }
 
 
@@ -314,9 +340,17 @@ def apply_to_campaign(
         db.flush()
     except IntegrityError as error:
         db.rollback()
-        if "uq_application_campaign_creator" in str(error):
-            raise AlreadyApplied() from error
-        raise
+        if "uq_application_campaign_creator" not in str(error):
+            raise
+        waiting = db.scalar(
+            select(Application.status).where(
+                Application.campaign_id == campaign.id,
+                Application.creator_id == creator.id,
+            )
+        )
+        if waiting == "invited":
+            raise InvitationPending() from error
+        raise AlreadyApplied() from error
 
     brand_account_id = _brand_account_id(db, campaign)
     if brand_account_id is not None:
@@ -340,28 +374,72 @@ def change_application_status(
     new_status: str,
     now: datetime,
     *,
+    actor: str,
     rejection_reason: str | None = None,
     rejection_note: str | None = None,
+    decline_reason: str | None = None,
 ) -> Application:
-    """Move an application on, or raise ApplicationStatusConflict."""
+    """Move an application on as `actor` ("brand" or "creator"), and commit.
+
+    Raises ApplicationStatusConflict, and CampaignNotOpen when a creator
+    accepts an invitation to a campaign that is no longer open.
+    """
+    move_application(
+        db,
+        application,
+        new_status,
+        now,
+        actor=actor,
+        rejection_reason=rejection_reason,
+        rejection_note=rejection_note,
+        decline_reason=decline_reason,
+    )
+    db.commit()
+    db.refresh(application)
+    return application
+
+
+def move_application(
+    db: Session,
+    application: Application,
+    new_status: str,
+    now: datetime,
+    *,
+    actor: str,
+    rejection_reason: str | None = None,
+    rejection_note: str | None = None,
+    decline_reason: str | None = None,
+) -> Campaign:
+    """The move itself, without committing, for a caller with more to write.
+
+    Returns the application's campaign. Accepting an invitation needs the
+    campaign still open and its brand not suspended, checked under the
+    application's lock: an invitation outlives neither.
+    """
     # Locked and read again before the check: two moves at once would both
     # pass it, and the last write would silently win (review audit, 4 Oct).
     db.refresh(application, attribute_names=["status"], with_for_update=True)
-    if new_status not in APPLICATION_TRANSITIONS[application.status]:
+    if new_status not in APPLICATION_MOVES[actor].get(application.status, frozenset()):
         db.rollback()
         raise ApplicationStatusConflict(
             f"A {application.status} application cannot become {new_status}."
         )
+    campaign = db.get_one(Campaign, application.campaign_id)
+    if (actor, new_status) == ("creator", "accepted") and (
+        campaign.status != "open" or brand_is_suspended(db, campaign.brand_id)
+    ):
+        db.rollback()
+        raise CampaignNotOpen()
     application.status = new_status
     application.rejection_reason = rejection_reason if new_status == "rejected" else None
     application.rejection_note = rejection_note if new_status == "rejected" else None
+    application.decline_reason = decline_reason if new_status == "declined" else None
     application.status_changed_at = now
     application.updated_at = now
 
     # Tell the other side what happened, in the same transaction: a record
     # that exists only if the change itself succeeded.
-    side, notification_type = STATUS_NOTIFICATIONS[new_status]
-    campaign = db.get_one(Campaign, application.campaign_id)
+    side, notification_type = STATUS_NOTIFICATIONS[(actor, new_status)]
     account_id = (
         _creator_account_id(db, application)
         if side == "creator"
@@ -369,8 +447,9 @@ def change_application_status(
     )
     if account_id is not None:
         details: dict[str, object] = {"campaign_title": campaign.title}
-        if rejection_reason is not None:
-            details["reason"] = rejection_reason
+        reason = rejection_reason or decline_reason
+        if reason is not None:
+            details["reason"] = reason
         notifications.record(
             db,
             account_id=account_id,
@@ -380,10 +459,7 @@ def change_application_status(
             application_id=application.id,
             details=details,
         )
-
-    db.commit()
-    db.refresh(application)
-    return application
+    return campaign
 
 
 def _paginate_applications(
@@ -503,8 +579,9 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
                 "applications_received",
                 table="application",
                 purpose=(
-                    "Applications creators sent to your campaigns. The creator "
-                    "is identified by their public handle only."
+                    "Applications creators sent to your campaigns, and the "
+                    "invitations you sent creators. The creator is identified "
+                    "by their public handle only."
                 ),
                 objects=received,
                 fields=APPLICATION_EXPORT_FIELDS,
@@ -530,7 +607,10 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
             build_section(
                 "applications_sent",
                 table="application",
-                purpose="Applications you sent to campaigns, and how each ended.",
+                purpose=(
+                    "Applications you sent to campaigns, invitations brands sent "
+                    "you, and how each ended."
+                ),
                 objects=sent,
                 fields=APPLICATION_EXPORT_FIELDS,
                 extra=lambda row: {"campaign_title": titles.get(row.campaign_id)},

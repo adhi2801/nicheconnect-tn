@@ -73,10 +73,10 @@ Today every follower count and result is self-reported or read from a screenshot
 
 | # | Item | Evidence | Fits our rules | Gate, size |
 |---|---|---|---|---|
-| 42 | **Work together again in one tap**: a new memo from a finished deal's terms, sent to the same creator. | Repeat deals are where a marketplace's value compounds; "this creator delivered on time" is our own record (D-038). | Nothing new stored. | **S**. |
+| 42 | **Built 10 October (D-084).** **Work together again in one tap**: a new memo from a finished deal's terms, sent to the same creator. It was built as a brand inviting a creator to an open campaign, with repeats as one kind of invitation. The "nothing new stored" below was wrong: four columns were added to `application`. | Repeat deals are where a marketplace's value compounds; "this creator delivered on time" is our own record (D-038). | Nothing new stored. | **S**. |
 | 43 | **Campaign alerts for creators**: a saved city, niche and budget, and a notification when a matching campaign opens, held by D-079's rules. | Liquidity: a creator who hears first applies first. | Uses notification preferences (D-079). | Database; **S to M**. |
 | 44 | **Counter-offers on quotes**: a brand answers an application's quote with another figure, and the creator accepts or declines, all on the record. | Negotiation happens today in WhatsApp, off the record. Part of item 17's structured deal notes. | Sealed in the deal record when it becomes a memo. | Database; **M**. |
-| 45 | **Availability**: a creator marks "booked until 20 Nov"; matching and search respect it. | Fewer applications that go nowhere, on both sides. | A date, nothing personal. | Database; **S**. |
+| 45 | **Built 8 October (D-083).** **Availability**: a creator marks "booked until 20 Nov"; matching and search respect it. | Fewer applications that go nowhere, on both sides. | A date, nothing personal. | Database; **S**. |
 
 ### I. Agencies and larger brands
 

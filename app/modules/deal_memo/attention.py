@@ -10,7 +10,7 @@ import uuid
 from collections import defaultdict
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.core.attention import AttentionItem
@@ -27,16 +27,18 @@ def for_brand(db: Session, brand_id: uuid.UUID, now: datetime) -> list[Attention
     """Memos to draft or revise, and proof to review, in three queries."""
     items: list[AttentionItem] = []
 
-    # Accepted, and nobody has written the memo yet.
-    for application_id, campaign_id, title, handle in db.execute(
-        select(Application.id, Campaign.id, Campaign.title, Creator.handle)
+    # Accepted, and the memo is not written yet, or written and never sent:
+    # either way the creator is waiting on the brand. A repeat deal's memo
+    # arrives drafted (D-084), so this is how the brand hears to send it.
+    for application_id, campaign_id, title, handle, memo_id in db.execute(
+        select(Application.id, Campaign.id, Campaign.title, Creator.handle, DealMemo.id)
         .join(Campaign, Campaign.id == Application.campaign_id)
         .join(Creator, Creator.id == Application.creator_id)
         .outerjoin(DealMemo, DealMemo.application_id == Application.id)
         .where(
             Campaign.brand_id == brand_id,
             Application.status == "accepted",
-            DealMemo.id.is_(None),
+            or_(DealMemo.id.is_(None), DealMemo.status == "draft"),
         )
     ).tuples():
         items.append(
@@ -47,6 +49,7 @@ def for_brand(db: Session, brand_id: uuid.UUID, now: datetime) -> list[Attention
                 campaign_title=title,
                 counterparty=handle,
                 application_id=application_id,
+                memo_id=memo_id,
             )
         )
 

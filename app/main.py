@@ -32,10 +32,12 @@ from app.modules.auth.report_router import router as report_router
 from app.modules.auth.router import router as auth_router
 from app.modules.auth.search_router import router as search_router
 from app.modules.campaigns.application_router import router as applications_router
+from app.modules.campaigns.invitation_router import router as invitations_router
 from app.modules.campaigns.router import router as campaigns_router
 from app.modules.deal_memo.delivery_router import router as delivery_router
 from app.modules.deal_memo.proof_router import router as proof_router
 from app.modules.deal_memo.record_router import router as deal_record_router
+from app.modules.deal_memo.repeat_router import router as repeat_router
 from app.modules.deal_memo.response_times_router import router as response_times_router
 from app.modules.deal_memo.router import router as deal_memos_router
 from app.modules.disputes.router import router as disputes_router
@@ -119,10 +121,12 @@ app.include_router(media_kit_router)
 app.include_router(rate_guidance_router)
 app.include_router(campaigns_router)
 app.include_router(applications_router)
+app.include_router(invitations_router)
 app.include_router(notifications_router)
 app.include_router(notification_preferences_router)
 app.include_router(deal_memos_router)
 app.include_router(deal_record_router)
+app.include_router(repeat_router)
 app.include_router(proof_router)
 app.include_router(payment_router)
 app.include_router(bulk_payments_router)

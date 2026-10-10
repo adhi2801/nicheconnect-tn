@@ -272,6 +272,76 @@ def create_memo(
     return memo
 
 
+# What a repeat deal carries over from the deal it repeats (D-084): every
+# term both sides agreed, except the date the work is due, which belongs to
+# the new deal and must be set before this one can be sent. The memo's own
+# state (status, dates, counts) starts fresh. tests/modules/deal_memo/
+# test_repeat_api.py fails if a memo column is in neither list.
+REPEATED_TERMS: tuple[str, ...] = (
+    "deliverables",
+    "fee_amount_paise",
+    "currency",
+    "cancellation_fee_paise",
+    "approval_window_days",
+    "payment_due_days",
+    "usage_rights_days",
+    "disclosure_required",
+    "extra_terms",
+)
+NOT_REPEATED: dict[str, str] = {
+    "id": "the new memo's own",
+    "application_id": "the new deal's application",
+    "content_due_on": "a new deal has a new date, set before it is sent",
+    "status": "starts as a draft the brand reviews",
+    "revision_count": "starts again",
+    "sent_at": "not sent yet",
+    "accepted_at": "not accepted yet",
+    "work_started_at": "no work yet",
+    "cancelled_at": "not cancelled",
+    "cancellation_kind": "not cancelled",
+    "created_at": "now",
+    "updated_at": "now",
+}
+
+
+def check_repeatable(memo: DealMemo, campaign: Campaign) -> None:
+    """Whether a deal can be repeated on `campaign`.
+
+    Only a deal both sides agreed and nobody cancelled is worth repeating,
+    and its fee must suit the new campaign's type. Raises MemoStatusConflict,
+    BarterMemoHasNoFee and PaidMemoNeedsFee.
+    """
+    if memo.status != "accepted":
+        raise MemoStatusConflict(
+            "Only a deal both sides agreed, and nobody cancelled, can be repeated."
+        )
+    _check_fee_against_campaign(campaign, memo.fee_amount_paise)
+
+
+def draft_repeat_memo(db: Session, application: Application, now: datetime) -> DealMemo:
+    """Draft the memo for an accepted repeat invitation, without committing.
+
+    The brand finds it ready with the earlier deal's terms, sets the new
+    date and sends it; nothing reaches the creator before that. The fee was
+    checked against this campaign when the invitation was sent, and an open
+    campaign's type cannot change (EDITABLE_WHILE_OPEN), so it still fits.
+    """
+    previous = db.scalars(
+        select(DealMemo).where(
+            DealMemo.application_id == application.repeat_of_application_id
+        )
+    ).one()
+    memo = DealMemo(
+        application_id=application.id,
+        status="draft",
+        created_at=now,
+        updated_at=now,
+        **{term: getattr(previous, term) for term in REPEATED_TERMS},
+    )
+    db.add(memo)
+    return memo
+
+
 def update_memo(
     db: Session, memo: DealMemo, changes: dict[str, Any], now: datetime
 ) -> DealMemo:
