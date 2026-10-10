@@ -184,9 +184,15 @@ def downgrade() -> None:
             "downgrading. This migration will not."
         )
 
-    # Mute settings for types that are going away; a person can set the
-    # rest again. Notifications of these types exist only with an
-    # invitation, and none exists.
+    # Notifications of these types belong to invitations, and none exists,
+    # so any left are rows whose invitation is gone: a cascade skipped (a
+    # test cleanup did this until 10 October). They would fail the narrower
+    # check, and they point at nothing.
+    op.execute(
+        f"DELETE FROM notification WHERE notification_type IN {INVITATION_TYPES}"
+    )
+    # Mute settings for types that are going away; a person can set them
+    # again.
     for kind in INVITATION_TYPES:
         op.execute(
             "UPDATE notification_preference "

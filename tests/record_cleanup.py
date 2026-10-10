@@ -23,8 +23,16 @@ from app.modules.deal_memo.record_models import DealRecordEntry
 
 
 def remove_deal_records(session: Session, memo_ids: Iterable[uuid.UUID]) -> None:
-    """Delete these deals' entries, inside the caller's transaction."""
+    """Delete these deals' entries, inside the caller's transaction.
+
+    The bypass is switched off again straight after, for the caller's later
+    deletes need their cascades. Left on, deleting an account skipped
+    ON DELETE CASCADE and left its notifications behind, pointing at
+    nothing: found 10 October 2026, when a migration's downgrade tripped on
+    them.
+    """
     session.execute(text("SET LOCAL session_replication_role = replica"))
     session.execute(
         delete(DealRecordEntry).where(DealRecordEntry.deal_memo_id.in_(list(memo_ids)))
     )
+    session.execute(text("SET LOCAL session_replication_role = origin"))
