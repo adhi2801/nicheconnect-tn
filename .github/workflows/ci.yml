@@ -166,8 +166,19 @@ jobs:
 
       # Coverage is measured on the same run, and the 80% overall floor in
       # pyproject.toml fails it (testing.md section 5).
+      # A failing test's name and first error line also go out as ::error
+      # annotations, which anyone can read on the pull request and through
+      # the API. The full log is visible only to repository admins, and a
+      # red run nobody can read cannot be fixed by anyone else (10 October
+      # 2026). The exit status is pytest's own, unchanged.
       - name: Run tests
-        run: pytest -x --tb=short --cov --cov-report=term
+        run: |
+          set +e
+          pytest -x --tb=short --cov --cov-report=term -rfE 2>&1 | tee pytest.log
+          status=${PIPESTATUS[0]}
+          grep -E '^(FAILED|ERROR) ' pytest.log | cut -c1-500 | sed 's/^/::error title=Test failed::/'
+          grep -E '^E  ' pytest.log | head -n 5 | cut -c1-500 | sed 's/^/::error title=First error::/'
+          exit "$status"
 
       # The other half of testing.md section 5: every service.py at 90% or
       # more. coverage.py has no per-file floor, so this reads its report.

@@ -27,3 +27,4 @@ crash.log
 # Private working files that never belong in git, such as the proof reader's
 # test set: screenshots of the founders' own posts (D-070, step 2).
 local/
+pytest.log
