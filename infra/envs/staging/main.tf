@@ -61,6 +61,11 @@ variable "sentry_dsn" {
   default = ""
 }
 
+variable "upi_notice_version" {
+  type    = string
+  default = ""
+}
+
 module "app" {
   source = "../../modules/app"
 
@@ -83,6 +88,7 @@ module "app" {
   msg91_whatsapp_number = var.msg91_whatsapp_number
   proof_reading_enabled = var.proof_reading_enabled
   sentry_dsn            = var.sentry_dsn
+  upi_notice_version    = var.upi_notice_version
 }
 
 output "app" {

@@ -91,7 +91,7 @@ Examples:
 - Contact details are never shown on public pages; the Passport has none (D-036).
 - **Consent is a recorded event with a timestamp, never a default** (D-036: nobody is public until they choose).
 - Consent wording, retention periods, deletion, and the consent-manager rules that take effect on 13 November 2026 follow the validation pack (constraint 6). Nothing is invented.
-- **A personal-data breach is reported to the Data Protection Board and to the people affected within the time the DPDP Rules set** (the validation pack confirms the clock). The response plan is in section 9 **(not yet built)**.
+- **A personal-data breach is reported to the Data Protection Board and to the people affected within the time the DPDP Rules set** (the validation pack confirms the clock), and a cyber incident to CERT-In within 6 hours. The plan is `docs/INCIDENT_RESPONSE.md`; the law behind both is `docs/standards/legal.md` sections 3.1 and 3.2.
 - Account deletion is tested end to end once the policy is decided (E8).
 
 ## 8. Transport and headers

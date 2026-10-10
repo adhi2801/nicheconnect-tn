@@ -20,7 +20,7 @@ Three things it does **not** mean:
 
 Built and tested on `main`: Phases A, B and D of the backlog, C1 to C4, E3 and E4 (`docs/PRODUCT_BACKLOG.md`); creator search, the admin side, results read from proof (D-070, switched off), the deal record with its daily outside timestamp, proof files, and AWS described as code. **1,973 tests, 98.44% coverage**, API fuzzing, migration and image scanning in CI.
 
-**Section 3 holds 20 items, plus 18 in 3.8, approved by Adhi on 8 October ("approve all"; 20 were approved, and 45 and 42 are built). Section 4 holds 8 that wait on someone outside the code.** Item 1, Python 3.14 and uv, was built on 1 October (D-072); item 2, error tracking with Sentry, on 4 October (D-074). Also built on 4 October, from the website wireframes' backend requests: one list of a party's payments with totals (D-075), and each deal's stage with whose move it is, plus a per-campaign summary with Complete (D-076). Items 19 and 22 were built on 8 October: typical response times (D-077) and city figures for public pages (D-078). Items 18 and 21, notification preferences and invite attribution, were built on 8 October (D-079, D-080), from `docs/decided/PROPOSAL_NOTIFICATION_PREFERENCES_AND_ATTRIBUTION.md`. Also on 8 October: every list now has a query-count test, and the security items owed before launch were built (D-082): secret scanning in CI, the image's SBOM, Dependabot, `SECURITY.md`, `security.txt` and the incident plan. On 10 October those were checked again against the bar. The incident plan's rotation steps were corrected: OpenTofu would have written a leaked generated key back, and the Valkey password and the nightly task were missing. A test now ties the plan to the secrets `infra/` defines. The money-words check now also scans commit messages and files not yet tracked. CI checks that private vulnerability reporting is on. Four more lists got query-count tests: a creator's applications, the dispute timeline, the deal record and the data export. Section 5 lists what the founders declined or deferred.
+**Section 3 holds 20 items, plus 17 in 3.8, approved by Adhi on 8 October ("approve all"; 20 were approved, and 45, 42 and 32 are built). Section 4 holds 8 that wait on someone outside the code.** Item 1, Python 3.14 and uv, was built on 1 October (D-072); item 2, error tracking with Sentry, on 4 October (D-074). Also built on 4 October, from the website wireframes' backend requests: one list of a party's payments with totals (D-075), and each deal's stage with whose move it is, plus a per-campaign summary with Complete (D-076). Items 19 and 22 were built on 8 October: typical response times (D-077) and city figures for public pages (D-078). Items 18 and 21, notification preferences and invite attribution, were built on 8 October (D-079, D-080), from `docs/decided/PROPOSAL_NOTIFICATION_PREFERENCES_AND_ATTRIBUTION.md`. Also on 8 October: every list now has a query-count test, and the security items owed before launch were built (D-082): secret scanning in CI, the image's SBOM, Dependabot, `SECURITY.md`, `security.txt` and the incident plan. On 10 October those were checked again against the bar. The incident plan's rotation steps were corrected: OpenTofu would have written a leaked generated key back, and the Valkey password and the nightly task were missing. A test now ties the plan to the secrets `infra/` defines. The money-words check now also scans commit messages and files not yet tracked. CI checks that private vulnerability reporting is on. Four more lists got query-count tests: a creator's applications, the dispute timeline, the deal record and the data export. Section 5 lists what the founders declined or deferred.
 
 ## 3. Left to build: no outside wait, a decision first
 
@@ -92,7 +92,6 @@ Built already from the same list: deal stage and campaign summary (D-076), the p
 | 29 | Connected Instagram and YouTube accounts: numbers from the platform | Security, database, dependency; Meta App Review and Google verification first |
 | 30 | Results fetched from the platform at proof time | After 29 |
 | 31 | Audience authenticity signals from real data (replaces 16's plan) | After 29 |
-| 32 | A UPI pay link on every payment; the money never passes through us | A founder decision on storing UPI IDs |
 | 33 | The barter tax tracker against the ₹20,000 TDS line | Validation pack wording |
 | 35 | Aadhaar eSign on the deal memo, optional | Legal; dependency |
 | 36 | Verified business from GST | Dependency, security |
@@ -111,7 +110,20 @@ Built already from the same list: deal stage and campaign summary (D-076), the p
 Built from 3.8:
 
 - 8 October: 45, creator availability (D-083).
+- 10 October: 32, the UPI pay link (D-085). It is built and tested, and stays off until the validation pack supplies the consent notice. It also needs trying on real phones.
 - 10 October: 42, work together again (D-084). It was built as brand invitations to a campaign, with repeats as one kind of invitation. Item 42's "nothing new stored" proved wrong: a memo needs an accepted application, so a brand needed a way to start one.
+
+### 3.9 From the legal standard (10 October, `docs/standards/legal.md`)
+
+| # | Item | Gate |
+|---|---|---|
+| 50 | A public page listing, in order, what ranks creators in search and matches. It changes with the ranking code (E-Commerce Rules 5(3)) | Copy; **Confirm** we are a marketplace entity |
+| 51 | The grievance clocks in the report queue: acknowledge within 24 hours, resolve within 7 days, unlawful content within 36 hours (IT Rules as amended 2026) | Security |
+| 52 | Taking down one item of content within 3 hours of an order, without suspending the account | Security, database |
+| 53 | Logs kept 180 days in India (CERT-In); today 30 | **Infrastructure decision** |
+| 54 | Adults only: a declared date of birth at sign-up (contract law, DPDP section 9) | **Founders decide**; database |
+| 55 | A CI check that fails on a dependency licence not approved (GPL, AGPL) | CI decision |
+| 56 | CI checks the OpenTofu files (`tofu fmt` and `tofu validate`); nothing checks them today | CI decision |
 
 Item 34, payment confirmation from bank statements, was researched and set aside: Account Aggregator data goes only to regulated financial entities.
 

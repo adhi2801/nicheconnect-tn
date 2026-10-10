@@ -773,3 +773,23 @@ Newest entries at the bottom.
      - both sides' exports carry the new fields.
   6. A new test compares every CHECK in the models with the migrated database, which `alembic check` does not do.
   7. Tests: 83 new API tests and 2 concurrency tests. Sixteen rules were each shown to fail when broken.
+
+## D-085: The UPI pay link, with the creator's UPI ID stored by consent
+- Date: 2026-10-10
+- Approved by: Adhi. Item 32 of `docs/BILLION_DOLLAR_GAP.md` was approved on 8 October ("approve all"), with its gate named as a founder decision on storing UPI IDs. After the plan to store them was put to him on 10 October, he confirmed it ("carry on working next").
+- Context: A brand pays a creator by copying an amount and a UPI ID by hand, the most error-prone step in a deal. `docs/standards/database.md` section 4 forbade storing UPI identifiers without a founder decision.
+- Options considered: A) store the creator's UPI ID with consent, and give the brand on the deal NPCI's `upi://pay` link while the payment is open · B) no stored ID: the creator types it into each deal · C) leave payment details off the platform.
+- Chosen: A.
+- Reason: It removes the step where money goes to the wrong place, and the money still moves only between the two banks (constraint 1). The design, its choices and its threat model are in `docs/decided/PROPOSAL_UPI_PAY_LINK.md`.
+- Consequences / follow-ups:
+  1. Table `creator_upi` (migration `e39beab4e841`), separate from `creator`, one row per creator. Its checks refuse a malformed ID and a phone-number ID. The downgrade refuses while any row exists, since each row is a consent record.
+  2. `GET`, `PUT` and `DELETE /api/v1/creators/me/upi`, and `GET /api/v1/deal-memos/{id}/payment/pay-details` for the deal's brand while the payment is open (20 a minute).
+  3. Rules:
+     - no link above UPI's ₹1 lakh limit between people;
+     - person-to-person fields only;
+     - a UPI ID set in the last 24 hours is flagged to the brand.
+  4. Off until the validation pack's notice exists: setting `UPI_NOTICE_VERSION` (`.env.example`, `infra/`) switches it on. Withdrawing always works.
+  5. In the creator's data export.
+  6. Tests: 51, and 13 rules shown to fail when broken.
+  7. Owed: the notice wording, and trying the link on real phones with the main UPI apps before launch.
+  8. `database.md` section 4 now names this decision.

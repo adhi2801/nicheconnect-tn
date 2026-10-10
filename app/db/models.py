@@ -36,3 +36,4 @@ from app.modules.notifications.preference_models import (
     NotificationPreference,  # noqa: F401
 )
 from app.modules.payment_status.models import PaymentStatus  # noqa: F401
+from app.modules.payment_status.upi_models import CreatorUpi  # noqa: F401

@@ -50,6 +50,7 @@ from app.modules.payment_status.brand_router import router as reliability_router
 from app.modules.payment_status.bulk_router import router as bulk_payments_router
 from app.modules.payment_status.mine_router import router as my_payments_router
 from app.modules.payment_status.router import router as payment_router
+from app.modules.payment_status.upi_router import router as upi_router
 
 # Before the app exists, so the error tracker sees it built (D-074). Off
 # unless SENTRY_DSN is set.
@@ -129,6 +130,7 @@ app.include_router(deal_record_router)
 app.include_router(repeat_router)
 app.include_router(proof_router)
 app.include_router(payment_router)
+app.include_router(upi_router)
 app.include_router(bulk_payments_router)
 app.include_router(my_payments_router)
 app.include_router(reliability_router)

@@ -169,3 +169,13 @@ variable "sentry_dsn" {
     error_message = "sentry_dsn must be empty or a Sentry DSN, https://<key>@<host>/<project>."
   }
 }
+
+variable "upi_notice_version" {
+  type        = string
+  default     = ""
+  description = "The version of the UPI notice creators read (D-085). Empty keeps adding a UPI ID off; set it once the validation pack supplies the wording."
+  validation {
+    condition     = var.upi_notice_version == "" || can(regex("^[A-Za-z0-9._-]{1,40}$", var.upi_notice_version))
+    error_message = "upi_notice_version must be empty, or 1 to 40 letters, digits, dots, dashes or underscores."
+  }
+}

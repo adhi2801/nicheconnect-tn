@@ -5637,6 +5637,93 @@
         "title": "Page[PaymentListItem]",
         "type": "object"
       },
+      "PayDetailsRead": {
+        "description": "What the brand needs to pay the creator directly, by UPI.\n\n`pay_link` opens the brand's own UPI app with everything filled in; the\nbrand checks the name the app shows (the bank's, not ours) and approves\nwith its PIN. NicheConnect TN never receives the money. `pay_link` is\nnull when the creator has added no UPI ID, or when the amount is above\nwhat UPI allows between people in a day, and `unavailable_reason` says\nwhich: pay by bank transfer instead.",
+        "properties": {
+          "amount_paise": {
+            "title": "Amount Paise",
+            "type": "integer"
+          },
+          "currency": {
+            "const": "INR",
+            "default": "INR",
+            "title": "Currency",
+            "type": "string"
+          },
+          "pay_link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A upi://pay link; render it as a button, or as a QR code",
+            "title": "Pay Link"
+          },
+          "payee_name": {
+            "description": "The creator's display name",
+            "title": "Payee Name",
+            "type": "string"
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "no_upi_id",
+                  "above_upi_limit"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason"
+          },
+          "upi_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upi Id"
+          },
+          "upi_id_changed_recently": {
+            "description": "True when the UPI ID was set in the last 24 hours. Worth confirming with the creator before paying: a changed ID is how payment fraud usually starts.",
+            "title": "Upi Id Changed Recently",
+            "type": "boolean"
+          },
+          "upi_id_set_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the creator last set their UPI ID",
+            "title": "Upi Id Set At"
+          }
+        },
+        "required": [
+          "payee_name",
+          "upi_id",
+          "amount_paise",
+          "pay_link",
+          "unavailable_reason",
+          "upi_id_set_at",
+          "upi_id_changed_recently"
+        ],
+        "title": "PayDetailsRead",
+        "type": "object"
+      },
       "PaymentBucketRead": {
         "properties": {
           "amount_paise": {
@@ -7604,6 +7691,100 @@
           "unread"
         ],
         "title": "UnreadCount",
+        "type": "object"
+      },
+      "UpiRead": {
+        "description": "The creator's own UPI ID, and the consent it was given under.\n\nAll null when they have not added one.",
+        "properties": {
+          "consented_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consented At"
+          },
+          "notice_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notice Version"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "upi_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upi Id"
+          }
+        },
+        "required": [
+          "upi_id",
+          "consented_at",
+          "notice_version",
+          "updated_at"
+        ],
+        "title": "UpiRead",
+        "type": "object"
+      },
+      "UpiSet": {
+        "additionalProperties": false,
+        "description": "A creator gives their UPI ID, having read the notice.",
+        "properties": {
+          "consent": {
+            "const": true,
+            "description": "Must be true: you agree to the notice you were shown",
+            "title": "Consent",
+            "type": "boolean"
+          },
+          "notice_version": {
+            "description": "The version of the notice you were shown",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Notice Version",
+            "type": "string"
+          },
+          "upi_id": {
+            "description": "name@handle, as your UPI app shows it. Not one made of your phone number: your UPI app lets you create a name instead.",
+            "examples": [
+              "meena.cooks@okhdfcbank"
+            ],
+            "maxLength": 128,
+            "title": "Upi Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "upi_id",
+          "consent",
+          "notice_version"
+        ],
+        "title": "UpiSet",
         "type": "object"
       }
     },
@@ -14853,6 +15034,261 @@
         ]
       }
     },
+    "/api/v1/creators/me/upi": {
+      "delete": {
+        "description": "Deletes your UPI ID and withdraws the consent you gave for it. Brands then pay you by bank transfer. Always allowed, and safe to repeat.",
+        "operationId": "remove_my_upi_api_v1_creators_me_upi_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only a creator may use this endpoint"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "You have not created a creator profile yet"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove my UPI ID",
+        "tags": [
+          "upi pay link"
+        ]
+      },
+      "get": {
+        "description": "The UPI ID you gave so brands on your deals can pay you directly, and the notice version you agreed to. All null when you have not added one.",
+        "operationId": "read_my_upi_api_v1_creators_me_upi_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpiRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only a creator may use this endpoint"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "You have not created a creator profile yet"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My UPI ID",
+        "tags": [
+          "upi pay link"
+        ]
+      },
+      "put": {
+        "description": "Stores your UPI ID, with your consent to the notice you were shown. `consent` must be true, and `notice_version` the version you read; consent is given again with every change. Brands see the ID only while a payment to you on their deal is open. A UPI ID made of a phone number is refused, because brands would see the number. Money still goes from the brand's bank straight to yours.",
+        "operationId": "set_my_upi_api_v1_creators_me_upi_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpiSet"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpiRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only a creator may use this endpoint"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "You have not created a creator profile yet"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The notice changed since you read it"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Consent is missing, or the UPI ID is not usable"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Adding a UPI ID is not open yet: its notice is not ready"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Give or change my UPI ID",
+        "tags": [
+          "upi pay link"
+        ]
+      }
+    },
     "/api/v1/creators/{creator_id}/delivery-record": {
       "get": {
         "description": "A creator's delivery record, built from what happened rather than from reviews: deals delivered, deals not delivered, and whether the work arrived by the agreed date. The shares are withheld until three deals have completed; `null` there means **not enough to say**, and must not be shown as zero. `currently_overdue` is always reported, so a new account can never hide work a brand is still waiting for. Barter deals are counted separately and never scored.",
@@ -16985,6 +17421,112 @@
         "summary": "Mark this payment as sent",
         "tags": [
           "payment"
+        ]
+      }
+    },
+    "/api/v1/deal-memos/{memo_id}/payment/pay-details": {
+      "get": {
+        "description": "For the brand on this deal, while its payment is open: the creator's UPI ID, the amount and a `upi://pay` link that opens the brand's own UPI app with everything filled in. Before entering the PIN, check that the name the UPI app shows is the creator's. NicheConnect TN never receives the money. `pay_link` is null when the creator has added no UPI ID or the amount is above UPI's limit between people, and `unavailable_reason` says which. Then mark the payment sent with the UPI reference, as usual.",
+        "operationId": "read_pay_details_api_v1_deal_memos__memo_id__payment_pay_details_get",
+        "parameters": [
+          {
+            "description": "The memo's id",
+            "in": "path",
+            "name": "memo_id",
+            "required": true,
+            "schema": {
+              "description": "The memo's id",
+              "format": "uuid",
+              "title": "Memo Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayDetailsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only the brand on the deal may see this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such memo, it is not yours, or it has no payment record yet"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "This payment is already marked as sent"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "How to pay the creator by UPI",
+        "tags": [
+          "upi pay link"
         ]
       }
     },

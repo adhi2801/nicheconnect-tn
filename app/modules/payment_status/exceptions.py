@@ -57,3 +57,20 @@ class NotAPaymentParty(DomainError):
     status_code = HTTPStatus.FORBIDDEN
     code = "not_a_payment_party"
     title = "Only brand and creator accounts have payments"
+
+
+# --- the UPI pay link (D-085) ---------------------------------------------------------
+
+
+class UpiNotOpenYet(DomainError):
+    # The notice a creator must read first comes from the validation pack
+    # (constraint 6). Until it exists, nobody can give a UPI ID.
+    status_code = HTTPStatus.SERVICE_UNAVAILABLE
+    code = "upi_not_open_yet"
+    title = "Adding a UPI ID is not open yet"
+
+
+class UpiNoticeChanged(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "upi_notice_changed"
+    title = "The notice has changed since you read it; read the new one and try again"

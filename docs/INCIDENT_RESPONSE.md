@@ -73,6 +73,7 @@ Data is never deleted to stop an incident. A restore from backup (`docs/standard
 
 ## 5. Telling people
 
+- **CERT-In, within 6 hours of noticing it.** CERT-In's Directions of 28 April 2022 apply to every company, and their list of reportable incidents includes unauthorised access to systems or data, compromised accounts, data breaches and attacks on servers and databases. The 6 hours start when we notice, not when we are sure. Report by email to incident@cert-in.org.in (or phone 1800-11-4949, toll free, all day), with CERT-In's incident reporting form from [cert-in.org.in](https://www.cert-in.org.in/PDF/certinirform.pdf) and what is known; details can follow ([the Directions](https://www.cert-in.org.in/PDF/CERT-In_Directions_70B_28.04.2022.pdf)). Write the time sent in the log. This comes first because its clock is the shortest (`docs/standards/legal.md` section 3.2).
 - **Personal data may have been reached:** the Digital Personal Data Protection Rules require notice to the **Data Protection Board** and to **each person affected**, within the time the Rules set. The exact clock and wording come from the validation pack (constraint 6); until it confirms them, treat the notice as due **without delay** and ask the founders' adviser the same day.
 - **Brands and creators affected:** told plainly by email and in the app: what happened, what it means for them, what we did, what they should do. No hedging and no blame.
 - **The reporter, if it came from outside:** kept informed as `SECURITY.md` promises.

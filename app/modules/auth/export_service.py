@@ -40,6 +40,7 @@ from app.modules.disputes import service as disputes
 from app.modules.notifications import preference_service as notification_preferences
 from app.modules.notifications import service as notifications
 from app.modules.payment_status import service as payments
+from app.modules.payment_status import upi_service as upi
 
 # Bumped whenever the shape of the file changes, so a reader can tell which
 # version it is looking at.
@@ -329,6 +330,7 @@ def collect_sections(db: Session, account: Account) -> list[ExportedSection]:
         *campaigns.export_for_account(db, account.id),
         *deal_memos.export_for_account(db, account.id),
         *payments.export_for_account(db, account.id),
+        *upi.export_for_account(db, account.id),
         *disputes.export_for_account(db, account.id),
         *notifications.export_for_account(db, account.id),
         *notification_preferences.export_for_account(db, account.id),
@@ -371,6 +373,7 @@ def exported_tables() -> frozenset[str]:
         | notifications.EXPORTED_TABLES
         | notification_preferences.EXPORTED_TABLES
         | payments.EXPORTED_TABLES
+        | upi.EXPORTED_TABLES
         | disputes.EXPORTED_TABLES
     )
 
