@@ -924,3 +924,76 @@ Newest entries at the bottom.
      - One break survived: swapping the Merkle hash order. Root and proof stay consistent, which is all a property can check. The RFC 6962 vectors in `test_merkle.py` catch it.
      - So `testing.md` now says to keep both kinds.
   6. `docs/standards/testing.md` sections 1, 3 and 6 are updated.
+
+## D-091: Mutation testing with mutmut, nightly, with every accepted survivor named
+- Date: 2026-10-12
+- Approved by: Adhi, in this session ("all 3 in a-b-c"), as B of the three.
+- Context: Each feature's tests were proven by breaking the code by hand, about a dozen breaks per feature (`testing.md` section 2). A tool can make hundreds of breaks every night.
+- Options considered: A) mutmut, nightly · B) mutmut on every push · C) keep doing it by hand only.
+- Chosen: A.
+- Reason:
+  - mutmut 3.8.0 (12 September 2026) is the maintained mutation tester for Python. It supports Python 3.14 and is BSD-3-Clause, which is on the approved list.
+  - A full run takes about ten minutes, too slow for every push and right for a night.
+  - It needs Linux (it forks). Locally it runs in a container, against a throwaway database with CI's test-only credentials, never the developer's own.
+- Consequences / follow-ups:
+  1. `mutmut==3.8.0` is in its own `mutation` group, installed only by `.github/workflows/mutation.yml`. That workflow runs at 02:00 Tamil Nadu time and on demand, with read-only permissions and pinned actions; zizmor finds nothing.
+  2. Scope (`[tool.mutmut]`):
+     - deal stage, payment state and its dates, the approval clock, the record's fingerprint and Merkle proofs, the text flags, cursors, the report spreadsheet;
+     - only lines the chosen fast tests reach;
+     - never the wording of an error, since clients branch on codes.
+  3. The machine's clock is set to Tamil Nadu time in the run. A mutant that read the machine's zone instead of UTC survived under a UTC clock and is caught under IST.
+  4. **First run: 598 mutants, 82 survived.** Each was read:
+     - about 30 changed only an error's wording, and are now excluded;
+     - the rest showed real gaps, now closed by tests:
+       - the record's exact fields, built from a real entry;
+       - the terms fingerprint spelling a date;
+       - a link in the chain changed alone;
+       - another deal's record presented as this one's;
+       - a record read in the order it was written, with index scans off so the planner cannot hide a missing ORDER BY;
+       - which account each side's entries name;
+       - the payment days (unpaid on exactly day 14, unconfirmed on exactly day 7, no dispute assumed by default);
+       - a payment reference at and one past each length limit, and characters outside the allowed set;
+       - a Merkle proof asked for one past the last leaf.
+  5. **Last run: 572 mutants. 545 caught, 4 timed out, 1 reached by no fast test, 21 survived.** The nightly check accepts exactly 21:
+     - equivalent, so no test can tell them apart:
+       - the cursor's padding arithmetic, and stripping an "X" a cursor can never end in (3);
+       - the text substituted for an email before the UPI check (1);
+       - an unreachable Merkle loop bound (1);
+       - `<` against `<=` in the review clock, where the proof itself changes nothing (1);
+       - `ensure_ascii=None`, and "UTF-8" spelled in capitals (3);
+       - join conditions SQLAlchemy infers by itself (6);
+       - `.limit(1)` against `.limit(2)` before `.first()` (2);
+     - out of reach of the fast tests: the lock inside `append` (3). Every caller already locks the deal's row first, so only a concurrency test aimed at `append` alone could see it;
+     - one error message split across lines, which the exclusion cannot match (1).
+  6. Widening the run to the record's API tests made 1,126 mutants with 186 survivors. Those tests reach many lines without checking what each line does. That is the backlog to work down, area by area, raising scope only when its survivors are closed.
+  7. `docs/standards/testing.md` sections 2 and 9 are updated.
+
+## D-092: The load test, with Locust; one container holds about 200 people, and overload wedges it
+- Date: 2026-10-12
+- Approved by: Adhi, in this session ("all 3 in a-b-c"), as C of the three, which is item 5 of `docs/BACKEND_COMPLETE.md`.
+- Context: Every p95 in `docs/PERFORMANCE.md` was measured with one person. Launch is many.
+- Options considered: A) Locust · B) k6 · C) a hand-written script.
+- Chosen: A.
+- Reason:
+  - Locust 2.46.7 (4 October 2026) is Python, so the test signs people in with the app's own token code.
+  - It supports Python 3.14 and is MIT-licensed. k6 is AGPL-3.0, which is not on the approved list.
+- Consequences / follow-ups:
+  1. `locust==2.46.7` is in its own `load` group, never in an image.
+  2. `scripts/load_test.py` runs 16 endpoints across brand and creator journeys.
+     - Each simulated person uses a different seeded sample account.
+     - The one write puts a creator's availability back unchanged; nothing touches the deal record.
+     - It fails on any failed request or any p95 over budget.
+     - It refuses to run outside `ENVIRONMENT=local`, against anything but this machine, or without seeded accounts.
+  3. **Measured on one process, the way a production container runs:**
+     - 200 people for 3 minutes: 12,194 requests, none failed, 68 a second, every p95 between 130 and 220 ms. Inside every budget.
+     - 400 people: 14% failed with a 500 after waiting up to 90 seconds, and the process stopped answering even `/healthz` until restarted.
+     - The cause: one process has 15 database connections and 40 worker threads, and each side waits on the other until a 30-second timeout fires.
+  4. **The fix is proposed, not built (item 5a):** answer 503 with `Retry-After` within a second or two when busy, and never wedge. It changes error behaviour and settings, so it needs its own approval.
+  5. Two first-run artefacts were fixed in the script:
+     - on Windows, `localhost` adds two seconds to every new connection, so the test uses `127.0.0.1`;
+     - an unpublished Passport correctly answers 404, so only published ones are visited.
+  6. The measurement is from a laptop, with the load generator on the same machine. A staging run is owed once AWS is up.
+  7. **The seed data exposed three tests that passed only on an empty database.** CI starts empty every run, so none had ever failed there.
+     - Suggested creators across a block read a key a match never had. With no matches the check never ran, so it proved nothing. It now compares handles, and removing the block filter makes it fail.
+     - Discovery across a block lost its campaigns to newer sample campaigns on page one. It now uses a city of its own.
+     - The adults-only test read the first creator in the database. It now finds its own by handle.

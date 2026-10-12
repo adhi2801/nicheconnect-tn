@@ -387,8 +387,12 @@ def test_only_the_confirmation_is_kept_never_the_date(client, db, now):
     headers = login(db, now, "creator")
     client.post(CREATOR_URL, json=creator_body(), headers=headers)
 
+    # This account's creator, by its handle. Taking the first creator in the
+    # database passed only while the database was empty (D-092).
     account = db.scalars(
-        select(Account).join(Creator, Creator.account_id == Account.id)
+        select(Account)
+        .join(Creator, Creator.account_id == Account.id)
+        .where(Creator.handle == creator_body()["handle"])
     ).first()
     exported = client.get("/api/v1/me/export", headers=headers).text
     columns = {column.name for column in Account.__table__.columns} | {

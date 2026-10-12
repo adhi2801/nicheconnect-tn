@@ -94,6 +94,8 @@ def test_malformed_proofs_are_refused(index, size, path_change):
         merkle.root_from_path(index, size, leaves[0], path)
 
 
-def test_asking_for_a_leaf_that_is_not_there_is_an_error():
+@pytest.mark.parametrize("index", [-1, 2, 3])
+def test_asking_for_a_leaf_that_is_not_there_is_an_error(index):
+    """One past the last leaf included: mutation testing found it untested."""
     with pytest.raises(IndexError):
-        merkle.audit_path(3, [b"a", b"b"])
+        merkle.audit_path(index, [b"a", b"b"])

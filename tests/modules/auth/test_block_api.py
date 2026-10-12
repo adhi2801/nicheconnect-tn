@@ -326,12 +326,18 @@ def test_out_of_the_campaigns_suggested_creators(client, db, brand, creator, blo
     published(db, creator)
     campaign_id = open_campaign(client, brand, cities=["Coimbatore"])
 
+    handle = db.scalar(
+        select(Creator.handle).where(Creator.account_id == creator.account_id)
+    )
+
     matches = client.get(f"{CAMPAIGNS_URL}/{campaign_id}/matches", headers=brand.headers)
 
     assert matches.status_code == 200, matches.text
-    assert blocked["creator_id"] not in [
-        m["creator_id"] for m in matches.json()["matches"]
-    ]
+    # A match names its creator by handle. This read `m["creator_id"]`, a key
+    # a match never had: on an empty database the list was empty and the
+    # check never ran, so it passed whatever the code did. Found when the
+    # load test's seed data filled the list (D-092).
+    assert handle not in [m["creator"]["handle"] for m in matches.json()["matches"]]
 
 
 def test_out_of_the_creators_suggested_campaigns(client, db, brand, creator, blocked):
@@ -369,12 +375,23 @@ def test_unblocked_they_are_suggested(client, db, brand, creator):
 
 def test_only_the_blocked_brands_campaigns_leave_discovery(client, db, clock, creator):
     blocked_brand, other_brand = brand_user(db, clock), brand_user(db, clock)
-    hidden = [open_campaign(client, blocked_brand, title=f"Hidden {n}") for n in range(2)]
-    shown = [open_campaign(client, other_brand, title=f"Shown {n}") for n in range(2)]
+    # A city of this test's own, so campaigns other tests or sample data left
+    # cannot push these off the first page (testing.md section 4, D-092).
+    city = f"Testpur {uuid.uuid4().hex[:8]}"
+    hidden = [
+        open_campaign(client, blocked_brand, title=f"Hidden {n}", cities=[city])
+        for n in range(2)
+    ]
+    shown = [
+        open_campaign(client, other_brand, title=f"Shown {n}", cities=[city])
+        for n in range(2)
+    ]
     brand_id, _ = ids(db, blocked_brand, creator)
     client.post(URL, json={"brand_id": brand_id}, headers=creator.headers)
 
-    response = client.get(f"{CAMPAIGNS_URL}/discover", headers=creator.headers)
+    response = client.get(
+        f"{CAMPAIGNS_URL}/discover", params={"city": city}, headers=creator.headers
+    )
 
     assert response.status_code == 200, response.text
     found = {row["id"] for row in response.json()["items"]}

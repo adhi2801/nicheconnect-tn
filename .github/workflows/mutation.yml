@@ -1,0 +1,104 @@
+name: Mutation testing
+
+# Nightly, and on demand (D-091). mutmut breaks the rule-heavy code in
+# hundreds of small ways ([tool.mutmut] in pyproject.toml) and fails if more
+# breaks go unnoticed by the tests than the last accepted count. Too slow for
+# every push; a night is enough to catch a weakened test before it matters.
+on:
+  schedule:
+    # 02:00 in Tamil Nadu.
+    - cron: "30 20 * * *"
+  workflow_dispatch:
+
+# Least privilege (D-047, security.md section 8): it only reads the code.
+permissions:
+  contents: read
+
+jobs:
+  mutation:
+    # Exact runner image, as in ci.yml (D-086).
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+
+    services:
+      # The same database and Valkey as ci.yml: the record tests need them.
+      db:
+        image: pgvector/pgvector:0.8.6-pg18-trixie
+        env:
+          POSTGRES_USER: niche
+          POSTGRES_PASSWORD: niche
+          POSTGRES_DB: nicheconnect
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U niche -d nicheconnect"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: valkey/valkey:9.1.2-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # Test-only values (security.md section 5). Never real keys.
+    env:
+      DATABASE_URL: postgresql+psycopg://niche:niche@localhost:5432/nicheconnect
+      REDIS_URL: redis://localhost:6379/0
+      SECRET_KEY: ci-test-only-signing-key-not-a-secret-0001
+      OTP_HASH_KEY: ci-test-only-otp-hash-key-not-a-secret-0002
+      # 50 generated cases per property test per mutant (tests/conftest.py).
+      HYPOTHESIS_PROFILE: mutation
+      # The machine's clock in Tamil Nadu time, not UTC: a mutant that reads
+      # the machine's zone instead of a fixed one then changes an answer
+      # and is caught (testing.md section 5). POSIX form, needing no tzdata.
+      TZ: "IST-5:30"
+      # The accepted number of surviving mutants, each one read and listed
+      # in D-091 as equivalent or out of reach. Lower it when a test kills
+      # one; never raise it without a decision.
+      MAX_SURVIVORS: "21"
+
+    steps:
+      # Pinned to commit SHAs, as in ci.yml (D-047).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.12.23"
+
+      - name: Install dependencies with mutmut
+        run: |
+          uv sync --locked --group mutation
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+
+      - name: Apply migrations
+        run: alembic upgrade head
+
+      - name: Run mutation testing
+        run: mutmut run
+
+      # The survivors go to the run's summary, which anyone with read access
+      # can see, then the count is checked against the accepted number.
+      - name: Check surviving mutants
+        run: |
+          mutmut results > results.txt || true
+          survivors=$(grep -c ': survived' results.txt || true)
+          {
+            echo "## Mutation testing"
+            echo
+            echo "Surviving mutants: ${survivors} (accepted: ${MAX_SURVIVORS})"
+            echo
+            echo '```'
+            grep ': survived' results.txt || echo "none"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "${survivors}" -gt "${MAX_SURVIVORS}" ]; then
+            echo "::error title=Mutation testing::${survivors} mutants survived; ${MAX_SURVIVORS} are accepted. Run 'mutmut browse' to see each."
+            exit 1
+          fi

@@ -92,6 +92,9 @@ dev = [
     # Schemathesis pulls it in too; pinned here because tests import it.
     "hypothesis==6.169.0",
 ]
+load = [
+    "locust==2.46.7",
+]
 # The embedding stack (D-052), deliberately apart from the app:
 # 1. The API image does not need it: embedding is never on the request path.
 # 2. torch's advisory surface is far larger than the rest of the project's,
@@ -103,6 +106,13 @@ dev = [
 ml = [
     "torch==2.14.0+cpu",
     "sentence-transformers==6.1.0",
+]
+# Automated mutation testing (D-091): breaks the rule-heavy code in thousands
+# of small ways and reports any break no test noticed. Its own group because
+# it brings a terminal UI and a parser the test suite does not need; installed
+# only by the nightly mutation workflow. Linux only (it forks).
+mutation = [
+    "mutmut==3.8.0",
 ]
 
 [tool.uv]
@@ -197,6 +207,46 @@ ignore_missing_imports = true
 # It failed there from PR #28 on while passing on any laptop that had it.
 module = ["sentence_transformers.*", "sentence_transformers"]
 ignore_missing_imports = true
+
+[tool.mutmut]
+# The pure rules where a silent mistake costs someone money or trust
+# (testing.md section 2, D-091): a deal's stage, payment state and its
+# dates, the approval clock, the record's fingerprint and Merkle proofs, the
+# contact and money flags, cursors, and the report spreadsheet.
+source_paths = ["app/"]
+only_mutate = [
+    "app/modules/deal_memo/stage.py",
+    "app/modules/deal_memo/merkle.py",
+    "app/modules/deal_memo/record_service.py",
+    "app/modules/deal_memo/proof_service.py",
+    "app/modules/payment_status/service.py",
+    "app/core/text_flags.py",
+    "app/core/pagination.py",
+    "app/modules/campaigns/report_csv.py",
+]
+# Only lines the chosen tests reach: a function they never call is not
+# evidence of a weak test, and would bury the real survivors.
+mutate_only_covered_lines = true
+# The wording of an error is for people; clients and tests branch on the
+# error's type and code, never its text (backend.md section 3). Mutating it
+# reports thirty "survivors" that are not weak tests.
+do_not_mutate_patterns = ['^\s*raise \w+\(".*"\)\s*$', '^\s*raise \w+\(f".*"\)\s*$']
+also_copy = ["alembic", "alembic.ini", "tests", "docs"]
+pytest_add_cli_args_test_selection = [
+    "tests/modules/deal_memo/test_deal_stage.py",
+    "tests/modules/deal_memo/test_deal_rules_properties.py",
+    "tests/modules/deal_memo/test_merkle.py",
+    "tests/modules/deal_memo/test_record_properties.py",
+    "tests/modules/deal_memo/test_deal_record_service.py",
+    "tests/modules/payment_status/test_payment_state.py",
+    "tests/modules/payment_status/test_payment_state_properties.py",
+    "tests/modules/payment_status/test_reference.py",
+    "tests/modules/payment_status/test_reference_properties.py",
+    "tests/core/test_text_flags.py",
+    "tests/core/test_text_flags_properties.py",
+    "tests/core/test_pagination_properties.py",
+    "tests/modules/campaigns/test_campaign_report_csv.py",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

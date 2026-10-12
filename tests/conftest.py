@@ -24,6 +24,9 @@ settings.register_profile(
     print_blob=True,
     database=None,
 )
+# Mutation testing runs the chosen tests once per mutant, thousands of times:
+# fewer cases each, so a night is enough (D-091).
+settings.register_profile("mutation", max_examples=50, deadline=None, database=None)
 settings.load_profile(os.environ.get("HYPOTHESIS_PROFILE", "dev"))
 
 

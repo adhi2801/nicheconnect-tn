@@ -31,3 +31,5 @@ pytest.log
 
 # Hypothesis keeps failing examples here to replay them (D-090)
 .hypothesis/
+# mutmut writes its mutated copies here (D-091)
+mutants/

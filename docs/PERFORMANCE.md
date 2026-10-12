@@ -15,6 +15,69 @@ whole deals, 5 bank bulk transfers of 25 rows, and 30 rounds of rate card
 edits. All from one run, on a developer laptop under Docker Desktop for
 Windows.
 
+## Many people at once: the load test (12 October, item 5, D-092)
+
+`scripts/load_test.py` (Locust) runs brands and creators through what they
+really do, all at once: 16 endpoints, one write that changes nothing, each
+simulated person signed in as a different seeded account so per-account rate
+limits behave as they would for real people. It fails on any failed request
+or any p95 over budget.
+
+**Set-up:** one uvicorn process, as one production container runs it
+(Dockerfile: one process per container). Seeded with 40 brands, 400
+creators, 300 campaigns and 1,981 applications. A developer laptop under
+Docker Desktop for Windows, the load generator on the same machine.
+
+**200 people for 3 minutes: inside every budget.** 12,194 requests, none
+failed, 68 a second.
+
+| Endpoint | Requests | p95 |
+|---|---|---|
+| GET /campaigns/discover | 2,886 | 170 ms |
+| GET /applications/me | 1,478 | 200 ms |
+| GET /campaigns/discover/for-me | 1,421 | 220 ms |
+| GET /deal-memos/mine | 1,171 | 170 ms |
+| GET /me/attention | 984 | 210 ms |
+| GET /creators/by-handle/{handle} | 978 | 130 ms |
+| GET /creators/me/availability | 488 | 160 ms |
+| PUT /creators/me/availability | 488 | 150 ms (budget 500) |
+| GET /campaigns/{id}/summary | 433 | 220 ms |
+| GET /campaigns | 420 | 180 ms |
+| GET /creators (search) | 342 | 180 ms |
+| GET /campaigns/{id}/applications | 327 | 220 ms |
+| GET /notifications/unread-count | 232 | 150 ms |
+| GET /payments/mine | 222 | 160 ms |
+| GET /payments/mine/totals | 222 | 130 ms |
+| GET /campaigns/{id}/report | 102 | 220 ms |
+
+At 50 people every p95 was 43 to 170 ms (17 requests a second).
+
+**400 people: one process falls over, and does not recover by itself.**
+About 14% of requests failed with a 500 and some waited 90 seconds. The cause
+is in the server log: `QueuePool limit of size 5 overflow 10 reached,
+connection timed out, timeout 30.00`.
+
+- A process has 15 database connections and up to 40 worker threads.
+- A request takes its connection in the sign-in check, then waits for a
+  thread to run the endpoint, while every thread waits for a connection.
+- Nothing moves until a 30-second timeout fires and answers 500.
+- After the load stopped, all 15 connections sat "idle in transaction" and
+  even `/healthz` stopped answering. In production the container's health
+  check would fail and ECS would restart it after about a minute and a half,
+  dropping whatever was in flight.
+
+The fix is proposed, not built: `docs/BACKEND_COMPLETE.md` item 5a. Until it
+is, the honest capacity of one container is **about 200 active people, or 70
+requests a second**, and more people means more containers.
+
+**Two lessons from the first run, now in the script:**
+
+- On Windows, `localhost` tries IPv6 first and waits about two seconds before
+  falling back. Every new connection showed as a two-second request; use
+  `127.0.0.1`.
+- A creator's Passport is public only when published, so the test visits
+  only published ones. Its 404s were correct answers.
+
 ## Added 30 September: creator search and reports
 
 Built after the 26 September run, so measured separately: same seed (200
@@ -202,8 +265,9 @@ for its own decision. **Trigger:** 20,000 deals, or a measured proof p95 above
 - **The admin side** (D-061). Admins are few and their screens are not on a
   user's path; the report queue and account lookup are the ones to add when
   the pilot has admins.
-- **Under load.** These are sequential requests from one client. The plan
-  (section 4.5) wants a repeatable load test before launch; it does not exist.
+- **Under load, on real hardware.** The load test exists (above) and was run
+  on a laptop with the load generator on the same machine. A staging run
+  against the real database, from another machine, is owed once AWS is up.
 - **At real scale.** 150 campaigns is a pilot-sized seed, not a year of
   trading. The figures say the queries are not accidentally quadratic; they
   do not say what happens at a hundred times the rows.
@@ -212,6 +276,16 @@ for its own decision. **Trigger:** 20,000 deals, or a measured proof p95 above
   network will not look like this.
 
 ## Running it yourself
+
+The load test:
+
+```powershell
+uv run python scripts\seed_dev_data.py --reset --brands 40 --creators 400 --campaigns 300 --applications 2000
+uv run uvicorn app.main:app --no-server-header
+uv run --group load locust -f scripts/load_test.py --headless --host http://127.0.0.1:8000 --users 200 --spawn-rate 25 --run-time 3m
+```
+
+One endpoint at a time:
 
 ```powershell
 docker compose up -d

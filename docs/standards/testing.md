@@ -36,7 +36,12 @@ Two lessons from 10 October 2026, now rules:
 - **At least two of every kind in a query's test.** A filter that forgot to tie a subquery to its row passed every test with one campaign in the database. With several, it failed, but first only on CI. A test of anything that joins or filters builds two or more of each thing involved (brands, campaigns, creators), so a missing join condition cannot pass by luck.
 - **One guard, one test.** Two defences that each cover the other (an email pattern that excluded UPI IDs, and a step that removed emails first) let either be deleted without any test failing. Mutation testing found it. Keep the clearer guard, and give each remaining one a test of its own.
 
-Mutation testing tools (mutmut) automate this for the rule-heavy modules (payment state, deal stage, approval clock) **(not yet used; a dependency decision)**.
+**Mutation testing (mutmut, D-091)** automates this every night for the rule-heavy modules listed in `[tool.mutmut]` (`pyproject.toml`): deal stage, payment state and its dates, the approval clock, the record's fingerprint and Merkle proofs, the text flags, cursors, the report spreadsheet.
+- It runs in `.github/workflows/mutation.yml` with the machine's clock set to Tamil Nadu time, so code that leans on the machine's zone is caught.
+- It fails when more mutants survive than the accepted count. Each accepted survivor is listed in D-091 as equivalent, or as out of reach with the reason.
+- A new survivor gets a test, or a decision; the count is never raised quietly.
+- Its first run found real gaps, each now closed by a test: exact boundary days, a reference's length limits, the record's fields and order, and a tampered link in the chain.
+- Linux only: on Windows, run it in a container, as for CI failures (section 4).
 
 ## 3. Layout and naming
 
@@ -95,7 +100,7 @@ tests/
 ## 8. Performance
 
 - `scripts/measure_performance.py` with seeded data before a phase closes; p95 recorded in `docs/PERFORMANCE.md` against the budgets.
-- A repeatable load test with many users is owed before launch (item 5 in `docs/BACKEND_COMPLETE.md`).
+- **The load test** (`scripts/load_test.py`, Locust, D-092): brands and creators at once, each on a seeded account of their own, failing on any error or any p95 over budget. Run before a phase closes and before launch; results in `docs/PERFORMANCE.md`. Use `127.0.0.1`, never `localhost`, on Windows.
 
 ## 9. CI gates (merge is blocked unless all pass)
 
@@ -113,6 +118,8 @@ tests/
 12. Images built and scanned; any fixable vulnerability blocks (Grype); the API image's bill of materials written (Syft)
 13. Private vulnerability reporting switched on for the repository, since `SECURITY.md` sends researchers there (its own job, `repository-settings`)
 14. The OpenTofu files formatted and every environment valid against its locked providers (its own job, `infrastructure`, D-086)
+
+Nightly, in its own workflow: **mutation testing** (`mutation.yml`, D-091). A night with more surviving mutants than accepted is a failure to fix the next day, like a red CI.
 
 Every job runs on an exact runner image (`ubuntu-24.04`), never `ubuntu-latest`, so CI cannot change under us (D-086).
 
