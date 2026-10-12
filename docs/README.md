@@ -2,6 +2,28 @@
 
 Every file here has one job. If two files start doing the same job, one of them goes. `CLAUDE.md` (at the root) is the only file read at the start of every session; it points here.
 
+## 0. The bar every document meets (D-098)
+
+Adhi, 12 October 2026: every md file at the level of the best. A document meets the bar when:
+
+1. **Its first lines** say what it is for, who reads it, and when it was last checked against the code.
+2. **It is true today:** no stale number, claim or name.
+3. **It is sourced:** every non-obvious rule or number cites the published practice or the measurement behind it, with a date.
+4. **It weighs the ten dimensions** (`CLAUDE.md` section 5) that apply to it, and says which do not.
+5. **It names its own gaps:** what is weak, unmeasured, unreviewed or waiting.
+6. **It is actionable:** it points to the items in `BACKEND_COMPLETE.md` and the decisions that act on it.
+7. **Each fact lives in one place:** others link to it rather than copy it, so nothing drifts.
+8. **It is plain and scannable,** and `tests/test_docs.py` passes: every decision number, path and link in it exists.
+
+Dated reports, the decision log and the papers in `decided/` are records: they keep what was true when written, and get only a status line saying what became of them.
+
+**Progress**, updated as each file is raised. Raised on 12 October: `CLAUDE.md` and this index. Next, in this order:
+1. The eight standards.
+2. The map: `BACKEND_COMPLETE.md`, `ARCHITECTURE_SCALE.md`, `PLATFORM_AND_TECH_PLAN.md`, `PERFORMANCE.md`.
+3. Strategy: the competitive landscape, the billion-dollar gap, trust, go to market, revenue, survival, the backlog.
+4. Operations: the root README, `SECURITY.md`, the incident plan, the infra guide, the verify guide, the two findings files, the screen-to-API map, the commands.
+5. A status line on each paper in `decided/`.
+
 ## 1. Rules: read before working in the area (binding)
 
 | File | Read before |
@@ -39,7 +61,7 @@ Every file here has one job. If two files start doing the same job, one of them 
 | `BILLION_DOLLAR_GAP.md` | What the best platforms have that we do not, as proposed backend items (8 October) |
 | `COMPETITIVE_LANDSCAPE.md` | Every competitor, in India and worldwide, and what we have that they do not |
 | `ARCHITECTURE_SCALE.md` | Scaling later: each proposal with the measured trigger that would justify it, cheapest step first |
-| `research/` | Notes from conversations with real brands and creators, and the Mom Test template for taking them |
+| `research/` | The Mom Test template for interviews with real brands and creators. **No interview notes yet**: every novelty so far comes from desk research, not from users |
 | `SURVIVAL_PLAYBOOK.md` | How startups like ours die and the rules that keep us alive: default alive, the numbers to watch weekly, money without selling the company, and founder pay growing step by step (10 October) |
 | `GO_TO_MARKET.md` | Coimbatore first: how the pilot finds its first brands and creators |
 | `PSYCHOLOGY_AND_TRUST.md` | What makes people trust a marketplace with their money and work |
@@ -49,7 +71,7 @@ Every file here has one job. If two files start doing the same job, one of them 
 | `API_CONTRACT_FINDINGS.md` | What fuzzing the API against its contract found |
 | `FRONTEND_BLUEPRINT_MAPPING.md` | The original blueprint's screens, mapped to the API |
 | `DEAL_RECORD_VERIFY.md` | How anyone can check a deal record's seals themselves (public-facing) |
-| `DESIGN_DIRECTION.md` | Modern Tamil: the design brief (on branch `docs/design-direction`) |
+| `DESIGN_DIRECTION.md` | The design brief, on branch `docs/design-direction`. Written before English only (D-054), so its "Modern Tamil" direction needs revisiting with Erode Harish before it guides any screen |
 
 ## 5. Reference
 

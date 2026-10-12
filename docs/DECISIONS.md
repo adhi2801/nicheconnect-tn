@@ -1139,3 +1139,20 @@ Newest entries at the bottom.
      - bought fake-follower scores.
   5. Novelties 1, 4 and 7 of `docs/COMPETITIVE_LANDSCAPE.md` are now items 83, 84 and 77.
   6. Recommended first, for the account model must be right before any app: 74, 79, 80 and 81. Then the competitor gaps 17, 44, 43 and E5.
+
+## D-098: Every proposal weighs ten dimensions, and every md file meets one bar
+- Date: 2026-10-12
+- Approved by: Adhi, in this session. Shown option A (a ten-dimension proposal template) and an audit of every dimension, he answered "this is why i need every md file in that level", and then "both" to A and B. B is the architecture and structure review: it runs now, and its exact module moves come back as their own proposal before any file moves (D-096 step 4).
+- Context: Adhi is building alone and taking every decision himself. Progress had been measured in features and tests, while quality, novelty, architecture, research and the rest were left to habit. The documents had been written to different shapes at different times. Some held stale figures, and four standards claimed published practice without citing it.
+- Options considered: A) a ten-dimension section in every feature proposal, plus one bar for every document, raised file by file in order of how much each steers the work · B) leave the documents as they are and only template new proposals.
+- Chosen: A.
+- Reason: the documents are what every session reads before acting. One that is stale or unsourced steers the work wrong without anyone noticing.
+- Consequences / follow-ups:
+  1. `CLAUDE.md`:
+     - section 5 asks every feature proposal to weigh quality, novelty, architecture, research, security, privacy and law, trust and safety, performance, design and business, saying "none" where one does not apply;
+     - section 7.0's table adds architecture and research;
+     - section 8's done list adds the ten dimensions, standards re-read for the work, documents kept at the bar, and CI *seen* green;
+     - the file states when it was last checked against the code.
+  2. The closed notice of 21 to 23 September moves, unchanged, to `docs/reports/2026-09-23-closed-notice.md`. It was settled, but it loaded into every session.
+  3. `docs/README.md` section 0 states the eight-point bar every document meets, and tracks progress. Done: `CLAUDE.md` and the index. Next: the eight standards, then the map, strategy and operations; then a status line on each paper in `decided/`. Records (reports, the decision log, `decided/`) keep what was true when written.
+  4. Honest notes made in the index: `research/` holds no interview notes yet, and the design brief predates English only (D-054).

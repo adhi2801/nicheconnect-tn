@@ -1,6 +1,6 @@
 # CLAUDE.md — NicheConnect TN Backend
 
-This file is the operating manual for Claude Code in this repository. It is loaded at the start of every session. Rules here override any conflicting instruction except an explicit, in-the-moment instruction from a founder that does not break a **Non-negotiable constraint**.
+This file is the operating manual for Claude Code in this repository. It is loaded at the start of every session. **Last checked against the code: 12 October 2026.** Rules here override any conflicting instruction except an explicit, in-the-moment instruction from a founder that does not break a **Non-negotiable constraint**.
 
 ---
 
@@ -13,7 +13,7 @@ Updated 2026-09-23 by Adhi.
 | **Adhi** | **The whole backend**, both tracks, in this repository |
 | **Erode Harish** | **Frontend research and design**, outside this repository |
 
-Erode Harish reviewed the outstanding backend work and confirmed the open points from the 21 and 22 September notice, so that notice is closed; his confirmation was **relayed by Adhi**, not given in a session here, and the points it carried are kept below as a record of what was settled.
+Erode Harish reviewed the outstanding backend work and confirmed the open points from the 21 and 22 September notice, so that notice is closed; his confirmation was **relayed by Adhi**, not given in a session here, and the points it carried are kept as a record of what was settled (below).
 
 What this changes, until a founder says otherwise:
 
@@ -25,31 +25,7 @@ What this changes, until a founder says otherwise:
 
 Recorded as D-051 and D-053.
 
-<details>
-<summary>The closed notice, 21–23 September, kept as a record</summary>
-
-
-1. By the end of 20 September nothing had been pushed for two Data-track tasks: the `payment_status` table (D-027) and the Creator Passport opt-out column. Five features were blocked behind them, so Adhi's session built them, together with the dispute tables. They are migrations 17–20 (`b5603ae`, `a3e24d4`, `11a9ed6`, `97a9236`). Decisions D-032 to D-036 describe them.
-2. Adhi asks you to acknowledge this before starting new backend work. Git only shows what was pushed. If you had work on these that never got pushed, say so; it may still be useful.
-3. **Do not write a new migration for `payment_status`, disputes or the Passport column.** Two migrations in flight would fork the chain (section 1).
-4. **Your review is what blocks every merge to `main`.** Review **PR #13** (`feature/attention`), starting with migrations 17–20. It contains all of PR #11 and everything since, so Adhi proposes closing #11 and reviewing only #13. Do you agree?
-5. After #13, review the PR from `chore/cors-and-docs`, which is stacked on it: the CORS allow-list, 500 errors with every header, and the API docs off in production (D-044, D-045). It touches no Data-track file and adds no migration.
-6. **Rate card decision 1** (`docs/decided/PROPOSAL_PASSPORT_RATE_CARD.md`): two new tables and one column. It needs both founders, and the tables are yours to build. What is your decision?
-7. After #13 merges, run `pip install -r requirements.txt`: it adds ruff, mypy and pytest-cov (D-037), and CI fails on lint, formatting, types and coverage without them. Shared files Adhi edited on 22 September: `.env.example` (new optional `CORS_ALLOWED_ORIGINS`), `docs/DECISIONS.md` (D-044, D-045) and `docs/standards/security.md`.
-8. The full account is in the reports under `docs/reports/` dated 2026-09-21 and 2026-09-22, on those branches.
-
-**Added 23 September.** D-047 locked the technology baseline on 22 September, with your approval relayed by Adhi. Building it has now started.
-
-9. **Branch `chore/tech-baseline` is pushed and its CI is green.** Three rows of the section 4.0 baseline are built: the backend library versions (including the `httpx` → `httpx2` swap); the CI supply chain (both actions pinned to commit SHAs at v7, `persist-credentials: false`, a least-privilege `permissions:` block, and zizmor auditing every run); and Schemathesis fuzzing the API against its own contract. It adds no migration and touches no file in your track. Please review it after PR #13 and the `chore/cors-and-docs` PR.
-10. **`requirements.txt` changed again** (shared file, Adhi edited it on 23 September): ten pins moved to current releases, `httpx` was replaced by `httpx2`, and `coverage` and `schemathesis` were added. **Run `pip install -r requirements.txt` before your next session** or CI and your laptop will disagree. Schemathesis found 48 contract failures on its first run; 35 were one bug, now fixed, and the rest are written up in `docs/API_CONTRACT_FINDINGS.md`.
-11. **Valkey 9.1.2 or newer, in place of Redis 7** (baseline section 4.2). It is a drop-in for how we use it, the licence is open, and 9.1 is up to 17% faster. It changes `docker-compose.yml` and `.github/workflows/ci.yml`, both of which need both founders. **Do you approve, and do you want to build it or should Adhi?**
-12. **PostgreSQL 18, UUIDv7 for new tables, and exact image tags** (baseline section 4.2). We run 16.15 on a floating `pg16` tag. 18 brings asynchronous I/O, native `uuidv7()` and statistics that survive an upgrade. **This is your track and yours to build. When can you take it?**
-13. **uv and Python 3.14** (baseline section 4.1). We are on Python 3.12 and plain pip. uv would install and pin both, but it changes the commands in section 4 of this file and the CI workflow, so it needs both founders. Python 3.14 is not installed on Adhi's machine either. **Do you approve, and does moving your local environment to 3.14 cause you any problem?**
-14. **Two product decisions Adhi has made that change your track.** (a) **The product is now called Colyv.** The name appears 52 times in 31 tracked files, including `docker-compose.yml`, `.env.example`, `ERROR_TYPE_BASE` in `app/core/errors.py` (a public API contract, and it assumes we own `colyv.in`) and the database name, which means every local database is recreated. Historical reports and `docs/DECISIONS.md` keep the old name, being a record. (b) **English only; Tamil is dropped.** This unpicks several locked D-047 rows, including hybrid Tamil search in Postgres, which is your track, and the Tamil test set that was to choose every AI and embedding model. It also removes what `docs/COMPETITIVE_LANDSCAPE.md` calls our separation from every competitor. **Both need your agreement before anything is renamed or removed, and both need a decision entry.**
-
-State these as facts from git, not as blame.
-
-</details>
+The closed notice of 21 to 23 September is kept as a record in `docs/reports/2026-09-23-closed-notice.md`.
 
 ---
 
@@ -161,6 +137,21 @@ Risk & rollback: <what could go wrong, how we undo it>
 → Approve A, B, or modify?
 ```
 
+**Every feature proposal also weighs ten dimensions** (D-098), one or two lines each, saying "none" where one does not apply rather than leaving it out:
+
+```
+Quality:        how it is proven (the tests testing.md requires, the rules broken on purpose)
+Novelty:        the strongest competitor's version, and how ours goes further
+Architecture:   which module it belongs in, what it touches, and whether ARCHITECTURE_SCALE.md changes
+Research:       the dated sources behind each non-obvious choice
+Security:       who may see or change what; what an attacker would try
+Privacy & law:  personal data held, its export, consent; legal.md sections touched
+Trust & safety: how one person could use it against another, and what stops them
+Performance:    queries per request, the budget, how it will be measured
+Design:         what the screens need from it, in at most two calls
+Business:       what it does for brands, creators and the business, and what it costs us
+```
+
 **Dependency request:** add `Package`, `Why`, `Alternatives (incl. no package)`, `Security/maintenance impact`.
 
 **Schema request:** add `Tables affected`, `Migration`, `Rollback (downgrade)`, `Data impact`.
@@ -245,6 +236,8 @@ Which doc is for what, and when each is read: `docs/README.md`.
 | Any test, CI, or coverage question | `docs/standards/testing.md` |
 | Web dashboard or mobile app (after backend is complete) | `docs/standards/frontend.md` |
 | Research, flows, design system, copy, accessibility | `docs/standards/ux.md` |
+| Where code belongs, a new module, or anything that changes how the system scales | `docs/standards/backend.md` section 1 and `docs/ARCHITECTURE_SCALE.md` |
+| Any choice that rests on how others do it, or on a number | `docs/research/README.md`, and the dated sources in the plan it changes |
 
 **The bar, in one screen:**
 
@@ -263,14 +256,16 @@ If a standard conflicts with a founder's explicit instruction, point out the con
 
 ## 8. Definition of done
 
-- [ ] Follows sections 2, 3 and 6, and the relevant `docs/standards/` file
+- [ ] Proposed with all ten dimensions (section 5) and approved before it was built
+- [ ] Follows sections 2, 3 and 6, and the relevant `docs/standards/` files, re-read for this work
 - [ ] Tests for success and failure cases, run in this session and passing
 - [ ] Public endpoints rate limited, with an access check on every object (owner, party, or public by design)
 - [ ] Error format, pagination and naming match `docs/standards/backend.md`
 - [ ] Schema changes only via a reviewed migration with a working downgrade
 - [ ] No new dependency without a recorded approval
 - [ ] Committed on a feature branch and pushed
-- [ ] PR open, CI green, reviewed by the other founder
+- [ ] Every document it affects still meets the documents' bar (`docs/README.md`)
+- [ ] PR open, CI seen green (not assumed), reviewed by the other founder
 
 ---
 
