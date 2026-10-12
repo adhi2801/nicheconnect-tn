@@ -16,7 +16,7 @@ services:
   # The old volume holds only development data. Once you are happy on 18,
   # remove it yourself: docker volume rm nicheconnect-tn_db_data
   db:
-    image: pgvector/pgvector:0.8.6-pg18-trixie
+    image: pgvector/pgvector:0.8.7-pg18-trixie
     restart: unless-stopped
     environment:
       POSTGRES_USER: niche
