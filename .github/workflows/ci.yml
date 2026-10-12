@@ -136,6 +136,12 @@ jobs:
       - name: Type check
         run: mypy
 
+      # The module layers (D-099, backend.md section 1): a module imports only
+      # from layers below it, and every module is placed in a layer. Catches
+      # the drift that grew auth to 51 files before anyone noticed.
+      - name: Check the module layers
+        run: lint-imports --no-cache
+
       # D-047 locks Squawk as the migration linter, D-050 wires it in. It
       # reads the SQL a new migration would run and fails on what would lock
       # a busy table: a constraint added without NOT VALID, a required column

@@ -191,6 +191,7 @@ Approved by Adhi on 12 October: "I need them in the best way possible". Each was
 | 93 | Working down the 186 surviving mutants, area by area (D-091) | Testing that keeps growing | None |
 | 94 | A load test against staging, from another machine, at 1,000+ people | Today's figures are from a laptop | Infrastructure |
 | 95 | A weekly slow-query report (`pg_stat_statements`) | `database.md` section 8, not yet used | Infrastructure |
+| 96 | Untangle the deal domain: its 6 mutually importing pairs, by moving cross-cutting views (deal stage, campaign summary and report, payment attention) into a reporting layer (phase 2 of D-099) | Phase 1 left them as one layer that may import across itself | Architecture |
 
 Deliberately not on the list: paying creators directly (TikTok's One Pay; constraint 1; item 87 is our answer), a database of every creator on the internet, and bought fake-follower scores (items 31 and 83 use real results).
 

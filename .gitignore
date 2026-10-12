@@ -33,3 +33,5 @@ pytest.log
 .hypothesis/
 # mutmut writes its mutated copies here (D-091)
 mutants/
+# import-linter keeps its import graph here (D-099)
+.import_linter_cache/

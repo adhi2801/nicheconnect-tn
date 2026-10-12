@@ -252,6 +252,41 @@ pytest_add_cli_args_test_selection = [
     "tests/modules/campaigns/test_campaign_report_csv.py",
 ]
 
+[tool.importlinter]
+# The module layers (D-099; backend.md section 1). A module may import only
+# from layers below it. CI fails on any import the other way, and on a new
+# module nobody placed in a layer (`exhaustive`).
+root_package = "app"
+
+[[tool.importlinter.contracts]]
+name = "Modules import only from the layers below them"
+type = "layers"
+containers = ["app.modules"]
+exhaustive = true
+layers = [
+    # The export includes the reports a person filed, a table admin owns.
+    "me",
+    "admin",
+    "matching | insights | passport",
+    # The deal domain may still import across itself until phase 2.
+    "campaigns : deal_memo : payment_status : disputes",
+    "profiles | safety | notifications",
+    "auth",
+]
+
+[[tool.importlinter.contracts]]
+name = "The core and the database never import a module"
+type = "forbidden"
+source_modules = ["app.core", "app.db"]
+forbidden_modules = ["app.modules"]
+# Two registries whose job is to list every module, named here so no other
+# file can do the same unnoticed: every table, so Alembic sees them all, and
+# every background job, so DBOS can run them.
+ignore_imports = [
+    "app.db.models -> app.modules.**",
+    "app.core.jobs -> app.modules.**",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # Quiet by default; CI adds coverage flags explicitly.

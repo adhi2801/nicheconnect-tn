@@ -19,7 +19,20 @@ Each module under `app/modules/<name>/` owns its own files:
 | `dependencies.py` | FastAPI dependencies (current user, ownership loaders) | `service`, `app/core` |
 | `exceptions.py` | Domain errors for this module | `app/core/errors` |
 
-- Routers never touch the database directly. Services never import FastAPI.
+- **Layers** (D-099). A module imports only from layers below it. `lint-imports` (import-linter, configured in `pyproject.toml`) fails CI on any import the other way, and on any module not placed in a layer:
+
+| Layer | Modules | What lives there |
+|---|---|---|
+| 7 | `me` | Views of one account that read every module: attention, the data export |
+| 6 | `admin` | The admin API and its log, the founders' numbers, user reports |
+| 5 | `matching` \| `insights` \| `passport` | Who fits whom, creator search; anonymous market figures; how a creator is shown |
+| 4 | `campaigns` : `deal_memo` : `payment_status` : `disputes` | The deal domain. `:` lets them import each other until phase 2 untangles them |
+| 3 | `profiles` \| `safety` \| `notifications` | What people say about themselves; blocking; in-app notifications |
+| 2 | `auth` | Login, tokens, sessions, devices, attribution, suspension, access checks, the identity tables |
+| 1 | `app/core`, `app/db` | Never import a module, except the two registries named in `pyproject.toml` |
+
+  `|` keeps siblings independent. Something two layers need moves down, never sideways. Where a piece belongs is decided by what it imports, not by what it is named after: the Passport shows deal records, so it sits above the deal domain.
+- Routers never touch the database directly. Services never import FastAPI. A script checks both (D-099), and `lint-imports` checks the layers.
 - A module reaches another module through its service, never its router. Reading another module's models in a query is allowed when a join needs it; writing them is not.
 - No circular imports. If two modules need each other, the shared piece moves to `app/core` (ask first).
 - One file, one job (`CLAUDE.md` section 6): a new feature in a module gets its own `<feature>_router.py` and `<feature>_service.py` rather than swelling the main ones.

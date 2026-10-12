@@ -27,16 +27,16 @@ from app.db.session import SessionLocal
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
-from app.modules.auth.models.rate_card import (
-    MAX_PACKAGES_PER_CREATOR,
-    CreatorChannel,
-    CreatorPackage,
-)
 from app.modules.campaigns.models import (
     CAMPAIGN_TYPES,
     REJECTION_REASONS,
     Application,
     Campaign,
+)
+from app.modules.profiles.models import (
+    MAX_PACKAGES_PER_CREATOR,
+    CreatorChannel,
+    CreatorPackage,
 )
 
 # Obviously fake: this range is reserved for sample data. It still has to pass

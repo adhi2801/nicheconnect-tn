@@ -108,7 +108,7 @@ tests/
 2. The git history scanned for secrets (Gitleaks)
 3. Locked dependencies installed (`uv sync --locked`)
 4. Lint and format check (ruff)
-5. Type check (mypy strict)
+5. Type check (mypy strict), then the module layers (`lint-imports`, D-099)
 6. New migrations linted for locks (Squawk)
 7. Migrations applied, undone and redone on a fresh database; models match the database
 8. The full suite: no failures, no unexplained skips. It includes the banned money words in every file and every commit message (`test_banned_terms.py`). Files git does not track yet are scanned too, so a laptop sees what CI will. It also checks that the incident plan can rotate every secret the app is given (`test_incident_response.py`). Every document's decision numbers, file paths and links must exist (`test_docs.py`)

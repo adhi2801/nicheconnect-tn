@@ -1156,3 +1156,53 @@ Newest entries at the bottom.
   2. The closed notice of 21 to 23 September moves, unchanged, to `docs/reports/2026-09-23-closed-notice.md`. It was settled, but it loaded into every session.
   3. `docs/README.md` section 0 states the eight-point bar every document meets, and tracks progress. Done: `CLAUDE.md` and the index. Next: the eight standards, then the map, strategy and operations; then a status line on each paper in `decided/`. Records (reports, the decision log, `decided/`) keep what was true when written.
   4. Honest notes made in the index: `research/` holds no interview notes yet, and the design brief predates English only (D-054).
+
+## D-099: The modules in layers, enforced by import-linter (phase 1 of the structure review)
+- Date: 2026-10-12
+- Approved by: Adhi, in this session.
+  - He approved phase 1 with "every dimension need to perfect".
+  - Shown the corrections the file-level map forced, he answered "do a research and do what you think is the best", leaving the choice to Claude.
+- Context: The architecture review (D-098 B) measured three problems:
+  - `auth` had grown to 51 files, 8,000 lines and 16 routers, of which only login and accounts belonged there. Its schemas file alone ran to 1,118 lines.
+  - 11 pairs of modules imported each other.
+  - Three routers queried the database directly, against `backend.md` section 1.
+  - Nothing enforced any boundary.
+- Options considered: A) layers, with the moves the file-level map allows, enforced by import-linter 2.15 · B) the same with our own test · C) leave it.
+- Chosen: A.
+- Reason:
+  - The approach large monoliths use to stay healthy: Shopify enforces boundaries with Packwerk, and GitLab's handbook describes the same.
+  - import-linter is Production/Stable, supports Python 3.14, and is BSD-licensed. Tach is still beta (D-047).
+  - Each file's home was decided by what it imports, so every import points down.
+- Consequences / follow-ups:
+  1. **The layers** (`backend.md` section 1, `CLAUDE.md` section 3, `app/modules/__init__.py`), top to bottom:
+
+     | Layer | Modules |
+     |---|---|
+     | 7 | `me` |
+     | 6 | `admin` |
+     | 5 | `matching` \| `insights` \| `passport` |
+     | 4 | `campaigns` : `deal_memo` : `payment_status` : `disputes` |
+     | 3 | `profiles` \| `safety` \| `notifications` |
+     | 2 | `auth` |
+     | 1 | `app/core`, `app/db` |
+
+     `lint-imports` runs in CI after mypy. 198 files and 907 internal dependencies; both contracts kept. It is shown failing on an upward import and on a module placed in no layer.
+  2. **Changed from the first proposal**, each forced by the map:
+     - the brand and creator tables stay in `auth` as identity, since suspension reads them and about 100 files import them;
+     - the Passport and media kit form `passport` above the deal domain, since they show delivery records;
+     - user reports and the founders' numbers go to `admin`;
+     - device tokens move to `auth`, beside sessions, since logout removes them (this supersedes D-095's placement);
+     - the admin check moves down to `auth/dependencies.py`;
+     - the module named `account` in the proposal is `me`, matching its `/me/...` URLs and avoiding the `Account` table;
+     - `me` sits above `admin`, because the export includes the reports a person filed.
+  3. **Fixed on the way:**
+     - the three routers' queries and the Passport's visibility rules moved into services;
+     - `app/modules` had no `__init__.py`, which made it invisible to the layer check;
+     - `tests/test_architecture.py` now fails when any router builds a query, any service imports FastAPI, or any module is not a package. It was shown failing on the old campaigns router.
+  4. **Unchanged:**
+     - every URL and table, and the API contract, whose fingerprint was compared identical after every move;
+     - behaviour: the full suite passes;
+     - the registries `app/db/models.py` and `app/core/jobs.py` are named in `pyproject.toml` as the only lower files that may list every module.
+  5. **Measured afterwards, by the same count as before:** `auth` is 23 files and 2,876 lines, down from 51 and 8,000. The commit moving `me` said "15 files", which counted no `models/` folder, so 23 is the like-for-like figure. Mutually importing module pairs fell from 11 to 6, all inside the deal domain.
+  6. **Phase 2 (item 96):** untangle the deal domain's 6 pairs by moving cross-cutting views (deal stage, the campaign summary and report, payment attention) into a reporting layer. It is its own proposal.
+  7. The moves were made by a one-off refactoring helper. It was not committed: it was scaffolding, and git keeps each file's history through `git mv`.

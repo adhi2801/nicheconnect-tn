@@ -76,7 +76,15 @@ Never violate these, even if asked. If a request would break one, stop and say w
 ## 3. Architecture (approved)
 
 - **Modular monolith:** one deployable FastAPI app. No microservices, event sourcing, CQRS, service mesh, or additional deployable services without both founders' approval.
-- **Modules:** `app/modules/{auth, campaigns, matching, deal_memo, payment_status, disputes, notifications}`. Inside a module: `router.py` (HTTP) → `service.py` (rules) → `models.py` (DB), plus `schemas.py`.
+- **Modules, in layers** (D-099; `docs/standards/backend.md` section 1). A module imports only from layers below it, and `lint-imports` fails CI otherwise:
+  1. `me`: the views that read every module (attention, the data export)
+  2. `admin`: the admin API and log, the founders' numbers, user reports
+  3. `matching` (with creator search) | `insights` (city figures, fair-rate guidance) | `passport` (the public Passport, the media kit)
+  4. `campaigns` : `deal_memo` : `payment_status` : `disputes`, the deal domain (they may import each other until phase 2)
+  5. `profiles` (editing, rate cards, availability) | `safety` (blocking) | `notifications`
+  6. `auth`: login, tokens, sessions, devices, attribution, suspension, every access check, and the account, brand and creator tables
+
+  `app/core` and `app/db` sit below every module. A new module is placed in a layer before it is built. Inside a module: `<feature>_router.py` (HTTP) → `<feature>_service.py` (rules) → models (DB), plus schemas.
 - **Stack:** PostgreSQL 18 + pgvector · Valkey (rate limits, idempotency; D-048) · DBOS (background jobs; D-060) · S3 (proof files; D-065) · Alembic · pytest + httpx2 · GitHub Actions · AWS Mumbai, described in OpenTofu (D-062, D-063). The locked baseline is `docs/PLATFORM_AND_TECH_PLAN.md` section 4.0; what is still to build is `docs/BACKEND_COMPLETE.md`.
 - **Matching (later):** SentenceTransformers embeddings + pgvector cosine similarity, as in InterviewCoach AI.
 - **External calls** (WhatsApp, Claude API): retry with backoff; never block a request on them.
