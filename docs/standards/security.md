@@ -36,7 +36,7 @@ Applies to auth, permissions, secrets, personal data, rate limiting and dependen
 - Filters use the authenticated account from the token, never an owner id from the body or query. The person's own things live under `/me/...` with no id at all.
 - Status transitions check the actor: only the brand marks a payment as sent; only the creator confirms it arrived.
 - Admin endpoints answer 404 to anyone who is not an admin.
-- **A block is respected everywhere one account could reach another** (item 59): no invitation, repeat or application either way, and neither appears in the other's search, matches or discovery. The check is a condition inside each query, and every refusal reads as not found, so a block is never revealed. A new route that reaches someone respects blocks in the same change, with a test in `tests/modules/auth/test_block_api.py`.
+- **A block is respected everywhere one account could reach another** (item 59): no invitation, repeat or application either way, and neither appears in the other's search, matches or discovery. The check is a condition inside each query, and every refusal reads as not found, so a block is never revealed. A new route that reaches someone respects blocks in the same change, with a test in `tests/modules/safety/test_block_api.py`.
 
 ## 3. OWASP API Security Top 10 (2023)
 

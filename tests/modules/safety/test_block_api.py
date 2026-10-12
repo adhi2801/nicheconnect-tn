@@ -11,9 +11,9 @@ import pytest
 from sqlalchemy import select, text, update
 from sqlalchemy.exc import IntegrityError
 
-from app.modules.auth.block_router import WRITE_LIMIT
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
+from app.modules.safety.block_router import WRITE_LIMIT
 from tests.deal_flow import (
     CAMPAIGNS_URL,
     LINK,
@@ -418,8 +418,8 @@ def test_the_brand_lookup_is_tied_to_each_campaign():
     from sqlalchemy import select
     from sqlalchemy.dialects import postgresql
 
-    from app.modules.auth.blocks import not_blocked_with_brand
     from app.modules.campaigns.models import Campaign
+    from app.modules.safety.blocks import not_blocked_with_brand
 
     sql = str(
         select(Campaign.id)

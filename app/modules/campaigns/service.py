@@ -25,7 +25,6 @@ from app.core.export import (
     build_section,
 )
 from app.core.pagination import Slice, build_slice, older_than_cursor
-from app.modules.auth.blocks import blocked_between, not_blocked_with_brand
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import brand_is_active, brand_is_suspended
@@ -44,6 +43,7 @@ from app.modules.campaigns.exceptions import (
 )
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.notifications import service as notifications
+from app.modules.safety.blocks import blocked_between, not_blocked_with_brand
 
 # Tables this module answers for in a data export (see
 # tests/modules/auth/test_export_api.py, which fails if one is missed).

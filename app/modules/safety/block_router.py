@@ -12,9 +12,9 @@ from app.core.idempotent_route import IdempotentRoute
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
-from app.modules.auth import block_service as service
 from app.modules.auth.dependencies import CurrentAccount, get_now
-from app.modules.auth.schemas import BlockCreate, BlockRead
+from app.modules.safety import block_service as service
+from app.modules.safety.schemas import BlockCreate, BlockRead
 
 # A ceiling per day as well as per minute (trust-and-safety.md rule 2).
 WRITE_LIMIT = "30 per minute;200 per day"

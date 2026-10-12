@@ -12,8 +12,8 @@ from typing import Any
 from sqlalchemy import ColumnElement, and_, exists, or_, select
 from sqlalchemy.orm import InstrumentedAttribute, Session
 
-from app.modules.auth.models.block import AccountBlock
 from app.modules.auth.models.brand import Brand
+from app.modules.safety.models import AccountBlock
 
 AccountRef = uuid.UUID | ColumnElement[Any] | InstrumentedAttribute[uuid.UUID]
 

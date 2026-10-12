@@ -17,11 +17,11 @@ from sqlalchemy.orm import Session
 
 from app.core.export import MAX_ROWS_PER_SECTION, ExportedSection, allow, build_section
 from app.core.pagination import Slice, build_slice, older_than_cursor
-from app.modules.auth.exceptions import BlockNotFound, BlockTargetNotFound
 from app.modules.auth.models.account import Account
-from app.modules.auth.models.block import AccountBlock
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
+from app.modules.safety.exceptions import BlockNotFound, BlockTargetNotFound
+from app.modules.safety.models import AccountBlock
 
 EXPORTED_TABLES = frozenset({"account_block"})
 EXPORT_FIELDS = allow("id", "blocked_account_id", "created_at")

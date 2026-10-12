@@ -18,7 +18,7 @@ Applies to all code. "Tested" in any report means the tests below ran in that se
 | Personal data | The export includes it (or the exclusion is listed); it reaches no log, error report or embedding |
 | Background job | Success, retry on failure, safe when run twice |
 | Public endpoint | Listed in the contract test's public list with its reason; cache headers and 304 if cacheable |
-| A route that lets one account reach another | Listed in `tests/modules/test_daily_ceilings.py` (a daily ceiling per account), and refused across a block in `tests/modules/auth/test_block_api.py` |
+| A route that lets one account reach another | Listed in `tests/modules/test_daily_ceilings.py` (a daily ceiling per account), and refused across a block in `tests/modules/safety/test_block_api.py` |
 | A parser, normaliser or pure rule | **Property tests** (`test_<feature>_properties.py`): what must hold for every input, not just the examples someone thought of (section 6) |
 | Free text another person reads | Its `text_flags`: what must flag and, just as carefully, ordinary wording that must not |
 | A document | Its decision numbers, paths and links exist (`tests/test_docs.py`, run on every change) |

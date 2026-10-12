@@ -16,7 +16,7 @@ Status words: **Built** (in the code, with a test), **Owed** (tracked in `docs/B
 4. **Money talk stays on the record.** Nothing in the product ever asks anyone to pay anyone except the brand paying the creator the agreed fee, through their own bank. **A creator never pays to get a deal**: any brief, note or memo text asking a creator for money is flagged (section 4).
 5. **Proof of payment is the receiver's own bank, never a screenshot.** Only the creator can confirm money arrived (D-027), and every screen that asks them says to check their own bank app.
 6. **Records about people resist being gamed.** A figure that makes someone look good or bad counts things that are hard to fake, says how many it rests on (D-038), and never counts the same pair of accounts as independent evidence (section 3.3).
-7. **Everyone can say no and be left alone**: decline, withdraw, mute (D-079), report (D-061), and block (item 59). A new way of reaching someone must respect blocks in the same change, with a test in `tests/modules/auth/test_block_api.py`.
+7. **Everyone can say no and be left alone**: decline, withdraw, mute (D-079), report (D-061), and block (item 59). A new way of reaching someone must respect blocks in the same change, with a test in `tests/modules/safety/test_block_api.py`.
 8. **We never ask for a login code, a UPI PIN or a password**, in any message, ever. Every login code says so, and so does the app.
 9. **A report is answered.** Reports reach the admin queue with the clocks of the IT Rules (`legal.md` section 3.3), and the reporter learns the outcome.
 

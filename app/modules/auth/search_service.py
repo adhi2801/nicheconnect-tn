@@ -35,11 +35,11 @@ from sqlalchemy.orm import Session
 from app.core.pagination import Slice, build_slice, older_than_cursor
 from app.core.taxonomy import CURRENCY
 from app.modules.auth import availability_service as availability
-from app.modules.auth.blocks import not_blocked
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.models.rate_card import CreatorChannel, CreatorPackage
 from app.modules.auth.schemas import ChannelPlatform
 from app.modules.auth.suspension import account_is_active
+from app.modules.safety.blocks import not_blocked
 
 
 @dataclass(frozen=True)

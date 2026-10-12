@@ -28,7 +28,6 @@ from app.core.export import (
     to_json_value,
 )
 from app.modules.auth import attribution_service as attribution
-from app.modules.auth import block_service as blocks
 from app.modules.auth import device_service as devices
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.auth_session import AuthSession
@@ -43,6 +42,7 @@ from app.modules.notifications import preference_service as notification_prefere
 from app.modules.notifications import service as notifications
 from app.modules.payment_status import service as payments
 from app.modules.payment_status import upi_service as upi
+from app.modules.safety import block_service as blocks
 
 # Bumped whenever the shape of the file changes, so a reader can tell which
 # version it is looking at.
