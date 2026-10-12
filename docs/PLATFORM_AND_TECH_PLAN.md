@@ -213,7 +213,7 @@ Locked by both founders on 22 September 2026 (D-047; Erode Harish's approval rel
 | Backend tools | mypy (strict), ruff, pytest, uvicorn | **Locked** (kept; ty, Pyrefly and Granian on the Watch list) |
 | API fuzz testing | Schemathesis 4.x | **Locked** (Erode Harish told first: `requirements.txt` is shared) |
 | CI supply chain | Current action versions, pinned to commit SHAs, and zizmor | **Locked** (Adhi's track: `.github/workflows/`) |
-| Errors and traces | Sentry for errors; OpenTelemetry for traces | **Locked**; Sentry **built** (D-074); traces **not built** (`docs/BACKEND_COMPLETE.md` item 3) |
+| Errors and traces | Sentry for errors; OpenTelemetry for traces | **Locked**; Sentry **built** (D-074); traces **built** (D-094), off until hosting picks where they go |
 | Python and packaging | Python 3.14; uv | **Locked**; **built** 1 October (D-072): Python 3.14.8 (D-074), `uv.lock` with hashes, in CI and the images |
 | Database | PostgreSQL 18 (19 after its first minor update); UUIDv7 for new tables; exact image tags; pgvector 0.8.2 or newer | **Locked**; **built** 23 September (D-049); UUIDv7 on every table since (`notification_preference`, `creator_upi`, `account_block`) |
 | Search | Hybrid Tamil search inside Postgres | **Withdrawn** by D-054 (English only). English search inside Postgres is a founder decision when search needs more than today's filters |

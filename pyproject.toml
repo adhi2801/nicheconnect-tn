@@ -68,6 +68,9 @@ dependencies = [
     # reaches a founder with its stack trace, scrubbed of personal data first
     # (app/core/error_tracking.py). Off unless SENTRY_DSN is set.
     "sentry-sdk==2.71.0",
+    "opentelemetry-api==1.45.1",
+    "opentelemetry-sdk==1.45.1",
+    "opentelemetry-exporter-otlp-proto-http==1.45.1",
 ]
 
 [dependency-groups]

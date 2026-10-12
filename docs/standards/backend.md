@@ -138,7 +138,7 @@ One error shape for every non-2xx response (RFC 9457 Problem Details):
 ## 9. Logging and observability
 
 - Structured logs in staging and production; readable logs locally.
-- Every request gets a `request_id` (from `X-Request-ID` or generated), returned in the response header and included in every log line and error body. W3C `traceparent` propagation arrives with tracing (item 3 in `docs/BACKEND_COMPLETE.md`) **(not yet used)**.
+- Every request gets a `request_id` (from `X-Request-ID` or generated), returned in the response header and included in every log line and error body. **Tracing (OpenTelemetry, D-094)**: one span per request named by its route template, a child span per database query, and an incoming W3C `traceparent` continued. On only when `TRACES_ENDPOINT` is set. A span carries the method, route template, status, request ID and error type, and SQL with placeholders; never a real path, query string, header, body, account, address or exception message. Health probes are not traced. New instrumentation follows the same rule and gets a test that reads what would be sent.
 - Log events, not data: `campaign.created campaign_id=…`. **Never log** phone numbers, emails, codes, tokens, bank or UPI details, or request bodies; log an exception's type, not its message, when the message could hold them.
 - `/healthz` answers "is the process up"; `/readyz` checks the database and Valkey with short timeouts and answers 503 when either is down.
 - Errors go to Sentry (D-074): every error log line, scrubbed of personal data before it leaves the process; tests read exactly what would be sent.

@@ -154,6 +154,16 @@ class Settings(BaseSettings):
     )
     # Which build an error came from: the image's git commit, set by infra/.
     app_release: str | None = Field(default=None, pattern=r"^[A-Za-z0-9._+-]{1,200}$")
+    # Tracing (item 3, D-094): where spans go, as an OpenTelemetry (OTLP over
+    # HTTP) traces URL. Unset means off, which is right until hosting decides
+    # the destination; locally a Jaeger at http://localhost:4318/v1/traces.
+    traces_endpoint: str | None = Field(
+        default=None,
+        pattern=r"^https?://[A-Za-z0-9.-]+(:[0-9]{1,5})?(/[A-Za-z0-9._/-]*)?$",
+    )
+    # The share of requests traced, 0 to 1, unless the caller already chose
+    # (a `traceparent` from the app is followed either way).
+    traces_sample_ratio: float = Field(default=0.1, ge=0, le=1)
     # The version of the notice a creator reads before giving their UPI ID
     # (D-085). Its wording comes from the validation pack (constraint 6);
     # until it exists this stays unset, and adding a UPI ID is off.
@@ -161,7 +171,13 @@ class Settings(BaseSettings):
         default=None, pattern=r"^[A-Za-z0-9._-]{1,40}$"
     )
 
-    @field_validator("sentry_dsn", "app_release", "upi_notice_version", mode="before")
+    @field_validator(
+        "sentry_dsn",
+        "app_release",
+        "upi_notice_version",
+        "traces_endpoint",
+        mode="before",
+    )
     @classmethod
     def empty_is_unset(cls, value: object) -> object:
         # `SENTRY_DSN=` in .env means "off", not an address that is "".
@@ -242,6 +258,18 @@ class Settings(BaseSettings):
                 "MSG91_OTP_TEMPLATE must be a WhatsApp template name: "
                 "lower case letters, digits and underscores"
             )
+        return self
+
+    @model_validator(mode="after")
+    def traces_leave_encrypted(self) -> Settings:
+        """Spans name endpoints and timings; outside a laptop they go over TLS."""
+        endpoint = self.traces_endpoint
+        if (
+            endpoint
+            and endpoint.startswith("http://")
+            and self.environment not in PLAIN_HTTP_ENVIRONMENTS
+        ):
+            raise ValueError("TRACES_ENDPOINT must use https:// outside local and test")
         return self
 
     @model_validator(mode="after")

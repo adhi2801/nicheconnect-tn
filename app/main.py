@@ -16,7 +16,9 @@ from app.core.rate_limit import limiter
 from app.core.request_id import RequestIdMiddleware
 from app.core.security_headers import SecurityHeadersMiddleware
 from app.core.security_txt import router as security_txt_router
+from app.core.tracing import TracingMiddleware, init_tracing, instrument_engine
 from app.core.unexpected_error import UnexpectedErrorMiddleware
+from app.db.session import engine
 from app.modules.auth.admin_router import router as admin_router
 from app.modules.auth.attention_router import router as attention_router
 from app.modules.auth.attribution_router import router as attribution_router
@@ -113,6 +115,13 @@ app.add_middleware(RequestIdMiddleware)
 # Added last so it wraps everything, including the 413, 429 and 500 that the
 # middlewares above generate on their own.
 app.add_middleware(SecurityHeadersMiddleware)
+# Tracing (D-094), only when TRACES_ENDPOINT is set. Outermost of all, so a
+# request's span covers everything, a 503 "busy" or a 500 included; and each
+# database query inside it becomes a child span.
+tracer_provider = init_tracing(settings)
+if tracer_provider is not None:
+    app.add_middleware(TracingMiddleware, tracer_provider=tracer_provider)
+    instrument_engine(engine, tracer_provider)
 
 app.include_router(security_txt_router)
 app.include_router(auth_router)

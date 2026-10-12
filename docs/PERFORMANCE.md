@@ -93,6 +93,20 @@ does not add them by itself yet: it runs a fixed number (`api_desired_count`,
 1 by default). Autoscaling on request count is a follow-up proposal
 (infrastructure gate).
 
+**Tracing costs little (D-094).** 200 people for 2 minutes, one process, on
+the larger seed (200 brands, 900 creators, 600 campaigns, 3,986
+applications), with a local Jaeger receiving the spans:
+
+| Tracing | Requests | Median | Aggregate p95 | Failed |
+|---|---|---|---|---|
+| Off | 7,942 | 47 ms | 200 ms | 0 |
+| 10% of requests (the default) | 7,941 | 46 ms | 230 ms | 0 |
+| Every request | 8,004 | 51 ms | 220 ms | 3 turned away busy |
+
+The spread is within run-to-run noise, and every endpoint stayed inside its
+budget in each. The higher figures than at 200 people above come from the
+larger seed, not from tracing.
+
 **Two lessons from the first run, now in the script:**
 
 - On Windows, `localhost` tries IPv6 first and waits about two seconds before

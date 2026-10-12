@@ -1022,3 +1022,41 @@ Newest entries at the bottom.
      - Six breaks each failed a test: no limit, a place never returned, health checks held back, no queue wait, a pool timeout left as a 500, a cap allowed to use every connection.
      - The first version of these tests hung, rather than failed, when the limit was removed. Each scenario is now bounded.
   8. Follow-up, an infrastructure decision: infra runs a fixed number of API containers (one by default) with no autoscaling. Capacity per container is about 130 requests a second inside budget.
+
+## D-094: Tracing with OpenTelemetry's stable SDK and our own instrumentation; off until hosting picks a destination
+- Date: 2026-10-12
+- Approved by: Adhi, in this session. Offered autoscaling (1) or tracing (2), he answered "do research and you know the standard you tell me". Tracing was chosen because it is on `docs/BACKEND_COMPLETE.md` (item 3, locked by D-047), and autoscaling belongs to going live.
+- Context: Every p95 is measured on a laptop. In production nothing would say which endpoint, or which query, is slow.
+- Options considered: A) OpenTelemetry's stable API, SDK and OTLP exporter, with our own request and query spans · B) the same plus the ready-made FastAPI and SQLAlchemy instrumentation · C) Sentry's tracing.
+- Chosen: A.
+- Reason (researched 12 October 2026):
+  - The OpenTelemetry API, SDK and OTLP exporter 1.45.1 (6 October 2026) are Production/Stable, support Python 3.14, and are Apache-2.0.
+  - The ready-made instrumentation is 0.66b1 and marked Beta, which D-047's upgrade rule refuses. Owning about a hundred lines also decides exactly what a span may say.
+  - Sentry's OpenTelemetry-based SDK 3.0 is still a pre-release, its data sits in the US or EU, and tracing would cost Sentry quota.
+  - AWS put the X-Ray SDKs in maintenance mode on 25 February 2026 and recommends OpenTelemetry. X-Ray takes OTLP in Mumbai, so the destination can stay in India and with our host.
+- Consequences / follow-ups:
+  1. Dependencies (`opentelemetry-api`, `-sdk` and `-exporter-otlp-proto-http`, all 1.45.1):
+     - They bring `protobuf` (BSD-3-Clause) and Google's common protos (Apache-2.0).
+     - They also bring three helper packages the project versions as beta (semantic conventions and two exporter helpers). The stable SDK depends on them; our code imports only stable APIs.
+     - pip-audit finds nothing.
+     - protobuf spells its licence "3-Clause BSD License", which is added to CI's allow-list as a spelling of the approved BSD-3-Clause.
+  2. `app/core/tracing.py`:
+     - one SERVER span per request, named by the route template and outermost of every layer, so a 503 or 500 is inside it;
+     - a CLIENT span per query run inside a request;
+     - an incoming W3C `traceparent` is continued;
+     - batches go out on a background thread with a 3-second export timeout;
+     - health probes are not traced.
+  3. A span may carry:
+     - the method, route template, status code and request ID;
+     - the error's type;
+     - SQL with placeholders.
+     It never carries:
+     - a real path, a query string, a header or a body;
+     - an account or an address;
+     - an exception's message.
+  4. Settings: `TRACES_ENDPOINT` (unset means off; it must be https outside local and test) and `TRACES_SAMPLE_RATIO` (0.1). A `traceparent` the app already sampled is followed whatever the ratio.
+  5. Tested: 18 tests read the spans exactly as they would be sent.
+     - Six breaks each failed a test: a message recorded, the real path naming the span, queries traced outside requests, values in the SQL, the app's trace not continued, a 5xx not marked.
+     - End to end, a local Jaeger received the traces: a Passport lookup as a request span with its three queries, a trace started by the client kept its ID, and the real handle appeared nowhere in Jaeger's data.
+  6. Overhead measured (`docs/PERFORMANCE.md`): at 200 people, p95 200 ms with tracing off, 230 ms at 10%, and 220 ms with every request traced. That is within noise, and inside every budget.
+  7. **Where traces go is still open (hosting).** X-Ray's OTLP endpoint needs signed requests, so production needs an OpenTelemetry collector beside the app (an infrastructure decision) or another backend. Until then nothing is sent.
