@@ -21,7 +21,7 @@ REACH = (
     "app.modules.auth.report_router.file_report",
     "app.modules.disputes.router.open_dispute",
     "app.modules.disputes.router.add_entry",
-    "app.modules.auth.search_router.search_creators",
+    "app.modules.matching.search_router.search_creators",
     "app.modules.matching.router.list_matches_for_campaign",
     "app.modules.matching.router.list_campaigns_for_me",
     "app.modules.payment_status.upi_router.read_pay_details",

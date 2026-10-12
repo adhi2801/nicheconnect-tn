@@ -28,7 +28,6 @@ from app.modules.auth.export_router import router as export_router
 from app.modules.auth.numbers_router import router as numbers_router
 from app.modules.auth.report_router import router as report_router
 from app.modules.auth.router import router as auth_router
-from app.modules.auth.search_router import router as search_router
 from app.modules.campaigns.application_router import router as applications_router
 from app.modules.campaigns.invitation_router import router as invitations_router
 from app.modules.campaigns.report_router import router as campaign_report_router
@@ -43,6 +42,7 @@ from app.modules.disputes.router import router as disputes_router
 from app.modules.insights.city_figures_router import router as city_figures_router
 from app.modules.insights.rate_guidance_router import router as rate_guidance_router
 from app.modules.matching.router import router as matching_router
+from app.modules.matching.search_router import router as search_router
 from app.modules.notifications.preference_router import (
     router as notification_preferences_router,
 )

@@ -12,15 +12,11 @@ from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
 from app.core.rate_limit import rate_limit
 from app.core.taxonomy import CURRENCY, Niche
 from app.db.session import get_db
-from app.modules.auth import search_service as service
 from app.modules.auth.dependencies import CurrentBrand, get_now
 from app.modules.auth.exceptions import InvalidSearch
-from app.modules.auth.schemas import (
-    ChannelPlatform,
-    CreatorSearchResultRead,
-    PackageFormat,
-    SearchChannelRead,
-)
+from app.modules.auth.schemas import ChannelPlatform, PackageFormat
+from app.modules.matching import search_service as service
+from app.modules.matching.schemas import CreatorSearchResultRead, SearchChannelRead
 from app.modules.profiles import availability_service as availability
 
 READ_LIMIT = "60 per minute"

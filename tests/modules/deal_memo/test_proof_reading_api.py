@@ -12,13 +12,13 @@ import pytest
 from app.core import storage
 from app.core.clock import india_date
 from tests.deal_flow import MEMOS_URL, User, accepted_memo, brand_user, creator_user
-from tests.modules.auth.test_creator_search_api import count_queries
 from tests.modules.deal_memo.test_proof_reading import (
     FakeReader,
     channel,
     cleaned,
     run,
 )
+from tests.modules.matching.test_creator_search_api import count_queries
 
 
 @pytest.fixture(autouse=True)
