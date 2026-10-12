@@ -24,9 +24,9 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.core.export import ExportedSection, allow, build_section
+from app.modules.auth.exceptions import DeviceNotFound
 from app.modules.auth.models.account import Account
-from app.modules.notifications.device_models import MAX_DEVICES_PER_ACCOUNT, DeviceToken
-from app.modules.notifications.exceptions import DeviceNotFound
+from app.modules.auth.models.device_token import MAX_DEVICES_PER_ACCOUNT, DeviceToken
 
 EXPORTED_TABLES = frozenset({"device_token"})
 # The token itself is never exported (app/core/export.py refuses the name): it

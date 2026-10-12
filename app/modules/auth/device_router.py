@@ -10,9 +10,9 @@ from sqlalchemy.orm import Session
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
+from app.modules.auth import device_service
 from app.modules.auth.dependencies import CurrentAccount, get_now
-from app.modules.notifications import device_service
-from app.modules.notifications.device_schemas import DeviceRead, DeviceRegister
+from app.modules.auth.device_schemas import DeviceRead, DeviceRegister
 
 # Apps register on every start and when a token changes: a handful a day.
 # The daily ceiling stops a loop in a broken build from churning the table.

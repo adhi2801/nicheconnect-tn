@@ -7,7 +7,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.literals import ensure_same_values
-from app.modules.notifications.device_models import (
+from app.modules.auth.models.device_token import (
     APP_VERSION_MAX_LENGTH,
     DEVICE_PLATFORMS,
     TOKEN_MAX_LENGTH,

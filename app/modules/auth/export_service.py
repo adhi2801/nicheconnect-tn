@@ -29,6 +29,7 @@ from app.core.export import (
 )
 from app.modules.auth import attribution_service as attribution
 from app.modules.auth import block_service as blocks
+from app.modules.auth import device_service as devices
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.brand import Brand
@@ -38,7 +39,6 @@ from app.modules.auth.models.report import Report
 from app.modules.campaigns import service as campaigns
 from app.modules.deal_memo import service as deal_memos
 from app.modules.disputes import service as disputes
-from app.modules.notifications import device_service as devices
 from app.modules.notifications import preference_service as notification_preferences
 from app.modules.notifications import service as notifications
 from app.modules.payment_status import service as payments

@@ -15,6 +15,7 @@ from sqlalchemy import CursorResult, select, text, update
 from sqlalchemy.orm import Session
 
 from app.modules.auth import attribution_service as attribution
+from app.modules.auth import device_service as devices
 from app.modules.auth.attribution_service import Arrival
 from app.modules.auth.exceptions import (
     AccountSuspended,
@@ -36,7 +37,6 @@ from app.modules.auth.tokens import (
     new_refresh_token,
     otp_code_matches,
 )
-from app.modules.notifications import device_service as devices
 
 logger = logging.getLogger(__name__)
 

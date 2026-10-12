@@ -26,16 +26,16 @@ from app.modules.auth.models.account import (
 from app.modules.auth.models.admin_action import ADMIN_ACTIONS
 from app.modules.auth.models.attribution import ARRIVAL_SOURCES
 from app.modules.auth.models.creator import BIO_MAX_LENGTH, HANDLE_PATTERN
-from app.modules.auth.models.report import REPORT_SUBJECTS
-from app.modules.deal_memo.schemas import CreatorDeliveryRead
 
 # The media kit nests the delivery record as its own module defines it, so
 # the two can never describe the same numbers differently.
-from app.modules.notifications.device_models import (
+from app.modules.auth.models.device_token import (
     TOKEN_MAX_LENGTH,
     TOKEN_MIN_LENGTH,
     TOKEN_PATTERN,
 )
+from app.modules.auth.models.report import REPORT_SUBJECTS
+from app.modules.deal_memo.schemas import CreatorDeliveryRead
 
 # Separators people commonly type: "+91 98765 43210", "98765-43210", "(98765) 43210".
 _PHONE_SEPARATORS = re.compile(r"[\s\-()]")

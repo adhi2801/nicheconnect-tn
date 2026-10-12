@@ -26,6 +26,7 @@ from app.modules.auth.availability_router import router as availability_router
 from app.modules.auth.block_router import router as block_router
 from app.modules.auth.city_figures_router import router as city_figures_router
 from app.modules.auth.dependencies import idempotency_identity
+from app.modules.auth.device_router import router as devices_router
 from app.modules.auth.export_router import router as export_router
 from app.modules.auth.media_kit_router import router as media_kit_router
 from app.modules.auth.numbers_router import router as numbers_router
@@ -48,7 +49,6 @@ from app.modules.deal_memo.response_times_router import router as response_times
 from app.modules.deal_memo.router import router as deal_memos_router
 from app.modules.disputes.router import router as disputes_router
 from app.modules.matching.router import router as matching_router
-from app.modules.notifications.device_router import router as devices_router
 from app.modules.notifications.preference_router import (
     router as notification_preferences_router,
 )

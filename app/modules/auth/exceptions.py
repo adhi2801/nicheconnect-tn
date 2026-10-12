@@ -190,3 +190,10 @@ class BlockNotFound(DomainError):
     status_code = HTTPStatus.NOT_FOUND
     code = "block_not_found"
     title = "That block does not exist, or it is not yours"
+
+
+class DeviceNotFound(DomainError):
+    # Also someone else's device: 404, never 403 (security.md section 2).
+    status_code = HTTPStatus.NOT_FOUND
+    code = "device_not_found"
+    title = "That device is not registered to you"

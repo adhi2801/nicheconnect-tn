@@ -12,9 +12,9 @@ from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.main import app
 from app.modules.auth.dependencies import get_now
+from app.modules.auth.models.device_token import MAX_DEVICES_PER_ACCOUNT, DeviceToken
 from app.modules.auth.sender import FakeOtpSender, get_otp_sender
 from app.modules.auth.tokens import decode_access_token
-from app.modules.notifications.device_models import MAX_DEVICES_PER_ACCOUNT, DeviceToken
 from tests.deal_flow import Clock
 from tests.factories import FIXED_NOW
 from tests.modules.auth.test_refresh_api import LOGOUT_URL, log_in

@@ -15,9 +15,9 @@ import pytest
 from sqlalchemy import delete, func, select
 
 from app.db.session import SessionLocal
+from app.modules.auth import device_service
 from app.modules.auth.models.account import Account
-from app.modules.notifications import device_service
-from app.modules.notifications.device_models import MAX_DEVICES_PER_ACCOUNT, DeviceToken
+from app.modules.auth.models.device_token import MAX_DEVICES_PER_ACCOUNT, DeviceToken
 from tests.factories import create_account, unique_test_phone
 from tests.modules.conftest import CONCURRENCY_NOW
 
