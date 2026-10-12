@@ -22,12 +22,10 @@ from app.db.session import engine
 from app.modules.auth.admin_router import router as admin_router
 from app.modules.auth.attention_router import router as attention_router
 from app.modules.auth.attribution_router import router as attribution_router
-from app.modules.auth.city_figures_router import router as city_figures_router
 from app.modules.auth.dependencies import idempotency_identity
 from app.modules.auth.device_router import router as devices_router
 from app.modules.auth.export_router import router as export_router
 from app.modules.auth.numbers_router import router as numbers_router
-from app.modules.auth.rate_guidance_router import router as rate_guidance_router
 from app.modules.auth.report_router import router as report_router
 from app.modules.auth.router import router as auth_router
 from app.modules.auth.search_router import router as search_router
@@ -42,6 +40,8 @@ from app.modules.deal_memo.repeat_router import router as repeat_router
 from app.modules.deal_memo.response_times_router import router as response_times_router
 from app.modules.deal_memo.router import router as deal_memos_router
 from app.modules.disputes.router import router as disputes_router
+from app.modules.insights.city_figures_router import router as city_figures_router
+from app.modules.insights.rate_guidance_router import router as rate_guidance_router
 from app.modules.matching.router import router as matching_router
 from app.modules.notifications.preference_router import (
     router as notification_preferences_router,

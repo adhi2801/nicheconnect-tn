@@ -31,8 +31,8 @@ from sqlalchemy.orm import Session
 
 from app.core.taxonomy import CURRENCY, Niche
 from app.modules.auth.models.creator import Creator
-from app.modules.auth.schemas import AudienceBand
 from app.modules.auth.suspension import account_is_active
+from app.modules.insights.schemas import AudienceBand
 from app.modules.profiles.models import CreatorChannel, CreatorPackage
 
 MIN_CREATORS = 5

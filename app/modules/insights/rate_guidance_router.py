@@ -11,14 +11,10 @@ from app.core.errors import ResponseDocs, problem_doc
 from app.core.rate_limit import rate_limit
 from app.core.taxonomy import CURRENCY, Niche
 from app.db.session import get_db
-from app.modules.auth import rate_guidance_service as service
 from app.modules.auth.dependencies import CurrentAccount, get_now
-from app.modules.auth.schemas import (
-    ChannelPlatform,
-    NarrowedTo,
-    PackageFormat,
-    RateGuidanceRead,
-)
+from app.modules.auth.schemas import ChannelPlatform, PackageFormat
+from app.modules.insights import rate_guidance_service as service
+from app.modules.insights.schemas import NarrowedTo, RateGuidanceRead
 
 READ_LIMIT = "60 per minute"
 

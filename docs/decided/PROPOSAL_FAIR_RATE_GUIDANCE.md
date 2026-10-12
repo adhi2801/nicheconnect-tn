@@ -162,7 +162,7 @@ a creator.
 
 One branch, with the rate card merged first:
 
-1. `app/modules/auth/rate_guidance_service.py`: the query and the narrowing.
+1. `app/modules/insights/rate_guidance_service.py`: the query and the narrowing.
    It lives beside the rate card it reads, so there is no new module and no
    architecture decision.
 2. Schemas and the router: `GET /api/v1/rate-guidance`.

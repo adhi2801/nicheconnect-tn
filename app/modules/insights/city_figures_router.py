@@ -15,8 +15,8 @@ from sqlalchemy.orm import Session
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
-from app.modules.auth import city_figures_service as figures
-from app.modules.auth.schemas import (
+from app.modules.insights import city_figures_service as figures
+from app.modules.insights.schemas import (
     AskingPriceRead,
     CityCountRead,
     CityFiguresRead,
