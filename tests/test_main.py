@@ -19,6 +19,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from starlette.middleware.cors import CORSMiddleware
 
 from app.core.body_limit import BodyLimitMiddleware
+from app.core.load_shedding import LoadSheddingMiddleware
 from app.core.request_id import RequestIdMiddleware
 from app.core.security_headers import SecurityHeadersMiddleware
 from app.core.unexpected_error import UnexpectedErrorMiddleware
@@ -50,6 +51,7 @@ def test_the_layers_wrap_in_the_intended_order():
         RequestIdMiddleware,
         CORSMiddleware,
         UnexpectedErrorMiddleware,
+        LoadSheddingMiddleware,
         SlowAPIMiddleware,
         BodyLimitMiddleware,
     ]

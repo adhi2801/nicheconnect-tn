@@ -93,6 +93,17 @@ class Settings(BaseSettings):
     db_pool_size: int = Field(default=5, ge=1, le=50)
     db_max_overflow: int = Field(default=10, ge=0, le=50)
     db_statement_timeout_ms: int = Field(default=5000, ge=100, le=60000)
+    # How long a request may wait for a free connection before it is told
+    # "busy, retry" with a 503, instead of SQLAlchemy's 30 seconds and a 500
+    # (item 5a, D-093).
+    db_pool_timeout_seconds: float = Field(default=2.0, gt=0, le=30)
+    # Requests one process works on at once. Below the pool's connections,
+    # so every request let in can always get one: the load test froze a
+    # process when 40 worker threads waited on 15 connections (D-092). One
+    # connection stays free for the readiness check.
+    max_in_flight_requests: int = Field(default=12, ge=1, le=100)
+    # How long a request may wait for one of those places before the 503.
+    busy_queue_ms: int = Field(default=1000, ge=0, le=10_000)
     redis_url: str
     # Addresses or ranges we accept X-Forwarded-For from, comma separated
     # (e.g. "10.0.0.0/8,172.16.0.0/12"). Empty means trust nothing, which is
@@ -230,6 +241,18 @@ class Settings(BaseSettings):
             raise ValueError(
                 "MSG91_OTP_TEMPLATE must be a WhatsApp template name: "
                 "lower case letters, digits and underscores"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def in_flight_fits_the_pool(self) -> Settings:
+        """More requests at once than connections is what froze a process."""
+        connections = self.db_pool_size + self.db_max_overflow
+        if self.max_in_flight_requests >= connections:
+            raise ValueError(
+                f"MAX_IN_FLIGHT_REQUESTS must be below DB_POOL_SIZE + "
+                f"DB_MAX_OVERFLOW ({connections}), leaving a connection for "
+                "the readiness check"
             )
         return self
 

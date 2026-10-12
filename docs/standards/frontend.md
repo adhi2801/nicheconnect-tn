@@ -84,6 +84,7 @@ Measured, never estimated (`CLAUDE.md` section 7). **Field data** (real users) i
 - **Every screen designs five states**: loading, empty (with the next useful action), error, success, and **offline**. Designs without all five are not ready to build.
 - **Every request has a timeout and a visible way out.** No spinner runs forever; after the timeout the person sees what happened and a retry.
 - **Every write carries an `Idempotency-Key`** (D-040). A retry after a dropped connection can never create a second campaign or a second payment mark; the backend guarantees it, the client must use it.
+- **A 503 `service_busy` is "try again", never an error screen** (D-093). Wait the seconds in `Retry-After`, add a little random jitter, and repeat the same request, with the same `Idempotency-Key` for a write. Retry at most three times, then show a calm "busy, try again" with a button. A 429 `rate_limited` is the person's own pace, so it is never retried automatically.
 - **Optimistic updates only where the write is idempotent**, and they roll back visibly when the server says no.
 - **What a person types survives everything**: a failed submit, a lost connection, the app killed in the background. Drafts persist on the device until sent.
 - **Uploads resume** after a dropped connection or a killed app, compressed on the device first (`docs/PLATFORM_AND_TECH_PLAN.md` A8). Proof files upload straight to storage with the signed form the backend issues (D-065).

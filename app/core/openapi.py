@@ -49,6 +49,22 @@ BAD_REQUEST_PROBLEM = {
     },
 }
 
+SERVICE_BUSY_PROBLEM = {
+    "description": (
+        "Busy right now: nothing was done. Wait the seconds in the Retry-After "
+        "header and send the same request again (code `service_busy`)"
+    ),
+    "headers": {
+        "Retry-After": {
+            "description": "Seconds to wait before trying again",
+            "schema": {"type": "integer"},
+        }
+    },
+    "content": {
+        PROBLEM_CONTENT_TYPE: {"schema": {"$ref": "#/components/schemas/ProblemDetails"}}
+    },
+}
+
 
 def _uses_fastapi_shape(response: dict[str, Any]) -> bool:
     content = response.get("content", {}).get("application/json", {})
@@ -90,13 +106,29 @@ def document_unreadable_body(spec: dict[str, Any]) -> dict[str, Any]:
     return spec
 
 
+def document_service_busy(spec: dict[str, Any]) -> dict[str, Any]:
+    """Document the 503 any operation can answer when the process is busy.
+
+    Overload is turned away before a route runs (app/core/load_shedding.py,
+    D-093), so every operation can answer it, and a client generated from
+    this document needs a branch for it: wait Retry-After, then repeat.
+    Never replaces a 503 a route documented for its own reason.
+    """
+    for item in spec.get("paths", {}).values():
+        for method, operation in item.items():
+            if method.lower() not in OPERATION_METHODS:
+                continue
+            operation.setdefault("responses", {}).setdefault("503", SERVICE_BUSY_PROBLEM)
+    return spec
+
+
 def install(app: FastAPI) -> None:
     """Make `app.openapi()` return the corrected document."""
     generate: Callable[[], dict[str, Any]] = app.openapi
 
     def openapi() -> dict[str, Any]:
-        return document_unreadable_body(
-            document_validation_errors_as_problems(generate())
+        return document_service_busy(
+            document_unreadable_body(document_validation_errors_as_problems(generate()))
         )
 
     # FastAPI's documented way to customise the document is to replace this

@@ -11,6 +11,9 @@ engine = create_engine(
     settings.database_url,
     pool_size=settings.db_pool_size,
     max_overflow=settings.db_max_overflow,
+    # Seconds to wait for a free connection; then a 503, never a long hang
+    # (D-093).
+    pool_timeout=settings.db_pool_timeout_seconds,
     pool_pre_ping=True,
     connect_args={"options": f"-c statement_timeout={settings.db_statement_timeout_ms}"},
 )

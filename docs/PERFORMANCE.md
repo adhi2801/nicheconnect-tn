@@ -66,9 +66,32 @@ connection timed out, timeout 30.00`.
   check would fail and ECS would restart it after about a minute and a half,
   dropping whatever was in flight.
 
-The fix is proposed, not built: `docs/BACKEND_COMPLETE.md` item 5a. Until it
-is, the honest capacity of one container is **about 200 active people, or 70
-requests a second**, and more people means more containers.
+**Fixed the same day (item 5a, D-093):** at most 12 requests in flight per
+process, fewer than its 15 connections, so the freeze cannot form; a request
+that finds no place within a second gets 503 "busy" with `Retry-After`.
+Measured again, one process, same laptop:
+
+| People | Requests in 3 min | Errors | Turned away busy | Aggregate p95 | After the load |
+|---|---|---|---|---|---|
+| 200 (before) | 12,194 | 0 | — | 190 ms | — |
+| **200 (after)** | **12,394** | **0** | **0** | **62 ms** | — |
+| 400 (before) | 812, then frozen | 14% (500s) | — | 61 s | stuck until restarted |
+| **400 (after)** | **23,691** (133/s) | **0** | **2 (0.01%)** | **180 ms** | `/readyz` in 16 ms |
+| **800 (after)** | **39,208** (218/s) | **0** | **48%, each within about 1 s** | **1 s** (the queue wait) | `/readyz` in 25 ms |
+
+The 800-person run used 200 brands and 900 creators, so no account
+exceeded its own rate limit.
+
+Capping concurrency also made the normal case faster: at 200 people the
+aggregate p95 fell from 190 to 62 ms, because the database is no longer
+contended by more queries than it has connections.
+
+**Honest capacity now:** one process serves about 130 requests a second
+inside every budget (about 400 active people). Past that it turns the excess
+away quickly and stays up. More people means more containers, and infra
+does not add them by itself yet: it runs a fixed number (`api_desired_count`,
+1 by default). Autoscaling on request count is a follow-up proposal
+(infrastructure gate).
 
 **Two lessons from the first run, now in the script:**
 

@@ -20,6 +20,9 @@ Use 127.0.0.1, not localhost: on Windows, localhost tries IPv6 first and
 waits about two seconds before falling back, which every new connection then
 shows as a two-second request (found on the first run, 12 October 2026).
 
+Past capacity on purpose, add --overload (D-093): it then checks the server
+says "busy" (503) rather than failing or freezing, and recovers afterwards.
+
 It refuses to run unless ENVIRONMENT=local, against anything but this
 machine, or with no seeded sample accounts.
 """
@@ -31,11 +34,13 @@ import random
 import sys
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
 from urllib.parse import urlparse
 
 # Run with `locust -f scripts/load_test.py` from the project root.
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
+import requests
 from locust import HttpUser, between, events, task
 from locust.env import Environment
 from sqlalchemy import select
@@ -273,9 +278,59 @@ class CreatorUser(HttpUser):
         )
 
 
+@events.init_command_line_parser.add_listener
+def _add_overload_option(parser: Any) -> None:
+    parser.add_argument(
+        "--overload",
+        action="store_true",
+        default=False,
+        help=(
+            "Past capacity on purpose (D-093): 503 'busy' answers are allowed "
+            "and budgets are not judged, but any other failure fails the run, "
+            "and the server must answer /readyz within 5 s once the load stops."
+        ),
+    )
+
+
+def _shed(environment: Environment) -> int:
+    """How many requests were turned away busy (503), not failed."""
+    return sum(
+        error.occurrences
+        for error in environment.stats.errors.values()
+        if "503" in str(error.error)
+    )
+
+
+def _recovers(host: str) -> bool:
+    """Whether the server answers its readiness check soon after the load."""
+    try:
+        return requests.get(f"{host}/readyz", timeout=5).status_code == 200
+    except requests.RequestException:
+        return False
+
+
+@events.quitting.add_listener
+def _check_overload(environment: Environment, **_: object) -> None:
+    """Under --overload: busy is fine, an error or a freeze is not."""
+    if not environment.parsed_options or not environment.parsed_options.overload:
+        return
+    total = environment.stats.total
+    shed = _shed(environment)
+    failed = total.num_failures - shed
+    recovered = _recovers(environment.host or "")
+    print(
+        f"OVERLOAD: {total.num_requests} requests, {shed} turned away busy "
+        f"({shed / max(total.num_requests, 1):.0%}), {failed} failed otherwise, "
+        f"recovered: {'yes' if recovered else 'NO'}"
+    )
+    environment.process_exit_code = 0 if failed == 0 and recovered else 1
+
+
 @events.quitting.add_listener
 def _check_budgets(environment: Environment, **_: object) -> None:
     """Fail the run on any failed request or any p95 over its budget."""
+    if environment.parsed_options and environment.parsed_options.overload:
+        return
     over = []
     for entry in environment.stats.entries.values():
         budget = READ_BUDGET_MS if entry.method == "GET" else WRITE_BUDGET_MS

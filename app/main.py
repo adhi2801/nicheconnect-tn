@@ -11,6 +11,7 @@ from app.core.error_tracking import init_error_tracking
 from app.core.errors import problem_doc, problem_response, register_error_handlers
 from app.core.health import HealthRead, ReadinessRead, run_readiness_checks
 from app.core.idempotent_route import set_identity_resolver
+from app.core.load_shedding import LoadSheddingMiddleware
 from app.core.rate_limit import limiter
 from app.core.request_id import RequestIdMiddleware
 from app.core.security_headers import SecurityHeadersMiddleware
@@ -90,6 +91,15 @@ register_error_handlers(app)
 # earns a 429 rather than an endless stream of cheap 413s.
 app.add_middleware(BodyLimitMiddleware)
 app.add_middleware(SlowAPIMiddleware)
+# Overload becomes a quick 503 "busy" instead of a freeze (D-093). Outside
+# the rate limiter, so a request turned away costs no Valkey round trip;
+# inside the error, CORS, request-ID and security layers, so the 503 carries
+# all of them.
+app.add_middleware(
+    LoadSheddingMiddleware,
+    max_in_flight=settings.max_in_flight_requests,
+    queue_ms=settings.busy_queue_ms,
+)
 # Outside the rate limiter and the body limit, so a crash in either (Redis
 # down, say) still becomes our usual 500, not a bare one (D-045).
 app.add_middleware(UnexpectedErrorMiddleware)

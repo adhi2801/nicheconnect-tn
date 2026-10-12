@@ -46,7 +46,7 @@ Each module under `app/modules/<name>/` owns its own files:
 | State conflict (duplicate, wrong status transition, lost race) | 409 |
 | Too large | 413 |
 | Rate limited | 429, plus a `Retry-After` header |
-| A dependency is down | 503 |
+| A dependency is down, or the process is at capacity (`service_busy`, with `Retry-After`, D-093) | 503 |
 | Unexpected | 500, with a generic message only |
 
 - **Pagination** on every list: cursor-based (keyset), newest first. Request `?limit=20&cursor=<opaque>`; default limit 20, maximum 100. Response: `{"items": [...], "next_cursor": "<opaque or null>"}`. Cursors are opaque; never page numbers or offsets, which skip and repeat rows while data changes.
@@ -120,6 +120,7 @@ One error shape for every non-2xx response (RFC 9457 Problem Details):
 - A screen needs at most two calls; more is a backend request (`ux.md` section 7).
 - External calls (WhatsApp, Claude API, SMS, timestamp authorities): explicit timeouts (connect 3 s, read 10 s), retry with exponential backoff and jitter (at most 3 attempts), and never inside a request a user waits on: they run in background jobs.
 - Cache only with a written reason, a TTL and an invalidation rule.
+- **Overload is a quick 503, never a freeze** (D-093). `app/core/load_shedding.py` admits at most `MAX_IN_FLIGHT_REQUESTS` at once, below the pool's connections, so every admitted request can get one. A request that finds no place within `BUSY_QUEUE_MS` gets 503 `service_busy` with `Retry-After`; so does one that cannot get a connection within `DB_POOL_TIMEOUT_SECONDS`. The health checks are never held back. The startup check refuses a limit that could use every connection. `scripts/load_test.py --overload` proves it: past capacity, no error other than 503, and `/readyz` answers once the load stops.
 
 ## 7. Background jobs
 

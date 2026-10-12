@@ -997,3 +997,28 @@ Newest entries at the bottom.
      - Suggested creators across a block read a key a match never had. With no matches the check never ran, so it proved nothing. It now compares handles, and removing the block filter makes it fail.
      - Discovery across a block lost its campaigns to newer sample campaigns on page one. It now uses a city of its own.
      - The adults-only test read the first creator in the database. It now finds its own by handle.
+
+## D-093: Overload answered with a quick 503 "busy", never a freeze
+- Date: 2026-10-12
+- Approved by: Adhi, in this session ("A", to item 5a's proposal: shed overload fast with 503 and Retry-After, and never freeze).
+- Context: The load test (D-092) froze a process at 400 people. It had 15 database connections and 40 worker threads. Requests held connections while waiting for threads, and threads waited for connections, until 30-second timeouts answered 500. The process stayed stuck after the load stopped.
+- Options considered: A) cap requests in flight below the connections, answer 503 with Retry-After past a short queue, and time out a connection wait in 2 s · B) only raise the pool size.
+- Chosen: A.
+- Reason:
+  - A removes the freeze's cause: an admitted request can always get a connection.
+  - B moves the limit without removing it.
+  - Load shedding with Retry-After is how large services stay up past capacity, and our apps already retry writes safely with an Idempotency-Key (D-040).
+- Consequences / follow-ups:
+  1. `app/core/load_shedding.py`, between the error and rate-limit layers, so the 503 carries the request ID, CORS and security headers (D-045). It admits up to `MAX_IN_FLIGHT_REQUESTS` (12) at once. A request may wait `BUSY_QUEUE_MS` (1,000) for a place, then gets 503 `service_busy` with `Retry-After: 2`. `/healthz` and `/readyz` are never held back.
+  2. Second guard: `DB_POOL_TIMEOUT_SECONDS` (2) gives the same 503 when a connection does not come free in time, as can happen when background jobs share the pool.
+  3. The app refuses to start if the cap could use every connection (it must be below `DB_POOL_SIZE + DB_MAX_OVERFLOW`). The three settings are in `.env.example`. Infra passes none of the pool settings, so production uses these defaults.
+  4. Every operation documents the 503 in the contract: 67 gained it, and nothing else changed. `frontend.md`: wait `Retry-After` with jitter, retry the same request up to three times, then a calm "busy" with a button. A 429 is never retried automatically.
+  5. Measured on one process (`docs/PERFORMANCE.md`):
+     - 200 people: aggregate p95 190 → 62 ms, no errors, none turned away. Capping concurrency eased contention.
+     - 400 people: from frozen with 14% 500s to 23,691 requests, none failed, 2 turned away.
+     - 800 people: 48% turned away within about a second, no other error, and `/readyz` answering 25 ms after.
+  6. `scripts/load_test.py --overload` checks exactly that: past capacity, no error but 503, and recovery.
+  7. Tests: 12 new. The middleware is driven at its limits with requests held open, each scenario bounded to 5 s. Then the real app's 503, its headers, the startup check and the contract.
+     - Six breaks each failed a test: no limit, a place never returned, health checks held back, no queue wait, a pool timeout left as a 500, a cap allowed to use every connection.
+     - The first version of these tests hung, rather than failed, when the limit was removed. Each scenario is now bounded.
+  8. Follow-up, an infrastructure decision: infra runs a fixed number of API containers (one by default) with no autoscaling. Capacity per container is about 130 requests a second inside budget.
