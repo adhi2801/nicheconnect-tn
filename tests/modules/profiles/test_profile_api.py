@@ -435,6 +435,6 @@ def test_someone_refused_for_age_is_not_marked_adult(client, db, now):
 def test_a_leap_day_birthday_turns_18_on_1_march(born, today, adult):
     from datetime import date
 
-    from app.modules.auth.profiles import is_adult
+    from app.modules.profiles.profile_service import is_adult
 
     assert is_adult(date.fromisoformat(born), date.fromisoformat(today)) is adult

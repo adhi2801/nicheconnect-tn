@@ -16,8 +16,8 @@ from sqlalchemy import event, update
 from app.core.taxonomy import CURRENCY
 from app.db.session import engine
 from app.modules.auth.models.creator import Creator
-from app.modules.auth.models.rate_card import CreatorChannel, CreatorPackage
 from app.modules.auth.search_router import SEARCH_LIMIT
+from app.modules.profiles.models import CreatorChannel, CreatorPackage
 from tests.deal_flow import User, brand_user, creator_user
 from tests.factories import FIXED_NOW, build_creator
 

@@ -33,9 +33,9 @@ from sqlalchemy.orm import Session
 
 from app.core.taxonomy import CURRENCY, NICHES, Niche
 from app.modules.auth.models.creator import Creator
-from app.modules.auth.models.rate_card import CreatorPackage
 from app.modules.auth.suspension import account_is_active, brand_is_active
 from app.modules.campaigns.models import Campaign
+from app.modules.profiles.models import CreatorPackage
 
 MIN_COUNT = 5  # as fair-rate guidance (D-056)
 

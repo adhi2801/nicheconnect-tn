@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.modules.auth.models.account import Account
-from app.modules.auth.models.rate_card import CreatorPackage
+from app.modules.profiles.models import CreatorPackage
 from tests.factories import build_campaign, build_creator
 
 PUBLISHED = datetime(2026, 9, 1, tzinfo=UTC)

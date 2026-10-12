@@ -12,9 +12,9 @@ from sqlalchemy import delete
 
 from app.core.clock import india_date
 from app.core.taxonomy import CURRENCY
-from app.modules.auth.models.rate_card import CreatorChannel, CreatorPackage
 from app.modules.auth.rate_guidance_router import READ_LIMIT
 from app.modules.auth.rate_guidance_service import audience_band
+from app.modules.profiles.models import CreatorChannel, CreatorPackage
 from tests.deal_flow import User, brand_user, creator_user
 from tests.factories import FIXED_NOW, build_creator
 

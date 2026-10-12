@@ -15,7 +15,6 @@ from app.core import storage
 from app.core.clock import india_date
 from app.core.config import settings
 from app.modules.auth.models.creator import Creator
-from app.modules.auth.models.rate_card import CreatorChannel
 from app.modules.deal_memo import proof_cleaning_service as cleaning
 from app.modules.deal_memo import proof_reading_service as reading_service
 from app.modules.deal_memo.proof_models import ProofFile
@@ -28,6 +27,7 @@ from app.modules.deal_memo.proof_reading_service import (
     read_due,
 )
 from app.modules.deal_memo.record_models import DealRecordEntry
+from app.modules.profiles.models import CreatorChannel
 from tests.deal_flow import User, accepted_memo, brand_user, creator_user
 from tests.modules.deal_memo.test_proof_cleaning import photo, submitted
 

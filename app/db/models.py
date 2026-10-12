@@ -9,10 +9,6 @@ from app.modules.auth.models.brand import Brand  # noqa: F401
 from app.modules.auth.models.creator import Creator  # noqa: F401
 from app.modules.auth.models.device_token import DeviceToken  # noqa: F401
 from app.modules.auth.models.otp_challenge import OtpChallenge  # noqa: F401
-from app.modules.auth.models.rate_card import (
-    CreatorChannel,  # noqa: F401
-    CreatorPackage,  # noqa: F401
-)
 from app.modules.auth.models.report import Report  # noqa: F401
 from app.modules.campaigns.models import (
     Application,  # noqa: F401
@@ -38,4 +34,8 @@ from app.modules.notifications.preference_models import (
 )
 from app.modules.payment_status.models import PaymentStatus  # noqa: F401
 from app.modules.payment_status.upi_models import CreatorUpi  # noqa: F401
+from app.modules.profiles.models import (
+    CreatorChannel,  # noqa: F401
+    CreatorPackage,  # noqa: F401
+)
 from app.modules.safety.models import AccountBlock  # noqa: F401

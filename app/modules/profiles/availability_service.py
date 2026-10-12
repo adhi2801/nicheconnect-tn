@@ -20,8 +20,8 @@ from datetime import date, timedelta
 from sqlalchemy import ColumnElement, or_
 from sqlalchemy.orm import Session
 
-from app.modules.auth.exceptions import InvalidAvailability
 from app.modules.auth.models.creator import Creator
+from app.modules.profiles.exceptions import InvalidAvailability
 
 # A year: anything further ahead is almost certainly a mistyped year.
 FURTHEST_AHEAD = timedelta(days=365)

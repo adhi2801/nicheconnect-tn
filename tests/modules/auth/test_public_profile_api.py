@@ -16,7 +16,7 @@ from app.main import app
 from app.modules.auth import passport_service
 from app.modules.auth.dependencies import get_now
 from app.modules.auth.models.creator import Creator
-from app.modules.auth.models.rate_card import CreatorChannel, CreatorPackage
+from app.modules.profiles.models import CreatorChannel, CreatorPackage
 from tests.factories import FIXED_NOW, build_creator
 
 URL = "/api/v1/creators/by-handle"

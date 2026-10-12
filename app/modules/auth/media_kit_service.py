@@ -26,10 +26,10 @@ from sqlalchemy.orm import Session
 
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.creator import Creator
-from app.modules.auth.models.rate_card import CreatorChannel, CreatorPackage
-from app.modules.auth.rate_card_service import list_channels, list_packages
 from app.modules.deal_memo import delivery_record
 from app.modules.deal_memo.delivery_record import DeliveryRecord
+from app.modules.profiles.models import CreatorChannel, CreatorPackage
+from app.modules.profiles.rate_card_service import list_channels, list_packages
 
 
 @dataclass(frozen=True)

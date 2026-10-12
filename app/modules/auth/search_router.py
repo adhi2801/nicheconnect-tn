@@ -12,7 +12,6 @@ from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
 from app.core.rate_limit import rate_limit
 from app.core.taxonomy import CURRENCY, Niche
 from app.db.session import get_db
-from app.modules.auth import availability_service as availability
 from app.modules.auth import search_service as service
 from app.modules.auth.dependencies import CurrentBrand, get_now
 from app.modules.auth.exceptions import InvalidSearch
@@ -22,6 +21,7 @@ from app.modules.auth.schemas import (
     PackageFormat,
     SearchChannelRead,
 )
+from app.modules.profiles import availability_service as availability
 
 READ_LIMIT = "60 per minute"
 # security.md section 5: search and matching are 30 a minute, and capped per

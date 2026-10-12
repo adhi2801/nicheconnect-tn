@@ -13,16 +13,16 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.clock import india_date
-from app.modules.auth.exceptions import (
+from app.modules.auth.exceptions import ProfileNotFound
+from app.modules.auth.models.account import Account
+from app.modules.auth.models.brand import Brand
+from app.modules.auth.models.creator import Creator
+from app.modules.profiles.exceptions import (
     EmailTaken,
     HandleTaken,
     MustBeAnAdult,
     ProfileAlreadyExists,
-    ProfileNotFound,
 )
-from app.modules.auth.models.account import Account
-from app.modules.auth.models.brand import Brand
-from app.modules.auth.models.creator import Creator
 
 # Which database rule broke, and the error a user should see.
 CONFLICTS: tuple[tuple[str, type], ...] = (

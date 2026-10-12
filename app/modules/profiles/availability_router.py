@@ -9,11 +9,11 @@ from app.core.clock import india_date
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
-from app.modules.auth import availability_service as service
-from app.modules.auth import profiles
 from app.modules.auth.dependencies import CurrentCreator, get_now
 from app.modules.auth.models.creator import Creator
-from app.modules.auth.schemas import AvailabilityRead, AvailabilityUpdate
+from app.modules.profiles import availability_service as service
+from app.modules.profiles import profile_service as profiles
+from app.modules.profiles.schemas import AvailabilityRead, AvailabilityUpdate
 
 WRITE_LIMIT = "30 per minute"
 READ_LIMIT = "60 per minute"

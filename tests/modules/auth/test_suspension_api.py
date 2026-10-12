@@ -288,7 +288,7 @@ def test_a_suspended_creators_prices_stop_counting_toward_fair_rates(
     client, db, brand, clock
 ):
     from app.core.taxonomy import CURRENCY
-    from app.modules.auth.models.rate_card import CreatorChannel, CreatorPackage
+    from app.modules.profiles.models import CreatorChannel, CreatorPackage
 
     db.execute(delete(CreatorPackage))
     creators = []

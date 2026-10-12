@@ -22,11 +22,11 @@ from sqlalchemy.orm import Session
 
 import app.db.models  # noqa: F401 — registers every table, as the app does
 from app.db.session import SessionLocal
-from app.modules.auth import rate_card_service as rate_card
-from app.modules.auth.exceptions import PackageLimitReached
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.creator import Creator
-from app.modules.auth.models.rate_card import (
+from app.modules.profiles import rate_card_service as rate_card
+from app.modules.profiles.exceptions import PackageLimitReached
+from app.modules.profiles.models import (
     MAX_PACKAGES_PER_CREATOR,
     CreatorChannel,
     CreatorPackage,

@@ -15,7 +15,7 @@ from sqlalchemy.exc import IntegrityError
 
 import app.db.models  # noqa: F401 — registers every table, as the app does
 from app.modules.auth.models.creator import Creator
-from app.modules.auth.models.rate_card import CreatorChannel, CreatorPackage
+from app.modules.profiles.models import CreatorChannel, CreatorPackage
 from tests.factories import build_creator
 
 AS_OF = date(2026, 9, 20)

@@ -14,11 +14,11 @@ from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
-from app.modules.auth import profiles
 from app.modules.auth.dependencies import CurrentBrand, CurrentCreator, get_now
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
-from app.modules.auth.schemas import (
+from app.modules.profiles import profile_service as profiles
+from app.modules.profiles.schemas import (
     BrandProfileCreate,
     BrandProfileRead,
     BrandProfileUpdate,

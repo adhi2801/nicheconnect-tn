@@ -33,7 +33,6 @@ from app.modules.auth.models.account import Account
 from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
-from app.modules.auth.models.rate_card import CreatorChannel, CreatorPackage
 from app.modules.auth.models.report import Report
 from app.modules.campaigns import service as campaigns
 from app.modules.deal_memo import service as deal_memos
@@ -42,6 +41,7 @@ from app.modules.notifications import preference_service as notification_prefere
 from app.modules.notifications import service as notifications
 from app.modules.payment_status import service as payments
 from app.modules.payment_status import upi_service as upi
+from app.modules.profiles.models import CreatorChannel, CreatorPackage
 from app.modules.safety import block_service as blocks
 
 # Bumped whenever the shape of the file changes, so a reader can tell which

@@ -8,9 +8,9 @@ from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
-from app.modules.auth import availability_service as service
-from app.modules.auth.availability_router import WRITE_LIMIT
 from app.modules.auth.models.creator import Creator
+from app.modules.profiles import availability_service as service
+from app.modules.profiles.availability_router import WRITE_LIMIT
 from tests.deal_flow import User, brand_user, creator_user
 from tests.factories import create_account
 

@@ -15,19 +15,17 @@ from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
-from app.modules.auth import profiles
-from app.modules.auth import rate_card_service as service
 from app.modules.auth.dependencies import CurrentCreator, get_now
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.creator import Creator
-from app.modules.auth.models.rate_card import MAX_PACKAGES_PER_CREATOR
-from app.modules.auth.schemas import (
-    ChannelPlatform,
-    ChannelRead,
+from app.modules.auth.schemas import ChannelPlatform, ChannelRead, PackageRead
+from app.modules.profiles import profile_service as profiles
+from app.modules.profiles import rate_card_service as service
+from app.modules.profiles.models import MAX_PACKAGES_PER_CREATOR
+from app.modules.profiles.schemas import (
     ChannelUpsert,
     CreatorProfileRead,
     PackageCreate,
-    PackageRead,
     PackageUpdate,
 )
 

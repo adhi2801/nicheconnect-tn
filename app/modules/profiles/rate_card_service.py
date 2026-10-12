@@ -22,14 +22,14 @@ from urllib.parse import urlparse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.modules.auth.exceptions import (
+from app.modules.auth.models.creator import Creator
+from app.modules.profiles.exceptions import (
     ChannelNotFound,
     PackageLimitReached,
     PackageNotFound,
     ProfileUrlDoesNotMatchPlatform,
 )
-from app.modules.auth.models.creator import Creator
-from app.modules.auth.models.rate_card import (
+from app.modules.profiles.models import (
     MAX_PACKAGES_PER_CREATOR,
     CreatorChannel,
     CreatorPackage,

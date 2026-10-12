@@ -40,7 +40,6 @@ from sqlalchemy.orm import Session
 from app.core.clock import india_date
 from app.core.config import settings
 from app.core.storage import FileStore, ObjectTooLarge
-from app.modules.auth.models.rate_card import CreatorChannel
 from app.modules.campaigns.models import Application
 from app.modules.deal_memo import record_service as record
 from app.modules.deal_memo.exceptions import (
@@ -52,6 +51,7 @@ from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof, ProofFile
 from app.modules.deal_memo.proof_reader import Reading, ScreenshotReader
 from app.modules.deal_memo.proof_reading_models import ProofFileReading
+from app.modules.profiles.models import CreatorChannel
 
 logger = logging.getLogger(__name__)
 
