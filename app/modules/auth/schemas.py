@@ -27,10 +27,15 @@ from app.modules.auth.models.admin_action import ADMIN_ACTIONS
 from app.modules.auth.models.attribution import ARRIVAL_SOURCES
 from app.modules.auth.models.creator import BIO_MAX_LENGTH, HANDLE_PATTERN
 from app.modules.auth.models.report import REPORT_SUBJECTS
+from app.modules.deal_memo.schemas import CreatorDeliveryRead
 
 # The media kit nests the delivery record as its own module defines it, so
 # the two can never describe the same numbers differently.
-from app.modules.deal_memo.schemas import CreatorDeliveryRead
+from app.modules.notifications.device_models import (
+    TOKEN_MAX_LENGTH,
+    TOKEN_MIN_LENGTH,
+    TOKEN_PATTERN,
+)
 
 # Separators people commonly type: "+91 98765 43210", "98765-43210", "(98765) 43210".
 _PHONE_SEPARATORS = re.compile(r"[\s\-()]")
@@ -221,6 +226,17 @@ class LogoutIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     refresh_token: RefreshToken
+    # This phone's push token, so logging out also stops its notifications
+    # (D-095). Optional: the website and older apps have none.
+    device_token: Annotated[
+        str | None,
+        Field(
+            min_length=TOKEN_MIN_LENGTH,
+            max_length=TOKEN_MAX_LENGTH,
+            pattern=TOKEN_PATTERN,
+            description="This phone's push token, to stop its notifications too",
+        ),
+    ] = None
 
 
 class AccountRead(BaseModel):

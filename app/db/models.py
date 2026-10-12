@@ -32,6 +32,7 @@ from app.modules.matching.models import (
     CampaignEmbedding,  # noqa: F401
     CreatorEmbedding,  # noqa: F401
 )
+from app.modules.notifications.device_models import DeviceToken  # noqa: F401
 from app.modules.notifications.models import Notification  # noqa: F401
 from app.modules.notifications.preference_models import (
     NotificationPreference,  # noqa: F401

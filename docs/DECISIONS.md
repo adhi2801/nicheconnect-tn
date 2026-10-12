@@ -1060,3 +1060,33 @@ Newest entries at the bottom.
      - End to end, a local Jaeger received the traces: a Passport lookup as a request span with its three queries, a trace started by the client kept its ID, and the real handle appeared nowhere in Jaeger's data.
   6. Overhead measured (`docs/PERFORMANCE.md`): at 200 people, p95 200 ms with tracing off, 230 ms at 10%, and 220 ms with every request traced. That is within noise, and inside every budget.
   7. **Where traces go is still open (hosting).** X-Ray's OTLP endpoint needs signed requests, so production needs an OpenTelemetry collector beside the app (an infrastructure decision) or another backend. Until then nothing is sent.
+
+## D-095: Phones registered for push, one owner per token, gone at logout
+- Date: 2026-10-12
+- Approved by: Adhi, in this session ("A and push"), to the proposal for item 9.
+- Context: Push is how the apps earn their place on a phone (A4). The apps cannot ask for it until the backend stores each install's token.
+- Options considered: A) a `device_token` table and endpoints now · B) wait for item 8 to settle the account shape.
+- Chosen: A.
+- Reason: a token belongs to an account whichever way item 8 goes, and building it now unblocks the apps' design.
+- Consequences / follow-ups:
+  1. `device_token`, a new table:
+     - the account (ON DELETE CASCADE) and the platform (`android`, `ios`, `ios_live_activity`);
+     - the token: unique, 32 to 1,024 characters of a safe set;
+     - the app version, last seen, created and updated;
+     - an index on (account, last seen) that also covers the foreign key.
+     - The database refuses each bad row, and tests write those rows with raw SQL.
+  2. `PUT /api/v1/me/devices` registers or refreshes a phone (body: token, platform, app version) and returns its `id`, never the token. `DELETE /api/v1/me/devices/{id}` unregisters one; someone else's device is a 404. Limit: 20 a minute and 200 a day.
+  3. **Changed from the proposal, each for a stated rule:**
+     - **The token travels in the body, never the URL.** A URL reaches access logs, and `security.md` never logs tokens. So deletion is by the `id` registering returned.
+     - **Web push is left out.** A browser subscription is an endpoint plus keys, not a token, and item 9 named only the phones.
+  4. Rules:
+     - one token, one owner: a token registered by a second account moves to it, so a phone handed on stops showing the last person's notifications;
+     - each account keeps its 10 most recently seen phones, with the account's row locked first so registrations at once cannot pass the cap;
+     - logout, given the phone's optional `device_token`, removes it, but only if it is the same account's;
+     - logout-all removes every phone.
+  5. Personal data: the export lists each phone's platform, version and dates, never the token. `app/core/export.py` refuses the name.
+  6. Tests: 41.
+     - Six breaks each failed a test: no lock, no cap, a token not moved, logout removing another account's token, logout-all keeping phones, deleting another account's device.
+     - The concurrency test holds four registrations open between insert and trim, on an account one phone short of its cap. It ends with exactly ten.
+  7. Squawk finds nothing. The migration ran up, down and up, and the models match.
+  8. Still to build with E1: the sender. It will drop a token Firebase or Apple reports as gone, and use `decide` (D-079) for quiet hours.

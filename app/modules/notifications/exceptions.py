@@ -20,3 +20,10 @@ class UrgentTypeNotMutable(DomainError):
     status_code = HTTPStatus.UNPROCESSABLE_ENTITY
     code = "urgent_type_not_mutable"
     title = "Some of these cannot be muted"
+
+
+class DeviceNotFound(DomainError):
+    # Also someone else's device: 404, never 403 (security.md section 2).
+    status_code = HTTPStatus.NOT_FOUND
+    code = "device_not_found"
+    title = "That device is not registered to you"

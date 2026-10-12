@@ -155,7 +155,8 @@ def refresh(
     summary="Log out of this device",
     description=(
         "Ends the login the refresh token belongs to, including tokens it was "
-        "rotated from. Always returns 204, even for an unknown token, so nobody "
+        "rotated from, and, given this phone's `device_token`, its push "
+        "notifications. Always returns 204, even for an unknown token, so nobody "
         "can test whether a token exists. Limit: 30 requests per minute per IP address."
     ),
     responses={
@@ -170,7 +171,7 @@ def logout(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> None:
-    service.logout(db, body.refresh_token, now)
+    service.logout(db, body.refresh_token, now, device_token=body.device_token)
 
 
 @router.get(
@@ -201,7 +202,8 @@ def me(request: Request, account: CurrentAccount) -> AccountRead:
     response_model=LoggedOutAll,
     summary="Log out of every device",
     description=(
-        "Ends every session of the signed-in account, on all devices. Needs a "
+        "Ends every session of the signed-in account, on all devices, and stops "
+        "push notifications to all of them. Needs a "
         "valid access token. Limit: 30 requests per minute per IP address."
     ),
     responses={

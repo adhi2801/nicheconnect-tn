@@ -3358,6 +3358,105 @@
         "title": "DealStageCountsRead",
         "type": "object"
       },
+      "DeviceRead": {
+        "description": "A registered phone. Its token is never returned.",
+        "properties": {
+          "app_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "App Version"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "description": "Keep it to unregister this phone later",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "title": "Last Seen At",
+            "type": "string"
+          },
+          "platform": {
+            "enum": [
+              "android",
+              "ios",
+              "ios_live_activity"
+            ],
+            "title": "Platform",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "platform",
+          "app_version",
+          "last_seen_at",
+          "created_at"
+        ],
+        "title": "DeviceRead",
+        "type": "object"
+      },
+      "DeviceRegister": {
+        "additionalProperties": false,
+        "description": "Register this phone, or refresh it. Send on every app start.",
+        "properties": {
+          "app_version": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "1.4.0 (212)"
+            ],
+            "title": "App Version"
+          },
+          "platform": {
+            "description": "`ios_live_activity` for a Live Activity's own push token",
+            "enum": [
+              "android",
+              "ios",
+              "ios_live_activity"
+            ],
+            "title": "Platform",
+            "type": "string"
+          },
+          "token": {
+            "description": "The token Firebase (Android) or Apple (iPhone, Live Activity) gave this install. Sent in the body, never a URL, so it reaches no log",
+            "examples": [
+              "fMEP0vJqS0Kp1Xz9:APA91bH-example-token-from-firebase-0123456789"
+            ],
+            "maxLength": 1024,
+            "minLength": 32,
+            "pattern": "^[A-Za-z0-9:_.-]+$",
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "platform"
+        ],
+        "title": "DeviceRegister",
+        "type": "object"
+      },
       "DisputeClose": {
         "additionalProperties": false,
         "description": "How it ended. None of these say who was right.",
@@ -4003,6 +4102,21 @@
       "LogoutIn": {
         "additionalProperties": false,
         "properties": {
+          "device_token": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "minLength": 32,
+                "pattern": "^[A-Za-z0-9:_.-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "This phone's push token, to stop its notifications too",
+            "title": "Device Token"
+          },
           "refresh_token": {
             "description": "The refresh token from a login or an earlier refresh",
             "maxLength": 512,
@@ -11373,7 +11487,7 @@
     },
     "/api/v1/auth/logout": {
       "post": {
-        "description": "Ends the login the refresh token belongs to, including tokens it was rotated from. Always returns 204, even for an unknown token, so nobody can test whether a token exists. Limit: 30 requests per minute per IP address.",
+        "description": "Ends the login the refresh token belongs to, including tokens it was rotated from, and, given this phone's `device_token`, its push notifications. Always returns 204, even for an unknown token, so nobody can test whether a token exists. Limit: 30 requests per minute per IP address.",
         "operationId": "logout_api_v1_auth_logout_post",
         "requestBody": {
           "content": {
@@ -11448,7 +11562,7 @@
     },
     "/api/v1/auth/logout-all": {
       "post": {
-        "description": "Ends every session of the signed-in account, on all devices. Needs a valid access token. Limit: 30 requests per minute per IP address.",
+        "description": "Ends every session of the signed-in account, on all devices, and stops push notifications to all of them. Needs a valid access token. Limit: 30 requests per minute per IP address.",
         "operationId": "logout_all_api_v1_auth_logout_all_post",
         "responses": {
           "200": {
@@ -22080,6 +22194,200 @@
         "summary": "Unblock",
         "tags": [
           "blocking"
+        ]
+      }
+    },
+    "/api/v1/me/devices": {
+      "put": {
+        "description": "Records the push token Firebase or Apple gave this install, or refreshes it; send it on every app start and whenever the token changes. Safe to repeat. A token already registered to another account moves to this one, so a phone handed on stops showing the last person's notifications. Each account keeps its 10 most recently seen phones. The token is never returned; keep the `id` to unregister.",
+        "operationId": "register_device_api_v1_me_devices_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceRegister"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A field is missing or invalid"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Register this phone for push notifications",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/me/devices/{device_id}": {
+      "delete": {
+        "description": "Unregisters one of your phones, by the `id` registering it returned. Logging out of a phone does this too, when the app sends its token.",
+        "operationId": "remove_device_api_v1_me_devices__device_id__delete",
+        "parameters": [
+          {
+            "description": "The id registering returned",
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "description": "The id registering returned",
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such device, or it is not yours"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The device id is not a valid id"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Stop push notifications to a phone",
+        "tags": [
+          "notifications"
         ]
       }
     },
