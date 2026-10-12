@@ -87,6 +87,10 @@ dev = [
     "schemathesis==4.27.5",
     # Imitates S3 in tests, so the storage code is tested without AWS (D-065).
     "moto==5.2.3",
+    # Property-based tests (D-090): one test states a rule, Hypothesis tries
+    # hundreds of generated inputs and shrinks any failure to the smallest.
+    # Schemathesis pulls it in too; pinned here because tests import it.
+    "hypothesis==6.169.0",
 ]
 # The embedding stack (D-052), deliberately apart from the app:
 # 1. The API image does not need it: embedding is never on the request path.

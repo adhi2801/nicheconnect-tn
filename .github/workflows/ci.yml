@@ -171,7 +171,11 @@ jobs:
       # the API. The full log is visible only to repository admins, and a
       # red run nobody can read cannot be fixed by anyone else (10 October
       # 2026). The exit status is pytest's own, unchanged.
+      # Property tests try 1,000 generated cases each here, against 200 on a
+      # laptop, and print how to replay any failure (D-090).
       - name: Run tests
+        env:
+          HYPOTHESIS_PROFILE: ci
         run: |
           set +e
           pytest -x --tb=short --cov --cov-report=term -rfE 2>&1 | tee pytest.log

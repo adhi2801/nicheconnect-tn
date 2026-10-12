@@ -56,8 +56,11 @@ _ASKS_FOR_MONEY = re.compile(
     ),
     re.IGNORECASE,
 )
-# An Indian mobile, with or without +91 and spaces or dashes.
-_PHONE = re.compile(r"(?<!\d)(?:\+?91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}(?!\d)")
+# An Indian mobile: +91, 91 or a 0 in front, or nothing, and one space, dash
+# or dot allowed in any gap. Property tests found that only 5+5 and unbroken
+# digits were caught; "987 654 3210" and "09876543210" went unflagged (D-090).
+# Never inside a longer run of digits, so order and tracking numbers pass.
+_PHONE = re.compile(r"(?<!\d)(?:\+?91[\s.-]?|0)?[6-9](?:[\s.-]?\d){9}(?!\d)")
 _EMAIL = re.compile(r"\b[\w.+-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+\b", re.IGNORECASE)
 # A UPI ID: name@handle (okaxis, ybl). An email looks the same up to its dot,
 # so emails are taken out of the text before this is searched.

@@ -28,3 +28,6 @@ crash.log
 # test set: screenshots of the founders' own posts (D-070, step 2).
 local/
 pytest.log
+
+# Hypothesis keeps failing examples here to replay them (D-090)
+.hypothesis/

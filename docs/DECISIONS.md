@@ -894,3 +894,33 @@ Newest entries at the bottom.
   5. Rows from before 12 October keep NULL: a date or a message that was never recorded is not made up. The downgrade refuses while any of the three holds a value.
   6. Not built: using `first_answered_at` to show brands' typical reply time beside D-077's. That is the next proposal.
   7. Tests: 37. Five rules were each broken on purpose and seen to fail. Each CHECK is refused by the database when a test writes the row with raw SQL.
+
+## D-090: Property-based tests with Hypothesis, and the contact-detail flag widened by what they found
+- Date: 2026-10-12
+- Approved by: Adhi, in this session ("all 3 in a-b-c"), to the proposal to make testing stronger rather than only bigger: A) Hypothesis, then B) mutmut, then C) a load test.
+- Context: Adhi asked how many tests billion-dollar companies run, and said ours "should progress drastically". Our 2,637 tests each check a case someone thought of. Property tests state a rule and let a tool generate the cases.
+- Options considered: A) Hypothesis · B) more hand-written examples · C) nothing new.
+- Chosen: A.
+- Reason:
+  - Hypothesis is the standard for Python property-based testing.
+  - It was already installed through Schemathesis, and its MPL-2.0 licence is on the approved list.
+  - Version 6.169.0 (11 October 2026) supports Python 3.14.
+  - More hand-written examples would only find what someone already imagined.
+- Consequences / follow-ups:
+  1. `hypothesis==6.169.0` is pinned in the dev group, never in an image.
+  2. Profiles in `tests/conftest.py`: 200 cases per test locally, and 1,000 on CI (`HYPOTHESIS_PROFILE=ci`, which prints how to replay a failure). No deadline in either, so a busy machine is never a failure.
+  3. 33 property tests. That is 6,600 generated cases a run locally and 33,000 on CI. They cover:
+     - cursors, phone numbers and payment references;
+     - the record's fingerprint and the Merkle proofs;
+     - payment state over 60 days;
+     - the approval clock and deal stage;
+     - the spreadsheet's money and formula escape;
+     - the contact-detail flags.
+  4. **Found on the first run:** a mobile number written `987 654 3210`, `9876 543 210`, `09876543210`, `98-76-54-32-10` or `98765.43210` went unflagged (item 60). Only 5+5 and unbroken digits were caught.
+     - The pattern now allows one space, dash or dot in any gap, and a leading 0.
+     - All five shapes are fixed examples that fail on the old pattern.
+     - New must-not-flag cases (ranges, dates, rates) bound it.
+  5. Each property was shown to fail when its rule was broken: the dispute rule, late going back to due, a window a day short, barter waiting on a payment, finished on "marked paid", unsorted keys.
+     - One break survived: swapping the Merkle hash order. Root and proof stay consistent, which is all a property can check. The RFC 6962 vectors in `test_merkle.py` catch it.
+     - So `testing.md` now says to keep both kinds.
+  6. `docs/standards/testing.md` sections 1, 3 and 6 are updated.

@@ -1,10 +1,30 @@
+import os
 from collections.abc import Iterator
 
 import pytest
+from hypothesis import settings
 from sqlalchemy.orm import Session
 
 from app.db.session import engine
 from tests import migration_check
+
+# Property tests (D-090). Every profile has no deadline: a slow machine is
+# not a bug, and a test that fails only when the machine is busy is flaky
+# (testing.md section 10). Locally 200 cases each; CI sets
+# HYPOTHESIS_PROFILE=ci for 1,000, and prints how to replay any failure.
+settings.register_profile(
+    "dev",
+    max_examples=200,
+    deadline=None,
+)
+settings.register_profile(
+    "ci",
+    max_examples=1000,
+    deadline=None,
+    print_blob=True,
+    database=None,
+)
+settings.load_profile(os.environ.get("HYPOTHESIS_PROFILE", "dev"))
 
 
 @pytest.fixture

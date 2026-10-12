@@ -19,6 +19,7 @@ Applies to all code. "Tested" in any report means the tests below ran in that se
 | Background job | Success, retry on failure, safe when run twice |
 | Public endpoint | Listed in the contract test's public list with its reason; cache headers and 304 if cacheable |
 | A route that lets one account reach another | Listed in `tests/modules/test_daily_ceilings.py` (a daily ceiling per account), and refused across a block in `tests/modules/auth/test_block_api.py` |
+| A parser, normaliser or pure rule | **Property tests** (`test_<feature>_properties.py`): what must hold for every input, not just the examples someone thought of (section 6) |
 | Free text another person reads | Its `text_flags`: what must flag and, just as carefully, ordinary wording that must not |
 | A document | Its decision numbers, paths and links exist (`tests/test_docs.py`, run on every change) |
 
@@ -48,6 +49,7 @@ tests/
   modules/<module>/
     test_<feature>_api.py      HTTP-level tests
     test_<feature>.py          rules without a database, where the logic is pure
+    test_<feature>_properties.py  what holds for every input (Hypothesis)
     test_<feature>_model.py    database constraints
     test_<feature>_concurrency.py
   test_api_contract.py     every operation against the committed contract
@@ -81,7 +83,9 @@ tests/
 
 - The committed OpenAPI contract is compared with the running app on every run (`backend.md` section 2).
 - CI fuzzes every operation against the contract (Schemathesis); a failure is a bug in the code or the contract, never a reason to loosen either (`docs/API_CONTRACT_FINDINGS.md`).
-- Property-based tests (Hypothesis) for parsers and normalisers (phone numbers, codes, cursors) **(not yet used; a dependency decision)**.
+- **Property-based tests (Hypothesis, D-090)** for every parser, normaliser and pure rule. A property test states what holds for **every** input; Hypothesis tries 200 generated cases per test on a laptop and 1,000 on CI (`HYPOTHESIS_PROFILE=ci`), and shrinks any failure to its smallest example. Built for cursors, phone numbers, payment references, the record's fingerprint, the Merkle proofs, payment state over time, the approval clock, deal stage, the spreadsheet, and the contact-detail flags.
+  - Their first run found a real gap: a mobile number written `987 654 3210` or `09876543210` slipped past the contact-detail flag (item 60). Each shape is now a fixed example too.
+  - A property test checks consistency, not a specification: swapping the Merkle hash order kept every proof consistent, and only the RFC 6962 vectors caught it. Keep both kinds.
 
 ## 7. Coverage
 
