@@ -35,6 +35,7 @@ from app.modules.auth.router import router as auth_router
 from app.modules.auth.search_router import router as search_router
 from app.modules.campaigns.application_router import router as applications_router
 from app.modules.campaigns.invitation_router import router as invitations_router
+from app.modules.campaigns.report_router import router as campaign_report_router
 from app.modules.campaigns.router import router as campaigns_router
 from app.modules.deal_memo.delivery_router import router as delivery_router
 from app.modules.deal_memo.proof_router import router as proof_router
@@ -125,6 +126,7 @@ app.include_router(attribution_router)
 app.include_router(media_kit_router)
 app.include_router(rate_guidance_router)
 app.include_router(campaigns_router)
+app.include_router(campaign_report_router)
 app.include_router(applications_router)
 app.include_router(invitations_router)
 app.include_router(notifications_router)

@@ -1993,6 +1993,66 @@
         "title": "CampaignRead",
         "type": "object"
       },
+      "CampaignReportRead": {
+        "description": "Every deal on one campaign, with the proof behind it (item 47).\n\nWorked out from the records as of `generated_at`, never stored. Dates are\nTamil Nadu dates. The same report as a spreadsheet is\n`GET /api/v1/campaigns/{id}/report.csv`.",
+        "properties": {
+          "campaign_id": {
+            "format": "uuid",
+            "title": "Campaign Id",
+            "type": "string"
+          },
+          "campaign_type": {
+            "enum": [
+              "paid",
+              "barter",
+              "commission",
+              "local_business"
+            ],
+            "title": "Campaign Type",
+            "type": "string"
+          },
+          "deals": {
+            "items": {
+              "$ref": "#/components/schemas/ReportDealRead"
+            },
+            "title": "Deals",
+            "type": "array"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "open",
+              "closed",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/ReportTotalsRead"
+          }
+        },
+        "required": [
+          "campaign_id",
+          "title",
+          "status",
+          "campaign_type",
+          "generated_at",
+          "totals",
+          "deals"
+        ],
+        "title": "CampaignReportRead",
+        "type": "object"
+      },
       "CampaignSummaryRead": {
         "description": "One campaign at a glance, for its board and the Campaigns list.\n\n`deals_agreed` counts deals agreed and not cancelled; \"2 of 6 deals\nfinished\" is `deals_finished` of `deals_agreed`. `complete` is worked\nout, never stored: closed, at least one deal agreed, every agreed deal\nfinished and no memo left unanswered.",
         "properties": {
@@ -7810,6 +7870,378 @@
         "title": "ReportCreate",
         "type": "object"
       },
+      "ReportCreatorRead": {
+        "description": "The creator as the brand already sees them; nothing private.",
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "handle": {
+            "title": "Handle",
+            "type": "string"
+          }
+        },
+        "required": [
+          "display_name",
+          "handle"
+        ],
+        "title": "ReportCreatorRead",
+        "type": "object"
+      },
+      "ReportDealRead": {
+        "properties": {
+          "accepted_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted On"
+          },
+          "approved_by_clock": {
+            "title": "Approved By Clock",
+            "type": "boolean"
+          },
+          "approved_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the work was approved; by the clock, the day its review window ended (D-025)",
+            "title": "Approved On"
+          },
+          "content_due_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Due On"
+          },
+          "content_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The approved post's link",
+            "title": "Content Url"
+          },
+          "creator": {
+            "$ref": "#/components/schemas/ReportCreatorRead"
+          },
+          "currency": {
+            "const": "INR",
+            "default": "INR",
+            "title": "Currency",
+            "type": "string"
+          },
+          "deal_memo_id": {
+            "format": "uuid",
+            "title": "Deal Memo Id",
+            "type": "string"
+          },
+          "deliverables": {
+            "title": "Deliverables",
+            "type": "string"
+          },
+          "delivered_on_time": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "First sent on or before the agreed date. Null with no work sent yet, or no date agreed",
+            "title": "Delivered On Time"
+          },
+          "disclosure_confirmed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The creator's own confirmation that the post carries the ad label, as recorded (D-024). Null until work is approved",
+            "title": "Disclosure Confirmed"
+          },
+          "fee_amount_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for a barter deal",
+            "title": "Fee Amount Paise"
+          },
+          "first_submitted_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the creator first sent work, in Tamil Nadu",
+            "title": "First Submitted On"
+          },
+          "has_open_dispute": {
+            "title": "Has Open Dispute",
+            "type": "boolean"
+          },
+          "paid_on_time": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Marked as sent on or before the due date. Null until marked",
+            "title": "Paid On Time"
+          },
+          "payment_confirmed_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the creator confirmed it arrived",
+            "title": "Payment Confirmed On"
+          },
+          "payment_due_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Due On"
+          },
+          "payment_marked_paid_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the brand said it sent the money",
+            "title": "Payment Marked Paid On"
+          },
+          "payment_state": {
+            "anyOf": [
+              {
+                "enum": [
+                  "due",
+                  "late",
+                  "unpaid",
+                  "paid",
+                  "unconfirmed",
+                  "confirmed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null until the work is approved and a payment is due. Clients ignore values they do not know",
+            "title": "Payment State"
+          },
+          "record": {
+            "$ref": "#/components/schemas/ReportSealRead"
+          },
+          "results": {
+            "$ref": "#/components/schemas/ReportResultsRead"
+          },
+          "stage": {
+            "description": "Where the deal stands as of the report (D-076). Clients ignore values they do not know",
+            "enum": [
+              "draft",
+              "memo_sent",
+              "agreed",
+              "in_progress",
+              "payment",
+              "finished",
+              "declined",
+              "cancelled"
+            ],
+            "title": "Stage",
+            "type": "string"
+          },
+          "waiting_on": {
+            "anyOf": [
+              {
+                "enum": [
+                  "brand",
+                  "creator"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waiting On"
+          }
+        },
+        "required": [
+          "deal_memo_id",
+          "creator",
+          "stage",
+          "waiting_on",
+          "has_open_dispute",
+          "deliverables",
+          "content_due_on",
+          "fee_amount_paise",
+          "accepted_on",
+          "first_submitted_on",
+          "delivered_on_time",
+          "approved_on",
+          "approved_by_clock",
+          "content_url",
+          "disclosure_confirmed",
+          "payment_state",
+          "payment_due_on",
+          "payment_marked_paid_on",
+          "payment_confirmed_on",
+          "paid_on_time",
+          "results",
+          "record"
+        ],
+        "title": "ReportDealRead",
+        "type": "object"
+      },
+      "ReportNumbersRead": {
+        "description": "Each figure summed over the counted readings; null when none showed it.",
+        "properties": {
+          "comments": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comments"
+          },
+          "impressions": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Impressions"
+          },
+          "likes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Likes"
+          },
+          "reach": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reach"
+          },
+          "saves": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saves"
+          },
+          "shares": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shares"
+          },
+          "views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views"
+          }
+        },
+        "required": [
+          "views",
+          "reach",
+          "impressions",
+          "likes",
+          "comments",
+          "saves",
+          "shares"
+        ],
+        "title": "ReportNumbersRead",
+        "type": "object"
+      },
       "ReportRead": {
         "description": "A report, as the person who made it sees it. Who handled it is not shown.",
         "properties": {
@@ -7879,6 +8311,183 @@
           "created_at"
         ],
         "title": "ReportRead",
+        "type": "object"
+      },
+      "ReportResultsRead": {
+        "description": "What the approved work's screenshots said (D-070).\n\n**Read from screenshots, never verified**: a screenshot can be edited.\nReadings the creator marked as wrong are counted apart and left out of\nthe numbers.",
+        "properties": {
+          "includes_abbreviated": {
+            "description": "A figure was shown abbreviated on screen (such as 12.5K), so a sum is not exact",
+            "title": "Includes Abbreviated",
+            "type": "boolean"
+          },
+          "numbers": {
+            "$ref": "#/components/schemas/ReportNumbersRead"
+          },
+          "readings": {
+            "description": "Screenshots read and counted in the numbers",
+            "title": "Readings",
+            "type": "integer"
+          },
+          "readings_marked_wrong": {
+            "description": "Readings the creator said are wrong: left out of the numbers",
+            "title": "Readings Marked Wrong",
+            "type": "integer"
+          },
+          "source": {
+            "const": "read_from_screenshots",
+            "default": "read_from_screenshots",
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "readings",
+          "readings_marked_wrong",
+          "includes_abbreviated",
+          "numbers"
+        ],
+        "title": "ReportResultsRead",
+        "type": "object"
+      },
+      "ReportSealRead": {
+        "description": "The deal record behind this line (D-057, D-060).",
+        "properties": {
+          "entries": {
+            "title": "Entries",
+            "type": "integer"
+          },
+          "intact": {
+            "description": "Every entry's seal checks against the one before",
+            "title": "Intact",
+            "type": "boolean"
+          },
+          "latest_seal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SHA-256 of the record's latest entry, as hex. Keep it to catch a rewrite later; `GET /api/v1/deal-memos/{id}/record` shows every entry",
+            "examples": [
+              "5f1c0b9e4a7d2c3b8e6f0a1d2c3b4a5f6e7d8c9b0a1f2e3d4c5b6a7f8e9d0c1b"
+            ],
+            "title": "Latest Seal"
+          },
+          "stamped_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The first daily checkpoint holding the latest seal that an outside timestamp authority signed, as a Tamil Nadu date. Null until the next one. `GET /api/v1/deal-memos/{id}/record/proof` gives the proof that checks it",
+            "title": "Stamped On"
+          }
+        },
+        "required": [
+          "intact",
+          "entries",
+          "latest_seal",
+          "stamped_on"
+        ],
+        "title": "ReportSealRead",
+        "type": "object"
+      },
+      "ReportTotalsRead": {
+        "properties": {
+          "agreed_value_paise": {
+            "description": "Fees of the agreed deals",
+            "title": "Agreed Value Paise",
+            "type": "integer"
+          },
+          "applications": {
+            "$ref": "#/components/schemas/ApplicationCountsRead"
+          },
+          "barter_deals_agreed": {
+            "title": "Barter Deals Agreed",
+            "type": "integer"
+          },
+          "confirmed_paise": {
+            "description": "Confirmed by the creator as arrived",
+            "title": "Confirmed Paise",
+            "type": "integer"
+          },
+          "currency": {
+            "const": "INR",
+            "default": "INR",
+            "title": "Currency",
+            "type": "string"
+          },
+          "deals": {
+            "description": "Memos sent, in any stage; drafts are left out",
+            "title": "Deals",
+            "type": "integer"
+          },
+          "deals_agreed": {
+            "description": "Agreed and not cancelled",
+            "title": "Deals Agreed",
+            "type": "integer"
+          },
+          "deals_finished": {
+            "title": "Deals Finished",
+            "type": "integer"
+          },
+          "delivered_on_time": {
+            "title": "Delivered On Time",
+            "type": "integer"
+          },
+          "deliveries_judged": {
+            "description": "Deals with an agreed date whose work was sent",
+            "title": "Deliveries Judged",
+            "type": "integer"
+          },
+          "marked_paid_paise": {
+            "description": "Said by the brand to be sent",
+            "title": "Marked Paid Paise",
+            "type": "integer"
+          },
+          "payments_sent": {
+            "description": "Payments the brand marked as sent",
+            "title": "Payments Sent",
+            "type": "integer"
+          },
+          "payments_sent_on_time": {
+            "title": "Payments Sent On Time",
+            "type": "integer"
+          },
+          "records_intact": {
+            "description": "Every deal's record checks",
+            "title": "Records Intact",
+            "type": "boolean"
+          },
+          "results": {
+            "$ref": "#/components/schemas/ReportResultsRead"
+          }
+        },
+        "required": [
+          "applications",
+          "deals",
+          "deals_agreed",
+          "deals_finished",
+          "barter_deals_agreed",
+          "agreed_value_paise",
+          "marked_paid_paise",
+          "confirmed_paise",
+          "deliveries_judged",
+          "delivered_on_time",
+          "payments_sent",
+          "payments_sent_on_time",
+          "results",
+          "records_intact"
+        ],
+        "title": "ReportTotalsRead",
         "type": "object"
       },
       "ResolveReportIn": {
@@ -13248,6 +13857,220 @@
           }
         ],
         "summary": "Publish a campaign",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/api/v1/campaigns/{campaign_id}/report": {
+      "get": {
+        "description": "For the owning brand: every deal on the campaign (drafts left out) with its creator, terms, delivery, approval, payment, the results read from its screenshots, and the deal record's latest seal, plus totals. Worked out as of now, never stored. Results are read from screenshots, never verified. The same as a spreadsheet: `/report.csv`.",
+        "operationId": "campaign_report_api_v1_campaigns__campaign_id__report_get",
+        "parameters": [
+          {
+            "description": "The campaign's id",
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "description": "The campaign's id",
+              "format": "uuid",
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignReportRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only brand accounts can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such campaign, or it is not yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The brand profile has not been created yet"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The campaign id is not a valid id"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "A campaign report to hand on",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/api/v1/campaigns/{campaign_id}/report.csv": {
+      "get": {
+        "description": "The campaign report's deals as CSV, one row per deal, for Excel, Google Sheets or Numbers: UTF-8 with a byte-order mark, money in rupees, Tamil Nadu dates, and any cell a spreadsheet would run as a formula written with a leading apostrophe. Saved as a file. The owning brand only.",
+        "operationId": "campaign_report_csv_api_v1_campaigns__campaign_id__report_csv_get",
+        "parameters": [
+          {
+            "description": "The campaign's id",
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "description": "The campaign's id",
+              "format": "uuid",
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The report as CSV, one row per deal"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only brand accounts can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such campaign, or it is not yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The brand profile has not been created yet"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The campaign id is not a valid id"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "A campaign report as a spreadsheet",
         "tags": [
           "campaigns"
         ]

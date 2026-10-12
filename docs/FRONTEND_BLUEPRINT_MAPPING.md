@@ -86,7 +86,7 @@ The blueprint's flow 2.3 runs the whole journey inside WhatsApp: apply, accept, 
 | Deal memo editor | `/deal-memos/:id/edit` | MVP | Create, edit, send (D-024 to D-027, D-039). One payment per deal (D-027); milestones are not built | **Built** |
 | Deals (memos + payments) | `/deals` | MVP | `GET /deal-memos/mine`, each with its stage and whose move it is (D-076) | **Built** |
 | Payment + reliability | `/deals/:id/payment` | v1.1 | Payment record, mark paid (single and bulk), the brand's reliability record (D-034); UPI pay details (D-085, switched off until the notice exists) | **Built** |
-| Campaign results / ROI | `/campaigns/:id/results` | v1.2 | Results read from proof (D-070, switched off until the validation pack); platform numbers wait on Meta and Google (items 29 to 31); a campaign report is item 47 | Blocked |
+| Campaign results / ROI | `/campaigns/:id/results` | v1.2 | Results read from proof (D-070, switched off until the validation pack); platform numbers wait on Meta and Google (items 29 to 31). The campaign report is built: `GET /campaigns/{id}/report` and `/report.csv`, each deal with its delivery, payment, results and latest seal (D-088); print to PDF on the client | **Partial**: the report is built, results are switched off |
 | Company profile / billing | `/settings/company` | MVP | The brand profile is built. Team members with roles: the agency workspace (item 46, both founders). Billing: the pricing model | **Partial**, teams blocked |
 
 ---

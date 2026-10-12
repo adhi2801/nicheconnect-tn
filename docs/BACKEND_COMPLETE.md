@@ -103,7 +103,6 @@ Built already from the same list: deal stage and campaign summary (D-076), the p
 | 43 | Campaign alerts for creators | Database |
 | 44 | Counter-offers on quotes | Database |
 | 46 | An agency workspace | Founders, security, database |
-| 47 | A campaign report a brand can hand to its boss | |
 | 48 | Readiness for ISO 27001 or SOC 2 | Founders |
 | 49 | A public status page and service levels | Infrastructure |
 
@@ -112,6 +111,7 @@ Built from 3.8:
 - 8 October: 45, creator availability (D-083).
 - 10 October: 32, the UPI pay link (D-085). It is built and tested, and stays off until the validation pack supplies the consent notice. It also needs trying on real phones.
 - 10 October: 42, work together again (D-084). It was built as brand invitations to a campaign, with repeats as one kind of invitation. Item 42's "nothing new stored" proved wrong: a memo needs an accepted application, so a brand needed a way to start one.
+- 12 October: 47, the campaign report (D-088): JSON and a spreadsheet, worked out from the records, with each deal's latest seal. A PDF is left to the clients; a server-made one would be a dependency request.
 
 ### 3.9 From the legal standard (10 October, `docs/standards/legal.md`)
 

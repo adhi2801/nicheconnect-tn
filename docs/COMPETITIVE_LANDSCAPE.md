@@ -90,6 +90,7 @@ for a stated reason. Matching them is the floor, never the target.
 | **AI matching** | Kofluence, YouTube (Gemini), JioStarverse | **Closed, both ways** (Phase D) | Every match says **why**: shared niches, city, accepted deals; theirs are black boxes | Nothing |
 | **Audience size and stats** | Everyone | **Half**: self-reported, dated, labelled (D-055) | A number with its date and its source, never passed off as verified | Observed numbers from proof (below), then platform-verified |
 | **Campaign results** | Wobb, Collabstr, Influencer.in, JioStarverse | **Closed, switched off** (D-070) until the validation pack allows a processor | Read from every proof, checked against the creator's own claims, **sealed** so nobody changes them later. Nobody has results inside a tamper-evident deal record | The validation pack; then *stated against observed* on the Passport (section 6) |
+| **Campaign report** | Later (CSV and PDF exports), Aspire, CreatorIQ, Influencer.in | **Closed** (D-088) | Every line carries the deal record's seal and the date an outside authority stamped it, so the boss can check nothing was edited afterwards. Money said to be sent is shown apart from money confirmed, and results are labelled as read from screenshots. Theirs are dashboards nobody can check | A PDF made on the server, only if pilot brands ask |
 | **Inviting a creator** | Instagram Creator Marketplace, impact.com, Skeepers | **Closed** (D-084) | A repeat of an earlier deal arrives with its memo already drafted from the agreed terms; a creator declines with a reason the brand sees; 25 unanswered invitations per campaign and 100 a day per brand stop spraying; a block ends it for good | Nothing |
 | **Bookable availability** | Passionfroot (bookable slots) | **Closed, our way** (D-083) | One "booked until" date that search and matching rank by, rather than a calendar a reel creator does not keep | A slot calendar, only if pilot creators ask |
 | **Scam protection** | Upwork, Fiverr | **Closed** (items 57 to 60) | Built into each feature, not a moderation queue: flags on fee requests and early contact details, links only to known hosts, invisible blocking | Nothing |
@@ -100,8 +101,11 @@ for a stated reason. Matching them is the floor, never the target.
 | **Affiliate and sales tracking** | Wobb pixel, Instagram affiliate | **Open** | Planned: commission deals (already a campaign type) with sales sealed in the record, so a brand cannot under-report and a creator cannot over-claim | A decision on link tracking |
 | **Creator collaborations** | Wobb "Wobble" | **Open** (E5) | Planned: group deals where each creator's delivery and payment stays individually on record; theirs blur who delivered | A model for group applications |
 
-**Score on 10 October 2026:** of fifteen, **nine closed** (two of them built
-and switched off until the validation pack answers), two half, four open. On
+**Score on 12 October 2026:** of sixteen, **ten closed** (two of them built
+and switched off until the validation pack answers), two half, four open.
+The campaign report joined on 12 October (D-088; Later's exports:
+[help-influence.later.com](https://help-influence.later.com/hc/articles/20462357864599),
+checked 12 October 2026). On
 1 October it was four closed of eleven. Every open one has a stated way to
 beat, not match.
 
