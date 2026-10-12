@@ -79,7 +79,7 @@ Nothing in "What next" has happened. The unreviewed code has grown, with only th
 - the UPI pay link;
 - blocking, daily ceilings, the link and text checks;
 - the legal and trust-and-safety standards.
-- the founders' weekly numbers (D-087) and the campaign report (D-088).
+- the founders' weekly numbers (D-087), the campaign report (D-088), and the decline date, change request and first answer (D-089).
 
 What has caught real bugs since is the automated net:
 - **CI**, run on a fresh database: a block filter that read every campaign's brand (`docs/standards/testing.md` section 2);

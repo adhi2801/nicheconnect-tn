@@ -275,6 +275,13 @@ class ApplicationRead(BaseModel):
     rejection_note: str | None
     decline_reason: DeclineReason | None
     status_changed_at: datetime
+    first_answered_at: datetime | None = Field(
+        description=(
+            "When the brand first shortlisted, accepted or rejected this "
+            "application. Null while it waits, on invitations, and on answers "
+            "given before 12 October 2026, when it was first kept"
+        )
+    )
     created_at: datetime
     updated_at: datetime
 

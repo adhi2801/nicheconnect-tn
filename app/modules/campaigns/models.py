@@ -235,6 +235,12 @@ class Application(Base):
             f"rejection_note IS NULL OR char_length(rejection_note) <= {REJECTION_NOTE_MAX_LENGTH}",
             name="rejection_note_length",
         ),
+        # The brand's first answer to a creator who applied (item 28): never on
+        # an invitation, and never while the application still waits.
+        CheckConstraint(
+            "first_answered_at IS NULL OR (origin = 'applied' AND status <> 'submitted')",
+            name="first_answered_at_only_if_answered",
+        ),
         # The brand's list for one campaign, newest first.
         Index("ix_application_campaign_created_at", "campaign_id", "created_at"),
         # The creator's own list, newest first.
@@ -294,6 +300,12 @@ class Application(Base):
     rejection_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Set only when the status is 'declined'.
     decline_reason: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # When the brand first shortlisted, accepted or rejected an application,
+    # for how fast brands reply (item 28). Set once, never moved. NULL while
+    # it waits, on invitations, and on answers given before 12 October 2026.
+    first_answered_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     # When the status last changed, so the app can show "what happened when".
     status_changed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()

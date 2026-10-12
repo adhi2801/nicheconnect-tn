@@ -84,6 +84,8 @@ MEMO_EXPORT_FIELDS = allow(
     "work_started_at",
     "cancelled_at",
     "cancellation_kind",
+    "declined_at",
+    "change_request_message",
     "created_at",
     "updated_at",
 )
@@ -299,6 +301,8 @@ NOT_REPEATED: dict[str, str] = {
     "work_started_at": "no work yet",
     "cancelled_at": "not cancelled",
     "cancellation_kind": "not cancelled",
+    "declined_at": "not declined",
+    "change_request_message": "the old deal's request, already answered",
     "created_at": "now",
     "updated_at": "now",
 }
@@ -437,6 +441,11 @@ def change_status(
         # Only the first request restarts the approval clock (D-025); the
         # count is what the UI uses to say so before a second one.
         memo.revision_count += 1
+        # The latest request, in the creator's words, for the memo editor
+        # (item 25). Kept after the memo is sent again.
+        memo.change_request_message = message
+    elif new_status == "declined":
+        memo.declined_at = now  # the deal pass dates every step (item 24)
     elif new_status == "cancelled":
         memo.cancelled_at = now
         memo.cancellation_kind = cancellation_kind or (

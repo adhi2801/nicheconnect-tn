@@ -17,6 +17,8 @@ from app.modules.deal_memo.delivery_record import (
 )
 from app.modules.deal_memo.models import (
     CANCELLATION_KINDS,
+    CHANGE_REQUEST_MAX_LENGTH,
+    CHANGE_REQUEST_MIN_LENGTH,
     DELIVERABLES_MAX_LENGTH,
     MAX_USAGE_RIGHTS_DAYS,
     MAX_WINDOW_DAYS,
@@ -103,8 +105,8 @@ class ChangeRequest(BaseModel):
     message: Annotated[
         str,
         Field(
-            min_length=5,
-            max_length=1000,
+            min_length=CHANGE_REQUEST_MIN_LENGTH,
+            max_length=CHANGE_REQUEST_MAX_LENGTH,
             examples=["Can we make it 2 reels instead of 3, for the same fee?"],
         ),
     ]
@@ -134,6 +136,19 @@ class MemoRead(BaseModel):
     work_started_at: datetime | None
     cancelled_at: datetime | None
     cancellation_kind: CancellationKind | None
+    declined_at: datetime | None = Field(
+        description=(
+            "When the creator declined. Null otherwise, and on memos declined "
+            "before 12 October 2026, when it was first kept"
+        )
+    )
+    change_request_message: str | None = Field(
+        description=(
+            "What the creator last asked to change, in their words; kept after "
+            "the memo is sent again. Null until a request, and on requests made "
+            "before 12 October 2026"
+        )
+    )
     created_at: datetime
     updated_at: datetime
 
@@ -149,6 +164,9 @@ class MemoRead(BaseModel):
         # The brand writes the memo and the creator reads it: a request for a
         # fee or deposit in its terms is the scam to catch. The two are
         # already matched, so contact details are no longer a warning.
+        # `change_request_message` goes the other way, creator to brand,
+        # after they were matched: a creator naming a price is ordinary and
+        # contact is no longer a warning, so neither flag applies to it.
         return field_flags(
             {"deliverables": self.deliverables, "extra_terms": self.extra_terms},
             money=True,

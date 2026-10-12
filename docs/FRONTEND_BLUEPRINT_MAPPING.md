@@ -101,7 +101,7 @@ The blueprint's flow 2.3 runs the whole journey inside WhatsApp: apply, accept, 
 | Invitations | in My Work | MVP | `GET /applications/me?status=invited`; accept, or decline with a reason (D-084) | **Built** |
 | Voice pitch recorder | component | v1.2 | Audio upload and transcription | Blocked (provider decision) |
 | My Work | `/my-work` | MVP | `GET /applications/me`, `GET /deal-memos/mine` with stage and whose move | **Built** |
-| Deal memo — accept | `/deal-memos/:id` | MVP | Read, accept, decline, request a change | **Built** |
+| Deal memo — accept | `/deal-memos/:id` | MVP | Read, accept, decline, request a change. Each memo shows when it was declined and the creator's last request in their words (D-089) | **Built** |
 | Proof upload | `/my-work/:id/proof` | MVP | Signed uploads straight to storage; files cleaned of location and hidden data and sealed (D-065 to D-067) | **Built** |
 | Payment confirm / dispute | `/my-work/:id/payment` | v1.1 | Confirm received; a dispute with a shared timeline (D-028, D-035) | **Built** |
 | Earnings | `/earnings` | MVP | `GET /payments/mine` and totals (D-075). Invoices and tax statements wait on the validation pack (E6) | **Partial** |

@@ -79,6 +79,7 @@ APPLICATION_EXPORT_FIELDS = allow(
     "rejection_note",
     "decline_reason",
     "status_changed_at",
+    "first_answered_at",
     "created_at",
     "updated_at",
 )
@@ -431,7 +432,11 @@ def move_application(
     """
     # Locked and read again before the check: two moves at once would both
     # pass it, and the last write would silently win (review audit, 4 Oct).
-    db.refresh(application, attribute_names=["status"], with_for_update=True)
+    db.refresh(
+        application,
+        attribute_names=["status", "first_answered_at"],
+        with_for_update=True,
+    )
     if new_status not in APPLICATION_MOVES[actor].get(application.status, frozenset()):
         db.rollback()
         raise ApplicationStatusConflict(
@@ -449,6 +454,15 @@ def move_application(
     application.decline_reason = decline_reason if new_status == "declined" else None
     application.status_changed_at = now
     application.updated_at = now
+    # The brand's first answer to someone who applied, kept once (item 28):
+    # how fast brands reply is measured from it. Read under the lock above,
+    # so two first answers at once cannot both write it.
+    if (
+        actor == "brand"
+        and application.origin == "applied"
+        and application.first_answered_at is None
+    ):
+        application.first_answered_at = now
 
     # Tell the other side what happened, in the same transaction: a record
     # that exists only if the change itself succeeded.

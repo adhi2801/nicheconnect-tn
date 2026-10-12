@@ -868,3 +868,29 @@ Newest entries at the bottom.
   5. The spreadsheet: UTF-8 with a byte-order mark, CRLF lines (RFC 4180), rupees from whole paise without floats, no totals row. Any cell a spreadsheet would run as a formula gets a leading apostrophe (OWASP, CSV injection). Names, deliverables and links are typed by people.
   6. The same fixed number of queries whatever the campaign's size. Not paginated: it is one document, like the data export. If a campaign ever passes about 500 deals, stream it.
   7. Tests: 56. Thirteen rules were each broken on purpose and seen to fail. That exercise found a missing case, work sent back and never approved, and a test now covers it.
+
+## D-089: A decline's date, the creator's change request, and the brand's first answer, kept
+- Date: 2026-10-12
+- Approved by: Adhi, in this session ("A", to the proposal for items 24, 25 and 28 as one migration).
+- Context: The website wireframes asked for three things that were not stored (`docs/BACKEND_COMPLETE.md` section 3.7):
+  - the deal pass dates every step, and a decline had no date;
+  - the memo editor shows what the creator asked to change, and those words reached the brand only as a notification;
+  - D-077 could not measure how fast brands reply, because the first answer was overwritten by every later move.
+- Options considered: A) one migration, three nullable columns · B) three migrations, one at a time.
+- Chosen: A.
+- Reason: one small, additive change; only one migration in flight; nothing invented for older rows.
+- Consequences / follow-ups:
+  1. `deal_memo.declined_at`, set when the creator declines. The database allows it only on a declined memo.
+  2. `deal_memo.change_request_message`: the creator's latest request, trimmed, 5 to 1,000 characters.
+     - A second request replaces the first, and the request is kept after the memo is sent again.
+     - The database allows it only on a memo that was sent back.
+     - A repeat deal does not copy it, nor the decline date.
+     - It goes creator to brand after they were matched, so neither text flag applies, and a test shows a price and a phone number raise none.
+  3. `application.first_answered_at`: the brand's first shortlist, accept or reject of an application someone applied for.
+     - Set once, under the application's lock, and never moved by a later answer.
+     - Never set by a creator's move, and never on an invitation.
+     - The database refuses it on an invitation, and on an application still waiting.
+  4. `MemoRead` and `ApplicationRead` carry the new fields (added, nothing removed). All three are in the data export.
+  5. Rows from before 12 October keep NULL: a date or a message that was never recorded is not made up. The downgrade refuses while any of the three holds a value.
+  6. Not built: using `first_answered_at` to show brands' typical reply time beside D-077's. That is the next proposal.
+  7. Tests: 37. Five rules were each broken on purpose and seen to fail. Each CHECK is refused by the database when a test writes the row with raw SQL.

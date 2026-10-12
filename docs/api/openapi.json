@@ -632,6 +632,19 @@
             ],
             "title": "Decline Reason"
           },
+          "first_answered_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the brand first shortlisted, accepted or rejected this application. Null while it waits, on invitations, and on answers given before 12 October 2026, when it was first kept",
+            "title": "First Answered At"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -768,6 +781,7 @@
           "rejection_note",
           "decline_reason",
           "status_changed_at",
+          "first_answered_at",
           "created_at",
           "updated_at",
           "text_flags"
@@ -4368,6 +4382,18 @@
             ],
             "title": "Cancelled At"
           },
+          "change_request_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the creator last asked to change, in their words; kept after the memo is sent again. Null until a request, and on requests made before 12 October 2026",
+            "title": "Change Request Message"
+          },
           "content_due_on": {
             "anyOf": [
               {
@@ -4390,6 +4416,19 @@
             "default": "INR",
             "title": "Currency",
             "type": "string"
+          },
+          "declined_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the creator declined. Null otherwise, and on memos declined before 12 October 2026, when it was first kept",
+            "title": "Declined At"
           },
           "deliverables": {
             "title": "Deliverables",
@@ -4515,6 +4554,8 @@
           "work_started_at",
           "cancelled_at",
           "cancellation_kind",
+          "declined_at",
+          "change_request_message",
           "created_at",
           "updated_at",
           "text_flags"
@@ -4703,6 +4744,18 @@
             ],
             "title": "Cancelled At"
           },
+          "change_request_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the creator last asked to change, in their words; kept after the memo is sent again. Null until a request, and on requests made before 12 October 2026",
+            "title": "Change Request Message"
+          },
           "content_due_on": {
             "anyOf": [
               {
@@ -4725,6 +4778,19 @@
             "default": "INR",
             "title": "Currency",
             "type": "string"
+          },
+          "declined_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the creator declined. Null otherwise, and on memos declined before 12 October 2026, when it was first kept",
+            "title": "Declined At"
           },
           "deliverables": {
             "title": "Deliverables",
@@ -4884,6 +4950,8 @@
           "work_started_at",
           "cancelled_at",
           "cancellation_kind",
+          "declined_at",
+          "change_request_message",
           "created_at",
           "updated_at",
           "stage",

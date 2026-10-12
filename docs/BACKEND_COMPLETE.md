@@ -72,16 +72,13 @@ All built: invite and source attribution (21, D-080) and city figures (22, D-078
 
 ### 3.7 From the website wireframes (4 October, `docs/standards/ux.md` section 7)
 
-Built already from the same list: deal stage and campaign summary (D-076), the payments list (D-075). Still open:
+Built already from the same list: deal stage and campaign summary (D-076), the payments list (D-075), and on 12 October items 24, 25 and 28: a decline's date, the creator's change request, and the brand's first answer to an application (D-089). Still open:
 
 | # | Item | Why | Gate |
 |---|---|---|---|
 | 23 | **The pilot join list**: a waitlist endpoint for the landing page's Join form | The form has nowhere to send; consent wording is the validation pack's | Database; DPDP consent text |
-| 24 | **The date a memo was declined** | The deal pass shows when each step happened; a decline has no date today | Database (one column) |
-| 25 | **The creator's message with a change request** on a memo | The memo editor's banner shows what the creator asked for; it is not stored | Database (one column) |
 | 26 | **Deliverables as a list**, one row per deliverable, on campaigns and memos | The deal pass tracks each deliverable; also step 2 of fair-rate guidance (D-056) | A product decision; database |
 | 27 | **Draft first**: a creator sends a draft, the brand approves it, then it is posted | Proposed in the wireframes; changes the proof flow and its clock (D-025) | A product decision; database |
-| 28 | **When a brand first answered an application** | Needed to measure how fast brands reply (D-077 could not) | Database (one column) |
 
 ### 3.8 From the billion-dollar gap research (8 October, `docs/BILLION_DOLLAR_GAP.md`)
 
