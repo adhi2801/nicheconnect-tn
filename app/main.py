@@ -19,14 +19,14 @@ from app.core.security_txt import router as security_txt_router
 from app.core.tracing import TracingMiddleware, init_tracing, instrument_engine
 from app.core.unexpected_error import UnexpectedErrorMiddleware
 from app.db.session import engine
-from app.modules.auth.admin_router import router as admin_router
+from app.modules.admin.admin_router import router as admin_router
+from app.modules.admin.numbers_router import router as numbers_router
+from app.modules.admin.report_router import router as report_router
 from app.modules.auth.attention_router import router as attention_router
 from app.modules.auth.attribution_router import router as attribution_router
 from app.modules.auth.dependencies import idempotency_identity
 from app.modules.auth.device_router import router as devices_router
 from app.modules.auth.export_router import router as export_router
-from app.modules.auth.numbers_router import router as numbers_router
-from app.modules.auth.report_router import router as report_router
 from app.modules.auth.router import router as auth_router
 from app.modules.campaigns.application_router import router as applications_router
 from app.modules.campaigns.invitation_router import router as invitations_router

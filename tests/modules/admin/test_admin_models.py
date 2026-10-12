@@ -8,9 +8,9 @@ from psycopg.errors import Diagnostic
 from sqlalchemy import delete, text, update
 from sqlalchemy.exc import IntegrityError
 
+from app.modules.admin.models.admin_action import AdminAction
+from app.modules.admin.models.report import Report
 from app.modules.auth.models.account import Account
-from app.modules.auth.models.admin_action import AdminAction
-from app.modules.auth.models.report import Report
 from tests.factories import FIXED_NOW, create_account
 
 

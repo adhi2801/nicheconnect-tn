@@ -10,9 +10,9 @@ from app.core.clock import india_date
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
-from app.modules.auth import numbers_service as service
+from app.modules.admin import numbers_service as service
+from app.modules.admin.schemas import FounderNumbersRead
 from app.modules.auth.dependencies import CurrentAdmin, get_now
-from app.modules.auth.schemas import FounderNumbersRead
 
 # Each answer is several aggregate queries over the whole platform, run
 # twice, so fewer than the admin's other reads.

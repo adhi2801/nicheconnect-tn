@@ -10,10 +10,10 @@ from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.rate_limit import per_account, rate_limit
 from app.db.session import get_db
-from app.modules.auth import report_service
+from app.modules.admin import report_service
+from app.modules.admin.schemas import ReportCreate, ReportRead
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.auth.exceptions import RoleNotAllowed
-from app.modules.auth.schemas import ReportCreate, ReportRead
 
 # Per account, not per address: reporting must not become a way to flood the
 # queue, and an office sharing one address is not one person.

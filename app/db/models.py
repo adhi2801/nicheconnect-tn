@@ -1,5 +1,6 @@
+from app.modules.admin.models.admin_action import AdminAction  # noqa: F401
+from app.modules.admin.models.report import Report  # noqa: F401
 from app.modules.auth.models.account import Account  # noqa: F401
-from app.modules.auth.models.admin_action import AdminAction  # noqa: F401
 from app.modules.auth.models.attribution import (
     AccountAttribution,  # noqa: F401
     InviteCode,  # noqa: F401
@@ -9,7 +10,6 @@ from app.modules.auth.models.brand import Brand  # noqa: F401
 from app.modules.auth.models.creator import Creator  # noqa: F401
 from app.modules.auth.models.device_token import DeviceToken  # noqa: F401
 from app.modules.auth.models.otp_challenge import OtpChallenge  # noqa: F401
-from app.modules.auth.models.report import Report  # noqa: F401
 from app.modules.campaigns.models import (
     Application,  # noqa: F401
     Campaign,  # noqa: F401

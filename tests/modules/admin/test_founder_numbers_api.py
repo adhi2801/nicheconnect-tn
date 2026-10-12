@@ -10,7 +10,7 @@ from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
-from app.modules.auth.numbers_router import NUMBERS_LIMIT
+from app.modules.admin.numbers_router import NUMBERS_LIMIT
 from app.modules.campaigns.models import Application
 from app.modules.deal_memo.models import DealMemo
 from app.modules.payment_status.models import PaymentStatus

@@ -7,8 +7,8 @@ from datetime import timedelta
 import pytest
 from sqlalchemy import select, update
 
+from app.modules.admin.models.admin_action import AdminAction
 from app.modules.auth.models.account import Account
-from app.modules.auth.models.admin_action import AdminAction
 from app.modules.auth.models.creator import Creator
 from tests.deal_flow import User, brand_user, creator_user
 from tests.factories import FIXED_NOW, build_auth_session, create_account

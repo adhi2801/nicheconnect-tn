@@ -18,7 +18,7 @@ REACH = (
     "app.modules.deal_memo.repeat_router.repeat_deal",
     "app.modules.campaigns.application_router.apply_to_campaign",
     "app.modules.campaigns.router.create_campaign",
-    "app.modules.auth.report_router.file_report",
+    "app.modules.admin.report_router.file_report",
     "app.modules.disputes.router.open_dispute",
     "app.modules.disputes.router.add_entry",
     "app.modules.matching.search_router.search_creators",

@@ -18,20 +18,20 @@ from sqlalchemy import ColumnElement, func, literal, or_, select, tuple_, update
 from sqlalchemy.orm import Session
 
 from app.core.pagination import Slice, build_slice, decode_cursor, older_than_cursor
-from app.modules.auth.exceptions import (
-    AdminNotFound,
+from app.modules.admin.exceptions import (
     AdminTargetNotAllowed,
     AlreadySuspended,
     NotSuspended,
     ReportAlreadyResolved,
     ReportNotFound,
 )
+from app.modules.admin.models.admin_action import AdminAction
+from app.modules.admin.models.report import Report
+from app.modules.auth.exceptions import AdminNotFound
 from app.modules.auth.models.account import Account
-from app.modules.auth.models.admin_action import AdminAction
 from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
-from app.modules.auth.models.report import Report
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.models import DealMemo
 

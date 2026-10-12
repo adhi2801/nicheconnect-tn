@@ -5,9 +5,9 @@ import uuid
 import pytest
 from sqlalchemy import select
 
+from app.modules.admin.report_router import REPORT_LIMIT
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
-from app.modules.auth.report_router import REPORT_LIMIT
 from tests.deal_flow import User, brand_user, creator_user
 from tests.factories import build_campaign, create_account
 
@@ -169,7 +169,7 @@ def test_two_identical_reports_at_once_leave_one(client, db, brand, creator, mon
     """The partial unique index is the real guard: when the check before the
     insert misses a report filed at the same moment, the second insert fails
     and returns the first report instead."""
-    from app.modules.auth import report_service
+    from app.modules.admin import report_service
 
     first = report(client, brand, "creator", creator_id(db, creator)).json()
     db.commit()  # the rollback on the failed insert must not undo the first

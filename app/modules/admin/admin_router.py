@@ -18,20 +18,20 @@ from app.core.idempotent_route import IdempotentRoute
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
-from app.modules.auth import admin_service as service
-from app.modules.auth.dependencies import CurrentAdmin, get_now
-from app.modules.auth.exceptions import InvalidSearch
-from app.modules.auth.models.account import Account
-from app.modules.auth.schemas import (
+from app.modules.admin import admin_service as service
+from app.modules.admin.schemas import (
     AdminAccountRead,
     AdminActionRead,
     AdminProfileRead,
     AdminReportRead,
-    IndianMobile,
     ResolveReportIn,
     RestoreIn,
     SuspendIn,
 )
+from app.modules.auth.dependencies import CurrentAdmin, get_now
+from app.modules.auth.exceptions import InvalidSearch
+from app.modules.auth.models.account import Account
+from app.modules.auth.schemas import IndianMobile
 
 ADMIN_LIMIT = "60 per minute"
 

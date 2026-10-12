@@ -13,11 +13,11 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.modules.auth.exceptions import CannotReportYourself, ReportSubjectNotFound
+from app.modules.admin.exceptions import CannotReportYourself, ReportSubjectNotFound
+from app.modules.admin.models.report import Report
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
-from app.modules.auth.models.report import Report
 from app.modules.campaigns.models import Campaign
 
 

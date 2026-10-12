@@ -27,13 +27,13 @@ from app.core.export import (
     build_section,
     to_json_value,
 )
+from app.modules.admin.models.report import Report
 from app.modules.auth import attribution_service as attribution
 from app.modules.auth import device_service as devices
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
-from app.modules.auth.models.report import Report
 from app.modules.campaigns import service as campaigns
 from app.modules.deal_memo import service as deal_memos
 from app.modules.disputes import service as disputes
