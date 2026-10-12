@@ -18,15 +18,15 @@ from app.core.rate_limit import limiter
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
-from app.modules.auth import export_service
 from app.modules.auth.dependencies import get_now
 from app.modules.auth.models.account import Account
-from app.modules.auth.schemas import ExportFile
 from app.modules.auth.tokens import create_access_token
 from app.modules.campaigns import service as campaigns_service
 from app.modules.campaigns.models import Application
 from app.modules.deal_memo import service as deal_memo_service
 from app.modules.disputes import service as disputes_service
+from app.modules.me import export_service
+from app.modules.me.schemas import ExportFile
 from app.modules.notifications import service as notifications_service
 from app.modules.payment_status import service as payment_service
 from tests.factories import (

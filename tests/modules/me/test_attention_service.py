@@ -9,8 +9,8 @@ import uuid
 from datetime import date
 
 from app.core.attention import MAX_ITEMS, AttentionItem, by_urgency
-from app.modules.auth import attention_service
 from app.modules.auth.models.account import Account
+from app.modules.me import attention_service
 from tests.factories import FIXED_NOW, build_brand
 
 CAMPAIGN = uuid.uuid4()

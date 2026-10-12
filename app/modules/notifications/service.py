@@ -23,7 +23,7 @@ from app.modules.notifications.exceptions import NotificationNotFound
 from app.modules.notifications.models import Notification
 
 # Tables this module answers for in a data export. The completeness test in
-# tests/modules/auth/test_export_api.py reads this, so a new table here
+# tests/modules/me/test_export_api.py reads this, so a new table here
 # cannot be left out of an export by accident.
 EXPORTED_TABLES = frozenset({"notification"})
 

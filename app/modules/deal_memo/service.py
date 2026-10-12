@@ -41,7 +41,7 @@ from app.modules.deal_memo.record_models import DealRecordEntry
 from app.modules.notifications import service as notifications
 
 # Tables this module answers for in a data export (see
-# tests/modules/auth/test_export_api.py, which fails if one is missed).
+# tests/modules/me/test_export_api.py, which fails if one is missed).
 EXPORTED_TABLES = frozenset(
     {
         "deal_memo",

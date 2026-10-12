@@ -46,7 +46,7 @@ from app.modules.notifications import service as notifications
 from app.modules.safety.blocks import blocked_between, not_blocked_with_brand
 
 # Tables this module answers for in a data export (see
-# tests/modules/auth/test_export_api.py, which fails if one is missed).
+# tests/modules/me/test_export_api.py, which fails if one is missed).
 EXPORTED_TABLES = frozenset({"campaign", "application"})
 
 CAMPAIGN_EXPORT_FIELDS = allow(

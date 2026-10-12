@@ -13,9 +13,9 @@ from sqlalchemy.orm import Session
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
-from app.modules.auth import attention_service
 from app.modules.auth.dependencies import CurrentAccount, get_now
-from app.modules.auth.schemas import AttentionRead, to_attention_read
+from app.modules.me import attention_service
+from app.modules.me.schemas import AttentionRead, to_attention_read
 
 READ_LIMIT = "60 per minute"
 

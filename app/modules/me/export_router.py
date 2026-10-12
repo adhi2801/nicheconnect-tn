@@ -18,9 +18,9 @@ from sqlalchemy.orm import Session
 from app.core.errors import problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
-from app.modules.auth import export_service
 from app.modules.auth.dependencies import CurrentAccount, get_now
-from app.modules.auth.schemas import ExportFile
+from app.modules.me import export_service
+from app.modules.me.schemas import ExportFile
 
 # Deliberately far stricter than an ordinary read. Building an export touches
 # every table an account appears in, and the result is the most sensitive
