@@ -11,8 +11,7 @@ from app.core.errors import ResponseDocs, problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth import numbers_service as service
-from app.modules.auth.admin_router import CurrentAdmin
-from app.modules.auth.dependencies import get_now
+from app.modules.auth.dependencies import CurrentAdmin, get_now
 from app.modules.auth.schemas import FounderNumbersRead
 
 # Each answer is several aggregate queries over the whole platform, run

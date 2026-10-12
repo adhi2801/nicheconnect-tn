@@ -11,17 +11,16 @@ from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, Request
-from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
-from app.core.errors import DomainError, ResponseDocs, problem_doc
+from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth import admin_service as service
-from app.modules.auth.dependencies import bearer_scheme, get_current_account, get_now
-from app.modules.auth.exceptions import AdminNotFound, InvalidSearch
+from app.modules.auth.dependencies import CurrentAdmin, get_now
+from app.modules.auth.exceptions import InvalidSearch
 from app.modules.auth.models.account import Account
 from app.modules.auth.schemas import (
     AdminAccountRead,
@@ -48,23 +47,6 @@ _ERRORS: ResponseDocs = {
 }
 
 
-def get_admin(
-    request: Request,
-    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
-    db: Annotated[Session, Depends(get_db)],
-    now: Annotated[datetime, Depends(get_now)],
-) -> Account:
-    """The signed-in admin, or 404 for anyone else."""
-    try:
-        account = get_current_account(request, credentials, db, now)
-    except DomainError:
-        raise AdminNotFound() from None
-    if account.role != "admin":
-        raise AdminNotFound()
-    return account
-
-
-CurrentAdmin = Annotated[Account, Depends(get_admin)]
 AccountId = Annotated[uuid.UUID, Path(description="The account's id")]
 Reason = Annotated[
     str,
