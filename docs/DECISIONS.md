@@ -1090,3 +1090,52 @@ Newest entries at the bottom.
      - The concurrency test holds four registrations open between insert and trim, on an account one phone short of its cap. It ends with exactly ten.
   7. Squawk finds nothing. The migration ran up, down and up, and the models match.
   8. Still to build with E1: the sender. It will drop a token Firebase or Apple reports as gone, and use `decide` (D-079) for quiet hours.
+
+## D-096: One feature at a time, to eight steps, in place of one file at a time
+- Date: 2026-10-12
+- Approved by: Adhi, in this session, choosing "Feature at a time" over strict one-file-at-a-time and a hybrid, after an audit showed the sessions had been building whole features while `CLAUDE.md` section 6 said one file at a time.
+- Context: The written rule and the practice had parted. Adhi wants pace and the best quality together ("in the best way possible, not for the sake of being there").
+- Options considered: A) feature at a time, to a stated checklist · B) strictly one file at a time, waiting after each · C) a hybrid, one file at a time for migrations, security, payments and auth.
+- Chosen: A.
+- Reason: B is about five to ten times slower for the same result. A keeps every gate and makes the quality steps explicit, where before they were only habit.
+- Consequences / follow-ups:
+  1. `CLAUDE.md` section 6 now gives the eight steps:
+     - the constraints first;
+     - the area's standards re-read in full, and named in the report;
+     - research with dated sources;
+     - a proposal and approval, with any change from it approved before it is built;
+     - build;
+     - proof;
+     - the whole job in one change;
+     - an honest report.
+  2. Section 5's "how to ask" matches.
+  3. The learning format stays, for whenever a founder asks to learn a file.
+  4. `.claude/commands/handoff.md` points at the new section.
+  5. The audit's other findings stand as obligations:
+     - CI must be seen green before "done";
+     - a second reader is still owed on everything since 21 September;
+     - standards are re-read rather than remembered.
+
+## D-097: Thirty-two more items, 64 to 95, from what the best platforms ship in 2026
+- Date: 2026-10-12
+- Approved by: Adhi, in this session ("Yes, record all 32"), after seeing each with who has it, how ours goes further, and its gate.
+- Context: Adhi asked for more than the 63, built "in the best way possible". The research covered TikTok One (May 2026), Meta's Creator Marketplace, YouTube Creator Partnerships (2026), Upwork's Uma, CreatorIQ, GRIN, Aspire, Traackr, Statusphere, Insense, Beacons and Stan, and India's platforms. Sources are in the session report.
+- Options considered: A) record all 32 · B) only some · C) keep them as proposals.
+- Chosen: A.
+- Reason: each closes a gap with the strongest platforms, or makes one of our own novelties real, without breaking a constraint.
+- Consequences / follow-ups:
+  1. `docs/BACKEND_COMPLETE.md` section 3.11 holds them, in five groups:
+     - discovery: 64 to 67;
+     - workflow: 68 to 73;
+     - trust: 74 to 78;
+     - accounts and security: 79 to 82;
+     - growth and data: 83 to 87.
+     Plus running it: 88 to 95.
+  2. **Recording is not approval to build.** Each item gets its own research, proposal and "yes" under D-096 before any code, and "built" means all eight steps.
+  3. Some cannot be done properly yet, and wait rather than ship thin: 67 and 78 need Meta's review (item 29); 76 needs the lawyer; 83 and 86 need real results data.
+  4. Deliberately excluded:
+     - paying creators directly (constraint 1; item 87 is our answer to TikTok's One Pay);
+     - a database of every creator on the internet;
+     - bought fake-follower scores.
+  5. Novelties 1, 4 and 7 of `docs/COMPETITIVE_LANDSCAPE.md` are now items 83, 84 and 77.
+  6. Recommended first, for the account model must be right before any app: 74, 79, 80 and 81. Then the competitor gaps 17, 44, 43 and E5.

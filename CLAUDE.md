@@ -147,7 +147,7 @@ Stop and get explicit approval before any of these:
 
 ### How to ask
 
-**Small, low-risk step** (one file, inside an agreed task): use the Learning format (section 6) and wait for "yes".
+**A feature** (section 6): research it, then propose it in the format below with its gates named, and wait for "yes" to that exact proposal. A change from the approved proposal is stated and approved before it is built, never only reported after.
 
 **Gated or multi-path decision:** use this format.
 
@@ -171,20 +171,24 @@ Approved decisions are recorded in `docs/DECISIONS.md` (section 10).
 
 ## 6. How we work
 
-### Learning format (default for every file)
+### How a feature is built (D-096)
 
-We're learning the codebase as we build it. For each file:
+One feature at a time, built whole, to these eight steps. Adhi chose this on 12 October 2026 over one file at a time, for pace; the steps keep the quality.
 
-1. **Purpose:** one line on what the file is for.
-2. **Plan:** files to create, modify or delete (normally just one).
-3. **Code:** the full change.
-4. **Explanation:** what each line or block does, in plain English.
-5. **Check:** one command to verify it, and the expected output.
-6. **Stop:** wait for confirmation before the next file.
+1. **The constraints** (section 2) are checked first. If the feature would break one, stop and say which.
+2. **The area's standards are re-read in full** before the first file (section 7.0's table), and the report names which were read.
+3. **Research:** the strongest version that exists, with dated sources, and how ours goes further (`docs/COMPETITIVE_LANDSCAPE.md`).
+4. **Proposal and approval** (section 5): what, tables, endpoints, dependencies, gates, rollback. Nothing is built before "yes".
+5. **Build** to the standards, one file one job, on its own branch.
+6. **Proof:** every test `docs/standards/testing.md` section 1 requires; every rule broken on purpose and seen to fail; properties for rules, concurrency tests for "only if" checks, query counts for lists; performance measured against the budgets.
+7. **The whole job in one change** (section 7.0): code, tests, decision entry, OpenAPI snapshot, export, `docs/BACKEND_COMPLETE.md`, the affected docs.
+8. **Report honestly:** what was built and proven, what was not, any change from the proposal, and that CI and review are still owed until they happen.
+
+**The learning format**, when a founder asks to learn a file: purpose, plan, the code, a plain-English explanation of each block, one command to check it, then stop for confirmation.
 
 ### Rules
 
-- **One file at a time.** Never generate a project, a batch of files, or a multi-module refactor without approval.
+- **One feature at a time** (above). Never a batch of features, a new project, or a multi-module refactor without approval.
 - **One file, one job.** Don't combine unrelated responsibilities for convenience.
 - **Branch per task.** Never commit directly to `main`. Branch names: `feature/<name>`, `fix/<name>`, `chore/<name>`, `docs/<name>`.
 - **Small commits** in Conventional Commits style: `feat(auth): add OTP request endpoint`.

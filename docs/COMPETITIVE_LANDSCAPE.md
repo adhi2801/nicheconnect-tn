@@ -149,6 +149,8 @@ Version 2's build list is done: rate cards (D-055), fair-rate guidance (D-056), 
 | 8 | **A notification budget and quiet hours** | Competitors compete for attention; we respect it | **Built** (D-079) |
 | 9 | **Answers inside the phone's assistant**: "has Chennai Bakes paid me?" | Android AppFunctions and iOS App Intents call our API | `docs/PLATFORM_AND_TECH_PLAN.md` A11; Watch |
 
+Novelties 1, 4 and 7 are now items 83, 84 and 77 of `docs/BACKEND_COMPLETE.md` (D-097), with 32 more from the 2026 research in its section 3.11.
+
 **What to deliberately not build:** an internet-wide creator database; anything that holds or moves money; exposing contact details; star ratings or reviews in place of the records (opinions can be bought, dated facts cannot); any of the 13 dark patterns India bans (`docs/PSYCHOLOGY_AND_TRUST.md` section 2); an install wall.
 
 ---
