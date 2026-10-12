@@ -13,9 +13,9 @@ from app.core.rate_limit import limiter
 from app.core.taxonomy import CURRENCY
 from app.db.session import engine, get_db
 from app.main import app
-from app.modules.auth import passport_service
 from app.modules.auth.dependencies import get_now
 from app.modules.auth.models.creator import Creator
+from app.modules.passport import passport_service
 from app.modules.profiles.models import CreatorChannel, CreatorPackage
 from tests.factories import FIXED_NOW, build_creator
 

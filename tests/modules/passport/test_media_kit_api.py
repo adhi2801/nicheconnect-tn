@@ -14,9 +14,9 @@ from sqlalchemy import event, select
 
 from app.core.taxonomy import CURRENCY
 from app.db.session import engine
-from app.modules.auth.media_kit_router import READ_LIMIT
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.creator import Creator
+from app.modules.passport.media_kit_router import READ_LIMIT
 from app.modules.profiles.models import CreatorChannel, CreatorPackage
 from tests.deal_flow import User, accepted_memo, brand_user, creator_user
 

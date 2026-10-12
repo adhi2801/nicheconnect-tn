@@ -30,14 +30,14 @@ from sqlalchemy.orm import Session
 from app.core.errors import problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
-from app.modules.auth import passport_service
 from app.modules.auth.exceptions import ProfileNotFound
 from app.modules.auth.models.creator import Creator
-from app.modules.auth.schemas import (
+from app.modules.auth.schemas import _normalize_handle
+from app.modules.passport import passport_service
+from app.modules.passport.schemas import (
     PublicChannelRead,
     PublicCreatorRead,
     PublicPackageRead,
-    _normalize_handle,
 )
 from app.modules.profiles.models import CreatorChannel, CreatorPackage
 from app.modules.profiles.rate_card_service import list_channels, list_packages

@@ -26,9 +26,7 @@ from app.modules.auth.city_figures_router import router as city_figures_router
 from app.modules.auth.dependencies import idempotency_identity
 from app.modules.auth.device_router import router as devices_router
 from app.modules.auth.export_router import router as export_router
-from app.modules.auth.media_kit_router import router as media_kit_router
 from app.modules.auth.numbers_router import router as numbers_router
-from app.modules.auth.public_router import router as public_router
 from app.modules.auth.rate_guidance_router import router as rate_guidance_router
 from app.modules.auth.report_router import router as report_router
 from app.modules.auth.router import router as auth_router
@@ -49,6 +47,8 @@ from app.modules.notifications.preference_router import (
     router as notification_preferences_router,
 )
 from app.modules.notifications.router import router as notifications_router
+from app.modules.passport.media_kit_router import router as media_kit_router
+from app.modules.passport.public_router import router as public_router
 from app.modules.payment_status.brand_router import router as reliability_router
 from app.modules.payment_status.bulk_router import router as bulk_payments_router
 from app.modules.payment_status.mine_router import router as my_payments_router

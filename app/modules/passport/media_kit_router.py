@@ -13,12 +13,13 @@ from sqlalchemy.orm import Session
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
-from app.modules.auth import media_kit_service
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.auth.exceptions import ProfileNotFound, RoleNotAllowed
-from app.modules.auth.media_kit_service import MediaKit
-from app.modules.auth.schemas import ChannelRead, MediaKitRead, PackageRead
+from app.modules.auth.schemas import ChannelRead, PackageRead
 from app.modules.deal_memo.schemas import to_delivery_read
+from app.modules.passport import media_kit_service
+from app.modules.passport.media_kit_service import MediaKit
+from app.modules.passport.schemas import MediaKitRead
 
 READ_LIMIT = "60 per minute"
 
