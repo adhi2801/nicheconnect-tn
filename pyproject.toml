@@ -94,6 +94,7 @@ dev = [
     # hundreds of generated inputs and shrinks any failure to the smallest.
     # Schemathesis pulls it in too; pinned here because tests import it.
     "hypothesis==6.169.0",
+    "import-linter==2.15",
 ]
 load = [
     "locust==2.46.7",

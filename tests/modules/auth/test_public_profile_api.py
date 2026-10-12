@@ -13,7 +13,7 @@ from app.core.rate_limit import limiter
 from app.core.taxonomy import CURRENCY
 from app.db.session import engine, get_db
 from app.main import app
-from app.modules.auth import public_router
+from app.modules.auth import passport_service
 from app.modules.auth.dependencies import get_now
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.models.rate_card import CreatorChannel, CreatorPackage
@@ -412,7 +412,7 @@ def test_nobody_is_published_until_they_choose(db):
     creator = build_creator(db, handle=f"seam{uuid.uuid4().hex[:8]}")
 
     assert creator.passport_published_at is None
-    assert public_router.passport_is_public(creator) is False
+    assert passport_service.passport_is_public(creator) is False
 
 
 def test_choosing_to_publish_makes_the_page_answer(db):
@@ -420,7 +420,7 @@ def test_choosing_to_publish_makes_the_page_answer(db):
         db, handle=f"seam{uuid.uuid4().hex[:8]}", passport_published_at=FIXED_NOW
     )
 
-    assert public_router.passport_is_public(creator) is True
+    assert passport_service.passport_is_public(creator) is True
 
 
 def test_an_unpublished_profile_cannot_be_told_apart_from_a_missing_one(client, db):

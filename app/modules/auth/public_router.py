@@ -18,20 +18,19 @@ is written defensively:
 PUBLICATION: nobody is published until they choose to be. A creator who
 signed up only to browse campaigns is not findable by strangers, and a
 profile only appears here once its owner has turned the Passport on
-(D-036). That switch is read in exactly one place, `passport_is_public`.
+(D-036). That switch is read in exactly one place, `passport_service.passport_is_public`.
 """
 
 import hashlib
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, Request, Response, status
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.errors import problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
-from app.modules.auth import suspension
+from app.modules.auth import passport_service
 from app.modules.auth.exceptions import ProfileNotFound
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.models.rate_card import CreatorChannel, CreatorPackage
@@ -52,24 +51,6 @@ CACHE_SECONDS = 300
 PUBLIC_READ_LIMIT = "60 per minute"
 
 router = APIRouter(prefix="/api/v1/creators", tags=["public"])
-
-
-def passport_is_public(creator: Creator) -> bool:
-    """Whether this profile may be shown to the open internet.
-
-    Only if its owner said so. `passport_published_at` is both the switch
-    and the record of when they chose it.
-    """
-    return creator.passport_published_at is not None
-
-
-def prices_are_public(creator: Creator) -> bool:
-    """Whether this creator's packages may be shown to the open internet.
-
-    A second consent, separate from the Passport: a creator may want to be
-    findable without publishing what they charge (D-055).
-    """
-    return creator.rate_card_public_at is not None
 
 
 def _etag(page: PublicCreatorRead) -> str:
@@ -140,19 +121,14 @@ def read_public_profile(
         # one looks like, and no stack trace for a stranger.
         raise ProfileNotFound() from None
 
-    creator = db.scalars(select(Creator).where(Creator.handle == normalised)).first()
-    if (
-        creator is None
-        or not passport_is_public(creator)
-        # Suspended looks exactly like never published (D-061).
-        or suspension.is_suspended(db, creator.account_id)
-    ):
-        raise ProfileNotFound()
+    creator = passport_service.public_creator(db, normalised)
 
     # Three queries at most, however many channels or packages there are.
     # Unpublished prices are not even read.
     channels = list_channels(db, creator)
-    packages = list_packages(db, creator) if prices_are_public(creator) else []
+    packages = (
+        list_packages(db, creator) if passport_service.prices_are_public(creator) else []
+    )
     page = _to_public(creator, channels, packages)
 
     etag = _etag(page)

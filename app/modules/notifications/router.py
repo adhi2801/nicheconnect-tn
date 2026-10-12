@@ -5,7 +5,6 @@ from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, Request
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.errors import ResponseDocs, problem_doc
@@ -15,7 +14,6 @@ from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.notifications import service
-from app.modules.notifications.exceptions import NotificationNotFound
 from app.modules.notifications.models import Notification
 from app.modules.notifications.schemas import MarkedRead, NotificationRead, UnreadCount
 
@@ -40,15 +38,7 @@ def _own_notification(
     db: Annotated[Session, Depends(get_db)],
 ) -> Notification:
     """A notification belonging to the signed-in account, else 404."""
-    notification = db.scalars(
-        select(Notification).where(
-            Notification.id == notification_id,
-            Notification.account_id == account.id,
-        )
-    ).first()
-    if notification is None:
-        raise NotificationNotFound()
-    return notification
+    return service.get_own(db, notification_id, account.id)
 
 
 OwnNotification = Annotated[Notification, Depends(_own_notification)]

@@ -95,6 +95,26 @@ ALLOWED_TRANSITIONS: dict[str, frozenset[str]] = {
 EDITABLE_WHILE_OPEN = frozenset({"description", "deliverables", "applications_close_on"})
 
 
+def get_visible_campaign(
+    db: Session, campaign_id: uuid.UUID, account_id: uuid.UUID
+) -> Campaign:
+    """A campaign this account may read: its owner sees it in any status,
+    everyone else only while it is open.
+
+    Raises CampaignNotFound otherwise, never 403, so drafts stay private.
+    """
+    campaign = db.get(Campaign, campaign_id)
+    if campaign is None:
+        raise CampaignNotFound()
+    if campaign.status != "open":
+        owner_account_id = db.scalar(
+            select(Brand.account_id).where(Brand.id == campaign.brand_id)
+        )
+        if owner_account_id != account_id:
+            raise CampaignNotFound()
+    return campaign
+
+
 def get_brand_for_account(db: Session, account_id: uuid.UUID) -> Brand:
     """The brand profile of a signed-in brand account.
 
