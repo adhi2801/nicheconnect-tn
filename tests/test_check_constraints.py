@@ -16,7 +16,7 @@ from sqlalchemy import text
 
 import app.db.models  # noqa: F401 - registers every table, as the app does
 from app.db.base import Base
-from app.db.session import engine
+from tests.owner import owner_engine
 
 SCRATCH = "model_check"
 CHECKS = text(
@@ -40,7 +40,8 @@ def normalised(definition: str) -> str:
 
 @pytest.fixture(scope="module")
 def both() -> tuple[dict[tuple[str, str], str], dict[tuple[str, str], str]]:
-    with engine.connect() as connection:
+    # A scratch schema is the owner's to make (item 97).
+    with owner_engine.connect() as connection:
         transaction = connection.begin()
         try:
             connection.execute(text(f"CREATE SCHEMA {SCRATCH}"))

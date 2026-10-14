@@ -28,7 +28,7 @@
 | State transition | Every allowed transition, and at least one blocked transition (409) | *(review only)*; property tests for the rule-heavy ones |
 | A rule checked before a write ("only if", "at most", "not already") | **A concurrency test**: several requests at once, exactly one wins, no raw error reaches a caller (section 4) | *(review only)*: 7 concurrency test files today |
 | Service function | Success and each domain error it can raise | Coverage floor of 90% per `service.py` in CI |
-| Model or migration | Each constraint refused by the database itself, by name, written with raw SQL; `upgrade → downgrade → upgrade` | `tests/test_schema_rules.py` fails on any check or unique constraint no test names; CI runs the round trip |
+| Model or migration | Each constraint refused by the database itself, by name, written with raw SQL; `upgrade → downgrade → upgrade`; a downgrade that would destroy data refuses while it exists | `tests/test_schema_rules.py` fails on any check or unique constraint no test names; `tests/modules/test_refusing_downgrades.py` runs each refusing downgrade; CI runs the round trip |
 | Bug fix | A test that fails before the fix and passes after, seen failing | *(review only)*; said in the commit |
 | Personal data | The export includes it (or the exclusion is listed); it reaches no log, error report, trace or embedding | `tests/modules/me/test_export_api.py`; the scrubber, tracer and embedding-input tests |
 | Background job | Success, retry on failure, safe when run twice | *(review only)* |
@@ -77,8 +77,11 @@ tests/
     test_<feature>_model.py    database constraints
     test_<feature>_concurrency.py
   modules/test_database_refusals.py  database rules broken with raw SQL
+  modules/test_refusing_downgrades.py  every downgrade that would destroy data refuses
+  modules/test_app_role.py   the app's own login: what it may and may not do
   test_api_contract.py     every operation against the committed contract
   test_architecture.py     routers build no queries, services know no HTTP, bodies refuse unknown fields
+  owner.py                 the database owner, for the few tests that need more than the app's login
   test_schema_rules.py     the migrated schema read against database.md
   test_check_constraints.py  every CHECK in the models matches the migrated database
   test_banned_terms.py     the money words, across every file and every commit message
@@ -98,7 +101,8 @@ tests/
   - several threads start together on a barrier;
   - the moment between check and write is held open (a slow `before_flush` hook, 0.2 to 0.3 s), so the bad ordering happens on every run, not by luck;
   - they assert exactly one success, the rest clean domain errors, and a consistent final state;
-  - committed deal-record entries are removed through `tests/record_cleanup.py`, which needs a superuser: local and CI have one, the service must never (`database.md` gap 1).
+  - committed deal-record entries and dispute events are removed through `tests/record_cleanup.py`, which needs a superuser and so uses the owner's connection (`tests/owner.py`); the app's login never has one.
+- **CI runs the suite as the app's own login** (item 97, D-100), which may only read and write rows, so code that quietly needs more fails there. Migrations and the release step (`app/db/prepare.py`) run first as the owner; then every test not marked `owner` runs as `nicheconnect_app`; then the `owner` tests run as the owner. Mark a test `owner` only when its own session must be the owner's: a trigger shown refusing, a scratch schema, the triggers set aside for a cleanup. On a laptop both are the same login, unless `OWNER_DATABASE_URL` is set to reproduce CI.
 - Factories for data; no hard-coded shared rows.
 - **CI is the truth.** A failure that appears only in CI is reproduced, not guessed at: the committed code (`git archive HEAD`) in a Linux container on Python 3.14, against a freshly migrated empty database, with CI's test-only credentials, never a developer's. CI's annotations name each failing test and its first error lines, readable without admin rights.
 
@@ -146,7 +150,7 @@ Nightly, in its own workflow: **mutation testing** (`mutation.yml`, D-091). A ni
 
 Every job runs on an exact runner image (`ubuntu-24.04`), never `ubuntu-latest`, so CI cannot change under us (D-086).
 
-**"Blocked" needs branch protection on `main`, which a founder sets in the repository settings; nobody here has seen it set.** And no CI run has been seen since early October (gap 1).
+**"Blocked" is a convention today, not a lock: `main` has no branch protection** (GitHub's public branch API, 14 October), so nothing stops a merge with a red run (gap 1). CI results are read through GitHub's public API, without a login.
 
 ## 10. Honesty
 
@@ -158,16 +162,17 @@ Every job runs on an exact runner image (`ubuntu-24.04`), never `ubuntu-latest`,
 
 ## 11. Gaps, named
 
+**A claim of mine corrected the same day:** this file said CI had not been seen since early October and nothing had merged to `main` since 1 October. A stale local copy of `main` misled me: Dependabot's updates were merged on 12 October, and CI is now read through GitHub's API. **Closed the same day:** the refusing downgrades untested (item 98).
+
 **Corrected on 14 October:** coverage "about 98%" (measured, section 7); the held-open write "0.1 to 0.4 s" (0.2 to 0.3); the fuzzing "a failure is a bug" without saying only one check gates; the layout missing four files that now enforce rules; and three comments in CI and `pyproject.toml` that sent readers to "testing.md section 5" for coverage, which is section 7.
 
 | # | Gap | Risk | Acting on it |
 |---|---|---|---|
-| 1 | **CI has not been seen running since early October, and `main` has had nothing merged since 1 October** | Everything "tested" here is tested on one laptop only | Pull requests, CI seen green (`CLAUDE.md` section 8) |
+| 1 | **`main` has no branch protection**, so a merge with a failing run is not stopped. Until 14 October, a false positive in the secret scan also stopped every run at its second step from 12 October on, unseen, so no later gate ran on GitHub | A red build can reach `main` | A founder turns on branch protection for `main`, requiring the `test`, `image`, `infrastructure` and `repository-settings` jobs |
 | 2 | **Several required tests are *(review only)***: the stranger test per object route, the query-count test per list, the concurrency test per "only if" rule | One missed test is a missed bug, found by a user | Item 100 for the stranger tests; the others gain a check when one is practical |
 | 3 | **Fuzzing gates only server errors**, and its findings file was last updated in September, with 64 operations then and 123 routes now | Contract drift the other checks would catch goes unseen | Re-run every check, update the findings, then gate what passes; a CI change, so an Infrastructure gate |
 | 4 | **Mutation testing covers eight files**; 186 mutants survived the wider run | Weak tests outside those files are invisible | Item 93 |
-| 5 | **The refusing downgrades have no standing test** (`database.md` gap 6) | A rollback could destroy data after a later change | Item 98 |
-| 6 | **The load test ran on a laptop** | Production capacity is an estimate | Item 94 |
+| 5 | **The load test ran on a laptop** | Production capacity is an estimate | Item 94 |
 
 ## 12. Sources
 

@@ -176,7 +176,7 @@ One shape for every non-2xx answer, RFC 9457 Problem Details:
 - Every setting comes from environment variables through `app/core/config.py` (pydantic-settings), as the Twelve-Factor App's config factor sets out. **Enforced by** `tests/test_architecture.py::test_settings_are_read_only_through_config`, which fails on `os.getenv` or `os.environ` anywhere else.
 - The app refuses to start if a setting is missing, malformed, unsafe or still a placeholder, with a message naming the fix. **Enforced by** `tests/core/test_config.py`.
 - `.env.example` lists every setting with a safe placeholder and a one-line comment. **Enforced by** `tests/core/test_config.py`.
-- **Infra passes every setting that must differ by environment.** The rest run on the code's defaults. On 14 October, 13 of 33 settings were not passed, among them the pool and overload settings and `TRACES_ENDPOINT` (section 12).
+- **Infra passes every setting that must differ by environment.** The rest run on the code's defaults. On 14 October, 13 of 35 settings were not passed (the two added that day, for the app's own database login, are), among them the pool and overload settings and `TRACES_ENDPOINT` (section 12).
 
 ## 9. Logging and observability
 
@@ -210,7 +210,7 @@ One shape for every non-2xx answer, RFC 9457 Problem Details:
 | Gap | Risk | Acting on it |
 |---|---|---|
 | **No structured logging.** No logging configuration exists, so production logs are plain text. The rule said otherwise until 14 October. | Searching and alerting on logs in CloudWatch is weak, during the incidents where it matters most | A JSON formatter from the standard library (no package); proposed next, small |
-| **13 of 33 settings not passed by infra**, among them `TRACES_ENDPOINT`, `DB_POOL_SIZE`, `MAX_IN_FLIGHT_REQUESTS` and `BUSY_QUEUE_MS`. The rule said "infra passes every one" until 14 October. | Production cannot turn tracing on, or tune capacity, without an infra change | Items 88 and 89; passing them is an infrastructure decision |
+| **13 of 35 settings not passed by infra**, among them `TRACES_ENDPOINT`, `DB_POOL_SIZE`, `MAX_IN_FLIGHT_REQUESTS` and `BUSY_QUEUE_MS`. The rule said "infra passes every one" until 14 October. | Production cannot turn tracing on, or tune capacity, without an infra change | Items 88 and 89; passing them is an infrastructure decision |
 | **Error `type` URLs are on `nicheconnect.in`**, a domain we do not own | A public contract pointing at someone else's domain | Item 4: the name and the domain decide it, before any client exists |
 | **The list of proofs on a deal has no cap** | Tiny in practice; unbounded in principle | Cap resubmissions, or paginate, when proof volume says so |
 | **The deal domain still imports across itself** | Changes there ripple further than they should | Item 96 |

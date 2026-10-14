@@ -32,7 +32,7 @@
 6. **Records about people resist being gamed.** A figure that makes someone look good or bad counts things that are hard to fake, says how many it rests on (D-038), and never counts the same pair of accounts as independent evidence (section 3.3).
 7. **Everyone can say no and be left alone**: decline, withdraw, mute (D-079), report (D-061), and block (item 59). A new way of reaching someone respects blocks in the same change, with a test in `tests/modules/safety/test_block_api.py`.
 8. **We never ask for a login code, a UPI PIN or a password**, in any message, ever. The login message must say so; its wording waits on the MSG91 template (item 62).
-9. **A report is answered.** Reports reach the admin queue, oldest first. The IT Rules' clocks on that queue are item 51, and **the reporter learning the outcome is not built** (item 102).
+9. **A report is answered.** Reports reach the admin queue, oldest first. The reporter sees each report and its outcome (`GET /api/v1/reports/mine`) and is notified when one is resolved, never with the admin's note (item 102, D-100). The IT Rules' clocks on the queue are item 51.
 
 ---
 
@@ -69,7 +69,7 @@ Researched 10 October 2026, sources in section 8.
 | A deal memo, its extra terms | Accepted terms never change, and the deal record proves it (D-057); the creator can ask for changes or decline | Built: `tests/modules/deal_memo/` |
 | A revision request on proof | One change restarts the clock (D-025); note plain text | Built |
 | Marking a payment sent | Only the creator can confirm it arrived (D-027); the reference shape is checked; a dispute holds the record short of unpaid | Built: the payment tests, with properties over every state |
-| **Payment requests disguised in text** ("pay ₹2,000 registration") | `text_flags` on a campaign's description and deliverables, invitation and rejection notes, memo deliverables and extra terms, and revision notes: a request for a fee or deposit is flagged, while ordinary pay ("we pay ₹5,000 per reel") is not (`app/core/text_flags.py`). A campaign's **title** is not checked (gap 3) | Built: `tests/core/test_text_flags.py`, its property tests, and `tests/modules/test_text_flags_api.py` |
+| **Payment requests disguised in text** ("pay ₹2,000 registration") | `text_flags` on a campaign's description and deliverables, invitation and rejection notes, memo deliverables and extra terms, and revision notes: a request for a fee or deposit is flagged, while ordinary pay ("we pay ₹5,000 per reel") is not (`app/core/text_flags.py`). A campaign's **title** is not checked (gap 2) | Built: `tests/core/test_text_flags.py`, its property tests, and `tests/modules/test_text_flags_api.py` |
 | **A brand name copying a famous brand** | Verified business from GST (item 36). Until then, no "verified" mark of any kind | **Owed** (item 36) |
 | Contact details in text, pulling the creator off the record | Phone numbers, emails, UPI IDs and WhatsApp or Telegram links flagged in briefs, pitches and notes until the deal is agreed (D-086: flagged, not hidden) | Built: the same text-flag tests |
 | Repeated contact after a no | **Block** (`POST /me/blocks`): once either side blocks, no invitation, repeat or application starts in either direction, and neither appears in the other's search, matches or discovery. Agreed deals carry on; the blocked side is never told, and every refusal reads as not found | Built: `tests/modules/safety/test_block_api.py` |
@@ -91,8 +91,8 @@ Researched 10 October 2026, sources in section 8.
 
 | Way | Protection | Status |
 |---|---|---|
-| A dispute, with entries and evidence links | Both sides on the record; we never judge (D-028, D-035). Evidence links only to known platforms and file hosts (`app/core/links.py`); uploaded evidence is the better end. Dispute events are fingerprinted in the deal record, but their table does not yet refuse changes (`database.md` gap 3, item 99) | Built: `tests/modules/disputes/` |
-| A report | One open report per reporter per subject (D-061); 10 an hour and 30 a day per account; a person cannot report their own thing | Built: `tests/modules/admin/test_reports_api.py` |
+| A dispute, with entries and evidence links | Both sides on the record; we never judge (D-028, D-035). Evidence links only to known platforms and file hosts (`app/core/links.py`); uploaded evidence is the better end. Dispute events are fingerprinted in the deal record and sealed like it: nothing can change or remove one (item 99) | Built: `tests/modules/disputes/`, `tests/modules/test_database_refusals.py` |
+| A report | One open report per reporter per subject (D-061); 10 an hour and 30 a day per account; a person cannot report their own thing; the reporter is told the outcome, the reported side is not (item 102) | Built: `tests/modules/admin/test_reports_api.py` |
 | **Pumped records: deals between accounts one person controls** | Records show how many **different** counterparties they rest on: `distinct_brands` on a creator's delivery record, `distinct_creators` on a brand's payment record, so a perfect record built with one partner reads as exactly that. Flagging pairs of accounts that share a device or network at sign-up would need storing sign-up addresses, which is personal data: a founder and lawyer decision first (`legal.md` section 3.1) | Counts built: `test_delivery_record.py`, `tests/modules/payment_status/test_reliability.py`; network flag **Owed** (item 61, a decision) |
 | Reviews or ratings bought or invented | None exist except records from real deals (`legal.md` section 3.6) | Built |
 
@@ -104,7 +104,7 @@ Researched 10 October 2026, sources in section 8.
 | Scraping creators | Search and matching are signed-in brands only, 30 a minute and 600 a day per account; no contact details anywhere | Built: the matching and search tests, the daily-ceiling test |
 | Running up our AI bill | Daily ceiling on proof reading (D-070) | Built |
 | Abusing invite attribution | It carries no reward. **Any reward is designed with its abuse limits first** | Built (no reward) |
-| An admin misusing access | Every view and action in the append-only admin log (D-061), which the database seals. The seal holds only once the app stops connecting as the table owner (`database.md` gap 1, item 97) | Built, with that limit |
+| An admin misusing access | Every view and action in the append-only admin log (D-061), sealed by the database, and the app's own login may only read and add to it (item 97) | Built: `tests/modules/admin/test_admin_models.py`, `tests/modules/test_app_role.py` |
 | Impersonating us ("support") | We never ask for codes, PINs or passwords (rule 8). **The login message's wording must say so: Confirm the MSG91 template** | **Owed** (item 62) |
 
 ---
@@ -143,14 +143,14 @@ One module, used by every place free text from one person reaches another:
 
 **Corrected on 14 October:** rule 8 said every login code already warns against sharing it (the wording waits on item 62); rule 9 said the reporter learns the outcome (nothing tells them: item 102), and implied the IT Rules' clocks were on the queue (item 51); the text-flag row listed "briefs" where only a campaign's description and deliverables are checked, not its title.
 
+**Closed the same day** (D-100): a reporter never told the outcome (item 102), and the app's database login able to unseal the records (item 97).
+
 | # | Gap | Risk | Acting on it |
 |---|---|---|---|
-| 1 | **A reporter never learns what became of a report** | People stop reporting; the IT Rules expect an answer | Item 102: the reporter's own reports with their outcomes, and a notification when one is resolved; with item 51's clocks |
-| 2 | **No verified-business mark, so impersonation is unchecked** | The pay-to-collab scam starts with a believable fake brand | Item 36 |
-| 3 | **A campaign title is not checked for fee requests** | A short line such as "₹500 registration, DM us" in a title is not flagged | Add the title to the brief's flagged fields; small, in the next change to the campaign schema |
-| 4 | **The login message does not yet say we never ask for it** | Fake support works on people who were never told | Item 62 |
-| 5 | **Shared devices or networks at sign-up are not flagged** | Pumped records between one person's accounts are only visible as "one partner" | Item 61, a legal decision first |
-| 6 | **The admin log and the deal record can be unsealed by the app's own database user** | An insider or a stolen secret could rewrite them | Item 97 |
+| 1 | **No verified-business mark, so impersonation is unchecked** | The pay-to-collab scam starts with a believable fake brand | Item 36 |
+| 2 | **A campaign title is not checked for fee requests** | A short line such as "₹500 registration, DM us" in a title is not flagged | Add the title to the brief's flagged fields; small, in the next change to the campaign schema |
+| 3 | **The login message does not yet say we never ask for it** | Fake support works on people who were never told | Item 62 |
+| 4 | **Shared devices or networks at sign-up are not flagged** | Pumped records between one person's accounts are only visible as "one partner" | Item 61, a legal decision first |
 
 ## 8. Sources
 

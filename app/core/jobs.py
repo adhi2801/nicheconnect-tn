@@ -27,7 +27,9 @@ def dbos_config(*, schema: str = DBOS_SCHEMA) -> DBOSConfig:
         "name": "nicheconnect-backend",
         "system_database_url": settings.database_url,
         "dbos_system_schema": schema,
-        "run_migrations": True,
+        # Production migrates DBOS in the release step, as the owner
+        # (app/db/prepare.py); the app's own login may not create schemas.
+        "run_migrations": settings.dbos_migrate_at_start,
     }
 
 

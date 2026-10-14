@@ -124,6 +124,9 @@ locals {
     # notice exists.
     { name = "UPI_NOTICE_VERSION", value = var.upi_notice_version },
     { name = "APP_RELEASE", value = var.image_tag },
+    # The app's login may not create schemas; the release step makes DBOS's
+    # as the owner (item 97, app/db/prepare.py).
+    { name = "DBOS_MIGRATE_AT_START", value = "false" },
   ]
 
   secrets = concat(
@@ -133,6 +136,17 @@ locals {
     ],
     [{ name = "MSG91_AUTH_KEY", valueFrom = aws_secretsmanager_secret.msg91.arn }],
     [{ name = "ANTHROPIC_API_KEY", valueFrom = aws_secretsmanager_secret.anthropic.arn }],
+  )
+
+  # The release step's: the same, but DATABASE_URL is the owner, and it also
+  # gets the app login's password to set (item 97, D-100). No other task sees
+  # either.
+  release_secrets = concat(
+    [for secret in local.secrets : secret if secret.name != "DATABASE_URL"],
+    [
+      { name = "DATABASE_URL", valueFrom = "${aws_secretsmanager_secret.app.arn}:MIGRATION_DATABASE_URL::" },
+      { name = "APP_DATABASE_PASSWORD", valueFrom = "${aws_secretsmanager_secret.app.arn}:APP_DATABASE_PASSWORD::" },
+    ],
   )
 
   network = {
@@ -231,12 +245,14 @@ resource "aws_ecs_task_definition" "migrate" {
   }
 
   container_definitions = jsonencode([{
-    name        = "migrate"
-    image       = local.image["api"]
-    essential   = true
-    command     = ["alembic", "upgrade", "head"]
+    name      = "migrate"
+    image     = local.image["api"]
+    essential = true
+    # The release step (item 97): migrations, DBOS's schema and the app's
+    # login, the one task that connects as the owner.
+    command     = ["python", "-m", "app.db.prepare"]
     environment = local.environment
-    secrets     = local.secrets
+    secrets     = local.release_secrets
     logConfiguration = {
       logDriver = "awslogs"
       options = {

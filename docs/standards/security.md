@@ -2,7 +2,7 @@
 
 **For:** anyone touching login, access, secrets, personal data, rate limits, dependencies or the workflows, read in full before the first file (`CLAUDE.md` section 6). Any change here needs founder approval (`CLAUDE.md` section 5). **Last checked against the code: 14 October 2026**, on branch `docs/standards-bar`. Every claim below was re-checked then. Six that had stopped being true were corrected; they are listed in section 11.
 
-**The bar** is `CLAUDE.md` section 7.0. **The target is OWASP ASVS 5.0, Level 2**, the verification standard for applications holding personal and business data. Today this file maps our controls to the OWASP API Security Top 10 (section 3), not yet to ASVS chapter by chapter, so Level 2 is a target, not a claim (gap 4). Each rule says what **enforces** it. A rule nothing enforces is marked *(review only)*.
+**The bar** is `CLAUDE.md` section 7.0. **The target is OWASP ASVS 5.0, Level 2**, the verification standard for applications holding personal and business data. Today this file maps our controls to the OWASP API Security Top 10 (section 3), not yet to ASVS chapter by chapter, so Level 2 is a target, not a claim (gap 2). Each rule says what **enforces** it. A rule nothing enforces is marked *(review only)*.
 
 Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md`. Rules marked **(not yet built)** are owed before launch and tracked in section 10.
 
@@ -23,7 +23,7 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md`. Rule
 
 ## 1. Authentication
 
-- **Phone number plus a one-time code** by WhatsApp through MSG91, with SMS on the same account later (D-058). No passwords anywhere. That is one factor, possession of the phone: NIST's lowest assurance level, chosen for reach in Tamil Nadu. A second factor for admins is gap 5.
+- **Phone number plus a one-time code** by WhatsApp through MSG91, with SMS on the same account later (D-058). No passwords anywhere. That is one factor, possession of the phone: NIST's lowest assurance level, chosen for reach in Tamil Nadu. A second factor for admins is gap 3.
 - **Codes** (`app/modules/auth/tokens.py`, `service.py`):
   - 6 digits from `secrets.randbelow`, valid 5 minutes, single use.
   - Only an HMAC-SHA256 of the code is stored, keyed separately from the token key, and the app refuses to start if the two keys are the same (D-011).
@@ -50,7 +50,7 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md`. Rule
 
 - Roles: `brand`, `creator`, `admin`.
 - **Every** endpoint that reads or changes an object loads it through a check that the caller may (owner, party to the deal, or public by design). This is the defence against Broken Object Level Authorization, the top API risk. The checks live in `auth` and each module's dependencies; routers build no queries of their own (`tests/test_architecture.py`).
-- Every such endpoint has a test proving another user gets 404 (preferred, so existence is not confirmed) or 403. *(review only)*: 65 of the 123 routes take an object id, and nothing checks mechanically that each has its stranger test (gap 6).
+- Every such endpoint has a test proving another user gets 404 (preferred, so existence is not confirmed) or 403. *(review only)*: 65 of the 123 routes take an object id, and nothing checks mechanically that each has its stranger test (gap 4).
 - Filters use the authenticated account from the token, never an owner id from the body or query. The person's own things live under `/me/...` with no id at all.
 - Status transitions check the actor: only the brand marks a payment as sent; only the creator confirms it arrived. **Enforced by** the payment tests, including properties over every state.
 - Admin endpoints answer 404 to anyone who is not an admin.
@@ -60,7 +60,7 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md`. Rule
 
 | Risk | Our control | Proven by |
 |---|---|---|
-| API1 Broken object level authorization | Access checks on every object | Cross-user tests per endpoint *(review only, gap 6)* |
+| API1 Broken object level authorization | Access checks on every object | Cross-user tests per endpoint *(review only, gap 4)* |
 | API2 Broken authentication | Section 1; auth routes strictly rate limited | OTP, refresh and session test suites |
 | API3 Broken object property level authorization | Separate create, update and read schemas; every request body refuses unknown fields; public responses built by hand | `tests/test_architecture.py` (all 39 bodies); contract fuzzing |
 | API4 Unrestricted resource consumption | Rate limits, bounded lists, a 1 MB body limit, statement timeouts, a cap on requests in flight (D-093), daily ceilings on paid APIs | Limit tests; 413 tests; the load test (D-092) |
@@ -138,11 +138,11 @@ Examples:
 - **Images:**
   - Slim base images pinned by digest; the app's environment has no pip.
   - Grype blocks merge on any fixable vulnerability; accepted risks are listed one by one with a reason and an expiry condition (D-064, D-074).
-- **Dependency updates:** Dependabot proposes updates weekly as pull requests, for Python, the CI actions, the base images, Compose and OpenTofu, each held 7 days after release; security fixes come at once (`.github/dependabot.yml`, D-082). Each still needs a founder's approval to merge. **Not running yet:** Dependabot reads its settings only from the default branch, and `main` has had nothing merged since 1 October (gap 3).
+- **Dependency updates:** Dependabot proposes updates weekly as pull requests, for Python, the CI actions, the base images, Compose and OpenTofu, each held 7 days after release; security fixes come at once (`.github/dependabot.yml`, D-082). Each still needs a founder's approval to merge. It runs: its updates were merged to `main` on 12 October (FastAPI, SQLAlchemy 2.1, the AWS provider and more).
 - **Licences:** every dependency's licence is on an approved list, checked in CI (D-086).
 - **SBOM:** a CycloneDX bill of materials of the API image, written by Syft on every CI run and kept 90 days (D-082); published with each release once releases exist.
 - **To add before launch:** signed images with provenance (Sigstore cosign, SLSA build level 2) **(not yet built: waits for a registry to push images to, D-063)**.
-- **Least privilege in AWS:** the app's IAM role can reach only its own proof-file folder in its bucket, and its secrets through the execution role. **The database user is not least privilege today**: the app connects as the instance's master user, which owns every table and so can switch off the deal record's seals (`database.md` gap 1, item 97).
+- **Least privilege in AWS:** the app's IAM role can reach only its own proof-file folder in its bucket, and its secrets through the execution role. **The app's database login is least privilege** (item 97, D-100): it reads and writes rows and nothing more, and on the sealed tables only reads and adds, so it cannot switch off a seal or drop a table. Only the release step connects as the owner (`database.md` section 8). Proven by `tests/modules/test_app_role.py`, and by CI running the suite as that login.
 - **Incident response:** `docs/INCIDENT_RESPONSE.md` covers who is called, how to rotate every secret, how to take the API down safely, and how to tell people (D-082). **Rehearsal not yet done**: once on staging before launch.
 - **Disclosure:** `SECURITY.md` (report privately through GitHub, response targets, safe harbour) and `/.well-known/security.txt` (RFC 9116) on the API, whose `Expires` a test makes us renew (D-082). Private vulnerability reporting is on, and CI fails if it is switched off (testing.md gate 13).
 
@@ -152,30 +152,30 @@ Examples:
 - [x] `/docs` exposure decided: off in production (D-044)
 - [x] Generic 500 messages with every header (D-045)
 - [x] Error reports scrubbed of personal data, proven by tests (D-074)
-- [ ] **The app's database user owns nothing and can only read and write rows**, verified in staging (item 97)
+- [x] **The app's database login owns nothing and can only read and write rows** (item 97, D-100); still to confirm in staging once deployed
 - [ ] Backups enabled and one restore tested (`database.md` section 8)
 - [ ] Dependency audit and image scan clean on the release commit
-- [x] Secret scanning in CI and Dependabot configured (D-082); Dependabot running once merged to `main`
+- [x] Secret scanning in CI and Dependabot configured and running (D-082)
 - [x] Push protection and private vulnerability reporting switched on in the repository settings (Adhi, 10 October 2026; private reporting confirmed through GitHub's API, and CI checks it on every run)
 - [x] `SECURITY.md`, `security.txt`, incident plan written (D-082)
 - [ ] Incident plan rehearsed on staging
-- [ ] The open code-scanning alert on GitHub read and fixed or accepted (gap 2)
+- [ ] The open code-scanning alert on GitHub read and fixed or accepted (gap 1)
 - [ ] An outside penetration test of the API, findings fixed or accepted by a founder **(decision: who and when)**
 - [ ] The validation pack's DPDP items in force (consent, retention, breach notice)
 
 ## 11. Gaps, named
 
-**Corrected on 14 October:** the database user "has no superuser rights" (it owns every table: gap 1); this file "maps our controls to ASVS" (it maps the API Top 10: gap 4); keys "at least 256 bits" (the app enforces 32 characters; the generators give 256 bits or more); the guessing cap (it is also 10 wrong tries per phone in 10 minutes, across codes); the code-send limit "per IP, 10 a day" (the daily cap is per phone only); and a refresh and logout limit the table had left out.
+**Closed on 14 October:** the app connecting to the database as the table owner (item 97, D-100). **A claim of mine corrected the same day:** this file said nothing had been merged to `main` since 1 October and Dependabot had never run; a stale local copy of `main` misled me, and both were false.
+
+**Corrected on 14 October:** the database user "has no superuser rights" (it owned every table; fixed the same day by item 97); this file "maps our controls to ASVS" (it maps the API Top 10: gap 2); keys "at least 256 bits" (the app enforces 32 characters; the generators give 256 bits or more); the guessing cap (it is also 10 wrong tries per phone in 10 minutes, across codes); the code-send limit "per IP, 10 a day" (the daily cap is per phone only); and a refresh and logout limit the table had left out.
 
 | # | Gap | Risk | Acting on it |
 |---|---|---|---|
-| 1 | **The app connects to the database as the table owner** (`database.md` gap 1) | High, before launch: stolen app credentials or an injection flaw could switch off the deal record's seals | Item 97 |
-| 2 | **A code-scanning alert is open on GitHub and nobody here has read it** (https://github.com/adhi2801/nicheconnect-tn/security/code-scanning/1). No workflow here uploads results, so it is likely GitHub's default CodeQL setup | Unknown until read | A founder reads it, or installs `gh` so it can be read here |
-| 3 | **Nothing merged to `main` since 1 October**, so Dependabot, and everything since, has not run there; CI has not been seen on any branch since | Security fixes are not proposed; regressions unseen | Pull requests, CI seen green, a second reviewer (`CLAUDE.md` section 8) |
-| 4 | **No chapter-by-chapter ASVS 5.0 mapping** | "Level 2" cannot be claimed | Map V1 to V17 before the penetration test, so the tester checks what we claim |
-| 5 | **Admins log in with one factor** | A stolen admin phone, or a SIM swap, is an admin session | A second factor for the admin role; proposed before launch (Security gate) |
-| 6 | **No mechanical proof that every object route refuses a stranger** | One missed check is the top API risk (API1) | Item 100: one test that walks every route taking an id, creates the object as one account and calls it as another, expecting 404 unless the route is public by design |
-| 7 | Incident plan not rehearsed; no penetration test; images not signed | Untested plans fail when needed | Section 10 |
+| 1 | **A code-scanning alert is open on GitHub and nobody here has read it** (https://github.com/adhi2801/nicheconnect-tn/security/code-scanning/1). GitHub's API needs a login to read it even on a public repository (checked 14 October). No workflow here uploads results, so it is likely GitHub's default CodeQL setup | Unknown until read | A founder reads it, or signs in to `gh` so it can be read here |
+| 2 | **No chapter-by-chapter ASVS 5.0 mapping** | "Level 2" cannot be claimed | Map V1 to V17 before the penetration test, so the tester checks what we claim |
+| 3 | **Admins log in with one factor** | A stolen admin phone, or a SIM swap, is an admin session | A second factor for the admin role; proposed before launch (Security gate) |
+| 4 | **No mechanical proof that every object route refuses a stranger** | One missed check is the top API risk (API1) | Item 100: one test that walks every route taking an id, creates the object as one account and calls it as another, expecting 404 unless the route is public by design |
+| 5 | Incident plan not rehearsed; no penetration test; images not signed | Untested plans fail when needed | Section 10 |
 
 ## 12. Sources
 

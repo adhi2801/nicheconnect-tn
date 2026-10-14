@@ -12,7 +12,7 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md` befor
 |---|---|
 | Quality | Every rule names its enforcement; the schema is read by tests, section 3 |
 | Architecture | One database, tables owned by modules (`backend.md` section 1); pgvector in the same database, section 5 |
-| Security | Bound parameters only (7); the app's own database user, section 8 and gap 1 |
+| Security | Bound parameters only (7); the app's own database login, rows only, section 8 |
 | Privacy and law | No personal data in embeddings, every personal column exported or explained, section 4; deletion waits on the validation pack |
 | Trust and safety | Append-only, sealed records nobody can quietly rewrite, section 3 |
 | Performance | Indexes (5), keyset pages and fixed query counts (7), statement timeouts |
@@ -54,7 +54,7 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md` befor
 - **Every business rule the database can hold, it holds**: uniqueness (one memo per application), ranges and allowed values, "both or neither" pairs (`(quiet_from IS NULL) = (quiet_until IS NULL)`), and implications (`confirmed_at IS NULL OR marked_paid_at IS NOT NULL`). 159 checks and 25 unique constraints on 14 October.
 - **Each one has a test that writes the forbidden row with raw SQL and watches the database refuse it, by name** (`pytest.raises(IntegrityError, match="<rule>")`). **Enforced by** `tests/test_schema_rules.py`, which fails if any rule is never named by a test. It is a name check, so it proves each rule is named, not that its test is right. On 14 October it found 21 rules no test named; `tests/modules/test_database_refusals.py` now breaks each. One rule cannot be broken alone and is named there with the reason.
 - **The models and the migrations hold the same checks.** `alembic check` compares columns, indexes and keys but not checks; `tests/test_check_constraints.py` compares those.
-- **Append-only tables refuse every change at the database**: `UPDATE`, `DELETE` and `TRUNCATE` are refused by trigger on the deal record (its entries, checkpoints and outside timestamps) and the admin log (D-057). **Enforced by** `tests/test_schema_rules.py` and each table's model tests. Dispute events are written once by the app and fingerprinted in the deal record, but their table refuses nothing (gap 3). These triggers hold only against a database user that does not own the tables (gap 1).
+- **Append-only tables refuse every change at the database**: `UPDATE`, `DELETE` and `TRUNCATE` are refused by trigger on the deal record (its entries, checkpoints and outside timestamps) the admin log (D-057) and dispute events (item 99). **Enforced by** `tests/test_schema_rules.py` and each table's model tests. **And by permission**: the app's own login may only read and insert on these five tables (section 8), so a change is refused before a trigger is reached, and the login cannot switch the triggers off (`tests/modules/test_app_role.py`). Only the owner, used by the release step alone, could.
 - Deletion policy (hard delete, anonymise, retain) follows the validation pack's DPDP answer **(decision)**. Until then no `deleted_at` columns (none exist).
 
 ## 4. Personal data and embeddings
@@ -66,7 +66,7 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md` befor
 
 ## 5. Indexes
 
-- **Every foreign key is indexed** by an index whose first column is the key (a unique constraint counts). Without one, deleting the parent row scans the whole child table (PostgreSQL documentation, section 12). **Enforced by** `tests/test_schema_rules.py`. Three are not yet indexed (gap 2); the test names them, and fails if a fourth appears or one is fixed without the list changing.
+- **Every foreign key is indexed** by an index whose first column is the key (a unique constraint counts). Without one, deleting the parent row scans the whole child table (PostgreSQL documentation, section 12). A partial index counts only when it leaves out nothing but NULLs: one limited to open rows cannot find a closed one. **Enforced by** `tests/test_schema_rules.py`, with no exceptions since item 98 indexed the four that lacked one on 14 October.
 - Every column used in a `WHERE`, `ORDER BY` or `JOIN` on a list has a supporting index, composite in filter-then-sort order (`(account_id, created_at)`). *(review only)*; the query counts in `tests/query_counts.py` catch the per-row queries, not a missing index.
 - Partial indexes for hot subsets (`WHERE status = 'open'`, `WHERE read_at IS NULL`). GIN for array or JSONB containment **when a query uses it**: `creator.niches` has one; campaigns' niches and cities do not, because measured at 20,000 campaigns the planner chose the open-campaign index and filtered (D-017).
 - **No index without a query that uses it.** A new hot query shows its `EXPLAIN (ANALYZE, BUFFERS)` plan in the pull request. *(review only)*
@@ -77,7 +77,7 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md` befor
 - Generated with `uv run alembic revision --autogenerate`, then **read and edited by hand**. The docstring says what changes, why, each `ON DELETE` choice, the data impact, and what the downgrade does. One logical change per migration, named for it: `add notification_preference (D-079)`. *(review only)*
 - **One new migration in flight at a time** (`CLAUDE.md` section 1), so the chain cannot fork. **Enforced by** `tests/test_migration_check.py` (exactly one head) and a check that the test database is current before any test runs.
 - Every migration has a working `downgrade()`. **Enforced by** CI: `upgrade head`, `downgrade base`, `upgrade head` on a fresh database, then `alembic check` for drift.
-- **A downgrade that would destroy data that can never be recovered refuses** while that data exists (the admin log, invitations, answered dates, attribution, proof files and their readings, UPI IDs, blocks, the deal record's kinds), with a message saying why. Losing it must be a deliberate act, not a rollback. Nine migrations do this. Each refusal was proven by hand in the session that wrote it; no standing test repeats it (gap 6).
+- **A downgrade that would destroy data that can never be recovered refuses** while that data exists (the admin log, invitations, answered dates, attribution, proof files and their readings, UPI IDs, blocks, the deal record's kinds), with a message saying why. Losing it must be a deliberate act, not a rollback. Nine migrations do this. **Enforced by** `tests/modules/test_refusing_downgrades.py`, which writes the guarded data and runs each real `downgrade()` on the test's rolled-back connection; it also fails if a migration starts or stops refusing without its list changing (item 98).
 - **No migration may block writes on a table that holds data.** **Enforced by** Squawk 2.65.0 in CI on every migration a branch adds (D-050; `.squawk.toml` says which rules are off and why):
   - a new constraint on an existing table is added `NOT VALID`, then validated in a separate step (D-089 is the latest example);
   - indexes on existing tables are built `CONCURRENTLY`;
@@ -103,7 +103,10 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md` befor
 - **A restore is tested before launch** (D-062), and monthly after (item 90), by restoring into a scratch instance and running the app's readiness check against it. A backup never restored is not a backup. **Not yet done**: nothing is deployed.
 - **Recovery targets (decision before launch):** proposed at most 5 minutes of data lost and 1 hour to restore.
 - **Watching it:** Performance Insights and PostgreSQL logs to CloudWatch are on in production. A weekly slow-query report from `pg_stat_statements` against the budgets is item 95 **(not yet built)**.
-- **The app's database user owns nothing and can only read and write rows**: no superuser, no table ownership, no `CREATE`. Migrations run as a separate owner role. **Not true today** (gap 1): infra gives the app and the migration task the same credentials, the instance's master user, which owns every table.
+- **The app's database login owns nothing and can only read and write rows** (item 97, D-100):
+  - `app_writer`, a role without a login, holds the rights: `SELECT`, `INSERT`, `UPDATE` and `DELETE` on every table; only `SELECT` and `INSERT` on the five sealed tables; only `SELECT` on `alembic_version`; no `TRUNCATE`, no ownership, nothing that creates objects. Migration `0dbcaacb1030` grants them, and later tables get the row rights by default; a later sealed table revokes the rest itself.
+  - `nicheconnect_app`, the login the API and the nightly task use, is a member. The release step (`app/db/prepare.py`, the migration task) is the one thing that connects as the owner: it runs the migrations, makes DBOS's schema with `app_writer`'s access, and sets the login's password, sent as a SCRAM verifier so no log can hold it (`app/db/roles.py`).
+  - **Enforced by** `tests/modules/test_app_role.py`, which reads every table's rights from the catalogue, shows the login refused at each way around the rules, and runs a whole deal, a dispute and a report through the API on it; and by CI, which runs the suite as that login and only the tests marked `owner` as the owner (`testing.md` section 4).
 
 ## 9. Test data
 
@@ -113,18 +116,16 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md` befor
 
 ## 10. Gaps, named
 
-**Corrected on 14 October**, each found by reading the catalogue: the app's database user (it owns every table: gap 1); every foreign key indexed (three are not: gap 2); dispute events sealed (they are not: gap 3); every table having `id`, `created_at` and `updated_at` (six named exceptions); booleans named `is_…` (none are); dates named `_on` (three are not); a GIN index and a vocabulary check on every tag list (one index, and cities are free text); allowed values tied "in tests" (stronger: at import); restores "quarterly" (monthly, as item 90 says); and the sample phones (`+9100000000xx` cannot be stored).
+**Corrected on 14 October**, each found by reading the catalogue: the app's database user (it owned every table: fixed by item 97); every foreign key indexed (four were not: fixed by item 98); dispute events sealed (they were not: fixed by item 99); every table having `id`, `created_at` and `updated_at` (six named exceptions); booleans named `is_…` (none are); dates named `_on` (three are not); a GIN index and a vocabulary check on every tag list (one index, and cities are free text); allowed values tied "in tests" (stronger: at import); restores "quarterly" (monthly, as item 90 says); and the sample phones (`+9100000000xx` cannot be stored).
+
+**Closed the same day** (D-100): the app connecting as the table owner (item 97), four foreign keys without a usable index (item 98), dispute events unsealed (item 99), and the refusing downgrades untested (item 98).
 
 | # | Gap | Risk | Acting on it |
 |---|---|---|---|
-| 1 | **The app connects as the table owner.** Infra gives the API and the migration task one `DATABASE_URL`, the RDS master user, which owns every table it created. An owner can `ALTER TABLE … DISABLE TRIGGER` (PostgreSQL documentation), so the app's own credentials can switch off the deal record's seals, and drop or empty any table. The rule said otherwise until 14 October. | High, before launch: a stolen app secret or an injection flaw could rewrite the deal record unseen, which is what D-057 exists to prevent | Item 97: a separate migration role that owns the tables, and an app role granted only row reads and writes, each with its own secret. Infrastructure and security gates |
-| 2 | **Three foreign keys have no index**: `notification.application_id`, `notification.campaign_id`, `admin_action.admin_account_id`. The rule said "every foreign key" until 14 October. | Low at pilot scale: deleting a campaign or an account would scan the notification or admin log tables | Item 98: one migration, built `CONCURRENTLY`. Database gate |
-| 3 | **Dispute events are not sealed by the database.** The rule said they were until 14 October. Each event is fingerprinted in the deal record, but the table refuses nothing. | A changed event shows up only if someone compares it with the record | Item 99: the same trigger as the deal record. Database gate |
-| 4 | **No restore has ever been tested, and recovery targets are not decided** | A backup that fails when needed | D-062 point 5 before the first user; item 90 monthly after |
-| 5 | **No slow-query report** | Slow queries found by users, not by us | Item 95 |
-| 6 | **The refusing downgrades have no standing test** | A later change to one could let a rollback destroy data silently | A CI step that writes a row, attempts the downgrade and expects the refusal; proposed with item 98 |
-| 7 | **Free-text cities are limited per element only by the API** | A script writing directly could store a very long city | A per-element length check when the campaign table next changes |
-| 8 | Several rules are *(review only)*, among them nullable columns explaining NULL and `EXPLAIN` plans in pull requests | They hold only while someone reads for them | Each gains a test when one is practical; eleven gained one on 14 October |
+| 1 | **No restore has ever been tested, and recovery targets are not decided** | A backup that fails when needed | D-062 point 5 before the first user; item 90 monthly after |
+| 2 | **No slow-query report** | Slow queries found by users, not by us | Item 95 |
+| 3 | **Free-text cities are limited per element only by the API** | A script writing directly could store a very long city | A per-element length check when the campaign table next changes |
+| 4 | Several rules are *(review only)*, among them nullable columns explaining NULL and `EXPLAIN` plans in pull requests | They hold only while someone reads for them | Each gains a test when one is practical; eleven gained one on 14 October, and the app's login, the indexes and the refusing downgrades the next change |
 
 ## 11. How this file is kept true
 

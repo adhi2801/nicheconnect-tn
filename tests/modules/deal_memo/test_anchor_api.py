@@ -24,6 +24,10 @@ from app.modules.deal_memo.timestamp_authority import Stamp
 from tests.deal_flow import MEMOS_URL, User, accepted_memo, brand_user, creator_user
 from tests.factories import FIXED_NOW
 
+# The owner: each test clears the record with the triggers set aside, which
+# the app's own login may not do (item 97, tests/owner.py).
+pytestmark = pytest.mark.owner
+
 # Deals below are recorded at FIXED_NOW, so the next day's checkpoint holds them.
 DAY_AFTER = india_date(FIXED_NOW) + timedelta(days=1)
 

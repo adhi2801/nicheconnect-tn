@@ -141,7 +141,7 @@ def rows() -> Iterator[Rows]:
                     select(DealMemo.id).where(DealMemo.application_id.in_(applications))
                 )
             )
-            remove_deal_records(session, memo_ids)
+            remove_deal_records(memo_ids)
             session.execute(delete(DealMemo).where(DealMemo.id.in_(memo_ids)))
             # Repeats first: they point at the earlier application.
             session.execute(

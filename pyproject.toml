@@ -291,6 +291,11 @@ ignore_imports = [
 testpaths = ["tests"]
 # Quiet by default; CI adds coverage flags explicitly.
 addopts = "-q"
+# CI runs the suite as the app's own login, which may only read and write
+# rows (item 97), then runs these as the owner (tests/owner.py).
+markers = [
+    "owner: needs the database owner, not the app's login (a trigger shown refusing, a scratch schema, the cleanup bypass)",
+]
 
 [tool.coverage.run]
 source = ["app"]

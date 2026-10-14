@@ -156,6 +156,9 @@ def logged(db) -> AdminAction:
     return row
 
 
+# The owner: the app's own login is refused by permission before the trigger
+# this shows is reached (item 97, tests/owner.py).
+@pytest.mark.owner
 def test_the_log_cannot_be_changed_or_emptied(db):
     row = logged(db)
 

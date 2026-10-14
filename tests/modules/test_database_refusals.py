@@ -201,6 +201,9 @@ def test_a_dispute_event_breaking_a_rule_is_refused(db, deal, statement, rule):
     assert_refused(db, statement, rule, deal["dispute_event"])
 
 
+# The owner: the app's own login is refused by permission before the trigger
+# this shows is reached (item 97, tests/owner.py).
+@pytest.mark.owner
 @pytest.mark.parametrize(
     "statement",
     [

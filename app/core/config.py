@@ -8,6 +8,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # Keys must carry at least 256 bits (D-008). A token_urlsafe(32) value is
 # 43 characters, so 32 characters is the floor.
 MIN_KEY_LENGTH = 32
+# The app's own database login's password (item 97, app/db/roles.py).
+APP_DATABASE_PASSWORD = re.compile(r"[A-Za-z0-9]{32,128}")
 PLACEHOLDER_PREFIX = "change-me"
 
 # Every environment the app knows. Anything else is a typo, and a typo must
@@ -97,6 +99,10 @@ class Settings(BaseSettings):
     # "busy, retry" with a 503, instead of SQLAlchemy's 30 seconds and a 500
     # (item 5a, D-093).
     db_pool_timeout_seconds: float = Field(default=2.0, gt=0, le=30)
+    # The app's own login's password (item 97, D-100), given only to the
+    # release step (app/db/prepare.py), which sets it on the login. The app
+    # itself connects with DATABASE_URL; in production that is the login.
+    app_database_password: SecretStr | None = None
     # Requests one process works on at once. Below the pool's connections,
     # so every request let in can always get one: the load test froze a
     # process when 40 worker threads waited on 15 connections (D-092). One
@@ -122,6 +128,10 @@ class Settings(BaseSettings):
     # Background jobs (D-060). Off unless this instance should run them;
     # several instances may, since DBOS shares the work between them.
     run_jobs: bool = False
+    # Whether DBOS creates and upgrades its schema at start. Off in
+    # production, where the app's login may not create schemas and the
+    # release step does it as the owner (item 97, D-100).
+    dbos_migrate_at_start: bool = True
     # Login codes (D-058). The MSG91 settings are required only when
     # otp_sender is "msg91", and checked at startup when they are.
     otp_sender: OtpSenderName = "fake"
@@ -200,6 +210,21 @@ class Settings(BaseSettings):
                 "proof_reading_enabled is on, so ANTHROPIC_API_KEY must be set"
             )
         return self
+
+    @field_validator("app_database_password", mode="before")
+    @classmethod
+    def empty_password_is_none(cls, value: object) -> object:
+        return None if value == "" else value
+
+    @field_validator("app_database_password")
+    @classmethod
+    def usable_app_password(cls, value: SecretStr | None) -> SecretStr | None:
+        # Letters and digits, so SASLprep leaves it unchanged (app/db/roles.py).
+        if value is not None and not APP_DATABASE_PASSWORD.fullmatch(
+            value.get_secret_value()
+        ):
+            raise ValueError("must be 32 to 128 letters and digits")
+        return value
 
     @field_validator("uploads_bucket", mode="before")
     @classmethod
