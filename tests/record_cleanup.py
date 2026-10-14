@@ -16,14 +16,18 @@ record, and only step 2's outside timestamps would catch it.
 import uuid
 from collections.abc import Iterable
 
-from sqlalchemy import delete, text
+from sqlalchemy import delete, select, text
 from sqlalchemy.orm import Session
 
 from app.modules.deal_memo.record_models import DealRecordEntry
+from app.modules.disputes.event_models import DisputeEvent
+from app.modules.disputes.models import Dispute
+from app.modules.payment_status.models import PaymentStatus
 
 
 def remove_deal_records(session: Session, memo_ids: Iterable[uuid.UUID]) -> None:
-    """Delete these deals' entries, inside the caller's transaction.
+    """Delete these deals' record entries and dispute events, inside the
+    caller's transaction. Dispute events are sealed too, since item 99.
 
     The bypass is switched off again straight after, for the caller's later
     deletes need their cascades. Left on, deleting an account skipped
@@ -31,8 +35,18 @@ def remove_deal_records(session: Session, memo_ids: Iterable[uuid.UUID]) -> None
     nothing: found 10 October 2026, when a migration's downgrade tripped on
     them.
     """
+    memos = list(memo_ids)
     session.execute(text("SET LOCAL session_replication_role = replica"))
     session.execute(
-        delete(DealRecordEntry).where(DealRecordEntry.deal_memo_id.in_(list(memo_ids)))
+        delete(DealRecordEntry).where(DealRecordEntry.deal_memo_id.in_(memos))
+    )
+    session.execute(
+        delete(DisputeEvent).where(
+            DisputeEvent.dispute_id.in_(
+                select(Dispute.id)
+                .join(PaymentStatus, PaymentStatus.id == Dispute.payment_status_id)
+                .where(PaymentStatus.deal_memo_id.in_(memos))
+            )
+        )
     )
     session.execute(text("SET LOCAL session_replication_role = origin"))

@@ -8,6 +8,9 @@ Timestamps are the whole point. An account given on the day is worth more
 than one given a month later, and the order in which two people said things
 is often the only thing anybody can agree on afterwards.
 
+**Sealed like the deal record** (item 99, D-100): the database refuses any
+UPDATE, DELETE or TRUNCATE, so an entry once written stays as written.
+
 **Attachments are links, not files, for now.** D-028 expects screenshots to
 join the timeline, and where uploaded files live is still an open decision.
 Rather than guess at storage we cannot change later, an entry carries a link

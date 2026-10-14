@@ -182,19 +182,39 @@ def test_a_dispute_breaking_a_rule_is_refused(db, deal, statement, rule):
 @pytest.mark.parametrize(
     ("statement", "rule"),
     [
+        # Events are sealed (item 99), so each rule is broken by a new one,
+        # copied from a real event with one thing wrong.
         (
-            "UPDATE dispute_event "
-            "SET evidence_url = 'http://drive.google.com/file/d/1/view' WHERE id = :id",
+            "INSERT INTO dispute_event (dispute_id, actor_role, kind, evidence_url) "
+            "SELECT dispute_id, actor_role, 'evidence', "
+            "'http://drive.google.com/file/d/1/view' FROM dispute_event WHERE id = :id",
             "evidence_url_is_https",
         ),
         (
-            "UPDATE dispute_event SET note = NULL, evidence_url = NULL WHERE id = :id",
+            "INSERT INTO dispute_event (dispute_id, actor_role, kind) "
+            "SELECT dispute_id, actor_role, 'response' FROM dispute_event WHERE id = :id",
             "says_something",
         ),
     ],
 )
 def test_a_dispute_event_breaking_a_rule_is_refused(db, deal, statement, rule):
     assert_refused(db, statement, rule, deal["dispute_event"])
+
+
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "UPDATE dispute_event SET note = 'Rewritten later.' WHERE id = :id",
+        "DELETE FROM dispute_event WHERE id = :id",
+    ],
+)
+def test_a_dispute_event_once_written_never_changes(db, deal, statement):
+    """Item 99: the timeline is sealed like the deal record (D-057)."""
+    with (
+        pytest.raises(IntegrityError, match="dispute_event is append-only"),
+        db.begin_nested(),
+    ):
+        db.execute(text(statement), {"id": deal["dispute_event"]})
 
 
 # --- notifications ------------------------------------------------------------------------
