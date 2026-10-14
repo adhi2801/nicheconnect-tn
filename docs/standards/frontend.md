@@ -6,6 +6,21 @@
 
 Rules marked **(decision)** are open and are decided, with a `docs/DECISIONS.md` entry, when frontend work begins. Everything else is settled.
 
+**For:** whoever designs or builds the website or the apps, read in full before the first screen or line of frontend code (`CLAUDE.md` section 6). **Last checked on 14 October 2026**: every link resolved that day; the stack's versions are re-checked when frontend work starts, as section 2 says.
+
+**The ten dimensions** (`CLAUDE.md` section 5), and where this standard serves each:
+
+| Dimension | Here |
+|---|---|
+| Quality | Every rule measured by a tool or checked at a named release step (sections 11, 12, 14) |
+| Performance | Budgets on a budget Android phone, stricter than Google's thresholds (sections 3, 4) |
+| Design | The design system and its tokens (section 8); flows and copy are `ux.md` |
+| Security, privacy | The client's duties (section 10); the rules are `security.md` and `legal.md` |
+| Trust and safety | Flags shown beside text, links never made from people's words, report and block one tap away (sections 10, 14; `trust-and-safety.md` section 5) |
+| Architecture | One frontend repository, three apps, one core, a client generated from the contract (section 2) |
+| Research | Sources, below; the stack's evidence is `docs/PLATFORM_AND_TECH_PLAN.md` |
+| Novelty, business | Not here: `docs/COMPETITIVE_LANDSCAPE.md` and `docs/GO_TO_MARKET.md` |
+
 ---
 
 ## 1. Platforms and roles
@@ -186,6 +201,28 @@ Coverage floor: **90% of the shared core**, measured, never estimated; a high nu
 - [ ] Reviewed, CI green, and checked by a person on a real budget Android phone
 
 ---
+
+## What the backend added for the apps, since this file was written
+
+Each is in `docs/api/openapi.json`; the screens should use them rather than work around them.
+
+- **Push on phones** (D-095): `PUT /api/v1/me/devices` registers a phone's push token, `DELETE` removes it; logout takes the token, and logging out everywhere clears them all.
+- **A deal's dates in the phone's calendar** (item 69): `GET /api/v1/deal-memos/{id}/calendar.ics`, offered as "Add to calendar" on the deal screen; adding it again updates the same events.
+- **A reporter sees what became of each report** (item 102): `GET /api/v1/reports/mine`, and a `report_resolved` notification.
+- **A campaign's report a brand can hand on** (item 47): JSON and CSV.
+
+## Gaps, named
+
+| Gap | Acting on it |
+|---|---|
+| No frontend code exists, by decision (D-053), so every rule here is unproven against a real build | The first screens prove the CI gates in section 12 before features pile up |
+| Four choices are still open: the API client generator, the lint tool, the login provider, the deep-link provider | Decided with a decision entry when frontend work starts (section 2) |
+| The platform plan (D-046: both roles on all three clients) awaits Erode Harish | His confirmation, relayed by Adhi |
+| The design direction (`docs/DESIGN_DIRECTION.md`) awaits Erode Harish | The same |
+
+## How this file is kept true
+
+Re-checked when frontend work starts and at each release: every threshold against its source, every version against current releases (D-047's upgrade rule). A rule found untrue is corrected in the same change (`docs/README.md` section 0).
 
 ## Sources
 
