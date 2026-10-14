@@ -25,7 +25,6 @@ from app.core.export import (
     build_section,
 )
 from app.core.pagination import Slice, build_slice, older_than_cursor
-from app.modules.auth.blocks import blocked_between, not_blocked_with_brand
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import brand_is_active, brand_is_suspended
@@ -44,9 +43,10 @@ from app.modules.campaigns.exceptions import (
 )
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.notifications import service as notifications
+from app.modules.safety.blocks import blocked_between, not_blocked_with_brand
 
 # Tables this module answers for in a data export (see
-# tests/modules/auth/test_export_api.py, which fails if one is missed).
+# tests/modules/me/test_export_api.py, which fails if one is missed).
 EXPORTED_TABLES = frozenset({"campaign", "application"})
 
 CAMPAIGN_EXPORT_FIELDS = allow(
@@ -79,6 +79,7 @@ APPLICATION_EXPORT_FIELDS = allow(
     "rejection_note",
     "decline_reason",
     "status_changed_at",
+    "first_answered_at",
     "created_at",
     "updated_at",
 )
@@ -92,6 +93,26 @@ ALLOWED_TRANSITIONS: dict[str, frozenset[str]] = {
 }
 # Once creators can apply, the deal on offer must not change under them.
 EDITABLE_WHILE_OPEN = frozenset({"description", "deliverables", "applications_close_on"})
+
+
+def get_visible_campaign(
+    db: Session, campaign_id: uuid.UUID, account_id: uuid.UUID
+) -> Campaign:
+    """A campaign this account may read: its owner sees it in any status,
+    everyone else only while it is open.
+
+    Raises CampaignNotFound otherwise, never 403, so drafts stay private.
+    """
+    campaign = db.get(Campaign, campaign_id)
+    if campaign is None:
+        raise CampaignNotFound()
+    if campaign.status != "open":
+        owner_account_id = db.scalar(
+            select(Brand.account_id).where(Brand.id == campaign.brand_id)
+        )
+        if owner_account_id != account_id:
+            raise CampaignNotFound()
+    return campaign
 
 
 def get_brand_for_account(db: Session, account_id: uuid.UUID) -> Brand:
@@ -170,7 +191,7 @@ def change_status(
 
 
 def _paginate(
-    db: Session, query: Select[tuple[Campaign]], limit: int, cursor: str | None
+    db: Session, query: Select[Campaign], limit: int, cursor: str | None
 ) -> Slice[Campaign]:
     """Newest first, one row past the limit to know whether more exist."""
     if cursor is not None:
@@ -431,7 +452,11 @@ def move_application(
     """
     # Locked and read again before the check: two moves at once would both
     # pass it, and the last write would silently win (review audit, 4 Oct).
-    db.refresh(application, attribute_names=["status"], with_for_update=True)
+    db.refresh(
+        application,
+        attribute_names=["status", "first_answered_at"],
+        with_for_update=True,
+    )
     if new_status not in APPLICATION_MOVES[actor].get(application.status, frozenset()):
         db.rollback()
         raise ApplicationStatusConflict(
@@ -449,6 +474,15 @@ def move_application(
     application.decline_reason = decline_reason if new_status == "declined" else None
     application.status_changed_at = now
     application.updated_at = now
+    # The brand's first answer to someone who applied, kept once (item 28):
+    # how fast brands reply is measured from it. Read under the lock above,
+    # so two first answers at once cannot both write it.
+    if (
+        actor == "brand"
+        and application.origin == "applied"
+        and application.first_answered_at is None
+    ):
+        application.first_answered_at = now
 
     # Tell the other side what happened, in the same transaction: a record
     # that exists only if the change itself succeeded.
@@ -476,7 +510,7 @@ def move_application(
 
 
 def _paginate_applications(
-    db: Session, query: Select[tuple[Application]], limit: int, cursor: str | None
+    db: Session, query: Select[Application], limit: int, cursor: str | None
 ) -> Slice[Application]:
     if cursor is not None:
         query = query.where(

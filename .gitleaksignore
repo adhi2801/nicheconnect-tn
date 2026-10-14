@@ -7,3 +7,7 @@
 d2a3414f56855b97123bdc5f57309c262c0aab4e:tests/modules/payment_status/test_payment_api.py:generic-api-key:315
 a946a9299afe8a590fa6d707bbb2c8a66b6637d5:tests/core/test_idempotency.py:generic-api-key:31
 a946a9299afe8a590fa6d707bbb2c8a66b6637d5:tests/core/test_idempotency.py:generic-api-key:290
+
+# A made-up Instagram handle with digits in it, used by the tracing tests to
+# prove no handle or path detail reaches a span (D-094). Not a credential.
+5dff4a79058d263d2650d25775cc15e1ac892e2d:tests/core/test_tracing.py:generic-api-key:27

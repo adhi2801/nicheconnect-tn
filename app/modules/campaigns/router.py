@@ -6,7 +6,6 @@ from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, Request, Response, status
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.errors import problem_doc
@@ -16,10 +15,8 @@ from app.core.rate_limit import rate_limit
 from app.core.taxonomy import Niche
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
-from app.modules.auth.models.brand import Brand
 from app.modules.campaigns import service
 from app.modules.campaigns.dependencies import CurrentBrandProfile, OwnedCampaign
-from app.modules.campaigns.exceptions import CampaignNotFound
 from app.modules.campaigns.models import Campaign
 from app.modules.campaigns.schemas import (
     ApplicationCountsRead,
@@ -175,16 +172,7 @@ def read_campaign(
     account: CurrentAccount,
     db: Session = Depends(get_db),
 ) -> CampaignRead:
-    campaign = db.get(Campaign, campaign_id)
-    if campaign is None:
-        raise CampaignNotFound()
-    # A campaign that is not open is visible to its owner only.
-    if campaign.status != "open":
-        owner_account_id = db.scalar(
-            select(Brand.account_id).where(Brand.id == campaign.brand_id)
-        )
-        if owner_account_id != account.id:
-            raise CampaignNotFound()
+    campaign = service.get_visible_campaign(db, campaign_id, account.id)
     return CampaignRead.model_validate(campaign)
 
 

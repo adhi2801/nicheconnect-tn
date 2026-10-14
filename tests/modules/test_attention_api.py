@@ -17,7 +17,7 @@ from sqlalchemy import event
 
 from app.core.attention import BRAND_KINDS, CREATOR_KINDS
 from app.db.session import engine
-from app.modules.auth.attention_router import READ_LIMIT
+from app.modules.me.attention_router import READ_LIMIT
 from tests.deal_flow import (
     AGREED_DUE_ON,
     CAMPAIGNS_URL,

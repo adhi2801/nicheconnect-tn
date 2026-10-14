@@ -57,6 +57,12 @@ def test_ordinary_business_wording_is_not(text):
         ("Call me on 98765 43210 to discuss", "phone_number"),
         ("My number is +91-9876543210", "phone_number"),
         ("reach me at 919876543210", "phone_number"),
+        # Found by the property tests (D-090): each went unflagged before.
+        ("call 987 654 3210", "phone_number"),
+        ("call 9876 543 210", "phone_number"),
+        ("call 09876543210", "phone_number"),
+        ("call 98-76-54-32-10", "phone_number"),
+        ("call 98765.43210", "phone_number"),
         ("Mail priya.eats@gmail.com", "email"),
         ("Send it to meena.cooks@okhdfcbank", "upi_id"),
         ("ping wa.me/919876543210", "messaging_link"),
@@ -77,6 +83,11 @@ def test_contact_details_are_flagged_before_a_deal(text, flag):
         "Tracking number 4419876543210 from the courier.",
         "Invoice 98765432101 attached.",
         "Find our menu at ammasweets.in",
+        # Beside the wider phone pattern (D-090): ranges, dates and rates.
+        "Budget 6000 - 9000 per reel.",
+        "Shoot on 2026-10-12, post by 2026-10-20.",
+        "Average 9.1k views, 4.2% engagement, 7 reels a month.",
+        "Rates: ₹6,500 for a reel, ₹9,000 for two.",
     ],
 )
 def test_numbers_that_are_not_phones_are_not_flagged(text):

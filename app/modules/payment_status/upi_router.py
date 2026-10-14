@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
-from app.modules.auth import profiles
 from app.modules.auth.dependencies import CurrentCreator, get_now
 from app.modules.auth.models.creator import Creator
 from app.modules.deal_memo.dependencies import BrandMemo
@@ -16,6 +15,7 @@ from app.modules.payment_status import upi_service as service
 from app.modules.payment_status.exceptions import PaymentRecordNotFound
 from app.modules.payment_status.service import get_for_memo
 from app.modules.payment_status.upi_schemas import PayDetailsRead, UpiRead, UpiSet
+from app.modules.profiles import profile_service as profiles
 
 WRITE_LIMIT = "30 per minute"
 READ_LIMIT = "60 per minute"

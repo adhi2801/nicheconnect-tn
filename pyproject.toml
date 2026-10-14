@@ -68,6 +68,9 @@ dependencies = [
     # reaches a founder with its stack trace, scrubbed of personal data first
     # (app/core/error_tracking.py). Off unless SENTRY_DSN is set.
     "sentry-sdk==2.71.0",
+    "opentelemetry-api==1.45.1",
+    "opentelemetry-sdk==1.45.1",
+    "opentelemetry-exporter-otlp-proto-http==1.45.1",
 ]
 
 [dependency-groups]
@@ -87,6 +90,14 @@ dev = [
     "schemathesis==4.29.2",
     # Imitates S3 in tests, so the storage code is tested without AWS (D-065).
     "moto==5.2.3",
+    # Property-based tests (D-090): one test states a rule, Hypothesis tries
+    # hundreds of generated inputs and shrinks any failure to the smallest.
+    # Schemathesis pulls it in too; pinned here because tests import it.
+    "hypothesis==6.169.0",
+    "import-linter==2.15",
+]
+load = [
+    "locust==2.46.7",
 ]
 # The embedding stack (D-052), deliberately apart from the app:
 # 1. The API image does not need it: embedding is never on the request path.
@@ -99,6 +110,13 @@ dev = [
 ml = [
     "torch==2.14.1",
     "sentence-transformers==6.1.0",
+]
+# Automated mutation testing (D-091): breaks the rule-heavy code in thousands
+# of small ways and reports any break no test noticed. Its own group because
+# it brings a terminal UI and a parser the test suite does not need; installed
+# only by the nightly mutation workflow. Linux only (it forks).
+mutation = [
+    "mutmut==3.8.0",
 ]
 
 [tool.uv]
@@ -194,17 +212,97 @@ ignore_missing_imports = true
 module = ["sentence_transformers.*", "sentence_transformers"]
 ignore_missing_imports = true
 
+[tool.mutmut]
+# The pure rules where a silent mistake costs someone money or trust
+# (testing.md section 2, D-091): a deal's stage, payment state and its
+# dates, the approval clock, the record's fingerprint and Merkle proofs, the
+# contact and money flags, cursors, and the report spreadsheet.
+source_paths = ["app/"]
+only_mutate = [
+    "app/modules/deal_memo/stage.py",
+    "app/modules/deal_memo/merkle.py",
+    "app/modules/deal_memo/record_service.py",
+    "app/modules/deal_memo/proof_service.py",
+    "app/modules/payment_status/service.py",
+    "app/core/text_flags.py",
+    "app/core/pagination.py",
+    "app/modules/campaigns/report_csv.py",
+]
+# Only lines the chosen tests reach: a function they never call is not
+# evidence of a weak test, and would bury the real survivors.
+mutate_only_covered_lines = true
+# The wording of an error is for people; clients and tests branch on the
+# error's type and code, never its text (backend.md section 3). Mutating it
+# reports thirty "survivors" that are not weak tests.
+do_not_mutate_patterns = ['^\s*raise \w+\(".*"\)\s*$', '^\s*raise \w+\(f".*"\)\s*$']
+also_copy = ["alembic", "alembic.ini", "tests", "docs"]
+pytest_add_cli_args_test_selection = [
+    "tests/modules/deal_memo/test_deal_stage.py",
+    "tests/modules/deal_memo/test_deal_rules_properties.py",
+    "tests/modules/deal_memo/test_merkle.py",
+    "tests/modules/deal_memo/test_record_properties.py",
+    "tests/modules/deal_memo/test_deal_record_service.py",
+    "tests/modules/payment_status/test_payment_state.py",
+    "tests/modules/payment_status/test_payment_state_properties.py",
+    "tests/modules/payment_status/test_reference.py",
+    "tests/modules/payment_status/test_reference_properties.py",
+    "tests/core/test_text_flags.py",
+    "tests/core/test_text_flags_properties.py",
+    "tests/core/test_pagination_properties.py",
+    "tests/modules/campaigns/test_campaign_report_csv.py",
+]
+
+[tool.importlinter]
+# The module layers (D-099; backend.md section 1). A module may import only
+# from layers below it. CI fails on any import the other way, and on a new
+# module nobody placed in a layer (`exhaustive`).
+root_package = "app"
+
+[[tool.importlinter.contracts]]
+name = "Modules import only from the layers below them"
+type = "layers"
+containers = ["app.modules"]
+exhaustive = true
+layers = [
+    # The export includes the reports a person filed, a table admin owns.
+    "me",
+    "admin",
+    "matching | insights | passport",
+    # The deal domain may still import across itself until phase 2.
+    "campaigns : deal_memo : payment_status : disputes",
+    "profiles | safety | notifications",
+    "auth",
+]
+
+[[tool.importlinter.contracts]]
+name = "The core and the database never import a module"
+type = "forbidden"
+source_modules = ["app.core", "app.db"]
+forbidden_modules = ["app.modules"]
+# Two registries whose job is to list every module, named here so no other
+# file can do the same unnoticed: every table, so Alembic sees them all, and
+# every background job, so DBOS can run them.
+ignore_imports = [
+    "app.db.models -> app.modules.**",
+    "app.core.jobs -> app.modules.**",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # Quiet by default; CI adds coverage flags explicitly.
 addopts = "-q"
+# CI runs the suite as the app's own login, which may only read and write
+# rows (item 97), then runs these as the owner (tests/owner.py).
+markers = [
+    "owner: needs the database owner, not the app's login (a trigger shown refusing, a scratch schema, the cleanup bypass)",
+]
 
 [tool.coverage.run]
 source = ["app"]
 branch = true
 
 [tool.coverage.report]
-# A floor, not a goal (testing.md section 5): 80% overall here, and 90% for
+# A floor, not a goal (testing.md section 7): 80% overall here, and 90% for
 # every service.py, which CI checks file by file. Missing failure-case tests
 # fail review even when coverage is high. Counts branches as well as lines.
 fail_under = 80

@@ -349,9 +349,11 @@
                 "type": "null"
               }
             ],
+            "description": "When an admin resolved it; null while it is open (item 102)",
             "title": "Resolved At"
           },
           "status": {
+            "description": "`actioned`: an admin acted on it. `dismissed`: looked at, no action",
             "enum": [
               "open",
               "actioned",
@@ -383,8 +385,8 @@
           "note",
           "status",
           "created_at",
-          "reporter_account_id",
           "resolved_at",
+          "reporter_account_id",
           "resolution_note"
         ],
         "title": "AdminReportRead",
@@ -632,6 +634,19 @@
             ],
             "title": "Decline Reason"
           },
+          "first_answered_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the brand first shortlisted, accepted or rejected this application. Null while it waits, on invitations, and on answers given before 12 October 2026, when it was first kept",
+            "title": "First Answered At"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -768,6 +783,7 @@
           "rejection_note",
           "decline_reason",
           "status_changed_at",
+          "first_answered_at",
           "created_at",
           "updated_at",
           "text_flags"
@@ -1991,6 +2007,66 @@
           "text_flags"
         ],
         "title": "CampaignRead",
+        "type": "object"
+      },
+      "CampaignReportRead": {
+        "description": "Every deal on one campaign, with the proof behind it (item 47).\n\nWorked out from the records as of `generated_at`, never stored. Dates are\nTamil Nadu dates. The same report as a spreadsheet is\n`GET /api/v1/campaigns/{id}/report.csv`.",
+        "properties": {
+          "campaign_id": {
+            "format": "uuid",
+            "title": "Campaign Id",
+            "type": "string"
+          },
+          "campaign_type": {
+            "enum": [
+              "paid",
+              "barter",
+              "commission",
+              "local_business"
+            ],
+            "title": "Campaign Type",
+            "type": "string"
+          },
+          "deals": {
+            "items": {
+              "$ref": "#/components/schemas/ReportDealRead"
+            },
+            "title": "Deals",
+            "type": "array"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "open",
+              "closed",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/ReportTotalsRead"
+          }
+        },
+        "required": [
+          "campaign_id",
+          "title",
+          "status",
+          "campaign_type",
+          "generated_at",
+          "totals",
+          "deals"
+        ],
+        "title": "CampaignReportRead",
         "type": "object"
       },
       "CampaignSummaryRead": {
@@ -3284,6 +3360,105 @@
         "title": "DealStageCountsRead",
         "type": "object"
       },
+      "DeviceRead": {
+        "description": "A registered phone. Its token is never returned.",
+        "properties": {
+          "app_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "App Version"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "description": "Keep it to unregister this phone later",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "title": "Last Seen At",
+            "type": "string"
+          },
+          "platform": {
+            "enum": [
+              "android",
+              "ios",
+              "ios_live_activity"
+            ],
+            "title": "Platform",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "platform",
+          "app_version",
+          "last_seen_at",
+          "created_at"
+        ],
+        "title": "DeviceRead",
+        "type": "object"
+      },
+      "DeviceRegister": {
+        "additionalProperties": false,
+        "description": "Register this phone, or refresh it. Send on every app start.",
+        "properties": {
+          "app_version": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "1.4.0 (212)"
+            ],
+            "title": "App Version"
+          },
+          "platform": {
+            "description": "`ios_live_activity` for a Live Activity's own push token",
+            "enum": [
+              "android",
+              "ios",
+              "ios_live_activity"
+            ],
+            "title": "Platform",
+            "type": "string"
+          },
+          "token": {
+            "description": "The token Firebase (Android) or Apple (iPhone, Live Activity) gave this install. Sent in the body, never a URL, so it reaches no log",
+            "examples": [
+              "fMEP0vJqS0Kp1Xz9:APA91bH-example-token-from-firebase-0123456789"
+            ],
+            "maxLength": 1024,
+            "minLength": 32,
+            "pattern": "^[A-Za-z0-9:_.-]+$",
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "platform"
+        ],
+        "title": "DeviceRegister",
+        "type": "object"
+      },
       "DisputeClose": {
         "additionalProperties": false,
         "description": "How it ended. None of these say who was right.",
@@ -3929,6 +4104,21 @@
       "LogoutIn": {
         "additionalProperties": false,
         "properties": {
+          "device_token": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "minLength": 32,
+                "pattern": "^[A-Za-z0-9:_.-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "This phone's push token, to stop its notifications too",
+            "title": "Device Token"
+          },
           "refresh_token": {
             "description": "The refresh token from a login or an earlier refresh",
             "maxLength": 512,
@@ -4308,6 +4498,18 @@
             ],
             "title": "Cancelled At"
           },
+          "change_request_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the creator last asked to change, in their words; kept after the memo is sent again. Null until a request, and on requests made before 12 October 2026",
+            "title": "Change Request Message"
+          },
           "content_due_on": {
             "anyOf": [
               {
@@ -4330,6 +4532,19 @@
             "default": "INR",
             "title": "Currency",
             "type": "string"
+          },
+          "declined_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the creator declined. Null otherwise, and on memos declined before 12 October 2026, when it was first kept",
+            "title": "Declined At"
           },
           "deliverables": {
             "title": "Deliverables",
@@ -4455,6 +4670,8 @@
           "work_started_at",
           "cancelled_at",
           "cancellation_kind",
+          "declined_at",
+          "change_request_message",
           "created_at",
           "updated_at",
           "text_flags"
@@ -4643,6 +4860,18 @@
             ],
             "title": "Cancelled At"
           },
+          "change_request_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the creator last asked to change, in their words; kept after the memo is sent again. Null until a request, and on requests made before 12 October 2026",
+            "title": "Change Request Message"
+          },
           "content_due_on": {
             "anyOf": [
               {
@@ -4665,6 +4894,19 @@
             "default": "INR",
             "title": "Currency",
             "type": "string"
+          },
+          "declined_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the creator declined. Null otherwise, and on memos declined before 12 October 2026, when it was first kept",
+            "title": "Declined At"
           },
           "deliverables": {
             "title": "Deliverables",
@@ -4824,6 +5066,8 @@
           "work_started_at",
           "cancelled_at",
           "cancellation_kind",
+          "declined_at",
+          "change_request_message",
           "created_at",
           "updated_at",
           "stage",
@@ -4980,11 +5224,12 @@
                 "invitation_received",
                 "invitation_accepted",
                 "invitation_declined",
-                "invitation_withdrawn"
+                "invitation_withdrawn",
+                "report_resolved"
               ],
               "type": "string"
             },
-            "maxItems": 20,
+            "maxItems": 21,
             "title": "Muted Types",
             "type": "array"
           },
@@ -5056,7 +5301,8 @@
                 "invitation_received",
                 "invitation_accepted",
                 "invitation_declined",
-                "invitation_withdrawn"
+                "invitation_withdrawn",
+                "report_resolved"
               ],
               "type": "string"
             },
@@ -5102,7 +5348,8 @@
                 "invitation_received",
                 "invitation_accepted",
                 "invitation_declined",
-                "invitation_withdrawn"
+                "invitation_withdrawn",
+                "report_resolved"
               ],
               "type": "string"
             },
@@ -5222,7 +5469,8 @@
               "invitation_received",
               "invitation_accepted",
               "invitation_declined",
-              "invitation_withdrawn"
+              "invitation_withdrawn",
+              "report_resolved"
             ],
             "title": "Notification Type",
             "type": "string"
@@ -5889,6 +6137,34 @@
           "items"
         ],
         "title": "Page[PaymentListItem]",
+        "type": "object"
+      },
+      "Page_ReportRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReportRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as ?cursor= to get the next page",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[ReportRead]",
         "type": "object"
       },
       "PayDetailsRead": {
@@ -7810,6 +8086,378 @@
         "title": "ReportCreate",
         "type": "object"
       },
+      "ReportCreatorRead": {
+        "description": "The creator as the brand already sees them; nothing private.",
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "handle": {
+            "title": "Handle",
+            "type": "string"
+          }
+        },
+        "required": [
+          "display_name",
+          "handle"
+        ],
+        "title": "ReportCreatorRead",
+        "type": "object"
+      },
+      "ReportDealRead": {
+        "properties": {
+          "accepted_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted On"
+          },
+          "approved_by_clock": {
+            "title": "Approved By Clock",
+            "type": "boolean"
+          },
+          "approved_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the work was approved; by the clock, the day its review window ended (D-025)",
+            "title": "Approved On"
+          },
+          "content_due_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Due On"
+          },
+          "content_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The approved post's link",
+            "title": "Content Url"
+          },
+          "creator": {
+            "$ref": "#/components/schemas/ReportCreatorRead"
+          },
+          "currency": {
+            "const": "INR",
+            "default": "INR",
+            "title": "Currency",
+            "type": "string"
+          },
+          "deal_memo_id": {
+            "format": "uuid",
+            "title": "Deal Memo Id",
+            "type": "string"
+          },
+          "deliverables": {
+            "title": "Deliverables",
+            "type": "string"
+          },
+          "delivered_on_time": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "First sent on or before the agreed date. Null with no work sent yet, or no date agreed",
+            "title": "Delivered On Time"
+          },
+          "disclosure_confirmed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The creator's own confirmation that the post carries the ad label, as recorded (D-024). Null until work is approved",
+            "title": "Disclosure Confirmed"
+          },
+          "fee_amount_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for a barter deal",
+            "title": "Fee Amount Paise"
+          },
+          "first_submitted_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the creator first sent work, in Tamil Nadu",
+            "title": "First Submitted On"
+          },
+          "has_open_dispute": {
+            "title": "Has Open Dispute",
+            "type": "boolean"
+          },
+          "paid_on_time": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Marked as sent on or before the due date. Null until marked",
+            "title": "Paid On Time"
+          },
+          "payment_confirmed_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the creator confirmed it arrived",
+            "title": "Payment Confirmed On"
+          },
+          "payment_due_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Due On"
+          },
+          "payment_marked_paid_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the brand said it sent the money",
+            "title": "Payment Marked Paid On"
+          },
+          "payment_state": {
+            "anyOf": [
+              {
+                "enum": [
+                  "due",
+                  "late",
+                  "unpaid",
+                  "paid",
+                  "unconfirmed",
+                  "confirmed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null until the work is approved and a payment is due. Clients ignore values they do not know",
+            "title": "Payment State"
+          },
+          "record": {
+            "$ref": "#/components/schemas/ReportSealRead"
+          },
+          "results": {
+            "$ref": "#/components/schemas/ReportResultsRead"
+          },
+          "stage": {
+            "description": "Where the deal stands as of the report (D-076). Clients ignore values they do not know",
+            "enum": [
+              "draft",
+              "memo_sent",
+              "agreed",
+              "in_progress",
+              "payment",
+              "finished",
+              "declined",
+              "cancelled"
+            ],
+            "title": "Stage",
+            "type": "string"
+          },
+          "waiting_on": {
+            "anyOf": [
+              {
+                "enum": [
+                  "brand",
+                  "creator"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waiting On"
+          }
+        },
+        "required": [
+          "deal_memo_id",
+          "creator",
+          "stage",
+          "waiting_on",
+          "has_open_dispute",
+          "deliverables",
+          "content_due_on",
+          "fee_amount_paise",
+          "accepted_on",
+          "first_submitted_on",
+          "delivered_on_time",
+          "approved_on",
+          "approved_by_clock",
+          "content_url",
+          "disclosure_confirmed",
+          "payment_state",
+          "payment_due_on",
+          "payment_marked_paid_on",
+          "payment_confirmed_on",
+          "paid_on_time",
+          "results",
+          "record"
+        ],
+        "title": "ReportDealRead",
+        "type": "object"
+      },
+      "ReportNumbersRead": {
+        "description": "Each figure summed over the counted readings; null when none showed it.",
+        "properties": {
+          "comments": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comments"
+          },
+          "impressions": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Impressions"
+          },
+          "likes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Likes"
+          },
+          "reach": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reach"
+          },
+          "saves": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saves"
+          },
+          "shares": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shares"
+          },
+          "views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views"
+          }
+        },
+        "required": [
+          "views",
+          "reach",
+          "impressions",
+          "likes",
+          "comments",
+          "saves",
+          "shares"
+        ],
+        "title": "ReportNumbersRead",
+        "type": "object"
+      },
       "ReportRead": {
         "description": "A report, as the person who made it sees it. Who handled it is not shown.",
         "properties": {
@@ -7845,7 +8493,21 @@
             ],
             "title": "Note"
           },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When an admin resolved it; null while it is open (item 102)",
+            "title": "Resolved At"
+          },
           "status": {
+            "description": "`actioned`: an admin acted on it. `dismissed`: looked at, no action",
             "enum": [
               "open",
               "actioned",
@@ -7876,9 +8538,187 @@
           "category",
           "note",
           "status",
-          "created_at"
+          "created_at",
+          "resolved_at"
         ],
         "title": "ReportRead",
+        "type": "object"
+      },
+      "ReportResultsRead": {
+        "description": "What the approved work's screenshots said (D-070).\n\n**Read from screenshots, never verified**: a screenshot can be edited.\nReadings the creator marked as wrong are counted apart and left out of\nthe numbers.",
+        "properties": {
+          "includes_abbreviated": {
+            "description": "A figure was shown abbreviated on screen (such as 12.5K), so a sum is not exact",
+            "title": "Includes Abbreviated",
+            "type": "boolean"
+          },
+          "numbers": {
+            "$ref": "#/components/schemas/ReportNumbersRead"
+          },
+          "readings": {
+            "description": "Screenshots read and counted in the numbers",
+            "title": "Readings",
+            "type": "integer"
+          },
+          "readings_marked_wrong": {
+            "description": "Readings the creator said are wrong: left out of the numbers",
+            "title": "Readings Marked Wrong",
+            "type": "integer"
+          },
+          "source": {
+            "const": "read_from_screenshots",
+            "default": "read_from_screenshots",
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "readings",
+          "readings_marked_wrong",
+          "includes_abbreviated",
+          "numbers"
+        ],
+        "title": "ReportResultsRead",
+        "type": "object"
+      },
+      "ReportSealRead": {
+        "description": "The deal record behind this line (D-057, D-060).",
+        "properties": {
+          "entries": {
+            "title": "Entries",
+            "type": "integer"
+          },
+          "intact": {
+            "description": "Every entry's seal checks against the one before",
+            "title": "Intact",
+            "type": "boolean"
+          },
+          "latest_seal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SHA-256 of the record's latest entry, as hex. Keep it to catch a rewrite later; `GET /api/v1/deal-memos/{id}/record` shows every entry",
+            "examples": [
+              "5f1c0b9e4a7d2c3b8e6f0a1d2c3b4a5f6e7d8c9b0a1f2e3d4c5b6a7f8e9d0c1b"
+            ],
+            "title": "Latest Seal"
+          },
+          "stamped_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The first daily checkpoint holding the latest seal that an outside timestamp authority signed, as a Tamil Nadu date. Null until the next one. `GET /api/v1/deal-memos/{id}/record/proof` gives the proof that checks it",
+            "title": "Stamped On"
+          }
+        },
+        "required": [
+          "intact",
+          "entries",
+          "latest_seal",
+          "stamped_on"
+        ],
+        "title": "ReportSealRead",
+        "type": "object"
+      },
+      "ReportTotalsRead": {
+        "properties": {
+          "agreed_value_paise": {
+            "description": "Fees of the agreed deals",
+            "title": "Agreed Value Paise",
+            "type": "integer"
+          },
+          "applications": {
+            "$ref": "#/components/schemas/ApplicationCountsRead"
+          },
+          "barter_deals_agreed": {
+            "title": "Barter Deals Agreed",
+            "type": "integer"
+          },
+          "confirmed_paise": {
+            "description": "Confirmed by the creator as arrived",
+            "title": "Confirmed Paise",
+            "type": "integer"
+          },
+          "currency": {
+            "const": "INR",
+            "default": "INR",
+            "title": "Currency",
+            "type": "string"
+          },
+          "deals": {
+            "description": "Memos sent, in any stage; drafts are left out",
+            "title": "Deals",
+            "type": "integer"
+          },
+          "deals_agreed": {
+            "description": "Agreed and not cancelled",
+            "title": "Deals Agreed",
+            "type": "integer"
+          },
+          "deals_finished": {
+            "title": "Deals Finished",
+            "type": "integer"
+          },
+          "delivered_on_time": {
+            "title": "Delivered On Time",
+            "type": "integer"
+          },
+          "deliveries_judged": {
+            "description": "Deals with an agreed date whose work was sent",
+            "title": "Deliveries Judged",
+            "type": "integer"
+          },
+          "marked_paid_paise": {
+            "description": "Said by the brand to be sent",
+            "title": "Marked Paid Paise",
+            "type": "integer"
+          },
+          "payments_sent": {
+            "description": "Payments the brand marked as sent",
+            "title": "Payments Sent",
+            "type": "integer"
+          },
+          "payments_sent_on_time": {
+            "title": "Payments Sent On Time",
+            "type": "integer"
+          },
+          "records_intact": {
+            "description": "Every deal's record checks",
+            "title": "Records Intact",
+            "type": "boolean"
+          },
+          "results": {
+            "$ref": "#/components/schemas/ReportResultsRead"
+          }
+        },
+        "required": [
+          "applications",
+          "deals",
+          "deals_agreed",
+          "deals_finished",
+          "barter_deals_agreed",
+          "agreed_value_paise",
+          "marked_paid_paise",
+          "confirmed_paise",
+          "deliveries_judged",
+          "delivered_on_time",
+          "payments_sent",
+          "payments_sent_on_time",
+          "results",
+          "records_intact"
+        ],
+        "title": "ReportTotalsRead",
         "type": "object"
       },
       "ResolveReportIn": {
@@ -8261,6 +9101,24 @@
               }
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "summary": "How to report a security problem",
@@ -8374,6 +9232,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -8461,6 +9337,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -8824,6 +9718,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -8935,6 +9847,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -9036,6 +9966,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -9244,6 +10192,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -9385,6 +10351,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -9456,6 +10440,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -9551,6 +10553,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -10516,7 +11536,7 @@
     },
     "/api/v1/auth/logout": {
       "post": {
-        "description": "Ends the login the refresh token belongs to, including tokens it was rotated from. Always returns 204, even for an unknown token, so nobody can test whether a token exists. Limit: 30 requests per minute per IP address.",
+        "description": "Ends the login the refresh token belongs to, including tokens it was rotated from, and, given this phone's `device_token`, its push notifications. Always returns 204, even for an unknown token, so nobody can test whether a token exists. Limit: 30 requests per minute per IP address.",
         "operationId": "logout_api_v1_auth_logout_post",
         "requestBody": {
           "content": {
@@ -10563,6 +11583,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "summary": "Log out of this device",
@@ -10573,7 +11611,7 @@
     },
     "/api/v1/auth/logout-all": {
       "post": {
-        "description": "Ends every session of the signed-in account, on all devices. Needs a valid access token. Limit: 30 requests per minute per IP address.",
+        "description": "Ends every session of the signed-in account, on all devices, and stops push notifications to all of them. Needs a valid access token. Limit: 30 requests per minute per IP address.",
         "operationId": "logout_all_api_v1_auth_logout_all_post",
         "responses": {
           "200": {
@@ -10607,6 +11645,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -10656,6 +11712,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -10725,6 +11799,24 @@
               "application/problem+json": {}
             },
             "description": "Too many codes requested; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "summary": "Send a one-time login code to a phone",
@@ -10801,6 +11893,24 @@
               "application/problem+json": {}
             },
             "description": "Too many attempts; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "summary": "Log in with a one-time code",
@@ -10876,6 +11986,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "summary": "Get a new access token with a refresh token",
@@ -10942,6 +12070,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -11414,6 +12560,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -11499,6 +12663,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -11637,6 +12819,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -11941,6 +13141,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -12039,6 +13257,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -12121,6 +13357,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -12433,6 +13687,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -13110,6 +14382,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -13253,6 +14543,256 @@
         ]
       }
     },
+    "/api/v1/campaigns/{campaign_id}/report": {
+      "get": {
+        "description": "For the owning brand: every deal on the campaign (drafts left out) with its creator, terms, delivery, approval, payment, the results read from its screenshots, and the deal record's latest seal, plus totals. Worked out as of now, never stored. Results are read from screenshots, never verified. The same as a spreadsheet: `/report.csv`.",
+        "operationId": "campaign_report_api_v1_campaigns__campaign_id__report_get",
+        "parameters": [
+          {
+            "description": "The campaign's id",
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "description": "The campaign's id",
+              "format": "uuid",
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignReportRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only brand accounts can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such campaign, or it is not yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The brand profile has not been created yet"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The campaign id is not a valid id"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "A campaign report to hand on",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/api/v1/campaigns/{campaign_id}/report.csv": {
+      "get": {
+        "description": "The campaign report's deals as CSV, one row per deal, for Excel, Google Sheets or Numbers: UTF-8 with a byte-order mark, money in rupees, Tamil Nadu dates, and any cell a spreadsheet would run as a formula written with a leading apostrophe. Saved as a file. The owning brand only.",
+        "operationId": "campaign_report_csv_api_v1_campaigns__campaign_id__report_csv_get",
+        "parameters": [
+          {
+            "description": "The campaign's id",
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "description": "The campaign's id",
+              "format": "uuid",
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The report as CSV, one row per deal"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only brand accounts can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such campaign, or it is not yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The brand profile has not been created yet"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The campaign id is not a valid id"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "A campaign report as a spreadsheet",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
     "/api/v1/campaigns/{campaign_id}/summary": {
       "get": {
         "description": "For the owning brand: applications by status, deals by stage, how many deals are agreed and finished, how many wait on the brand, and whether the campaign is complete. Worked out as of now, never stored.",
@@ -13346,6 +14886,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -13416,6 +14974,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "summary": "Cities with public figures",
@@ -13495,6 +15071,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "summary": "A city's public figures",
@@ -13779,6 +15373,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -13866,6 +15478,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "summary": "Read a creator's public profile",
@@ -13932,6 +15562,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -14264,6 +15912,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -14364,6 +16030,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -14439,6 +16123,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -14530,6 +16232,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -14647,6 +16367,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -14722,6 +16460,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -14946,6 +16702,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -15630,6 +17404,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -15699,6 +17491,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -15917,6 +17727,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -16013,6 +17841,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -16109,6 +17955,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -16407,6 +18271,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -16500,6 +18382,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -17133,6 +19033,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -17358,6 +19276,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -18062,6 +19998,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -18161,6 +20115,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -19144,6 +21116,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -19259,6 +21249,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -19879,6 +21887,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -19969,6 +21995,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -20171,6 +22215,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -20181,6 +22243,200 @@
         "summary": "Unblock",
         "tags": [
           "blocking"
+        ]
+      }
+    },
+    "/api/v1/me/devices": {
+      "put": {
+        "description": "Records the push token Firebase or Apple gave this install, or refreshes it; send it on every app start and whenever the token changes. Safe to repeat. A token already registered to another account moves to this one, so a phone handed on stops showing the last person's notifications. Each account keeps its 10 most recently seen phones. The token is never returned; keep the `id` to unregister.",
+        "operationId": "register_device_api_v1_me_devices_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceRegister"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A field is missing or invalid"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Register this phone for push notifications",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/me/devices/{device_id}": {
+      "delete": {
+        "description": "Unregisters one of your phones, by the `id` registering it returned. Logging out of a phone does this too, when the app sends its token.",
+        "operationId": "remove_device_api_v1_me_devices__device_id__delete",
+        "parameters": [
+          {
+            "description": "The id registering returned",
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "description": "The id registering returned",
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such device, or it is not yours"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The device id is not a valid id"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Stop push notifications to a phone",
+        "tags": [
+          "notifications"
         ]
       }
     },
@@ -20220,6 +22476,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -20280,6 +22554,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -20340,6 +22632,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -20389,6 +22699,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -20467,6 +22795,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -20571,6 +22917,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -20716,6 +23080,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -20974,6 +23356,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -21045,6 +23445,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -21197,6 +23615,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -21358,6 +23794,114 @@
         ]
       }
     },
+    "/api/v1/reports/mine": {
+      "get": {
+        "description": "Every report you made, newest first, with its status and when it was resolved. When an admin resolves one you also get a `report_resolved` notification. Who handled it, and their note, are never shown.",
+        "operationId": "list_my_reports_api_v1_reports_mine_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ReportRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A query parameter or the cursor is invalid"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My reports, and what became of each",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
     "/healthz": {
       "get": {
         "description": "Answers as long as the process is running, without touching the database or Redis. For a deployment platform deciding whether to restart it.",
@@ -21383,6 +23927,24 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "summary": "Liveness check"

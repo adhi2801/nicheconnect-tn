@@ -11,30 +11,24 @@ from app.core.error_tracking import init_error_tracking
 from app.core.errors import problem_doc, problem_response, register_error_handlers
 from app.core.health import HealthRead, ReadinessRead, run_readiness_checks
 from app.core.idempotent_route import set_identity_resolver
+from app.core.load_shedding import LoadSheddingMiddleware
 from app.core.rate_limit import limiter
 from app.core.request_id import RequestIdMiddleware
 from app.core.security_headers import SecurityHeadersMiddleware
 from app.core.security_txt import router as security_txt_router
+from app.core.tracing import TracingMiddleware, init_tracing, instrument_engine
 from app.core.unexpected_error import UnexpectedErrorMiddleware
-from app.modules.auth.admin_router import router as admin_router
-from app.modules.auth.attention_router import router as attention_router
+from app.db.session import engine
+from app.modules.admin.admin_router import router as admin_router
+from app.modules.admin.numbers_router import router as numbers_router
+from app.modules.admin.report_router import router as report_router
 from app.modules.auth.attribution_router import router as attribution_router
-from app.modules.auth.availability_router import router as availability_router
-from app.modules.auth.block_router import router as block_router
-from app.modules.auth.city_figures_router import router as city_figures_router
 from app.modules.auth.dependencies import idempotency_identity
-from app.modules.auth.export_router import router as export_router
-from app.modules.auth.media_kit_router import router as media_kit_router
-from app.modules.auth.numbers_router import router as numbers_router
-from app.modules.auth.profile_router import brand_router, creator_router
-from app.modules.auth.public_router import router as public_router
-from app.modules.auth.rate_card_router import router as rate_card_router
-from app.modules.auth.rate_guidance_router import router as rate_guidance_router
-from app.modules.auth.report_router import router as report_router
+from app.modules.auth.device_router import router as devices_router
 from app.modules.auth.router import router as auth_router
-from app.modules.auth.search_router import router as search_router
 from app.modules.campaigns.application_router import router as applications_router
 from app.modules.campaigns.invitation_router import router as invitations_router
+from app.modules.campaigns.report_router import router as campaign_report_router
 from app.modules.campaigns.router import router as campaigns_router
 from app.modules.deal_memo.delivery_router import router as delivery_router
 from app.modules.deal_memo.proof_router import router as proof_router
@@ -43,16 +37,27 @@ from app.modules.deal_memo.repeat_router import router as repeat_router
 from app.modules.deal_memo.response_times_router import router as response_times_router
 from app.modules.deal_memo.router import router as deal_memos_router
 from app.modules.disputes.router import router as disputes_router
+from app.modules.insights.city_figures_router import router as city_figures_router
+from app.modules.insights.rate_guidance_router import router as rate_guidance_router
 from app.modules.matching.router import router as matching_router
+from app.modules.matching.search_router import router as search_router
+from app.modules.me.attention_router import router as attention_router
+from app.modules.me.export_router import router as export_router
 from app.modules.notifications.preference_router import (
     router as notification_preferences_router,
 )
 from app.modules.notifications.router import router as notifications_router
+from app.modules.passport.media_kit_router import router as media_kit_router
+from app.modules.passport.public_router import router as public_router
 from app.modules.payment_status.brand_router import router as reliability_router
 from app.modules.payment_status.bulk_router import router as bulk_payments_router
 from app.modules.payment_status.mine_router import router as my_payments_router
 from app.modules.payment_status.router import router as payment_router
 from app.modules.payment_status.upi_router import router as upi_router
+from app.modules.profiles.availability_router import router as availability_router
+from app.modules.profiles.profile_router import brand_router, creator_router
+from app.modules.profiles.rate_card_router import router as rate_card_router
+from app.modules.safety.block_router import router as block_router
 
 # Before the app exists, so the error tracker sees it built (D-074). Off
 # unless SENTRY_DSN is set.
@@ -89,6 +94,15 @@ register_error_handlers(app)
 # earns a 429 rather than an endless stream of cheap 413s.
 app.add_middleware(BodyLimitMiddleware)
 app.add_middleware(SlowAPIMiddleware)
+# Overload becomes a quick 503 "busy" instead of a freeze (D-093). Outside
+# the rate limiter, so a request turned away costs no Valkey round trip;
+# inside the error, CORS, request-ID and security layers, so the 503 carries
+# all of them.
+app.add_middleware(
+    LoadSheddingMiddleware,
+    max_in_flight=settings.max_in_flight_requests,
+    queue_ms=settings.busy_queue_ms,
+)
 # Outside the rate limiter and the body limit, so a crash in either (Redis
 # down, say) still becomes our usual 500, not a bare one (D-045).
 app.add_middleware(UnexpectedErrorMiddleware)
@@ -102,6 +116,13 @@ app.add_middleware(RequestIdMiddleware)
 # Added last so it wraps everything, including the 413, 429 and 500 that the
 # middlewares above generate on their own.
 app.add_middleware(SecurityHeadersMiddleware)
+# Tracing (D-094), only when TRACES_ENDPOINT is set. Outermost of all, so a
+# request's span covers everything, a 503 "busy" or a 500 included; and each
+# database query inside it becomes a child span.
+tracer_provider = init_tracing(settings)
+if tracer_provider is not None:
+    app.add_middleware(TracingMiddleware, tracer_provider=tracer_provider)
+    instrument_engine(engine, tracer_provider)
 
 app.include_router(security_txt_router)
 app.include_router(auth_router)
@@ -125,9 +146,11 @@ app.include_router(attribution_router)
 app.include_router(media_kit_router)
 app.include_router(rate_guidance_router)
 app.include_router(campaigns_router)
+app.include_router(campaign_report_router)
 app.include_router(applications_router)
 app.include_router(invitations_router)
 app.include_router(notifications_router)
+app.include_router(devices_router)
 app.include_router(notification_preferences_router)
 app.include_router(deal_memos_router)
 app.include_router(deal_record_router)

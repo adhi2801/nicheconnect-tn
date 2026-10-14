@@ -57,6 +57,9 @@ MAX_WINDOW_DAYS = 30
 MAX_USAGE_RIGHTS_DAYS = 3650
 DELIVERABLES_MAX_LENGTH = 2000
 TERMS_MAX_LENGTH = 2000
+# The creator's own words when sending a memo back (item 25).
+CHANGE_REQUEST_MIN_LENGTH = 5
+CHANGE_REQUEST_MAX_LENGTH = 1000
 
 
 class DealMemo(Base):
@@ -101,6 +104,19 @@ class DealMemo(Base):
         CheckConstraint(
             f"extra_terms IS NULL OR char_length(extra_terms) <= {TERMS_MAX_LENGTH}",
             name="extra_terms_length",
+        ),
+        # A decline has a date, and nothing else does (item 24). Memos declined
+        # before the column existed keep it empty: a date is never invented.
+        CheckConstraint(
+            "declined_at IS NULL OR status = 'declined'",
+            name="declined_at_only_if_declined",
+        ),
+        # Only a memo that was sent back carries the creator's words (item 25).
+        CheckConstraint(
+            "change_request_message IS NULL OR (revision_count > 0"
+            " AND char_length(btrim(change_request_message))"
+            f" BETWEEN {CHANGE_REQUEST_MIN_LENGTH} AND {CHANGE_REQUEST_MAX_LENGTH})",
+            name="change_request_message_needs_request",
         ),
         # The brand's and creator's memo lists, newest first.
         Index("ix_deal_memo_status_created_at", "status", "created_at"),
@@ -169,6 +185,15 @@ class DealMemo(Base):
         DateTime(timezone=True), nullable=True
     )
     cancellation_kind: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # When the creator declined. NULL on any other memo, and on memos declined
+    # before 12 October 2026, when it was first kept (item 24).
+    declined_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # What the creator asked to change, in their words: the latest request,
+    # kept after the brand sends the memo again so both can see what was
+    # asked. NULL until a request, and on requests made before it was kept.
+    change_request_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

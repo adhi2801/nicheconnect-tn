@@ -1,10 +1,16 @@
 """What a match looks like on the wire (D-052, backlog D3)."""
 
+import uuid
 from datetime import date
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+)
 
-from app.modules.auth.schemas import PublicCreatorSummary
+from app.modules.auth.schemas import ChannelPlatform, PublicCreatorSummary
 from app.modules.campaigns.schemas import CampaignRead
 from app.modules.payment_status.schemas import BrandReliabilityRead
 
@@ -125,4 +131,39 @@ class CampaignMatchesRead(BaseModel):
             "newest first. Say so rather than presenting it as a ranking"
         ),
         examples=[True],
+    )
+
+
+class SearchChannelRead(BaseModel):
+    """A channel's size, as the creator stated it and when."""
+
+    platform: ChannelPlatform
+    followers: int
+    figures_as_of: date
+    self_reported: Literal[True] = Field(
+        default=True,
+        description="Always true. The creator's number, never verified by us",
+    )
+
+
+class CreatorSearchResultRead(BaseModel):
+    """One creator in a brand's search: enough to decide whether to open the media kit."""
+
+    creator_id: uuid.UUID
+    handle: str
+    display_name: str
+    city: str
+    niches: list[str]
+    bio: str | None
+    member_since: str = Field(examples=["2026-09"])
+    channels: list[SearchChannelRead]
+    from_price_paise: int | None = Field(
+        description=(
+            "The cheapest package that answers the search (of the format and "
+            "platform asked for, if any). Null when the creator lists none"
+        )
+    )
+    currency: str
+    booked_until: date | None = Field(
+        description="The last day the creator is not taking new work; null if taking work today"
     )

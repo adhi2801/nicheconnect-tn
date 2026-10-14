@@ -19,10 +19,11 @@ from app.core.export import (
     build_section,
 )
 from app.core.pagination import Slice, build_slice, older_than_cursor
+from app.modules.notifications.exceptions import NotificationNotFound
 from app.modules.notifications.models import Notification
 
 # Tables this module answers for in a data export. The completeness test in
-# tests/modules/auth/test_export_api.py reads this, so a new table here
+# tests/modules/me/test_export_api.py reads this, so a new table here
 # cannot be left out of an export by accident.
 EXPORTED_TABLES = frozenset({"notification"})
 
@@ -86,6 +87,25 @@ def list_for_account(
         ).all()
     )
     return build_slice(rows, limit, key=lambda row: (row.created_at, row.id))
+
+
+def get_own(
+    db: Session, notification_id: uuid.UUID, account_id: uuid.UUID
+) -> Notification:
+    """A notification belonging to this account.
+
+    Raises NotificationNotFound for an unknown id or someone else's, never
+    403, so its existence is not confirmed.
+    """
+    notification = db.scalars(
+        select(Notification).where(
+            Notification.id == notification_id,
+            Notification.account_id == account_id,
+        )
+    ).first()
+    if notification is None:
+        raise NotificationNotFound()
+    return notification
 
 
 def unread_count(db: Session, account_id: uuid.UUID) -> int:

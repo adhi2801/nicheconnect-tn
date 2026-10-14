@@ -8,8 +8,14 @@ from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app.core.errors import DomainError
 from app.db.session import get_db
-from app.modules.auth.exceptions import AccountSuspended, InvalidToken, RoleNotAllowed
+from app.modules.auth.exceptions import (
+    AccountSuspended,
+    AdminNotFound,
+    InvalidToken,
+    RoleNotAllowed,
+)
 from app.modules.auth.models.account import Account
 from app.modules.auth.tokens import account_id_for_scoping, decode_access_token
 
@@ -84,3 +90,26 @@ def require_role(role: str) -> Callable[[Account], Account]:
 
 CurrentBrand = Annotated[Account, Depends(require_role("brand"))]
 CurrentCreator = Annotated[Account, Depends(require_role("creator"))]
+
+
+def get_admin(
+    request: Request,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+    db: Annotated[Session, Depends(get_db)],
+    now: Annotated[datetime, Depends(get_now)],
+) -> Account:
+    """The signed-in admin, or 404 for anyone else (D-061).
+
+    Here, beside every other access check, so any module may guard a route
+    for admins without importing the admin API above it (D-099).
+    """
+    try:
+        account = get_current_account(request, credentials, db, now)
+    except DomainError:
+        raise AdminNotFound() from None
+    if account.role != "admin":
+        raise AdminNotFound()
+    return account
+
+
+CurrentAdmin = Annotated[Account, Depends(get_admin)]

@@ -54,6 +54,10 @@ jobs:
     # Test-only values (security.md section 5). Never real keys.
     env:
       DATABASE_URL: postgresql+psycopg://niche:niche@localhost:5432/nicheconnect
+      # The app's own login (item 97, D-100), made by the release step below.
+      # Test-only, like the keys: letters and digits, as the release step needs.
+      APP_DATABASE_PASSWORD: citestonlyappdatabasepasswordnotasecret0003
+      APP_LOGIN_DATABASE_URL: postgresql+psycopg://nicheconnect_app:citestonlyappdatabasepasswordnotasecret0003@localhost:5432/nicheconnect
       REDIS_URL: redis://localhost:6379/0
       SECRET_KEY: ci-test-only-signing-key-not-a-secret-0001
       OTP_HASH_KEY: ci-test-only-otp-hash-key-not-a-secret-0002
@@ -136,6 +140,12 @@ jobs:
       - name: Type check
         run: mypy
 
+      # The module layers (D-099, backend.md section 1): a module imports only
+      # from layers below it, and every module is placed in a layer. Catches
+      # the drift that grew auth to 51 files before anyone noticed.
+      - name: Check the module layers
+        run: lint-imports --no-cache
+
       # D-047 locks Squawk as the migration linter, D-050 wires it in. It
       # reads the SQL a new migration would run and fails on what would lock
       # a busy table: a constraint added without NOT VALID, a required column
@@ -164,23 +174,47 @@ jobs:
       - name: Check models match the database
         run: alembic check
 
-      # Coverage is measured on the same run, and the 80% overall floor in
-      # pyproject.toml fails it (testing.md section 5).
+      # The release step exactly as the migration task runs it in production
+      # (item 97, D-100): migrations (already applied, so a no-op), DBOS's
+      # schema with the app role's access, and the app's own login.
+      - name: Prepare the release as production does
+        run: python -m app.db.prepare
+
       # A failing test's name and first error line also go out as ::error
       # annotations, which anyone can read on the pull request and through
       # the API. The full log is visible only to repository admins, and a
       # red run nobody can read cannot be fixed by anyone else (10 October
       # 2026). The exit status is pytest's own, unchanged.
+      # Property tests try 1,000 generated cases each here, against 200 on a
+      # laptop, and print how to replay any failure (D-090).
+      #
+      # Two passes, one set of tests (item 97, D-100). Every test not marked
+      # `owner` runs as the app's own login, which may only read and write
+      # rows, so code that quietly needs more fails here. Then the few that
+      # must be the owner (a trigger shown refusing, a scratch schema) run as
+      # the owner. Coverage is added up across both and checked once.
       - name: Run tests
+        env:
+          HYPOTHESIS_PROFILE: ci
+          OWNER_DATABASE_URL: postgresql+psycopg://niche:niche@localhost:5432/nicheconnect
         run: |
           set +e
-          pytest -x --tb=short --cov --cov-report=term -rfE 2>&1 | tee pytest.log
+          DATABASE_URL="$APP_LOGIN_DATABASE_URL" pytest -x --tb=short -m "not owner"             --cov --cov-report= --cov-fail-under=0 -rfE 2>&1 | tee pytest.log
           status=${PIPESTATUS[0]}
+          if [ "$status" -eq 0 ]; then
+            pytest -x --tb=short -m owner               --cov --cov-append --cov-report= --cov-fail-under=0 -rfE 2>&1 | tee -a pytest.log
+            status=${PIPESTATUS[0]}
+          fi
           grep -E '^(FAILED|ERROR) ' pytest.log | cut -c1-500 | sed 's/^/::error title=Test failed::/'
           grep -E '^E  ' pytest.log | head -n 5 | cut -c1-500 | sed 's/^/::error title=First error::/'
           exit "$status"
 
-      # The other half of testing.md section 5: every service.py at 90% or
+      # The 80% overall floor in pyproject.toml, on both passes together
+      # (testing.md section 7).
+      - name: Check overall coverage
+        run: coverage report --skip-covered
+
+      # The other half of testing.md section 7: every service.py at 90% or
       # more. coverage.py has no per-file floor, so this reads its report.
       - name: Check every service.py is at least 90% covered
         run: |
@@ -213,7 +247,10 @@ jobs:
       # this step found 14 further contract findings, listed in
       # docs/API_CONTRACT_FINDINGS.md. Turning them on before they are fixed
       # would make CI red on day one, which teaches everyone to ignore it.
+      # As the app's own login, as it will run in production (item 97).
       - name: Fuzz the API against its own contract
+        env:
+          DATABASE_URL: ${{ env.APP_LOGIN_DATABASE_URL }}
         run: |
           uvicorn app.main:app --port 8099 --log-level warning &
           for _ in $(seq 1 30); do
@@ -248,12 +285,13 @@ jobs:
       # licence fails until someone reads it. Permissive licences, plus the
       # weak copyleft ones a library may carry when we use it unchanged:
       # LGPL-3.0 (psycopg) and MPL-2.0 (certifi, pathspec, hypothesis).
+      # "3-Clause BSD License" is protobuf's spelling of BSD-3-Clause (D-094).
       # GPL and AGPL are not on it: they need a decision first. Spelled as
       # each package declares it; a new spelling of an approved licence is
       # added here, in review.
       - name: Check dependency licences
         env:
-          ALLOWED: "MIT;MIT License;MIT-0;MIT-CMU;MIT AND PSF-2.0;PSF-2.0;BSD License;BSD-2-Clause;BSD-3-Clause;Apache Software License;Apache-2.0;Apache-2.0 OR BSD-2-Clause;Apache-2.0 OR BSD-3-Clause;MPL-2.0;Mozilla Public License 2.0 (MPL 2.0);LGPL-3.0-only;ISC;ISC License (ISCL)"
+          ALLOWED: "MIT;MIT License;MIT-0;MIT-CMU;MIT AND PSF-2.0;PSF-2.0;BSD License;BSD-2-Clause;BSD-3-Clause;3-Clause BSD License;Apache Software License;Apache-2.0;Apache-2.0 OR BSD-2-Clause;Apache-2.0 OR BSD-3-Clause;MPL-2.0;Mozilla Public License 2.0 (MPL 2.0);LGPL-3.0-only;ISC;ISC License (ISCL)"
         run: uvx pip-licenses@5.5.5 --python .venv/bin/python --from=mixed --allow-only="$ALLOWED"
 
   # The images the app ships in (D-063), built and scanned for known

@@ -42,54 +42,10 @@ class ProfileNotFound(DomainError):
     title = "You have not created your profile yet"
 
 
-class ProfileAlreadyExists(DomainError):
-    status_code = HTTPStatus.CONFLICT
-    code = "profile_exists"
-    title = "This account already has a profile"
-
-
-class HandleTaken(DomainError):
-    status_code = HTTPStatus.CONFLICT
-    code = "handle_taken"
-    title = "That handle is already in use. Try another one"
-
-
-class EmailTaken(DomainError):
-    status_code = HTTPStatus.CONFLICT
-    code = "email_taken"
-    title = "That email is already registered to another brand"
-
-
 class OtpVerifyLimitReached(DomainError):
     status_code = HTTPStatus.TOO_MANY_REQUESTS
     code = "otp_verify_limit_reached"
     title = "Too many code attempts for this number. Please try again later"
-
-
-class ChannelNotFound(DomainError):
-    status_code = HTTPStatus.NOT_FOUND
-    code = "channel_not_found"
-    title = "You have not added a channel for that platform"
-
-
-class PackageNotFound(DomainError):
-    # 404 rather than 403 for somebody else's package: 403 would confirm the
-    # id exists, which would let anyone walk the table.
-    status_code = HTTPStatus.NOT_FOUND
-    code = "package_not_found"
-    title = "No such package"
-
-
-class PackageLimitReached(DomainError):
-    status_code = HTTPStatus.CONFLICT
-    code = "package_limit_reached"
-    title = "You have as many packages as we allow"
-
-
-class ProfileUrlDoesNotMatchPlatform(DomainError):
-    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
-    code = "profile_url_platform_mismatch"
-    title = "That link is not on the platform you chose"
 
 
 class InvalidSearch(DomainError):
@@ -112,18 +68,6 @@ class AccountSuspended(DomainError):
         return cls(f"Reason: {(reason or 'other').replace('_', ' ')}.")
 
 
-class ReportSubjectNotFound(DomainError):
-    status_code = HTTPStatus.NOT_FOUND
-    code = "report_subject_not_found"
-    title = "There is nothing with that id to report"
-
-
-class CannotReportYourself(DomainError):
-    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
-    code = "cannot_report_yourself"
-    title = "You cannot report your own profile or campaign"
-
-
 class AdminNotFound(DomainError):
     # Every admin route answers anyone who is not an admin exactly like a
     # route that does not exist, so the admin API cannot be found by probing.
@@ -132,61 +76,8 @@ class AdminNotFound(DomainError):
     title = "Not found"
 
 
-class AdminTargetNotAllowed(DomainError):
-    status_code = HTTPStatus.CONFLICT
-    code = "admin_target_not_allowed"
-    title = "Admins are suspended and restored by a founder, not by another admin"
-
-
-class AlreadySuspended(DomainError):
-    status_code = HTTPStatus.CONFLICT
-    code = "already_suspended"
-    title = "This account is already suspended"
-
-
-class NotSuspended(DomainError):
-    status_code = HTTPStatus.CONFLICT
-    code = "not_suspended"
-    title = "This account is not suspended"
-
-
-class ReportNotFound(DomainError):
+class DeviceNotFound(DomainError):
+    # Also someone else's device: 404, never 403 (security.md section 2).
     status_code = HTTPStatus.NOT_FOUND
-    code = "report_not_found"
-    title = "No such report"
-
-
-class ReportAlreadyResolved(DomainError):
-    status_code = HTTPStatus.CONFLICT
-    code = "report_already_resolved"
-    title = "This report has already been resolved"
-
-
-class MustBeAnAdult(DomainError):
-    # Adults only (D-086): a contract with a minor is void in India, and a
-    # minor's data needs verified parental consent (legal.md section 3.10).
-    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
-    code = "must_be_18_or_over"
-    title = "You must be 18 or over to use this service"
-
-
-class InvalidAvailability(DomainError):
-    # A "booked until" in the past would say nothing, and one more than a
-    # year ahead is almost certainly a typo for this year (D-083).
-    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
-    code = "invalid_availability"
-    title = "That date cannot be your booked-until date"
-
-
-class BlockTargetNotFound(DomainError):
-    # Only the other side can be blocked: a creator blocks brands, a brand
-    # blocks creators (item 59).
-    status_code = HTTPStatus.NOT_FOUND
-    code = "block_target_not_found"
-    title = "There is nobody with that id you could block"
-
-
-class BlockNotFound(DomainError):
-    status_code = HTTPStatus.NOT_FOUND
-    code = "block_not_found"
-    title = "That block does not exist, or it is not yours"
+    code = "device_not_found"
+    title = "That device is not registered to you"

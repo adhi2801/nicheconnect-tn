@@ -198,6 +198,13 @@ def test_a_deliberate_503_is_not_an_error(sent):
         ("+919876543210", "[phone]"),
         ("call 98765 43210 now", "call [phone] now"),
         ("91-9876543210", "[phone]"),
+        # Each reached Sentry unredacted until 12 October 2026: the pattern knew only
+        # 5+5 and unbroken digits, the gap property tests found in item 60.
+        ("call 987 654 3210 now", "call [phone] now"),
+        ("call 9876 543 210 now", "call [phone] now"),
+        ("call 98-76-54-32-10 now", "call [phone] now"),
+        ("call 98765.43210 now", "call [phone] now"),
+        ("call 09876543210 now", "call [phone] now"),
         ("mail priya@example.in", "mail [email]"),
         ("pay priya@okaxis", "pay [email]"),
         ("account 001234567890123", "account [number]"),
@@ -215,6 +222,8 @@ def test_personal_data_is_replaced(text, expected):
         "request.unhandled_error request_id=" + REQUEST_ID_LIKE,
         "deal DM-1234 at 2026-10-04T10:15:30.123456Z",
         "₹8000 for 3 reels",
+        "budget 6000 - 9000, shoot on 2026-10-12",
+        "took 9.5 s for 7 rows",
         "a1b2c3d4e5f60718293a4b5c6d7e8f90",  # an event ID
     ],
 )

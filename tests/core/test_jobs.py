@@ -26,6 +26,10 @@ from app.modules.deal_memo import (
 from app.modules.deal_memo.anchor_models import DealRecordCheckpoint, DealRecordTimestamp
 from app.modules.deal_memo.timestamp_authority import Stamp
 
+# The owner: DBOS makes its own schema here, and the record is cleared with
+# the triggers set aside, neither of which the app's login may do (item 97).
+pytestmark = pytest.mark.owner
+
 TEST_SCHEMA = "dbos_test"
 # 18:40 UTC on 1 January 2020 is 00:10 on 2 January in Tamil Nadu.
 SCHEDULED = datetime(2020, 1, 1, 18, 40, tzinfo=UTC)

@@ -15,6 +15,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy.exc import TimeoutError as PoolTimeoutError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 logger = logging.getLogger(__name__)
@@ -241,6 +242,37 @@ async def handle_http_error(
     )
 
 
+# When a busy process says to try again (D-093): long enough for a burst to
+# pass, short enough that a person barely notices the app retrying.
+BUSY_RETRY_AFTER_SECONDS = 2
+
+
+def busy_response(request: Request) -> JSONResponse:
+    """503 "busy, try again": the process is at capacity, nothing is wrong.
+
+    The answer to overload, from the in-flight limit and from a database
+    connection that did not come free in time. A client waits Retry-After
+    and repeats the request; with an Idempotency-Key a write is safe to
+    repeat (D-040).
+    """
+    return problem_response(
+        request,
+        status=HTTPStatus.SERVICE_UNAVAILABLE,
+        code="service_busy",
+        title="We are busy right now. Please try again in a moment",
+        headers={"Retry-After": str(BUSY_RETRY_AFTER_SECONDS)},
+    )
+
+
+async def handle_pool_timeout(request: Request, exc: PoolTimeoutError) -> JSONResponse:
+    # A capacity signal, not a bug: a warning, with no stack trace to send.
+    logger.warning(
+        "request.shed reason=pool_timeout request_id=%s",
+        getattr(request.state, "request_id", None),
+    )
+    return busy_response(request)
+
+
 async def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
     # Full details go to the log only; the user gets a generic message.
     logger.exception(
@@ -269,5 +301,9 @@ def register_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(
         StarletteHTTPException,
         handle_http_error,  # type: ignore[arg-type]
+    )
+    app.add_exception_handler(
+        PoolTimeoutError,
+        handle_pool_timeout,  # type: ignore[arg-type]
     )
     app.add_exception_handler(Exception, handle_unexpected_error)

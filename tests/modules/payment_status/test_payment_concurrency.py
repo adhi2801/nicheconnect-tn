@@ -142,16 +142,9 @@ def payment() -> Iterator[PaymentStatus]:
         yield payment_id
     finally:
         with SessionLocal() as session:
-            # The deal record refuses deletion (D-057), so it goes first,
-            # through the one test-only bypass.
-            remove_deal_records(session, [memo_id])
-            session.execute(
-                delete(DisputeEvent).where(
-                    DisputeEvent.dispute_id.in_(
-                        select(Dispute.id).where(Dispute.payment_status_id == payment_id)
-                    )
-                )
-            )
+            # The deal record and dispute events refuse deletion (D-057,
+            # item 99), so they go first, through the one test-only bypass.
+            remove_deal_records([memo_id])
             session.execute(
                 delete(Dispute).where(Dispute.payment_status_id == payment_id)
             )

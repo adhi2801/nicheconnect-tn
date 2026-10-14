@@ -28,7 +28,6 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.modules.auth.blocks import blocked_between
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import is_suspended
@@ -42,6 +41,7 @@ from app.modules.campaigns.exceptions import (
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo import service as deal_memos
 from app.modules.notifications import service as notifications
+from app.modules.safety.blocks import blocked_between
 
 # Unanswered invitations one campaign may have at once. Enough to invite a
 # real shortlist; too few to spray every creator in a city, which is what

@@ -8,6 +8,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # Keys must carry at least 256 bits (D-008). A token_urlsafe(32) value is
 # 43 characters, so 32 characters is the floor.
 MIN_KEY_LENGTH = 32
+# The app's own database login's password (item 97, app/db/roles.py).
+APP_DATABASE_PASSWORD = re.compile(r"[A-Za-z0-9]{32,128}")
 PLACEHOLDER_PREFIX = "change-me"
 
 # Every environment the app knows. Anything else is a typo, and a typo must
@@ -93,6 +95,21 @@ class Settings(BaseSettings):
     db_pool_size: int = Field(default=5, ge=1, le=50)
     db_max_overflow: int = Field(default=10, ge=0, le=50)
     db_statement_timeout_ms: int = Field(default=5000, ge=100, le=60000)
+    # How long a request may wait for a free connection before it is told
+    # "busy, retry" with a 503, instead of SQLAlchemy's 30 seconds and a 500
+    # (item 5a, D-093).
+    db_pool_timeout_seconds: float = Field(default=2.0, gt=0, le=30)
+    # The app's own login's password (item 97, D-100), given only to the
+    # release step (app/db/prepare.py), which sets it on the login. The app
+    # itself connects with DATABASE_URL; in production that is the login.
+    app_database_password: SecretStr | None = None
+    # Requests one process works on at once. Below the pool's connections,
+    # so every request let in can always get one: the load test froze a
+    # process when 40 worker threads waited on 15 connections (D-092). One
+    # connection stays free for the readiness check.
+    max_in_flight_requests: int = Field(default=12, ge=1, le=100)
+    # How long a request may wait for one of those places before the 503.
+    busy_queue_ms: int = Field(default=1000, ge=0, le=10_000)
     redis_url: str
     # Addresses or ranges we accept X-Forwarded-For from, comma separated
     # (e.g. "10.0.0.0/8,172.16.0.0/12"). Empty means trust nothing, which is
@@ -111,6 +128,10 @@ class Settings(BaseSettings):
     # Background jobs (D-060). Off unless this instance should run them;
     # several instances may, since DBOS shares the work between them.
     run_jobs: bool = False
+    # Whether DBOS creates and upgrades its schema at start. Off in
+    # production, where the app's login may not create schemas and the
+    # release step does it as the owner (item 97, D-100).
+    dbos_migrate_at_start: bool = True
     # Login codes (D-058). The MSG91 settings are required only when
     # otp_sender is "msg91", and checked at startup when they are.
     otp_sender: OtpSenderName = "fake"
@@ -143,6 +164,16 @@ class Settings(BaseSettings):
     )
     # Which build an error came from: the image's git commit, set by infra/.
     app_release: str | None = Field(default=None, pattern=r"^[A-Za-z0-9._+-]{1,200}$")
+    # Tracing (item 3, D-094): where spans go, as an OpenTelemetry (OTLP over
+    # HTTP) traces URL. Unset means off, which is right until hosting decides
+    # the destination; locally a Jaeger at http://localhost:4318/v1/traces.
+    traces_endpoint: str | None = Field(
+        default=None,
+        pattern=r"^https?://[A-Za-z0-9.-]+(:[0-9]{1,5})?(/[A-Za-z0-9._/-]*)?$",
+    )
+    # The share of requests traced, 0 to 1, unless the caller already chose
+    # (a `traceparent` from the app is followed either way).
+    traces_sample_ratio: float = Field(default=0.1, ge=0, le=1)
     # The version of the notice a creator reads before giving their UPI ID
     # (D-085). Its wording comes from the validation pack (constraint 6);
     # until it exists this stays unset, and adding a UPI ID is off.
@@ -150,7 +181,13 @@ class Settings(BaseSettings):
         default=None, pattern=r"^[A-Za-z0-9._-]{1,40}$"
     )
 
-    @field_validator("sentry_dsn", "app_release", "upi_notice_version", mode="before")
+    @field_validator(
+        "sentry_dsn",
+        "app_release",
+        "upi_notice_version",
+        "traces_endpoint",
+        mode="before",
+    )
     @classmethod
     def empty_is_unset(cls, value: object) -> object:
         # `SENTRY_DSN=` in .env means "off", not an address that is "".
@@ -173,6 +210,21 @@ class Settings(BaseSettings):
                 "proof_reading_enabled is on, so ANTHROPIC_API_KEY must be set"
             )
         return self
+
+    @field_validator("app_database_password", mode="before")
+    @classmethod
+    def empty_password_is_none(cls, value: object) -> object:
+        return None if value == "" else value
+
+    @field_validator("app_database_password")
+    @classmethod
+    def usable_app_password(cls, value: SecretStr | None) -> SecretStr | None:
+        # Letters and digits, so SASLprep leaves it unchanged (app/db/roles.py).
+        if value is not None and not APP_DATABASE_PASSWORD.fullmatch(
+            value.get_secret_value()
+        ):
+            raise ValueError("must be 32 to 128 letters and digits")
+        return value
 
     @field_validator("uploads_bucket", mode="before")
     @classmethod
@@ -230,6 +282,30 @@ class Settings(BaseSettings):
             raise ValueError(
                 "MSG91_OTP_TEMPLATE must be a WhatsApp template name: "
                 "lower case letters, digits and underscores"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def traces_leave_encrypted(self) -> Settings:
+        """Spans name endpoints and timings; outside a laptop they go over TLS."""
+        endpoint = self.traces_endpoint
+        if (
+            endpoint
+            and endpoint.startswith("http://")
+            and self.environment not in PLAIN_HTTP_ENVIRONMENTS
+        ):
+            raise ValueError("TRACES_ENDPOINT must use https:// outside local and test")
+        return self
+
+    @model_validator(mode="after")
+    def in_flight_fits_the_pool(self) -> Settings:
+        """More requests at once than connections is what froze a process."""
+        connections = self.db_pool_size + self.db_max_overflow
+        if self.max_in_flight_requests >= connections:
+            raise ValueError(
+                f"MAX_IN_FLIGHT_REQUESTS must be below DB_POOL_SIZE + "
+                f"DB_MAX_OVERFLOW ({connections}), leaving a connection for "
+                "the readiness check"
             )
         return self
 

@@ -37,6 +37,8 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     # To whichever side did not do it
     "memo_cancelled",
     "payment_confirmed",
+    # To whoever made a report, when an admin resolves it (item 102)
+    "report_resolved",
 )
 MAX_DETAILS_LENGTH = 2000
 
@@ -63,6 +65,18 @@ class Notification(Base):
             "ix_notification_unread",
             "account_id",
             postgresql_where=text("read_at IS NULL"),
+        ),
+        # Every foreign key indexed, so deleting a campaign or an application
+        # finds its notifications without scanning them all (item 98).
+        Index(
+            "ix_notification_campaign_id",
+            "campaign_id",
+            postgresql_where=text("campaign_id IS NOT NULL"),
+        ),
+        Index(
+            "ix_notification_application_id",
+            "application_id",
+            postgresql_where=text("application_id IS NOT NULL"),
         ),
     )
 

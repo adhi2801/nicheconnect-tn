@@ -53,8 +53,11 @@ protection and two weeks of backups.
 6. **Push the images** (`docker build --target api` and `--target
    embeddings`, tagged with the commit) to the two registries it printed.
 7. **Migrate**, by running the `migrate_task_definition` once in the
-   cluster, in the `task_network` it printed. Then the service starts
-   healthy.
+   cluster, in the `task_network` it printed. It is the release step
+   (`app/db/prepare.py`, item 97): the migrations, DBOS's schema, and the
+   app's own database login, `nicheconnect_app`, which may only read and
+   write rows. It is the only task that connects as the database owner. Then
+   the service starts healthy. Run it before every deploy.
 8. **Logins**: paste the MSG91 key into the secret named in
    `msg91_secret_name`, then apply again with `-var "otp_sender=msg91"` and
    `-var "msg91_whatsapp_number=<number>"`.

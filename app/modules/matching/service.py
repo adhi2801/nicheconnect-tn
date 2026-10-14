@@ -22,8 +22,6 @@ from typing import Any, Protocol
 from sqlalchemy import desc, exists, func, null, nulls_last, or_, select
 from sqlalchemy.orm import Session
 
-from app.modules.auth import availability_service as availability
-from app.modules.auth.blocks import not_blocked_with_brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import account_is_active, brand_is_active
 from app.modules.campaigns.models import Application, Campaign
@@ -33,6 +31,8 @@ from app.modules.matching.embedding_input import campaign_text, creator_text
 from app.modules.matching.models import CampaignEmbedding, CreatorEmbedding
 from app.modules.payment_status import reliability
 from app.modules.payment_status.reliability import ReliabilityRecord
+from app.modules.profiles import availability_service as availability
+from app.modules.safety.blocks import not_blocked_with_brand
 
 
 class Rebuilt:

@@ -46,7 +46,10 @@ from app.core.config import Settings
 # and look-ahead stop a match inside an ID: a UUID's last group is twelve
 # digits often enough, but it follows a hyphen, and an ID is worth keeping.
 EMAIL_OR_UPI = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)*")
-PHONE = re.compile(r"(?<![\w-])(?:\+?91[ -]?)?[6-9]\d{4}[ -]?\d{5}(?![\w-])")
+# A phone number however it is spaced: +91, 91 or a 0 in front, and one
+# space, dash or dot in any gap. Only 5+5 and unbroken digits were caught
+# until 12 October 2026, so "987 654 3210" reached Sentry (found by D-090's property tests).
+PHONE = re.compile(r"(?<![\w-])(?:\+?91[\s.-]?|0)?[6-9](?:[\s.-]?\d){9}(?![\w-])")
 # Bank account numbers, payment references, phone numbers in other formats.
 LONG_NUMBER = re.compile(r"(?<![\w-])\d{9,}(?![\w-])")
 REDACTIONS = ((EMAIL_OR_UPI, "[email]"), (PHONE, "[phone]"), (LONG_NUMBER, "[number]"))

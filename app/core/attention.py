@@ -1,7 +1,7 @@
 """What is waiting on someone: the one shape every module reports in.
 
 Each module says what of its own is waiting on a brand or a creator, in its
-`attention.py`. `app/modules/auth/attention_service.py` gathers them for
+`attention.py`. `app/modules/me/attention_service.py` gathers them for
 `GET /api/v1/me/attention`, the way the data export gathers sections, so no
 module has to know about the others.
 

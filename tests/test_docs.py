@@ -6,7 +6,9 @@ every Markdown file the repository tracks and check what can be checked:
 
 - every decision number (D-NNN) exists in docs/DECISIONS.md;
 - every repository path written in backticks exists;
-- every relative Markdown link points at a file that exists.
+- every relative Markdown link points at a file that exists;
+- every "`<file>.md` section N", in the docs and in the code, names a section
+  that file has.
 
 A path that is meant not to exist yet is written without backticks and
 without a link, and says "to be written", so it is never mistaken for one
@@ -41,6 +43,8 @@ DECISION = re.compile(r"\bD-(\d{3})\b")
 # `app/...`, `docs/...md`, `tests/...py`: backticked text that is a path.
 PATH = re.compile(r"`((?:app|docs|tests|scripts|infra|alembic|\.github)/[\w./-]+)`")
 LINK = re.compile(r"\]\((?!https?://|mailto:|#)([^)#\s]+)(?:#[^)]*)?\)")
+# "`security.md` section 5", "backend.md sections 2": a file, then a number.
+SECTION = re.compile(r"`?([\w./-]+\.md)`?,? sections? (\d+(?:\.\d+)?)")
 
 
 def markdown_files() -> list[Path]:
@@ -128,3 +132,51 @@ def test_every_relative_link_resolves():
 def test_a_proposed_number_is_not_also_decided():
     # Once decided, the number belongs in DECISIONS.md and leaves PROPOSED.
     assert set(PROPOSED) & decided() == set()
+
+
+def tracked_sources() -> list[Path]:
+    listed = subprocess.run(
+        ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],  # noqa: S607
+        cwd=ROOT,
+        capture_output=True,
+        check=True,
+    ).stdout.decode()
+    return [
+        ROOT / name
+        for name in sorted(set(listed.split("\0")))
+        if name.endswith((".py", ".md", ".toml", ".yml"))
+    ]
+
+
+def test_every_section_reference_exists():
+    """Standards are renumbered as they are raised (D-098), and over 300
+    references to their sections live in code comments and other documents.
+    This finds one left pointing at a section that is gone. It cannot tell
+    whether the section still holds what the reference meant; review does."""
+    documents: dict[str, list[Path]] = {}
+    for path in markdown_files():
+        documents.setdefault(path.name, []).append(path)
+
+    def has_section(name: str, number: str) -> bool:
+        heading = re.compile(rf"^#{{2,4}} {re.escape(number)}[.\s]", re.MULTILINE)
+        return any(heading.search(d.read_text(encoding="utf-8")) for d in documents[name])
+
+    found = 0
+    missing = []
+    for path in tracked_sources():
+        if is_record(path) or not path.exists():
+            continue
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        for line_number, line in enumerate(lines, 1):
+            for target, number in SECTION.findall(line):
+                name = Path(target).name
+                if name not in documents:
+                    continue  # another project's file, or one to be written
+                found += 1
+                if not has_section(name, number):
+                    missing.append(
+                        f"{path.relative_to(ROOT)}:{line_number}: {name} {number}"
+                    )
+
+    assert found > 200  # the pattern still finds references at all
+    assert missing == [], "Sections that do not exist:\n" + "\n".join(missing)

@@ -1,6 +1,6 @@
 """Fill a local database with realistic Tamil Nadu sample data.
 
-For local development and performance checks (database.md section 8). Refuses
+For local development and performance checks (database.md section 9). Refuses
 to run outside ENVIRONMENT=local, and never invents real contact details:
 phones are +9190000000xx and emails end in @example.com.
 
@@ -27,21 +27,21 @@ from app.db.session import SessionLocal
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
-from app.modules.auth.models.rate_card import (
-    MAX_PACKAGES_PER_CREATOR,
-    CreatorChannel,
-    CreatorPackage,
-)
 from app.modules.campaigns.models import (
     CAMPAIGN_TYPES,
     REJECTION_REASONS,
     Application,
     Campaign,
 )
+from app.modules.profiles.models import (
+    MAX_PACKAGES_PER_CREATOR,
+    CreatorChannel,
+    CreatorPackage,
+)
 
 # Obviously fake: this range is reserved for sample data. It still has to pass
 # the database's Indian-mobile rule, so it starts +919, not the +9100000000xx
-# in database.md section 8 (that example cannot be stored).
+# that database.md section 9 once gave (that example cannot be stored).
 PHONE_PREFIX = "+9190000"
 
 TAMIL_NADU_CITIES = (

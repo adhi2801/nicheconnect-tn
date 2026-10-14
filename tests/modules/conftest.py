@@ -125,7 +125,7 @@ def committed_application() -> Iterator[uuid.UUID]:
                     select(DealMemo.id).where(DealMemo.application_id == ids[0])
                 ).all()
             )
-            remove_deal_records(session, memo_ids)
+            remove_deal_records(memo_ids)
             session.execute(
                 delete(DeliverableProof).where(
                     DeliverableProof.deal_memo_id.in_(memo_ids)

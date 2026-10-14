@@ -68,9 +68,9 @@ class PaymentTotals:
     finished: Bucket
 
 
-def _for_party[Row: tuple[object, ...]](
-    query: Select[Row], party: Brand | Creator
-) -> Select[Row]:
+def _for_party[*Columns](
+    query: Select[*Columns], party: Brand | Creator
+) -> Select[*Columns]:
     """Only the payments on this brand's campaigns, or this creator's deals."""
     query = (
         query.join(DealMemo, DealMemo.id == PaymentStatus.deal_memo_id)

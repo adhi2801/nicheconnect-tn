@@ -16,23 +16,38 @@ record, and only step 2's outside timestamps would catch it.
 import uuid
 from collections.abc import Iterable
 
-from sqlalchemy import delete, text
-from sqlalchemy.orm import Session
+from sqlalchemy import delete, select, text
 
 from app.modules.deal_memo.record_models import DealRecordEntry
+from app.modules.disputes.event_models import DisputeEvent
+from app.modules.disputes.models import Dispute
+from app.modules.payment_status.models import PaymentStatus
+from tests.owner import owner_engine
 
 
-def remove_deal_records(session: Session, memo_ids: Iterable[uuid.UUID]) -> None:
-    """Delete these deals' entries, inside the caller's transaction.
+def remove_deal_records(memo_ids: Iterable[uuid.UUID]) -> None:
+    """Delete these deals' record entries and dispute events, and commit.
 
-    The bypass is switched off again straight after, for the caller's later
-    deletes need their cascades. Left on, deleting an account skipped
-    ON DELETE CASCADE and left its notifications behind, pointing at
+    Dispute events are sealed too, since item 99. The bypass needs a
+    superuser, which the app's own login never is (item 97), so this runs on
+    the owner's connection, in a transaction of its own, before the caller
+    deletes the deals themselves. Left on for the caller's deletes, the
+    bypass skipped ON DELETE CASCADE and left notifications pointing at
     nothing: found 10 October 2026, when a migration's downgrade tripped on
-    them.
+    them. So it never touches the caller's session.
     """
-    session.execute(text("SET LOCAL session_replication_role = replica"))
-    session.execute(
-        delete(DealRecordEntry).where(DealRecordEntry.deal_memo_id.in_(list(memo_ids)))
-    )
-    session.execute(text("SET LOCAL session_replication_role = origin"))
+    memos = list(memo_ids)
+    with owner_engine.begin() as connection:
+        connection.execute(text("SET LOCAL session_replication_role = replica"))
+        connection.execute(
+            delete(DealRecordEntry).where(DealRecordEntry.deal_memo_id.in_(memos))
+        )
+        connection.execute(
+            delete(DisputeEvent).where(
+                DisputeEvent.dispute_id.in_(
+                    select(Dispute.id)
+                    .join(PaymentStatus, PaymentStatus.id == Dispute.payment_status_id)
+                    .where(PaymentStatus.deal_memo_id.in_(memos))
+                )
+            )
+        )

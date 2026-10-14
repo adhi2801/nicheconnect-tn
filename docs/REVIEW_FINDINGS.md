@@ -79,10 +79,15 @@ Nothing in "What next" has happened. The unreviewed code has grown, with only th
 - the UPI pay link;
 - blocking, daily ceilings, the link and text checks;
 - the legal and trust-and-safety standards.
+- the founders' weekly numbers (D-087), the campaign report (D-088), and the decline date, change request and first answer (D-089).
 
 What has caught real bugs since is the automated net:
 - **CI**, run on a fresh database: a block filter that read every campaign's brand (`docs/standards/testing.md` section 2);
 - **mutation testing by hand**: two text-flag guards that each hid the other;
 - **the new document check**: a decision cited eleven times and never made, and a file `CLAUDE.md` required that never existed.
+- **property tests** (12 October, D-090): mobile numbers spaced "987 654 3210", or written with a leading 0, slipped past the contact-detail flag, and past the scrubber that keeps phone numbers out of Sentry (D-074). Both are fixed, with fixed examples and a property each;
+- **mutation testing** (D-091): untested boundaries in the payment days and reference limits, the record's exact fields and order, and a tampered chain link. Each now has a test;
+- **the load test** (D-092): one process froze at 400 people. It now sheds load with a quick 503 (D-093);
+- **seed data**: three tests that passed only on an empty database, one of which checked nothing.
 
 None of that is a second reader. Step 2 above is still the most valuable review there is: comment `@coderabbitai review` on the open pull request, and have Erode Harish read it before it merges.

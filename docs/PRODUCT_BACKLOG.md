@@ -37,7 +37,7 @@ operations, 28 migrations and 1,829 tests.
 | Creator Passport, application feedback | Tested | D-036, D-041 |
 | One error format, request IDs, rate limits, safe settings | Tested | `app/core/` (D-003, D-012) |
 | Repeat-safe writes (`Idempotency-Key`) | Tested | `app/core/idempotency.py` (D-040) |
-| Data export | Tested | `app/modules/auth/export_service.py` |
+| Data export | Tested | `app/modules/me/export_service.py` |
 | Rate card and media kit on the Passport | Tested | D-055, `rate_card_*`, `media_kit_*` |
 | Fair-rate guidance, step 1 | Tested | D-056, `rate_guidance_*` |
 | Proof as files: signed uploads, every image cleaned of location data, short-lived view links, the creator's order kept | Tested | D-065, D-066, D-067, `proof_file_*`, `proof_cleaning_*` |

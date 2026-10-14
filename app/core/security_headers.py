@@ -1,4 +1,4 @@
-"""Security headers on every response (security.md section 7).
+"""Security headers on every response (security.md section 8).
 
 These are cheap instructions to the browser about what it may do with our
 response. They matter even for a JSON API: a response a browser can be

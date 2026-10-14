@@ -32,6 +32,7 @@ NotificationType = Literal[
     "invitation_accepted",
     "invitation_declined",
     "invitation_withdrawn",
+    "report_resolved",
 ]
 
 ensure_same_values("NotificationType", NotificationType, NOTIFICATION_TYPES)

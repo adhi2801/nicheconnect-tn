@@ -14,8 +14,7 @@ from app.core.errors import ResponseDocs, problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth import attribution_service as attribution
-from app.modules.auth.admin_router import CurrentAdmin
-from app.modules.auth.dependencies import CurrentAccount, get_now
+from app.modules.auth.dependencies import CurrentAccount, CurrentAdmin, get_now
 from app.modules.auth.exceptions import RoleNotAllowed
 from app.modules.auth.schemas import InviteCodeRead, InviteCountsRead, SignupCountRead
 

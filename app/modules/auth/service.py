@@ -15,6 +15,7 @@ from sqlalchemy import CursorResult, select, text, update
 from sqlalchemy.orm import Session
 
 from app.modules.auth import attribution_service as attribution
+from app.modules.auth import device_service as devices
 from app.modules.auth.attribution_service import Arrival
 from app.modules.auth.exceptions import (
     AccountSuspended,
@@ -39,14 +40,14 @@ from app.modules.auth.tokens import (
 
 logger = logging.getLogger(__name__)
 
-# Per-phone guess limit (security.md section 4): wrong codes allowed for one
+# Per-phone guess limit (security.md section 1): wrong codes allowed for one
 # number in a window, counted across all of its codes. The per-code limit
 # (MAX_OTP_ATTEMPTS) alone would allow 5 guesses per code, so three codes in
 # ten minutes would allow fifteen.
 VERIFY_ATTEMPT_WINDOW = timedelta(minutes=10)
 MAX_VERIFY_ATTEMPTS_PER_WINDOW = 10
 
-# Per-phone send limits (security.md section 4): (window, max codes in window).
+# Per-phone send limits (security.md section 1): (window, max codes in window).
 OTP_SEND_LIMITS: tuple[tuple[timedelta, int], ...] = (
     (timedelta(minutes=10), 3),
     (timedelta(days=1), 10),
@@ -318,11 +319,15 @@ def refresh_session(db: Session, refresh_token: str, now: datetime) -> LoginResu
     return result
 
 
-def logout(db: Session, refresh_token: str, now: datetime) -> None:
+def logout(
+    db: Session, refresh_token: str, now: datetime, *, device_token: str | None = None
+) -> None:
     """End the login this refresh token belongs to.
 
     Revokes the whole rotation chain, so older copies stop working too.
-    Unknown tokens are ignored: logout always looks the same to the caller.
+    With the phone's push token, its notifications stop as well, but only
+    if the token is the same account's (D-095). Unknown tokens are ignored:
+    logout always looks the same to the caller.
     """
     auth_session = db.scalars(
         select(AuthSession).where(
@@ -331,6 +336,8 @@ def logout(db: Session, refresh_token: str, now: datetime) -> None:
     ).first()
     if auth_session is not None:
         _revoke_family(db, auth_session.family_id, now)
+        if device_token is not None:
+            devices.forget_token(db, auth_session.account_id, device_token)
     db.commit()
 
 
@@ -347,5 +354,7 @@ def logout_all_sessions(db: Session, account_id: uuid.UUID, now: datetime) -> in
             .values(revoked_at=now, updated_at=now)
         ),
     )
+    # Logged out everywhere means told nowhere: every phone's push stops.
+    devices.forget_all(db, account_id)
     db.commit()
     return result.rowcount
