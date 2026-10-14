@@ -174,6 +174,8 @@ class Settings(BaseSettings):
     # The share of requests traced, 0 to 1, unless the caller already chose
     # (a `traceparent` from the app is followed either way).
     traces_sample_ratio: float = Field(default=0.1, ge=0, le=1)
+    # Log lines as JSON for CloudWatch, or readable text on a laptop (D-102).
+    log_format: Literal["text", "json"] = "text"
     # The version of the notice a creator reads before giving their UPI ID
     # (D-085). Its wording comes from the validation pack (constraint 6);
     # until it exists this stays unset, and adding a UPI ID is off.

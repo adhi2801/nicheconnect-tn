@@ -127,6 +127,8 @@ locals {
     # The app's login may not create schemas; the release step makes DBOS's
     # as the owner (item 97, app/db/prepare.py).
     { name = "DBOS_MIGRATE_AT_START", value = "false" },
+    # One JSON object per log line, so CloudWatch can search fields (D-102).
+    { name = "LOG_FORMAT", value = "json" },
   ]
 
   secrets = concat(
