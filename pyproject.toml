@@ -297,7 +297,7 @@ source = ["app"]
 branch = true
 
 [tool.coverage.report]
-# A floor, not a goal (testing.md section 5): 80% overall here, and 90% for
+# A floor, not a goal (testing.md section 7): 80% overall here, and 90% for
 # every service.py, which CI checks file by file. Missing failure-case tests
 # fail review even when coverage is high. Counts branches as well as lines.
 fail_under = 80
