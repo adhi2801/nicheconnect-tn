@@ -99,7 +99,7 @@ class ExportedSection:
     # reads these, so no table can be quietly left out of an export.
     table: str
     # Why we hold this data, in words the person reading the file will
-    # understand (security.md section 6: every PII field has a purpose).
+    # understand (security.md section 7: every PII field has a purpose).
     purpose: str
     records: list[dict[str, Any]] = field(default_factory=list)
     truncated: bool = False

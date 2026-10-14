@@ -24,7 +24,7 @@ from app.modules.auth.schemas import (
 )
 from app.modules.auth.sender import OtpSender, get_otp_sender
 
-# Per-IP limits (security.md section 4). Per-phone send limits live in the service.
+# Per-IP limits (security.md section 5). Per-phone send limits live in the service.
 OTP_REQUEST_LIMIT = "3 per 10 minutes"
 OTP_VERIFY_LIMIT = "10 per 10 minutes"
 SESSION_LIMIT = "30 per minute"

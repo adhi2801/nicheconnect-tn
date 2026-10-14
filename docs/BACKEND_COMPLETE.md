@@ -195,6 +195,18 @@ Approved by Adhi on 12 October: "I need them in the best way possible". Each was
 
 Deliberately not on the list: paying creators directly (TikTok's One Pay; constraint 1; item 87 is our answer), a database of every creator on the internet, and bought fake-follower scores (items 31 and 83 use real results).
 
+### 3.12 Found by raising the standards (14 October, D-098)
+
+Found by reading the code against `docs/standards/database.md` (its section 10) and `docs/standards/security.md` (its section 11). **Proposed, not yet approved**: each needs its gate's approval before it is built.
+
+| # | Item | Why | Gate |
+|---|---|---|---|
+| 97 | Two database roles: a migration role that owns the tables, and an app role granted only row reads and writes, each with its own secret | Today the app connects as the owner, which can switch off the deal record's seals (`database.md` gap 1). Before launch | Infrastructure, Security |
+| 98 | Index the three unindexed foreign keys, `CONCURRENTLY`, with a CI step proving the refusing downgrades still refuse | `database.md` gaps 2 and 6 | Database, Infrastructure |
+| 99 | Seal dispute events with the deal record's append-only trigger | `database.md` gap 3 | Database |
+| 100 | One test that walks every route taking an object id, creates the object as one account and calls it as another, expecting 404 unless the route is public by design | 65 routes take an id, and nothing checks mechanically that each refuses a stranger (`security.md` gap 6) | None (tests only) |
+| 101 | A second factor for the admin role | An admin session today is one phone (`security.md` gap 5) | Security |
+
 ## 4. Blocked from outside the code
 
 | Item | Waiting on |

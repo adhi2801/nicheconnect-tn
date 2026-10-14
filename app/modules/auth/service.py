@@ -40,14 +40,14 @@ from app.modules.auth.tokens import (
 
 logger = logging.getLogger(__name__)
 
-# Per-phone guess limit (security.md section 4): wrong codes allowed for one
+# Per-phone guess limit (security.md section 1): wrong codes allowed for one
 # number in a window, counted across all of its codes. The per-code limit
 # (MAX_OTP_ATTEMPTS) alone would allow 5 guesses per code, so three codes in
 # ten minutes would allow fifteen.
 VERIFY_ATTEMPT_WINDOW = timedelta(minutes=10)
 MAX_VERIFY_ATTEMPTS_PER_WINDOW = 10
 
-# Per-phone send limits (security.md section 4): (window, max codes in window).
+# Per-phone send limits (security.md section 1): (window, max codes in window).
 OTP_SEND_LIMITS: tuple[tuple[timedelta, int], ...] = (
     (timedelta(minutes=10), 3),
     (timedelta(days=1), 10),

@@ -1,4 +1,4 @@
-"""Which websites may call the API from a browser (D-044, security.md section 7).
+"""Which websites may call the API from a browser (D-044, security.md section 8).
 
 A browser will not let a web page read our responses unless we name that
 page's website as allowed. That is CORS. Only the brand dashboard needs it:
