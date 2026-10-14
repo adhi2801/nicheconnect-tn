@@ -55,15 +55,6 @@ APPEND_ONLY_TABLES = {
 # set by the app, so it has no created_at either (D-057 point 3).
 NO_CREATED_AT = {"deal_record_entry"}
 
-# Foreign keys with no index starting with their column. Each makes a delete
-# of the parent row scan the whole child table. database.md section 10 names
-# them; fixing them is a migration, and needs approval.
-KNOWN_UNINDEXED_FOREIGN_KEYS = {
-    ("admin_action", "admin_account_id"),
-    ("notification", "application_id"),
-    ("notification", "campaign_id"),
-}
-
 # The one money column on a table with no currency of its own: a creator's
 # quote answers a campaign, and is in the campaign's currency.
 PAISE_WITHOUT_CURRENCY = {("application", "quoted_amount_paise")}
@@ -305,7 +296,9 @@ def test_every_rule_in_the_database_is_broken_by_some_test():
 
 def test_every_foreign_key_is_indexed():
     """An index whose first column is the key, so deleting a parent row, or
-    joining from it, never scans the child table (a unique constraint counts)."""
+    joining from it, never scans the child table (a unique constraint counts).
+    Three were missing, and one had only an index limited to open rows,
+    until item 98 (14 October 2026)."""
     keys = set(
         rows(
             "SELECT c.relname, a.attname FROM pg_constraint k "
@@ -315,15 +308,20 @@ def test_every_foreign_key_is_indexed():
             "WHERE n.nspname = 'public' AND k.contype = 'f'"
         )
     )
-    leading = set(
-        rows(
-            "SELECT t.relname, a.attname FROM pg_index i "
+    # A partial index serves the key only when it leaves out nothing but
+    # NULLs: one limited to open reports cannot find a closed one.
+    leading = {
+        (table, column)
+        for table, column, predicate in rows(
+            "SELECT t.relname, a.attname, pg_get_expr(i.indpred, i.indrelid) "
+            "FROM pg_index i "
             "JOIN pg_class t ON t.oid = i.indrelid "
             "JOIN pg_namespace n ON n.oid = t.relnamespace "
             "JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = i.indkey[0] "
             "WHERE n.nspname = 'public'"
         )
-    )
+        if predicate is None or predicate == f"({column} IS NOT NULL)"
+    }
 
     assert len(keys) >= 30
-    assert keys - leading == KNOWN_UNINDEXED_FOREIGN_KEYS
+    assert keys - leading == set()

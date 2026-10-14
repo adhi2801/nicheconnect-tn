@@ -27,6 +27,8 @@ class AdminAction(Base):
             f"note IS NULL OR char_length(note) <= {NOTE_MAX_LENGTH}", name="note_length"
         ),
         Index("ix_admin_action_created_at", "created_at"),
+        # Deleting an account checks the log without scanning it (item 98).
+        Index("ix_admin_action_admin_account_id", "admin_account_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(

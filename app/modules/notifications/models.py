@@ -64,6 +64,18 @@ class Notification(Base):
             "account_id",
             postgresql_where=text("read_at IS NULL"),
         ),
+        # Every foreign key indexed, so deleting a campaign or an application
+        # finds its notifications without scanning them all (item 98).
+        Index(
+            "ix_notification_campaign_id",
+            "campaign_id",
+            postgresql_where=text("campaign_id IS NOT NULL"),
+        ),
+        Index(
+            "ix_notification_application_id",
+            "application_id",
+            postgresql_where=text("application_id IS NOT NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(

@@ -46,6 +46,9 @@ class Report(Base):
         ),
         # The admin queue: open first, oldest first.
         Index("ix_report_status_created_at", "status", "created_at"),
+        # A reporter's own reports, newest first, and the foreign key: the
+        # open-only index above cannot find a closed report (item 98).
+        Index("ix_report_reporter_created_at", "reporter_account_id", "created_at"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
