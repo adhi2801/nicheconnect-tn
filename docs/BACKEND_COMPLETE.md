@@ -144,7 +144,7 @@ Approved by Adhi on 12 October: "I need them in the best way possible". Each was
 | # | Item | Who has it; how ours goes further | Gate |
 |---|---|---|---|
 | 68 | Barter product tracking: the courier's tracking number and the creator's "received", sealed in the deal record; we never hold the address | GRIN, Traackr, Statusphere; ours is evidence | Database |
-| 69 | Every agreed posting date as a calendar file both sides can add | Rare | None |
+| 69 | Every agreed posting date as a calendar file both sides can add | Rare | None · **Built 14 October (D-102)**: `GET /api/v1/deal-memos/{id}/calendar.ics` |
 | 70 | A content library: every approved post per brand, with its usage-rights expiry and seal | TikTok's Content Suite, CreatorIQ | Database |
 | 71 | Spark Ads and partnership-ad codes, with their expiry | Insense; joins item 37 | With 37 |
 | 72 | Talent managers acting for several creators, every action named and revocable | Agencies; common in India | Both founders, security |
