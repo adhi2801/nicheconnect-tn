@@ -176,12 +176,12 @@ One shape for every non-2xx answer, RFC 9457 Problem Details:
 - Every setting comes from environment variables through `app/core/config.py` (pydantic-settings), as the Twelve-Factor App's config factor sets out. **Enforced by** `tests/test_architecture.py::test_settings_are_read_only_through_config`, which fails on `os.getenv` or `os.environ` anywhere else.
 - The app refuses to start if a setting is missing, malformed, unsafe or still a placeholder, with a message naming the fix. **Enforced by** `tests/core/test_config.py`.
 - `.env.example` lists every setting with a safe placeholder and a one-line comment. **Enforced by** `tests/core/test_config.py`.
-- **Infra passes every setting that must differ by environment.** The rest run on the code's defaults. On 14 October, 13 of 35 settings were not passed (the two added that day, for the app's own database login, are), among them the pool and overload settings and `TRACES_ENDPOINT` (section 12).
+- **Infra passes every setting that must differ by environment.** The rest run on the code's defaults. On 14 October, 13 of 36 settings were not passed (the three added that day, for the app's own database login and the log format, are), among them the pool and overload settings and `TRACES_ENDPOINT` (section 12).
 
 ## 9. Logging and observability
 
 - Every request gets a `request_id`, from `X-Request-ID` or generated. It is returned in the response header and included in every log line and error body.
-- **Log events, not data:** `campaign.created campaign_id=…`. **Never log** phone numbers, emails, codes, tokens, bank or UPI details, or request bodies. Log an exception's type, not its message, when the message could hold them. *(review only)* for log lines; the Sentry scrubber is tested.
+- **Log events, not data:** `campaign.created campaign_id=…`. **Never log** phone numbers, emails, codes, tokens, bank or UPI details, or request bodies. Log an exception's type, not its message, when the message could hold them. *(review only)* for what each log call writes; the JSON lines' redaction and the Sentry scrubber are tested.
 - **Tracing** (OpenTelemetry, D-094; W3C Trace Context):
   - one span per request, named by its route template, with a child span per database query, continuing an incoming `traceparent`;
   - on only when `TRACES_ENDPOINT` is set;
@@ -190,7 +190,7 @@ One shape for every non-2xx answer, RFC 9457 Problem Details:
   - **enforced by** `tests/core/test_tracing.py`, which reads spans exactly as they would be sent.
 - `/healthz` answers "is the process up". `/readyz` checks the database and Valkey with short timeouts, and answers 503 when either is down.
 - Errors go to Sentry (D-074), scrubbed of personal data before they leave the process. **Enforced by** tests that read exactly what would be sent, including property tests on phone numbers.
-- Structured (JSON) logs in staging and production **(not yet built: section 12)**.
+- **Structured logs** (D-102): with `LOG_FORMAT=json`, which infra sets, every line, Uvicorn's included, is one JSON object: time in UTC, level, logger, event, `request_id` and `trace_id`. The event and an exception's stack pass through the same redaction as error reports; an exception logs its type and stack, never its message; an access line keeps method, path and status, never the client's address or the query string. **Enforced by** `tests/core/test_structured_logs.py`, which reads the lines exactly as written, including a property test that no mobile number survives.
 
 ## 10. Code style
 
@@ -209,8 +209,7 @@ One shape for every non-2xx answer, RFC 9457 Problem Details:
 
 | Gap | Risk | Acting on it |
 |---|---|---|
-| **No structured logging.** No logging configuration exists, so production logs are plain text. The rule said otherwise until 14 October. | Searching and alerting on logs in CloudWatch is weak, during the incidents where it matters most | A JSON formatter from the standard library (no package); proposed next, small |
-| **13 of 35 settings not passed by infra**, among them `TRACES_ENDPOINT`, `DB_POOL_SIZE`, `MAX_IN_FLIGHT_REQUESTS` and `BUSY_QUEUE_MS`. The rule said "infra passes every one" until 14 October. | Production cannot turn tracing on, or tune capacity, without an infra change | Items 88 and 89; passing them is an infrastructure decision |
+| **13 of 36 settings not passed by infra**, among them `TRACES_ENDPOINT`, `DB_POOL_SIZE`, `MAX_IN_FLIGHT_REQUESTS` and `BUSY_QUEUE_MS`. The rule said "infra passes every one" until 14 October. | Production cannot turn tracing on, or tune capacity, without an infra change | Items 88 and 89; passing them is an infrastructure decision |
 | **Error `type` URLs are on `nicheconnect.in`**, a domain we do not own | A public contract pointing at someone else's domain | Item 4: the name and the domain decide it, before any client exists |
 | **The list of proofs on a deal has no cap** | Tiny in practice; unbounded in principle | Cap resubmissions, or paginate, when proof volume says so |
 | **The deal domain still imports across itself** | Changes there ripple further than they should | Item 96 |

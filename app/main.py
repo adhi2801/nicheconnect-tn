@@ -16,6 +16,7 @@ from app.core.rate_limit import limiter
 from app.core.request_id import RequestIdMiddleware
 from app.core.security_headers import SecurityHeadersMiddleware
 from app.core.security_txt import router as security_txt_router
+from app.core.structured_logs import configure_logging
 from app.core.tracing import TracingMiddleware, init_tracing, instrument_engine
 from app.core.unexpected_error import UnexpectedErrorMiddleware
 from app.db.session import engine
@@ -62,6 +63,8 @@ from app.modules.safety.block_router import router as block_router
 
 # Before the app exists, so the error tracker sees it built (D-074). Off
 # unless SENTRY_DSN is set.
+# JSON lines in production, before anything logs (D-102).
+configure_logging(settings.log_format)
 init_error_tracking(settings)
 
 # The API describes itself at /docs, /redoc and /openapi.json everywhere but
