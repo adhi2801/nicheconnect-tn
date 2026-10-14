@@ -66,3 +66,57 @@ def test_every_module_is_a_package():
 
     assert (MODULES / "__init__.py").exists()
     assert missing == []
+
+
+def request_bodies() -> dict[type, str]:
+    """Every request body model the API accepts, with a route taking it.
+
+    Routers are nested inside included-router objects in this FastAPI, so
+    the endpoints are flattened the way the error handlers do it.
+    """
+    from fastapi.routing import APIRoute
+
+    from app.core.errors import _leaf_routes
+    from app.main import app
+
+    found: dict[type, str] = {}
+    for route in _leaf_routes(app.routes):
+        if isinstance(route, APIRoute) and route.body_field is not None:
+            model = route.body_field.field_info.annotation
+            if isinstance(model, type):
+                found[model] = f"{sorted(route.methods)[0]} {route.path}"
+    return found
+
+
+def test_the_request_bodies_are_found():
+    """Guards the test below: with no bodies found it would pass, checking
+    nothing, which is what its first version did."""
+    assert len(request_bodies()) >= 30
+
+
+def test_every_request_body_refuses_unknown_fields():
+    """backend.md section 4: unknown fields are refused, which blocks mass
+    assignment (OWASP API3:2023). Enforced here since D-099's docs pass."""
+    open_bodies = [
+        f"{model.__name__} ({where})"
+        for model, where in request_bodies().items()
+        if model.model_config.get("extra") != "forbid"
+    ]
+
+    assert open_bodies == []
+
+
+def test_settings_are_read_only_through_config():
+    """backend.md section 8: no os.getenv or os.environ outside app/core/config.py."""
+    offenders = [
+        path.relative_to(MODULES.parent.parent).as_posix()
+        for path in (MODULES.parent).rglob("*.py")
+        if "__pycache__" not in path.parts
+        and path.name != "config.py"
+        and (
+            "os.getenv" in path.read_text(encoding="utf-8")
+            or "os.environ" in path.read_text(encoding="utf-8")
+        )
+    ]
+
+    assert offenders == []
