@@ -18691,6 +18691,109 @@
         ]
       }
     },
+    "/api/v1/deal-memos/{memo_id}/calendar.ics": {
+      "get": {
+        "description": "An iCalendar file (RFC 5545) to add to any phone or desktop calendar: the content due date, the moment submitted work approves itself while it waits, and the payment due date while unconfirmed, each with a reminder a day before. Only an accepted deal has dates; any other gives an empty calendar. Adding it again updates the same events. The brand and the creator of this deal only.",
+        "operationId": "deal_calendar_api_v1_deal_memos__memo_id__calendar_ics_get",
+        "parameters": [
+          {
+            "description": "The memo's id",
+            "in": "path",
+            "name": "memo_id",
+            "required": true,
+            "schema": {
+              "description": "The memo's id",
+              "format": "uuid",
+              "title": "Memo Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/calendar": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The calendar file"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such memo, or not yours"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The memo id is not a valid id"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The deal's agreed dates, as a calendar file",
+        "tags": [
+          "deal memos"
+        ]
+      }
+    },
     "/api/v1/deal-memos/{memo_id}/cancel": {
       "post": {
         "description": "Ends the deal. Before any work is submitted this is recorded as withdrawn_early and does not count against the brand; afterwards it does.",

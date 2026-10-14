@@ -30,6 +30,7 @@ from app.modules.campaigns.application_router import router as applications_rout
 from app.modules.campaigns.invitation_router import router as invitations_router
 from app.modules.campaigns.report_router import router as campaign_report_router
 from app.modules.campaigns.router import router as campaigns_router
+from app.modules.deal_memo.calendar_router import router as deal_calendar_router
 from app.modules.deal_memo.delivery_router import router as delivery_router
 from app.modules.deal_memo.proof_router import router as proof_router
 from app.modules.deal_memo.record_router import router as deal_record_router
@@ -154,6 +155,7 @@ app.include_router(devices_router)
 app.include_router(notification_preferences_router)
 app.include_router(deal_memos_router)
 app.include_router(deal_record_router)
+app.include_router(deal_calendar_router)
 app.include_router(repeat_router)
 app.include_router(proof_router)
 app.include_router(payment_router)
