@@ -197,7 +197,7 @@ Deliberately not on the list: paying creators directly (TikTok's One Pay; constr
 
 ### 3.12 Found by raising the standards (14 October, D-098)
 
-Found by reading the code against `docs/standards/database.md` (its section 10) and `docs/standards/security.md` (its section 11). **Proposed, not yet approved**: each needs its gate's approval before it is built.
+Found by reading the code against `docs/standards/database.md` (its section 10) `docs/standards/security.md` (its section 11) and `docs/standards/trust-and-safety.md` (its section 7). **Proposed, not yet approved**: each needs its gate's approval before it is built.
 
 | # | Item | Why | Gate |
 |---|---|---|---|
@@ -206,6 +206,7 @@ Found by reading the code against `docs/standards/database.md` (its section 10) 
 | 99 | Seal dispute events with the deal record's append-only trigger | `database.md` gap 3 | Database |
 | 100 | One test that walks every route taking an object id, creates the object as one account and calls it as another, expecting 404 unless the route is public by design | 65 routes take an id, and nothing checks mechanically that each refuses a stranger (`security.md` gap 6) | None (tests only) |
 | 101 | A second factor for the admin role | An admin session today is one phone (`security.md` gap 5) | Security |
+| 102 | A reporter sees each report they made and its outcome, and is notified when one is resolved | Nothing tells a reporter today (`trust-and-safety.md` gap 1); with item 51's clocks it answers the IT Rules' acknowledge-and-resolve duty | Security |
 
 ## 4. Blocked from outside the code
 
