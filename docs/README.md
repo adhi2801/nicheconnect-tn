@@ -17,8 +17,8 @@ Adhi, 12 October 2026: every md file at the level of the best. A document meets 
 
 Dated reports, the decision log and the papers in `decided/` are records: they keep what was true when written, and get only a status line saying what became of them.
 
-**Progress**, updated as each file is raised. Raised on 12 October: `CLAUDE.md` and this index. On 14 October: `standards/backend.md`, `standards/database.md`, `standards/security.md`, `standards/testing.md` and `standards/trust-and-safety.md`. Next, in this order:
-1. The other three standards: legal, ux, frontend.
+**Progress**, updated as each file is raised. Raised on 12 October: `CLAUDE.md` and this index. On 14 October: `standards/backend.md`, `standards/database.md`, `standards/security.md`, `standards/testing.md`, `standards/trust-and-safety.md`, `standards/ux.md` and `standards/frontend.md`; and in the map, `BACKEND_COMPLETE.md` section 2, `ARCHITECTURE_SCALE.md` and `PERFORMANCE.md` brought up to date. Next, in this order:
+1. The last standard: legal.
 2. The map: `BACKEND_COMPLETE.md`, `ARCHITECTURE_SCALE.md`, `PLATFORM_AND_TECH_PLAN.md`, `PERFORMANCE.md`.
 3. Strategy: the competitive landscape, the billion-dollar gap, trust, go to market, revenue, survival, the backlog.
 4. Operations: the root README, `SECURITY.md`, the incident plan, the infra guide, the verify guide, the two findings files, the screen-to-API map, the commands.
