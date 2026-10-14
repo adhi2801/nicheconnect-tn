@@ -23,7 +23,7 @@
 
 | Change | Required tests | Enforced by |
 |---|---|---|
-| New endpoint | Success; validation failure (422); not logged in (401); another user's object (404, or 403); not found (404); the rate limit applies | Each operation must document 401, 422 and 429 (`tests/test_api_contract.py`); the tests themselves *(review only)*, see section 10 |
+| New endpoint | Success; validation failure (422); not logged in (401); another user's object (404, or 403); not found (404); the rate limit applies | Each operation must document 401, 422 and 429 (`tests/test_api_contract.py`); another user's object for every route at once (`tests/modules/test_stranger_routes.py`, item 100) |
 | List endpoint | All of the above, plus **pages without gaps or repeats**, and **a query-count test** proving a long page costs the same queries as a short one (`tests/query_counts.py`) | *(review only)*: 15 test files count queries today |
 | State transition | Every allowed transition, and at least one blocked transition (409) | *(review only)*; property tests for the rule-heavy ones |
 | A rule checked before a write ("only if", "at most", "not already") | **A concurrency test**: several requests at once, exactly one wins, no raw error reaches a caller (section 4) | *(review only)*: 7 concurrency test files today |
@@ -79,6 +79,7 @@ tests/
   modules/test_database_refusals.py  database rules broken with raw SQL
   modules/test_refusing_downgrades.py  every downgrade that would destroy data refuses
   modules/test_app_role.py   the app's own login: what it may and may not do
+  modules/test_stranger_routes.py  every route that names an object refuses a stranger
   test_api_contract.py     every operation against the committed contract
   test_architecture.py     routers build no queries, services know no HTTP, bodies refuse unknown fields
   owner.py                 the database owner, for the few tests that need more than the app's login
@@ -169,7 +170,7 @@ Every job runs on an exact runner image (`ubuntu-24.04`), never `ubuntu-latest`,
 | # | Gap | Risk | Acting on it |
 |---|---|---|---|
 | 1 | **`main` has no branch protection**, so a merge with a failing run is not stopped. Until 14 October, a false positive in the secret scan also stopped every run at its second step from 12 October on, unseen, so no later gate ran on GitHub | A red build can reach `main` | A founder turns on branch protection for `main`, requiring the `test`, `image`, `infrastructure` and `repository-settings` jobs |
-| 2 | **Several required tests are *(review only)***: the stranger test per object route, the query-count test per list, the concurrency test per "only if" rule | One missed test is a missed bug, found by a user | Item 100 for the stranger tests; the others gain a check when one is practical |
+| 2 | **Two required tests are *(review only)***: the query-count test per list and the concurrency test per "only if" rule. The stranger test per route became mechanical on 14 October (item 100) | One missed test is a missed bug, found by a user | Each gains a check when one is practical |
 | 3 | **Fuzzing gates only server errors**, and its findings file was last updated in September, with 64 operations then and 123 routes now | Contract drift the other checks would catch goes unseen | Re-run every check, update the findings, then gate what passes; a CI change, so an Infrastructure gate |
 | 4 | **Mutation testing covers eight files**; 186 mutants survived the wider run | Weak tests outside those files are invisible | Item 93 |
 | 5 | **The load test ran on a laptop** | Production capacity is an estimate | Item 94 |

@@ -1224,3 +1224,12 @@ Newest entries at the bottom.
 - Chosen: B.
 - Reason: Adhi's direction; the conditions keep what the review step protected, except a second reader, which the report names every time.
 - Consequences / follow-ups: (1) Claude merges only when every local gate has passed and CI is seen green on GitHub for the exact commit, read through GitHub's public API; with a merge commit (`--no-ff`); never a force-push, a rebase of a shared branch, or a rewritten history. (2) Every report says no second person reviewed the work. (3) `main` has no branch protection (checked 14 October), so nothing on GitHub enforces green CI; turning it on, requiring the four CI jobs, is a founder's setting and is recommended. (4) `CLAUDE.md` sections 6 and 8 say this.
+
+## D-102: Three to build next: every route refuses a stranger, deal dates as a calendar file, structured logs
+- Date: 2026-10-14
+- Approved by: Adhi, in this session ("yes go on", after the three proposals with their ten dimensions). **Not reviewed by the other founder** (D-051).
+- Context: Adhi asked for real progress in code beside the documents. Of about 70 open items, these three need nothing from outside and strengthen everything after them.
+- Options considered: the ranked list of buildable items given in the session (100, 69, structured logs, 51 and 52, 81, 82 and 80, 101, 75, 44, 87, 43).
+- Chosen: A) item 100, one test that every route naming an object refuses a stranger; B) item 69, a deal's agreed dates as a calendar file (RFC 5545), parties only; C) structured JSON logs from the standard library, personal data filtered out, on when `LOG_FORMAT=json`.
+- Reason: A closes the top API risk for every route at once and guards every future one; B is user-visible and needs no new table or package; C is needed before any production incident can be investigated.
+- Consequences / follow-ups: built in that order, each with its tests and deliberate breaks, merged under D-101 when CI is green. Item 100 found no route that lets a stranger in.

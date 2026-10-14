@@ -50,7 +50,7 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md`. Rule
 
 - Roles: `brand`, `creator`, `admin`.
 - **Every** endpoint that reads or changes an object loads it through a check that the caller may (owner, party to the deal, or public by design). This is the defence against Broken Object Level Authorization, the top API risk. The checks live in `auth` and each module's dependencies; routers build no queries of their own (`tests/test_architecture.py`).
-- Every such endpoint has a test proving another user gets 404 (preferred, so existence is not confirmed) or 403. *(review only)*: 65 of the 123 routes take an object id, and nothing checks mechanically that each has its stranger test (gap 4).
+- Every such endpoint refuses another user with 404 (preferred, so existence is not confirmed) or 403. **Enforced by** `tests/modules/test_stranger_routes.py` (item 100): it builds a real world through the API and calls every one of the 65 routes that name an object as an unrelated brand and an unrelated creator, with valid bodies, so a refusal is never a validation error; a 409 or 422 counts as a leak. Routes public by design are listed with who may read them and why, and must answer them. A new route fails the test until it is covered.
 - Filters use the authenticated account from the token, never an owner id from the body or query. The person's own things live under `/me/...` with no id at all.
 - Status transitions check the actor: only the brand marks a payment as sent; only the creator confirms it arrived. **Enforced by** the payment tests, including properties over every state.
 - Admin endpoints answer 404 to anyone who is not an admin.
@@ -60,7 +60,7 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md`. Rule
 
 | Risk | Our control | Proven by |
 |---|---|---|
-| API1 Broken object level authorization | Access checks on every object | Cross-user tests per endpoint *(review only, gap 4)* |
+| API1 Broken object level authorization | Access checks on every object | `tests/modules/test_stranger_routes.py`, every object route (item 100) |
 | API2 Broken authentication | Section 1; auth routes strictly rate limited | OTP, refresh and session test suites |
 | API3 Broken object property level authorization | Separate create, update and read schemas; every request body refuses unknown fields; public responses built by hand | `tests/test_architecture.py` (all 39 bodies); contract fuzzing |
 | API4 Unrestricted resource consumption | Rate limits, bounded lists, a 1 MB body limit, statement timeouts, a cap on requests in flight (D-093), daily ceilings on paid APIs | Limit tests; 413 tests; the load test (D-092) |
@@ -165,7 +165,7 @@ Examples:
 
 ## 11. Gaps, named
 
-**Closed on 14 October:** the app connecting to the database as the table owner (item 97, D-100). **A claim of mine corrected the same day:** this file said nothing had been merged to `main` since 1 October and Dependabot had never run; a stale local copy of `main` misled me, and both were false.
+**Closed on 14 October:** the app connecting to the database as the table owner (item 97, D-100), and no mechanical proof that every object route refuses a stranger (item 100, D-102). **A claim of mine corrected the same day:** this file said nothing had been merged to `main` since 1 October and Dependabot had never run; a stale local copy of `main` misled me, and both were false.
 
 **Corrected on 14 October:** the database user "has no superuser rights" (it owned every table; fixed the same day by item 97); this file "maps our controls to ASVS" (it maps the API Top 10: gap 2); keys "at least 256 bits" (the app enforces 32 characters; the generators give 256 bits or more); the guessing cap (it is also 10 wrong tries per phone in 10 minutes, across codes); the code-send limit "per IP, 10 a day" (the daily cap is per phone only); and a refresh and logout limit the table had left out.
 
@@ -174,8 +174,7 @@ Examples:
 | 1 | **A code-scanning alert is open on GitHub and nobody here has read it** (https://github.com/adhi2801/nicheconnect-tn/security/code-scanning/1). GitHub's API needs a login to read it even on a public repository (checked 14 October). No workflow here uploads results, so it is likely GitHub's default CodeQL setup | Unknown until read | A founder reads it, or signs in to `gh` so it can be read here |
 | 2 | **No chapter-by-chapter ASVS 5.0 mapping** | "Level 2" cannot be claimed | Map V1 to V17 before the penetration test, so the tester checks what we claim |
 | 3 | **Admins log in with one factor** | A stolen admin phone, or a SIM swap, is an admin session | A second factor for the admin role; proposed before launch (Security gate) |
-| 4 | **No mechanical proof that every object route refuses a stranger** | One missed check is the top API risk (API1) | Item 100: one test that walks every route taking an id, creates the object as one account and calls it as another, expecting 404 unless the route is public by design |
-| 5 | Incident plan not rehearsed; no penetration test; images not signed | Untested plans fail when needed | Section 10 |
+| 4 | Incident plan not rehearsed; no penetration test; images not signed | Untested plans fail when needed | Section 10 |
 
 ## 12. Sources
 
