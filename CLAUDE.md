@@ -191,7 +191,7 @@ One feature at a time, built whole, to these eight steps. Adhi chose this on 12 
 - **One file, one job.** Don't combine unrelated responsibilities for convenience.
 - **Branch per task.** Never commit directly to `main`. Branch names: `feature/<name>`, `fix/<name>`, `chore/<name>`, `docs/<name>`.
 - **Small commits** in Conventional Commits style: `feat(auth): add OTP request endpoint`.
-- **Every merge to `main`** goes through a PR the other founder reviews, with green CI.
+- **Every merge to `main`** goes through a PR the other founder reviews, with green CI. **While Adhi builds alone (D-101), Claude merges finished work to `main` itself, without asking each time**: only when every local gate has passed and CI is seen green on GitHub for the exact commit being merged (read through GitHub's API), with a merge commit (`--no-ff`), never a force-push or a rewritten history, and saying in the report that no second person reviewed it.
 - **No silent shortcuts.** If the fast way conflicts with this file, stop and ask.
 - **Before touching payments, PII or embeddings,** re-read section 2.
 - **Status words mean exactly this:**
@@ -206,7 +206,7 @@ One feature at a time, built whole, to these eight steps. Adhi chose this on 12 
 
 - Never run `git push --force`, `git reset --hard`, `git rebase` on shared branches, or delete branches without approval.
 - Never commit `.env`, secrets, keys, tokens, `venv/`, or large generated files. If one is staged, unstage it and warn.
-- Never merge PRs; founders merge on GitHub.
+- Merge only as D-101 allows (above); otherwise founders merge on GitHub.
 
 ---
 
@@ -273,7 +273,7 @@ If a standard conflicts with a founder's explicit instruction, point out the con
 - [ ] No new dependency without a recorded approval
 - [ ] Committed on a feature branch and pushed
 - [ ] Every document it affects still meets the documents' bar (`docs/README.md`)
-- [ ] PR open, CI seen green (not assumed), reviewed by the other founder
+- [ ] CI seen green (not assumed) on the exact commit; merged by a founder, or by Claude under D-101; reviewed by the other founder, or the report says it was not
 
 ---
 

@@ -1215,3 +1215,12 @@ Newest entries at the bottom.
 - Chosen: A, and all four built.
 - Reason: The strongest protection for the least new code: the deal record is protected twice, by permissions and by triggers, and CI proves the app works with only the rights it is given.
 - Consequences / follow-ups: (1) Item 98: four indexes built `CONCURRENTLY` (`notification.campaign_id` and `application_id`, partial on NOT NULL; `admin_action.admin_account_id`; `report (reporter_account_id, created_at)`, the fourth found when the schema test stopped counting a partial index that leaves out more than NULLs). The nine refusing downgrades gained a standing test (`tests/modules/test_refusing_downgrades.py`). (2) Items 99, 102 and 97 are recorded in their own commits under this decision. (3) Items 100 (a stranger test for every object route) and 101 (a second factor for admins) stay proposed.
+
+## D-101: Claude merges finished work to main itself, while Adhi builds alone
+- Date: 2026-10-14
+- Approved by: Adhi, in this session: "you yourself merge it dont ask me to do it you do it". **Not reviewed by the other founder** (D-051).
+- Context: `CLAUDE.md` section 6 said founders merge on GitHub, through a pull request the other founder reviews. With one founder building (D-051) and the `gh` CLI not installed, finished work waited on branches: 27 commits from D-088 onward were not on `main`, and a false positive in the secret scan had stopped every CI run there since 12 October, unseen.
+- Options considered: A) keep founders merging; B) Claude merges, under conditions that keep the gates.
+- Chosen: B.
+- Reason: Adhi's direction; the conditions keep what the review step protected, except a second reader, which the report names every time.
+- Consequences / follow-ups: (1) Claude merges only when every local gate has passed and CI is seen green on GitHub for the exact commit, read through GitHub's public API; with a merge commit (`--no-ff`); never a force-push, a rebase of a shared branch, or a rewritten history. (2) Every report says no second person reviewed the work. (3) `main` has no branch protection (checked 14 October), so nothing on GitHub enforces green CI; turning it on, requiring the four CI jobs, is a founder's setting and is recommended. (4) `CLAUDE.md` sections 6 and 8 say this.
