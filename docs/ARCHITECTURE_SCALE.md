@@ -2,7 +2,7 @@
 
 `CLAUDE.md` section 3 sends every future-scale idea here instead of into the code: **we build for pilot scale, and change the architecture only when a measured number says to.** Each row below is a proposal, not a decision. Acting on one needs both founders, a decision entry, and the measurement that crossed its trigger, from a tool (`docs/PERFORMANCE.md`), never from a feeling.
 
-Written 10 October 2026, from the triggers earlier decisions already named. Before this file existed those triggers were scattered through `docs/DECISIONS.md`; they are gathered here, unchanged.
+**For:** anyone proposing to change how the system scales, read before the proposal (`CLAUDE.md` section 7.0). Written 10 October 2026, from the triggers earlier decisions already named; **last checked against the code and infra on 14 October 2026**, when S8 and S9 were added from measured capacity (D-093) and the connection arithmetic below.
 
 ## The order we scale in
 
@@ -26,19 +26,5 @@ Steps 1 to 4 need no architecture change. Step 5 is what this file is for.
 | S5 | **Text search beyond `ILIKE`**: first a `pg_trgm` index in Postgres; a dedicated search engine only after that | Creator search p95 over budget. `pg_trgm` is an index (step 2); a search engine is a new service and needs both founders (`CLAUDE.md` section 3) | `ILIKE` over a filtered set | New, 10 October |
 | S6 | **Partitioning the largest append-only tables** (notifications, the deal record) by month | A table's size making its own queries miss budget after indexing, or its vacuum running too long | Plain tables with the indexes each list needs | New, 10 October |
 | S7 | **A CDN in front of public pages** (the Passport, city figures) | Public read traffic large enough that cache misses raise API load measurably | `Cache-Control` and `ETag` on those answers already (`backend.md` section 2) | New, 10 October |
-
-## What never comes here without both founders
-
-From `CLAUDE.md` section 3:
-- Kafka or another message broker;
-- Kubernetes;
-- more than one region;
-- a service mesh;
-- GraphQL;
-- a dedicated vector or search database.
-
-Data stays in Mumbai (`docs/standards/legal.md` sections 3.1 and 3.2), which makes more than one region a legal question as well as a technical one.
-
-## How a proposal is added
-
-One row: what, the trigger as a number a tool can measure, what we do until then, and where it came from. A proposal whose trigger cannot be measured is not ready for this file.
+| S8 | **Autoscaling the API on requests per container** (item 88). More instances is step 4, but it changes the infrastructure, so it is recorded here | One container held 400 people at once with no errors, and shed load with a quick 503 at 800 (D-092, D-093, measured on a laptop). Trigger: shed 503s above 0.1% of requests at peak, or in-flight requests per container sustained near `MAX_IN_FLIGHT_REQUESTS` | A fixed count: 2 containers in production, 1 in staging (`infra/envs/`) | D-093, 14 October |
+| S9 | **A connection pooler in front of Postgres** (RDS Proxy, or PgBouncer in transaction mode) | Each API container may open up to 15 connections for the app (`DB_POOL_SIZE` 5 + `DB_MAX_OVERFLOW` 10) and up to 20 for DBOS's own pool (its default), so 35. A db.t4g.small allows about 200 (AWS: memory ÷ 9,531,392 bytes). Trigger: containers × 35, plus the release step, above 80% of `max_connections`: about 4 containers today, so before S8 lets the count grow past 3 | First the cheap step 2: give DBOS a pool sized to its work (`sys_db_pool_size`), which roughly halves the per-container count. PgBouncer in transaction mode needs psycopg's prepared statements switched off; RDS Proxy does not, but costs per vCPU | New, 14 October |

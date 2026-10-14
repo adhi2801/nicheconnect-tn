@@ -235,6 +235,17 @@ def measure_writes(
             f"{memos}/{memo}/proof/{proof}/approve",
             brand_headers,
         )
+        if timed:
+            # A read, timed here because only these deals have agreed dates
+            # (item 69); the seeded data has no accepted deal.
+            limiter.reset()
+            started = time.perf_counter()
+            calendar = client.get(f"{memos}/{memo}/calendar.ics", headers=creator_headers)
+            timings["GET /deal-memos/{id}/calendar.ics"].append(
+                (time.perf_counter() - started) * 1000
+            )
+            if calendar.status_code != 200:
+                raise SystemExit(f"calendar.ics: {calendar.status_code}")
         return str(memo)
 
     try:
@@ -378,7 +389,12 @@ def measure_writes(
         outer.rollback()
         connection.close()
 
-    return [summarise(name, values, WRITE_BUDGET_MS) for name, values in timings.items()]
+    return [
+        summarise(
+            name, values, READ_BUDGET_MS if name.startswith("GET ") else WRITE_BUDGET_MS
+        )
+        for name, values in timings.items()
+    ]
 
 
 def main() -> int:
@@ -548,6 +564,16 @@ def main() -> int:
             "GET",
             "/api/v1/rate-guidance?platform=instagram&format=reel"
             "&followers=20000&niche=food&city=Madurai",
+            brand_headers,
+            args.runs,
+            READ_BUDGET_MS,
+        ),
+        # A reporter's own reports and what became of each (item 102).
+        measure(
+            client,
+            "GET /reports/mine",
+            "GET",
+            "/api/v1/reports/mine",
             brand_headers,
             args.runs,
             READ_BUDGET_MS,

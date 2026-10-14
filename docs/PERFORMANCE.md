@@ -15,6 +15,19 @@ whole deals, 5 bank bulk transfers of 25 rows, and 30 rounds of rate card
 edits. All from one run, on a developer laptop under Docker Desktop for
 Windows.
 
+## Added 14 October: two new reads, and the bulk write at its edge
+
+Measured with `scripts/measure_performance.py` on 600 campaigns, 3,986 applications, 900 creators and 4,641 packages, on a laptop.
+
+| Endpoint | p50 ms | p95 ms | Budget | Verdict |
+| --- | --- | --- | --- | --- |
+| `GET /reports/mine` (item 102), 50 runs | 16.3 | 20.2 | 300 | OK |
+| `GET /deal-memos/{id}/calendar.ics` (item 69), 30 deals | 13.4 | 19.7 | 300 | OK |
+
+The calendar file is timed inside the script's write deals, because only those have agreed dates; the seeded data has no accepted deal.
+
+**The bulk mark-paid (25 rows) is at the edge of its 500 ms budget in this harness, and today's figures do not settle which side.** Six runs gave a p95 of 615.8, 555.7, 543.5, 443.7 and 481.4 ms, and 320.2 ms in a run with 10 deals ahead of it; each p95 rests on only 5 calls. The cause documented on 30 September (below) fits: every request runs in a savepoint of one rolled-back transaction, and past 64 subtransactions PostgreSQL's visibility checks slow down; committed, as in production, the same calls ran flat at 341 ms p95. **Not yet re-measured committed since then**, and the database gained four indexes and the app its own login today, so it stays the write to watch: re-measure it committed, in a throwaway database, before launch or before the 25-row limit changes.
+
 ## Many people at once: the load test (12 October, item 5, D-092)
 
 `scripts/load_test.py` (Locust) runs brands and creators through what they
