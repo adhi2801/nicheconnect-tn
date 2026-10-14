@@ -37,6 +37,8 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     # To whichever side did not do it
     "memo_cancelled",
     "payment_confirmed",
+    # To whoever made a report, when an admin resolves it (item 102)
+    "report_resolved",
 )
 MAX_DETAILS_LENGTH = 2000
 

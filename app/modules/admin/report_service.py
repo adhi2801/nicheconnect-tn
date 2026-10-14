@@ -3,6 +3,8 @@
 A report must point at something that exists; nobody may report
 themselves; and a second report of the same thing while the first is open
 changes nothing and says so, rather than filling the queue with duplicates.
+The person who reported can always see what became of each report (item
+102): a report nobody answers teaches people to stop reporting.
 """
 
 import uuid
@@ -13,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.pagination import Slice, build_slice, older_than_cursor
 from app.modules.admin.exceptions import CannotReportYourself, ReportSubjectNotFound
 from app.modules.admin.models.report import Report
 from app.modules.auth.models.account import Account
@@ -96,3 +99,22 @@ def file_report(
         return Filed(found, already_open=True)
     db.refresh(report)
     return Filed(report, already_open=False)
+
+
+def list_mine(
+    db: Session, reporter: Account, *, limit: int, cursor: str | None
+) -> Slice[Report]:
+    """The reports this person made, newest first, with what became of each.
+
+    Served by ix_report_reporter_created_at. Never the admin's note: it may
+    say things about the other person that are not the reporter's to read.
+    """
+    query = select(Report).where(Report.reporter_account_id == reporter.id)
+    if cursor is not None:
+        query = query.where(older_than_cursor(Report.created_at, Report.id, cursor))
+    rows = list(
+        db.scalars(
+            query.order_by(Report.created_at.desc(), Report.id.desc()).limit(limit + 1)
+        ).all()
+    )
+    return build_slice(rows, limit, key=lambda r: (r.created_at, r.id))

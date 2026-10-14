@@ -44,13 +44,17 @@ class ReportRead(BaseModel):
     subject_id: uuid.UUID
     category: ReportCategory
     note: str | None
-    status: Literal["open", "actioned", "dismissed"]
+    status: Literal["open", "actioned", "dismissed"] = Field(
+        description="`actioned`: an admin acted on it. `dismissed`: looked at, no action"
+    )
     created_at: datetime
+    resolved_at: datetime | None = Field(
+        description="When an admin resolved it; null while it is open (item 102)"
+    )
 
 
 class AdminReportRead(ReportRead):
     reporter_account_id: uuid.UUID
-    resolved_at: datetime | None
     resolution_note: str | None
 
 

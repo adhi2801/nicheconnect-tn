@@ -34,6 +34,7 @@ from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.models import DealMemo
+from app.modules.notifications import service as notifications
 
 
 def _log(
@@ -266,6 +267,19 @@ def resolve_report(
     report.resolution_note = note
     report.updated_at = now
     _log(db, admin, "resolve_report", now, report_id=report.id, note=note)
+    # The reporter is told the outcome, in the same transaction (item 102).
+    # Never the note, and never who handled it.
+    notifications.record(
+        db,
+        account_id=report.reporter_account_id,
+        notification_type="report_resolved",
+        now=now,
+        details={
+            "report_id": str(report.id),
+            "subject_kind": report.subject_kind,
+            "outcome": outcome,
+        },
+    )
     db.commit()
     db.refresh(report)
     return report

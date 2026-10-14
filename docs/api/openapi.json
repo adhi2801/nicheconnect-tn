@@ -349,9 +349,11 @@
                 "type": "null"
               }
             ],
+            "description": "When an admin resolved it; null while it is open (item 102)",
             "title": "Resolved At"
           },
           "status": {
+            "description": "`actioned`: an admin acted on it. `dismissed`: looked at, no action",
             "enum": [
               "open",
               "actioned",
@@ -383,8 +385,8 @@
           "note",
           "status",
           "created_at",
-          "reporter_account_id",
           "resolved_at",
+          "reporter_account_id",
           "resolution_note"
         ],
         "title": "AdminReportRead",
@@ -5222,11 +5224,12 @@
                 "invitation_received",
                 "invitation_accepted",
                 "invitation_declined",
-                "invitation_withdrawn"
+                "invitation_withdrawn",
+                "report_resolved"
               ],
               "type": "string"
             },
-            "maxItems": 20,
+            "maxItems": 21,
             "title": "Muted Types",
             "type": "array"
           },
@@ -5298,7 +5301,8 @@
                 "invitation_received",
                 "invitation_accepted",
                 "invitation_declined",
-                "invitation_withdrawn"
+                "invitation_withdrawn",
+                "report_resolved"
               ],
               "type": "string"
             },
@@ -5344,7 +5348,8 @@
                 "invitation_received",
                 "invitation_accepted",
                 "invitation_declined",
-                "invitation_withdrawn"
+                "invitation_withdrawn",
+                "report_resolved"
               ],
               "type": "string"
             },
@@ -5464,7 +5469,8 @@
               "invitation_received",
               "invitation_accepted",
               "invitation_declined",
-              "invitation_withdrawn"
+              "invitation_withdrawn",
+              "report_resolved"
             ],
             "title": "Notification Type",
             "type": "string"
@@ -6131,6 +6137,34 @@
           "items"
         ],
         "title": "Page[PaymentListItem]",
+        "type": "object"
+      },
+      "Page_ReportRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReportRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as ?cursor= to get the next page",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[ReportRead]",
         "type": "object"
       },
       "PayDetailsRead": {
@@ -8459,7 +8493,21 @@
             ],
             "title": "Note"
           },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When an admin resolved it; null while it is open (item 102)",
+            "title": "Resolved At"
+          },
           "status": {
+            "description": "`actioned`: an admin acted on it. `dismissed`: looked at, no action",
             "enum": [
               "open",
               "actioned",
@@ -8490,7 +8538,8 @@
           "category",
           "note",
           "status",
-          "created_at"
+          "created_at",
+          "resolved_at"
         ],
         "title": "ReportRead",
         "type": "object"
@@ -23740,6 +23789,114 @@
           }
         ],
         "summary": "Report a creator, a brand or a campaign",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/reports/mine": {
+      "get": {
+        "description": "Every report you made, newest first, with its status and when it was resolved. When an admin resolves one you also get a `report_resolved` notification. Who handled it, and their note, are never shown.",
+        "operationId": "list_my_reports_api_v1_reports_mine_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ReportRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A query parameter or the cursor is invalid"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My reports, and what became of each",
         "tags": [
           "reports"
         ]

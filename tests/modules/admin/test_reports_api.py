@@ -1,6 +1,7 @@
 """Users reporting a creator, a brand or a campaign (D-061)."""
 
 import uuid
+from datetime import timedelta
 
 import pytest
 from sqlalchemy import select
@@ -10,6 +11,7 @@ from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from tests.deal_flow import User, brand_user, creator_user
 from tests.factories import build_campaign, create_account
+from tests.query_counts import queries_for
 
 URL = "/api/v1/reports"
 
@@ -59,7 +61,9 @@ def test_a_brand_reports_a_creator(client, db, brand, creator):
         "note",
         "status",
         "created_at",
+        "resolved_at",
     }
+    assert body["resolved_at"] is None
 
 
 def test_a_creator_reports_a_brand_and_a_campaign(client, db, brand, creator):
@@ -186,3 +190,114 @@ def test_two_identical_reports_at_once_leave_one(client, db, brand, creator, mon
 
     assert again.status_code == 200
     assert again.json()["id"] == first["id"]
+
+
+# --- what became of it (item 102) -------------------------------------------------------
+
+MINE = f"{URL}/mine"
+NOTIFICATIONS = "/api/v1/notifications"
+
+
+@pytest.fixture
+def admin(db, clock) -> User:
+    account = create_account(db, "admin")
+    # Committed inside the test's outer transaction: a service that refuses
+    # rolls back the shared session, and an uncommitted admin would vanish.
+    db.commit()
+    return User(account.id, "admin", clock)
+
+
+def resolve(client, admin: User, report_id: str, outcome: str, note: str):
+    response = client.post(
+        f"/api/v1/admin/reports/{report_id}/resolve",
+        json={"outcome": outcome, "note": note},
+        headers=admin.headers,
+    )
+    assert response.status_code == 200, response.text
+
+
+def reports_of(client, db, clock, reporter: User, how_many: int) -> list[str]:
+    """How many reports this person files, each about a different creator."""
+    filed = []
+    for _ in range(how_many):
+        subject = creator_id(db, creator_user(db, clock))
+        filed.append(report(client, reporter, "creator", subject).json()["id"])
+        clock.advance(timedelta(minutes=1))
+    return filed
+
+
+def test_a_reporter_sees_what_became_of_each_report(client, db, clock, admin, brand):
+    first, second = reports_of(client, db, clock, brand, 2)
+    resolve(client, admin, first, "actioned", "Suspended: the photos were stolen.")
+
+    response = client.get(MINE, headers=brand.headers)
+
+    assert response.status_code == 200, response.text
+    items = response.json()["items"]
+    assert [r["id"] for r in items] == [second, first]  # newest first
+    assert (items[0]["status"], items[0]["resolved_at"]) == ("open", None)
+    assert items[1]["status"] == "actioned"
+    assert items[1]["resolved_at"] is not None
+    # Never the admin's note, and never who handled it.
+    assert "Suspended" not in response.text
+    assert str(admin.account_id) not in response.text
+
+
+def test_nobody_sees_another_person_s_reports(client, db, clock, brand):
+    reports_of(client, db, clock, brand, 1)
+    someone_else = brand_user(db, clock)
+
+    assert client.get(MINE, headers=someone_else.headers).json()["items"] == []
+
+
+def test_resolving_tells_the_reporter_and_nobody_else(client, db, clock, admin, brand):
+    reported = creator_user(db, clock)
+    filed = report(client, brand, "creator", creator_id(db, reported)).json()["id"]
+
+    resolve(client, admin, filed, "dismissed", "Looked genuine to us.")
+
+    told = [
+        n
+        for n in client.get(NOTIFICATIONS, headers=brand.headers).json()["items"]
+        if n["notification_type"] == "report_resolved"
+    ]
+    assert len(told) == 1
+    assert told[0]["details"] == {
+        "report_id": filed,
+        "subject_kind": "creator",
+        "outcome": "dismissed",
+    }
+    reported_side = client.get(NOTIFICATIONS, headers=reported.headers).json()["items"]
+    assert [n for n in reported_side if n["notification_type"] == "report_resolved"] == []
+
+
+def test_my_reports_page_without_gaps_or_repeats(client, db, clock, brand):
+    filed = reports_of(client, db, clock, brand, 3)
+
+    first = client.get(MINE, params={"limit": 2}, headers=brand.headers).json()
+    second = client.get(
+        MINE, params={"limit": 2, "cursor": first["next_cursor"]}, headers=brand.headers
+    ).json()
+
+    assert [r["id"] for r in first["items"] + second["items"]] == filed[::-1]
+    assert second["next_cursor"] is None
+
+
+def test_my_reports_cost_the_same_queries_however_many(client, db, clock):
+    few, many = brand_user(db, clock), brand_user(db, clock)
+    reports_of(client, db, clock, few, 1)
+    reports_of(client, db, clock, many, 4)
+
+    assert queries_for(client, MINE, few.headers) == queries_for(
+        client, MINE, many.headers
+    )
+
+
+def test_my_reports_need_a_login(client):
+    assert client.get(MINE).status_code == 401
+
+
+def test_a_broken_cursor_is_refused(client, brand):
+    response = client.get(MINE, params={"cursor": "not-a-cursor"}, headers=brand.headers)
+
+    assert response.status_code == 422
