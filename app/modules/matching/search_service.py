@@ -78,7 +78,7 @@ def _like(text: str) -> str:
     return f"%{escaped}%"
 
 
-def _filtered(search: CreatorSearch) -> Select[tuple[Creator]]:
+def _filtered(search: CreatorSearch) -> Select[Creator]:
     query = select(Creator).where(
         Creator.passport_published_at.is_not(None),
         # A suspended creator is not found (D-061).

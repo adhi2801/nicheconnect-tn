@@ -27,7 +27,17 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from typing import Any
 
-from sqlalchemy import ColumnElement, Select, and_, exists, func, select, union
+from sqlalchemy import (
+    BigInteger,
+    ColumnElement,
+    Select,
+    and_,
+    exists,
+    func,
+    select,
+    type_coerce,
+    union,
+)
 from sqlalchemy.orm import Session, aliased
 
 from app.core.clock import IST
@@ -98,9 +108,7 @@ def _campaign_in_city(city: str | None) -> ColumnElement[bool]:
     return exists(select(named).where(func.lower(func.btrim(named)) == city))
 
 
-def _deals(
-    start: datetime, end: datetime, city: str | None
-) -> Select[tuple[int, int | None, int]]:
+def _deals(start: datetime, end: datetime, city: str | None) -> Select[int, int, int]:
     """Deals agreed in the period: how many, their value, how many repeats.
 
     A repeat is a deal between a brand and a creator who had agreed a deal
@@ -124,7 +132,10 @@ def _deals(
     return (
         select(
             func.count(DealMemo.id),
-            func.coalesce(func.sum(DealMemo.fee_amount_paise), 0),
+            # Never NULL, but SQLAlchemy types a coalesce by its first argument.
+            type_coerce(
+                func.coalesce(func.sum(DealMemo.fee_amount_paise), 0), BigInteger
+            ),
             func.count(DealMemo.id).filter(agreed_before),
         )
         .join(Application, Application.id == DealMemo.application_id)

@@ -26,9 +26,8 @@ shown with the spelling most of its creators used.
 """
 
 from dataclasses import dataclass
-from typing import Any
 
-from sqlalchemy import ColumnElement, Row, exists, func, select
+from sqlalchemy import ColumnElement, exists, func, select
 from sqlalchemy.orm import Session
 
 from app.core.taxonomy import CURRENCY, NICHES, Niche
@@ -161,7 +160,7 @@ def _asking_prices(db: Session, creators: list[ColumnElement[bool]]) -> list[Ask
         )
         .subquery()
     )
-    rows: list[Row[Any]] = list(
+    rows = list(
         db.execute(
             select(
                 per_creator.c.platform,

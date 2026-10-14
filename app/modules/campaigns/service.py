@@ -191,7 +191,7 @@ def change_status(
 
 
 def _paginate(
-    db: Session, query: Select[tuple[Campaign]], limit: int, cursor: str | None
+    db: Session, query: Select[Campaign], limit: int, cursor: str | None
 ) -> Slice[Campaign]:
     """Newest first, one row past the limit to know whether more exist."""
     if cursor is not None:
@@ -510,7 +510,7 @@ def move_application(
 
 
 def _paginate_applications(
-    db: Session, query: Select[tuple[Application]], limit: int, cursor: str | None
+    db: Session, query: Select[Application], limit: int, cursor: str | None
 ) -> Slice[Application]:
     if cursor is not None:
         query = query.where(

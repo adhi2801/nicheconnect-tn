@@ -498,7 +498,7 @@ def change_status(
 
 
 def _paginate(
-    db: Session, query: Select[tuple[DealMemo]], limit: int, cursor: str | None
+    db: Session, query: Select[DealMemo], limit: int, cursor: str | None
 ) -> Slice[DealMemo]:
     if cursor is not None:
         query = query.where(older_than_cursor(DealMemo.created_at, DealMemo.id, cursor))

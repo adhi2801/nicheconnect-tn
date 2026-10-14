@@ -97,9 +97,7 @@ def unblock(db: Session, account: Account, block_id: uuid.UUID) -> None:
     db.commit()
 
 
-def _views(
-    db: Session, account: Account, query: Select[tuple[AccountBlock]]
-) -> list[BlockView]:
+def _views(db: Session, account: Account, query: Select[AccountBlock]) -> list[BlockView]:
     """The blocks a query picks, with each target's public name, in one query."""
     blocks = list(db.scalars(query).all())
     if not blocks:
