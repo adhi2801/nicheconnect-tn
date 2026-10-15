@@ -63,3 +63,28 @@ def test_an_answer_in_time_stays_in_time_however_long_ago():
     assert not report_clocks.is_late(
         due, resolved_at=FILED + timedelta(hours=1), now=FILED + timedelta(days=400)
     )
+
+
+def test_a_category_without_a_clock_stops_the_app():
+    with pytest.raises(RuntimeError, match=r"missing \['brand_new'\], unknown \[\]"):
+        report_clocks.check_clocks(
+            report_clocks.ANSWER_WITHIN, (*REPORT_CATEGORIES, "brand_new")
+        )
+
+
+def test_a_clock_for_no_category_stops_the_app():
+    clocks = {**report_clocks.ANSWER_WITHIN, "retired": timedelta(hours=2)}
+
+    with pytest.raises(RuntimeError, match=r"unknown \['retired'\]"):
+        report_clocks.check_clocks(clocks, REPORT_CATEGORIES)
+
+
+def test_a_clock_longer_than_seven_days_stops_the_app():
+    clocks = {**report_clocks.ANSWER_WITHIN, "non_payment": timedelta(days=15)}
+
+    with pytest.raises(RuntimeError, match="longer than the law's longest"):
+        report_clocks.check_clocks(clocks, REPORT_CATEGORIES)
+
+
+def test_the_real_clocks_pass_their_own_check():
+    report_clocks.check_clocks(report_clocks.ANSWER_WITHIN, REPORT_CATEGORIES)

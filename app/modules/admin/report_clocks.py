@@ -51,15 +51,21 @@ LONGEST = SEVEN_DAYS
 # How long before a deadline the admins are warned.
 DUE_SOON = timedelta(minutes=30)
 
-if set(ANSWER_WITHIN) != set(REPORT_CATEGORIES):
-    # A category without a clock would be a report nobody has to answer.
-    raise RuntimeError(
-        "Every report category needs a clock in report_clocks.ANSWER_WITHIN: "
-        f"missing {sorted(set(REPORT_CATEGORIES) - set(ANSWER_WITHIN))}, "
-        f"unknown {sorted(set(ANSWER_WITHIN) - set(REPORT_CATEGORIES))}"
-    )
-if max(ANSWER_WITHIN.values()) > LONGEST:
-    raise RuntimeError("A report clock is longer than the law's longest, 7 days")
+
+def check_clocks(clocks: dict[str, timedelta], categories: tuple[str, ...]) -> None:
+    """Refuse to start on a category without a clock, or a clock past 7 days."""
+    if set(clocks) != set(categories):
+        # A category without a clock would be a report nobody has to answer.
+        raise RuntimeError(
+            "Every report category needs a clock in report_clocks.ANSWER_WITHIN: "
+            f"missing {sorted(set(categories) - set(clocks))}, "
+            f"unknown {sorted(set(clocks) - set(categories))}"
+        )
+    if max(clocks.values()) > LONGEST:
+        raise RuntimeError("A report clock is longer than the law's longest, 7 days")
+
+
+check_clocks(ANSWER_WITHIN, REPORT_CATEGORIES)
 
 
 def due_at(category: str, filed_at: datetime) -> datetime:
