@@ -26,7 +26,7 @@ protection and two weeks of backups.
 
 ## Going live, in order
 
-**Only a founder can do steps 1, 2, 5 and 8.**
+**Only a founder can do steps 1, 2, 5, 8 and 9.**
 
 1. **Open the AWS account** in the company's name, secure the root user with
    MFA, and create a separate administrator login for daily use.
@@ -61,9 +61,22 @@ protection and two weeks of backups.
 8. **Logins**: paste the MSG91 key into the secret named in
    `msg91_secret_name`, then apply again with `-var "otp_sender=msg91"` and
    `-var "msg91_whatsapp_number=<number>"`.
-9. **Test a restore from backup** before the first real user (D-062).
-10. **Rehearse the incident plan** on staging, end to end, and write the date in `docs/INCIDENT_RESPONSE.md` section 7: a leaked `SECRET_KEY` rotated and confirmed within the hour.
-11. **Production**: the same steps in `infra/envs/production`.
+9. **Report deadline alerts** (item 51, D-103). The IT Rules give some
+   reports 2 hours, and the warning job tells the founders through error
+   tracking, so it reaches nobody until both of these are done:
+   - apply again with `-var "sentry_dsn=<the project's DSN>"`;
+   - in Sentry, add an issue alert: *the event's message contains*
+     `report.`, *the issue is seen more than 0 times in 1 minute*, then
+     *email every founder* (and later page them). Sentry's default alert
+     fires only on a new issue, and every warning of one kind ("due soon",
+     or "late") is one issue, so without this rule only the first warning of
+     each kind would ever email.
+   Then file an `impersonation` report on staging, wait 1 hour 35 minutes,
+   and confirm the email and the admin's `report_due_soon` notification
+   arrive.
+10. **Test a restore from backup** before the first real user (D-062).
+11. **Rehearse the incident plan** on staging, end to end, and write the date in `docs/INCIDENT_RESPONSE.md` section 7: a leaked `SECRET_KEY` rotated and confirmed within the hour.
+12. **Production**: the same steps in `infra/envs/production`.
 
 **Later, not part of going live: results read from proof (D-070).** Off
 until the validation pack says a creator's insights may go to a processor.

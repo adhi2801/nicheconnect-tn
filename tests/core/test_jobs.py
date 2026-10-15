@@ -17,6 +17,7 @@ from app.core import jobs
 from app.core.config import settings
 from app.db.session import SessionLocal
 from app.main import app
+from app.modules.admin import report_clock_jobs
 from app.modules.deal_memo import (
     anchor_jobs,
     anchor_service,
@@ -161,6 +162,36 @@ def test_a_reading_run_while_switched_off_does_nothing(launched):
 
     assert run.read == run.no_numbers == run.failed == run.skipped == 0
     assert run.stopped_at_limit is False
+
+
+def test_report_deadlines_are_checked_every_five_minutes_with_no_backfill(launched):
+    """The shortest clock is 2 hours and the warning comes 30 minutes before
+    it, so a 5-minute run warns 25 to 30 minutes ahead (item 51)."""
+    schedule = DBOS.get_schedule(report_clock_jobs.SCHEDULE_NAME)
+
+    assert schedule is not None
+    assert (
+        schedule["schedule"] == report_clock_jobs.EVERY_FIVE_MINUTES_CRON == "*/5 * * * *"
+    )
+
+
+def test_the_warning_workflow_runs_through_dbos(launched, monkeypatch):
+    runs = []
+    monkeypatch.setattr(
+        report_clock_jobs,
+        "run_warnings",
+        lambda scheduled_at: runs.append(scheduled_at),
+    )
+
+    report_clock_jobs.warn_about_report_deadlines(SCHEDULED, None)
+
+    assert runs == [SCHEDULED]
+
+
+def test_a_warning_run_with_nothing_due_does_nothing(launched):
+    run = report_clock_jobs.run_warnings(SCHEDULED)
+
+    assert run.due_soon == run.overdue == 0
 
 
 def test_dbos_keeps_its_state_in_its_own_schema(launched):

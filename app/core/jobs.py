@@ -17,6 +17,7 @@ from dbos import DBOS, DBOSConfig
 from fastapi import FastAPI
 
 from app.core.config import settings
+from app.modules.admin import report_clock_jobs
 from app.modules.deal_memo import anchor_jobs, proof_cleaning_jobs, proof_reading_jobs
 
 DBOS_SCHEMA = "dbos"
@@ -41,6 +42,7 @@ def start(*, schema: str = DBOS_SCHEMA) -> None:
         anchor_jobs.schedules()
         + proof_cleaning_jobs.schedules()
         + proof_reading_jobs.schedules()
+        + report_clock_jobs.schedules()
     )
 
 

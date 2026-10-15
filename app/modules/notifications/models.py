@@ -39,6 +39,13 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     "payment_confirmed",
     # To whoever made a report, when an admin resolves it (item 102)
     "report_resolved",
+    # To whoever made a report, the moment it is filed: the IT Rules'
+    # acknowledgement, with the time it will be answered by (item 51)
+    "report_received",
+    # To every admin, when a report nears its deadline and when it passes it
+    # unanswered (item 51)
+    "report_due_soon",
+    "report_overdue",
 )
 MAX_DETAILS_LENGTH = 2000
 

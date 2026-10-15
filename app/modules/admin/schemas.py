@@ -17,7 +17,15 @@ from app.modules.auth.models.account import REPORT_CATEGORIES
 from app.modules.auth.schemas import Role
 
 ReportSubject = Literal["creator", "brand", "campaign"]
-ReportCategory = Literal["fake_profile", "spam", "abuse", "non_payment", "other"]
+ReportCategory = Literal[
+    "fake_profile",
+    "spam",
+    "abuse",
+    "non_payment",
+    "other",
+    "impersonation",
+    "intimate_content",
+]
 AdminNote = Annotated[str, Field(min_length=3, max_length=1000)]
 
 # The API's lists must be exactly the database's, or startup fails.
@@ -30,7 +38,15 @@ class ReportCreate(BaseModel):
 
     subject_kind: ReportSubject
     subject_id: uuid.UUID
-    category: ReportCategory
+    category: ReportCategory = Field(
+        description=(
+            "What is wrong. `impersonation`: someone is pretending to be you. "
+            "`intimate_content`: something shows you undressed or sexually, "
+            "real or made up. Both are answered within 2 hours; `abuse`, "
+            "`fake_profile`, `spam` and `other` within 36 hours; `non_payment` "
+            "within 7 days (item 51). Clients tolerate values they do not know"
+        )
+    )
     note: Annotated[str | None, Field(default=None, max_length=1000)]
 
 
@@ -48,6 +64,12 @@ class ReportRead(BaseModel):
         description="`actioned`: an admin acted on it. `dismissed`: looked at, no action"
     )
     created_at: datetime
+    due_at: datetime = Field(
+        description=(
+            "When it will be answered by: the deadline the IT Rules set for its "
+            "category, fixed when it was filed (item 51)"
+        )
+    )
     resolved_at: datetime | None = Field(
         description="When an admin resolved it; null while it is open (item 102)"
     )
@@ -56,6 +78,32 @@ class ReportRead(BaseModel):
 class AdminReportRead(ReportRead):
     reporter_account_id: uuid.UUID
     resolution_note: str | None
+    late: bool = Field(description="Answered after `due_at`, or still open past it")
+
+
+class ReportClockRead(BaseModel):
+    category: ReportCategory
+    answer_within_hours: int = Field(description="The IT Rules' clock for it")
+
+
+class ReportClocksRead(BaseModel):
+    """The report queue against its legal clocks (item 51). Totals only."""
+
+    as_of: datetime
+    open: int
+    open_late: int = Field(description="Open, and past their deadline now")
+    next_due_at: datetime | None = Field(
+        description="The earliest deadline among open reports; null when none is open"
+    )
+    days: int = Field(description="How far back the answered figures look")
+    answered: int = Field(description="Resolved in the last `days` days")
+    answered_in_time: int = Field(description="Of those, resolved by their deadline")
+    answered_in_time_share: float | None = Field(
+        description="answered_in_time / answered; null below 5 answered (D-056)"
+    )
+    clocks: list[ReportClockRead] = Field(
+        description="Every category's clock, shortest first: at most 7"
+    )
 
 
 class AdminProfileRead(BaseModel):

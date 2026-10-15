@@ -22,12 +22,13 @@ Three things it does **not** mean:
 
 **Measured on 14 October 2026:** 2,985 tests; coverage 98.55% counting branches when last measured that day, before its last three changes, with CI holding the floors on every run (`docs/standards/testing.md` section 7); CI green on `main` (`d6a86b8`, every job): the secret scan, the module layers, migration linting and round trip, the release step, the suite run as the app's own login and then the owner's tests, coverage, API fuzzing, the dependency and image scans, and the infrastructure check.
 
-**Open in section 3: 68 items.** 24 wait on something outside the code or on Erode Harish: the name and domain (4, 10), the Meta app (29 to 31, 67, 78), the validation pack (33, 39), the lawyer or CA (35, 50, 76), the MSG91 template (62), results data (83, 86), founders' decisions (7, 8, 13, 38, 41, 46, 48, 61, 72). **44 need only an approval**, among them the IT Rules' clocks and takedowns (51, 52), account safety (79 to 82, 101), stopping fake brands (74, 75), counter-offers (44), campaign alerts (43) and a brand's days to pay (87). Section 4 holds the 9 that wait on someone outside.
+**Open in section 3: 67 items** (68 on 14 October; item 51 built on 15 October). 24 wait on something outside the code or on Erode Harish: the name and domain (4, 10), the Meta app (29 to 31, 67, 78), the validation pack (33, 39), the lawyer or CA (35, 50, 76), the MSG91 template (62), results data (83, 86), founders' decisions (7, 8, 13, 38, 41, 46, 48, 61, 72). **43 need only an approval**, among them taking down one item of content (52), account safety (79 to 82, 101), stopping fake brands (74, 75), counter-offers (44), campaign alerts (43) and a brand's days to pay (87). Section 4 holds the 9 that wait on someone outside.
 
 **Built and tested on `main`:**
 - before 1 October: Phases A, B and D of the backlog, C1 to C4, E3 and E4 (`docs/PRODUCT_BACKLOG.md`), creator search, the admin side, results read from proof (D-070, switched off), the deal record with its daily outside timestamp, proof files, and AWS described as code;
 - 1 to 12 October, taken out of the tables: items 1 (Python 3.14 and uv, D-072), 2 (error tracking, D-074), 3 (tracing, D-094), 5 and 5a (the load test and overload shedding, D-092, D-093), 9 (phones registered for push, D-095), 18 and 21 (notification preferences, invite attribution, D-079, D-080), 19 and 22 (response times, city figures, D-077, D-078), 24, 25 and 28 (decline and reply dates, D-089), 32, 42 and 45, 47 (the campaign report, D-088), 53 to 60 and 63 (the legal and trust-and-safety items, D-086), the payments list, deal stages and campaign summaries (D-075, D-076), property, mutation and load testing (D-090 to D-092), and the module layers (D-099);
 - 14 October, marked in the tables: items 97, 98, 99 and 102 (the app's own database login, every foreign key indexed, dispute events sealed, reporters told the outcome; D-100), 100 (every route refuses a stranger) and 69 (deal dates as a calendar file; D-102), and structured JSON logs (D-102).
+- 15 October, marked in the tables: item 51 (the IT Rules' clocks on the report queue; D-103).
 
 ## 3. Left to build: no outside wait, a decision first
 
@@ -119,7 +120,7 @@ Built from 3.8:
 | # | Item | Gate |
 |---|---|---|
 | 50 | A public page listing, in order, what ranks creators in search and matches. It changes with the ranking code (E-Commerce Rules 5(3)) | Copy; **Confirm** we are a marketplace entity |
-| 51 | The grievance clocks in the report queue: acknowledge within 24 hours, resolve within 7 days, unlawful content within 36 hours (IT Rules as amended 2026) | Security |
+| 51 | The grievance clocks in the report queue: acknowledge within 24 hours, resolve within 7 days, unlawful content within 36 hours, intimate content and impersonation within 2 hours (IT Rules as amended 2026) | Security · **Built 15 October (D-103)**: deadlines on every report, the queue by deadline, `GET /api/v1/admin/reports/clocks`, admins warned every 5 minutes. Sentry's alert rule in production is a founder step (`infra/README.md` step 9) |
 | 52 | Taking down one item of content within 3 hours of an order, without suspending the account | Security, database |
 
 ### 3.10 From the trust and safety standard (10 October, `docs/standards/trust-and-safety.md`)

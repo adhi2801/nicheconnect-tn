@@ -19,11 +19,14 @@ from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.admin import admin_service as service
+from app.modules.admin import report_clocks
+from app.modules.admin.models.report import Report
 from app.modules.admin.schemas import (
     AdminAccountRead,
     AdminActionRead,
     AdminProfileRead,
     AdminReportRead,
+    ReportRead,
     ResolveReportIn,
     RestoreIn,
     SuspendIn,
@@ -183,11 +186,25 @@ def restore_account(
     return _account_read(service.describe(db, db.get_one(Account, account_id)))
 
 
+def _report_read(report: Report, now: datetime) -> AdminReportRead:
+    seen = ReportRead.model_validate(report)
+    return AdminReportRead(
+        **seen.model_dump(),
+        reporter_account_id=report.reporter_account_id,
+        resolution_note=report.resolution_note,
+        late=report_clocks.is_late(report.due_at, report.resolved_at, now),
+    )
+
+
 @router.get(
     "/reports",
     response_model=Page[AdminReportRead],
     summary="The report queue",
-    description="Oldest first, so the report waiting longest is handled first.",
+    description=(
+        "Nearest deadline first: each report's `due_at` is the IT Rules' clock "
+        "for its category, 2 hours to 7 days (item 51), and `late` says it was "
+        "answered after it, or is still open past it."
+    ),
     responses=_ERRORS,
 )
 @rate_limit(ADMIN_LIMIT)
@@ -195,13 +212,14 @@ def list_reports(
     request: Request,
     admin: CurrentAdmin,
     db: Annotated[Session, Depends(get_db)],
+    now: Annotated[datetime, Depends(get_now)],
     status: Annotated[str, Query(pattern="^(open|actioned|dismissed)$")] = "open",
     limit: Annotated[int, Query(ge=1, le=MAX_LIMIT)] = DEFAULT_LIMIT,
     cursor: str | None = None,
 ) -> Page[AdminReportRead]:
     page = service.list_reports(db, status=status, limit=limit, cursor=cursor)
     return Page(
-        items=[AdminReportRead.model_validate(r) for r in page.rows],
+        items=[_report_read(r, now) for r in page.rows],
         next_cursor=page.next_cursor,
     )
 
@@ -228,7 +246,7 @@ def resolve_report(
     report = service.resolve_report(
         db, admin, report_id, outcome=body.outcome, note=body.note, now=now
     )
-    return AdminReportRead.model_validate(report)
+    return _report_read(report, now)
 
 
 @router.get(

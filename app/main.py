@@ -22,6 +22,7 @@ from app.core.unexpected_error import UnexpectedErrorMiddleware
 from app.db.session import engine
 from app.modules.admin.admin_router import router as admin_router
 from app.modules.admin.numbers_router import router as numbers_router
+from app.modules.admin.report_clock_router import router as report_clock_router
 from app.modules.admin.report_router import router as report_router
 from app.modules.auth.attribution_router import router as attribution_router
 from app.modules.auth.dependencies import idempotency_identity
@@ -146,6 +147,7 @@ app.include_router(search_router)
 app.include_router(report_router)
 app.include_router(admin_router)
 app.include_router(numbers_router)
+app.include_router(report_clock_router)
 app.include_router(attribution_router)
 app.include_router(media_kit_router)
 app.include_router(rate_guidance_router)
