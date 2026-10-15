@@ -21,6 +21,10 @@ REPORT_CATEGORIES: tuple[str, ...] = (
     "abuse",
     "non_payment",
     "other",
+    # Item 51: the IT Rules give these two a 2-hour clock (rule 3(2)(b)), so a
+    # report of either must be told apart from the others when it is filed.
+    "impersonation",
+    "intimate_content",
 )
 # Indian mobile numbers in E.164: +91, then 10 digits starting 6-9.
 PHONE_PATTERN = r"^\+91[6-9][0-9]{9}$"

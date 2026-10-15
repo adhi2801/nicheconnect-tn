@@ -145,7 +145,9 @@
                   "spam",
                   "abuse",
                   "non_payment",
-                  "other"
+                  "other",
+                  "impersonation",
+                  "intimate_content"
                 ],
                 "type": "string"
               },
@@ -297,7 +299,9 @@
               "spam",
               "abuse",
               "non_payment",
-              "other"
+              "other",
+              "impersonation",
+              "intimate_content"
             ],
             "title": "Category",
             "type": "string"
@@ -307,10 +311,21 @@
             "title": "Created At",
             "type": "string"
           },
+          "due_at": {
+            "description": "When it will be answered by: the deadline the IT Rules set for its category, fixed when it was filed (item 51)",
+            "format": "date-time",
+            "title": "Due At",
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "late": {
+            "description": "Answered after `due_at`, or still open past it",
+            "title": "Late",
+            "type": "boolean"
           },
           "note": {
             "anyOf": [
@@ -385,9 +400,11 @@
           "note",
           "status",
           "created_at",
+          "due_at",
           "resolved_at",
           "reporter_account_id",
-          "resolution_note"
+          "resolution_note",
+          "late"
         ],
         "title": "AdminReportRead",
         "type": "object"
@@ -5225,11 +5242,14 @@
                 "invitation_accepted",
                 "invitation_declined",
                 "invitation_withdrawn",
-                "report_resolved"
+                "report_resolved",
+                "report_received",
+                "report_due_soon",
+                "report_overdue"
               ],
               "type": "string"
             },
-            "maxItems": 21,
+            "maxItems": 24,
             "title": "Muted Types",
             "type": "array"
           },
@@ -5302,7 +5322,10 @@
                 "invitation_accepted",
                 "invitation_declined",
                 "invitation_withdrawn",
-                "report_resolved"
+                "report_resolved",
+                "report_received",
+                "report_due_soon",
+                "report_overdue"
               ],
               "type": "string"
             },
@@ -5349,7 +5372,10 @@
                 "invitation_accepted",
                 "invitation_declined",
                 "invitation_withdrawn",
-                "report_resolved"
+                "report_resolved",
+                "report_received",
+                "report_due_soon",
+                "report_overdue"
               ],
               "type": "string"
             },
@@ -5470,7 +5496,10 @@
               "invitation_accepted",
               "invitation_declined",
               "invitation_withdrawn",
-              "report_resolved"
+              "report_resolved",
+              "report_received",
+              "report_due_soon",
+              "report_overdue"
             ],
             "title": "Notification Type",
             "type": "string"
@@ -8037,16 +8066,127 @@
         "title": "RepeatCreate",
         "type": "object"
       },
-      "ReportCreate": {
-        "additionalProperties": false,
+      "ReportClockRead": {
         "properties": {
+          "answer_within_hours": {
+            "description": "The IT Rules' clock for it",
+            "title": "Answer Within Hours",
+            "type": "integer"
+          },
           "category": {
             "enum": [
               "fake_profile",
               "spam",
               "abuse",
               "non_payment",
-              "other"
+              "other",
+              "impersonation",
+              "intimate_content"
+            ],
+            "title": "Category",
+            "type": "string"
+          }
+        },
+        "required": [
+          "category",
+          "answer_within_hours"
+        ],
+        "title": "ReportClockRead",
+        "type": "object"
+      },
+      "ReportClocksRead": {
+        "description": "The report queue against its legal clocks (item 51). Totals only.",
+        "properties": {
+          "answered": {
+            "description": "Resolved in the last `days` days",
+            "title": "Answered",
+            "type": "integer"
+          },
+          "answered_in_time": {
+            "description": "Of those, resolved by their deadline",
+            "title": "Answered In Time",
+            "type": "integer"
+          },
+          "answered_in_time_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "answered_in_time / answered; null below 5 answered (D-056)",
+            "title": "Answered In Time Share"
+          },
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "clocks": {
+            "description": "Every category's clock, shortest first: at most 7",
+            "items": {
+              "$ref": "#/components/schemas/ReportClockRead"
+            },
+            "title": "Clocks",
+            "type": "array"
+          },
+          "days": {
+            "description": "How far back the answered figures look",
+            "title": "Days",
+            "type": "integer"
+          },
+          "next_due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The earliest deadline among open reports; null when none is open",
+            "title": "Next Due At"
+          },
+          "open": {
+            "title": "Open",
+            "type": "integer"
+          },
+          "open_late": {
+            "description": "Open, and past their deadline now",
+            "title": "Open Late",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "as_of",
+          "open",
+          "open_late",
+          "next_due_at",
+          "days",
+          "answered",
+          "answered_in_time",
+          "answered_in_time_share",
+          "clocks"
+        ],
+        "title": "ReportClocksRead",
+        "type": "object"
+      },
+      "ReportCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "description": "What is wrong. `impersonation`: someone is pretending to be you. `intimate_content`: something shows you undressed or sexually, real or made up. Both are answered within 2 hours; `abuse`, `fake_profile`, `spam` and `other` within 36 hours; `non_payment` within 7 days (item 51). Clients tolerate values they do not know",
+            "enum": [
+              "fake_profile",
+              "spam",
+              "abuse",
+              "non_payment",
+              "other",
+              "impersonation",
+              "intimate_content"
             ],
             "title": "Category",
             "type": "string"
@@ -8467,7 +8607,9 @@
               "spam",
               "abuse",
               "non_payment",
-              "other"
+              "other",
+              "impersonation",
+              "intimate_content"
             ],
             "title": "Category",
             "type": "string"
@@ -8475,6 +8617,12 @@
           "created_at": {
             "format": "date-time",
             "title": "Created At",
+            "type": "string"
+          },
+          "due_at": {
+            "description": "When it will be answered by: the deadline the IT Rules set for its category, fixed when it was filed (item 51)",
+            "format": "date-time",
+            "title": "Due At",
             "type": "string"
           },
           "id": {
@@ -8539,6 +8687,7 @@
           "note",
           "status",
           "created_at",
+          "due_at",
           "resolved_at"
         ],
         "title": "ReportRead",
@@ -8937,7 +9086,9 @@
               "spam",
               "abuse",
               "non_payment",
-              "other"
+              "other",
+              "impersonation",
+              "intimate_content"
             ],
             "title": "Reason",
             "type": "string"
@@ -9880,7 +10031,7 @@
     },
     "/api/v1/admin/reports": {
       "get": {
-        "description": "Oldest first, so the report waiting longest is handled first.",
+        "description": "Nearest deadline first: each report's `due_at` is the IT Rules' clock for its category, 2 hours to 7 days (item 51), and `late` says it was answered after it, or is still open past it.",
         "operationId": "list_reports_api_v1_admin_reports_get",
         "parameters": [
           {
@@ -9992,6 +10143,98 @@
           }
         ],
         "summary": "The report queue",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/reports/clocks": {
+      "get": {
+        "description": "How many reports are open, how many are past their deadline now, the next deadline, and how many of those answered in the last `days` days were answered in time. The IT Rules give each category its clock (item 51): listed in `clocks`. Totals only.",
+        "operationId": "read_clocks_api_v1_admin_reports_clocks_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 90,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportClocksRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not found, which is also the answer for anyone who is not an admin"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A query parameter is not valid"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The report queue against its legal clocks",
         "tags": [
           "admin"
         ]

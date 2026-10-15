@@ -31,12 +31,16 @@ from app.modules.notifications.models import NOTIFICATION_TYPES
 # A deadline runs against the reader of each of these, so they always arrive
 # at once: an answer is due (memo_sent), a review window runs
 # (proof_submitted), the creator has changes to make (proof_revision_requested),
-# or the creator's confirmation window runs (payment_marked_paid).
+# or the creator's confirmation window runs (payment_marked_paid); or a
+# report's legal clock runs against the admins (report_due_soon,
+# report_overdue: item 51).
 URGENT_TYPES: tuple[str, ...] = (
     "memo_sent",
     "proof_submitted",
     "proof_revision_requested",
     "payment_marked_paid",
+    "report_due_soon",
+    "report_overdue",
 )
 MUTABLE_TYPES: tuple[str, ...] = tuple(
     kind for kind in NOTIFICATION_TYPES if kind not in URGENT_TYPES

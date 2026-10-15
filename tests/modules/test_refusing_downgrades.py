@@ -1,7 +1,7 @@
 """Every downgrade that would destroy unrecoverable data refuses while it exists.
 
 database.md section 6: losing such data must be a deliberate act, never a
-side effect of a rollback. Nine migrations refuse. Until 14 October 2026 each
+side effect of a rollback. Ten migrations refuse. Until 14 October 2026 each
 refusal had been proven only by hand, in the session that wrote it
 (database.md gap 6, item 98); a later edit to one could have let a rollback
 drop a deal's record or a person's block without anyone noticing.
@@ -43,6 +43,7 @@ REFUSING = {
     "c45a9831e0c9": "proof files",
     "e39beab4e841": "creator UPI IDs",
     "e591b300cca7": "blocks",
+    "f0ec9547afcc": "reports and suspensions for impersonation or intimate content",
     "f276d2c6ce1e": "cleaned proof files on the deal record",
 }
 
@@ -200,3 +201,40 @@ def test_blocks(db):
     )
 
     assert f"{before + 1} block(s) exist" in refusal(db, "e591b300cca7")
+
+
+IMPERSONATION_OR_INTIMATE = (
+    "SELECT (SELECT count(*) FROM report"
+    " WHERE category IN ('impersonation', 'intimate_content'))"
+    " + (SELECT count(*) FROM account"
+    " WHERE suspension_reason IN ('impersonation', 'intimate_content'))"
+)
+
+
+def test_reports_for_impersonation_or_intimate_content(db):
+    before = count(db, IMPERSONATION_OR_INTIMATE)
+    reporter = create_account(db, "brand")
+    db.execute(
+        text(
+            "INSERT INTO report (reporter_account_id, subject_kind, subject_id, category,"
+            " status, created_at, due_at) VALUES (:a, 'creator', :s, 'impersonation',"
+            " 'open', now(), now() + interval '2 hours')"
+        ),
+        {"a": reporter.id, "s": uuid.uuid4()},
+    )
+
+    assert f"{before + 1} reports or suspensions" in refusal(db, "f0ec9547afcc")
+
+
+def test_suspensions_for_intimate_content(db):
+    before = count(db, IMPERSONATION_OR_INTIMATE)
+    account = create_account(db, "creator")
+    db.execute(
+        text(
+            "UPDATE account SET suspended_at = now(), suspension_reason = 'intimate_content'"
+            " WHERE id = :a"
+        ),
+        {"a": account.id},
+    )
+
+    assert f"{before + 1} reports or suspensions" in refusal(db, "f0ec9547afcc")

@@ -6,9 +6,11 @@ trace, grouped with every other occurrence of the same bug, and tagged with
 the release that introduced it.
 
 What is sent: the error logs the app already writes. `logger.exception` in
-the 500 handler (app/core/errors.py), and the two `logger.error` calls for a
-login code that failed to send and a checkpoint that failed to anchor. Each
-becomes one Sentry event. The web framework's own capture of 5xx answers is
+the 500 handler (app/core/errors.py), the `logger.error` calls for a login
+code that failed to send and a checkpoint that failed to anchor, and the
+report-deadline warnings (`report.due_soon`, `report.overdue`: item 51,
+app/modules/admin/report_clock_service.py), which carry only a report's id,
+category and deadline. Each becomes one Sentry event. The web framework's own capture of 5xx answers is
 switched off: a 503 raised on purpose (a dependency down) is a refusal, not a
 bug, and what is reported stays exactly what the app logs as an error.
 

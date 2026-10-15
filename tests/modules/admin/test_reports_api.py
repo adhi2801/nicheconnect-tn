@@ -14,6 +14,7 @@ from tests.factories import build_campaign, create_account
 from tests.query_counts import queries_for
 
 URL = "/api/v1/reports"
+NOTIFICATIONS = "/api/v1/notifications"
 
 
 @pytest.fixture
@@ -61,6 +62,7 @@ def test_a_brand_reports_a_creator(client, db, brand, creator):
         "note",
         "status",
         "created_at",
+        "due_at",
         "resolved_at",
     }
     assert body["resolved_at"] is None
@@ -88,6 +90,89 @@ def test_reporting_the_same_thing_again_changes_nothing_and_says_so(
     assert again.status_code == 200
     assert again.json()["id"] == first.json()["id"]
     assert again.json()["category"] == "fake_profile"  # unchanged
+
+
+# --- acknowledged at once, with its deadline (item 51) -----------------------------------
+
+
+@pytest.mark.parametrize(
+    ("category", "hours"),
+    [
+        ("impersonation", 2),
+        ("intimate_content", 2),
+        ("abuse", 36),
+        ("fake_profile", 36),
+        ("spam", 36),
+        ("other", 36),
+        ("non_payment", 7 * 24),
+    ],
+)
+def test_a_report_says_when_it_will_be_answered_by(
+    client, db, clock, brand, creator, category, hours
+):
+    response = report(
+        client, brand, "creator", creator_id(db, creator), category=category
+    )
+
+    assert response.status_code == 201, response.text
+    due = clock.now + timedelta(hours=hours)
+    assert response.json()["due_at"] == due.isoformat().replace("+00:00", "Z")
+
+
+def test_filing_is_acknowledged_at_once_and_never_repeats_the_note(
+    client, db, clock, brand, creator
+):
+    filed = report(
+        client,
+        brand,
+        "creator",
+        creator_id(db, creator),
+        category="impersonation",
+        note="This page uses my photos and my name.",
+    ).json()
+
+    told = [
+        n
+        for n in client.get(NOTIFICATIONS, headers=brand.headers).json()["items"]
+        if n["notification_type"] == "report_received"
+    ]
+
+    assert len(told) == 1
+    assert told[0]["details"] == {
+        "report_id": filed["id"],
+        "subject_kind": "creator",
+        "category": "impersonation",
+        "due_at": filed["due_at"],
+    }
+    assert told[0]["created_at"] == filed["created_at"]
+    # The reported side is told nothing (trust-and-safety.md rule 9).
+    reported_side = client.get(NOTIFICATIONS, headers=creator.headers).json()["items"]
+    assert [
+        n for n in reported_side if n["notification_type"].startswith("report_")
+    ] == []
+
+
+def test_a_second_report_of_the_same_thing_is_not_acknowledged_again(
+    client, db, brand, creator
+):
+    first = report(client, brand, "creator", creator_id(db, creator)).json()
+
+    again = report(client, brand, "creator", creator_id(db, creator), category="abuse")
+
+    assert again.json()["due_at"] == first["due_at"]  # the first deadline stands
+    received = [
+        n
+        for n in client.get(NOTIFICATIONS, headers=brand.headers).json()["items"]
+        if n["notification_type"] == "report_received"
+    ]
+    assert len(received) == 1
+
+
+def test_a_report_refused_is_never_acknowledged(client, db, brand):
+    report(client, brand, "creator", uuid.uuid4())
+
+    items = client.get(NOTIFICATIONS, headers=brand.headers).json()["items"]
+    assert [n for n in items if n["notification_type"] == "report_received"] == []
 
 
 def test_nobody_can_report_themselves(client, db, brand, creator):
@@ -167,6 +252,8 @@ def test_a_reporter_finds_their_reports_in_their_export(client, db, brand, creat
     exported = client.get("/api/v1/me/export", headers=brand.headers).json()
 
     assert [r["id"] for r in exported["data"]["reports_made"]] == [filed["id"]]
+    # The deadline we gave them is theirs to keep (item 51).
+    assert exported["data"]["reports_made"][0]["due_at"] == filed["due_at"]
 
 
 def test_two_identical_reports_at_once_leave_one(client, db, brand, creator, monkeypatch):
@@ -195,7 +282,6 @@ def test_two_identical_reports_at_once_leave_one(client, db, brand, creator, mon
 # --- what became of it (item 102) -------------------------------------------------------
 
 MINE = f"{URL}/mine"
-NOTIFICATIONS = "/api/v1/notifications"
 
 
 @pytest.fixture

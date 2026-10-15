@@ -134,7 +134,8 @@ def measure_writes(
     3. `deals` rounds of rate card writes, by a creator made for the run:
        the seeded creators may already hold the ten-package limit.
     4. `deals` reports, by that same creator, each about a different
-       campaign: a second report of the same thing only returns the first.
+       campaign: a second report of the same thing only returns the first;
+       then the admin's queue and its clocks, `deals` times each (item 51).
     """
     timings: dict[str, list[float]] = defaultdict(list)
     due_on = (now + timedelta(days=60)).date().isoformat()
@@ -382,6 +383,26 @@ def measure_writes(
                     "category": "spam",
                     "note": "Measured, then rolled back.",
                 },
+            )
+
+        # The admin's queue and its clocks (item 51), with those reports in it.
+        admin = Account(phone="+919000099998", role="admin")
+        db.add(admin)
+        db.flush()
+        admin_token, _ = create_access_token(admin.id, "admin", now)
+        admin_headers = {"Authorization": f"Bearer {admin_token}"}
+        for _ in reported:
+            write(
+                "GET /admin/reports (queue)",
+                "/api/v1/admin/reports",
+                admin_headers,
+                method="GET",
+            )
+            write(
+                "GET /admin/reports/clocks",
+                "/api/v1/admin/reports/clocks",
+                admin_headers,
+                method="GET",
             )
     finally:
         app.dependency_overrides.pop(get_db, None)

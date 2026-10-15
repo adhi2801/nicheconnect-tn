@@ -5,6 +5,11 @@ themselves; and a second report of the same thing while the first is open
 changes nothing and says so, rather than filling the queue with duplicates.
 The person who reported can always see what became of each report (item
 102): a report nobody answers teaches people to stop reporting.
+
+Every report is acknowledged the moment it is filed, with the deadline the
+IT Rules give its category (item 51, report_clocks.py): the answer to the
+request carries it, and so does a `report_received` notification, written in
+the same transaction so a report is never filed unacknowledged.
 """
 
 import uuid
@@ -15,13 +20,16 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.export import to_json_value
 from app.core.pagination import Slice, build_slice, older_than_cursor
+from app.modules.admin import report_clocks
 from app.modules.admin.exceptions import CannotReportYourself, ReportSubjectNotFound
 from app.modules.admin.models.report import Report
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.models import Campaign
+from app.modules.notifications import service as notifications
 
 
 @dataclass(frozen=True)
@@ -84,11 +92,27 @@ def file_report(
         category=category,
         note=note,
         status="open",
+        due_at=report_clocks.due_at(category, now),
         created_at=now,
         updated_at=now,
     )
     db.add(report)
     try:
+        db.flush()  # the id, for the acknowledgement; or the duplicate refused
+        # The IT Rules' acknowledgement (item 51). Never the note: the
+        # reporter wrote it, and a notification is no place to repeat it.
+        notifications.record(
+            db,
+            account_id=reporter.id,
+            notification_type="report_received",
+            now=now,
+            details={
+                "report_id": str(report.id),
+                "subject_kind": subject_kind,
+                "category": category,
+                "due_at": to_json_value(report.due_at),
+            },
+        )
         db.commit()
     except IntegrityError:
         # Two taps at once: the partial unique index let only one through.

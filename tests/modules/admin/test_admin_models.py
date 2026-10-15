@@ -2,6 +2,7 @@
 
 import uuid
 from collections.abc import Callable
+from datetime import timedelta
 
 import pytest
 from psycopg.errors import Diagnostic
@@ -36,6 +37,8 @@ def report(reporter: Account, **overrides) -> Report:
         "subject_id": uuid.uuid4(),
         "category": "fake_profile",
         "status": "open",
+        "created_at": FIXED_NOW,
+        "due_at": FIXED_NOW + timedelta(hours=36),
     }
     fields.update(overrides)
     return Report(**fields)
@@ -133,6 +136,23 @@ def test_a_resolved_report_does_not_block_a_new_one(db):
         ({"resolution_note": "x" * 1001}, "resolution_note_length"),
         ({"status": "actioned"}, "resolved_when_closed"),
         ({"resolved_at": FIXED_NOW}, "resolved_when_closed"),
+        # Item 51: a deadline after filing, never past the law's longest clock.
+        ({"due_at": FIXED_NOW}, "due_within_seven_days"),
+        ({"due_at": FIXED_NOW - timedelta(hours=1)}, "due_within_seven_days"),
+        (
+            {"due_at": FIXED_NOW + timedelta(days=7, microseconds=1)},
+            "due_within_seven_days",
+        ),
+        # Warned that it is late before it was.
+        (
+            {"overdue_alerted_at": FIXED_NOW + timedelta(hours=35)},
+            "overdue_alert_once_due",
+        ),
+        # At the deadline it is still in time (report_clocks.is_late).
+        (
+            {"overdue_alerted_at": FIXED_NOW + timedelta(hours=36)},
+            "overdue_alert_once_due",
+        ),
     ],
 )
 def test_report_rules_are_enforced_by_the_database(db, overrides, constraint):
@@ -141,6 +161,34 @@ def test_report_rules_are_enforced_by_the_database(db, overrides, constraint):
     said = refused(db, adding(db, report(reporter, **overrides)))
 
     assert said.constraint_name == f"ck_report_{constraint}"
+
+
+def test_a_deadline_of_exactly_seven_days_is_allowed(db):
+    reporter = create_account(db, "creator")
+
+    db.add(report(reporter, due_at=FIXED_NOW + timedelta(days=7)))
+    db.flush()
+
+
+def test_a_report_without_a_deadline_is_refused(db):
+    reporter = create_account(db, "creator")
+
+    said = refused(db, adding(db, report(reporter, due_at=None)))
+
+    assert (said.table_name, said.column_name) == ("report", "due_at")
+
+
+@pytest.mark.parametrize("category", ["impersonation", "intimate_content"])
+def test_the_two_new_categories_are_allowed_for_reports_and_suspensions(db, category):
+    reporter = create_account(db, "creator")
+    db.add(report(reporter, category=category, due_at=FIXED_NOW + timedelta(hours=2)))
+    db.flush()
+
+    db.execute(
+        update(Account)
+        .where(Account.id == reporter.id)
+        .values(suspended_at=FIXED_NOW, suspension_reason=category)
+    )
 
 
 # --- the admin log ---------------------------------------------------------------------

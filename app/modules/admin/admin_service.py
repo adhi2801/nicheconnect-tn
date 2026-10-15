@@ -226,24 +226,23 @@ def restore(
 
 
 def _after_cursor(cursor: str) -> ColumnElement[bool]:
-    """Rows after `cursor` in oldest-first order: the queue's direction."""
-    created_at, row_id = decode_cursor(cursor)
-    return tuple_(Report.created_at, Report.id) > tuple_(
-        literal(created_at), literal(row_id)
-    )
+    """Rows after `cursor` in nearest-deadline-first order: the queue's direction."""
+    due_at, row_id = decode_cursor(cursor)
+    return tuple_(Report.due_at, Report.id) > tuple_(literal(due_at), literal(row_id))
 
 
 def list_reports(
     db: Session, *, status: str, limit: int, cursor: str | None
 ) -> Slice[Report]:
-    """Oldest first, so the report waiting longest is handled first."""
+    """Nearest deadline first, so a 2-hour report filed now comes before a
+    7-day one filed yesterday (item 51). Served by ix_report_status_due_at."""
     query = select(Report).where(Report.status == status)
     if cursor is not None:
         query = query.where(_after_cursor(cursor))
     rows = list(
-        db.scalars(query.order_by(Report.created_at, Report.id).limit(limit + 1)).all()
+        db.scalars(query.order_by(Report.due_at, Report.id).limit(limit + 1)).all()
     )
-    return build_slice(rows, limit, key=lambda r: (r.created_at, r.id))
+    return build_slice(rows, limit, key=lambda r: (r.due_at, r.id))
 
 
 def resolve_report(

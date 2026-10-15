@@ -15,6 +15,19 @@ whole deals, 5 bank bulk transfers of 25 rows, and 30 rounds of rate card
 edits. All from one run, on a developer laptop under Docker Desktop for
 Windows.
 
+## Added 15 October: the report clocks (item 51)
+
+Measured with `scripts/measure_performance.py --runs 50 --deals 30` on the same seeded data (600 campaigns, 3,986 applications, 900 creators, 4,641 packages), on a laptop. The admin reads run inside the script's rolled-back writes, after its 30 reports are filed, 30 calls each.
+
+| Endpoint | p50 ms | p95 ms | Budget | Verdict |
+| --- | --- | --- | --- | --- |
+| `POST /reports` (now with its deadline and acknowledgement) | 15.8 | 18.4 | 500 | OK |
+| `GET /reports/mine` | 12.9 | 17.1 | 300 | OK |
+| `GET /admin/reports` (the queue, nearest deadline first) | 9.5 | 13.1 | 300 | OK |
+| `GET /admin/reports/clocks` | 9.2 | 12.4 | 300 | OK |
+
+**Weak, said plainly:** the queue held about 30 reports. The clocks are one aggregate over the whole report table, with no index on `resolved_at`, so they scan it: fine at pilot scale, and the first thing to index if the table reaches tens of thousands of rows. The warning job is not a request and is not timed here; it is one indexed query per batch of 50.
+
 ## Added 14 October: two new reads, and the bulk write at its edge
 
 Measured with `scripts/measure_performance.py` on 600 campaigns, 3,986 applications, 900 creators and 4,641 packages, on a laptop.

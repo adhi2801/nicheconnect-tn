@@ -70,6 +70,7 @@ ROUTES = [
     ("POST", f"{ADMIN}/accounts/{uuid.uuid4()}/suspend"),
     ("POST", f"{ADMIN}/accounts/{uuid.uuid4()}/restore"),
     ("GET", f"{ADMIN}/reports"),
+    ("GET", f"{ADMIN}/reports/clocks"),
     ("POST", f"{ADMIN}/reports/{uuid.uuid4()}/resolve"),
     ("GET", f"{ADMIN}/actions"),
 ]

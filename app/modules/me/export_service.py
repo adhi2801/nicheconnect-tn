@@ -128,6 +128,8 @@ REPORT_EXPORT_FIELDS = allow(
     "category",
     "note",
     "status",
+    # When we must answer it by, under the IT Rules (item 51).
+    "due_at",
     "resolved_at",
     "created_at",
 )
