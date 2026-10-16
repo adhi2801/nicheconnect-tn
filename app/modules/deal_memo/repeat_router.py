@@ -44,11 +44,13 @@ router = APIRouter(
         409: problem_doc(
             "The brand profile is missing, the deal was not agreed or was "
             "cancelled, its fee does not suit the campaign's type, the campaign "
-            "is not open, the creator is already on it, or it has 25 "
-            "invitations waiting"
+            "is not open, the creator is already on it, it has 25 "
+            "invitations waiting, or the campaign or the brand is withheld for "
+            "legal reasons (`own_content_withheld`)"
         ),
         422: problem_doc("A field is missing or invalid"),
         429: problem_doc("Too many requests; see the Retry-After header"),
+        451: problem_doc("The creator is withheld for legal reasons (item 52)"),
     },
 )
 @rate_limit(REPEAT_LIMIT)

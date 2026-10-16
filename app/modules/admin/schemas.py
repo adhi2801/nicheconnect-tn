@@ -2,19 +2,27 @@
 
 import uuid
 from datetime import date, datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import (
+    AwareDatetime,
     BaseModel,
     ConfigDict,
     Field,
+    model_validator,
 )
+from pydantic_core import PydanticCustomError
 
 from app.core.literals import ensure_same_values
 from app.modules.admin.models.admin_action import ADMIN_ACTIONS
 from app.modules.admin.models.report import REPORT_SUBJECTS
 from app.modules.auth.models.account import REPORT_CATEGORIES
 from app.modules.auth.schemas import Role
+from app.modules.safety.takedown_models import (
+    ORDER_TEXT_MAX_LENGTH,
+    TAKEDOWN_BASES,
+    TAKEDOWN_SUBJECTS,
+)
 
 ReportSubject = Literal["creator", "brand", "campaign"]
 ReportCategory = Literal[
@@ -31,6 +39,8 @@ AdminNote = Annotated[str, Field(min_length=3, max_length=1000)]
 # The API's lists must be exactly the database's, or startup fails.
 ensure_same_values("ReportCategory", ReportCategory, REPORT_CATEGORIES)
 ensure_same_values("ReportSubject", ReportSubject, REPORT_SUBJECTS)
+# A takedown names what a report can name (item 52).
+ensure_same_values("TakedownSubject", ReportSubject, TAKEDOWN_SUBJECTS)
 
 
 class ReportCreate(BaseModel):
@@ -156,7 +166,14 @@ class AdminActionRead(BaseModel):
 
     id: uuid.UUID
     admin_account_id: uuid.UUID
-    action: Literal["view_account", "suspend", "restore", "resolve_report"]
+    action: Literal[
+        "view_account",
+        "suspend",
+        "restore",
+        "resolve_report",
+        "withhold",
+        "lift_withhold",
+    ]
     subject_account_id: uuid.UUID | None
     report_id: uuid.UUID | None
     note: str | None
@@ -219,6 +236,148 @@ class FounderNumbersRead(BaseModel):
     current: PeriodNumbersRead
     previous: PeriodNumbersRead
 
+
+OrderText = Annotated[str, Field(min_length=3, max_length=ORDER_TEXT_MAX_LENGTH)]
+TakedownBasis = Literal["court_order", "government_notice", "report"]
+
+
+class TakedownCreate(BaseModel):
+    """Withhold one item (item 52): on an order, or on a report.
+
+    An order (`court_order`, `government_notice`) gives `issued_by`,
+    `order_reference` and `received_at`, and may give `legal_provision`,
+    `reference_sealed` and a `report_id`. A report gives `report_id`, about
+    this same item, and none of the order's fields.
+    """
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    subject_kind: ReportSubject = Field(
+        description=(
+            "`creator`: their profile and Passport. `brand`: the brand and every "
+            "campaign it posts, now and later. `campaign`: that one campaign"
+        )
+    )
+    subject_id: uuid.UUID
+    basis: TakedownBasis = Field(
+        description=(
+            "`court_order`, or `government_notice` from an authorised officer: "
+            "rule 3(1)(d), 3 hours from `received_at`. `report`: withheld while "
+            "an admin looks into a report, which keeps its own deadline (item 51)"
+        )
+    )
+    issued_by: OrderText | None = Field(
+        default=None,
+        description="The court, or the authority and its officer's designation",
+        examples=["Deputy Inspector General of Police, Cyber Crime, Chennai"],
+    )
+    order_reference: Annotated[
+        str | None, Field(min_length=1, max_length=ORDER_TEXT_MAX_LENGTH)
+    ] = Field(default=None, description="The order's or notice's number")
+    legal_provision: OrderText | None = Field(
+        default=None,
+        description="The law it cites, where it cites one",
+        examples=["IT Act 2000, section 79(3)(b)"],
+    )
+    reference_sealed: bool = Field(
+        default=False,
+        description="The order may not be shown to the owner: they see only that it exists",
+    )
+    received_at: AwareDatetime | None = Field(
+        default=None,
+        description=(
+            "When the order reached us, as the order or its email shows: the "
+            "3-hour clock runs from here. In the last 30 days, not in the future"
+        ),
+    )
+    report_id: uuid.UUID | None = Field(
+        default=None,
+        description="The report about this item: required for `report`, optional for an order",
+    )
+    note: AdminNote = Field(description="Why, for the admin log. The owner never sees it")
+
+    @model_validator(mode="after")
+    def fields_match_basis(self) -> TakedownCreate:
+        order_fields = (self.issued_by, self.order_reference, self.received_at)
+        if self.basis == "report":
+            given = (*order_fields, self.legal_provision)
+            if (
+                self.report_id is None
+                or any(value is not None for value in given)
+                or self.reference_sealed
+            ):
+                raise PydanticCustomError(
+                    "takedown_report_fields",
+                    "A takedown on a report gives report_id, and no order details",
+                )
+        elif any(value is None for value in order_fields):
+            raise PydanticCustomError(
+                "takedown_order_fields",
+                "An order gives issued_by, order_reference and received_at",
+            )
+        return self
+
+    def order_essentials(self) -> tuple[str, str, datetime]:
+        """An order's issued_by, order_reference and received_at, typed.
+
+        The validator above guarantees them for an order; this says so to the
+        type checker without an `assert`, which `-O` would remove.
+        """
+        if (
+            self.issued_by is None
+            or self.order_reference is None
+            or self.received_at is None
+        ):
+            raise ValueError("Not an order: it has no order details")
+        return self.issued_by, self.order_reference, self.received_at
+
+
+class LiftTakedownIn(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    note: AdminNote = Field(
+        description="Why: the order withdrawn or set aside, or the report dismissed"
+    )
+
+
+class AdminTakedownRead(BaseModel):
+    """A takedown as an admin sees it: the order, the clock and the preserved text."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    subject_kind: ReportSubject
+    subject_id: uuid.UUID
+    owner_account_id: uuid.UUID
+    basis: TakedownBasis
+    issued_by: str | None
+    order_reference: str | None
+    legal_provision: str | None
+    reference_sealed: bool
+    report_id: uuid.UUID | None
+    received_at: datetime = Field(
+        description="When the order reached us, or the report was filed"
+    )
+    due_at: datetime = Field(
+        description=(
+            "3 hours after `received_at` for an order; the report's own deadline "
+            "for a report"
+        )
+    )
+    withheld_at: datetime = Field(description="When it was withheld: the server's clock")
+    late: bool = Field(description="Withheld after `due_at`")
+    withheld_by_account_id: uuid.UUID
+    lifted_at: datetime | None
+    lifted_by_account_id: uuid.UUID | None
+    preserved: dict[str, Any] = Field(
+        description=(
+            "The item's visible text when it was withheld, kept as the IT Rules "
+            "ask (rule 3(1)(g)): later edits cannot change it"
+        )
+    )
+
+
+ensure_same_values("TakedownBasis", TakedownBasis, TAKEDOWN_BASES)
 
 # The admin log's action names must match the database allow-list.
 ensure_same_values(

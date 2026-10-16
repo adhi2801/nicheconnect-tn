@@ -44,6 +44,12 @@ from app.modules.campaigns.exceptions import (
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.notifications import service as notifications
 from app.modules.safety.blocks import blocked_between, not_blocked_with_brand
+from app.modules.safety.exceptions import ContentWithheld, OwnContentWithheld
+from app.modules.safety.takedowns import (
+    campaign_is_withheld,
+    campaign_not_withheld,
+    is_withheld,
+)
 
 # Tables this module answers for in a data export (see
 # tests/modules/me/test_export_api.py, which fails if one is missed).
@@ -99,19 +105,24 @@ def get_visible_campaign(
     db: Session, campaign_id: uuid.UUID, account_id: uuid.UUID
 ) -> Campaign:
     """A campaign this account may read: its owner sees it in any status,
-    everyone else only while it is open.
+    everyone else only while it is open and not withheld (item 52).
 
-    Raises CampaignNotFound otherwise, never 403, so drafts stay private.
+    Raises CampaignNotFound for another brand's campaign that is not open,
+    never 403, so drafts stay private; and ContentWithheld (451) for an open
+    one withheld by a takedown, of it or of its brand.
     """
     campaign = db.get(Campaign, campaign_id)
     if campaign is None:
         raise CampaignNotFound()
-    if campaign.status != "open":
+    withheld = campaign_is_withheld(db, campaign.id, campaign.brand_id)
+    if campaign.status != "open" or withheld:
         owner_account_id = db.scalar(
             select(Brand.account_id).where(Brand.id == campaign.brand_id)
         )
         if owner_account_id != account_id:
-            raise CampaignNotFound()
+            if campaign.status != "open":
+                raise CampaignNotFound()
+            raise ContentWithheld()
     return campaign
 
 
@@ -237,6 +248,8 @@ def discover_campaigns(
         Campaign.status == "open",
         # A suspended brand's campaigns leave discovery (D-061).
         brand_is_active(Campaign.brand_id),
+        # So does one withheld, or whose brand is (item 52).
+        campaign_not_withheld(Campaign.id, Campaign.brand_id),
     )
     if viewer_account_id is not None:
         # So do those of a brand either side has blocked (item 59).
@@ -333,7 +346,9 @@ def apply_to_campaign(
     """Apply to an open campaign.
 
     Raises CampaignNotFound (unknown or not open to this creator),
-    ApplicationsClosed (past the closing date) and AlreadyApplied.
+    ApplicationsClosed (past the closing date), AlreadyApplied,
+    ContentWithheld (the campaign or its brand is withheld) and
+    OwnContentWithheld (the creator's own profile is: item 52).
     """
     campaign = db.get(Campaign, campaign_id)
     if campaign is None:
@@ -351,6 +366,13 @@ def apply_to_campaign(
         # is never revealed.
         db.rollback()
         raise CampaignNotFound()
+    # Withheld (item 52): nothing new reaches a withheld item, or comes from one.
+    if campaign_is_withheld(db, campaign.id, campaign.brand_id):
+        db.rollback()
+        raise ContentWithheld()
+    if is_withheld(db, "creator", creator.id):
+        db.rollback()
+        raise OwnContentWithheld()
     if (
         campaign.applications_close_on is not None
         and now.date() > campaign.applications_close_on
@@ -447,8 +469,9 @@ def move_application(
     """The move itself, without committing, for a caller with more to write.
 
     Returns the application's campaign. Accepting an invitation needs the
-    campaign still open and its brand not suspended, checked under the
-    application's lock: an invitation outlives neither.
+    campaign still open, its brand not suspended and neither of them nor the
+    creator withheld (item 52), checked under the application's lock: an
+    invitation outlives none of them.
     """
     # Locked and read again before the check: two moves at once would both
     # pass it, and the last write would silently win (review audit, 4 Oct).
@@ -468,6 +491,22 @@ def move_application(
     ):
         db.rollback()
         raise CampaignNotOpen()
+    # Withheld (item 52): no move towards a new deal, by either side. Saying
+    # no (rejecting, declining, withdrawing) stays open to both.
+    if (actor, new_status) == ("creator", "accepted"):
+        if campaign_is_withheld(db, campaign.id, campaign.brand_id):
+            db.rollback()
+            raise ContentWithheld()
+        if is_withheld(db, "creator", application.creator_id):
+            db.rollback()
+            raise OwnContentWithheld()
+    if actor == "brand" and new_status in {"shortlisted", "accepted"}:
+        if campaign_is_withheld(db, campaign.id, campaign.brand_id):
+            db.rollback()
+            raise OwnContentWithheld()
+        if is_withheld(db, "creator", application.creator_id):
+            db.rollback()
+            raise ContentWithheld()
     application.status = new_status
     application.rejection_reason = rejection_reason if new_status == "rejected" else None
     application.rejection_note = rejection_note if new_status == "rejected" else None

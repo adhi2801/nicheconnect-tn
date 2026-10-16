@@ -42,6 +42,8 @@ from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo import service as deal_memos
 from app.modules.notifications import service as notifications
 from app.modules.safety.blocks import blocked_between
+from app.modules.safety.exceptions import ContentWithheld, OwnContentWithheld
+from app.modules.safety.takedowns import campaign_is_withheld, is_withheld
 
 # Unanswered invitations one campaign may have at once. Enough to invite a
 # real shortlist; too few to spray every creator in a city, which is what
@@ -63,8 +65,9 @@ def invite_creator(
 
     The campaign's row is locked first, so the count of waiting invitations
     and a close or cancel of the campaign cannot interleave with the write.
-    Raises CampaignNotOpen, CreatorNotFound, InvitationLimitReached and
-    AlreadyOnCampaign.
+    Raises CampaignNotOpen, CreatorNotFound, InvitationLimitReached,
+    AlreadyOnCampaign, OwnContentWithheld (the campaign or the brand is
+    withheld) and ContentWithheld (the creator is: item 52).
     """
     db.refresh(campaign, attribute_names=["status"], with_for_update=True)
     if campaign.status != "open":
@@ -85,6 +88,13 @@ def invite_creator(
     ):
         db.rollback()
         raise CreatorNotFound()
+    # Withheld (item 52): nothing new reaches a withheld item, or comes from one.
+    if campaign_is_withheld(db, campaign.id, campaign.brand_id):
+        db.rollback()
+        raise OwnContentWithheld()
+    if is_withheld(db, "creator", creator.id):
+        db.rollback()
+        raise ContentWithheld()
     waiting = db.scalar(
         select(func.count()).where(
             Application.campaign_id == campaign.id, Application.status == "invited"

@@ -46,8 +46,10 @@ _ANSWER_ERRORS: ResponseDocs = {
     **_COMMON_ERRORS,
     404: problem_doc("No such invitation, or it is not yours"),
     409: problem_doc(
-        "It is not an invitation waiting for an answer, or the campaign is no longer open"
+        "It is not an invitation waiting for an answer, the campaign is no longer "
+        "open, or your profile is withheld for legal reasons (`own_content_withheld`)"
     ),
+    451: problem_doc("The campaign or its brand is withheld for legal reasons (item 52)"),
 }
 
 
@@ -69,10 +71,12 @@ _ANSWER_ERRORS: ResponseDocs = {
         404: problem_doc("No such campaign or creator, or the campaign is not yours"),
         409: problem_doc(
             "The brand profile is missing, the campaign is not open, the creator "
-            "already applied or was invited, or the campaign has 25 invitations "
-            "waiting"
+            "already applied or was invited, the campaign has 25 invitations "
+            "waiting, or the campaign or the brand is withheld for legal reasons "
+            "(`own_content_withheld`)"
         ),
         422: problem_doc("A field is missing or invalid"),
+        451: problem_doc("The creator is withheld for legal reasons (item 52)"),
     },
 )
 @rate_limit(INVITE_LIMIT)

@@ -43,6 +43,7 @@ from app.modules.payment_status import service as payments
 from app.modules.payment_status import upi_service as upi
 from app.modules.profiles.models import CreatorChannel, CreatorPackage
 from app.modules.safety import block_service as blocks
+from app.modules.safety import takedown_service as takedowns
 
 # Bumped whenever the shape of the file changes, so a reader can tell which
 # version it is looking at.
@@ -335,6 +336,7 @@ def collect_sections(db: Session, account: Account) -> list[ExportedSection]:
         *_account_sections(db, account),
         *attribution.export_for_account(db, account.id),
         *blocks.export_for_account(db, account.id),
+        *takedowns.export_for_account(db, account.id),
         *campaigns.export_for_account(db, account.id),
         *deal_memos.export_for_account(db, account.id),
         *payments.export_for_account(db, account.id),
@@ -378,6 +380,7 @@ def exported_tables() -> frozenset[str]:
         EXPORTED_TABLES
         | attribution.EXPORTED_TABLES
         | blocks.EXPORTED_TABLES
+        | takedowns.EXPORTED_TABLES
         | campaigns.EXPORTED_TABLES
         | deal_memos.EXPORTED_TABLES
         | notifications.EXPORTED_TABLES

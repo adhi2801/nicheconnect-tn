@@ -15,7 +15,15 @@ from sqlalchemy.sql import func
 
 from app.db.base import Base
 
-ADMIN_ACTIONS: tuple[str, ...] = ("view_account", "suspend", "restore", "resolve_report")
+ADMIN_ACTIONS: tuple[str, ...] = (
+    "view_account",
+    "suspend",
+    "restore",
+    "resolve_report",
+    # A takedown placed and lifted (item 52).
+    "withhold",
+    "lift_withhold",
+)
 NOTE_MAX_LENGTH = 1000
 
 

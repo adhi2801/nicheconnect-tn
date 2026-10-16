@@ -40,6 +40,7 @@ from app.modules.auth.suspension import account_is_active
 from app.modules.profiles import availability_service as availability
 from app.modules.profiles.models import CreatorChannel, CreatorPackage
 from app.modules.safety.blocks import not_blocked
+from app.modules.safety.takedowns import not_withheld
 
 
 @dataclass(frozen=True)
@@ -81,8 +82,9 @@ def _like(text: str) -> str:
 def _filtered(search: CreatorSearch) -> Select[Creator]:
     query = select(Creator).where(
         Creator.passport_published_at.is_not(None),
-        # A suspended creator is not found (D-061).
+        # A suspended creator is not found (D-061), nor a withheld one (item 52).
         account_is_active(Creator.account_id),
+        not_withheld("creator", Creator.id),
     )
     if search.viewer_account_id is not None:
         query = query.where(not_blocked(search.viewer_account_id, Creator.account_id))

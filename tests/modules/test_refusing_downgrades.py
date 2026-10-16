@@ -1,7 +1,7 @@
 """Every downgrade that would destroy unrecoverable data refuses while it exists.
 
 database.md section 6: losing such data must be a deliberate act, never a
-side effect of a rollback. Ten migrations refuse. Until 14 October 2026 each
+side effect of a rollback. Eleven migrations refuse. Until 14 October 2026 each
 refusal had been proven only by hand, in the session that wrote it
 (database.md gap 6, item 98); a later edit to one could have let a rollback
 drop a deal's record or a person's block without anyone noticing.
@@ -36,6 +36,7 @@ VERSIONS = Path(__file__).resolve().parents[2] / "alembic" / "versions"
 # a migration starts or stops refusing without this list changing.
 REFUSING = {
     "0942f3ef82c3": "admin accounts",
+    "4a2f6982641f": "takedowns, and the admin log's entries about them",
     "2c3bf71783d2": "invitations",
     "429278d02ad2": "decline dates, change requests, first answers",
     "8c960d1db341": "how accounts arrived",
@@ -238,3 +239,43 @@ def test_suspensions_for_intimate_content(db):
     )
 
     assert f"{before + 1} reports or suspensions" in refusal(db, "f0ec9547afcc")
+
+
+TAKEDOWNS = (
+    "SELECT (SELECT count(*) FROM takedown) + (SELECT count(*) FROM admin_action"
+    " WHERE action IN ('withhold', 'lift_withhold'))"
+)
+
+
+def test_takedowns(db):
+    """The IT Rules ask us to keep what was withheld and its record (item 52)."""
+    before = count(db, TAKEDOWNS)
+    admin, owner = create_account(db, "admin"), create_account(db, "brand")
+    db.execute(
+        text(
+            "INSERT INTO takedown (subject_kind, subject_id, owner_account_id, basis,"
+            " issued_by, order_reference, received_at, due_at, withheld_at,"
+            " withheld_by_account_id, preserved)"
+            " VALUES ('brand', :s, :o, 'court_order', 'High Court of Madras',"
+            " 'WP 1 of 2026', now() - interval '1 hour', now() + interval '2 hours',"
+            " now(), :a, '{}')"
+        ),
+        {"s": uuid.uuid4(), "o": owner.id, "a": admin.id},
+    )
+
+    assert f"{before + 1} takedowns or admin log entries" in refusal(db, "4a2f6982641f")
+
+
+def test_admin_log_entries_about_takedowns(db):
+    """The log never loses an entry, so its new actions cannot be listed away."""
+    before = count(db, TAKEDOWNS)
+    admin = create_account(db, "admin")
+    db.execute(
+        text(
+            "INSERT INTO admin_action (admin_account_id, action, note)"
+            " VALUES (:a, 'lift_withhold', 'The order was set aside.')"
+        ),
+        {"a": admin.id},
+    )
+
+    assert f"{before + 1} takedowns or admin log entries" in refusal(db, "4a2f6982641f")

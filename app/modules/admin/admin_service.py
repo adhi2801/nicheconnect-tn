@@ -37,7 +37,7 @@ from app.modules.deal_memo.models import DealMemo
 from app.modules.notifications import service as notifications
 
 
-def _log(
+def log_action(
     db: Session,
     admin: Account,
     action: str,
@@ -149,7 +149,9 @@ def find_accounts(
     accounts = list(db.scalars(query.limit(5)).all())
     details = [describe(db, account) for account in accounts]
     for account in accounts:
-        _log(db, admin, "view_account", now, subject_account_id=account.id, note=reason)
+        log_action(
+            db, admin, "view_account", now, subject_account_id=account.id, note=reason
+        )
     db.commit()
     return details
 
@@ -161,7 +163,7 @@ def account_detail(
     if account is None:
         raise AdminNotFound("No such account.")
     detail = describe(db, account)
-    _log(db, admin, "view_account", now, subject_account_id=account.id, note=reason)
+    log_action(db, admin, "view_account", now, subject_account_id=account.id, note=reason)
     db.commit()
     return detail
 
@@ -201,7 +203,7 @@ def suspend(
         .where(AuthSession.account_id == account.id, AuthSession.revoked_at.is_(None))
         .values(revoked_at=now, updated_at=now)
     )
-    _log(db, admin, "suspend", now, subject_account_id=account.id, note=note)
+    log_action(db, admin, "suspend", now, subject_account_id=account.id, note=note)
     db.commit()
     db.refresh(account)
     return account
@@ -216,7 +218,7 @@ def restore(
         raise NotSuspended()
     account.suspended_at = None
     account.suspension_reason = None
-    _log(db, admin, "restore", now, subject_account_id=account.id, note=note)
+    log_action(db, admin, "restore", now, subject_account_id=account.id, note=note)
     db.commit()
     db.refresh(account)
     return account
@@ -265,7 +267,7 @@ def resolve_report(
     report.resolved_at = now
     report.resolution_note = note
     report.updated_at = now
-    _log(db, admin, "resolve_report", now, report_id=report.id, note=note)
+    log_action(db, admin, "resolve_report", now, report_id=report.id, note=note)
     # The reporter is told the outcome, in the same transaction (item 102).
     # Never the note, and never who handled it.
     notifications.record(

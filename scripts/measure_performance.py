@@ -136,6 +136,8 @@ def measure_writes(
     4. `deals` reports, by that same creator, each about a different
        campaign: a second report of the same thing only returns the first;
        then the admin's queue and its clocks, `deals` times each (item 51).
+    5. Those campaigns withheld on an order, the takedown lists and discovery
+       read with them in place, then each lifted (item 52).
     """
     timings: dict[str, list[float]] = defaultdict(list)
     due_on = (now + timedelta(days=60)).date().isoformat()
@@ -403,6 +405,61 @@ def measure_writes(
                 "/api/v1/admin/reports/clocks",
                 admin_headers,
                 method="GET",
+            )
+
+        # Takedowns (item 52): each reported campaign withheld on an order,
+        # the lists read with them in place, discovery read past them, and
+        # each lifted again.
+        takedowns = []
+        for campaign_id in reported:
+            takedowns.append(
+                write(
+                    "POST /admin/takedowns",
+                    "/api/v1/admin/takedowns",
+                    admin_headers,
+                    {
+                        "subject_kind": "campaign",
+                        "subject_id": str(campaign_id),
+                        "basis": "court_order",
+                        "issued_by": "High Court of Madras",
+                        "order_reference": "WP 1012 of 2026",
+                        "received_at": (now - timedelta(hours=1)).isoformat(),
+                        "note": "Measured, then rolled back.",
+                    },
+                )
+            )
+        owner = db.scalar(
+            select(Brand.account_id)
+            .join(Campaign, Campaign.brand_id == Brand.id)
+            .where(Campaign.id == reported[0])
+        )
+        owner_token, _ = create_access_token(owner, "brand", now)
+        owner_headers = {"Authorization": f"Bearer {owner_token}"}
+        for _ in takedowns:
+            write(
+                "GET /admin/takedowns",
+                "/api/v1/admin/takedowns?active=true",
+                admin_headers,
+                method="GET",
+            )
+            write(
+                "GET /me/takedowns",
+                "/api/v1/me/takedowns",
+                owner_headers,
+                method="GET",
+            )
+            write(
+                "GET /campaigns/discover (with takedowns)",
+                "/api/v1/campaigns/discover",
+                creator_headers,
+                method="GET",
+            )
+        for takedown in takedowns:
+            write(
+                "POST /admin/takedowns/{id}/lift",
+                f"/api/v1/admin/takedowns/{takedown['id']}/lift",
+                admin_headers,
+                {"note": "Measured, then rolled back."},
             )
     finally:
         app.dependency_overrides.pop(get_db, None)

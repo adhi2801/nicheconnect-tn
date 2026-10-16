@@ -78,9 +78,13 @@ def _page(result: Slice[Application]) -> Page[ApplicationRead]:
         404: problem_doc("No such campaign"),
         409: problem_doc(
             "The creator profile is missing, the campaign is not open, the "
-            "closing date has passed, or you already applied"
+            "closing date has passed, you already applied, or your profile is "
+            "withheld for legal reasons (`own_content_withheld`)"
         ),
         422: problem_doc("A field is missing or invalid"),
+        451: problem_doc(
+            "The campaign or its brand is withheld for legal reasons (item 52)"
+        ),
     },
 )
 @rate_limit(APPLY_LIMIT)
@@ -213,7 +217,12 @@ def _brand_decision(
         responses={
             **_COMMON_ERRORS,
             404: problem_doc("No such application, or it is not for your campaign"),
-            409: problem_doc("The application is not in a state where that is allowed"),
+            409: problem_doc(
+                "The application is not in a state where that is allowed, or "
+                "your campaign or brand is withheld for legal reasons "
+                "(`own_content_withheld`)"
+            ),
+            451: problem_doc("The creator is withheld for legal reasons (item 52)"),
         },
     )
     @rate_limit(WRITE_LIMIT)

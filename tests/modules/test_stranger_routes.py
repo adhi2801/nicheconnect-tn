@@ -107,6 +107,7 @@ BODIES: dict[str, dict[str, Any]] = {
     "SuspendIn": {"reason": "fraud", "note": "Checking a report."},
     "RestoreIn": {"note": "Checked: a mistake."},
     "ResolveReportIn": {"outcome": "dismissed", "note": "Looked genuine."},
+    "LiftTakedownIn": {"note": "The order was set aside."},
     "CampaignUpdate": {"title": "Pongal sweets launch, extended"},
     "ApplicationCreate": {
         "pitch": "I run a Madurai street-food page with 12,000 followers."
@@ -260,6 +261,19 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
         headers=brand.headers,
     ).json()["id"]
     city = one("SELECT city FROM creator WHERE id = :c", c=creator_id)
+    # A takedown, of the other creator so the world's own stay visible (item 52).
+    takedown_id = one(
+        "INSERT INTO takedown (subject_kind, subject_id, owner_account_id, basis,"
+        " report_id, received_at, due_at, withheld_at, withheld_by_account_id,"
+        " preserved)"
+        " SELECT 'creator', :c, :o, 'report', r.id, r.created_at, r.due_at,"
+        " greatest(now(), r.created_at), :a, '{}' FROM report r WHERE r.id = :r"
+        " RETURNING id",
+        c=other_creator_id,
+        o=other_creator.account_id,
+        a=create_account(db, "admin").id,
+        r=report_id,
+    )
 
     # A second deal, approved but not yet paid, for the pay details.
     unpaid_creator = creator_user(db, clock)
@@ -292,6 +306,7 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
         "block_id": block_id,
         "package_id": package_id,
         "report_id": report_id,
+        "takedown_id": takedown_id,
         "account_id": brand.account_id,
         "city": city,
         "unpaid_memo_id": unpaid_memo_id,

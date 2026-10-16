@@ -46,6 +46,10 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     # unanswered (item 51)
     "report_due_soon",
     "report_overdue",
+    # To the owner, when an admin withholds their profile, brand or campaign
+    # for legal reasons, and when that is lifted (item 52)
+    "content_withheld",
+    "content_restored",
 )
 MAX_DETAILS_LENGTH = 2000
 

@@ -95,6 +95,7 @@ Researched 10 October 2026, sources in section 8.
 | A report | One open report per reporter per subject (D-061); 10 an hour and 30 a day per account; a person cannot report their own thing; the reporter is told the outcome, the reported side is not (item 102). A 2-hour category could be filed falsely to jump the queue: the deadline only changes how fast an admin looks, never what is decided, and the reported side is told nothing (item 51) | Built: `tests/modules/admin/test_reports_api.py`, `test_report_clocks_api.py`, `test_report_clock_warnings.py` |
 | **Pumped records: deals between accounts one person controls** | Records show how many **different** counterparties they rest on: `distinct_brands` on a creator's delivery record, `distinct_creators` on a brand's payment record, so a perfect record built with one partner reads as exactly that. Flagging pairs of accounts that share a device or network at sign-up would need storing sign-up addresses, which is personal data: a founder and lawyer decision first (`legal.md` section 3.1) | Counts built: `test_delivery_record.py`, `tests/modules/payment_status/test_reliability.py`; network flag **Owed** (item 61, a decision) |
 | Reviews or ratings bought or invented | None exist except records from real deals (`legal.md` section 3.6) | Built |
+| **A report used to take a rival offline** | Nothing is hidden by a report alone (item 52, D-104, option A): only an admin withholds an item, on a legal order or after looking at a report. The owner is always told (`content_withheld`, never mutable), keeps their account and sees the item, and their agreed deals carry on; a lift tells them again. The night-time cost: a 2-hour report at 3 a.m. waits for an admin to wake (D-103) | Built: `tests/modules/admin/test_takedowns_api.py`, `tests/modules/safety/test_takedown_visibility_api.py` |
 
 ### 3.4 Anyone → us
 
@@ -104,7 +105,7 @@ Researched 10 October 2026, sources in section 8.
 | Scraping creators | Search and matching are signed-in brands only, 30 a minute and 600 a day per account; no contact details anywhere | Built: the matching and search tests, the daily-ceiling test |
 | Running up our AI bill | Daily ceiling on proof reading (D-070) | Built |
 | Abusing invite attribution | It carries no reward. **Any reward is designed with its abuse limits first** | Built (no reward) |
-| An admin misusing access | Every view and action in the append-only admin log (D-061), sealed by the database, and the app's own login may only read and add to it (item 97) | Built: `tests/modules/admin/test_admin_models.py`, `tests/modules/test_app_role.py` |
+| An admin misusing access | Every view and action in the append-only admin log (D-061), sealed by the database, and the app's own login may only read and add to it (item 97). A takedown (item 52) is in the log with the admin's note, names who withheld and who lifted it, cannot be backdated (the server sets `withheld_at`), and cannot be deleted by the app's login. A rogue admin can still withhold an item; the log shows it afterwards, and a second factor for admins (item 101) is the stronger fix | Built: `tests/modules/admin/test_admin_models.py`, `tests/modules/test_app_role.py`, `tests/modules/safety/test_takedown_model.py` |
 | Impersonating us ("support") | We never ask for codes, PINs or passwords (rule 8). **The login message's wording must say so: Confirm the MSG91 template** | **Owed** (item 62) |
 
 ---
@@ -143,7 +144,7 @@ One module, used by every place free text from one person reaches another:
 
 **Corrected on 14 October:** rule 8 said every login code already warns against sharing it (the wording waits on item 62); rule 9 said the reporter learns the outcome (nothing tells them: item 102), and implied the IT Rules' clocks were on the queue (item 51); the text-flag row listed "briefs" where only a campaign's description and deliverables are checked, not its title.
 
-**Closed the same day** (D-100): a reporter never told the outcome (item 102), and the app's database login able to unseal the records (item 97). **Closed on 15 October** (D-103): the queue had no legal clocks (item 51).
+**Closed the same day** (D-100): a reporter never told the outcome (item 102), and the app's database login able to unseal the records (item 97). **Closed on 15 October** (D-103): the queue had no legal clocks (item 51). **Closed on 16 October** (D-104): one item could only be taken down by suspending its whole account (item 52).
 
 | # | Gap | Risk | Acting on it |
 |---|---|---|---|
