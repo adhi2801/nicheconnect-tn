@@ -39,3 +39,4 @@ from app.modules.profiles.models import (
     CreatorPackage,  # noqa: F401
 )
 from app.modules.safety.models import AccountBlock  # noqa: F401
+from app.modules.safety.takedown_models import Takedown  # noqa: F401

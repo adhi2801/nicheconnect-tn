@@ -157,12 +157,15 @@ def discover_campaigns(
     summary="Read one campaign",
     description=(
         "The owning brand sees its campaign in any status. Everyone else sees "
-        "it only while it is open; otherwise the answer is 404, so drafts stay private."
+        "it only while it is open; otherwise the answer is 404, so drafts stay "
+        "private. An open campaign withheld for legal reasons, or whose brand "
+        "is, answers 451 to everyone but its brand (item 52)."
     ),
     responses={
         401: problem_doc("No access token, or it is invalid or expired"),
         404: problem_doc("No such campaign, or it is not visible to you"),
         429: problem_doc("Too many requests; see the Retry-After header"),
+        451: problem_doc("Withheld for legal reasons (item 52)"),
     },
 )
 @rate_limit(READ_LIMIT)

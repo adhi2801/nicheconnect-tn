@@ -30,6 +30,7 @@ from app.modules.deal_memo import delivery_record
 from app.modules.deal_memo.delivery_record import DeliveryRecord
 from app.modules.profiles.models import CreatorChannel, CreatorPackage
 from app.modules.profiles.rate_card_service import list_channels, list_packages
+from app.modules.safety.takedowns import refuse_withheld_creator
 
 
 @dataclass(frozen=True)
@@ -49,6 +50,15 @@ def may_read(db: Session, account: Account, creator_id: uuid.UUID) -> bool:
     if account.role == "brand":
         return True
     return delivery_record.creator_id_for_account(db, account.id) == creator_id
+
+
+def refuse_if_withheld(db: Session, account: Account, creator: Creator) -> None:
+    """Raise ContentWithheld (451) for a brand reading a withheld creator.
+
+    The creator themself still reads their own (item 52).
+    """
+    if creator.account_id != account.id:
+        refuse_withheld_creator(db, creator.id)
 
 
 def for_creator(db: Session, creator_id: uuid.UUID, now: datetime) -> MediaKit | None:

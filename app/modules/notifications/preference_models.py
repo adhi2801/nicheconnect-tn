@@ -33,7 +33,9 @@ from app.modules.notifications.models import NOTIFICATION_TYPES
 # (proof_submitted), the creator has changes to make (proof_revision_requested),
 # or the creator's confirmation window runs (payment_marked_paid); or a
 # report's legal clock runs against the admins (report_due_soon,
-# report_overdue: item 51).
+# report_overdue: item 51); or something of theirs was withheld for legal
+# reasons, which nobody should learn by finding it gone (content_withheld:
+# item 52).
 URGENT_TYPES: tuple[str, ...] = (
     "memo_sent",
     "proof_submitted",
@@ -41,6 +43,7 @@ URGENT_TYPES: tuple[str, ...] = (
     "payment_marked_paid",
     "report_due_soon",
     "report_overdue",
+    "content_withheld",
 )
 MUTABLE_TYPES: tuple[str, ...] = tuple(
     kind for kind in NOTIFICATION_TYPES if kind not in URGENT_TYPES

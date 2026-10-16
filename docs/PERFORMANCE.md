@@ -15,6 +15,20 @@ whole deals, 5 bank bulk transfers of 25 rows, and 30 rounds of rate card
 edits. All from one run, on a developer laptop under Docker Desktop for
 Windows.
 
+## Added 16 October: takedowns (item 52, D-104)
+
+Measured with `scripts/measure_performance.py` (50 runs per read, 30 deals) on freshly seeded data (150 campaigns, 785 applications, 200 creators, 958 packages), on a laptop, as the database owner. Inside the script's rolled-back writes, 30 campaigns are withheld on an order, the lists and discovery are read 30 times each with all 30 in place, and each is lifted.
+
+| Endpoint | p50 ms | p95 ms | Budget | Verdict |
+| --- | --- | --- | --- | --- |
+| `POST /admin/takedowns` (preserves the text, tells the owner) | 20.0 | 26.8 | 500 | OK |
+| `GET /admin/takedowns?active=true` | 10.2 | 12.9 | 300 | OK |
+| `GET /me/takedowns` | 9.7 | 13.0 | 300 | OK |
+| `GET /campaigns/discover`, 30 takedowns in place | 12.6 | 16.0 | 300 | OK |
+| `POST /admin/takedowns/{id}/lift` | 17.8 | 20.6 | 500 | OK |
+
+**Weak, said plainly:** 30 takedowns is a small table. The visibility check is a `NOT EXISTS` per candidate row inside the same query (no query per row), served by the partial unique index `uq_takedown_active_subject`, so it should stay flat as lifted takedowns pile up, but that is reasoned, not measured at volume. The same run's bulk mark-paid (25 rows) gave 547.1 ms p95 on 5 calls, the harness edge described on 14 October below; it is not on this item's path.
+
 ## Added 15 October: the report clocks (item 51)
 
 Measured with `scripts/measure_performance.py --runs 50 --deals 30` on the same seeded data (600 campaigns, 3,986 applications, 900 creators, 4,641 packages), on a laptop. The admin reads run inside the script's rolled-back writes, after its 30 reports are filed, 30 calls each.

@@ -9,6 +9,7 @@ from app.core.attention import AttentionItem
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.suspension import brand_is_active
 from app.modules.campaigns.models import Application, Campaign
+from app.modules.safety.takedowns import campaign_not_withheld
 
 # Applications still waiting for the brand's decision: shortlist or reject a
 # new one, accept or reject a shortlisted one.
@@ -49,7 +50,7 @@ def for_creator(db: Session, creator_id: uuid.UUID) -> list[AttentionItem]:
 
     One per invitation, not a count: each is a different brand asking, and
     each is answered on its own. Only those that can still be accepted: the
-    campaign open and its brand not suspended.
+    campaign open, its brand not suspended, and neither withheld (item 52).
     """
     rows = db.execute(
         select(Application.id, Campaign.id, Campaign.title, Brand.name)
@@ -60,6 +61,7 @@ def for_creator(db: Session, creator_id: uuid.UUID) -> list[AttentionItem]:
             Application.status == "invited",
             Campaign.status == "open",
             brand_is_active(Campaign.brand_id),
+            campaign_not_withheld(Campaign.id, Campaign.brand_id),
         )
     ).tuples()
     return [

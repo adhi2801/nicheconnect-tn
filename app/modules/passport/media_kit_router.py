@@ -33,6 +33,7 @@ _ERRORS: ResponseDocs = {
     404: problem_doc("No such creator"),
     422: problem_doc("The creator id is not a valid id"),
     429: problem_doc("Too many requests; see the Retry-After header"),
+    451: problem_doc("The creator's profile is withheld for legal reasons (item 52)"),
 }
 
 
@@ -83,4 +84,5 @@ def read_media_kit(
     kit = media_kit_service.for_creator(db, creator_id, now)
     if kit is None:
         raise ProfileNotFound()
+    media_kit_service.refuse_if_withheld(db, account, kit.creator)
     return _to_read(kit)

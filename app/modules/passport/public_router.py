@@ -103,6 +103,9 @@ def _to_public(
         404: problem_doc("No creator with that handle, or the profile is not public"),
         422: problem_doc("That is not a valid handle"),
         429: problem_doc("Too many requests; see the Retry-After header"),
+        451: problem_doc(
+            "The profile is withheld for legal reasons (item 52). Never cached"
+        ),
     },
 )
 @rate_limit(PUBLIC_READ_LIMIT)

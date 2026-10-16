@@ -40,6 +40,9 @@ SEALED = {
     "deal_record_timestamp",
     "dispute_event",
 }
+# Added to and changed, never removed: a takedown is the record the IT Rules
+# ask us to keep (item 52, rule 3(1)(g)).
+KEPT = {"takedown"}
 
 
 def login_url(name: str, password: str) -> str:
@@ -162,6 +165,15 @@ def test_sealed_tables_refuse_it_by_permission(app_db, table):
         assert "permission denied" in refused(app_db, statement)
 
 
+@pytest.mark.parametrize("table", sorted(KEPT))
+def test_kept_tables_refuse_removal_by_permission(app_db, table):
+    for statement in (
+        f"DELETE FROM {table} WHERE false",  # noqa: S608 - a table from the fixed list above
+        f"TRUNCATE {table}",
+    ):
+        assert "permission denied" in refused(app_db, statement)
+
+
 @pytest.mark.parametrize(
     "statement",
     [
@@ -214,6 +226,8 @@ def test_every_table_grants_exactly_the_rights_the_app_needs():
             if table == "alembic_version"
             else (True, True, False, False, False, False, False)
             if table in SEALED
+            else (True, True, True, False, False, False, False)
+            if table in KEPT
             else (True, True, True, True, False, False, False)
         )
         for table in rights
@@ -327,3 +341,38 @@ def test_a_report_and_its_outcome_run_on_the_app_s_own_login(app_client, app_db,
         headers=reporter.headers,
     )
     assert blocked.status_code == 201, blocked.text
+
+
+def test_a_takedown_and_its_lift_run_on_the_app_s_own_login(app_client, app_db, clock):
+    """Withholding writes the takedown, the sealed log and a notification (item 52)."""
+    client = app_client
+    owner = creator_user(app_db, clock)
+    admin_account = create_account(app_db, "admin")
+    app_db.commit()
+    admin = User(admin_account.id, "admin", clock)
+    creator_id = app_db.execute(
+        text("SELECT id FROM creator WHERE account_id = :a"), {"a": owner.account_id}
+    ).scalar_one()
+
+    withheld = client.post(
+        "/api/v1/admin/takedowns",
+        json={
+            "subject_kind": "creator",
+            "subject_id": str(creator_id),
+            "basis": "court_order",
+            "issued_by": "High Court of Madras",
+            "order_reference": "WP 1012 of 2026",
+            "received_at": clock.now.isoformat(),
+            "note": "The order names this profile.",
+        },
+        headers=admin.headers,
+    )
+    assert withheld.status_code == 201, withheld.text
+    lifted = client.post(
+        f"/api/v1/admin/takedowns/{withheld.json()['id']}/lift",
+        json={"note": "The order was set aside."},
+        headers=admin.headers,
+    )
+    assert lifted.status_code == 200, lifted.text
+    mine = client.get("/api/v1/me/takedowns", headers=owner.headers)
+    assert mine.json()["items"][0]["lifted_at"] is not None

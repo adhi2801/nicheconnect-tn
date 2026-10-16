@@ -24,6 +24,7 @@ from app.modules.admin.admin_router import router as admin_router
 from app.modules.admin.numbers_router import router as numbers_router
 from app.modules.admin.report_clock_router import router as report_clock_router
 from app.modules.admin.report_router import router as report_router
+from app.modules.admin.takedown_router import router as admin_takedown_router
 from app.modules.auth.attribution_router import router as attribution_router
 from app.modules.auth.dependencies import idempotency_identity
 from app.modules.auth.device_router import router as devices_router
@@ -61,6 +62,7 @@ from app.modules.profiles.availability_router import router as availability_rout
 from app.modules.profiles.profile_router import brand_router, creator_router
 from app.modules.profiles.rate_card_router import router as rate_card_router
 from app.modules.safety.block_router import router as block_router
+from app.modules.safety.takedown_router import router as takedown_router
 
 # Before the app exists, so the error tracker sees it built (D-074). Off
 # unless SENTRY_DSN is set.
@@ -143,11 +145,13 @@ app.include_router(city_figures_router)
 app.include_router(rate_card_router)
 app.include_router(availability_router)
 app.include_router(block_router)
+app.include_router(takedown_router)
 app.include_router(search_router)
 app.include_router(report_router)
 app.include_router(admin_router)
 app.include_router(numbers_router)
 app.include_router(report_clock_router)
+app.include_router(admin_takedown_router)
 app.include_router(attribution_router)
 app.include_router(media_kit_router)
 app.include_router(rate_guidance_router)

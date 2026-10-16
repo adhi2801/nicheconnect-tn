@@ -181,7 +181,9 @@
               "view_account",
               "suspend",
               "restore",
-              "resolve_report"
+              "resolve_report",
+              "withhold",
+              "lift_withhold"
             ],
             "title": "Action",
             "type": "string"
@@ -407,6 +409,173 @@
           "late"
         ],
         "title": "AdminReportRead",
+        "type": "object"
+      },
+      "AdminTakedownRead": {
+        "description": "A takedown as an admin sees it: the order, the clock and the preserved text.",
+        "properties": {
+          "basis": {
+            "enum": [
+              "court_order",
+              "government_notice",
+              "report"
+            ],
+            "title": "Basis",
+            "type": "string"
+          },
+          "due_at": {
+            "description": "3 hours after `received_at` for an order; the report's own deadline for a report",
+            "format": "date-time",
+            "title": "Due At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "issued_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issued By"
+          },
+          "late": {
+            "description": "Withheld after `due_at`",
+            "title": "Late",
+            "type": "boolean"
+          },
+          "legal_provision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legal Provision"
+          },
+          "lifted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lifted At"
+          },
+          "lifted_by_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lifted By Account Id"
+          },
+          "order_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Reference"
+          },
+          "owner_account_id": {
+            "format": "uuid",
+            "title": "Owner Account Id",
+            "type": "string"
+          },
+          "preserved": {
+            "additionalProperties": true,
+            "description": "The item's visible text when it was withheld, kept as the IT Rules ask (rule 3(1)(g)): later edits cannot change it",
+            "title": "Preserved",
+            "type": "object"
+          },
+          "received_at": {
+            "description": "When the order reached us, or the report was filed",
+            "format": "date-time",
+            "title": "Received At",
+            "type": "string"
+          },
+          "reference_sealed": {
+            "title": "Reference Sealed",
+            "type": "boolean"
+          },
+          "report_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Id"
+          },
+          "subject_id": {
+            "format": "uuid",
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "subject_kind": {
+            "enum": [
+              "creator",
+              "brand",
+              "campaign"
+            ],
+            "title": "Subject Kind",
+            "type": "string"
+          },
+          "withheld_at": {
+            "description": "When it was withheld: the server's clock",
+            "format": "date-time",
+            "title": "Withheld At",
+            "type": "string"
+          },
+          "withheld_by_account_id": {
+            "format": "uuid",
+            "title": "Withheld By Account Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "subject_kind",
+          "subject_id",
+          "owner_account_id",
+          "basis",
+          "issued_by",
+          "order_reference",
+          "legal_provision",
+          "reference_sealed",
+          "report_id",
+          "received_at",
+          "due_at",
+          "withheld_at",
+          "late",
+          "withheld_by_account_id",
+          "lifted_at",
+          "lifted_by_account_id",
+          "preserved"
+        ],
+        "title": "AdminTakedownRead",
         "type": "object"
       },
       "ApplicationCountsRead": {
@@ -4055,6 +4224,23 @@
         "title": "InviteCountsRead",
         "type": "object"
       },
+      "LiftTakedownIn": {
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "description": "Why: the order withdrawn or set aside, or the report dismissed",
+            "maxLength": 1000,
+            "minLength": 3,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "title": "LiftTakedownIn",
+        "type": "object"
+      },
       "LoggedOutAll": {
         "properties": {
           "sessions_ended": {
@@ -5245,11 +5431,13 @@
                 "report_resolved",
                 "report_received",
                 "report_due_soon",
-                "report_overdue"
+                "report_overdue",
+                "content_withheld",
+                "content_restored"
               ],
               "type": "string"
             },
-            "maxItems": 24,
+            "maxItems": 26,
             "title": "Muted Types",
             "type": "array"
           },
@@ -5325,7 +5513,9 @@
                 "report_resolved",
                 "report_received",
                 "report_due_soon",
-                "report_overdue"
+                "report_overdue",
+                "content_withheld",
+                "content_restored"
               ],
               "type": "string"
             },
@@ -5375,7 +5565,9 @@
                 "report_resolved",
                 "report_received",
                 "report_due_soon",
-                "report_overdue"
+                "report_overdue",
+                "content_withheld",
+                "content_restored"
               ],
               "type": "string"
             },
@@ -5499,7 +5691,9 @@
               "report_resolved",
               "report_received",
               "report_due_soon",
-              "report_overdue"
+              "report_overdue",
+              "content_withheld",
+              "content_restored"
             ],
             "title": "Notification Type",
             "type": "string"
@@ -5972,6 +6166,34 @@
         "title": "Page[AdminReportRead]",
         "type": "object"
       },
+      "Page_AdminTakedownRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminTakedownRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as ?cursor= to get the next page",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[AdminTakedownRead]",
+        "type": "object"
+      },
       "Page_ApplicationRead_": {
         "properties": {
           "items": {
@@ -6194,6 +6416,34 @@
           "items"
         ],
         "title": "Page[ReportRead]",
+        "type": "object"
+      },
+      "Page_TakedownRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TakedownRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as ?cursor= to get the next page",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[TakedownRead]",
         "type": "object"
       },
       "PayDetailsRead": {
@@ -9101,6 +9351,240 @@
         "title": "SuspendIn",
         "type": "object"
       },
+      "TakedownCreate": {
+        "additionalProperties": false,
+        "description": "Withhold one item (item 52): on an order, or on a report.\n\nAn order (`court_order`, `government_notice`) gives `issued_by`,\n`order_reference` and `received_at`, and may give `legal_provision`,\n`reference_sealed` and a `report_id`. A report gives `report_id`, about\nthis same item, and none of the order's fields.",
+        "properties": {
+          "basis": {
+            "description": "`court_order`, or `government_notice` from an authorised officer: rule 3(1)(d), 3 hours from `received_at`. `report`: withheld while an admin looks into a report, which keeps its own deadline (item 51)",
+            "enum": [
+              "court_order",
+              "government_notice",
+              "report"
+            ],
+            "title": "Basis",
+            "type": "string"
+          },
+          "issued_by": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 3,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The court, or the authority and its officer's designation",
+            "examples": [
+              "Deputy Inspector General of Police, Cyber Crime, Chennai"
+            ],
+            "title": "Issued By"
+          },
+          "legal_provision": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 3,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The law it cites, where it cites one",
+            "examples": [
+              "IT Act 2000, section 79(3)(b)"
+            ],
+            "title": "Legal Provision"
+          },
+          "note": {
+            "description": "Why, for the admin log. The owner never sees it",
+            "maxLength": 1000,
+            "minLength": 3,
+            "title": "Note",
+            "type": "string"
+          },
+          "order_reference": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The order's or notice's number",
+            "title": "Order Reference"
+          },
+          "received_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the order reached us, as the order or its email shows: the 3-hour clock runs from here. In the last 30 days, not in the future",
+            "title": "Received At"
+          },
+          "reference_sealed": {
+            "default": false,
+            "description": "The order may not be shown to the owner: they see only that it exists",
+            "title": "Reference Sealed",
+            "type": "boolean"
+          },
+          "report_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The report about this item: required for `report`, optional for an order",
+            "title": "Report Id"
+          },
+          "subject_id": {
+            "format": "uuid",
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "subject_kind": {
+            "description": "`creator`: their profile and Passport. `brand`: the brand and every campaign it posts, now and later. `campaign`: that one campaign",
+            "enum": [
+              "creator",
+              "brand",
+              "campaign"
+            ],
+            "title": "Subject Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject_kind",
+          "subject_id",
+          "basis",
+          "note"
+        ],
+        "title": "TakedownCreate",
+        "type": "object"
+      },
+      "TakedownRead": {
+        "description": "One of your items withheld for legal reasons (item 52), as you see it.\n\nWho issued the order, its number and the law it cites are shown unless the\norder is sealed. The admins' names and notes are never shown.",
+        "properties": {
+          "basis": {
+            "description": "`court_order` or `government_notice`: an order under the IT Rules, rule 3(1)(d). `report`: a report the IT Rules make us act on while an admin looks into it. Clients tolerate values they do not know",
+            "enum": [
+              "court_order",
+              "government_notice",
+              "report"
+            ],
+            "title": "Basis",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "issued_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The court or authority; null for a report, or a sealed order",
+            "title": "Issued By"
+          },
+          "legal_provision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The law it cites; null when it cites none, or it is sealed",
+            "title": "Legal Provision"
+          },
+          "lifted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it became visible again; null while it is withheld",
+            "title": "Lifted At"
+          },
+          "order_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The order's number; null for a report, or a sealed order",
+            "title": "Order Reference"
+          },
+          "reference_sealed": {
+            "description": "The order may not be shown to you, so its details are null",
+            "title": "Reference Sealed",
+            "type": "boolean"
+          },
+          "subject_id": {
+            "format": "uuid",
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "subject_kind": {
+            "description": "What is withheld: your creator profile, your brand (and so every campaign it posts), or one campaign",
+            "enum": [
+              "creator",
+              "brand",
+              "campaign"
+            ],
+            "title": "Subject Kind",
+            "type": "string"
+          },
+          "withheld_at": {
+            "format": "date-time",
+            "title": "Withheld At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "subject_kind",
+          "subject_id",
+          "basis",
+          "issued_by",
+          "order_reference",
+          "legal_provision",
+          "reference_sealed",
+          "withheld_at",
+          "lifted_at"
+        ],
+        "title": "TakedownRead",
+        "type": "object"
+      },
       "UnreadCount": {
         "properties": {
           "unread": {
@@ -10466,6 +10950,372 @@
         ]
       }
     },
+    "/api/v1/admin/takedowns": {
+      "get": {
+        "description": "Newest first. `active=true` keeps those still withheld; `active=false` those lifted; leave it out for both.",
+        "operationId": "list_takedowns_api_v1_admin_takedowns_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "active",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Active"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_AdminTakedownRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not found, which is also the answer for anyone who is not an admin"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A field is not valid"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Takedowns",
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "description": "On a court order, or a government notice from an authorised officer, the IT Rules give us 3 hours from when it reached us (rule 3(1)(d)); or on a report, while an admin looks into it (the report keeps its own deadline). At once, everyone but the owner stops seeing the item: it leaves search, matches and discovery, and opening it answers 451. The owner keeps their account and sees it, deals already agreed carry on, and nothing new can start from it. The owner is told (unless the order is sealed, with its details). Its visible text is kept as it stands (`preserved`). `late` says it was withheld after `due_at`.",
+        "operationId": "withhold_api_v1_admin_takedowns_post",
+        "parameters": [
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TakedownCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminTakedownRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not found, which is also the answer for anyone who is not an admin"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "It is already withheld. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A field is not valid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Withhold one creator, brand or campaign",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/takedowns/{takedown_id}/lift": {
+      "post": {
+        "description": "Makes the item visible again, with a note for the admin log: the order withdrawn or set aside, or the report dismissed. The owner is told. The record and its preserved text stay.",
+        "operationId": "lift_api_v1_admin_takedowns__takedown_id__lift_post",
+        "parameters": [
+          {
+            "description": "The takedown's id",
+            "in": "path",
+            "name": "takedown_id",
+            "required": true,
+            "schema": {
+              "description": "The takedown's id",
+              "format": "uuid",
+              "title": "Takedown Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LiftTakedownIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminTakedownRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not found, which is also the answer for anyone who is not an admin"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Already lifted. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A field is not valid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Lift a takedown",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/applications/me": {
       "get": {
         "description": "Everything the signed-in creator has applied to, newest first.",
@@ -10910,7 +11760,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "The application is not in a state where that is allowed. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+            "description": "The application is not in a state where that is allowed, or your campaign or brand is withheld for legal reasons (`own_content_withheld`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
           },
           "422": {
             "content": {
@@ -10933,6 +11783,17 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "451": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The creator is withheld for legal reasons (item 52)"
           },
           "503": {
             "content": {
@@ -11040,7 +11901,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "It is not an invitation waiting for an answer, or the campaign is no longer open. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+            "description": "It is not an invitation waiting for an answer, the campaign is no longer open, or your profile is withheld for legal reasons (`own_content_withheld`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
           },
           "422": {
             "content": {
@@ -11063,6 +11924,17 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "451": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The campaign or its brand is withheld for legal reasons (item 52)"
           },
           "503": {
             "content": {
@@ -11190,7 +12062,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "It is not an invitation waiting for an answer, or the campaign is no longer open. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+            "description": "It is not an invitation waiting for an answer, the campaign is no longer open, or your profile is withheld for legal reasons (`own_content_withheld`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
           },
           "422": {
             "content": {
@@ -11213,6 +12085,17 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "451": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The campaign or its brand is withheld for legal reasons (item 52)"
           },
           "503": {
             "content": {
@@ -11470,7 +12353,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "The application is not in a state where that is allowed. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+            "description": "The application is not in a state where that is allowed, or your campaign or brand is withheld for legal reasons (`own_content_withheld`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
           },
           "422": {
             "content": {
@@ -11493,6 +12376,17 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "451": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The creator is withheld for legal reasons (item 52)"
           },
           "503": {
             "content": {
@@ -13533,7 +14427,7 @@
     },
     "/api/v1/campaigns/{campaign_id}": {
       "get": {
-        "description": "The owning brand sees its campaign in any status. Everyone else sees it only while it is open; otherwise the answer is 404, so drafts stay private.",
+        "description": "The owning brand sees its campaign in any status. Everyone else sees it only while it is open; otherwise the answer is 404, so drafts stay private. An open campaign withheld for legal reasons, or whose brand is, answers 451 to everyone but its brand (item 52).",
         "operationId": "read_campaign_api_v1_campaigns__campaign_id__get",
         "parameters": [
           {
@@ -13600,6 +14494,17 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "451": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Withheld for legal reasons (item 52)"
           },
           "503": {
             "content": {
@@ -14060,7 +14965,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "The creator profile is missing, the campaign is not open, the closing date has passed, or you already applied. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+            "description": "The creator profile is missing, the campaign is not open, the closing date has passed, you already applied, or your profile is withheld for legal reasons (`own_content_withheld`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
           },
           "422": {
             "content": {
@@ -14083,6 +14988,17 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "451": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The campaign or its brand is withheld for legal reasons (item 52)"
           },
           "503": {
             "content": {
@@ -14470,7 +15386,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "The brand profile is missing, the campaign is not open, the creator already applied or was invited, or the campaign has 25 invitations waiting. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+            "description": "The brand profile is missing, the campaign is not open, the creator already applied or was invited, the campaign has 25 invitations waiting, or the campaign or the brand is withheld for legal reasons (`own_content_withheld`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
           },
           "422": {
             "content": {
@@ -14493,6 +15409,17 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "451": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The creator is withheld for legal reasons (item 52)"
           },
           "503": {
             "content": {
@@ -15721,6 +16648,17 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "451": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The profile is withheld for legal reasons (item 52). Never cached"
           },
           "503": {
             "content": {
@@ -18084,6 +19022,17 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "451": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The creator's profile is withheld for legal reasons (item 52)"
           },
           "503": {
             "content": {
@@ -21729,7 +22678,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "The brand profile is missing, the deal was not agreed or was cancelled, its fee does not suit the campaign's type, the campaign is not open, the creator is already on it, or it has 25 invitations waiting. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+            "description": "The brand profile is missing, the deal was not agreed or was cancelled, its fee does not suit the campaign's type, the campaign is not open, the creator is already on it, it has 25 invitations waiting, or the campaign or the brand is withheld for legal reasons (`own_content_withheld`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
           },
           "422": {
             "content": {
@@ -21752,6 +22701,17 @@
               "application/problem+json": {}
             },
             "description": "Too many requests; see the Retry-After header"
+          },
+          "451": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The creator is withheld for legal reasons (item 52)"
           },
           "503": {
             "content": {
@@ -23169,6 +24129,114 @@
         "summary": "Replace my notification preferences",
         "tags": [
           "notifications"
+        ]
+      }
+    },
+    "/api/v1/me/takedowns": {
+      "get": {
+        "description": "Your creator profile, brand or campaigns withheld for legal reasons, newest first, including those since lifted (item 52). While one is withheld, everyone else gets 451 for it and it leaves search, matches and discovery; you still see it, and deals already agreed carry on. Nothing new can start from it until it is lifted. A sealed order's details are null.",
+        "operationId": "list_my_takedowns_api_v1_me_takedowns_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_TakedownRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A query parameter or the cursor is invalid"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "What of mine is withheld",
+        "tags": [
+          "takedowns"
         ]
       }
     },

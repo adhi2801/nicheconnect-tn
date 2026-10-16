@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session
 from app.modules.auth import suspension
 from app.modules.auth.exceptions import ProfileNotFound
 from app.modules.auth.models.creator import Creator
+from app.modules.safety.exceptions import ContentWithheld
+from app.modules.safety.takedowns import is_withheld
 
 
 def passport_is_public(creator: Creator) -> bool:
@@ -36,7 +38,9 @@ def public_creator(db: Session, handle: str) -> Creator:
 
     Raises ProfileNotFound when there is no such handle, the Passport is not
     published, or the account is suspended: all three look the same from
-    outside (D-061), so a stranger learns nothing by trying handles.
+    outside (D-061), so a stranger learns nothing by trying handles. Raises
+    ContentWithheld (451) for a published Passport withheld by a takedown
+    (item 52): it was public, and saying why it is gone is the honest answer.
     """
     creator = db.scalars(select(Creator).where(Creator.handle == handle)).first()
     if (
@@ -45,4 +49,6 @@ def public_creator(db: Session, handle: str) -> Creator:
         or suspension.is_suspended(db, creator.account_id)
     ):
         raise ProfileNotFound()
+    if is_withheld(db, "creator", creator.id):
+        raise ContentWithheld()
     return creator

@@ -33,6 +33,7 @@ from app.modules.payment_status import reliability
 from app.modules.payment_status.reliability import ReliabilityRecord
 from app.modules.profiles import availability_service as availability
 from app.modules.safety.blocks import not_blocked_with_brand
+from app.modules.safety.takedowns import campaign_not_withheld, not_withheld
 
 
 class Rebuilt:
@@ -249,6 +250,8 @@ def find_creators_for_campaign(
             account_is_active(Creator.account_id),
             # Nor one either side has blocked (item 59).
             not_blocked_with_brand(Creator.account_id, campaign.brand_id),
+            # Nor one withheld by a takedown (item 52).
+            not_withheld("creator", Creator.id),
             Creator.city.in_(campaign.cities),
             Creator.niches.overlap(campaign.niches),
         )
@@ -359,6 +362,7 @@ def find_campaigns_for_creator(
             Campaign.status == "open",
             brand_is_active(Campaign.brand_id),
             not_blocked_with_brand(creator.account_id, Campaign.brand_id),
+            campaign_not_withheld(Campaign.id, Campaign.brand_id),
             or_(
                 Campaign.applications_close_on.is_(None),
                 Campaign.applications_close_on >= today,
