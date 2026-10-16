@@ -17,7 +17,7 @@ from app.core.literals import ensure_same_values
 from app.modules.admin.models.admin_action import ADMIN_ACTIONS
 from app.modules.admin.models.report import REPORT_SUBJECTS
 from app.modules.auth.models.account import REPORT_CATEGORIES
-from app.modules.auth.schemas import Role
+from app.modules.auth.schemas import IndianMobile, OtpCode, Role
 from app.modules.safety.takedown_models import (
     ORDER_TEXT_MAX_LENGTH,
     TAKEDOWN_BASES,
@@ -383,3 +383,58 @@ ensure_same_values("TakedownBasis", TakedownBasis, TAKEDOWN_BASES)
 ensure_same_values(
     "AdminActionKind", AdminActionRead.model_fields["action"].annotation, ADMIN_ACTIONS
 )
+
+
+# --- the admins' login, with two factors (item 101, D-105) ------------------------------
+
+AuthenticatorCode = Annotated[
+    str,
+    Field(
+        pattern=r"^[0-9]{6}$",
+        description="The 6-digit code the authenticator app shows now",
+        examples=["492039"],
+    ),
+]
+SetupTicket = Annotated[
+    str,
+    Field(
+        pattern=r"^[A-Za-z0-9_-]{32}$",
+        description="The setup ticket a founder issued with scripts/make_admin.py",
+        examples=["example_ticket_not_a_real_one_01"],
+    ),
+]
+
+
+class AdminLoginIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    phone: IndianMobile
+    code: OtpCode
+    authenticator_code: AuthenticatorCode
+
+
+class SecondFactorSetupIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    phone: IndianMobile
+    code: OtpCode
+    ticket: SetupTicket
+
+
+class SecondFactorSetupRead(BaseModel):
+    """Shown once. Nothing here can be read again, by anyone."""
+
+    secret: str = Field(
+        description="The secret, base32, for typing into an authenticator app",
+        examples=["JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP"],
+    )
+    setup_link: str = Field(
+        description="The same secret as an otpauth:// link, for a QR code",
+        examples=[
+            "otpauth://totp/NicheConnect%20TN:admin-1f0c2a9b"
+            "?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=NicheConnect%20TN"
+        ],
+    )
+    digits: Literal[6] = 6
+    period_seconds: Literal[30] = 30
+    algorithm: Literal["SHA1"] = "SHA1"

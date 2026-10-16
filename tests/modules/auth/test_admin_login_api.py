@@ -1,7 +1,11 @@
-"""Admins log in like everyone else, and login never makes anyone an admin (D-061)."""
+"""The phone-code login never makes anyone an admin, nor logs one in (D-061, D-105).
+
+Admins log in with two factors at /auth/admin/login
+(tests/modules/admin/test_admin_login_api.py). Here, asking for `admin` is a
+wrong code for everyone, admins included.
+"""
 
 from collections.abc import Iterator
-from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -12,7 +16,7 @@ from app.db.session import get_db
 from app.main import app
 from app.modules.auth.dependencies import get_now
 from app.modules.auth.models.account import Account
-from app.modules.auth.models.auth_session import ADMIN_REFRESH_TOKEN_DAYS, AuthSession
+from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.otp_challenge import OtpChallenge
 from app.modules.auth.sender import FakeOtpSender, get_otp_sender
 from tests.factories import FIXED_NOW, create_account, fake_phone
@@ -56,28 +60,33 @@ def comparable(response) -> tuple[int, dict]:
     return response.status_code, body
 
 
-def test_an_admin_logs_in_with_a_code(client, db, sender):
+def test_an_admin_cannot_log_in_with_the_phone_code_alone(client, db, sender):
     admin = create_account(db, "admin")
+    code = code_for(client, sender, admin.phone)
 
-    response = verify(client, admin.phone, code_for(client, sender, admin.phone), "admin")
+    response = verify(client, admin.phone, code, "admin")
 
-    assert response.status_code == 200, response.text
-    assert response.json()["account"] == {
-        "id": str(admin.id),
-        "role": "admin",
-        "is_new": False,
-    }
-
-
-def test_an_admin_session_lasts_one_day_not_thirty(client, db, sender):
-    admin = create_account(db, "admin")
-
-    verify(client, admin.phone, code_for(client, sender, admin.phone), "admin")
-
-    session = db.scalars(
-        select(AuthSession).where(AuthSession.account_id == admin.id)
+    assert response.status_code == 400
+    assert response.json()["code"] == "otp_invalid"
+    assert db.scalar(select(func.count()).where(AuthSession.account_id == admin.id)) == 0
+    challenge = db.scalars(
+        select(OtpChallenge).where(OtpChallenge.phone == admin.phone)
     ).one()
-    assert session.expires_at - FIXED_NOW == timedelta(days=ADMIN_REFRESH_TOKEN_DAYS)
+    assert challenge.attempts == 1
+    assert challenge.consumed_at is None
+
+
+def test_an_admin_is_answered_exactly_as_a_wrong_code(client, db, sender):
+    """So the phone-code login tells nobody which numbers are admins'."""
+    admin = create_account(db, "admin")
+    phone = fake_phone()
+    right_code = code_for(client, sender, admin.phone)
+    code_for(client, sender, phone)
+
+    as_admin = verify(client, admin.phone, right_code, "admin")
+    wrong_code = verify(client, phone, "000000", "creator")
+
+    assert comparable(as_admin) == comparable(wrong_code)
 
 
 def test_login_never_creates_an_admin(client, db, sender):

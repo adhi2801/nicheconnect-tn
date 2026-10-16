@@ -1,11 +1,19 @@
-"""Create an admin account, or suspend or restore one. The only way either happens.
+"""Create an admin account, suspend or restore one, or give one a setup ticket.
 
-Admins are never created by login and there is no API to promote anyone
-(D-061). A founder runs this against the database, with access to it:
+The only way any of these happens. Admins are never created by login and
+there is no API to promote anyone (D-061), nor to change an admin's second
+factor (D-105). A founder runs this against the database, with access to it:
 
     uv run python scripts\\make_admin.py +919876543210
+    uv run python scripts\\make_admin.py +919876543210 --second-factor
     uv run python scripts\\make_admin.py +919876543210 --suspend abuse
     uv run python scripts\\make_admin.py +919876543210 --restore
+
+An admin logs in with two factors, so a new one needs a setup ticket
+(`--second-factor`) before their first login, and so does one who lost or
+locked their authenticator. The ticket is printed once, works once, for 15
+minutes, and only with a code sent to the admin's phone; issuing one ends
+the admin's sessions and tells every admin.
 
 Outside ENVIRONMENT=local it also needs --yes, so a mistyped command aimed at
 the live database cannot make somebody an admin. A phone that already belongs
@@ -27,6 +35,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.session import SessionLocal
+from app.modules.admin import admin_login_service as admin_login
 from app.modules.auth.models.account import REPORT_CATEGORIES, Account
 from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.schemas import normalize_indian_mobile
@@ -44,6 +53,11 @@ def main(
     action.add_argument("--suspend", choices=REPORT_CATEGORIES, help="Suspend this admin")
     action.add_argument(
         "--restore", action="store_true", help="Lift this admin's suspension"
+    )
+    action.add_argument(
+        "--second-factor",
+        action="store_true",
+        help="Issue a one-time ticket to set up this admin's authenticator",
     )
     parser.add_argument(
         "--yes", action="store_true", help="Required outside ENVIRONMENT=local"
@@ -66,6 +80,22 @@ def main(
 
     with session_factory() as db:
         account = db.scalars(select(Account).where(Account.phone == phone)).first()
+
+        if args.second_factor:
+            if account is None or account.role != "admin":
+                print("No admin account has that number.", file=sys.stderr)
+                return 1
+            if account.suspended_at is not None:
+                print("That admin is suspended; restore them first.", file=sys.stderr)
+                return 1
+            ticket = admin_login.issue_ticket(db, account, moment)
+            print(
+                f"Setup ticket for admin {account.id}, valid for 15 minutes, "
+                f"once:\n\n    {ticket}\n\nThey redeem it with a code sent to "
+                "their phone at POST /api/v1/auth/admin/second-factor. Their "
+                "sessions have ended, and every admin has been told."
+            )
+            return 0
 
         if args.suspend or args.restore:
             if account is None or account.role != "admin":
@@ -105,7 +135,10 @@ def main(
         account = Account(phone=phone, role="admin")
         db.add(account)
         db.commit()
-        print(f"Created admin {account.id}. They log in with a code, as role 'admin'.")
+        print(
+            f"Created admin {account.id}. Before their first login, give them "
+            "a setup ticket: add --second-factor."
+        )
         return 0
 
 

@@ -34,6 +34,7 @@ from app.modules.auth.models.account import Account
 from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
+from app.modules.auth.models.totp_factor import TotpFactor
 from app.modules.campaigns import service as campaigns
 from app.modules.deal_memo import service as deal_memos
 from app.modules.disputes import service as disputes
@@ -57,6 +58,9 @@ EXPORTED_TABLES = frozenset(
         "brand",
         "creator",
         "auth_session",
+        # An admin's authenticator: when it was set up, locked or waiting,
+        # never the secret or the setup ticket (D-105).
+        "totp_factor",
         # A creator's own channels and prices are theirs, and unlike most of
         # what we hold they are something they typed rather than something
         # that happened to them (D-055).
@@ -190,8 +194,21 @@ SESSION_EXPORT_FIELDS = allow(
     "family_id",
     "created_at",
     "expires_at",
+    # When the sign-in behind it proved a second factor (D-105).
+    "second_factor_at",
     "used_at",
     "revoked_at",
+)
+# Never the encrypted secret, nor the setup ticket's hash: neither is
+# something you gave us, and either would help someone who took the file.
+SECOND_FACTOR_EXPORT_FIELDS = allow(
+    "id",
+    "enrolled_at",
+    "ticket_expires_at",
+    "consecutive_failures",
+    "locked_at",
+    "created_at",
+    "updated_at",
 )
 
 
@@ -325,6 +342,22 @@ def _account_sections(db: Session, account: Account) -> list[ExportedSection]:
             ),
             objects=sessions,
             fields=SESSION_EXPORT_FIELDS,
+        )
+    )
+    factors = list(
+        db.scalars(select(TotpFactor).where(TotpFactor.account_id == account.id)).all()
+    )
+    sections.append(
+        build_section(
+            "second_factor",
+            table="totp_factor",
+            purpose=(
+                "Admins only: when your authenticator app was set up, whether a "
+                "setup ticket is waiting, and whether it is locked after wrong "
+                "codes. The secret itself and the ticket are not included."
+            ),
+            objects=factors,
+            fields=SECOND_FACTOR_EXPORT_FIELDS,
         )
     )
     return sections

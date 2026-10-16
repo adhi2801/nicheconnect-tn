@@ -32,11 +32,14 @@ from app.core.config import settings
 from app.core.rate_limit import limiter
 from app.db.session import SessionLocal, engine, get_db
 from app.main import app
+from app.modules.auth import second_factor, second_factor_secrets
 from app.modules.auth.dependencies import get_now
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
-from app.modules.auth.tokens import create_access_token
+from app.modules.auth.models.otp_challenge import OtpChallenge
+from app.modules.auth.models.totp_factor import TotpFactor
+from app.modules.auth.tokens import TWO_FACTORS, create_access_token, hash_otp_code
 from app.modules.campaigns.models import Campaign
 from app.modules.payment_status.service import MAX_BULK_MARK_PAID
 
@@ -391,8 +394,45 @@ def measure_writes(
         admin = Account(phone="+919000099998", role="admin")
         db.add(admin)
         db.flush()
-        admin_token, _ = create_access_token(admin.id, "admin", now)
+        admin_token, _ = create_access_token(admin.id, "admin", now, methods=TWO_FACTORS)
         admin_headers = {"Authorization": f"Bearer {admin_token}"}
+
+        # The admins' login with two factors (item 101), once per report: a
+        # fresh phone code each round, and the factor's last step cleared
+        # between rounds, since this script's clock stands still and each
+        # authenticator code works once.
+        secret = bytes(range(20))
+        factor = TotpFactor(
+            account_id=admin.id,
+            secret_ciphertext=second_factor_secrets.seal(secret, admin.id),
+            enrolled_at=now,
+        )
+        db.add(factor)
+        db.flush()
+        for round_number, _ in enumerate(reported, start=1):
+            factor.last_used_step = None
+            db.add(
+                OtpChallenge(
+                    phone=admin.phone,
+                    code_hash=hash_otp_code("135790"),
+                    expires_at=now + timedelta(minutes=5),
+                    created_at=now + timedelta(microseconds=round_number),
+                    updated_at=now,
+                )
+            )
+            db.flush()
+            write(
+                "POST /auth/admin/login",
+                "/api/v1/auth/admin/login",
+                {},
+                {
+                    "phone": admin.phone,
+                    "code": "135790",
+                    "authenticator_code": second_factor.code_at_step(
+                        secret, second_factor.step_at(now)
+                    ),
+                },
+            )
         for _ in reported:
             write(
                 "GET /admin/reports (queue)",

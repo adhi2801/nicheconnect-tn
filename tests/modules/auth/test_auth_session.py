@@ -1,11 +1,13 @@
 import secrets
 import uuid
+from datetime import timedelta
 
 import pytest
 from sqlalchemy.exc import IntegrityError
 
+from app.core.config import settings
 from app.modules.auth.models.account import Account
-from app.modules.auth.models.auth_session import AuthSession, refresh_token_ttl
+from app.modules.auth.models.auth_session import AuthSession, refresh_token_expiry
 from tests.factories import (
     FIXED_NOW,
     build_auth_session,
@@ -28,7 +30,7 @@ def test_valid_session_is_saved_unused_and_active(db):
     db.refresh(auth_session)
 
     assert auth_session.id is not None
-    assert auth_session.expires_at == FIXED_NOW + refresh_token_ttl("creator")
+    assert auth_session.expires_at == refresh_token_expiry("creator", FIXED_NOW, None)
     assert auth_session.used_at is None
     assert auth_session.revoked_at is None
     assert auth_session.created_at is not None
@@ -110,3 +112,35 @@ def test_deleting_an_account_deletes_its_sessions(db):
 
     assert db.get(Account, account.id) is None
     assert db.query(AuthSession).filter_by(account_id=account.id).count() == 0
+
+
+# --- how long a refresh token lasts (D-008, D-105) ------------------------------------------
+
+
+def test_a_brand_or_creator_session_lasts_the_configured_days():
+    assert refresh_token_expiry("brand", FIXED_NOW, None) == FIXED_NOW + timedelta(
+        days=settings.refresh_token_expire_days
+    )
+
+
+def test_an_admin_session_lasts_an_hour_from_each_refresh():
+    logged_in = FIXED_NOW - timedelta(hours=3)
+
+    assert refresh_token_expiry("admin", FIXED_NOW, logged_in) == FIXED_NOW + timedelta(
+        hours=1
+    )
+
+
+def test_an_admin_session_never_outlasts_twelve_hours_from_the_login():
+    logged_in = FIXED_NOW - timedelta(hours=11, minutes=30)
+
+    assert refresh_token_expiry("admin", FIXED_NOW, logged_in) == logged_in + timedelta(
+        hours=12
+    )
+
+
+def test_an_admin_session_with_no_second_factor_still_gets_only_an_hour():
+    """Refresh refuses such a session anyway (D-105); this is the outer bound."""
+    assert refresh_token_expiry("admin", FIXED_NOW, None) == FIXED_NOW + timedelta(
+        hours=1
+    )

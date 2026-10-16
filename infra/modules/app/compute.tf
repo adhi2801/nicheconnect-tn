@@ -133,7 +133,7 @@ locals {
 
   secrets = concat(
     [
-      for key in ["DATABASE_URL", "REDIS_URL", "RATE_LIMIT_STORAGE_URI", "SECRET_KEY", "OTP_HASH_KEY"] :
+      for key in ["DATABASE_URL", "REDIS_URL", "RATE_LIMIT_STORAGE_URI", "SECRET_KEY", "OTP_HASH_KEY", "SECOND_FACTOR_KEY"] :
       { name = key, valueFrom = "${aws_secretsmanager_secret.app.arn}:${key}::" }
     ],
     [{ name = "MSG91_AUTH_KEY", valueFrom = aws_secretsmanager_secret.msg91.arn }],

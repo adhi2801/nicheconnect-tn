@@ -109,7 +109,9 @@ OtpCode = Annotated[
         examples=["042917"],
     ),
 ]
-# "admin" logs in like everyone else but is never created by login (D-061).
+# "admin" is never created by login (D-061), and logs in only with two
+# factors, at /auth/admin/login (D-105); /auth/otp/verify answers it as a
+# wrong code.
 Role = Literal["brand", "creator", "admin"]
 
 
@@ -170,8 +172,8 @@ class OtpVerifyIn(BaseModel):
     code: OtpCode
     role: Role = Field(
         description=(
-            "Which app is logging in. `admin` logs in only to an admin account "
-            "that already exists; it never creates one"
+            "Which app is logging in. `admin` is always answered as a wrong "
+            "code: admins log in with two factors at /api/v1/auth/admin/login"
         ),
         examples=["creator"],
     )

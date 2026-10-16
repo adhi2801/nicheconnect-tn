@@ -51,6 +51,7 @@ jobs:
       REDIS_URL: redis://localhost:6379/0
       SECRET_KEY: ci-test-only-signing-key-not-a-secret-0001
       OTP_HASH_KEY: ci-test-only-otp-hash-key-not-a-secret-0002
+      SECOND_FACTOR_KEY: ci-test-only-second-factor-key-not-a-secret-0004
       # 50 generated cases per property test per mutant (tests/conftest.py).
       HYPOTHESIS_PROFILE: mutation
       # The machine's clock in Tamil Nadu time, not UTC: a mutant that reads

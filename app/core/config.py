@@ -123,6 +123,10 @@ class Settings(BaseSettings):
     secret_key: SecretStr = Field(min_length=MIN_KEY_LENGTH)
     # Keys the HMAC of one-time codes (D-011). Must differ from secret_key.
     otp_hash_key: SecretStr = Field(min_length=MIN_KEY_LENGTH)
+    # Encrypts the admins' authenticator secrets at rest (item 101, D-105),
+    # so a copy of the database alone yields none of them. Must differ from
+    # both keys above. Rotating it voids every enrolled authenticator.
+    second_factor_key: SecretStr = Field(min_length=MIN_KEY_LENGTH)
     access_token_expire_minutes: int = Field(default=15, ge=1, le=15)
     refresh_token_expire_days: int = Field(default=30, ge=1, le=30)
     # Background jobs (D-060). Off unless this instance should run them;
@@ -258,7 +262,7 @@ class Settings(BaseSettings):
             raise ValueError("must start with memory://, redis:// or rediss://")
         return value
 
-    @field_validator("secret_key", "otp_hash_key")
+    @field_validator("secret_key", "otp_hash_key", "second_factor_key")
     @classmethod
     def reject_placeholder(cls, value: SecretStr) -> SecretStr:
         if value.get_secret_value().startswith(PLACEHOLDER_PREFIX):
@@ -313,8 +317,12 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def keys_must_differ(self) -> Settings:
-        if self.secret_key.get_secret_value() == self.otp_hash_key.get_secret_value():
-            raise ValueError("secret_key and otp_hash_key must be different keys")
+        keys = (self.secret_key, self.otp_hash_key, self.second_factor_key)
+        if len({key.get_secret_value() for key in keys}) < len(keys):
+            raise ValueError(
+                "secret_key, otp_hash_key and second_factor_key must be "
+                "three different keys"
+            )
         return self
 
 

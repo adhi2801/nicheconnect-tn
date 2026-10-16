@@ -9,7 +9,7 @@ import math
 import uuid
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
-from typing import Any, cast
+from typing import Any, NoReturn, cast
 
 from sqlalchemy import CursorResult, select, text, update
 from sqlalchemy.orm import Session
@@ -26,10 +26,12 @@ from app.modules.auth.exceptions import (
     RoleMismatch,
 )
 from app.modules.auth.models.account import Account
-from app.modules.auth.models.auth_session import AuthSession, refresh_token_ttl
+from app.modules.auth.models.auth_session import AuthSession, refresh_token_expiry
 from app.modules.auth.models.otp_challenge import MAX_OTP_ATTEMPTS, OTP_TTL, OtpChallenge
 from app.modules.auth.sender import OtpSender
 from app.modules.auth.tokens import (
+    PHONE_CODE_ONLY,
+    TWO_FACTORS,
     create_access_token,
     generate_otp_code,
     hash_otp_code,
@@ -180,6 +182,48 @@ def verify_otp(
     Raises OtpInvalid (wrong, expired, used, exhausted or no code) and
     RoleMismatch (the account exists with another role; the code stays usable).
     """
+    challenge = check_phone_code(db, phone, code, now)
+
+    if role == "admin":
+        # An admin logs in with two factors, at /auth/admin/login (D-105);
+        # here, never. Login never creates an admin either, and must not
+        # reveal who is one: so for anyone, admin or not, this is answered
+        # exactly as a wrong code, attempt used and all (D-061).
+        refuse_phone_code(db, challenge)
+    account = db.scalars(select(Account).where(Account.phone == phone)).first()
+    if account is not None and account.role != role:
+        db.rollback()
+        raise RoleMismatch()
+    if account is not None and account.suspended_at is not None:
+        # The code is right, so the person is told; it stays unused (D-061).
+        db.rollback()
+        raise AccountSuspended.because(account.suspension_reason)
+
+    is_new_account = account is None
+    if account is None:
+        account = Account(phone=phone, role=role)
+        db.add(account)
+        db.flush()
+        # How they arrived, in this same transaction, and only now: a
+        # returning login never gets here, so it cannot rewrite it (D-080).
+        attribution.record_arrival(db, account, arrival, now)
+
+    challenge.consumed_at = now
+    # A fresh login starts its own rotation family.
+    result = issue_session(db, account, uuid.uuid4(), now)
+    db.commit()
+    return replace(result, is_new_account=is_new_account)
+
+
+def check_phone_code(db: Session, phone: str, code: str, now: datetime) -> OtpChallenge:
+    """The phone's latest challenge, if `code` is right for it. The caller commits.
+
+    Locks the phone for the rest of the transaction, so the same number's
+    logins run one at a time. A wrong code uses up an attempt, committed here
+    since the request then fails.
+    Raises OtpVerifyLimitReached (too many wrong tries for this phone) and
+    OtpInvalid (wrong, expired, used, exhausted or no code).
+    """
     _lock_phone(db, phone)
     retry_after = _seconds_until_verify_allowed(db, phone, now)
     if retry_after > 0:
@@ -203,40 +247,20 @@ def verify_otp(
         raise OtpInvalid()
 
     if not otp_code_matches(code, challenge.code_hash):
-        challenge.attempts += 1
-        # Commit so the used attempt counts even though the request fails.
-        db.commit()
-        raise OtpInvalid()
+        refuse_phone_code(db, challenge)
+    return challenge
 
-    account = db.scalars(select(Account).where(Account.phone == phone)).first()
-    if role == "admin" and (account is None or account.role != "admin"):
-        # Login never creates an admin, and must not reveal who is one: this
-        # is answered exactly as a wrong code, attempt used and all (D-061).
-        challenge.attempts += 1
-        db.commit()
-        raise OtpInvalid()
-    if account is not None and account.role != role:
-        db.rollback()
-        raise RoleMismatch()
-    if account is not None and account.suspended_at is not None:
-        # The code is right, so the person is told; it stays unused (D-061).
-        db.rollback()
-        raise AccountSuspended.because(account.suspension_reason)
 
-    is_new_account = account is None
-    if account is None:
-        account = Account(phone=phone, role=role)
-        db.add(account)
-        db.flush()
-        # How they arrived, in this same transaction, and only now: a
-        # returning login never gets here, so it cannot rewrite it (D-080).
-        attribution.record_arrival(db, account, arrival, now)
-
-    challenge.consumed_at = now
-    # A fresh login starts its own rotation family.
-    result = _issue_session(db, account, uuid.uuid4(), now)
+def refuse_phone_code(db: Session, challenge: OtpChallenge) -> NoReturn:
+    """Answer exactly as a wrong code: an attempt used, committed, OtpInvalid."""
+    count_failed_attempt(challenge)
     db.commit()
-    return replace(result, is_new_account=is_new_account)
+    raise OtpInvalid()
+
+
+def count_failed_attempt(challenge: OtpChallenge) -> None:
+    """Use up one of the code's attempts, as a wrong code does. The caller commits."""
+    challenge.attempts += 1
 
 
 def _revoke_family(db: Session, family_id: uuid.UUID, now: datetime) -> None:
@@ -248,23 +272,39 @@ def _revoke_family(db: Session, family_id: uuid.UUID, now: datetime) -> None:
     )
 
 
-def _issue_session(
-    db: Session, account: Account, family_id: uuid.UUID, now: datetime
+def issue_session(
+    db: Session,
+    account: Account,
+    family_id: uuid.UUID,
+    now: datetime,
+    *,
+    second_factor_at: datetime | None = None,
 ) -> LoginResult:
-    """Create one session in `family_id` and return its tokens."""
+    """Create one session in `family_id` and return its tokens. The caller commits.
+
+    `second_factor_at` is when the login proved a second factor; it is kept
+    on every session of the family, and makes its access tokens say `mfa`.
+    """
     refresh_token = new_refresh_token()
-    refresh_expires_at = now + refresh_token_ttl(account.role)
+    refresh_expires_at = refresh_token_expiry(account.role, now, second_factor_at)
     db.add(
         AuthSession(
             account_id=account.id,
             family_id=family_id,
             token_hash=hash_refresh_token(refresh_token),
             expires_at=refresh_expires_at,
+            second_factor_at=second_factor_at,
             created_at=now,
             updated_at=now,
         )
     )
-    access_token, access_expires_at = create_access_token(account.id, account.role, now)
+    access_token, access_expires_at = create_access_token(
+        account.id,
+        account.role,
+        now,
+        methods=PHONE_CODE_ONLY if second_factor_at is None else TWO_FACTORS,
+        not_after=refresh_expires_at if account.role == "admin" else None,
+    )
     return LoginResult(
         account_id=account.id,
         role=account.role,
@@ -314,7 +354,20 @@ def refresh_session(db: Session, refresh_token: str, now: datetime) -> LoginResu
         _revoke_family(db, auth_session.family_id, now)
         db.commit()
         raise AccountSuspended.because(account.suspension_reason)
-    result = _issue_session(db, account, auth_session.family_id, now)
+    if account.role == "admin" and auth_session.second_factor_at is None:
+        # An admin session from before D-105, or made any way but the
+        # two-factor login: the migration ended them all, and this ends any
+        # that slipped past it.
+        _revoke_family(db, auth_session.family_id, now)
+        db.commit()
+        raise InvalidToken()
+    result = issue_session(
+        db,
+        account,
+        auth_session.family_id,
+        now,
+        second_factor_at=auth_session.second_factor_at,
+    )
     db.commit()
     return result
 

@@ -251,6 +251,45 @@
         "title": "AdminActionRead",
         "type": "object"
       },
+      "AdminLoginIn": {
+        "additionalProperties": false,
+        "properties": {
+          "authenticator_code": {
+            "description": "The 6-digit code the authenticator app shows now",
+            "examples": [
+              "492039"
+            ],
+            "pattern": "^[0-9]{6}$",
+            "title": "Authenticator Code",
+            "type": "string"
+          },
+          "code": {
+            "description": "The 6-digit code sent to the phone",
+            "examples": [
+              "042917"
+            ],
+            "pattern": "^[0-9]{6}$",
+            "title": "Code",
+            "type": "string"
+          },
+          "phone": {
+            "description": "Indian mobile number, stored as +91XXXXXXXXXX. Send it in that form. Spaces, dashes and brackets, and a leading +91, 91 or 0, are also accepted and normalised away.",
+            "examples": [
+              "+919876543210"
+            ],
+            "pattern": "^\\+91[6-9][0-9]{9}$",
+            "title": "Phone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone",
+          "code",
+          "authenticator_code"
+        ],
+        "title": "AdminLoginIn",
+        "type": "object"
+      },
       "AdminProfileRead": {
         "properties": {
           "handle": {
@@ -5433,11 +5472,14 @@
                 "report_due_soon",
                 "report_overdue",
                 "content_withheld",
-                "content_restored"
+                "content_restored",
+                "admin_signed_in",
+                "admin_second_factor_refused",
+                "admin_second_factor_changed"
               ],
               "type": "string"
             },
-            "maxItems": 26,
+            "maxItems": 29,
             "title": "Muted Types",
             "type": "array"
           },
@@ -5515,7 +5557,10 @@
                 "report_due_soon",
                 "report_overdue",
                 "content_withheld",
-                "content_restored"
+                "content_restored",
+                "admin_signed_in",
+                "admin_second_factor_refused",
+                "admin_second_factor_changed"
               ],
               "type": "string"
             },
@@ -5567,7 +5612,10 @@
                 "report_due_soon",
                 "report_overdue",
                 "content_withheld",
-                "content_restored"
+                "content_restored",
+                "admin_signed_in",
+                "admin_second_factor_refused",
+                "admin_second_factor_changed"
               ],
               "type": "string"
             },
@@ -5693,7 +5741,10 @@
               "report_due_soon",
               "report_overdue",
               "content_withheld",
-              "content_restored"
+              "content_restored",
+              "admin_signed_in",
+              "admin_second_factor_refused",
+              "admin_second_factor_changed"
             ],
             "title": "Notification Type",
             "type": "string"
@@ -5791,7 +5842,7 @@
             "type": "string"
           },
           "role": {
-            "description": "Which app is logging in. `admin` logs in only to an admin account that already exists; it never creates one",
+            "description": "Which app is logging in. `admin` is always answered as a wrong code: admins log in with two factors at /api/v1/auth/admin/login",
             "enum": [
               "brand",
               "creator",
@@ -9284,6 +9335,90 @@
         "title": "SearchChannelRead",
         "type": "object"
       },
+      "SecondFactorSetupIn": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "description": "The 6-digit code sent to the phone",
+            "examples": [
+              "042917"
+            ],
+            "pattern": "^[0-9]{6}$",
+            "title": "Code",
+            "type": "string"
+          },
+          "phone": {
+            "description": "Indian mobile number, stored as +91XXXXXXXXXX. Send it in that form. Spaces, dashes and brackets, and a leading +91, 91 or 0, are also accepted and normalised away.",
+            "examples": [
+              "+919876543210"
+            ],
+            "pattern": "^\\+91[6-9][0-9]{9}$",
+            "title": "Phone",
+            "type": "string"
+          },
+          "ticket": {
+            "description": "The setup ticket a founder issued with scripts/make_admin.py",
+            "examples": [
+              "example_ticket_not_a_real_one_01"
+            ],
+            "pattern": "^[A-Za-z0-9_-]{32}$",
+            "title": "Ticket",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone",
+          "code",
+          "ticket"
+        ],
+        "title": "SecondFactorSetupIn",
+        "type": "object"
+      },
+      "SecondFactorSetupRead": {
+        "description": "Shown once. Nothing here can be read again, by anyone.",
+        "properties": {
+          "algorithm": {
+            "const": "SHA1",
+            "default": "SHA1",
+            "title": "Algorithm",
+            "type": "string"
+          },
+          "digits": {
+            "const": 6,
+            "default": 6,
+            "title": "Digits",
+            "type": "integer"
+          },
+          "period_seconds": {
+            "const": 30,
+            "default": 30,
+            "title": "Period Seconds",
+            "type": "integer"
+          },
+          "secret": {
+            "description": "The secret, base32, for typing into an authenticator app",
+            "examples": [
+              "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP"
+            ],
+            "title": "Secret",
+            "type": "string"
+          },
+          "setup_link": {
+            "description": "The same secret as an otpauth:// link, for a QR code",
+            "examples": [
+              "otpauth://totp/NicheConnect%20TN:admin-1f0c2a9b?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=NicheConnect%20TN"
+            ],
+            "title": "Setup Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "secret",
+          "setup_link"
+        ],
+        "title": "SecondFactorSetupRead",
+        "type": "object"
+      },
       "SignupCountRead": {
         "properties": {
           "accounts": {
@@ -12668,6 +12803,194 @@
         "summary": "Withdraw an invitation",
         "tags": [
           "invitations"
+        ]
+      }
+    },
+    "/api/v1/auth/admin/login": {
+      "post": {
+        "description": "Both factors in one request: the code sent to the phone, and the 6-digit code the admin's authenticator app shows. Either wrong is answered exactly as a wrong phone code. Every active admin is told of every sign-in, and of a right phone code with a refused authenticator code. Ten refused authenticator codes in a row lock it until a founder issues a new setup ticket. The refresh token lasts an hour from each use and never past 12 hours from this login. Limit: 10 requests per 10 minutes per IP address; each phone code allows 5 attempts.",
+        "operationId": "log_in_api_v1_auth_admin_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminLoginIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginTokens"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A code or the ticket is wrong, expired or used, or the number is not an admin's: one answer for all, so nothing is revealed"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "This admin account is suspended"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A field is missing or invalid"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many attempts; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Log in as an admin, with the phone code and the authenticator code",
+        "tags": [
+          "admin login"
+        ]
+      }
+    },
+    "/api/v1/auth/admin/second-factor": {
+      "post": {
+        "description": "Redeems the one-time ticket from `scripts/make_admin.py <phone> --second-factor` (15 minutes), with a code sent to the admin's phone, for a new authenticator secret. **Shown once**: put it into an authenticator app on a different device from this phone, or one locked by fingerprint, and not one that copies codes to a cloud account. Every active admin is told. There is no other way to change an admin's authenticator. Limit: 10 requests per 10 minutes per IP address.",
+        "operationId": "set_up_second_factor_api_v1_auth_admin_second_factor_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecondFactorSetupIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecondFactorSetupRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A code or the ticket is wrong, expired or used, or the number is not an admin's: one answer for all, so nothing is revealed"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "This admin account is suspended"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A field is missing or invalid"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many attempts; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Set up an authenticator app, with a founder's setup ticket",
+        "tags": [
+          "admin login"
         ]
       }
     },

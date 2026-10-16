@@ -10,6 +10,7 @@ from app.modules.auth.models.brand import Brand  # noqa: F401
 from app.modules.auth.models.creator import Creator  # noqa: F401
 from app.modules.auth.models.device_token import DeviceToken  # noqa: F401
 from app.modules.auth.models.otp_challenge import OtpChallenge  # noqa: F401
+from app.modules.auth.models.totp_factor import TotpFactor  # noqa: F401
 from app.modules.campaigns.models import (
     Application,  # noqa: F401
     Campaign,  # noqa: F401

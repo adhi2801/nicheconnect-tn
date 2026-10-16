@@ -71,6 +71,11 @@ dependencies = [
     "opentelemetry-api==1.45.1",
     "opentelemetry-sdk==1.45.1",
     "opentelemetry-exporter-otlp-proto-http==1.45.1",
+    # The admins' second factor (item 101, D-105): the 6-digit codes an
+    # authenticator app shows (RFC 6238), and the link that sets one up.
+    # Pure Python, no dependencies of its own; checked against the RFC's
+    # own test vectors in tests/modules/auth/test_second_factor.py.
+    "pyotp==2.10.0",
 ]
 
 [dependency-groups]

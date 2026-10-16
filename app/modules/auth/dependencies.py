@@ -17,7 +17,11 @@ from app.modules.auth.exceptions import (
     RoleNotAllowed,
 )
 from app.modules.auth.models.account import Account
-from app.modules.auth.tokens import account_id_for_scoping, decode_access_token
+from app.modules.auth.tokens import (
+    AccessTokenClaims,
+    account_id_for_scoping,
+    decode_access_token,
+)
 
 # auto_error=False: a missing header raises our InvalidToken, so every auth
 # failure comes back in the same shape instead of FastAPI's own error body.
@@ -57,6 +61,16 @@ def get_current_account(
     header is missing or the token is unusable. The account is loaded fresh,
     so a deleted account cannot keep using a token that has not expired yet.
     """
+    return _authenticate(request, credentials, db, now)[0]
+
+
+def _authenticate(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None,
+    db: Session,
+    now: datetime,
+) -> tuple[Account, AccessTokenClaims]:
+    """The account and the token's claims, for the checks that read both."""
     if credentials is None or not credentials.credentials:
         raise InvalidToken(headers=UNAUTHENTICATED_HEADERS)
 
@@ -71,7 +85,7 @@ def get_current_account(
         raise AccountSuspended.because(account.suspension_reason)
     # For logging and later ownership checks.
     request.state.account_id = account.id
-    return account
+    return account, claims
 
 
 CurrentAccount = Annotated[Account, Depends(get_current_account)]
@@ -101,13 +115,15 @@ def get_admin(
     """The signed-in admin, or 404 for anyone else (D-061).
 
     Here, beside every other access check, so any module may guard a route
-    for admins without importing the admin API above it (D-099).
+    for admins without importing the admin API above it (D-099). An admin
+    token must also say both factors were proven (D-105): one made from the
+    phone code alone, by any route old or new, is a plain 404 too.
     """
     try:
-        account = get_current_account(request, credentials, db, now)
+        account, claims = _authenticate(request, credentials, db, now)
     except DomainError:
         raise AdminNotFound() from None
-    if account.role != "admin":
+    if account.role != "admin" or not claims.is_multi_factor:
         raise AdminNotFound()
     return account
 

@@ -20,7 +20,7 @@ from app.modules.auth.attribution_service import new_code, normalise_code
 from app.modules.auth.dependencies import get_now
 from app.modules.auth.models.attribution import CODE_ALPHABET, AccountAttribution
 from app.modules.auth.sender import FakeOtpSender, get_otp_sender
-from app.modules.auth.tokens import create_access_token
+from app.modules.auth.tokens import TWO_FACTORS, create_access_token
 from tests.factories import FIXED_NOW, create_account, fake_phone
 
 
@@ -220,7 +220,7 @@ def test_nobody_counts_anyone_elses_invites(client, sender):
 @pytest.mark.parametrize("path", ["/api/v1/me/invite-code", "/api/v1/me/invites"])
 def test_an_admin_has_no_invitations(client, db, clock, path):
     admin = create_account(db, "admin")
-    token, _ = create_access_token(admin.id, "admin", clock.now)
+    token, _ = create_access_token(admin.id, "admin", clock.now, methods=TWO_FACTORS)
 
     response = client.get(path, headers={"Authorization": f"Bearer {token}"})
 
@@ -237,7 +237,7 @@ def test_it_needs_a_login(client, path):
 
 def admin_headers(db, clock) -> dict:
     admin = create_account(db, "admin")
-    token, _ = create_access_token(admin.id, "admin", clock.now)
+    token, _ = create_access_token(admin.id, "admin", clock.now, methods=TWO_FACTORS)
     return {"Authorization": f"Bearer {token}"}
 
 

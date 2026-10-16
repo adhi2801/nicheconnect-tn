@@ -38,6 +38,9 @@ NotificationType = Literal[
     "report_overdue",
     "content_withheld",
     "content_restored",
+    "admin_signed_in",
+    "admin_second_factor_refused",
+    "admin_second_factor_changed",
 ]
 
 ensure_same_values("NotificationType", NotificationType, NOTIFICATION_TYPES)
