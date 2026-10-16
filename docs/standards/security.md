@@ -23,7 +23,7 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md`. Rule
 
 ## 1. Authentication
 
-- **Phone number plus a one-time code** by WhatsApp through MSG91, with SMS on the same account later (D-058). No passwords anywhere. That is one factor, possession of the phone: NIST's lowest assurance level, chosen for reach in Tamil Nadu. A second factor for admins is gap 3.
+- **Phone number plus a one-time code** by WhatsApp through MSG91, with SMS on the same account later (D-058). No passwords anywhere. For brands and creators that is one factor, possession of the phone: NIST's lowest assurance level, chosen for reach in Tamil Nadu (gap 3). Admins prove two (below).
 - **Codes** (`app/modules/auth/tokens.py`, `service.py`):
   - 6 digits from `secrets.randbelow`, valid 5 minutes, single use.
   - Only an HMAC-SHA256 of the code is stored, keyed separately from the token key, and the app refuses to start if the two keys are the same (D-011).
@@ -40,6 +40,12 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md`. Rule
 - **Admins** (D-061):
   - A separate role that login never creates.
   - An admin login is answered exactly like a wrong code for anyone who is not one.
+  - **Two factors, in one request** (D-105): the phone code and the 6-digit code of an authenticator app (RFC 6238), at `/api/v1/auth/admin/login`; `/auth/otp/verify` never logs an admin in. Either code wrong is answered as a wrong phone code. Admin routes refuse a token whose `amr` lacks `mfa` (RFC 8176).
+  - The authenticator's secret is encrypted at rest (AES-256-GCM under `SECOND_FACTOR_KEY`, bound to the account); each 30-second step's code works once, read under the factor's row lock; ten refused codes in a row lock it.
+  - **Set up or replaced only through `scripts/make_admin.py --second-factor`**, a one-time ticket for 15 minutes, redeemed with a phone code: no API route, no recovery codes, no SMS fallback, so there is no help desk to talk round (ASVS 5.0 6.4.3, 6.4.4).
+  - An admin session lasts 1 hour from each refresh, and never past 12 hours from the login (NIST SP 800-63B-4 section 2.2; ASVS 7.3.1, 7.3.2).
+  - Every active admin is told, by a notification nobody can mute, of every admin sign-in, every second factor refused after a right phone code, and every ticket issued or redeemed (ASVS 6.3.5, 6.3.7).
+  - **Enforced by** `tests/modules/admin/test_admin_login_api.py`, `test_admin_login_concurrency.py`, `tests/modules/auth/test_second_factor*.py` (RFC 6238's own vectors and property tests), `test_totp_factor_model.py` and `test_admin_login_api.py` in `auth`; each rule broken on purpose and seen caught.
   - Every view of an account's details and every admin action is written to the admin log with a reason. The log refuses updates and deletes at the database (`database.md` section 3).
   - **Enforced by** `tests/modules/auth/test_admin_login_api.py` and `tests/modules/admin/`.
 - A suspended account is refused at login, on refresh and on every request. **Enforced by** `tests/modules/auth/test_suspension_api.py`.
@@ -166,6 +172,8 @@ Examples:
 
 ## 11. Gaps, named
 
+**Closed on 16 October:** admins logging in with one factor, and admin sessions renewing for a day at every refresh with no overall limit (item 101, D-105).
+
 **Closed on 14 October:** the app connecting to the database as the table owner (item 97, D-100), and no mechanical proof that every object route refuses a stranger (item 100, D-102). **A claim of mine corrected the same day:** this file said nothing had been merged to `main` since 1 October and Dependabot had never run; a stale local copy of `main` misled me, and both were false.
 
 **Corrected on 14 October:** the database user "has no superuser rights" (it owned every table; fixed the same day by item 97); this file "maps our controls to ASVS" (it maps the API Top 10: gap 2); keys "at least 256 bits" (the app enforces 32 characters; the generators give 256 bits or more); the guessing cap (it is also 10 wrong tries per phone in 10 minutes, across codes); the code-send limit "per IP, 10 a day" (the daily cap is per phone only); and a refresh and logout limit the table had left out.
@@ -174,7 +182,7 @@ Examples:
 |---|---|---|---|
 | 1 | **A code-scanning alert is open on GitHub and nobody here has read it** (https://github.com/adhi2801/nicheconnect-tn/security/code-scanning/1). GitHub's API needs a login to read it even on a public repository (checked 14 October). No workflow here uploads results, so it is likely GitHub's default CodeQL setup | Unknown until read | A founder reads it, or signs in to `gh` so it can be read here |
 | 2 | **No chapter-by-chapter ASVS 5.0 mapping** | "Level 2" cannot be claimed | Map V1 to V17 before the penetration test, so the tester checks what we claim |
-| 3 | **Admins log in with one factor** | A stolen admin phone, or a SIM swap, is an admin session | A second factor for the admin role; proposed before launch (Security gate) |
+| 3 | **Brands and creators log in with one factor**, and the admins' second factor (D-105) can still be phished in real time, as any typed code can | A SIM swap is a brand's or creator's account; a convincing fake admin page could take both admin codes | Passkeys (item 79) for everyone, admins first, once the domain and an admin web page exist; a second check before risky changes (item 82) |
 | 4 | Incident plan not rehearsed; no penetration test; images not signed | Untested plans fail when needed | Section 10 |
 
 ## 12. Sources
@@ -189,6 +197,7 @@ Each link checked to exist on 14 October 2026.
 - [STRIDE, as Microsoft's threat modelling tool defines it](https://learn.microsoft.com/en-us/azure/security/develop/threat-modeling-tool-threats).
 - [CERT-In directions of 28 April 2022](https://www.cert-in.org.in/PDF/CERT-In_Directions_70B_28.04.2022.pdf): 6-hour incident reporting.
 - [RFC 9116](https://www.rfc-editor.org/rfc/rfc9116): `security.txt`.
+- The admins' second factor (read 16 October 2026, D-105): [RFC 6238](https://www.rfc-editor.org/rfc/rfc6238) (TOTP) and [RFC 8176](https://www.rfc-editor.org/rfc/rfc8176) (`amr` values); [OWASP ASVS 5.0, V6 Authentication](https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x15-V6-Authentication.md) and [V7 Session Management](https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x16-V7-Session-Management.md); [Cloudflare on the 2022 phishing attack](https://blog.cloudflare.com/2022-07-sms-phishing-attacks); [Help Net Security on the Retool breach](https://www.helpnetsecurity.com/2023/09/14/retool-breach/); [BleepingComputer on help-desk MFA resets](https://www.bleepingcomputer.com/news/security/3-key-takeaways-from-the-scattered-spider-attacks-on-insurance-firms/).
 - [SLSA levels](https://slsa.dev/spec/v1.0/levels): build provenance.
 - [Gitleaks](https://github.com/gitleaks/gitleaks), [zizmor](https://docs.zizmor.sh/), [GitHub push protection](https://docs.github.com/en/code-security/secret-scanning/introduction/about-push-protection).
 

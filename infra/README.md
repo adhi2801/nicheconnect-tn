@@ -77,6 +77,25 @@ protection and two weeks of backups.
 10. **Test a restore from backup** before the first real user (D-062).
 11. **Rehearse the incident plan** on staging, end to end, and write the date in `docs/INCIDENT_RESPONSE.md` section 7: a leaked `SECRET_KEY` rotated and confirmed within the hour.
 12. **Production**: the same steps in `infra/envs/production`.
+13. **Admins** (D-061, D-105), in each environment. An admin logs in with
+    two factors, so each one is made, then given a one-time setup ticket.
+    Run the script as a one-off task of the **API's** task definition (its
+    login may write rows, which is all this needs), in the `task_network` it
+    printed, with the command overridden:
+    ```
+    aws ecs run-task --cluster nicheconnect-staging --launch-type FARGATE --task-definition nicheconnect-staging-api --network-configuration "<task_network>" --overrides '{"containerOverrides":[{"name":"api","command":["python","scripts/make_admin.py","+91XXXXXXXXXX","--yes"]}]}'
+    ```
+    then again with `--second-factor` added. The ticket is printed in the
+    task's log in CloudWatch: it works once, for 15 minutes, and only with a
+    code sent to that admin's phone, so a copy left in the log is useless
+    once redeemed. The admin redeems it at `POST
+    /api/v1/auth/admin/second-factor` and puts the secret into an
+    authenticator app **on a different device from the admin phone, or one
+    locked by fingerprint, and not one that copies codes to a cloud
+    account** (Retool's 2023 breach went through such a copy). Aegis
+    (Android) or 2FAS are free. A lost or locked authenticator is the same
+    `--second-factor` step; every admin is told whenever it is run. Only a
+    founder with AWS access, itself behind MFA (step 1), can do this.
 
 **Later, not part of going live: results read from proof (D-070).** Off
 until the validation pack says a creator's insights may go to a processor.

@@ -50,6 +50,13 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     # for legal reasons, and when that is lifted (item 52)
     "content_withheld",
     "content_restored",
+    # To every admin, about any admin's login (item 101, D-105): a sign-in
+    # with both codes; a phone code right but the second factor refused (or
+    # locked); a setup ticket issued or redeemed. Between two founders each
+    # sees the other's, so a stolen login cannot go unnoticed.
+    "admin_signed_in",
+    "admin_second_factor_refused",
+    "admin_second_factor_changed",
 )
 MAX_DETAILS_LENGTH = 2000
 

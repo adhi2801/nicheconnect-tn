@@ -30,6 +30,14 @@ PUBLIC = {
     ("POST", "/api/v1/auth/otp/verify"): "how a login finishes",
     (
         "POST",
+        "/api/v1/auth/admin/login",
+    ): "how an admin logs in: both codes in the body are the credentials (D-105)",
+    (
+        "POST",
+        "/api/v1/auth/admin/second-factor",
+    ): "how an admin sets up an authenticator: the ticket and phone code are the credentials",
+    (
+        "POST",
         "/api/v1/auth/refresh",
     ): "the access token has expired; the refresh token in the body is the credential",
     (

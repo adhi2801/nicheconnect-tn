@@ -15,16 +15,30 @@ from app.db.base import Base
 # Only a SHA-256 of the token is stored, never the token itself.
 
 
-# An admin can suspend people and read phone numbers, so a stolen admin
-# session must not last a month (D-061).
-ADMIN_REFRESH_TOKEN_DAYS = 1
+# An admin can suspend people, read phone numbers and withhold anyone's
+# content, so a stolen admin session must be short (D-061, D-105). NIST SP
+# 800-63B-4 section 2.2 for AAL2: re-authenticate after at most 1 hour idle,
+# and 24 hours overall; we take 12, AAL3's overall limit. Each refresh is
+# activity, so an admin at work never notices the first; nobody escapes the
+# second, however often they refresh.
+ADMIN_IDLE_LIMIT = timedelta(hours=1)
+ADMIN_SESSION_LIMIT = timedelta(hours=12)
 
 
-def refresh_token_ttl(role: str) -> timedelta:
-    """How long a refresh token lasts. One source: settings (D-008), or a day for admins."""
-    if role == "admin":
-        return timedelta(days=ADMIN_REFRESH_TOKEN_DAYS)
-    return timedelta(days=settings.refresh_token_expire_days)
+def refresh_token_expiry(
+    role: str, now: datetime, second_factor_at: datetime | None
+) -> datetime:
+    """When a refresh token issued at `now` stops working.
+
+    Settings decide it for brands and creators (D-008). An admin's lasts an
+    hour, and never past 12 hours from the moment both factors were proven.
+    """
+    if role != "admin":
+        return now + timedelta(days=settings.refresh_token_expire_days)
+    idle_end = now + ADMIN_IDLE_LIMIT
+    if second_factor_at is None:
+        return idle_end
+    return min(idle_end, second_factor_at + ADMIN_SESSION_LIMIT)
 
 
 TOKEN_HASH_PATTERN = r"^[0-9a-f]{64}$"  # noqa: S105 - a format check, not a secret
@@ -54,8 +68,15 @@ class AuthSession(Base):
         UUID(as_uuid=True), nullable=False, index=True
     )
     token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
-    # Set by the service from its injectable clock (issue time + refresh_token_ttl()).
+    # Set by the service from its injectable clock (refresh_token_expiry()).
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # When the login behind this session proved a second factor, carried
+    # unchanged through every rotation, so the 12-hour limit counts from the
+    # login, not the last refresh (D-105). NULL means one factor: every
+    # brand's and creator's session, and no admin's.
+    second_factor_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     # Nullable on purpose: empty until this token is rotated.
     used_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

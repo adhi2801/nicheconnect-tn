@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import event
 
 from app.db.session import engine
-from app.modules.auth.tokens import create_access_token
+from app.modules.auth.tokens import TWO_FACTORS, create_access_token
 from tests.deal_flow import (
     LINK,
     MEMOS_URL,
@@ -263,7 +263,7 @@ def test_it_needs_a_login(client, url):
 @pytest.mark.parametrize("url", [URL, TOTALS_URL])
 def test_an_admin_has_no_payments_of_its_own(client, db, clock, url):
     admin = create_account(db, "admin")
-    token, _ = create_access_token(admin.id, "admin", clock.now)
+    token, _ = create_access_token(admin.id, "admin", clock.now, methods=TWO_FACTORS)
 
     response = client.get(url, headers={"Authorization": f"Bearer {token}"})
 

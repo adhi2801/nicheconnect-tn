@@ -1,7 +1,7 @@
 """Every downgrade that would destroy unrecoverable data refuses while it exists.
 
 database.md section 6: losing such data must be a deliberate act, never a
-side effect of a rollback. Eleven migrations refuse. Until 14 October 2026 each
+side effect of a rollback. Twelve migrations refuse. Until 14 October 2026 each
 refusal had been proven only by hand, in the session that wrote it
 (database.md gap 6, item 98); a later edit to one could have let a rollback
 drop a deal's record or a person's block without anyone noticing.
@@ -46,6 +46,7 @@ REFUSING = {
     "e591b300cca7": "blocks",
     "f0ec9547afcc": "reports and suspensions for impersonation or intimate content",
     "f276d2c6ce1e": "cleaned proof files on the deal record",
+    "90b4db0fd32a": "admins' authenticators, set up or waiting",
 }
 
 
@@ -279,3 +280,18 @@ def test_admin_log_entries_about_takedowns(db):
     )
 
     assert f"{before + 1} takedowns or admin log entries" in refusal(db, "4a2f6982641f")
+
+
+def test_admins_authenticators(db):
+    before = count(db, "SELECT count(*) FROM totp_factor")
+    admin = create_account(db, "admin")
+    db.flush()
+    db.execute(
+        text(
+            "INSERT INTO totp_factor (account_id, ticket_hash, ticket_expires_at)"
+            " VALUES (:account_id, :ticket_hash, now() + interval '15 minutes')"
+        ),
+        {"account_id": admin.id, "ticket_hash": "0" * 64},
+    )
+
+    assert f"{before + 1} admin authenticators" in refusal(db, "90b4db0fd32a")

@@ -17,6 +17,7 @@ def valid_values(**overrides: Any) -> dict[str, Any]:
         "redis_url": "redis://localhost:6379/0",
         "secret_key": secrets.token_urlsafe(32),
         "otp_hash_key": secrets.token_urlsafe(32),
+        "second_factor_key": secrets.token_urlsafe(32),
     }
     values.update(overrides)
     return values
@@ -49,7 +50,8 @@ def test_keys_are_hidden_when_printed():
 
 
 @pytest.mark.parametrize(
-    "field", ["database_url", "redis_url", "secret_key", "otp_hash_key"]
+    "field",
+    ["database_url", "redis_url", "secret_key", "otp_hash_key", "second_factor_key"],
 )
 def test_missing_required_setting_is_rejected(monkeypatch, field):
     monkeypatch.delenv(field.upper(), raising=False)
@@ -61,22 +63,33 @@ def test_missing_required_setting_is_rejected(monkeypatch, field):
     assert field in str(exc_info.value)
 
 
-@pytest.mark.parametrize("field", ["secret_key", "otp_hash_key"])
+KEYS = ["secret_key", "otp_hash_key", "second_factor_key"]
+
+
+@pytest.mark.parametrize("field", KEYS)
 def test_short_key_is_rejected(field):
     assert_rejected(field, **{field: "x" * 31})
 
 
-@pytest.mark.parametrize("field", ["secret_key", "otp_hash_key"])
+@pytest.mark.parametrize("field", KEYS)
 def test_placeholder_key_is_rejected(field):
     assert_rejected(field, **{field: "change-me-generate-a-real-key-please"})
 
 
-def test_same_key_for_both_purposes_is_rejected():
+@pytest.mark.parametrize(
+    ("first", "second"),
+    [
+        ("secret_key", "otp_hash_key"),
+        ("secret_key", "second_factor_key"),
+        ("otp_hash_key", "second_factor_key"),
+    ],
+)
+def test_one_key_for_two_purposes_is_rejected(first, second):
     key = secrets.token_urlsafe(32)
 
     with pytest.raises(ValidationError) as exc_info:
-        load(secret_key=key, otp_hash_key=key)
-    assert "must be different" in str(exc_info.value)
+        load(**{first: key, second: key})
+    assert "three different keys" in str(exc_info.value)
 
 
 @pytest.mark.parametrize(
@@ -221,11 +234,11 @@ def test_every_setting_is_listed_in_env_example():
 
 
 def test_the_example_values_load():
-    """Copying .env.example must give a working app once the two keys are
+    """Copying .env.example must give a working app once the three keys are
     generated, which the placeholders deliberately force."""
     values = {name.lower(): value for name, value in env_example_values().items()}
-    values["secret_key"] = secrets.token_urlsafe(32)
-    values["otp_hash_key"] = secrets.token_urlsafe(32)
+    for key in KEYS:
+        values[key] = secrets.token_urlsafe(32)
 
     settings = Settings(_env_file=None, **values)
 

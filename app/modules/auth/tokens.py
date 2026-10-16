@@ -24,19 +24,45 @@ ACCESS_TOKEN_TYPE = "access"  # noqa: S105 - a claim value, not a secret
 OTP_CODE_DIGITS = 6
 REFRESH_TOKEN_BYTES = 32
 
+# How the login behind a token was proven, as RFC 8176's registered
+# "Authentication Method Reference" values: `otp`, a one-time code (the
+# phone's); `mfa`, more than one factor (D-105). Admin routes refuse a token
+# without `mfa`, so no admin session can come from the phone code alone.
+PHONE_CODE_ONLY: tuple[str, ...] = ("otp",)
+TWO_FACTORS: tuple[str, ...] = ("mfa", "otp")
+MULTI_FACTOR = "mfa"
+KNOWN_METHODS = frozenset(TWO_FACTORS)
+
 
 @dataclass(frozen=True)
 class AccessTokenClaims:
     account_id: uuid.UUID
     role: str
     expires_at: datetime
+    # RFC 8176 values. Empty for a token signed before D-105.
+    methods: tuple[str, ...] = ()
+
+    @property
+    def is_multi_factor(self) -> bool:
+        return MULTI_FACTOR in self.methods
 
 
 def create_access_token(
-    account_id: uuid.UUID, role: str, now: datetime
+    account_id: uuid.UUID,
+    role: str,
+    now: datetime,
+    *,
+    methods: tuple[str, ...] = PHONE_CODE_ONLY,
+    not_after: datetime | None = None,
 ) -> tuple[str, datetime]:
-    """Sign a short-lived access token. Returns the token and its expiry time."""
+    """Sign a short-lived access token. Returns the token and its expiry time.
+
+    `not_after` ends it sooner, so a session's own limit binds its last
+    access token too (an admin's 12 hours, D-105).
+    """
     expires_at = now + timedelta(minutes=settings.access_token_expire_minutes)
+    if not_after is not None:
+        expires_at = min(expires_at, not_after)
     claims = {
         "sub": str(account_id),
         "role": role,
@@ -44,6 +70,7 @@ def create_access_token(
         "iat": int(now.timestamp()),
         "exp": int(expires_at.timestamp()),
         "jti": uuid.uuid4().hex,
+        "amr": list(methods),
     }
     token = jwt.encode(
         claims,
@@ -86,6 +113,12 @@ def _verified_claims(token: str) -> dict[str, Any]:
 
     if claims["typ"] != ACCESS_TOKEN_TYPE or claims["role"] not in ACCOUNT_ROLES:
         raise InvalidToken()
+    # Optional, so tokens signed before D-105 still decode (as one factor).
+    methods = claims.get("amr", [])
+    if not isinstance(methods, list) or not all(
+        isinstance(method, str) and method in KNOWN_METHODS for method in methods
+    ):
+        raise InvalidToken()
     return claims
 
 
@@ -103,6 +136,7 @@ def decode_access_token(token: str, now: datetime) -> AccessTokenClaims:
         account_id=uuid.UUID(claims["sub"]),
         role=claims["role"],
         expires_at=expires_at,
+        methods=tuple(claims.get("amr", [])),
     )
 
 

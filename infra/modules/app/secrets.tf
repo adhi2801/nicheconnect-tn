@@ -12,6 +12,12 @@ resource "random_password" "otp_hash_key" {
   special = false
 }
 
+# Encrypts the admins' authenticator secrets at rest (item 101, D-105).
+resource "random_password" "second_factor_key" {
+  length  = 64
+  special = false
+}
+
 # The app's own database login, nicheconnect_app (item 97, D-100): it may
 # read and write rows and nothing more. Letters and digits only, so it can sit
 # in a URL and SCRAM computes the same verifier on both sides (app/db/roles.py).
@@ -42,6 +48,7 @@ resource "aws_secretsmanager_secret_version" "app" {
     RATE_LIMIT_STORAGE_URI = "rediss://:${random_password.cache.result}@${aws_elasticache_replication_group.main.primary_endpoint_address}:6379/1"
     SECRET_KEY             = random_password.secret_key.result
     OTP_HASH_KEY           = random_password.otp_hash_key.result
+    SECOND_FACTOR_KEY      = random_password.second_factor_key.result
   })
 }
 

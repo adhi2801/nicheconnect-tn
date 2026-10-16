@@ -35,7 +35,8 @@ from app.modules.notifications.models import NOTIFICATION_TYPES
 # report's legal clock runs against the admins (report_due_soon,
 # report_overdue: item 51); or something of theirs was withheld for legal
 # reasons, which nobody should learn by finding it gone (content_withheld:
-# item 52).
+# item 52); or someone may be inside an admin account, which a muted alert
+# would hide from the one person who could stop it (item 101).
 URGENT_TYPES: tuple[str, ...] = (
     "memo_sent",
     "proof_submitted",
@@ -44,6 +45,9 @@ URGENT_TYPES: tuple[str, ...] = (
     "report_due_soon",
     "report_overdue",
     "content_withheld",
+    "admin_signed_in",
+    "admin_second_factor_refused",
+    "admin_second_factor_changed",
 )
 MUTABLE_TYPES: tuple[str, ...] = tuple(
     kind for kind in NOTIFICATION_TYPES if kind not in URGENT_TYPES

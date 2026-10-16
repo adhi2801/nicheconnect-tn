@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.modules.auth.tokens import create_access_token
+from app.modules.auth.tokens import PHONE_CODE_ONLY, TWO_FACTORS, create_access_token
 from tests.factories import build_brand, build_creator
 
 CAMPAIGNS_URL = "/api/v1/campaigns"
@@ -43,7 +43,14 @@ class User:
 
     @property
     def headers(self) -> dict[str, str]:
-        token, _ = create_access_token(self.account_id, self.role, self.clock.now)
+        # An admin's token is only ever made by the two-factor login (D-105),
+        # so a test admin holds one that says so.
+        token, _ = create_access_token(
+            self.account_id,
+            self.role,
+            self.clock.now,
+            methods=TWO_FACTORS if self.role == "admin" else PHONE_CODE_ONLY,
+        )
         return {"Authorization": f"Bearer {token}"}
 
 

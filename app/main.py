@@ -20,6 +20,7 @@ from app.core.structured_logs import configure_logging
 from app.core.tracing import TracingMiddleware, init_tracing, instrument_engine
 from app.core.unexpected_error import UnexpectedErrorMiddleware
 from app.db.session import engine
+from app.modules.admin.admin_login_router import router as admin_login_router
 from app.modules.admin.admin_router import router as admin_router
 from app.modules.admin.numbers_router import router as numbers_router
 from app.modules.admin.report_clock_router import router as report_clock_router
@@ -133,6 +134,7 @@ if tracer_provider is not None:
 
 app.include_router(security_txt_router)
 app.include_router(auth_router)
+app.include_router(admin_login_router)
 app.include_router(brand_router)
 app.include_router(creator_router)
 # Privacy: download everything we hold about you.

@@ -15,6 +15,16 @@ whole deals, 5 bank bulk transfers of 25 rows, and 30 rounds of rate card
 edits. All from one run, on a developer laptop under Docker Desktop for
 Windows.
 
+## Added 17 October: the admins' two-factor login (item 101, D-105)
+
+Measured with `scripts/measure_performance.py` (30 logins) on the same seeded data as below (150 campaigns, 785 applications, 200 creators, 958 packages), on a laptop, as the database owner. Each login checks a phone code, decrypts the authenticator secret, checks its code under the factor's row lock, opens a session and tells every active admin.
+
+| Endpoint | p50 ms | p95 ms | Budget | Verdict |
+| --- | --- | --- | --- | --- |
+| `POST /auth/admin/login` | 17.3 | 22.3 | 500 | OK |
+
+**Weak, said plainly:** one admin in the database, so the alert is one notification per login; with the two founders it is two. Setting up an authenticator (`POST /auth/admin/second-factor`) is not timed: it runs once per admin, and does the same work minus the session.
+
 ## Added 16 October: takedowns (item 52, D-104)
 
 Measured with `scripts/measure_performance.py` (50 runs per read, 30 deals) on freshly seeded data (150 campaigns, 785 applications, 200 creators, 958 packages), on a laptop, as the database owner. Inside the script's rolled-back writes, 30 campaigns are withheld on an order, the lists and discovery are read 30 times each with all 30 in place, and each is lifted.

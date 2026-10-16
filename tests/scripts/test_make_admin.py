@@ -1,12 +1,15 @@
-"""The only way an admin is made, suspended or restored (D-061)."""
+"""The only way an admin is made, suspended, restored or given a setup ticket (D-061, D-105)."""
 
 from contextlib import nullcontext
+from datetime import timedelta
 
 import pytest
 from sqlalchemy import select
 
 from app.core.config import settings
+from app.modules.auth import second_factor
 from app.modules.auth.models.account import Account
+from app.modules.auth.models.totp_factor import TotpFactor
 from scripts import make_admin
 from tests.factories import FIXED_NOW, build_auth_session, create_account, fake_phone
 
@@ -98,3 +101,52 @@ def test_it_only_suspends_admins(local, db, capsys):
 
 def test_something_that_is_not_a_number_is_refused(local, db):
     assert run(db, "not-a-phone") == 1
+
+
+# --- setup tickets for the second factor (D-105) -------------------------------------------
+
+
+def test_it_issues_a_setup_ticket_shown_once(local, db, capsys):
+    admin = create_account(db, "admin")
+    session = build_auth_session(db, account_id=admin.id)
+    db.add(session)
+    db.flush()
+
+    assert run(db, admin.phone, "--second-factor") == 0
+
+    out = capsys.readouterr().out
+    (ticket,) = [line.strip() for line in out.splitlines() if line.startswith("    ")]
+    factor = db.scalars(select(TotpFactor).where(TotpFactor.account_id == admin.id)).one()
+    assert factor.ticket_hash == second_factor.hash_ticket(ticket)
+    assert ticket not in factor.ticket_hash
+    assert factor.ticket_expires_at == FIXED_NOW + timedelta(minutes=15)
+    db.refresh(session)
+    assert session.revoked_at == FIXED_NOW
+
+
+@pytest.mark.parametrize("role", ["brand", "creator"])
+def test_it_issues_tickets_only_to_admins(local, db, capsys, role):
+    user = create_account(db, role)
+
+    assert run(db, user.phone, "--second-factor") == 1
+
+    assert "No admin account" in capsys.readouterr().err
+    assert (
+        db.scalars(select(TotpFactor).where(TotpFactor.account_id == user.id)).first()
+        is None
+    )
+
+
+def test_a_suspended_admin_gets_no_ticket(local, db, capsys):
+    admin = create_account(db, "admin")
+    run(db, admin.phone, "--suspend", "abuse")
+
+    assert run(db, admin.phone, "--second-factor") == 1
+
+    assert "suspended" in capsys.readouterr().err
+
+
+def test_a_new_admin_is_told_to_get_a_ticket(local, db, capsys):
+    assert run(db, fake_phone()) == 0
+
+    assert "--second-factor" in capsys.readouterr().out

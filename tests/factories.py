@@ -11,7 +11,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.modules.auth.models.account import Account
-from app.modules.auth.models.auth_session import AuthSession, refresh_token_ttl
+from app.modules.auth.models.auth_session import AuthSession, refresh_token_expiry
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.models.otp_challenge import OTP_TTL, OtpChallenge
@@ -100,7 +100,7 @@ def build_auth_session(db: Session, **overrides: Any) -> AuthSession:
     fields: dict[str, Any] = {
         "family_id": uuid.uuid4(),
         "token_hash": fake_token_hash(),
-        "expires_at": FIXED_NOW + refresh_token_ttl("creator"),
+        "expires_at": refresh_token_expiry("creator", FIXED_NOW, None),
     }
     fields.update(overrides)
     # Not setdefault, for the same reason as build_brand above.
