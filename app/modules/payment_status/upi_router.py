@@ -8,7 +8,12 @@ from sqlalchemy.orm import Session
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
-from app.modules.auth.dependencies import CurrentCreator, StepUpCode, get_now
+from app.modules.auth.dependencies import (
+    CurrentCreator,
+    LoginTime,
+    StepUpCode,
+    get_now,
+)
 from app.modules.auth.models.creator import Creator
 from app.modules.deal_memo.dependencies import BrandMemo
 from app.modules.payment_status import upi_service as service
@@ -90,7 +95,10 @@ def read_my_upi(
         "consent is given again with every change. **Needs a code**: ask for "
         "one at `POST /api/v1/me/step-up` with this exact UPI ID, then send it "
         "in the `Step-Up-Code` header. **A new ID waits 24 hours** before "
-        "brands see it, and is returned under `waiting`; until then they see "
+        "brands see it, and is returned under `waiting`; and **replacing an "
+        "ID already in effect needs a login at least 7 days old** (403 "
+        "`login_too_recent`, with `Retry-After`), which a SIM swapper never "
+        "has, while a first ID never waits for that; until then they see "
         "your previous one, or none. You are told, and can cancel it. "
         "Setting the ID already in effect only renews your consent. Brands see "
         "the ID only while a payment to you on their deal is open. A UPI ID "
@@ -103,6 +111,10 @@ def read_my_upi(
         401: problem_doc(
             "No access token, or it is invalid or expired; or `step_up_required`: "
             "no code was sent"
+        ),
+        403: problem_doc(
+            "Only a creator may use this endpoint; or `login_too_recent`: "
+            "replacing an ID in effect needs a login at least 7 days old"
         ),
         409: problem_doc("The notice changed since you read it"),
         422: problem_doc("Consent is missing, or the UPI ID is not usable"),
@@ -118,6 +130,7 @@ def set_my_upi(
     request: Request,
     body: UpiSet,
     account: CurrentCreator,
+    login_time: LoginTime,
     step_up_code: StepUpCode = None,
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
@@ -125,7 +138,14 @@ def set_my_upi(
     creator = profiles.get_profile(db, Creator, account.id)
     return _read(
         service.set_for_creator(
-            db, account, creator, body.upi_id, body.notice_version, step_up_code, now
+            db,
+            account,
+            creator,
+            body.upi_id,
+            body.notice_version,
+            step_up_code,
+            login_time,
+            now,
         )
     )
 

@@ -20083,7 +20083,7 @@
         ]
       },
       "put": {
-        "description": "Stores your UPI ID, with your consent to the notice you were shown. `consent` must be true, and `notice_version` the version you read; consent is given again with every change. **Needs a code**: ask for one at `POST /api/v1/me/step-up` with this exact UPI ID, then send it in the `Step-Up-Code` header. **A new ID waits 24 hours** before brands see it, and is returned under `waiting`; until then they see your previous one, or none. You are told, and can cancel it. Setting the ID already in effect only renews your consent. Brands see the ID only while a payment to you on their deal is open. A UPI ID made of a phone number is refused, because brands would see the number. Money still goes from the brand's bank straight to yours.",
+        "description": "Stores your UPI ID, with your consent to the notice you were shown. `consent` must be true, and `notice_version` the version you read; consent is given again with every change. **Needs a code**: ask for one at `POST /api/v1/me/step-up` with this exact UPI ID, then send it in the `Step-Up-Code` header. **A new ID waits 24 hours** before brands see it, and is returned under `waiting`; and **replacing an ID already in effect needs a login at least 7 days old** (403 `login_too_recent`, with `Retry-After`), which a SIM swapper never has, while a first ID never waits for that; until then they see your previous one, or none. You are told, and can cancel it. Setting the ID already in effect only renews your consent. Brands see the ID only while a payment to you on their deal is open. A UPI ID made of a phone number is refused, because brands would see the number. Money still goes from the brand's bank straight to yours.",
         "operationId": "set_my_upi_api_v1_creators_me_upi_put",
         "parameters": [
           {
@@ -20158,7 +20158,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "Only a creator may use this endpoint"
+            "description": "Only a creator may use this endpoint; or `login_too_recent`: replacing an ID in effect needs a login at least 7 days old"
           },
           "404": {
             "content": {
@@ -25806,7 +25806,7 @@
         ]
       },
       "post": {
-        "description": "Needs **a code from each number**: from your current number, ask at `POST /api/v1/me/step-up` with `change_phone` and this exact new number, and send it in the `Step-Up-Code` header; from the new number, ask at `POST /api/v1/auth/otp/request`, and send it as `new_phone_code`. **The new number takes over 72 hours later**: until then you log in with your current number, are told in the app, and can cancel with no code. Then every session ends, and you log in with the new number; the old one no longer reaches this account. Asking again replaces a change still waiting and starts its 72 hours again. Brands and creators only: an admin's number is changed by the founders. Limits: 5 per 10 minutes and 10 a day, beside each number's own limits on codes.",
+        "description": "Needs **a login at least 7 days old**, which a SIM swapper never has: from a newer one, 403 `login_too_recent`, with `Retry-After` saying when. And **a code from each number**: from your current number, ask at `POST /api/v1/me/step-up` with `change_phone` and this exact new number, and send it in the `Step-Up-Code` header; from the new number, ask at `POST /api/v1/auth/otp/request`, and send it as `new_phone_code`. **The new number takes over 72 hours later**: until then you log in with your current number, are told in the app, and can cancel with no code. Then every session ends, and you log in with the new number; the old one no longer reaches this account. Asking again replaces a change still waiting and starts its 72 hours again. Brands and creators only: an admin's number is changed by the founders. Limits: 5 per 10 minutes and 10 a day, beside each number's own limits on codes.",
         "operationId": "change_my_phone_api_v1_me_phone_change_post",
         "parameters": [
           {
@@ -25893,7 +25893,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "An admin's number cannot be changed here"
+            "description": "`role_not_allowed`: an admin's number cannot be changed here; `login_too_recent`: this login is under 7 days old (see Retry-After)"
           },
           "409": {
             "content": {
@@ -26040,7 +26040,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "Only a creator may ask to set a UPI ID; an admin may not change their phone number here"
+            "description": "Only a creator may ask to set a UPI ID; an admin may not change their phone number here; or `login_too_recent`: changing the phone number, or replacing a UPI ID in effect, needs a login at least 7 days old (see Retry-After)"
           },
           "409": {
             "content": {

@@ -86,10 +86,25 @@ def _authenticate(
         raise AccountSuspended.because(account.suspension_reason)
     # For logging and later ownership checks.
     request.state.account_id = account.id
+    # For the checks that need the login to be old enough (D-109).
+    request.state.authenticated_at = claims.authenticated_at
     return account, claims
 
 
 CurrentAccount = Annotated[Account, Depends(get_current_account)]
+
+
+def get_login_time(request: Request, account: CurrentAccount) -> datetime | None:
+    """When the signed-in person's login was proven (the token's `auth_time`).
+
+    None for a token signed before D-109, which counts as a login made just
+    now. Depends on CurrentAccount, so the token is always checked first.
+    """
+    authenticated_at: datetime | None = request.state.authenticated_at
+    return authenticated_at
+
+
+LoginTime = Annotated[datetime | None, Depends(get_login_time)]
 
 
 def require_role(role: str) -> Callable[[Account], Account]:

@@ -13,8 +13,10 @@ Threat model (security.md section 4):
   current number, asked for to move onto this exact new number
   (`step_up_service`, action `change_phone`), and a login code from the new
   number. Both caps per phone apply, for sending and for guessing.
-- **A SIM swap of the current number** gets the first code, so it can start
-  one. It cannot make it stick: the change waits PHONE_CHANGE_WAIT, the old
+- **A SIM swap of the current number** gets the first code, but not an old
+  login: a change needs a login at least 7 days old (D-109), and a SIM
+  swapper's is made the day they take the number. Even with one, it cannot
+  make it stick: the change waits PHONE_CHANGE_WAIT, the old
   number still logs in meanwhile, and the owner, once their carrier gives
   the number back, logs in and cancels with no code. The owner is told by a
   notification nobody can mute, and it is first on their attention list.
@@ -50,7 +52,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.export import ExportedSection, allow, build_section
-from app.modules.auth import phone_changes
+from app.modules.auth import login_age, phone_changes
 from app.modules.auth import service as login
 from app.modules.auth import step_up_service as step_ups
 from app.modules.auth.exceptions import (
@@ -126,6 +128,7 @@ def request_change(
     new_phone: str,
     new_phone_code: str,
     step_up_code: str | None,
+    authenticated_at: datetime | None,
     now: datetime,
 ) -> PhoneChangeState:
     """Start moving the account onto `new_phone`, which takes over in 72 hours.
@@ -140,13 +143,17 @@ def request_change(
     checked before the current number's: a wrong one commits only its own
     attempt, never the other code's use.
 
-    Raises RoleNotAllowed, PhoneUnchanged, StepUpRequired,
+    The login asking must be at least a week old (`login_age`, D-109): a
+    SIM swapper's never is.
+
+    Raises RoleNotAllowed, PhoneUnchanged, LoginTooRecent, StepUpRequired,
     PhoneChangeTakingEffect (the change waiting is past its 72 hours),
     PhoneInUse (the new number has an account, or another is waiting for
     it), what service.check_phone_code raises for the new number's code, and
     what step_up_service.consume raises for the current number's.
     """
     ensure_new_phone(account, new_phone)
+    login_age.ensure_established(authenticated_at, now)
     if step_up_code is None:
         raise StepUpRequired()
     login.lock_phones(db, account.phone, new_phone)

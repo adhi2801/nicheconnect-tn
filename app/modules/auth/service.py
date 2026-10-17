@@ -11,7 +11,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import Any, NoReturn, cast
 
-from sqlalchemy import CursorResult, select, text, union_all, update
+from sqlalchemy import CursorResult, func, select, text, union_all, update
 from sqlalchemy.orm import Session
 
 from app.modules.auth import attribution_service as attribution
@@ -315,11 +315,14 @@ def issue_session(
     now: datetime,
     *,
     second_factor_at: datetime | None = None,
+    authenticated_at: datetime | None = None,
 ) -> LoginResult:
     """Create one session in `family_id` and return its tokens. The caller commits.
 
     `second_factor_at` is when the login proved a second factor; it is kept
     on every session of the family, and makes its access tokens say `mfa`.
+    `authenticated_at` is when the family's login was proven, `now` for a
+    new login; its access tokens carry it as `auth_time` (D-109).
     """
     refresh_token = new_refresh_token()
     refresh_expires_at = refresh_token_expiry(account.role, now, second_factor_at)
@@ -340,6 +343,7 @@ def issue_session(
         now,
         methods=PHONE_CODE_ONLY if second_factor_at is None else TWO_FACTORS,
         not_after=refresh_expires_at if account.role == "admin" else None,
+        authenticated_at=now if authenticated_at is None else authenticated_at,
     )
     return LoginResult(
         account_id=account.id,
@@ -403,9 +407,21 @@ def refresh_session(db: Session, refresh_token: str, now: datetime) -> LoginResu
         auth_session.family_id,
         now,
         second_factor_at=auth_session.second_factor_at,
+        authenticated_at=logged_in_at(db, auth_session.family_id),
     )
     db.commit()
     return result
+
+
+def logged_in_at(db: Session, family_id: uuid.UUID) -> datetime:
+    """When this login was proven: its family's first session (D-109).
+
+    Rotation adds a row to the family and never removes one, so the
+    earliest row is the login itself.
+    """
+    return db.execute(
+        select(func.min(AuthSession.created_at)).where(AuthSession.family_id == family_id)
+    ).scalar_one()
 
 
 def logout(

@@ -737,7 +737,11 @@ def main() -> int:
     now = datetime.now(UTC)
     app.dependency_overrides[get_now] = lambda: now
     brand_token, _ = create_access_token(brand.account_id, "brand", now)
-    creator_token, _ = create_access_token(creator.account_id, "creator", now)
+    # Logged in a month ago, as a seeded creator would be: changing a phone
+    # number asks for a login at least a week old (D-109).
+    creator_token, _ = create_access_token(
+        creator.account_id, "creator", now, authenticated_at=now - timedelta(days=30)
+    )
     brand_headers = {"Authorization": f"Bearer {brand_token}"}
     creator_headers = {"Authorization": f"Bearer {creator_token}"}
     busiest_campaign_id = busiest[0] if busiest else campaign.id

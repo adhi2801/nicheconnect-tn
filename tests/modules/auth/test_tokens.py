@@ -233,3 +233,34 @@ def test_not_after_ends_a_token_sooner_never_later():
 
     assert cut == sooner
     assert kept == FIXED_NOW + timedelta(minutes=settings.access_token_expire_minutes)
+
+
+# --- auth_time: when the login was proven (D-109) -------------------------------
+
+
+def test_a_token_carries_its_logins_time_rounded_up_to_the_second():
+    logged_in = FIXED_NOW - timedelta(days=9, microseconds=250_000)
+
+    token, _ = create_access_token(
+        uuid.uuid4(), "creator", FIXED_NOW, authenticated_at=logged_in
+    )
+
+    decoded = decode_access_token(token, FIXED_NOW)
+    assert decoded.authenticated_at == FIXED_NOW - timedelta(days=9)
+    assert jwt.decode(token, options={"verify_signature": False})["auth_time"] == int(
+        (FIXED_NOW - timedelta(days=9)).timestamp()
+    )
+
+
+def test_a_token_without_a_login_time_decodes_as_none():
+    token, _ = create_access_token(uuid.uuid4(), "creator", FIXED_NOW)
+
+    assert decode_access_token(token, FIXED_NOW).authenticated_at is None
+
+
+@pytest.mark.parametrize("auth_time", ["1760000000", 1760000000.5, True, None, [1]])
+def test_a_token_with_a_malformed_login_time_is_rejected(auth_time):
+    claims = valid_claims(auth_time=auth_time)
+
+    with pytest.raises(InvalidToken):
+        decode_access_token(signed(claims), FIXED_NOW)
