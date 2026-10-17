@@ -64,4 +64,4 @@ def read_brand_reliability(
     if not reliability.brand_exists(db, brand_id):
         raise ProfileNotFound()
     record = reliability.for_brand(db, brand_id, india_date(now))
-    return to_reliability_read(record)
+    return to_reliability_read(record, reliability.verified_domain_of(db, brand_id))

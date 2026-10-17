@@ -35,6 +35,7 @@ from app.modules.notifications.preference_models import (
 )
 from app.modules.payment_status.models import PaymentStatus  # noqa: F401
 from app.modules.payment_status.upi_models import CreatorUpi  # noqa: F401
+from app.modules.profiles.brand_domain_models import BrandDomain  # noqa: F401
 from app.modules.profiles.models import (
     CreatorChannel,  # noqa: F401
     CreatorPackage,  # noqa: F401

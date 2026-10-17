@@ -27,6 +27,11 @@ BRAND_KINDS: tuple[str, ...] = (
     "revise_memo",
     "draft_memo",
     "review_applications",
+    # The brand's own domain (item 74, D-106): the record was not found, the
+    # verification lapsed, or the token expired before it was found.
+    "fix_domain_record",
+    "domain_lapsed",
+    "domain_claim_expired",
 )
 # What a creator can be asked to do, or needs to know.
 CREATOR_KINDS: tuple[str, ...] = (
@@ -56,6 +61,9 @@ _PRIORITY = {
             "revise_memo",
             "draft_memo",
             "review_applications",
+            "fix_domain_record",
+            "domain_lapsed",
+            "domain_claim_expired",
         )
     )
 }
@@ -71,8 +79,10 @@ class AttentionItem:
     kind: str
     # The Tamil Nadu date it is due by, or None when nothing sets a date.
     due_on: date | None
-    campaign_id: uuid.UUID
-    campaign_title: str
+    # None for an item about the account itself rather than a campaign:
+    # the brand's domain (item 74).
+    campaign_id: uuid.UUID | None
+    campaign_title: str | None
     # The other side: a creator's handle for a brand, a brand's name for a
     # creator. None when the item is about many people (a count).
     counterparty: str | None = None
@@ -82,6 +92,8 @@ class AttentionItem:
     amount_paise: int | None = None
     # For an item that stands for several things at once.
     count: int | None = None
+    # The brand's domain, for the domain items.
+    domain: str | None = None
 
 
 @dataclass(frozen=True)
@@ -106,7 +118,13 @@ def by_urgency(items: Iterable[AttentionItem]) -> list[AttentionItem]:
     """
 
     def key(item: AttentionItem) -> tuple[bool, date, int, str]:
-        tie = item.proof_id or item.memo_id or item.application_id or item.campaign_id
+        tie = (
+            item.proof_id
+            or item.memo_id
+            or item.application_id
+            or item.campaign_id
+            or item.domain
+        )
         return (
             item.due_on is None,
             item.due_on or date.max,

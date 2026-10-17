@@ -70,7 +70,7 @@ Researched 10 October 2026, sources in section 8.
 | A revision request on proof | One change restarts the clock (D-025); note plain text | Built |
 | Marking a payment sent | Only the creator can confirm it arrived (D-027); the reference shape is checked; a dispute holds the record short of unpaid | Built: the payment tests, with properties over every state |
 | **Payment requests disguised in text** ("pay ₹2,000 registration") | `text_flags` on a campaign's description and deliverables, invitation and rejection notes, memo deliverables and extra terms, and revision notes: a request for a fee or deposit is flagged, while ordinary pay ("we pay ₹5,000 per reel") is not (`app/core/text_flags.py`). A campaign's **title** is not checked (gap 2) | Built: `tests/core/test_text_flags.py`, its property tests, and `tests/modules/test_text_flags_api.py` |
-| **A brand name copying a famous brand** | Verified business from GST (item 36). Until then, no "verified" mark of any kind | **Owed** (item 36) |
+| **A brand name copying a famous brand** | **A verified domain** (item 74, D-106): a brand proves it controls its website's DNS with a TXT record, checked by two resolvers and again daily, and creators see the domain itself, since when, and when the registry says it was registered, on every campaign and the brand's payment record. A real brand stands apart from an impersonator with only a name. **It is a fact about a domain, never a verdict on the brand**: a look-alike domain (`nykaa-collabs.in`) can be verified too, which is why the domain and its age are shown, not a badge. Business identity from GST (item 36) and look-alike name flags (item 75) are still owed | Built: `tests/modules/profiles/test_brand_domain_api.py`, `test_brand_domains.py`, `test_brand_domain_concurrency.py`; **Owed** (items 36, 75) |
 | Contact details in text, pulling the creator off the record | Phone numbers, emails, UPI IDs and WhatsApp or Telegram links flagged in briefs, pitches and notes until the deal is agreed (D-086: flagged, not hidden) | Built: the same text-flag tests |
 | Repeated contact after a no | **Block** (`POST /me/blocks`): once either side blocks, no invitation, repeat or application starts in either direction, and neither appears in the other's search, matches or discovery. Agreed deals carry on; the blocked side is never told, and every refusal reads as not found | Built: `tests/modules/safety/test_block_api.py` |
 
@@ -104,6 +104,7 @@ Researched 10 October 2026, sources in section 8.
 | Many accounts from one person | One account per phone number (unique); login-code limits per phone and network (`security.md` sections 1 and 5) | Built |
 | Scraping creators | Search and matching are signed-in brands only, 30 a minute and 600 a day per account; no contact details anywhere | Built: the matching and search tests, the daily-ceiling test |
 | Running up our AI bill | Daily ceiling on proof reading (D-070) | Built |
+| Using our domain checks to query someone's DNS over and over | 5 checks a minute and 10 a day per brand; a check asks two fixed resolvers about one name, never a URL anyone gives us (item 74) | Built: `test_checks_are_limited_per_brand` |
 | Abusing invite attribution | It carries no reward. **Any reward is designed with its abuse limits first** | Built (no reward) |
 | An admin misusing access | Every view and action in the append-only admin log (D-061), sealed by the database, and the app's own login may only read and add to it (item 97). A takedown (item 52) is in the log with the admin's note, names who withheld and who lifted it, cannot be backdated (the server sets `withheld_at`), and cannot be deleted by the app's login. A rogue admin can still withhold an item; the log shows it afterwards. **Someone else in an admin's account** needs both the admin's phone and their authenticator (item 101, D-105), and every admin is told of every admin sign-in and every refused second factor, so between two founders each sees the other's logins | Built: `tests/modules/admin/test_admin_models.py`, `tests/modules/test_app_role.py`, `tests/modules/safety/test_takedown_model.py`, `tests/modules/admin/test_admin_login_api.py` |
 | Impersonating us ("support") | We never ask for codes, PINs or passwords (rule 8). **The login message's wording must say so: Confirm the MSG91 template** | **Owed** (item 62) |
@@ -131,6 +132,7 @@ One module, used by every place free text from one person reaches another:
 - Show flags (section 4) as warnings next to the text, never hidden.
 - Never turn user text into links. Show a link field's host before it opens.
 - Report and block are one tap from anything another person sent.
+- **A brand's verified domain is shown as the domain itself and its age** ("controls smallshop.in, checked today; registered March 2019"), never only a badge or the word "verified" (item 74, `legal.md` rule 3). A domain registered days ago is said plainly: it is what scams use.
 
 ---
 
@@ -148,7 +150,7 @@ One module, used by every place free text from one person reaches another:
 
 | # | Gap | Risk | Acting on it |
 |---|---|---|---|
-| 1 | **No verified-business mark, so impersonation is unchecked** | The pay-to-collab scam starts with a believable fake brand | Item 36 |
+| 1 | **Only a domain is checked, not the business behind it** (item 74 built 17 October); brands without a website of their own have nothing to show | The pay-to-collab scam starts with a believable fake brand; a look-alike domain can be verified | Item 36 (GST), item 75 (look-alike names), email proof once our domain exists |
 | 2 | **A campaign title is not checked for fee requests** | A short line such as "₹500 registration, DM us" in a title is not flagged | Add the title to the brief's flagged fields; small, in the next change to the campaign schema |
 | 3 | **The login message does not yet say we never ask for it** | Fake support works on people who were never told | Item 62 |
 | 4 | **Shared devices or networks at sign-up are not flagged** | Pumped records between one person's accounts are only visible as "one partner" | Item 61, a legal decision first |

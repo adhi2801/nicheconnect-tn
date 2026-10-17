@@ -60,6 +60,7 @@ from app.modules.payment_status.mine_router import router as my_payments_router
 from app.modules.payment_status.router import router as payment_router
 from app.modules.payment_status.upi_router import router as upi_router
 from app.modules.profiles.availability_router import router as availability_router
+from app.modules.profiles.brand_domain_router import router as brand_domain_router
 from app.modules.profiles.profile_router import brand_router, creator_router
 from app.modules.profiles.rate_card_router import router as rate_card_router
 from app.modules.safety.block_router import router as block_router
@@ -146,6 +147,7 @@ app.include_router(public_router)
 app.include_router(city_figures_router)
 app.include_router(rate_card_router)
 app.include_router(availability_router)
+app.include_router(brand_domain_router)
 app.include_router(block_router)
 app.include_router(takedown_router)
 app.include_router(search_router)

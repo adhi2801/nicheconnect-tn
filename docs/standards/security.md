@@ -73,7 +73,7 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md`. Rule
 | API4 Unrestricted resource consumption | Rate limits, bounded lists, a 1 MB body limit, statement timeouts, a cap on requests in flight (D-093), daily ceilings on paid APIs | Limit tests; 413 tests; the load test (D-092) |
 | API5 Broken function level authorization | Role checks on every route; admin routes separate and 404 | Role tests |
 | API6 Unrestricted access to sensitive business flows | Extra limits on code sending, applications, bulk payments; **a daily ceiling per account on everything that reaches another person** (item 58) | `tests/modules/test_daily_ceilings.py` reads the registered limits |
-| API7 Server-side request forgery | No user-supplied URL is fetched; proof and evidence links are stored, never fetched, and accepted only from a published host list with phishing shapes refused (item 57, `app/core/links.py`) | `tests/core/test_links.py` |
+| API7 Server-side request forgery | No user-supplied URL is fetched; a brand's domain check (item 74) asks two fixed DNS-over-HTTPS resolvers and the registry IANA names, about one validated name, never a URL; proof and evidence links are stored, never fetched, and accepted only from a published host list with phishing shapes refused (item 57, `app/core/links.py`) | `tests/core/test_links.py` |
 | API8 Security misconfiguration | Security headers on every response, CORS allow-list, docs off in production (D-044) | Header tests, 500s included |
 | API9 Improper inventory management | Committed OpenAPI contract; a test fails on any unannounced change | Contract tests |
 | API10 Unsafe consumption of APIs | Timeouts, validation of third-party responses, bounded retries | Sender and reader tests |

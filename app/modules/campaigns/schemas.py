@@ -26,6 +26,7 @@ from app.modules.campaigns.models import (
     REJECTION_REASONS,
     TITLE_MAX_LENGTH,
 )
+from app.modules.profiles.schemas import VerifiedDomainRead
 
 CampaignType = Literal["paid", "barter", "commission", "local_business"]
 CampaignStatus = Literal["draft", "open", "closed", "cancelled"]
@@ -138,6 +139,15 @@ class CampaignRead(BaseModel):
     status: CampaignStatus
     created_at: datetime
     updated_at: datetime
+    verified_domain: VerifiedDomainRead | None = Field(
+        default=None,
+        description=(
+            "The website domain the brand proved it controls, checked daily, "
+            "with when it was registered (item 74). Null when it has none. It "
+            "says the brand controls this domain, not that the brand is who its "
+            "name claims: show the domain itself, never only a badge"
+        ),
+    )
 
     @computed_field(  # type: ignore[prop-decorator]  # pydantic documents this
         description=(

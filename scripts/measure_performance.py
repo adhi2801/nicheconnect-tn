@@ -447,6 +447,27 @@ def measure_writes(
                 method="GET",
             )
 
+        # A brand's domain (item 74): claimed, a check asked for, read back.
+        # The check itself runs in the background job, never in a request.
+        for round_number, _ in enumerate(reported, start=1):
+            write(
+                "POST /brands/me/domain",
+                "/api/v1/brands/me/domain",
+                brand_headers,
+                {"domain": f"measured{round_number}.in"},
+            )
+            write(
+                "POST /brands/me/domain/check",
+                "/api/v1/brands/me/domain/check",
+                brand_headers,
+            )
+            write(
+                "GET /brands/me/domain",
+                "/api/v1/brands/me/domain",
+                brand_headers,
+                method="GET",
+            )
+
         # Takedowns (item 52): each reported campaign withheld on an order,
         # the lists read with them in place, discovery read past them, and
         # each lifted again.

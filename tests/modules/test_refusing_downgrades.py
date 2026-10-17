@@ -1,7 +1,7 @@
 """Every downgrade that would destroy unrecoverable data refuses while it exists.
 
 database.md section 6: losing such data must be a deliberate act, never a
-side effect of a rollback. Twelve migrations refuse. Until 14 October 2026 each
+side effect of a rollback. Thirteen migrations refuse. Until 14 October 2026 each
 refusal had been proven only by hand, in the session that wrote it
 (database.md gap 6, item 98); a later edit to one could have let a rollback
 drop a deal's record or a person's block without anyone noticing.
@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 from app.modules.deal_memo import record_service
 from app.modules.deal_memo.models import DealMemo
 from tests.deal_flow import accepted_memo, brand_user, creator_user
-from tests.factories import create_account
+from tests.factories import build_brand, create_account
 
 VERSIONS = Path(__file__).resolve().parents[2] / "alembic" / "versions"
 
@@ -47,6 +47,7 @@ REFUSING = {
     "f0ec9547afcc": "reports and suspensions for impersonation or intimate content",
     "f276d2c6ce1e": "cleaned proof files on the deal record",
     "90b4db0fd32a": "admins' authenticators, set up or waiting",
+    "8a974ebde203": "brands' verified domains",
 }
 
 
@@ -295,3 +296,21 @@ def test_admins_authenticators(db):
     )
 
     assert f"{before + 1} admin authenticators" in refusal(db, "90b4db0fd32a")
+
+
+def test_brands_verified_domains(db):
+    before = count(db, "SELECT count(*) FROM brand_domain WHERE status = 'verified'")
+    brand = build_brand(db, email=f"domain-{uuid.uuid4().hex[:12]}@example.com")
+    db.add(brand)
+    db.flush()
+    db.execute(
+        text(
+            "INSERT INTO brand_domain (brand_id, domain, token, status, claimed_at,"
+            " token_expires_at, verified_at, last_checked_at, last_result)"
+            " VALUES (:brand, :domain, repeat('a', 26), 'verified', now(),"
+            " now() + interval '7 days', now(), now(), 'found')"
+        ),
+        {"brand": brand.id, "domain": f"d{uuid.uuid4().hex[:12]}.in"},
+    )
+
+    assert f"{before + 1} brands have a verified domain" in refusal(db, "8a974ebde203")

@@ -15,6 +15,20 @@ whole deals, 5 bank bulk transfers of 25 rows, and 30 rounds of rate card
 edits. All from one run, on a developer laptop under Docker Desktop for
 Windows.
 
+## Added 17 October: a brand's verified domain (item 74, D-106)
+
+Measured with `scripts/measure_performance.py` (50 runs per read, 30 rounds of writes) on the same seeded data, on a laptop, as the database owner, three runs. Every campaign read now also loads its brands' verified domains, one query per response.
+
+| Endpoint | p50 ms | p95 ms (three runs) | Budget | Verdict |
+| --- | --- | --- | --- | --- |
+| `GET /campaigns/discover` | 17.7–19.8 | 22.3, 39.7, 61.5 | 300 | OK |
+| `GET /campaigns/{id}` | 13.5–16.5 | 17.0–21.6 | 300 | OK |
+| `POST /brands/me/domain` | 20.6 | 28.0 | 500 | OK |
+| `POST /brands/me/domain/check` | 19.4 | 31.5 | 500 | OK |
+| `GET /brands/me/domain` | 12.9 | 19.1 | 300 | OK |
+
+**Weak, said plainly:** discovery's median is 1 to 2 ms above 16 October's (15.6), the cost of the extra query, and its p95 varied between runs from 22 to 62 ms; its maximum, 408 to 476 ms, is each run's first, cold request, as before (298 ms on 16 October). The seeded brands have no verified domains, so the query reads an empty match; with many verified brands it is still one indexed lookup by brand id for the page. The check itself, two resolvers and a registry, runs in the background job and is not timed here: it is bounded by the client's timeouts (3 s to connect, 10 s to read, three attempts).
+
 ## Added 17 October: the admins' two-factor login (item 101, D-105)
 
 Measured with `scripts/measure_performance.py` (30 logins) on the same seeded data as below (150 campaigns, 785 applications, 200 creators, 958 packages), on a laptop, as the database owner. Each login checks a phone code, decrypts the authenticator secret, checks its code under the factor's row lock, opens a session and tells every active admin.

@@ -43,6 +43,8 @@ from app.modules.campaigns.exceptions import (
 )
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.notifications import service as notifications
+from app.modules.profiles import brand_domain_service as brand_domains
+from app.modules.profiles.schemas import VerifiedDomainRead, to_verified_domain_read
 from app.modules.safety.blocks import blocked_between, not_blocked_with_brand
 from app.modules.safety.exceptions import ContentWithheld, OwnContentWithheld
 from app.modules.safety.takedowns import (
@@ -124,6 +126,17 @@ def get_visible_campaign(
                 raise CampaignNotFound()
             raise ContentWithheld()
     return campaign
+
+
+def verified_domains_for(
+    db: Session, campaigns: list[Campaign]
+) -> dict[uuid.UUID, VerifiedDomainRead]:
+    """Each brand's verified domain (item 74), by brand id, for these campaigns.
+
+    One query however many campaigns: the page's brands, at once.
+    """
+    found = brand_domains.verified_for_brands(db, {c.brand_id for c in campaigns})
+    return {brand_id: to_verified_domain_read(row) for brand_id, row in found.items()}
 
 
 def get_brand_for_account(db: Session, account_id: uuid.UUID) -> Brand:

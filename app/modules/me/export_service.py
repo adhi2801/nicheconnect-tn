@@ -42,6 +42,7 @@ from app.modules.notifications import preference_service as notification_prefere
 from app.modules.notifications import service as notifications
 from app.modules.payment_status import service as payments
 from app.modules.payment_status import upi_service as upi
+from app.modules.profiles import brand_domain_service as brand_domains
 from app.modules.profiles.models import CreatorChannel, CreatorPackage
 from app.modules.safety import block_service as blocks
 from app.modules.safety import takedown_service as takedowns
@@ -370,6 +371,7 @@ def collect_sections(db: Session, account: Account) -> list[ExportedSection]:
         *attribution.export_for_account(db, account.id),
         *blocks.export_for_account(db, account.id),
         *takedowns.export_for_account(db, account.id),
+        *brand_domains.export_for_account(db, account.id),
         *campaigns.export_for_account(db, account.id),
         *deal_memos.export_for_account(db, account.id),
         *payments.export_for_account(db, account.id),
@@ -414,6 +416,7 @@ def exported_tables() -> frozenset[str]:
         | attribution.EXPORTED_TABLES
         | blocks.EXPORTED_TABLES
         | takedowns.EXPORTED_TABLES
+        | brand_domains.EXPORTED_TABLES
         | campaigns.EXPORTED_TABLES
         | deal_memos.EXPORTED_TABLES
         | notifications.EXPORTED_TABLES
