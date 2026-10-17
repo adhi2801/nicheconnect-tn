@@ -9,7 +9,12 @@ from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
-from app.modules.auth.dependencies import CurrentAccount, StepUpCode, get_now
+from app.modules.auth.dependencies import (
+    CurrentAccount,
+    LoginTime,
+    StepUpCode,
+    get_now,
+)
 from app.modules.me import phone_change_service as service
 from app.modules.me.phone_change_schemas import (
     PhoneChangeIn,
@@ -68,7 +73,9 @@ def read_my_phone_change(
     response_model=PhoneChangeRead,
     summary="Move my account to a new phone number",
     description=(
-        "Needs **a code from each number**: from your current number, ask at "
+        "Needs **a login at least 7 days old**, which a SIM swapper never "
+        "has: from a newer one, 403 `login_too_recent`, with `Retry-After` "
+        "saying when. And **a code from each number**: from your current number, ask at "
         "`POST /api/v1/me/step-up` with `change_phone` and this exact new "
         "number, and send it in the `Step-Up-Code` header; from the new "
         "number, ask at `POST /api/v1/auth/otp/request`, and send it as "
@@ -91,7 +98,10 @@ def read_my_phone_change(
             "No access token, or it is invalid or expired; or `step_up_required`: "
             "no code from the current number was sent"
         ),
-        403: problem_doc("An admin's number cannot be changed here"),
+        403: problem_doc(
+            "`role_not_allowed`: an admin's number cannot be changed here; "
+            "`login_too_recent`: this login is under 7 days old (see Retry-After)"
+        ),
         409: problem_doc(
             "`phone_unchanged`: it is already your number; `phone_in_use`: the "
             "new number is on an account, or waiting to move onto one; "
@@ -110,13 +120,20 @@ def change_my_phone(
     request: Request,
     body: PhoneChangeIn,
     account: CurrentAccount,
+    login_time: LoginTime,
     step_up_code: StepUpCode = None,
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> PhoneChangeRead:
     return _read(
         service.request_change(
-            db, account, body.new_phone, body.new_phone_code, step_up_code, now
+            db,
+            account,
+            body.new_phone,
+            body.new_phone_code,
+            step_up_code,
+            login_time,
+            now,
         )
     )
 

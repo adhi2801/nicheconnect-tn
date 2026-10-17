@@ -33,13 +33,22 @@ class Clock:
         self.now += delta
 
 
+# How long ago a test user logged in, unless a test says otherwise: well
+# past the week that changing a phone number or a UPI ID asks for (D-109).
+LONG_AGO = timedelta(days=60)
+
+
 class User:
-    """A signed-in account whose token is minted at the clock's current time."""
+    """A signed-in account whose token is minted at the clock's current time.
+
+    Its login is LONG_AGO by default; set `logged_in_at` to test a newer one.
+    """
 
     def __init__(self, account_id: uuid.UUID, role: str, clock: Clock) -> None:
         self.account_id = account_id
         self.role = role
         self.clock = clock
+        self.logged_in_at: datetime | None = None
 
     @property
     def headers(self) -> dict[str, str]:
@@ -50,6 +59,11 @@ class User:
             self.role,
             self.clock.now,
             methods=TWO_FACTORS if self.role == "admin" else PHONE_CODE_ONLY,
+            authenticated_at=(
+                self.clock.now - LONG_AGO
+                if self.logged_in_at is None
+                else self.logged_in_at
+            ),
         )
         return {"Authorization": f"Bearer {token}"}
 

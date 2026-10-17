@@ -15,6 +15,10 @@ whole deals, 5 bank bulk transfers of 25 rows, and 30 rounds of rate card
 edits. All from one run, on a developer laptop under Docker Desktop for
 Windows.
 
+## Added 18 October: the login's age in every token (D-109)
+
+`POST /auth/refresh` now reads the login's time from its session family (one indexed query). Timed with a rolled-back script over a 100-long rotation chain, on a laptop: **12.7 ms p50, 16.0 ms p95** after, against 14.5 and 21.5 ms before on the same machine minutes earlier, so no measurable cost. Re-run `scripts/measure_performance.py --runs 50 --deals 30` after the change: `POST /me/phone-change` 39.9 ms p95, `PUT /creators/me/upi` 42.9, `POST /me/step-up` 38.3, all within budget; the export 386.2 ms, still over (its own fix, the background export, is next).
+
 ## Added 17 October: changing the phone number (item 80, D-108)
 
 Measured with `scripts/measure_performance.py --runs 50 --deals 30` on the seeded data, on a laptop, as the database owner, one run: 30 changes, each with a step-up code from the current number and a login code from the new one, read back and cancelled; then 30 runs of the job, each making one due change on an account made for it. The phones' send caps and the limiter are lifted for the run, as for item 82; they are not what is measured.

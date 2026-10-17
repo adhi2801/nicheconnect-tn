@@ -86,7 +86,14 @@ def test_one_code_sent_four_times_at_once_sets_it_once(asked, slow_writes):
                 account = session.get_one(Account, asked.account_id)
                 creator = session.get_one(Creator, asked.creator_id)
                 upi_service.set_for_creator(
-                    session, account, creator, UPI_ID, NOTICE, asked.code, CONCURRENCY_NOW
+                    session,
+                    account,
+                    creator,
+                    UPI_ID,
+                    NOTICE,
+                    asked.code,
+                    None,  # a first ID: no login age is asked (D-109)
+                    CONCURRENCY_NOW,
                 )
             outcomes.append("set")
         except StepUpCodeInvalid:

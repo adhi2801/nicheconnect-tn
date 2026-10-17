@@ -18,7 +18,9 @@ docs/decided/PROPOSAL_UPI_PAY_LINK.md:
 - A taken-over account swapping in the attacker's UPI ID before payment:
   - a stolen session cannot set one at all: every set needs a code sent to
     the phone, for that exact ID (item 82, D-107, `auth.step_up_service`);
-  - a SIM swap can get that code, so a new ID waits 24 hours before brands
+  - a SIM swap can get that code, but replacing an ID already in effect
+    needs a login at least a week old (D-109), and a SIM swapper's is new;
+  - even so, a new ID waits 24 hours before brands
     see it, the previous one staying in effect meanwhile; the creator is
     told, sees it on their attention list, and can cancel it without a code;
   - once in effect, the answer says when the ID was set and flags one set
@@ -40,6 +42,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.export import ExportedSection, allow, build_section
+from app.modules.auth import login_age
 from app.modules.auth import step_up_service as step_ups
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.creator import Creator
@@ -132,6 +135,7 @@ def set_for_creator(
     upi_id: str,
     notice_version: str,
     step_up_code: str | None,
+    authenticated_at: datetime | None,
     now: datetime,
 ) -> UpiState:
     """Set the creator's UPI ID, with their consent and a code for that exact ID.
@@ -144,9 +148,11 @@ def set_for_creator(
     any other ID still waiting is dropped. A different ID waits
     UPI_CHANGE_HOLD before brands see it (item 82), replacing any other
     still waiting and starting its wait again, and the creator is told.
+    Replacing an ID already in effect needs a login at least a week old
+    (D-109), checked before any code is spent; a first ID does not.
     The creator's row is locked first, so two changes at once apply in turn.
-    Raises UpiNotOpenYet, UpiNoticeChanged, and what step_up_service.consume
-    raises.
+    Raises UpiNotOpenYet, UpiNoticeChanged, LoginTooRecent, and what
+    step_up_service.consume raises.
     """
     if settings.upi_notice_version is None:
         raise UpiNotOpenYet(
@@ -155,6 +161,7 @@ def set_for_creator(
         )
     if notice_version != settings.upi_notice_version:
         raise UpiNoticeChanged()
+    ensure_may_replace(db, creator.id, upi_id, authenticated_at, now)
     step_ups.consume(db, account, "set_upi_id", upi_id, step_up_code, now)
     db.execute(select(Creator.id).where(Creator.id == creator.id).with_for_update())
     current, change = _fold(db, creator.id, *_rows(db, creator.id), now)
@@ -190,6 +197,42 @@ def set_for_creator(
         )
     db.commit()
     return get_for_creator(db, creator, now)
+
+
+def ensure_may_replace(
+    db: Session,
+    creator_id: uuid.UUID,
+    upi_id: str,
+    authenticated_at: datetime | None,
+    now: datetime,
+) -> None:
+    """Refuse to replace the ID in effect from a login under a week old (D-109).
+
+    A first ID, or the one already in effect, is never held back: only
+    moving where brands pay to somewhere new is what a SIM swapper wants.
+    Raises LoginTooRecent.
+    """
+    current = in_effect(*_rows(db, creator_id), now)
+    if current is not None and current.upi_id != upi_id:
+        login_age.ensure_established(authenticated_at, now)
+
+
+def ensure_may_replace_for_account(
+    db: Session,
+    account: Account,
+    upi_id: str,
+    authenticated_at: datetime | None,
+    now: datetime,
+) -> None:
+    """`ensure_may_replace` for an account, before a code is sent for `upi_id`.
+
+    An account without a creator profile has no ID to replace.
+    """
+    creator_id = db.scalars(
+        select(Creator.id).where(Creator.account_id == account.id)
+    ).first()
+    if creator_id is not None:
+        ensure_may_replace(db, creator_id, upi_id, authenticated_at, now)
 
 
 def cancel_waiting(

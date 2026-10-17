@@ -1,5 +1,7 @@
 """Domain errors for the auth module (mapped to Problem Details by app/core/errors.py)."""
 
+import math
+from datetime import datetime
 from http import HTTPStatus
 
 from app.core.errors import DomainError
@@ -158,4 +160,25 @@ class PhoneChangeTakingEffect(DomainError):
             "replaced. It is finished within a minute; then log in with the "
             "new number.",
             headers={"Retry-After": "60"},
+        )
+
+
+class LoginTooRecent(DomainError):
+    # A change a SIM swapper would want, asked for from a login younger than
+    # a week (D-109): their login is always new. Retry-After says when.
+    status_code = HTTPStatus.FORBIDDEN
+    code = "login_too_recent"
+    title = "This change needs a login at least 7 days old"
+
+    def __init__(self, allowed_from: datetime, now: datetime) -> None:
+        super().__init__(
+            "For your safety, a login on a new device must be a week old "
+            "before it can make this change. It is allowed from "
+            f"{allowed_from.isoformat().replace('+00:00', 'Z')}, or now from a "
+            "device you have been logged in on for longer.",
+            headers={
+                "Retry-After": str(
+                    max(1, math.ceil((allowed_from - now).total_seconds()))
+                )
+            },
         )

@@ -15,9 +15,9 @@ from app.core.errors import problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
+from app.modules.auth import login_age, step_up_service
 from app.modules.auth import service as login
-from app.modules.auth import step_up_service
-from app.modules.auth.dependencies import CurrentAccount, get_now
+from app.modules.auth.dependencies import CurrentAccount, LoginTime, get_now
 from app.modules.auth.sender import OtpSender, get_otp_sender
 from app.modules.me import phone_change_service as phone_changes
 from app.modules.me.step_up_schemas import (
@@ -26,6 +26,7 @@ from app.modules.me.step_up_schemas import (
     StepUpForUpiId,
     StepUpIn,
 )
+from app.modules.payment_status import upi_service
 
 # Per account, beside the phone's own caps, which login codes share.
 STEP_UP_LIMIT = "3 per 10 minutes;10 per day"
@@ -54,7 +55,9 @@ router = APIRouter(prefix="/api/v1/me", tags=["auth"], route_class=IdempotentRou
         401: problem_doc("No access token, or it is invalid or expired"),
         403: problem_doc(
             "Only a creator may ask to set a UPI ID; an admin may not change "
-            "their phone number here"
+            "their phone number here; or `login_too_recent`: changing the phone "
+            "number, or replacing a UPI ID in effect, needs a login at least 7 "
+            "days old (see Retry-After)"
         ),
         409: problem_doc("`phone_unchanged`: that is already your number"),
         422: problem_doc(
@@ -68,17 +71,22 @@ def ask_for_step_up(
     request: Request,
     body: StepUpIn,
     account: CurrentAccount,
+    login_time: LoginTime,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     sender: OtpSender = Depends(get_otp_sender),
     now: datetime = Depends(get_now),
 ) -> StepUpAccepted:
+    # Before a message is sent for a change that would be refused.
     value = ""
     if isinstance(body, StepUpForUpiId):
+        upi_service.ensure_may_replace_for_account(
+            db, account, body.upi_id, login_time, now
+        )
         value = body.upi_id
     elif isinstance(body, StepUpForPhone):
-        # Before a message is sent for a change that would be refused.
         phone_changes.ensure_new_phone(account, body.new_phone)
+        login_age.ensure_established(login_time, now)
         value = body.new_phone
     code = step_up_service.request_code(db, account, body.action, value, now)
     if code.pending is not None:

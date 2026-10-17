@@ -5,6 +5,7 @@ Pure functions: callers pass `now`, so expiry is testable without waiting.
 
 import hashlib
 import hmac
+import math
 import secrets
 import uuid
 from dataclasses import dataclass
@@ -41,6 +42,10 @@ class AccessTokenClaims:
     expires_at: datetime
     # RFC 8176 values. Empty for a token signed before D-105.
     methods: tuple[str, ...] = ()
+    # When the person last proved a code to log in: OpenID Connect's
+    # `auth_time`, kept through every refresh of that login (D-109). None
+    # for a token signed before it, which counts as a login made just now.
+    authenticated_at: datetime | None = None
 
     @property
     def is_multi_factor(self) -> bool:
@@ -54,11 +59,13 @@ def create_access_token(
     *,
     methods: tuple[str, ...] = PHONE_CODE_ONLY,
     not_after: datetime | None = None,
+    authenticated_at: datetime | None = None,
 ) -> tuple[str, datetime]:
     """Sign a short-lived access token. Returns the token and its expiry time.
 
     `not_after` ends it sooner, so a session's own limit binds its last
-    access token too (an admin's 12 hours, D-105).
+    access token too (an admin's 12 hours, D-105). `authenticated_at` is
+    when its login was proven, signed as `auth_time` (D-109).
     """
     expires_at = now + timedelta(minutes=settings.access_token_expire_minutes)
     if not_after is not None:
@@ -72,6 +79,9 @@ def create_access_token(
         "jti": uuid.uuid4().hex,
         "amr": list(methods),
     }
+    if authenticated_at is not None:
+        # Rounded up, so a login never reads as older than it is.
+        claims["auth_time"] = math.ceil(authenticated_at.timestamp())
     token = jwt.encode(
         claims,
         settings.secret_key.get_secret_value(),
@@ -119,6 +129,11 @@ def _verified_claims(token: str) -> dict[str, Any]:
         isinstance(method, str) and method in KNOWN_METHODS for method in methods
     ):
         raise InvalidToken()
+    # Optional for the same reason (D-109); an integer when present.
+    if "auth_time" in claims and (
+        isinstance(claims["auth_time"], bool) or not isinstance(claims["auth_time"], int)
+    ):
+        raise InvalidToken()
     return claims
 
 
@@ -137,6 +152,11 @@ def decode_access_token(token: str, now: datetime) -> AccessTokenClaims:
         role=claims["role"],
         expires_at=expires_at,
         methods=tuple(claims.get("amr", [])),
+        authenticated_at=(
+            datetime.fromtimestamp(claims["auth_time"], tz=UTC)
+            if "auth_time" in claims
+            else None
+        ),
     )
 
 

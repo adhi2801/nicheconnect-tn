@@ -27,9 +27,9 @@ from sqlalchemy.sql import func
 from app.db.base import Base
 from app.modules.auth.models.account import PHONE_PATTERN
 
-# Long enough for an owner to have a swapped SIM reversed at their carrier,
-# usually a day or two, and to notice; short enough for someone really
-# switching numbers. A judgement, not a sourced number (D-108).
+# Upwork's 3-day hold on a new payout method, the closest equivalent risk
+# (D-109). In front of it, a change needs a login at least a week old, which
+# a SIM swapper never has, so a swap must go unnoticed for about 10 days.
 PHONE_CHANGE_WAIT = timedelta(hours=72)
 
 

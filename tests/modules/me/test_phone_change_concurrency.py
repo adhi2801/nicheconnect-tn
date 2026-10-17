@@ -19,6 +19,7 @@ import time
 import uuid
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
+from datetime import timedelta
 
 import pytest
 from sqlalchemy import delete, select, text
@@ -41,6 +42,8 @@ from tests.factories import create_account, unique_test_phone
 from tests.modules.conftest import CONCURRENCY_NOW
 
 THREADS = 4
+# Every login here is old enough for a change (D-109).
+LONG_AGO_LOGIN = CONCURRENCY_NOW - timedelta(days=60)
 
 
 @dataclass
@@ -167,6 +170,7 @@ def test_two_accounts_claiming_one_number_at_once_leave_one_waiting(numbers, slo
                         new_phone,
                         new_code,
                         step_up_code,
+                        LONG_AGO_LOGIN,
                         CONCURRENCY_NOW,
                     )
                 except (OtpInvalid, PhoneInUse) as refused:
@@ -233,6 +237,7 @@ def test_two_accounts_asking_for_each_others_number_at_once_are_both_refused(
                         target,
                         target_code,
                         step_up_code,
+                        LONG_AGO_LOGIN,
                         CONCURRENCY_NOW,
                     )
                 except PhoneInUse as refused:
