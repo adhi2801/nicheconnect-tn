@@ -196,6 +196,7 @@ Criminal defamation is now section 356 of the Bharatiya Nyaya Sanhita, 2023, in 
 - the sample size beside every figure, and `null` below the floor (D-038);
 - the other side's account beside a dispute (D-028, D-035), and "unresolved is a fact about the dispute, not a finding about either of you";
 - no adjectives about a person, ever.
+- a brand's verified domain (item 74, D-106) is shown as what was checked: the domain, since when, and when the registry says it was registered; never "verified brand". It changes no ranking (section 3.4). **Confirm** whether showing a business's registration date needs wording.
 
 ### 3.13 Login codes and messages: TRAI
 

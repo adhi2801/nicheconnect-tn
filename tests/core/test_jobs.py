@@ -26,6 +26,8 @@ from app.modules.deal_memo import (
 )
 from app.modules.deal_memo.anchor_models import DealRecordCheckpoint, DealRecordTimestamp
 from app.modules.deal_memo.timestamp_authority import Stamp
+from app.modules.profiles import brand_domain_jobs
+from app.modules.profiles.domain_lookup import FakeDomainLookup
 
 # The owner: DBOS makes its own schema here, and the record is cleared with
 # the triggers set aside, neither of which the app's login may do (item 97).
@@ -227,3 +229,35 @@ def test_the_app_starts_and_stops_jobs_when_asked(monkeypatch):
         assert calls == ["start"]
 
     assert calls == ["start", "stop"]
+
+
+def test_brand_domains_are_checked_every_minute_with_no_backfill(launched):
+    """Item 74: checks a brand asked for, and verified domains a day after their last."""
+    schedule = DBOS.get_schedule(brand_domain_jobs.SCHEDULE_NAME)
+
+    assert schedule is not None
+    assert schedule["schedule"] == brand_domain_jobs.EVERY_MINUTE_CRON == "* * * * *"
+    assert schedule["automatic_backfill"] is False
+
+
+def test_the_domain_checking_workflow_runs_through_dbos(launched, monkeypatch):
+    runs = []
+    monkeypatch.setattr(
+        brand_domain_jobs,
+        "run_checks",
+        lambda scheduled_at: runs.append(scheduled_at),
+    )
+
+    brand_domain_jobs.check_brand_domains(SCHEDULED, None)
+
+    assert runs == [SCHEDULED]
+
+
+def test_a_domain_run_with_nothing_due_asks_nobody(launched, monkeypatch):
+    fake = FakeDomainLookup()
+    monkeypatch.setattr(brand_domain_jobs, "get_domain_lookup", lambda: fake)
+
+    run = brand_domain_jobs.run_checks(SCHEDULED)
+
+    assert run.checked == run.verified == run.lapsed == 0
+    assert fake.asked == []

@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import date, datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import (
     BaseModel,
@@ -12,6 +12,7 @@ from pydantic import (
 )
 from pydantic_core import PydanticCustomError
 
+from app.core.literals import ensure_same_values
 from app.core.taxonomy import LANGUAGES
 from app.modules.auth.schemas import (
     Bio,
@@ -26,6 +27,12 @@ from app.modules.auth.schemas import (
     Handle,
     PackageFormat,
 )
+from app.modules.profiles.brand_domain_models import (
+    CHECK_RESULTS,
+    DOMAIN_STATUSES,
+    BrandDomain,
+)
+from app.modules.profiles.brand_domains import record_name, record_value
 
 
 class BrandProfileCreate(BaseModel):
@@ -202,4 +209,122 @@ class AvailabilityRead(BaseModel):
     )
     available_from: date = Field(
         description="The first Tamil Nadu day the creator is taking work"
+    )
+
+
+# --- a brand's domain (item 74, D-106) -----------------------------------------------------
+
+DomainStatus = Literal["pending", "verified", "lapsed"]
+CheckResult = Literal["found", "absent", "unknown", "taken"]
+ensure_same_values("DomainStatus", DomainStatus, DOMAIN_STATUSES)
+ensure_same_values("CheckResult", CheckResult, CHECK_RESULTS)
+
+
+class BrandDomainClaim(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    domain: str = Field(
+        min_length=1,
+        max_length=260,
+        description=(
+            "The website's own domain, such as smallshop.in. A leading www. is "
+            "dropped; a name under the domain, a shared suffix (co.in) or a "
+            "domain in another script is refused, saying what to claim instead"
+        ),
+        examples=["smallshop.in"],
+    )
+
+
+class BrandDomainRead(BaseModel):
+    """The brand's own claim, with what to publish. Only the brand sees this."""
+
+    domain: str
+    status: DomainStatus = Field(
+        description=(
+            "pending until a check finds the record; verified after; lapsed once "
+            "three daily checks in a row find it gone, after which the domain is "
+            "claimed again for a new token"
+        )
+    )
+    record_type: Literal["TXT"] = "TXT"
+    record_name: str = Field(
+        description="Where to add the TXT record, at your DNS host",
+        examples=["_nicheconnect-challenge.smallshop.in"],
+    )
+    record_value: str = Field(
+        description="What the TXT record says. Keep it there: it is checked daily",
+        examples=["nicheconnect-domain-verification=mfrggzdfmztwq2lknnwg23tpoa"],
+    )
+    token_expires_at: datetime = Field(
+        description="A pending claim must be found by then, or claimed again"
+    )
+    check_waiting: bool = Field(description="A check was asked for and has not run yet")
+    last_checked_at: datetime | None
+    last_result: CheckResult | None = Field(
+        description=(
+            "found: both resolvers saw the record. absent: they answered without "
+            "it. unknown: a resolver could not be asked, which never counts "
+            "against you. taken: another brand already holds the domain"
+        )
+    )
+    consecutive_absent: int = Field(
+        description="Daily checks in a row that found the record gone; at 3 it lapses"
+    )
+    verified_at: datetime | None
+    lapsed_at: datetime | None
+    registered_on: date | None = Field(
+        description="When the registry says the domain was registered; null if it did not say"
+    )
+    dnssec_validated: bool | None
+
+
+class VerifiedDomainRead(BaseModel):
+    """What a creator sees: facts about one domain, never a verdict on the brand.
+
+    The brand controls the DNS of `domain`, as checked daily. It does not
+    say the brand is who its name claims: a look-alike domain can be
+    verified too, which is why the domain itself, and when it was
+    registered, are shown (legal.md rule 3).
+    """
+
+    domain: str = Field(examples=["smallshop.in"])
+    verified_since: datetime
+    last_checked_at: datetime
+    registered_on: date | None = Field(
+        description=(
+            "When the registry says the domain was registered: a domain a few "
+            "days old is what scams use. Null when the registry did not say"
+        )
+    )
+    dnssec_validated: bool | None = Field(
+        description="Whether the domain's DNS answers were signed and checked (DNSSEC)"
+    )
+
+
+def to_verified_domain_read(row: BrandDomain) -> VerifiedDomainRead:
+    # Only verified rows reach here, so both times are set.
+    return VerifiedDomainRead(
+        domain=row.domain,
+        verified_since=row.verified_at or row.claimed_at,
+        last_checked_at=row.last_checked_at or row.claimed_at,
+        registered_on=row.registered_on,
+        dnssec_validated=row.dnssec_validated,
+    )
+
+
+def to_brand_domain_read(row: BrandDomain) -> BrandDomainRead:
+    return BrandDomainRead(
+        domain=row.domain,
+        status=row.status,
+        record_name=record_name(row.domain),
+        record_value=record_value(row.token),
+        token_expires_at=row.token_expires_at,
+        check_waiting=row.check_requested_at is not None,
+        last_checked_at=row.last_checked_at,
+        last_result=row.last_result,
+        consecutive_absent=row.consecutive_absent,
+        verified_at=row.verified_at,
+        lapsed_at=row.lapsed_at,
+        registered_on=row.registered_on,
+        dnssec_validated=row.dnssec_validated,
     )

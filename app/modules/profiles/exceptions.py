@@ -63,3 +63,38 @@ class InvalidAvailability(DomainError):
     status_code = HTTPStatus.UNPROCESSABLE_ENTITY
     code = "invalid_availability"
     title = "That date cannot be your booked-until date"
+
+
+# --- a brand's domain (item 74, D-106) ---------------------------------------------------
+
+
+class DomainNotAcceptable(DomainError):
+    # The detail says why, and what to claim instead.
+    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
+    code = "domain_not_accepted"
+    title = "That domain cannot be claimed"
+
+
+class DomainClaimNotFound(DomainError):
+    status_code = HTTPStatus.NOT_FOUND
+    code = "domain_claim_not_found"
+    title = "You have not claimed a domain"
+
+
+class DomainHeldElsewhere(DomainError):
+    # Public anyway: the holder's campaigns show the domain to creators.
+    status_code = HTTPStatus.CONFLICT
+    code = "domain_held_elsewhere"
+    title = "Another brand has already verified that domain"
+
+
+class DomainClaimLapsed(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "domain_claim_lapsed"
+    title = "This claim lapsed when the record was gone. Claim the domain again for a new token"
+
+
+class DomainClaimExpired(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "domain_claim_expired"
+    title = "This token expired after 7 days. Claim the domain again for a new one"

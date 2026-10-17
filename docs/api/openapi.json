@@ -1186,13 +1186,28 @@
             "title": "Application Id"
           },
           "campaign_id": {
-            "format": "uuid",
-            "title": "Campaign Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The campaign it is about; null for an item about the account itself (a domain item, added 17 October 2026). Clients must tolerate null",
+            "title": "Campaign Id"
           },
           "campaign_title": {
-            "title": "Campaign Title",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign Title"
           },
           "count": {
             "anyOf": [
@@ -1242,6 +1257,18 @@
             "description": "Days until due_on; negative when overdue, 0 on the day itself",
             "title": "Days Left"
           },
+          "domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The brand's domain, for fix_domain_record, domain_lapsed and domain_claim_expired",
+            "title": "Domain"
+          },
           "due_on": {
             "anyOf": [
               {
@@ -1263,6 +1290,9 @@
               "revise_memo",
               "draft_memo",
               "review_applications",
+              "fix_domain_record",
+              "domain_lapsed",
+              "domain_claim_expired",
               "confirm_payment",
               "payment_overdue",
               "resubmit_work",
@@ -1337,6 +1367,9 @@
                 "revise_memo",
                 "draft_memo",
                 "review_applications",
+                "fix_domain_record",
+                "domain_lapsed",
+                "domain_claim_expired",
                 "confirm_payment",
                 "payment_overdue",
                 "resubmit_work",
@@ -1527,6 +1560,178 @@
         "title": "BlockRead",
         "type": "object"
       },
+      "BrandDomainClaim": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "description": "The website's own domain, such as smallshop.in. A leading www. is dropped; a name under the domain, a shared suffix (co.in) or a domain in another script is refused, saying what to claim instead",
+            "examples": [
+              "smallshop.in"
+            ],
+            "maxLength": 260,
+            "minLength": 1,
+            "title": "Domain",
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain"
+        ],
+        "title": "BrandDomainClaim",
+        "type": "object"
+      },
+      "BrandDomainRead": {
+        "description": "The brand's own claim, with what to publish. Only the brand sees this.",
+        "properties": {
+          "check_waiting": {
+            "description": "A check was asked for and has not run yet",
+            "title": "Check Waiting",
+            "type": "boolean"
+          },
+          "consecutive_absent": {
+            "description": "Daily checks in a row that found the record gone; at 3 it lapses",
+            "title": "Consecutive Absent",
+            "type": "integer"
+          },
+          "dnssec_validated": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dnssec Validated"
+          },
+          "domain": {
+            "title": "Domain",
+            "type": "string"
+          },
+          "lapsed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lapsed At"
+          },
+          "last_checked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Checked At"
+          },
+          "last_result": {
+            "anyOf": [
+              {
+                "enum": [
+                  "found",
+                  "absent",
+                  "unknown",
+                  "taken"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "found: both resolvers saw the record. absent: they answered without it. unknown: a resolver could not be asked, which never counts against you. taken: another brand already holds the domain",
+            "title": "Last Result"
+          },
+          "record_name": {
+            "description": "Where to add the TXT record, at your DNS host",
+            "examples": [
+              "_nicheconnect-challenge.smallshop.in"
+            ],
+            "title": "Record Name",
+            "type": "string"
+          },
+          "record_type": {
+            "const": "TXT",
+            "default": "TXT",
+            "title": "Record Type",
+            "type": "string"
+          },
+          "record_value": {
+            "description": "What the TXT record says. Keep it there: it is checked daily",
+            "examples": [
+              "nicheconnect-domain-verification=mfrggzdfmztwq2lknnwg23tpoa"
+            ],
+            "title": "Record Value",
+            "type": "string"
+          },
+          "registered_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the registry says the domain was registered; null if it did not say",
+            "title": "Registered On"
+          },
+          "status": {
+            "description": "pending until a check finds the record; verified after; lapsed once three daily checks in a row find it gone, after which the domain is claimed again for a new token",
+            "enum": [
+              "pending",
+              "verified",
+              "lapsed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "token_expires_at": {
+            "description": "A pending claim must be found by then, or claimed again",
+            "format": "date-time",
+            "title": "Token Expires At",
+            "type": "string"
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified At"
+          }
+        },
+        "required": [
+          "domain",
+          "status",
+          "record_name",
+          "record_value",
+          "token_expires_at",
+          "check_waiting",
+          "last_checked_at",
+          "last_result",
+          "consecutive_absent",
+          "verified_at",
+          "lapsed_at",
+          "registered_on",
+          "dnssec_validated"
+        ],
+        "title": "BrandDomainRead",
+        "type": "object"
+      },
       "BrandProfileCreate": {
         "additionalProperties": false,
         "properties": {
@@ -1701,6 +1906,17 @@
             ],
             "title": "Status",
             "type": "string"
+          },
+          "verified_domain": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VerifiedDomainRead"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The website domain the brand proved it controls, checked daily (item 74); null when it has none. A fact about the domain, not a verdict on the brand"
           }
         },
         "required": [
@@ -2212,6 +2428,17 @@
             "format": "date-time",
             "title": "Updated At",
             "type": "string"
+          },
+          "verified_domain": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VerifiedDomainRead"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The website domain the brand proved it controls, checked daily, with when it was registered (item 74). Null when it has none. It says the brand controls this domain, not that the brand is who its name claims: show the domain itself, never only a badge"
           }
         },
         "required": [
@@ -9830,6 +10057,62 @@
         ],
         "title": "UpiSet",
         "type": "object"
+      },
+      "VerifiedDomainRead": {
+        "description": "What a creator sees: facts about one domain, never a verdict on the brand.\n\nThe brand controls the DNS of `domain`, as checked daily. It does not\nsay the brand is who its name claims: a look-alike domain can be\nverified too, which is why the domain itself, and when it was\nregistered, are shown (legal.md rule 3).",
+        "properties": {
+          "dnssec_validated": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whether the domain's DNS answers were signed and checked (DNSSEC)",
+            "title": "Dnssec Validated"
+          },
+          "domain": {
+            "examples": [
+              "smallshop.in"
+            ],
+            "title": "Domain",
+            "type": "string"
+          },
+          "last_checked_at": {
+            "format": "date-time",
+            "title": "Last Checked At",
+            "type": "string"
+          },
+          "registered_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the registry says the domain was registered: a domain a few days old is what scams use. Null when the registry did not say",
+            "title": "Registered On"
+          },
+          "verified_since": {
+            "format": "date-time",
+            "title": "Verified Since",
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "verified_since",
+          "last_checked_at",
+          "registered_on",
+          "dnssec_validated"
+        ],
+        "title": "VerifiedDomainRead",
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -13819,6 +14102,451 @@
         "summary": "Create my brand profile",
         "tags": [
           "profiles"
+        ]
+      }
+    },
+    "/api/v1/brands/me/domain": {
+      "delete": {
+        "description": "Creators stop seeing the domain at once.",
+        "operationId": "withdraw_domain_api_v1_brands_me_domain_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only a brand has a domain"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No brand profile yet, or no domain claimed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A field is not valid"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Withdraw your domain claim",
+        "tags": [
+          "brand domain"
+        ]
+      },
+      "get": {
+        "description": "The record to publish, and what the last check found. Only you see this; creators see the domain once it is verified.",
+        "operationId": "read_domain_api_v1_brands_me_domain_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandDomainRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only a brand has a domain"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No brand profile yet, or no domain claimed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A field is not valid"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Your domain claim and its last check",
+        "tags": [
+          "brand domain"
+        ]
+      },
+      "post": {
+        "description": "Returns a TXT record to add at your DNS host: `record_name` and `record_value`. Then ask for a check. The token is good for 7 days. Claiming again, the same domain or another, replaces the claim with a new token, and a verified domain stops showing until the new one is found. Creators are shown the domain itself and when it was registered, never a verdict on the brand.",
+        "operationId": "claim_domain_api_v1_brands_me_domain_post",
+        "parameters": [
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrandDomainClaim"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandDomainRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only a brand has a domain"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No brand profile yet, or no domain claimed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Another brand has already verified that domain. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A field is not valid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Claim your website's domain",
+        "tags": [
+          "brand domain"
+        ]
+      }
+    },
+    "/api/v1/brands/me/domain/check": {
+      "post": {
+        "description": "Accepted at once, and checked within a minute: Cloudflare's and Google's resolvers must both see the record. Read the claim again for the result, or see it in `GET /api/v1/me/attention`. A verified domain is also checked every day; three days in a row without the record, and it lapses. Limit: 10 a day.",
+        "operationId": "check_domain_api_v1_brands_me_domain_check_post",
+        "parameters": [
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandDomainRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only a brand has a domain"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No brand profile yet, or no domain claimed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The claim lapsed, or its token expired: claim again. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A field is not valid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Check the TXT record now",
+        "tags": [
+          "brand domain"
         ]
       }
     },

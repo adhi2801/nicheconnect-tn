@@ -44,10 +44,24 @@ Limit = Annotated[int, Query(ge=1, le=MAX_LIMIT, description="Rows per page")]
 Cursor = Annotated[str | None, Query(description="From a previous page's next_cursor")]
 
 
-def _page(result: Slice[Campaign]) -> Page[CampaignRead]:
+def _reads(db: Session, campaigns: list[Campaign]) -> list[CampaignRead]:
+    """Each campaign with its brand's verified domain: one query for the page."""
+    domains = service.verified_domains_for(db, campaigns)
+    return [
+        CampaignRead.model_validate(campaign).model_copy(
+            update={"verified_domain": domains.get(campaign.brand_id)}
+        )
+        for campaign in campaigns
+    ]
+
+
+def _read(db: Session, campaign: Campaign) -> CampaignRead:
+    return _reads(db, [campaign])[0]
+
+
+def _page(db: Session, result: Slice[Campaign]) -> Page[CampaignRead]:
     return Page[CampaignRead](
-        items=[CampaignRead.model_validate(row) for row in result.rows],
-        next_cursor=result.next_cursor,
+        items=_reads(db, list(result.rows)), next_cursor=result.next_cursor
     )
 
 
@@ -79,7 +93,7 @@ def create_campaign(
 ) -> CampaignRead:
     campaign = service.create_campaign(db, brand, body.model_dump(), now)
     response.headers["Location"] = f"/api/v1/campaigns/{campaign.id}"
-    return CampaignRead.model_validate(campaign)
+    return _read(db, campaign)
 
 
 @router.get(
@@ -105,9 +119,10 @@ def list_my_campaigns(
     db: Session = Depends(get_db),
 ) -> Page[CampaignRead]:
     return _page(
+        db,
         service.list_brand_campaigns(
             db, brand, limit=limit, cursor=cursor, status=campaign_status
-        )
+        ),
     )
 
 
@@ -138,6 +153,7 @@ def discover_campaigns(
     db: Session = Depends(get_db),
 ) -> Page[CampaignRead]:
     return _page(
+        db,
         service.discover_campaigns(
             db,
             limit=limit,
@@ -147,7 +163,7 @@ def discover_campaigns(
             campaign_type=campaign_type,
             min_budget_paise=min_budget_paise,
             viewer_account_id=account.id,
-        )
+        ),
     )
 
 
@@ -176,7 +192,7 @@ def read_campaign(
     db: Session = Depends(get_db),
 ) -> CampaignRead:
     campaign = service.get_visible_campaign(db, campaign_id, account.id)
-    return CampaignRead.model_validate(campaign)
+    return _read(db, campaign)
 
 
 @router.patch(
@@ -206,9 +222,7 @@ def update_campaign(
     now: datetime = Depends(get_now),
 ) -> CampaignRead:
     changes = body.model_dump(exclude_unset=True)
-    return CampaignRead.model_validate(
-        service.update_campaign(db, campaign, changes, now)
-    )
+    return _read(db, service.update_campaign(db, campaign, changes, now))
 
 
 @router.get(
@@ -272,9 +286,7 @@ def _status_endpoint(
         db: Session = Depends(get_db),
         now: datetime = Depends(get_now),
     ) -> CampaignRead:
-        return CampaignRead.model_validate(
-            service.change_status(db, campaign, new_status, now)
-        )
+        return _read(db, service.change_status(db, campaign, new_status, now))
 
     return endpoint
 

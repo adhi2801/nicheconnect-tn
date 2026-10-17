@@ -54,6 +54,8 @@ from app.modules.payment_status.service import (
     UNPAID,
     derive_state,
 )
+from app.modules.profiles import brand_domain_service as brand_domains
+from app.modules.profiles.brand_domain_models import BrandDomain
 
 # Below this, the figures are withheld rather than shown with a caveat
 # nobody reads (D-027).
@@ -250,3 +252,8 @@ def for_brands(
 
 def brand_exists(db: Session, brand_id: uuid.UUID) -> bool:
     return db.scalar(select(Brand.id).where(Brand.id == brand_id)) is not None
+
+
+def verified_domain_of(db: Session, brand_id: uuid.UUID) -> BrandDomain | None:
+    """The brand's verified domain (item 74), shown beside how it pays."""
+    return brand_domains.verified_for_brands(db, [brand_id]).get(brand_id)

@@ -67,8 +67,13 @@ class AttentionItemRead(BaseModel):
     days_left: int | None = Field(
         description="Days until due_on; negative when overdue, 0 on the day itself"
     )
-    campaign_id: uuid.UUID
-    campaign_title: str
+    campaign_id: uuid.UUID | None = Field(
+        description=(
+            "The campaign it is about; null for an item about the account itself "
+            "(a domain item, added 17 October 2026). Clients must tolerate null"
+        )
+    )
+    campaign_title: str | None
     counterparty: str | None = Field(
         description="A creator's handle for a brand, a brand's name for a creator"
     )
@@ -79,6 +84,10 @@ class AttentionItemRead(BaseModel):
     currency: Literal["INR"] | None
     count: int | None = Field(
         description="For an item that stands for several things, such as applications"
+    )
+    domain: str | None = Field(
+        default=None,
+        description="The brand's domain, for fix_domain_record, domain_lapsed and domain_claim_expired",
     )
 
 
@@ -118,6 +127,7 @@ def to_attention_read(result: AttentionList) -> AttentionRead:
                 amount_paise=item.amount_paise,
                 currency=None if item.amount_paise is None else CURRENCY,
                 count=item.count,
+                domain=item.domain,
             )
             for item in result.items
         ],

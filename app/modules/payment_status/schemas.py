@@ -28,6 +28,8 @@ from app.modules.payment_status.service import (
     derive_state,
     is_auto_matchable,
 )
+from app.modules.profiles.brand_domain_models import BrandDomain
+from app.modules.profiles.schemas import VerifiedDomainRead, to_verified_domain_read
 
 PaymentMethod = Literal["upi", "bank_transfer", "cash"]
 PaymentState = Literal["due", "late", "unpaid", "paid", "unconfirmed", "confirmed"]
@@ -145,9 +147,19 @@ class BrandReliabilityRead(BaseModel):
             "across many"
         )
     )
+    verified_domain: VerifiedDomainRead | None = Field(
+        default=None,
+        description=(
+            "The website domain the brand proved it controls, checked daily "
+            "(item 74); null when it has none. A fact about the domain, not a "
+            "verdict on the brand"
+        ),
+    )
 
 
-def to_reliability_read(record: ReliabilityRecord) -> BrandReliabilityRead:
+def to_reliability_read(
+    record: ReliabilityRecord, domain: BrandDomain | None = None
+) -> BrandReliabilityRead:
     return BrandReliabilityRead(
         brand_id=record.brand_id,
         status=record.status,
@@ -158,6 +170,7 @@ def to_reliability_read(record: ReliabilityRecord) -> BrandReliabilityRead:
         paid_on_time_share=record.paid_on_time_share,
         median_days_to_pay=record.median_days_to_pay,
         distinct_creators=record.distinct_creators,
+        verified_domain=None if domain is None else to_verified_domain_read(domain),
     )
 
 

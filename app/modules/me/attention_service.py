@@ -23,6 +23,7 @@ from app.modules.campaigns.service import get_brand_for_account, get_creator_for
 from app.modules.deal_memo import attention as deal_memos
 from app.modules.disputes import attention as disputes
 from app.modules.payment_status import attention as payments
+from app.modules.profiles import attention as domains
 
 
 def for_account(db: Session, account: Account, now: datetime) -> AttentionList:
@@ -40,6 +41,7 @@ def for_account(db: Session, account: Account, now: datetime) -> AttentionList:
             *deal_memos.for_brand(db, brand.id, now),
             *payments.for_brand(db, brand.id),
             *disputes.for_brand(db, brand.id, today),
+            *domains.for_brand(db, brand.id, now),
         ]
     else:
         creator = get_creator_for_account(db, account.id)

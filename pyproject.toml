@@ -76,6 +76,12 @@ dependencies = [
     # Pure Python, no dependencies of its own; checked against the RFC's
     # own test vectors in tests/modules/auth/test_second_factor.py.
     "pyotp==2.10.0",
+    # A brand's verified domain (item 74, D-106): which part of a name is
+    # registrable (smallshop.co.in) and which is a public suffix (co.in),
+    # from the Public Suffix List it bundles, with no network call. Released
+    # as the list changes; Dependabot proposes each one. MPL-2.0, used
+    # unchanged (legal.md section 3.15).
+    "publicsuffixlist==1.1.0.20261010",
 ]
 
 [dependency-groups]
