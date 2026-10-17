@@ -51,6 +51,7 @@ def for_account(db: Session, account: Account, now: datetime) -> AttentionList:
             *deal_memos.for_creator(db, creator.id, now),
             *payments.for_creator(db, creator.id, today),
             *disputes.for_creator(db, creator.id, today),
+            *payments.upi_change_for_creator(db, creator.id, now),
         ]
 
     ordered = by_urgency(found)

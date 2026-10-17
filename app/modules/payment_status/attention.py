@@ -5,18 +5,20 @@ record: a brand saying it has paid, and a creator saying it arrived.
 """
 
 import uuid
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.attention import AttentionItem
+from app.core.clock import india_date
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.models import DealMemo
 from app.modules.payment_status.models import PaymentStatus
 from app.modules.payment_status.service import confirmation_deadline
+from app.modules.payment_status.upi_change_models import CreatorUpiChange
 
 
 def for_brand(db: Session, brand_id: uuid.UUID) -> list[AttentionItem]:
@@ -83,3 +85,27 @@ def for_creator(db: Session, creator_id: uuid.UUID, today: date) -> list[Attenti
             )
         )
     return items
+
+
+def upi_change_for_creator(
+    db: Session, creator_id: uuid.UUID, now: datetime
+) -> list[AttentionItem]:
+    """A new UPI ID still waiting before brands see it (item 82, D-107).
+
+    Due the day its wait ends; gone once it is in effect or cancelled.
+    """
+    usable_at = db.scalars(
+        select(CreatorUpiChange.usable_at).where(
+            CreatorUpiChange.creator_id == creator_id, CreatorUpiChange.usable_at > now
+        )
+    ).first()
+    if usable_at is None:
+        return []
+    return [
+        AttentionItem(
+            kind="upi_change_pending",
+            due_on=india_date(usable_at),
+            campaign_id=None,
+            campaign_title=None,
+        )
+    ]

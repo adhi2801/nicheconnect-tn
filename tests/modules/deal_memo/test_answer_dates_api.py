@@ -15,6 +15,7 @@ from tests.deal_flow import (
 )
 from tests.modules.campaigns.test_campaign_summary_api import apply, open_campaign
 from tests.modules.campaigns.test_invitation_api import creator_id_of, invite
+from tests.step_up import download_export
 
 APPLICATIONS_URL = "/api/v1/applications"
 EXPORT_URL = "/api/v1/me/export"
@@ -164,7 +165,7 @@ def test_a_request_outside_5_to_1000_characters_is_refused(client, sent, message
 def test_both_new_memo_fields_are_in_the_creators_export(client, clock, sent):
     request_change(client, sent["creator"], sent["memo_id"], ASKED)
 
-    export = client.get(EXPORT_URL, headers=sent["creator"].headers).json()
+    export = download_export(client, sent["creator"].headers).json()
 
     (memo,) = [m for m in export["data"]["deal_memos"] if m["id"] == sent["memo_id"]]
     assert memo["change_request_message"] == ASKED
@@ -247,7 +248,7 @@ def test_an_invitation_has_no_first_answer_from_the_brand(client, db, clock):
 def test_the_first_answer_is_in_the_export(client, clock, applied):
     move(client, applied["brand"], applied["application_id"], "shortlist")
 
-    sent = client.get(EXPORT_URL, headers=applied["creator"].headers).json()["data"][
+    sent = download_export(client, applied["creator"].headers).json()["data"][
         "applications_sent"
     ]
 

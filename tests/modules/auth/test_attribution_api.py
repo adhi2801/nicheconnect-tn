@@ -22,6 +22,7 @@ from app.modules.auth.models.attribution import CODE_ALPHABET, AccountAttributio
 from app.modules.auth.sender import FakeOtpSender, get_otp_sender
 from app.modules.auth.tokens import TWO_FACTORS, create_access_token
 from tests.factories import FIXED_NOW, create_account, fake_phone
+from tests.step_up import download_export
 
 
 class Clock:
@@ -294,7 +295,7 @@ def test_the_export_says_how_i_joined_but_not_whose_code(client, sender):
     user = sign_up(client, sender, arrival={"invite_code": inviter_code})
     my_code = code_of(client, user)
 
-    export = client.get("/api/v1/me/export", headers=user["headers"]).json()
+    export = download_export(client, user["headers"]).json()
 
     joined = export["data"]["how_you_joined"][0]
     assert (joined["source"], joined["joined_with_an_invite"]) == ("invite", True)

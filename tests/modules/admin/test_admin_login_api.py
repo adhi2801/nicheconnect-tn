@@ -709,11 +709,16 @@ def test_both_routes_are_rate_limited(client, url):
 def test_the_export_shows_the_factor_but_never_its_secret(
     client, db, sender, clock, admin
 ):
-    enrol(client, db, sender, clock, admin)
+    secret = enrol(client, db, sender, clock, admin)
     factor = factor_of(db, admin)
 
+    # An admin's second check is the authenticator's code (item 82).
     response = client.get(
-        "/api/v1/me/export", headers=User(admin.id, "admin", clock).headers
+        "/api/v1/me/export",
+        headers={
+            **User(admin.id, "admin", clock).headers,
+            "Step-Up-Code": shown(secret, clock),
+        },
     )
 
     assert response.status_code == 200, response.text

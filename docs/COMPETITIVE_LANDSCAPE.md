@@ -129,6 +129,7 @@ Status checked against the code, 10 October 2026.
 | **Why-am-I-rejected feedback** with sample sizes | Built (D-041) | Nobody tells creators the pattern behind their rejections |
 | **Records that say how broad they are**: how many different brands or creators a record rests on | Built (item 61) | A perfect record from one partner is how records are faked; nobody else shows the breadth behind the number |
 | **Blocking nobody can see**, respected in every search, match and invitation | Built (item 59) | Platforms block messages; ours removes each from the other's whole marketplace, and the blocked side cannot tell |
+| **Where a creator is paid cannot be quietly changed**: a code for that exact UPI ID, then 24 hours before brands see it, with an alert and a one-tap cancel (added 17 October) | Built (item 82, D-107) | Upwork holds a new withdrawal method for 3 days; GitHub's "sudo mode" opens a window for any change. Ours ties each code to one change, and brands keep paying the old ID during the wait |
 | **No cut of any deal** | By design | We never touch the money (constraint 1). How we earn: `docs/REVENUE_RESEARCH.md`, a founder decision |
 
 ---

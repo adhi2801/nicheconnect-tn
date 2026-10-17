@@ -13,6 +13,7 @@ from app.modules.profiles import availability_service as service
 from app.modules.profiles.availability_router import WRITE_LIMIT
 from tests.deal_flow import User, brand_user, creator_user
 from tests.factories import create_account
+from tests.step_up import download_export
 
 URL = "/api/v1/creators/me/availability"
 TODAY = date(2026, 9, 17)
@@ -128,7 +129,7 @@ def test_unknown_fields_are_refused(client, creator):
 def test_it_is_in_the_creators_own_export(client, creator):
     put(client, creator, date(2026, 11, 20))
 
-    export = client.get("/api/v1/me/export", headers=creator.headers).json()
+    export = download_export(client, creator.headers).json()
 
     [profile] = export["data"]["creator_profile"]
     assert profile["booked_until"] == "2026-11-20"

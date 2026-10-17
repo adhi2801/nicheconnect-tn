@@ -33,13 +33,20 @@ from app.core.rate_limit import limiter
 from app.db.session import SessionLocal, engine, get_db
 from app.main import app
 from app.modules.auth import second_factor, second_factor_secrets
+from app.modules.auth import service as login
 from app.modules.auth.dependencies import get_now
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.models.otp_challenge import OtpChallenge
 from app.modules.auth.models.totp_factor import TotpFactor
-from app.modules.auth.tokens import TWO_FACTORS, create_access_token, hash_otp_code
+from app.modules.auth.sender import FakeOtpSender, get_otp_sender
+from app.modules.auth.tokens import (
+    TWO_FACTORS,
+    create_access_token,
+    decode_access_token,
+    hash_otp_code,
+)
 from app.modules.campaigns.models import Campaign
 from app.modules.payment_status.service import MAX_BULK_MARK_PAID
 
@@ -141,6 +148,9 @@ def measure_writes(
        then the admin's queue and its clocks, `deals` times each (item 51).
     5. Those campaigns withheld on an order, the takedown lists and discovery
        read with them in place, then each lifted (item 52).
+    6. `deals` rounds of the second check (item 82): a code asked for and a
+       UPI ID set with it, read back and its wait cancelled; the export and
+       logging out everywhere, each with its own code.
     """
     timings: dict[str, list[float]] = defaultdict(list)
     due_on = (now + timedelta(days=60)).date().isoformat()
@@ -522,6 +532,62 @@ def measure_writes(
                 admin_headers,
                 {"note": "Measured, then rolled back."},
             )
+
+        # The second check (item 82). The phone's caps, like the limiter,
+        # are not what is measured, so they are lifted for the run; the
+        # code is read from a fake sender, as in the tests.
+        sender = FakeOtpSender()
+        app.dependency_overrides[get_otp_sender] = lambda: sender
+        caps, login.OTP_SEND_LIMITS = login.OTP_SEND_LIMITS, ((timedelta(days=1), 10**6),)
+        notice, settings.upi_notice_version = settings.upi_notice_version, "measured"
+        creator_id = decode_access_token(
+            creator_headers["Authorization"].removeprefix("Bearer "), now
+        ).account_id
+        phone = db.get_one(Account, creator_id).phone
+
+        def with_code(name: str, action: str, **fields: str) -> dict:
+            write(
+                name, "/api/v1/me/step-up", creator_headers, {"action": action, **fields}
+            )
+            return {**creator_headers, "Step-Up-Code": sender.last_code_for(phone) or ""}
+
+        try:
+            for round_number in range(deals):
+                upi_id = f"measured{round_number}@okaxis"
+                write(
+                    "PUT /creators/me/upi (with its code)",
+                    "/api/v1/creators/me/upi",
+                    with_code("POST /me/step-up", "set_upi_id", upi_id=upi_id),
+                    {"upi_id": upi_id, "consent": True, "notice_version": "measured"},
+                    method="PUT",
+                )
+                write(
+                    "GET /creators/me/upi",
+                    "/api/v1/creators/me/upi",
+                    creator_headers,
+                    method="GET",
+                )
+                write(
+                    "DELETE /creators/me/upi/waiting",
+                    "/api/v1/creators/me/upi/waiting",
+                    creator_headers,
+                    method="DELETE",
+                )
+                write(
+                    "GET /me/export (with its code)",
+                    "/api/v1/me/export",
+                    with_code("POST /me/step-up", "download_export"),
+                    method="GET",
+                )
+                write(
+                    "POST /auth/logout-all (with its code)",
+                    "/api/v1/auth/logout-all",
+                    with_code("POST /me/step-up", "log_out_everywhere"),
+                )
+        finally:
+            login.OTP_SEND_LIMITS = caps
+            settings.upi_notice_version = notice
+            app.dependency_overrides.pop(get_otp_sender, None)
     finally:
         app.dependency_overrides.pop(get_db, None)
         db.close()

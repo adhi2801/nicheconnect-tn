@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
-from app.modules.auth.dependencies import CurrentAccount, get_now
+from app.modules.auth.dependencies import CurrentAccount, StepUpCode, get_now
 from app.modules.me import export_service
 from app.modules.me.schemas import ExportFile
 
@@ -37,8 +37,10 @@ router = APIRouter(prefix="/api/v1/me", tags=["privacy"])
     description=(
         "Everything we hold about the signed-in account, as one JSON file. "
         "Includes a manifest explaining each section and why we hold it, and "
-        "a list of what is deliberately not included. Limited to 3 requests "
-        "an hour."
+        "a list of what is deliberately not included. **Needs a code**: ask "
+        "for one at `POST /api/v1/me/step-up` with `download_export`, then "
+        "send it in the `Step-Up-Code` header; you are told in the app each "
+        "time the file is downloaded. Limited to 3 requests an hour."
     ),
     response_class=JSONResponse,
     responses={
@@ -46,8 +48,16 @@ router = APIRouter(prefix="/api/v1/me", tags=["privacy"])
             "model": ExportFile,
             "description": "The export file, offered as a download",
         },
-        401: problem_doc("No access token, or it is invalid or expired"),
-        429: problem_doc("Too many requests; see the Retry-After header"),
+        400: problem_doc("The code is wrong, expired, used, or for another change"),
+        401: problem_doc(
+            "No access token, or it is invalid or expired; or `step_up_required`: "
+            "no code was sent"
+        ),
+        422: problem_doc("The code is not 6 digits"),
+        429: problem_doc(
+            "Too many requests, or too many wrong codes for your phone; see the "
+            "Retry-After header"
+        ),
     },
 )
 @rate_limit(EXPORT_LIMIT)
@@ -56,9 +66,10 @@ def export_my_data(
     account: CurrentAccount,
     db: Annotated[Session, Depends(get_db)],
     now: Annotated[datetime, Depends(get_now)],
+    step_up_code: StepUpCode = None,
 ) -> JSONResponse:
     """Build this account's export and return it as a download."""
-    payload = export_service.build_export(db, account, now)
+    payload = export_service.release_export(db, account, step_up_code, now)
     filename = export_service.export_filename(now)
     return JSONResponse(
         payload,

@@ -48,6 +48,14 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md`. Rule
   - **Enforced by** `tests/modules/admin/test_admin_login_api.py`, `test_admin_login_concurrency.py`, `tests/modules/auth/test_second_factor*.py` (RFC 6238's own vectors and property tests), `test_totp_factor_model.py` and `test_admin_login_api.py` in `auth`; each rule broken on purpose and seen caught.
   - Every view of an account's details and every admin action is written to the admin log with a reason. The log refuses updates and deletes at the database (`database.md` section 3).
   - **Enforced by** `tests/modules/auth/test_admin_login_api.py` and `tests/modules/admin/`.
+- **A second check before a risky change** (item 82, D-107; ASVS 5.0 7.5.1 to 7.5.3):
+  - setting a UPI ID, downloading the data export and logging out everywhere each need a 6-digit code from `POST /api/v1/me/step-up`, in the `Step-Up-Code` header;
+  - a code works once, for 5 minutes, for one action and, for a UPI ID, that exact ID (only HMACs of the code and the value are stored); only the newest counts; 5 wrong tries use it up;
+  - without one, 401 `step_up_required` with RFC 9470's `insufficient_user_authentication` challenge;
+  - step-up codes and login codes share the phone's caps, for sending and for guessing, under one per-phone lock;
+  - admins use their authenticator's code instead, under the login's rules;
+  - **it does not stop a SIM swap**, since the code goes to whoever has the number: a new UPI ID therefore waits 24 hours before brands see it, the owner is told by a notification nobody can mute, and can cancel it without a code;
+  - **enforced by** `tests/modules/me/test_step_up_api.py`, `tests/modules/payment_status/test_upi_hold_api.py`, `test_upi_step_up_concurrency.py`, and the property and model tests beside them; each rule broken on purpose and seen caught.
 - A suspended account is refused at login, on refresh and on every request. **Enforced by** `tests/modules/auth/test_suspension_api.py`.
 - **Sign-up details** (D-080) are read only by the login that creates the account, so nobody can rewrite them afterwards.
 - **Adults only** (D-086): creating a profile checks a date of birth against today in Tamil Nadu and keeps only the time of the confirmation, never the date.
@@ -72,7 +80,7 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md`. Rule
 | API3 Broken object property level authorization | Separate create, update and read schemas; every request body refuses unknown fields; public responses built by hand | `tests/test_architecture.py` (all 39 bodies); contract fuzzing |
 | API4 Unrestricted resource consumption | Rate limits, bounded lists, a 1 MB body limit, statement timeouts, a cap on requests in flight (D-093), daily ceilings on paid APIs | Limit tests; 413 tests; the load test (D-092) |
 | API5 Broken function level authorization | Role checks on every route; admin routes separate and 404 | Role tests |
-| API6 Unrestricted access to sensitive business flows | Extra limits on code sending, applications, bulk payments; **a daily ceiling per account on everything that reaches another person** (item 58) | `tests/modules/test_daily_ceilings.py` reads the registered limits |
+| API6 Unrestricted access to sensitive business flows | Extra limits on code sending, applications, bulk payments; **a daily ceiling per account on everything that reaches another person** (item 58); a code for each risky change, and a 24-hour wait on a new UPI ID (item 82) | `tests/modules/test_daily_ceilings.py` reads the registered limits; `tests/modules/me/test_step_up_api.py` |
 | API7 Server-side request forgery | No user-supplied URL is fetched; a brand's domain check (item 74) asks two fixed DNS-over-HTTPS resolvers and the registry IANA names, about one validated name, never a URL; proof and evidence links are stored, never fetched, and accepted only from a published host list with phishing shapes refused (item 57, `app/core/links.py`) | `tests/core/test_links.py` |
 | API8 Security misconfiguration | Security headers on every response, CORS allow-list, docs off in production (D-044) | Header tests, 500s included |
 | API9 Improper inventory management | Committed OpenAPI contract; a test fails on any unannounced change | Contract tests |
@@ -94,6 +102,7 @@ Examples:
 | Default, for any route without its own | 60 a minute | the account, or the address when signed out |
 | Code send | 3 in 10 minutes | the address (the phone's caps are in section 1) |
 | Code verify | 10 in 10 minutes | the address (the phone's caps are in section 1) |
+| Asking for a step-up code (item 82) | 3 in 10 minutes, 10 a day | the account (and the phone's caps, shared with login codes) |
 | Refresh and logout | 30 a minute | the address |
 | Writes | 30 a minute, most with a daily ceiling | the account |
 | Search and matching | 30 a minute | the account |
@@ -172,6 +181,8 @@ Examples:
 
 ## 11. Gaps, named
 
+**Closed on 17 October:** a stolen session setting a creator's UPI ID, taking their export or logging them out everywhere with the token alone (item 82, D-107).
+
 **Closed on 16 October:** admins logging in with one factor, and admin sessions renewing for a day at every refresh with no overall limit (item 101, D-105).
 
 **Closed on 14 October:** the app connecting to the database as the table owner (item 97, D-100), and no mechanical proof that every object route refuses a stranger (item 100, D-102). **A claim of mine corrected the same day:** this file said nothing had been merged to `main` since 1 October and Dependabot had never run; a stale local copy of `main` misled me, and both were false.
@@ -182,7 +193,7 @@ Examples:
 |---|---|---|---|
 | 1 | **A code-scanning alert is open on GitHub and nobody here has read it** (https://github.com/adhi2801/nicheconnect-tn/security/code-scanning/1). GitHub's API needs a login to read it even on a public repository (checked 14 October). No workflow here uploads results, so it is likely GitHub's default CodeQL setup | Unknown until read | A founder reads it, or signs in to `gh` so it can be read here |
 | 2 | **No chapter-by-chapter ASVS 5.0 mapping** | "Level 2" cannot be claimed | Map V1 to V17 before the penetration test, so the tester checks what we claim |
-| 3 | **Brands and creators log in with one factor**, and the admins' second factor (D-105) can still be phished in real time, as any typed code can | A SIM swap is a brand's or creator's account; a convincing fake admin page could take both admin codes | Passkeys (item 79) for everyone, admins first, once the domain and an admin web page exist; a second check before risky changes (item 82) |
+| 3 | **Brands and creators log in with one factor**, and the admins' second factor (D-105) can still be phished in real time, as any typed code can | A SIM swap is a brand's or creator's account; a convincing fake admin page could take both admin codes. Since item 82 a stolen session cannot change where a creator is paid, but a SIM swap still gets every code, so a new UPI ID's 24-hour wait and an in-app alert are the only answer to it; nothing yet delivers that alert outside the app (E1) | Passkeys (item 79) for everyone, admins first, once the domain and an admin web page exist |
 | 4 | Incident plan not rehearsed; no penetration test; images not signed | Untested plans fail when needed | Section 10 |
 
 ## 12. Sources
@@ -197,6 +208,7 @@ Each link checked to exist on 14 October 2026.
 - [STRIDE, as Microsoft's threat modelling tool defines it](https://learn.microsoft.com/en-us/azure/security/develop/threat-modeling-tool-threats).
 - [CERT-In directions of 28 April 2022](https://www.cert-in.org.in/PDF/CERT-In_Directions_70B_28.04.2022.pdf): 6-hour incident reporting.
 - [RFC 9116](https://www.rfc-editor.org/rfc/rfc9116): `security.txt`.
+- A second check before risky changes (read 17 October 2026, D-107): [RFC 9470](https://www.rfc-editor.org/rfc/rfc9470) (OAuth 2.0 step-up authentication challenge); [OWASP ASVS 5.0, V7 Session Management](https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x16-V7-Session-Management.md) section 7.5; [NIST SP 800-63B-4, authenticator events](https://pages.nist.gov/800-63-4/sp800-63b/events/); [the EBA on dynamic linking](https://www.eba.europa.eu/single-rule-book-qa/qna/view/publicId/2018_4414); [Upwork's hold on a new withdrawal method](https://support.upwork.com/hc/en-us/articles/211060918); [SBI on UPI's limits after a new device or PIN](https://sbi.co.in/web/yono/blog/understand-upi-transaction-limits-cooling-period-and-payment-tips).
 - The admins' second factor (read 16 October 2026, D-105): [RFC 6238](https://www.rfc-editor.org/rfc/rfc6238) (TOTP) and [RFC 8176](https://www.rfc-editor.org/rfc/rfc8176) (`amr` values); [OWASP ASVS 5.0, V6 Authentication](https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x15-V6-Authentication.md) and [V7 Session Management](https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x16-V7-Session-Management.md); [Cloudflare on the 2022 phishing attack](https://blog.cloudflare.com/2022-07-sms-phishing-attacks); [Help Net Security on the Retool breach](https://www.helpnetsecurity.com/2023/09/14/retool-breach/); [BleepingComputer on help-desk MFA resets](https://www.bleepingcomputer.com/news/security/3-key-takeaways-from-the-scattered-spider-attacks-on-insurance-firms/).
 - [SLSA levels](https://slsa.dev/spec/v1.0/levels): build provenance.
 - [Gitleaks](https://github.com/gitleaks/gitleaks), [zizmor](https://docs.zizmor.sh/), [GitHub push protection](https://docs.github.com/en/code-security/secret-scanning/introduction/about-push-protection).

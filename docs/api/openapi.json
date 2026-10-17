@@ -1298,7 +1298,8 @@
               "resubmit_work",
               "deliver_work",
               "answer_memo",
-              "answer_invitation"
+              "answer_invitation",
+              "upi_change_pending"
             ],
             "title": "Kind",
             "type": "string"
@@ -1375,7 +1376,8 @@
                 "resubmit_work",
                 "deliver_work",
                 "answer_memo",
-                "answer_invitation"
+                "answer_invitation",
+                "upi_change_pending"
               ]
             },
             "title": "Counts",
@@ -5702,11 +5704,15 @@
                 "content_restored",
                 "admin_signed_in",
                 "admin_second_factor_refused",
-                "admin_second_factor_changed"
+                "admin_second_factor_changed",
+                "upi_change_pending",
+                "upi_change_cancelled",
+                "data_exported",
+                "logged_out_everywhere"
               ],
               "type": "string"
             },
-            "maxItems": 29,
+            "maxItems": 33,
             "title": "Muted Types",
             "type": "array"
           },
@@ -5787,7 +5793,11 @@
                 "content_restored",
                 "admin_signed_in",
                 "admin_second_factor_refused",
-                "admin_second_factor_changed"
+                "admin_second_factor_changed",
+                "upi_change_pending",
+                "upi_change_cancelled",
+                "data_exported",
+                "logged_out_everywhere"
               ],
               "type": "string"
             },
@@ -5842,7 +5852,11 @@
                 "content_restored",
                 "admin_signed_in",
                 "admin_second_factor_refused",
-                "admin_second_factor_changed"
+                "admin_second_factor_changed",
+                "upi_change_pending",
+                "upi_change_cancelled",
+                "data_exported",
+                "logged_out_everywhere"
               ],
               "type": "string"
             },
@@ -5971,7 +5985,11 @@
               "content_restored",
               "admin_signed_in",
               "admin_second_factor_refused",
-              "admin_second_factor_changed"
+              "admin_second_factor_changed",
+              "upi_change_pending",
+              "upi_change_cancelled",
+              "data_exported",
+              "logged_out_everywhere"
             ],
             "title": "Notification Type",
             "type": "string"
@@ -9681,6 +9699,96 @@
         "title": "SignupCountRead",
         "type": "object"
       },
+      "StepUpAccepted": {
+        "description": "How to prove this change, and for how long the code works.",
+        "properties": {
+          "action": {
+            "enum": [
+              "set_upi_id",
+              "download_export",
+              "log_out_everywhere"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "expires_in_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How long the code works; null for an authenticator code",
+            "examples": [
+              300
+            ],
+            "title": "Expires In Seconds"
+          },
+          "method": {
+            "description": "`phone_code`: a code was sent to your phone. `authenticator`: admins only; nothing was sent, use the code your authenticator app shows.",
+            "enum": [
+              "phone_code",
+              "authenticator"
+            ],
+            "title": "Method",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "method",
+          "expires_in_seconds"
+        ],
+        "title": "StepUpAccepted",
+        "type": "object"
+      },
+      "StepUpForAccount": {
+        "additionalProperties": false,
+        "description": "A code to download your data, or to log out of every device.",
+        "properties": {
+          "action": {
+            "enum": [
+              "download_export",
+              "log_out_everywhere"
+            ],
+            "title": "Action",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "title": "StepUpForAccount",
+        "type": "object"
+      },
+      "StepUpForUpiId": {
+        "additionalProperties": false,
+        "description": "A code to set one exact UPI ID: it cannot set any other.",
+        "properties": {
+          "action": {
+            "const": "set_upi_id",
+            "title": "Action",
+            "type": "string"
+          },
+          "upi_id": {
+            "description": "name@handle, as your UPI app shows it. Not one made of your phone number: your UPI app lets you create a name instead.",
+            "examples": [
+              "meena.cooks@okhdfcbank"
+            ],
+            "maxLength": 128,
+            "title": "Upi Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "upi_id"
+        ],
+        "title": "StepUpForUpiId",
+        "type": "object"
+      },
       "SuspendIn": {
         "additionalProperties": false,
         "properties": {
@@ -9965,7 +10073,7 @@
         "type": "object"
       },
       "UpiRead": {
-        "description": "The creator's own UPI ID, and the consent it was given under.\n\nAll null when they have not added one.",
+        "description": "The creator's own UPI ID, the consent it was given under, and any new one waiting.\n\nThe first four fields are the ID brands are shown now, all null when\nthere is none. `waiting` is a new ID not yet shown, or null.",
         "properties": {
           "consented_at": {
             "anyOf": [
@@ -10000,6 +10108,7 @@
                 "type": "null"
               }
             ],
+            "description": "When brands began to be shown this ID",
             "title": "Updated At"
           },
           "upi_id": {
@@ -10012,13 +10121,24 @@
               }
             ],
             "title": "Upi Id"
+          },
+          "waiting": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UpiWaitingRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "upi_id",
           "consented_at",
           "notice_version",
-          "updated_at"
+          "updated_at",
+          "waiting"
         ],
         "title": "UpiRead",
         "type": "object"
@@ -10056,6 +10176,38 @@
           "notice_version"
         ],
         "title": "UpiSet",
+        "type": "object"
+      },
+      "UpiWaitingRead": {
+        "description": "A new UPI ID that brands do not see yet (item 82).",
+        "properties": {
+          "consented_at": {
+            "format": "date-time",
+            "title": "Consented At",
+            "type": "string"
+          },
+          "notice_version": {
+            "title": "Notice Version",
+            "type": "string"
+          },
+          "upi_id": {
+            "title": "Upi Id",
+            "type": "string"
+          },
+          "usable_at": {
+            "description": "When brands start to see it, 24 hours after you set it. Until then they see the ID above, or none. Cancel it before then with `DELETE /api/v1/creators/me/upi/waiting` if it was not you.",
+            "format": "date-time",
+            "title": "Usable At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "upi_id",
+          "consented_at",
+          "notice_version",
+          "usable_at"
+        ],
+        "title": "UpiWaitingRead",
         "type": "object"
       },
       "VerifiedDomainRead": {
@@ -13354,8 +13506,29 @@
     },
     "/api/v1/auth/logout-all": {
       "post": {
-        "description": "Ends every session of the signed-in account, on all devices, and stops push notifications to all of them. Needs a valid access token. Limit: 30 requests per minute per IP address.",
+        "description": "Ends every session of the signed-in account, on all devices, and stops push notifications to all of them. Needs a valid access token and **a code**: ask for one at `POST /api/v1/me/step-up` with `log_out_everywhere`, then send it in the `Step-Up-Code` header. You are told in the app when you next log in. Limit: 30 requests per minute per IP address.",
         "operationId": "logout_all_api_v1_auth_logout_all_post",
+        "parameters": [
+          {
+            "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+            "in": "header",
+            "name": "Step-Up-Code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9]{6}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+              "title": "Step-Up-Code"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -13367,6 +13540,17 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The code is wrong, expired, used, or for another change"
+          },
           "401": {
             "content": {
               "application/json": {
@@ -13376,7 +13560,18 @@
               },
               "application/problem+json": {}
             },
-            "description": "No access token, or it is invalid or expired"
+            "description": "No access token, or it is invalid or expired; or `step_up_required`: no code was sent"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The code is not 6 digits"
           },
           "429": {
             "content": {
@@ -13387,7 +13582,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "Too many requests; see the Retry-After header"
+            "description": "Too many requests, or too many wrong codes for your phone; see the Retry-After header"
           },
           "503": {
             "content": {
@@ -19587,7 +19782,7 @@
     },
     "/api/v1/creators/me/upi": {
       "delete": {
-        "description": "Deletes your UPI ID and withdraws the consent you gave for it. Brands then pay you by bank transfer. Always allowed, and safe to repeat.",
+        "description": "Deletes your UPI ID, and any new one waiting, and withdraws the consent you gave for them. Brands then pay you by bank transfer. Always allowed, with no code, and safe to repeat.",
         "operationId": "remove_my_upi_api_v1_creators_me_upi_delete",
         "responses": {
           "204": {
@@ -19667,7 +19862,7 @@
         ]
       },
       "get": {
-        "description": "The UPI ID you gave so brands on your deals can pay you directly, and the notice version you agreed to. All null when you have not added one.",
+        "description": "The UPI ID brands on your deals are shown so they can pay you directly, and the notice version you agreed to; all null when there is none. `waiting` is a new ID you set that brands do not see until its `usable_at`.",
         "operationId": "read_my_upi_api_v1_creators_me_upi_get",
         "responses": {
           "200": {
@@ -19754,8 +19949,29 @@
         ]
       },
       "put": {
-        "description": "Stores your UPI ID, with your consent to the notice you were shown. `consent` must be true, and `notice_version` the version you read; consent is given again with every change. Brands see the ID only while a payment to you on their deal is open. A UPI ID made of a phone number is refused, because brands would see the number. Money still goes from the brand's bank straight to yours.",
+        "description": "Stores your UPI ID, with your consent to the notice you were shown. `consent` must be true, and `notice_version` the version you read; consent is given again with every change. **Needs a code**: ask for one at `POST /api/v1/me/step-up` with this exact UPI ID, then send it in the `Step-Up-Code` header. **A new ID waits 24 hours** before brands see it, and is returned under `waiting`; until then they see your previous one, or none. You are told, and can cancel it. Setting the ID already in effect only renews your consent. Brands see the ID only while a payment to you on their deal is open. A UPI ID made of a phone number is refused, because brands would see the number. Money still goes from the brand's bank straight to yours.",
         "operationId": "set_my_upi_api_v1_creators_me_upi_put",
+        "parameters": [
+          {
+            "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+            "in": "header",
+            "name": "Step-Up-Code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9]{6}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+              "title": "Step-Up-Code"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -19779,13 +19995,14 @@
           },
           "400": {
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
-              }
+              },
+              "application/problem+json": {}
             },
-            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+            "description": "The code is wrong, expired, used, or for another UPI ID"
           },
           "401": {
             "content": {
@@ -19796,7 +20013,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "No access token, or it is invalid or expired"
+            "description": "No access token, or it is invalid or expired; or `step_up_required`: no code was sent"
           },
           "403": {
             "content": {
@@ -19851,7 +20068,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "Too many requests; see the Retry-After header"
+            "description": "Too many requests, or too many wrong codes for your phone; see the Retry-After header"
           },
           "503": {
             "content": {
@@ -19871,6 +20088,99 @@
           }
         ],
         "summary": "Give or change my UPI ID",
+        "tags": [
+          "upi pay link"
+        ]
+      }
+    },
+    "/api/v1/creators/me/upi/waiting": {
+      "delete": {
+        "description": "Drops the new UPI ID under `waiting`, so brands keep seeing the one they see now. For when the change was not you: no code is needed, so it works even if someone else has your number. Safe to repeat; nothing waiting is fine.",
+        "operationId": "cancel_my_waiting_upi_api_v1_creators_me_upi_waiting_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only a creator may use this endpoint"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "You have not created a creator profile yet"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The new ID's 24 hours are over: it is already in effect"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cancel a new UPI ID before brands see it",
         "tags": [
           "upi pay link"
         ]
@@ -24799,8 +25109,29 @@
     },
     "/api/v1/me/export": {
       "get": {
-        "description": "Everything we hold about the signed-in account, as one JSON file. Includes a manifest explaining each section and why we hold it, and a list of what is deliberately not included. Limited to 3 requests an hour.",
+        "description": "Everything we hold about the signed-in account, as one JSON file. Includes a manifest explaining each section and why we hold it, and a list of what is deliberately not included. **Needs a code**: ask for one at `POST /api/v1/me/step-up` with `download_export`, then send it in the `Step-Up-Code` header; you are told in the app each time the file is downloaded. Limited to 3 requests an hour.",
         "operationId": "export_my_data_api_v1_me_export_get",
+        "parameters": [
+          {
+            "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+            "in": "header",
+            "name": "Step-Up-Code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9]{6}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+              "title": "Step-Up-Code"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -24812,6 +25143,17 @@
             },
             "description": "The export file, offered as a download"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The code is wrong, expired, used, or for another change"
+          },
           "401": {
             "content": {
               "application/json": {
@@ -24821,7 +25163,18 @@
               },
               "application/problem+json": {}
             },
-            "description": "No access token, or it is invalid or expired"
+            "description": "No access token, or it is invalid or expired; or `step_up_required`: no code was sent"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The code is not 6 digits"
           },
           "429": {
             "content": {
@@ -24832,7 +25185,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "Too many requests; see the Retry-After header"
+            "description": "Too many requests, or too many wrong codes for your phone; see the Retry-After header"
           },
           "503": {
             "content": {
@@ -25180,6 +25533,149 @@
         "summary": "Replace my notification preferences",
         "tags": [
           "notifications"
+        ]
+      }
+    },
+    "/api/v1/me/step-up": {
+      "post": {
+        "description": "Sends a 6-digit code to your phone for one change: setting a UPI ID (this exact one), downloading your data, or logging out everywhere. Then make the change with the code in the `Step-Up-Code` header, within 5 minutes. A code works once, and only for the change it was asked for. Admins are sent nothing: they use their authenticator app's code. Limits: 3 per 10 minutes and 10 a day, counted with login codes for your phone.",
+        "operationId": "ask_for_step_up_api_v1_me_step_up_post",
+        "parameters": [
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "discriminator": {
+                  "mapping": {
+                    "download_export": "#/components/schemas/StepUpForAccount",
+                    "log_out_everywhere": "#/components/schemas/StepUpForAccount",
+                    "set_upi_id": "#/components/schemas/StepUpForUpiId"
+                  },
+                  "propertyName": "action"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/StepUpForUpiId"
+                  },
+                  {
+                    "$ref": "#/components/schemas/StepUpForAccount"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StepUpAccepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only a creator may ask to set a UPI ID"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The action is unknown, or the UPI ID is not usable. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many codes asked for; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ask for a code before a risky change",
+        "tags": [
+          "auth"
         ]
       }
     },

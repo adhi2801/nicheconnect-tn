@@ -38,6 +38,7 @@ from tests.modules.admin.test_takedowns_api import (
 )
 from tests.modules.campaigns.test_invitation_api import answer, invite, open_campaign
 from tests.query_counts import queries_for
+from tests.step_up import download_export
 
 DISCOVER = f"{CAMPAIGNS_URL}/discover"
 FOR_ME = f"{CAMPAIGNS_URL}/discover/for-me"
@@ -427,9 +428,7 @@ def test_a_sealed_order_shows_only_that_it_exists(client, db, admin, brand):
     )
 
     [row] = client.get(MINE, headers=brand.headers).json()["items"]
-    [exported] = client.get("/api/v1/me/export", headers=brand.headers).json()["data"][
-        "takedowns"
-    ]
+    [exported] = download_export(client, brand.headers).json()["data"]["takedowns"]
 
     assert row["reference_sealed"] is True
     for shown in (row, exported):
@@ -449,9 +448,7 @@ def test_the_export_holds_the_preserved_text(client, db, admin, brand):
     campaign_id = open_campaign(client, brand)
     withhold(client, admin, "campaign", campaign_id)
 
-    [exported] = client.get("/api/v1/me/export", headers=brand.headers).json()["data"][
-        "takedowns"
-    ]
+    [exported] = download_export(client, brand.headers).json()["data"]["takedowns"]
 
     assert exported["subject_id"] == campaign_id
     assert exported["preserved"]["title"] == "Pongal sweets launch"

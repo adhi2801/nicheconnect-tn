@@ -18,6 +18,7 @@ from app.modules.auth.tokens import decode_access_token
 from tests.deal_flow import Clock
 from tests.factories import FIXED_NOW
 from tests.modules.auth.test_refresh_api import LOGOUT_URL, log_in
+from tests.step_up import download_export, log_out_everywhere
 
 URL = "/api/v1/me/devices"
 EXPORT_URL = "/api/v1/me/export"
@@ -270,7 +271,7 @@ def test_logging_out_everywhere_stops_every_phone(client, db, person):
     for n in range(3):
         register(client, person, a_token(str(n)))
 
-    response = client.post("/api/v1/auth/logout-all", headers=person.headers)
+    response = log_out_everywhere(client, person.headers)
 
     assert response.status_code == 200
     assert tokens_of(db, person.account_id) == set()
@@ -283,7 +284,7 @@ def test_the_export_lists_each_phone_without_its_token(client, person):
     token = a_token()
     register(client, person, token, app_version="1.4.0")
 
-    response = client.get(EXPORT_URL, headers=person.headers)
+    response = download_export(client, person.headers)
 
     devices = response.json()["data"]["devices"]
     assert [d["platform"] for d in devices] == ["android"]
