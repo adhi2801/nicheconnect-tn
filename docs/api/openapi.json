@@ -1299,7 +1299,8 @@
               "deliver_work",
               "answer_memo",
               "answer_invitation",
-              "upi_change_pending"
+              "upi_change_pending",
+              "phone_change_pending"
             ],
             "title": "Kind",
             "type": "string"
@@ -1377,7 +1378,8 @@
                 "deliver_work",
                 "answer_memo",
                 "answer_invitation",
-                "upi_change_pending"
+                "upi_change_pending",
+                "phone_change_pending"
               ]
             },
             "title": "Counts",
@@ -5708,11 +5710,15 @@
                 "upi_change_pending",
                 "upi_change_cancelled",
                 "data_exported",
-                "logged_out_everywhere"
+                "logged_out_everywhere",
+                "phone_change_requested",
+                "phone_change_cancelled",
+                "phone_changed",
+                "phone_change_failed"
               ],
               "type": "string"
             },
-            "maxItems": 33,
+            "maxItems": 37,
             "title": "Muted Types",
             "type": "array"
           },
@@ -5797,7 +5803,11 @@
                 "upi_change_pending",
                 "upi_change_cancelled",
                 "data_exported",
-                "logged_out_everywhere"
+                "logged_out_everywhere",
+                "phone_change_requested",
+                "phone_change_cancelled",
+                "phone_changed",
+                "phone_change_failed"
               ],
               "type": "string"
             },
@@ -5856,7 +5866,11 @@
                 "upi_change_pending",
                 "upi_change_cancelled",
                 "data_exported",
-                "logged_out_everywhere"
+                "logged_out_everywhere",
+                "phone_change_requested",
+                "phone_change_cancelled",
+                "phone_changed",
+                "phone_change_failed"
               ],
               "type": "string"
             },
@@ -5989,7 +6003,11 @@
               "upi_change_pending",
               "upi_change_cancelled",
               "data_exported",
-              "logged_out_everywhere"
+              "logged_out_everywhere",
+              "phone_change_requested",
+              "phone_change_cancelled",
+              "phone_changed",
+              "phone_change_failed"
             ],
             "title": "Notification Type",
             "type": "string"
@@ -7356,6 +7374,95 @@
           "paid_on_time_share"
         ],
         "title": "PeriodNumbersRead",
+        "type": "object"
+      },
+      "PhoneChangeIn": {
+        "additionalProperties": false,
+        "description": "The new number, and the login code sent to it.",
+        "properties": {
+          "new_phone": {
+            "description": "Indian mobile number, stored as +91XXXXXXXXXX. Send it in that form. Spaces, dashes and brackets, and a leading +91, 91 or 0, are also accepted and normalised away.",
+            "examples": [
+              "+919876543210"
+            ],
+            "pattern": "^\\+91[6-9][0-9]{9}$",
+            "title": "New Phone",
+            "type": "string"
+          },
+          "new_phone_code": {
+            "description": "The 6-digit code sent to the new number: ask for it at `POST /api/v1/auth/otp/request` with the new number. It is used up here, so it logs nobody in.",
+            "examples": [
+              "042917"
+            ],
+            "pattern": "^[0-9]{6}$",
+            "title": "New Phone Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "new_phone",
+          "new_phone_code"
+        ],
+        "title": "PhoneChangeIn",
+        "type": "object"
+      },
+      "PhoneChangeRead": {
+        "description": "The number you log in with, and a new one waiting, if any.",
+        "properties": {
+          "phone": {
+            "description": "The number you log in with now",
+            "examples": [
+              "+919876543210"
+            ],
+            "title": "Phone",
+            "type": "string"
+          },
+          "waiting": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PhoneChangeWaitingRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "phone",
+          "waiting"
+        ],
+        "title": "PhoneChangeRead",
+        "type": "object"
+      },
+      "PhoneChangeWaitingRead": {
+        "description": "A new number waiting to take over the login.",
+        "properties": {
+          "new_phone": {
+            "examples": [
+              "+919876501234"
+            ],
+            "title": "New Phone",
+            "type": "string"
+          },
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "takes_effect_at": {
+            "description": "When the new number takes over, 72 hours after it was asked for. Until then you log in with your current number, and can cancel with `DELETE /api/v1/me/phone-change`, with no code. Then every session ends, within a minute, and you log in with the new number.",
+            "format": "date-time",
+            "title": "Takes Effect At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "new_phone",
+          "requested_at",
+          "takes_effect_at"
+        ],
+        "title": "PhoneChangeWaitingRead",
         "type": "object"
       },
       "ProblemDetails": {
@@ -9706,7 +9813,8 @@
             "enum": [
               "set_upi_id",
               "download_export",
-              "log_out_everywhere"
+              "log_out_everywhere",
+              "change_phone"
             ],
             "title": "Action",
             "type": "string"
@@ -9761,6 +9869,32 @@
           "action"
         ],
         "title": "StepUpForAccount",
+        "type": "object"
+      },
+      "StepUpForPhone": {
+        "additionalProperties": false,
+        "description": "A code to move the account onto one exact new number (item 80).",
+        "properties": {
+          "action": {
+            "const": "change_phone",
+            "title": "Action",
+            "type": "string"
+          },
+          "new_phone": {
+            "description": "Indian mobile number, stored as +91XXXXXXXXXX. Send it in that form. Spaces, dashes and brackets, and a leading +91, 91 or 0, are also accepted and normalised away.",
+            "examples": [
+              "+919876543210"
+            ],
+            "pattern": "^\\+91[6-9][0-9]{9}$",
+            "title": "New Phone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "new_phone"
+        ],
+        "title": "StepUpForPhone",
         "type": "object"
       },
       "StepUpForUpiId": {
@@ -13808,7 +13942,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "The number is registered with the other role"
+            "description": "`role_mismatch`: the number is registered with the other role; `phone_change_waiting`: it has no account, but an account is waiting to move onto it (log in with that account's current number until the change is made). Either way the code stays usable"
           },
           "422": {
             "content": {
@@ -25536,9 +25670,290 @@
         ]
       }
     },
+    "/api/v1/me/phone-change": {
+      "delete": {
+        "description": "Drops the new number under `waiting`, so you keep logging in with the one you have. For when the change was not you: no code is needed, so it works from any of your sessions even if someone else has your number. Safe to repeat; nothing waiting is fine.",
+        "operationId": "cancel_my_phone_change_api_v1_me_phone_change_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`phone_change_taking_effect`: its 72 hours are over and it is being made; see the Retry-After header"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cancel a new phone number before it takes over",
+        "tags": [
+          "auth"
+        ]
+      },
+      "get": {
+        "description": "The number you log in with, and under `waiting` a new number you asked to move to, with when it takes over; null when there is none. Show a waiting change at the top of every screen, with a one-tap cancel: if it was not you, someone may have your number.",
+        "operationId": "read_my_phone_change_api_v1_me_phone_change_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhoneChangeRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My phone number, and a new one waiting",
+        "tags": [
+          "auth"
+        ]
+      },
+      "post": {
+        "description": "Needs **a code from each number**: from your current number, ask at `POST /api/v1/me/step-up` with `change_phone` and this exact new number, and send it in the `Step-Up-Code` header; from the new number, ask at `POST /api/v1/auth/otp/request`, and send it as `new_phone_code`. **The new number takes over 72 hours later**: until then you log in with your current number, are told in the app, and can cancel with no code. Then every session ends, and you log in with the new number; the old one no longer reaches this account. Asking again replaces a change still waiting and starts its 72 hours again. Brands and creators only: an admin's number is changed by the founders. Limits: 5 per 10 minutes and 10 a day, beside each number's own limits on codes.",
+        "operationId": "change_my_phone_api_v1_me_phone_change_post",
+        "parameters": [
+          {
+            "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+            "in": "header",
+            "name": "Step-Up-Code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9]{6}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+              "title": "Step-Up-Code"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhoneChangeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhoneChangeRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A code is wrong, expired or used: `otp_invalid` for the new number's, `step_up_code_invalid` for the current number's"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired; or `step_up_required`: no code from the current number was sent"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "An admin's number cannot be changed here"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`phone_unchanged`: it is already your number; `phone_in_use`: the new number is on an account, or waiting to move onto one; `phone_change_taking_effect`: the change waiting is past its 72 hours and being made. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The new number or its code is not valid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests, or too many wrong codes for either number; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Move my account to a new phone number",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/me/step-up": {
       "post": {
-        "description": "Sends a 6-digit code to your phone for one change: setting a UPI ID (this exact one), downloading your data, or logging out everywhere. Then make the change with the code in the `Step-Up-Code` header, within 5 minutes. A code works once, and only for the change it was asked for. Admins are sent nothing: they use their authenticator app's code. Limits: 3 per 10 minutes and 10 a day, counted with login codes for your phone.",
+        "description": "Sends a 6-digit code to your phone for one change: setting a UPI ID (this exact one), downloading your data, logging out everywhere, or moving your account to a new phone number (this exact one). Then make the change with the code in the `Step-Up-Code` header, within 5 minutes. A code works once, and only for the change it was asked for. Admins are sent nothing: they use their authenticator app's code. Limits: 3 per 10 minutes and 10 a day, counted with login codes for your phone.",
         "operationId": "ask_for_step_up_api_v1_me_step_up_post",
         "parameters": [
           {
@@ -25560,6 +25975,7 @@
               "schema": {
                 "discriminator": {
                   "mapping": {
+                    "change_phone": "#/components/schemas/StepUpForPhone",
                     "download_export": "#/components/schemas/StepUpForAccount",
                     "log_out_everywhere": "#/components/schemas/StepUpForAccount",
                     "set_upi_id": "#/components/schemas/StepUpForUpiId"
@@ -25569,6 +25985,9 @@
                 "oneOf": [
                   {
                     "$ref": "#/components/schemas/StepUpForUpiId"
+                  },
+                  {
+                    "$ref": "#/components/schemas/StepUpForPhone"
                   },
                   {
                     "$ref": "#/components/schemas/StepUpForAccount"
@@ -25621,7 +26040,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "Only a creator may ask to set a UPI ID"
+            "description": "Only a creator may ask to set a UPI ID; an admin may not change their phone number here"
           },
           "409": {
             "content": {
@@ -25632,7 +26051,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+            "description": "`phone_unchanged`: that is already your number. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
           },
           "422": {
             "content": {
@@ -25643,7 +26062,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "The action is unknown, or the UPI ID is not usable. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+            "description": "The action is unknown, or the UPI ID or new number is not usable. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
           },
           "429": {
             "content": {

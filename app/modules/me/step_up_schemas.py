@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.core.literals import ensure_same_values
 from app.modules.auth.models.step_up_challenge import STEP_UP_ACTIONS
+from app.modules.auth.schemas import IndianMobile
 from app.modules.auth.step_up_service import StepUpAction, StepUpMethod
 from app.modules.payment_status.upi_schemas import UPI_ID_FIELD, a_real_upi_id
 
@@ -26,6 +27,15 @@ class StepUpForUpiId(BaseModel):
         return a_real_upi_id(value)
 
 
+class StepUpForPhone(BaseModel):
+    """A code to move the account onto one exact new number (item 80)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    action: Literal["change_phone"]
+    new_phone: IndianMobile
+
+
 class StepUpForAccount(BaseModel):
     """A code to download your data, or to log out of every device."""
 
@@ -34,7 +44,9 @@ class StepUpForAccount(BaseModel):
     action: Literal["download_export", "log_out_everywhere"]
 
 
-StepUpIn = Annotated[StepUpForUpiId | StepUpForAccount, Field(discriminator="action")]
+StepUpIn = Annotated[
+    StepUpForUpiId | StepUpForPhone | StepUpForAccount, Field(discriminator="action")
+]
 
 
 class StepUpAccepted(BaseModel):

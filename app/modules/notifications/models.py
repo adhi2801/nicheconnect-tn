@@ -65,6 +65,14 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     "upi_change_cancelled",
     "data_exported",
     "logged_out_everywhere",
+    # To the account itself, about its phone number (item 80, D-108): a
+    # change asked for and waiting its 72 hours, that change cancelled, the
+    # change made (every session ended), or the change dropped because the
+    # new number was taken while it waited.
+    "phone_change_requested",
+    "phone_change_cancelled",
+    "phone_changed",
+    "phone_change_failed",
 )
 MAX_DETAILS_LENGTH = 2000
 

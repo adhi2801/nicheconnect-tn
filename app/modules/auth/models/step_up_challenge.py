@@ -29,6 +29,9 @@ STEP_UP_ACTIONS: tuple[str, ...] = (
     "set_upi_id",
     "download_export",
     "log_out_everywhere",
+    # Moving the account onto a new phone number (item 80, D-108): the
+    # value is the new number, so the code cannot move it anywhere else.
+    "change_phone",
 )
 STEP_UP_TTL = timedelta(minutes=5)
 MAX_STEP_UP_ATTEMPTS = MAX_OTP_ATTEMPTS

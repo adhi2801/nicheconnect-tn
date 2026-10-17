@@ -45,6 +45,10 @@ NotificationType = Literal[
     "upi_change_cancelled",
     "data_exported",
     "logged_out_everywhere",
+    "phone_change_requested",
+    "phone_change_cancelled",
+    "phone_changed",
+    "phone_change_failed",
 ]
 
 ensure_same_values("NotificationType", NotificationType, NOTIFICATION_TYPES)

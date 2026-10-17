@@ -1,6 +1,9 @@
 from app.modules.admin.models.admin_action import AdminAction  # noqa: F401
 from app.modules.admin.models.report import Report  # noqa: F401
 from app.modules.auth.models.account import Account  # noqa: F401
+from app.modules.auth.models.account_phone_change import (
+    AccountPhoneChange,  # noqa: F401
+)
 from app.modules.auth.models.attribution import (
     AccountAttribution,  # noqa: F401
     InviteCode,  # noqa: F401

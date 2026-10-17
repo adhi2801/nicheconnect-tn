@@ -1,7 +1,8 @@
 """A second check before a risky change (item 82, D-107).
 
-Setting a UPI ID, downloading the data export and logging out everywhere
-each need a fresh code, on top of the access token. A stolen session (malware,
+Setting a UPI ID, downloading the data export, logging out everywhere and
+changing the phone number (item 80) each need a fresh code, on top of the
+access token. A stolen session (malware,
 a borrowed laptop, a copied token) is then not enough: the thief also needs
 the phone. ASVS 5.0 7.5.1 to 7.5.3.
 
@@ -21,7 +22,8 @@ towards the lock.
 
 **What it does not stop:** a SIM swap or a hijacked WhatsApp, since the code
 goes to whoever holds the number. That is why a new UPI ID also waits 24
-hours before brands see it (`payment_status.upi_service`).
+hours before brands see it (`payment_status.upi_service`), and a new phone
+number 72 hours (`me.phone_change_service`).
 
 `consume` is called first in its caller's transaction and leaves the use
 uncommitted, so the code is spent only if the change itself commits.
@@ -57,12 +59,18 @@ from app.modules.auth.models.step_up_challenge import (
 from app.modules.auth.service import PendingOtp
 from app.modules.auth.tokens import generate_otp_code, hash_otp_code, otp_code_matches
 
-StepUpAction = Literal["set_upi_id", "download_export", "log_out_everywhere"]
+StepUpAction = Literal[
+    "set_upi_id", "download_export", "log_out_everywhere", "change_phone"
+]
 StepUpMethod = Literal["phone_code", "authenticator"]
 # The request header a risky change carries its code in.
 STEP_UP_HEADER = "Step-Up-Code"
 # Who may ask for each; an action not named here is for every role.
-ACTION_ROLES: dict[str, tuple[str, ...]] = {"set_upi_id": ("creator",)}
+# An admin's number changes only through scripts/make_admin.py (item 80).
+ACTION_ROLES: dict[str, tuple[str, ...]] = {
+    "set_upi_id": ("creator",),
+    "change_phone": ("brand", "creator"),
+}
 
 EXPORTED_TABLES = frozenset({"step_up_challenge"})
 # What was asked for and when, never the hashes of the code or the value.
@@ -99,7 +107,8 @@ def request_code(
     """A code for this account to do `action` with `value`. Commits.
 
     For an admin nothing is sent: their authenticator gives the code.
-    Raises RoleNotAllowed (only creators give a UPI ID) and
+    Raises RoleNotAllowed (only creators give a UPI ID; admins change no
+    phone number here) and
     OtpSendLimitReached (the phone's caps are reached).
     """
     if account.role not in ACTION_ROLES.get(action, (account.role,)):
@@ -219,7 +228,8 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
             table="step_up_challenge",
             purpose=(
                 "The codes you asked for before a risky change (setting a UPI "
-                "ID, downloading this file, logging out everywhere): which "
+                "ID, downloading this file, logging out everywhere, changing "
+                "your phone number): which "
                 "change, when, how many wrong tries, and whether it was used. "
                 "We keep only an unreadable hash of each code and of the new "
                 "value, so neither is included."

@@ -78,7 +78,12 @@ def request_code(
     ),
     responses={
         400: problem_doc("The code is wrong, expired, already used, or was never sent"),
-        409: problem_doc("The number is registered with the other role"),
+        409: problem_doc(
+            "`role_mismatch`: the number is registered with the other role; "
+            "`phone_change_waiting`: it has no account, but an account is "
+            "waiting to move onto it (log in with that account's current "
+            "number until the change is made). Either way the code stays usable"
+        ),
         422: problem_doc("A field is missing or invalid"),
         429: problem_doc("Too many attempts; see the Retry-After header"),
     },

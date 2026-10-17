@@ -1,7 +1,7 @@
 """Every downgrade that would destroy unrecoverable data refuses while it exists.
 
 database.md section 6: losing such data must be a deliberate act, never a
-side effect of a rollback. Fourteen migrations refuse. Until 14 October 2026 each
+side effect of a rollback. Fifteen migrations refuse. Until 14 October 2026 each
 refusal had been proven only by hand, in the session that wrote it
 (database.md gap 6, item 98); a later edit to one could have let a rollback
 drop a deal's record or a person's block without anyone noticing.
@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 from app.modules.deal_memo import record_service
 from app.modules.deal_memo.models import DealMemo
 from tests.deal_flow import accepted_memo, brand_user, creator_user
-from tests.factories import build_brand, create_account
+from tests.factories import build_brand, create_account, unique_test_phone
 
 VERSIONS = Path(__file__).resolve().parents[2] / "alembic" / "versions"
 
@@ -49,6 +49,7 @@ REFUSING = {
     "90b4db0fd32a": "admins' authenticators, set up or waiting",
     "8a974ebde203": "brands' verified domains",
     "44fc99b873a7": "new UPI IDs waiting their 24 hours, each with its consent",
+    "d18c285488f0": "new phone numbers waiting their 72 hours, each proven by two codes",
 }
 
 
@@ -332,4 +333,21 @@ def test_new_upi_ids_waiting(db, clock):
 
     assert f"{before + 1} creators have a new UPI ID waiting" in refusal(
         db, "44fc99b873a7"
+    )
+
+
+def test_new_phone_numbers_waiting(db):
+    before = count(db, "SELECT count(*) FROM account_phone_change")
+    account = create_account(db, "brand")
+    db.execute(
+        text(
+            "INSERT INTO account_phone_change "
+            "(account_id, new_phone, requested_at, takes_effect_at) "
+            "VALUES (:a, :p, now(), now() + interval '72 hours')"
+        ),
+        {"a": account.id, "p": unique_test_phone()},
+    )
+
+    assert f"{before + 1} accounts are waiting to move to a new phone number" in (
+        refusal(db, "d18c285488f0")
     )

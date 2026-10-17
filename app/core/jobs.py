@@ -19,6 +19,7 @@ from fastapi import FastAPI
 from app.core.config import settings
 from app.modules.admin import report_clock_jobs
 from app.modules.deal_memo import anchor_jobs, proof_cleaning_jobs, proof_reading_jobs
+from app.modules.me import phone_change_jobs
 from app.modules.profiles import brand_domain_jobs
 
 DBOS_SCHEMA = "dbos"
@@ -45,6 +46,7 @@ def start(*, schema: str = DBOS_SCHEMA) -> None:
         + proof_reading_jobs.schedules()
         + report_clock_jobs.schedules()
         + brand_domain_jobs.schedules()
+        + phone_change_jobs.schedules()
     )
 
 
