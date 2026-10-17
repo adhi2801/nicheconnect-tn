@@ -30,6 +30,7 @@ from app.core.export import (
 from app.modules.admin.models.report import Report
 from app.modules.auth import attribution_service as attribution
 from app.modules.auth import device_service as devices
+from app.modules.auth import step_up_service as step_ups
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.brand import Brand
@@ -380,7 +381,25 @@ def collect_sections(db: Session, account: Account) -> list[ExportedSection]:
         *notifications.export_for_account(db, account.id),
         *notification_preferences.export_for_account(db, account.id),
         *devices.export_for_account(db, account.id),
+        *step_ups.export_for_account(db, account.id),
     ]
+
+
+def release_export(
+    db: Session, account: Account, step_up_code: str | None, now: datetime
+) -> dict[str, Any]:
+    """The export, once the code asked for it is spent and the owner is told.
+
+    The file is the most sensitive answer this API gives, so a stolen
+    session alone cannot take it (item 82, D-107). The owner is told in the
+    app whoever downloaded it. Raises what step_up_service.consume raises.
+    """
+    step_ups.consume(db, account, "download_export", "", step_up_code, now)
+    notifications.record(
+        db, account_id=account.id, notification_type="data_exported", now=now
+    )
+    db.commit()
+    return build_export(db, account, now)
 
 
 def build_export(db: Session, account: Account, now: datetime) -> dict[str, Any]:
@@ -425,6 +444,7 @@ def exported_tables() -> frozenset[str]:
         | payments.EXPORTED_TABLES
         | upi.EXPORTED_TABLES
         | disputes.EXPORTED_TABLES
+        | step_ups.EXPORTED_TABLES
     )
 
 

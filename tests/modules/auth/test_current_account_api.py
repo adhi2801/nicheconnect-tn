@@ -17,6 +17,7 @@ from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.sender import FakeOtpSender, get_otp_sender
 from app.modules.auth.tokens import create_access_token
 from tests.factories import FIXED_NOW, fake_phone
+from tests.step_up import log_out_everywhere
 
 REQUEST_URL = "/api/v1/auth/otp/request"
 VERIFY_URL = "/api/v1/auth/otp/verify"
@@ -187,7 +188,7 @@ def test_logout_all_ends_every_session_of_the_account(client, sender, db, clock)
     ).json()
     clock.advance(timedelta(minutes=1))
 
-    response = client.post(LOGOUT_ALL_URL, headers=auth(second_device["access_token"]))
+    response = log_out_everywhere(client, auth(second_device["access_token"]))
 
     assert response.status_code == 200
     assert response.json() == {"sessions_ended": 2}
@@ -206,7 +207,7 @@ def test_logout_all_does_not_touch_another_account(client, sender, db):
     mine = log_in(client, sender)
     theirs = log_in(client, sender)
 
-    client.post(LOGOUT_ALL_URL, headers=auth(mine["access_token"]))
+    log_out_everywhere(client, auth(mine["access_token"]))
 
     other_sessions = db.scalars(
         select(AuthSession).where(AuthSession.account_id == theirs["account"]["id"])
@@ -216,9 +217,9 @@ def test_logout_all_does_not_touch_another_account(client, sender, db):
 
 def test_logout_all_twice_reports_nothing_left_to_end(client, sender):
     login = log_in(client, sender)
-    client.post(LOGOUT_ALL_URL, headers=auth(login["access_token"]))
+    log_out_everywhere(client, auth(login["access_token"]))
 
-    response = client.post(LOGOUT_ALL_URL, headers=auth(login["access_token"]))
+    response = log_out_everywhere(client, auth(login["access_token"]))
 
     assert response.json() == {"sessions_ended": 0}
 

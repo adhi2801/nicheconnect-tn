@@ -41,6 +41,10 @@ NotificationType = Literal[
     "admin_signed_in",
     "admin_second_factor_refused",
     "admin_second_factor_changed",
+    "upi_change_pending",
+    "upi_change_cancelled",
+    "data_exported",
+    "logged_out_everywhere",
 ]
 
 ensure_same_values("NotificationType", NotificationType, NOTIFICATION_TYPES)

@@ -4,7 +4,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import Depends, Request
+from fastapi import Depends, Header, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -17,6 +17,7 @@ from app.modules.auth.exceptions import (
     RoleNotAllowed,
 )
 from app.modules.auth.models.account import Account
+from app.modules.auth.step_up_service import STEP_UP_HEADER
 from app.modules.auth.tokens import (
     AccessTokenClaims,
     account_id_for_scoping,
@@ -129,3 +130,20 @@ def get_admin(
 
 
 CurrentAdmin = Annotated[Account, Depends(get_admin)]
+
+
+# The code a risky change carries (item 82, D-107): from POST /me/step-up,
+# or an admin's authenticator. Optional here, so that leaving it out is
+# answered by step_up_service as `step_up_required`, never a 422.
+StepUpCode = Annotated[
+    str | None,
+    Header(
+        alias=STEP_UP_HEADER,
+        pattern=r"^[0-9]{6}$",
+        description=(
+            "The 6-digit code from `POST /api/v1/me/step-up` for exactly this "
+            "change, or an admin's authenticator code. Without it the answer "
+            "is 401 `step_up_required`."
+        ),
+    ),
+]

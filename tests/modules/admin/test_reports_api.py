@@ -12,6 +12,7 @@ from app.modules.auth.models.creator import Creator
 from tests.deal_flow import User, brand_user, creator_user
 from tests.factories import build_campaign, create_account
 from tests.query_counts import queries_for
+from tests.step_up import download_export
 
 URL = "/api/v1/reports"
 NOTIFICATIONS = "/api/v1/notifications"
@@ -249,7 +250,7 @@ def test_the_limit_is_per_account_not_per_connection(client, db, clock, brand):
 def test_a_reporter_finds_their_reports_in_their_export(client, db, brand, creator):
     filed = report(client, brand, "creator", creator_id(db, creator)).json()
 
-    exported = client.get("/api/v1/me/export", headers=brand.headers).json()
+    exported = download_export(client, brand.headers).json()
 
     assert [r["id"] for r in exported["data"]["reports_made"]] == [filed["id"]]
     # The deadline we gave them is theirs to keep (item 51).

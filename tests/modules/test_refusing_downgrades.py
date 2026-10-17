@@ -1,7 +1,7 @@
 """Every downgrade that would destroy unrecoverable data refuses while it exists.
 
 database.md section 6: losing such data must be a deliberate act, never a
-side effect of a rollback. Thirteen migrations refuse. Until 14 October 2026 each
+side effect of a rollback. Fourteen migrations refuse. Until 14 October 2026 each
 refusal had been proven only by hand, in the session that wrote it
 (database.md gap 6, item 98); a later edit to one could have let a rollback
 drop a deal's record or a person's block without anyone noticing.
@@ -48,6 +48,7 @@ REFUSING = {
     "f276d2c6ce1e": "cleaned proof files on the deal record",
     "90b4db0fd32a": "admins' authenticators, set up or waiting",
     "8a974ebde203": "brands' verified domains",
+    "44fc99b873a7": "new UPI IDs waiting their 24 hours, each with its consent",
 }
 
 
@@ -314,3 +315,21 @@ def test_brands_verified_domains(db):
     )
 
     assert f"{before + 1} brands have a verified domain" in refusal(db, "8a974ebde203")
+
+
+def test_new_upi_ids_waiting(db, clock):
+    before = count(db, "SELECT count(*) FROM creator_upi_change")
+    creator = creator_user(db, clock)
+    db.execute(
+        text(
+            "INSERT INTO creator_upi_change "
+            "(creator_id, upi_id, consented_at, notice_version, usable_at) "
+            "SELECT id, 'priya.new@okaxis', now(), 'v1', now() + interval '24 hours' "
+            "FROM creator WHERE account_id = :a"
+        ),
+        {"a": creator.account_id},
+    )
+
+    assert f"{before + 1} creators have a new UPI ID waiting" in refusal(
+        db, "44fc99b873a7"
+    )

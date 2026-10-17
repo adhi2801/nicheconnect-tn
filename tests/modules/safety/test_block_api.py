@@ -27,6 +27,7 @@ from tests.deal_flow import (
 from tests.factories import FIXED_NOW
 from tests.modules.campaigns.test_invitation_api import invite, open_campaign
 from tests.query_counts import queries_for
+from tests.step_up import download_export
 
 URL = "/api/v1/me/blocks"
 
@@ -234,7 +235,7 @@ def test_the_blocked_side_cannot_see_it(client, db, brand, creator):
     client.post(URL, json={"brand_id": brand_id}, headers=creator.headers)
 
     assert client.get(URL, headers=brand.headers).json()["items"] == []
-    exported = client.get("/api/v1/me/export", headers=brand.headers).json()["data"]
+    exported = download_export(client, brand.headers).json()["data"]
     assert exported.get("blocks", []) == []
 
 
@@ -242,9 +243,7 @@ def test_the_blocker_exports_it(client, db, brand, creator):
     brand_id, _ = ids(db, brand, creator)
     client.post(URL, json={"brand_id": brand_id}, headers=creator.headers)
 
-    [row] = client.get("/api/v1/me/export", headers=creator.headers).json()["data"][
-        "blocks"
-    ]
+    [row] = download_export(client, creator.headers).json()["data"]["blocks"]
 
     assert row["blocked_account_id"] == str(brand.account_id)
 

@@ -57,6 +57,14 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     "admin_signed_in",
     "admin_second_factor_refused",
     "admin_second_factor_changed",
+    # To the account itself, after a risky change made with a second check
+    # (item 82, D-107): a new UPI ID set and waiting its 24 hours, or that
+    # waiting ID cancelled; the data export downloaded; every session ended.
+    # Whoever did it, the owner sees it in the app.
+    "upi_change_pending",
+    "upi_change_cancelled",
+    "data_exported",
+    "logged_out_everywhere",
 )
 MAX_DETAILS_LENGTH = 2000
 

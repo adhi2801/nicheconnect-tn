@@ -42,13 +42,20 @@ CREATOR_KINDS: tuple[str, ...] = (
     "deliver_work",
     "answer_memo",
     "answer_invitation",
+    # A new UPI ID set and waiting its 24 hours (item 82, D-107): due the
+    # day brands start to see it, so a change that was not the creator's is
+    # in front of them while it can still be cancelled.
+    "upi_change_pending",
 )
 # Between two items due the same day, the one about money or a dispute
-# first: those are the ones that turn into a record against somebody.
+# first: those are the ones that turn into a record against somebody. A
+# waiting UPI ID before all: if it was not the creator, it is where their
+# money would go.
 _PRIORITY = {
     kind: rank
     for rank, kind in enumerate(
         (
+            "upi_change_pending",
             "respond_to_dispute",
             "pay_creator",
             "confirm_payment",
@@ -80,7 +87,7 @@ class AttentionItem:
     # The Tamil Nadu date it is due by, or None when nothing sets a date.
     due_on: date | None
     # None for an item about the account itself rather than a campaign:
-    # the brand's domain (item 74).
+    # the brand's domain (item 74), a creator's waiting UPI ID (item 82).
     campaign_id: uuid.UUID | None
     campaign_title: str | None
     # The other side: a creator's handle for a brand, a brand's name for a

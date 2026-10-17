@@ -23,6 +23,7 @@ from app.modules.profiles.domain_lookup import FakeDomainLookup
 from tests.deal_flow import Clock, User, brand_user, creator_user
 from tests.factories import build_campaign
 from tests.query_counts import queries_for
+from tests.step_up import download_export
 
 DOMAIN = "/api/v1/brands/me/domain"
 CHECK = f"{DOMAIN}/check"
@@ -519,7 +520,7 @@ def test_the_brand_s_export_holds_the_claim_but_never_the_token(
 ):
     found = verified(client, db, lookup, clock, brand)
 
-    response = client.get("/api/v1/me/export", headers=brand.headers)
+    response = download_export(client, brand.headers)
 
     assert response.status_code == 200, response.text
     (row,) = response.json()["data"]["website_domain"]

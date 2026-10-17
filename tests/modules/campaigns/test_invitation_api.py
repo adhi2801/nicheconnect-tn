@@ -29,6 +29,7 @@ from tests.deal_flow import (
 )
 from tests.modules.auth.test_suspension_api import suspend
 from tests.query_counts import queries_for
+from tests.step_up import download_export
 
 APPLICATIONS_URL = "/api/v1/applications"
 NOTE = "Loved your Madurai food walks. Our Pongal box would suit them."
@@ -547,12 +548,12 @@ def test_an_invitation_is_not_counted_as_the_creators_own_application(
 def test_both_sides_export_it(client, brand, creator, invitation):
     answer(client, creator, invitation, "decline-invitation", reason="not_a_fit")
 
-    brand_rows = client.get("/api/v1/me/export", headers=brand.headers).json()["data"][
+    brand_rows = download_export(client, brand.headers).json()["data"][
         "applications_received"
     ]
-    creator_rows = client.get("/api/v1/me/export", headers=creator.headers).json()[
-        "data"
-    ]["applications_sent"]
+    creator_rows = download_export(client, creator.headers).json()["data"][
+        "applications_sent"
+    ]
 
     for rows in (brand_rows, creator_rows):
         [row] = rows

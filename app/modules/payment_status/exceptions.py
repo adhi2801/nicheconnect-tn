@@ -74,3 +74,11 @@ class UpiNoticeChanged(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "upi_notice_changed"
     title = "The notice has changed since you read it; read the new one and try again"
+
+
+class UpiChangeAlreadyInEffect(DomainError):
+    # The 24 hours are over, so brands already see it: cancelling now would
+    # not undo anything. Setting the earlier ID again is how to go back.
+    status_code = HTTPStatus.CONFLICT
+    code = "upi_change_already_in_effect"
+    title = "That UPI ID is already in effect; set the one you want instead"

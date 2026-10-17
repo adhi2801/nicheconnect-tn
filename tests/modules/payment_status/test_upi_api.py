@@ -6,6 +6,11 @@ is explicit and versioned; a phone-number UPI ID is refused; withdrawing is
 always possible; only the brand on the deal sees the ID, and only while the
 payment is open; no link above UPI's limit; and nothing here ever moves
 money.
+
+Since item 82 (D-107) setting one needs a code for that exact ID, and a new
+ID waits 24 hours before brands see it: those rules are tested in
+test_upi_hold_api.py. Here, `give` asks for the code as an app would, and
+`give_and_wait` lets the 24 hours pass.
 """
 
 from datetime import timedelta
@@ -17,8 +22,18 @@ from sqlalchemy.exc import IntegrityError
 from app.core.config import settings
 from app.modules.auth.models.creator import Creator
 from app.modules.payment_status import upi_service
+from app.modules.payment_status.upi_change_models import UPI_CHANGE_HOLD
 from app.modules.payment_status.upi_router import PAY_DETAILS_LIMIT, WRITE_LIMIT
-from tests.deal_flow import LINK, MEMOS_URL, User, accepted_memo, brand_user, creator_user
+from tests.deal_flow import (
+    LINK,
+    MEMOS_URL,
+    Clock,
+    User,
+    accepted_memo,
+    brand_user,
+    creator_user,
+)
+from tests.step_up import download_export, with_code
 
 URL = "/api/v1/creators/me/upi"
 NOTICE = "upi-2026-10"
@@ -41,14 +56,35 @@ def brand(db, clock) -> User:
     return brand_user(db, clock)
 
 
-def give(client, user: User, upi_id: str = UPI_ID, **overrides: object):
+def give(
+    client,
+    user: User,
+    upi_id: str = UPI_ID,
+    *,
+    with_step_up: bool = True,
+    **overrides: object,
+):
+    """Set a UPI ID with a code asked for it; without, for answers that come first."""
     body: dict[str, object] = {
         "upi_id": upi_id,
         "consent": True,
         "notice_version": NOTICE,
     }
     body.update(overrides)
-    return client.put(URL, json=body, headers=user.headers)
+    headers = (
+        with_code(client, user.headers, "set_upi_id", upi_id=upi_id.lower())
+        if with_step_up
+        else user.headers
+    )
+    return client.put(URL, json=body, headers=headers)
+
+
+def give_and_wait(client, clock: Clock, user: User, upi_id: str = UPI_ID):
+    """Set a UPI ID and let its 24 hours pass, so brands see it."""
+    response = give(client, user, upi_id)
+    assert response.status_code == 200, response.text
+    clock.advance(UPI_CHANGE_HOLD)
+    return response
 
 
 def approved_deal(client, brand: User, creator: User, **memo_fields: object) -> str:
@@ -84,15 +120,25 @@ def test_nobody_can_add_one_until_the_notice_exists(client, creator, monkeypatch
     assert_problem(give(client, creator), 503, "upi_not_open_yet")
 
 
+def stamp(moment) -> str:
+    return moment.isoformat().replace("+00:00", "Z")
+
+
 def test_a_creator_gives_their_upi_id_with_consent(client, creator, clock):
+    given_at = clock.now
     response = give(client, creator, "Meena.Cooks@OKHDFCBANK")
 
     assert response.status_code == 200, response.text
-    body = response.json()
-    assert body["upi_id"] == UPI_ID  # stored in one spelling
-    assert body["notice_version"] == NOTICE
-    assert body["consented_at"] == clock.now.isoformat().replace("+00:00", "Z")
-    assert client.get(URL, headers=creator.headers).json()["upi_id"] == UPI_ID
+    waiting = response.json()["waiting"]
+    assert waiting["upi_id"] == UPI_ID  # stored in one spelling
+    assert waiting["notice_version"] == NOTICE
+    assert waiting["consented_at"] == stamp(given_at)
+
+    clock.advance(UPI_CHANGE_HOLD)
+    body = client.get(URL, headers=creator.headers).json()
+    assert body["upi_id"] == UPI_ID
+    assert body["consented_at"] == stamp(given_at)
+    assert body["waiting"] is None
 
 
 def test_none_given_reads_as_nothing(client, creator):
@@ -101,6 +147,7 @@ def test_none_given_reads_as_nothing(client, creator):
         "consented_at": None,
         "notice_version": None,
         "updated_at": None,
+        "waiting": None,
     }
 
 
@@ -137,14 +184,14 @@ def test_consent_to_an_old_notice_is_sent_back(client, creator):
     ],
 )
 def test_a_upi_id_that_is_not_one_is_refused(client, creator, upi_id):
-    assert give(client, creator, upi_id).status_code == 422
+    assert give(client, creator, upi_id, with_step_up=False).status_code == 422
 
 
 @pytest.mark.parametrize(
     "upi_id", ["9876543210@ybl", "919876543210@paytm", "6000000000@okaxis"]
 )
 def test_a_phone_number_upi_id_is_refused_and_says_why(client, creator, upi_id):
-    response = give(client, creator, upi_id)
+    response = give(client, creator, upi_id, with_step_up=False)
 
     assert response.status_code == 422
     assert "phone number" in response.json()["errors"][0]["message"]
@@ -156,17 +203,18 @@ def test_a_upi_id_with_digits_that_is_not_a_phone_number_is_fine(client, creator
 
 
 def test_changing_it_gives_consent_again(client, creator, clock):
-    give(client, creator)
+    give_and_wait(client, clock, creator)
     clock.advance(timedelta(days=3))
 
     body = give(client, creator, "meena.new@okaxis").json()
 
-    assert body["upi_id"] == "meena.new@okaxis"
-    assert body["consented_at"] == clock.now.isoformat().replace("+00:00", "Z")
+    assert body["upi_id"] == UPI_ID  # still in effect for 24 hours
+    assert body["waiting"]["upi_id"] == "meena.new@okaxis"
+    assert body["waiting"]["consented_at"] == stamp(clock.now)
 
 
-def test_withdrawing_deletes_it(client, creator):
-    give(client, creator)
+def test_withdrawing_deletes_it(client, creator, clock):
+    give_and_wait(client, clock, creator)
 
     removed = client.delete(URL, headers=creator.headers)
 
@@ -184,7 +232,7 @@ def test_withdrawing_works_even_while_adding_is_closed(client, creator, monkeypa
 
 def test_a_brand_has_no_upi_id(client, brand):
     assert client.get(URL, headers=brand.headers).status_code == 403
-    assert give(client, brand).status_code == 403
+    assert give(client, brand, with_step_up=False).status_code == 403
 
 
 def test_without_a_login_it_is_refused(client):
@@ -194,31 +242,41 @@ def test_without_a_login_it_is_refused(client):
 
 
 def test_giving_it_is_rate_limited(client, creator):
+    """Counted whether or not a code came with it: every try is a try."""
     allowed = int(WRITE_LIMIT.split()[0])
 
-    answers = [give(client, creator).status_code for _ in range(allowed + 1)]
+    answers = [
+        give(client, creator, with_step_up=False).status_code for _ in range(allowed + 1)
+    ]
 
-    assert answers[:allowed] == [200] * allowed
+    assert answers[:allowed] == [401] * allowed
     assert answers[allowed] == 429
 
 
-def test_it_is_in_the_creators_export_and_not_the_brands(client, creator, brand):
-    give(client, creator)
+def test_it_is_in_the_creators_export_and_not_the_brands(client, clock, creator, brand):
+    give_and_wait(client, clock, creator)
+    give(client, creator, "meena.new@okaxis")
 
-    creator_data = client.get("/api/v1/me/export", headers=creator.headers).json()["data"]
-    brand_data = client.get("/api/v1/me/export", headers=brand.headers).json()["data"]
+    creator_data = download_export(client, creator.headers).json()["data"]
+    brand_data = download_export(client, brand.headers).json()["data"]
 
     [row] = creator_data["upi_id"]
     assert row["upi_id"] == UPI_ID
     assert row["notice_version"] == NOTICE
+    [waiting] = creator_data["upi_id_change"]
+    assert waiting["upi_id"] == "meena.new@okaxis"
+    assert set(waiting) == set(upi_service.CHANGE_EXPORT_FIELDS)
     assert "upi_id" not in brand_data
+    assert "upi_id_change" not in brand_data
 
 
 # --- the brand paying --------------------------------------------------------------------
 
 
-def test_the_brand_gets_a_pay_link_for_the_open_payment(client, db, brand, creator):
-    give(client, creator)
+def test_the_brand_gets_a_pay_link_for_the_open_payment(
+    client, db, clock, brand, creator
+):
+    give_and_wait(client, clock, creator)
     memo_id = approved_deal(client, brand, creator)
     name = db.scalar(
         select(Creator.display_name).where(Creator.account_id == creator.account_id)
@@ -240,10 +298,13 @@ def test_the_brand_gets_a_pay_link_for_the_open_payment(client, db, brand, creat
 
 
 def test_a_fresh_upi_id_is_flagged_to_the_brand(client, clock, brand, creator):
+    """Counted from when brands began to see it, the end of its wait."""
     memo_id = approved_deal(client, brand, creator)
-    give(client, creator)
+    give_and_wait(client, clock, creator)
 
-    assert pay_details(client, brand, memo_id).json()["upi_id_changed_recently"] is True
+    body = pay_details(client, brand, memo_id).json()
+    assert body["upi_id_changed_recently"] is True
+    assert body["upi_id_set_at"] == stamp(clock.now)
 
     clock.advance(timedelta(hours=25))
     assert pay_details(client, brand, memo_id).json()["upi_id_changed_recently"] is False
@@ -259,8 +320,8 @@ def test_without_a_upi_id_the_brand_is_told_to_pay_another_way(client, brand, cr
     assert body["unavailable_reason"] == "no_upi_id"
 
 
-def test_above_upis_limit_there_is_no_link(client, brand, creator):
-    give(client, creator)
+def test_above_upis_limit_there_is_no_link(client, clock, brand, creator):
+    give_and_wait(client, clock, creator)
     memo_id = approved_deal(client, brand, creator, fee_amount_paise=1_00_001 * 100)
 
     body = pay_details(client, brand, memo_id).json()
@@ -269,8 +330,8 @@ def test_above_upis_limit_there_is_no_link(client, brand, creator):
     assert body["unavailable_reason"] == "above_upi_limit"
 
 
-def test_exactly_at_the_limit_there_is_a_link(client, brand, creator):
-    give(client, creator)
+def test_exactly_at_the_limit_there_is_a_link(client, clock, brand, creator):
+    give_and_wait(client, clock, creator)
     memo_id = approved_deal(client, brand, creator, fee_amount_paise=1_00_000 * 100)
 
     body = pay_details(client, brand, memo_id).json()
@@ -279,8 +340,8 @@ def test_exactly_at_the_limit_there_is_a_link(client, brand, creator):
     assert "&am=100000.00&" in body["pay_link"]
 
 
-def test_once_marked_paid_the_upi_id_is_not_shown_again(client, brand, creator):
-    give(client, creator)
+def test_once_marked_paid_the_upi_id_is_not_shown_again(client, clock, brand, creator):
+    give_and_wait(client, clock, creator)
     memo_id = approved_deal(client, brand, creator)
     client.post(
         f"{MEMOS_URL}/{memo_id}/payment/mark-paid",
@@ -293,8 +354,10 @@ def test_once_marked_paid_the_upi_id_is_not_shown_again(client, brand, creator):
     )
 
 
-def test_before_the_work_is_approved_there_is_nothing_to_pay(client, brand, creator):
-    give(client, creator)
+def test_before_the_work_is_approved_there_is_nothing_to_pay(
+    client, clock, brand, creator
+):
+    give_and_wait(client, clock, creator)
     memo_id = accepted_memo(client, brand, creator)
 
     assert_problem(pay_details(client, brand, memo_id), 404, "payment_record_not_found")
@@ -307,7 +370,7 @@ def test_the_creator_does_not_read_pay_details(client, brand, creator):
 
 
 def test_another_brand_cannot_see_the_upi_id(client, db, clock, brand, creator):
-    give(client, creator)
+    give_and_wait(client, clock, creator)
     memo_id = approved_deal(client, brand, creator)
 
     assert_problem(

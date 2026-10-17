@@ -14,7 +14,6 @@ from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.auth.schemas import (
     AccountRead,
     AccountSummary,
-    LoggedOutAll,
     LoginTokens,
     LogoutIn,
     OtpRequestAccepted,
@@ -195,27 +194,3 @@ def me(request: Request, account: CurrentAccount) -> AccountRead:
         phone=account.phone,
         created_at=account.created_at,
     )
-
-
-@router.post(
-    "/logout-all",
-    response_model=LoggedOutAll,
-    summary="Log out of every device",
-    description=(
-        "Ends every session of the signed-in account, on all devices, and stops "
-        "push notifications to all of them. Needs a "
-        "valid access token. Limit: 30 requests per minute per IP address."
-    ),
-    responses={
-        401: problem_doc("No access token, or it is invalid or expired"),
-        429: problem_doc("Too many requests; see the Retry-After header"),
-    },
-)
-@rate_limit(SESSION_LIMIT)
-def logout_all(
-    request: Request,
-    account: CurrentAccount,
-    db: Session = Depends(get_db),
-    now: datetime = Depends(get_now),
-) -> LoggedOutAll:
-    return LoggedOutAll(sessions_ended=service.logout_all_sessions(db, account.id, now))

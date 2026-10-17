@@ -48,6 +48,8 @@ from app.modules.matching.router import router as matching_router
 from app.modules.matching.search_router import router as search_router
 from app.modules.me.attention_router import router as attention_router
 from app.modules.me.export_router import router as export_router
+from app.modules.me.session_router import router as session_router
+from app.modules.me.step_up_router import router as step_up_router
 from app.modules.notifications.preference_router import (
     router as notification_preferences_router,
 )
@@ -135,6 +137,8 @@ if tracer_provider is not None:
 
 app.include_router(security_txt_router)
 app.include_router(auth_router)
+app.include_router(session_router)
+app.include_router(step_up_router)
 app.include_router(admin_login_router)
 app.include_router(brand_router)
 app.include_router(creator_router)

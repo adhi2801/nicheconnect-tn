@@ -32,6 +32,7 @@ from app.modules.auth.dependencies import get_now
 from tests.deal_flow import LINK, MEMOS_URL, User, accepted_memo, brand_user, creator_user
 from tests.factories import create_account
 from tests.owner import owner_engine
+from tests.step_up import download_export
 
 SEALED = {
     "admin_action",
@@ -301,7 +302,7 @@ def test_a_whole_deal_runs_on_the_app_s_own_login(app_client, app_db, clock):
     assert added.status_code == 201, added.text
     record = client.get(f"{MEMOS_URL}/{memo_id}/record", headers=creator.headers)
     assert record.status_code == 200 and record.json()["intact"] is True, record.text
-    export = client.get("/api/v1/me/export", headers=creator.headers)
+    export = download_export(client, creator.headers)
     assert export.status_code == 200, export.text
 
 

@@ -15,6 +15,21 @@ whole deals, 5 bank bulk transfers of 25 rows, and 30 rounds of rate card
 edits. All from one run, on a developer laptop under Docker Desktop for
 Windows.
 
+## Added 17 October: the second check before risky changes (item 82, D-107)
+
+Measured with `scripts/measure_performance.py --runs 50 --deals 30` on the seeded data, on a laptop, as the database owner: 30 rounds, each asking for a code and spending it. The phone's send caps are lifted for the run, as the limiter is, since they are not what is measured.
+
+| Endpoint | p50 ms | p95 ms | Budget | Verdict |
+| --- | --- | --- | --- | --- |
+| `POST /me/step-up` | 22.3 | 29.3 | 500 | OK |
+| `PUT /creators/me/upi`, with its code | 31.0 | 40.3 | 500 | OK |
+| `GET /creators/me/upi` | 15.0 | 21.4 | 300 | OK |
+| `DELETE /creators/me/upi/waiting` | 19.1 | 27.5 | 500 | OK |
+| `POST /auth/logout-all`, with its code | 24.4 | 29.4 | 500 | OK |
+| `GET /me/export`, with its code | 264.5 | 394.4 | 300 | **Over** |
+
+**The export is over its budget, and not because of the code.** It had never been measured before. Timed apart, on the same seeded creator in a rolled-back transaction, spending the code (lock, check, commit) took 5.3 ms at the median and 7.6 ms at p95, and building that creator's file 33.2 and 49.0 ms; but that creator has 6 applications, while in the measured run it had about 155 deals added before the export was timed (30 whole deals and 125 for the bulk payments), each with its memo, proof, payment, record entries and notifications. So the 394 ms is the cost of exporting a very busy account, and it was there before item 82. The query count stays fixed with the number of deals (`tests/modules/me/test_export_query_count.py`), so this is rows, not a query per row. The export is limited to 3 an hour and is a document, not a screen, but the budget is the budget: it needs its own look (where the time goes at 150 deals, and whether the sections can be read leaner), proposed as a follow-up, not done here.
+
 ## Added 17 October: a brand's verified domain (item 74, D-106)
 
 Measured with `scripts/measure_performance.py` (50 runs per read, 30 rounds of writes) on the same seeded data, on a laptop, as the database owner, three runs. Every campaign read now also loads its brands' verified domains, one query per response.

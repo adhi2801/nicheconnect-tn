@@ -81,3 +81,34 @@ class DeviceNotFound(DomainError):
     status_code = HTTPStatus.NOT_FOUND
     code = "device_not_found"
     title = "That device is not registered to you"
+
+
+# The second check before a risky change (item 82). 401 with RFC 9470's
+# error code, so a client knows to ask for a code rather than to log in
+# again; it branches on `code`, as for every error.
+STEP_UP_CHALLENGE = (
+    'Bearer error="insufficient_user_authentication", '
+    'error_description="This change needs a code sent to your phone"'
+)
+
+
+class StepUpRequired(DomainError):
+    status_code = HTTPStatus.UNAUTHORIZED
+    code = "step_up_required"
+    title = "This change needs a second check"
+
+    def __init__(self, detail: str | None = None) -> None:
+        super().__init__(
+            detail
+            or "Ask for a code at POST /api/v1/me/step-up, then send it in the "
+            "Step-Up-Code header.",
+            headers={"WWW-Authenticate": STEP_UP_CHALLENGE},
+        )
+
+
+class StepUpCodeInvalid(DomainError):
+    # One error for wrong, expired, used, missing and other-change codes, as
+    # for login codes: a caller learns nothing about which.
+    status_code = HTTPStatus.BAD_REQUEST
+    code = "step_up_code_invalid"
+    title = "That code is not valid for this change. Check it or ask for a new one"

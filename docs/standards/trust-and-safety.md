@@ -107,7 +107,8 @@ Researched 10 October 2026, sources in section 8.
 | Using our domain checks to query someone's DNS over and over | 5 checks a minute and 10 a day per brand; a check asks two fixed resolvers about one name, never a URL anyone gives us (item 74) | Built: `test_checks_are_limited_per_brand` |
 | Abusing invite attribution | It carries no reward. **Any reward is designed with its abuse limits first** | Built (no reward) |
 | An admin misusing access | Every view and action in the append-only admin log (D-061), sealed by the database, and the app's own login may only read and add to it (item 97). A takedown (item 52) is in the log with the admin's note, names who withheld and who lifted it, cannot be backdated (the server sets `withheld_at`), and cannot be deleted by the app's login. A rogue admin can still withhold an item; the log shows it afterwards. **Someone else in an admin's account** needs both the admin's phone and their authenticator (item 101, D-105), and every admin is told of every admin sign-in and every refused second factor, so between two founders each sees the other's logins | Built: `tests/modules/admin/test_admin_models.py`, `tests/modules/test_app_role.py`, `tests/modules/safety/test_takedown_model.py`, `tests/modules/admin/test_admin_login_api.py` |
-| Impersonating us ("support") | We never ask for codes, PINs or passwords (rule 8). **The login message's wording must say so: Confirm the MSG91 template** | **Owed** (item 62) |
+| Impersonating us ("support") | We never ask for codes, PINs or passwords (rule 8). **The login message's wording must say so: Confirm the MSG91 template**. It matters more since item 82: a code now also guards where a creator is paid | **Owed** (item 62) |
+| **Someone inside a creator's account, changing where they are paid** | A code sent to the phone for each risky change, good only for that exact UPI ID (item 82, D-107), so a stolen session cannot do it. A SIM swap gets the code too, so a new UPI ID waits 24 hours, brands keep seeing the one before, and the creator is told (a notification nobody can mute, first on their attention list) and can cancel it without a code. The export and logging out everywhere need a code too, so a stolen session can neither take the file nor throw the owner out | Built: `tests/modules/payment_status/test_upi_hold_api.py`, `tests/modules/me/test_step_up_api.py`, `test_upi_step_up_concurrency.py`. **Not stopped**: a SIM-swapped creator who never opens the app in those 24 hours, since nothing yet delivers the alert outside it (E1) |
 
 ---
 
@@ -132,6 +133,7 @@ One module, used by every place free text from one person reaches another:
 - Show flags (section 4) as warnings next to the text, never hidden.
 - Never turn user text into links. Show a link field's host before it opens.
 - Report and block are one tap from anything another person sent.
+- **A new UPI ID waiting its 24 hours is shown at the top of the creator's screens, with its time and one-tap "This wasn't me: cancel"**, which needs no code (item 82). The code prompt says: "Enter this code only here, in the app. We will never ask you to read it out or send it to anyone, even someone who says they are from us."
 - **A brand's verified domain is shown as the domain itself and its age** ("controls smallshop.in, checked today; registered March 2019"), never only a badge or the word "verified" (item 74, `legal.md` rule 3). A domain registered days ago is said plainly: it is what scams use.
 
 ---

@@ -350,6 +350,7 @@ AttentionKind = Literal[
     "deliver_work",
     "answer_memo",
     "answer_invitation",
+    "upi_change_pending",
 ]
 
 ensure_same_values("AttentionKind", AttentionKind, (*BRAND_KINDS, *CREATOR_KINDS))

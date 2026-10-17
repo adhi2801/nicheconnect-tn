@@ -24,6 +24,7 @@ from app.modules.notifications.preference_service import (
 )
 from tests.deal_flow import brand_user, creator_user
 from tests.factories import create_account
+from tests.step_up import download_export
 
 URL = "/api/v1/me/notification-preferences"
 
@@ -220,7 +221,7 @@ def test_they_are_in_the_data_export(client, db, clock):
     user = creator_user(db, clock)
     client.put(URL, json=body(), headers=user.headers)
 
-    export = client.get("/api/v1/me/export", headers=user.headers).json()
+    export = download_export(client, user.headers).json()
 
     section = export["data"]["notification_preferences"]
     assert section[0]["quiet_from"] == "23:00"

@@ -13,6 +13,7 @@ from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.tokens import create_access_token
 from tests.factories import FIXED_NOW, create_account
+from tests.step_up import download_export
 
 BRAND_URL = "/api/v1/brands/me"
 CREATOR_URL = "/api/v1/creators/me"
@@ -394,7 +395,7 @@ def test_only_the_confirmation_is_kept_never_the_date(client, db, now):
         .join(Creator, Creator.account_id == Account.id)
         .where(Creator.handle == creator_body()["handle"])
     ).first()
-    exported = client.get("/api/v1/me/export", headers=headers).text
+    exported = download_export(client, headers).text
     columns = {column.name for column in Account.__table__.columns} | {
         column.name for column in Creator.__table__.columns
     }

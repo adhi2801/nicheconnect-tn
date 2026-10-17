@@ -13,6 +13,7 @@ from tests.deal_flow import (
     creator_user,
 )
 from tests.query_counts import queries_for
+from tests.step_up import download_export
 
 RRN = "412345678901"
 REASON = "The payment was marked sent on 8 September but nothing has reached my account."
@@ -141,7 +142,7 @@ def test_both_sides_export_the_same_timeline(client, deal):
     dispute_id = raise_dispute(client, deal).json()["id"]
 
     exports = {
-        who: client.get("/api/v1/me/export", headers=deal[who].headers).json()["data"]
+        who: download_export(client, deal[who].headers).json()["data"]
         for who in ("creator", "brand")
     }
 

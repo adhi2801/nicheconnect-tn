@@ -36,7 +36,9 @@ from app.modules.notifications.models import NOTIFICATION_TYPES
 # report_overdue: item 51); or something of theirs was withheld for legal
 # reasons, which nobody should learn by finding it gone (content_withheld:
 # item 52); or someone may be inside an admin account, which a muted alert
-# would hide from the one person who could stop it (item 101).
+# would hide from the one person who could stop it (item 101); or someone
+# may be inside their own account, changing where they are paid, taking a
+# copy of their data, or logging everyone out (item 82).
 URGENT_TYPES: tuple[str, ...] = (
     "memo_sent",
     "proof_submitted",
@@ -48,6 +50,10 @@ URGENT_TYPES: tuple[str, ...] = (
     "admin_signed_in",
     "admin_second_factor_refused",
     "admin_second_factor_changed",
+    "upi_change_pending",
+    "upi_change_cancelled",
+    "data_exported",
+    "logged_out_everywhere",
 )
 MUTABLE_TYPES: tuple[str, ...] = tuple(
     kind for kind in NOTIFICATION_TYPES if kind not in URGENT_TYPES

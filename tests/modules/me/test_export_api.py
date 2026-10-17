@@ -37,6 +37,7 @@ from tests.factories import (
     build_creator,
     create_account,
 )
+from tests.step_up import download_export, with_code
 
 URL = "/api/v1/me/export"
 
@@ -194,7 +195,10 @@ def test_there_is_no_way_to_ask_for_someone_else(client, scenario, now):
     headers = auth_for(scenario["brand_account"], now)
     other = scenario["creator_account"]
 
-    response = client.get(f"{URL}?account_id={other.id}", headers=headers)
+    response = client.get(
+        f"{URL}?account_id={other.id}",
+        headers=with_code(client, headers, "download_export"),
+    )
 
     assert response.status_code == 200
     assert response.json()["account_id"] == str(scenario["brand_account"].id)
@@ -204,19 +208,23 @@ def test_there_is_no_way_to_ask_for_someone_else(client, scenario, now):
 
 
 def test_a_brand_gets_its_own_records(client, scenario, now):
-    body = client.get(URL, headers=auth_for(scenario["brand_account"], now)).json()
+    body = download_export(client, auth_for(scenario["brand_account"], now)).json()
     data = body["data"]
 
     assert data["account"][0]["phone"] == scenario["brand_account"].phone
     assert data["brand_profile"][0]["name"] == "Amma Sweets"
     assert data["campaigns"][0]["title"] == "Pongal sweets launch"
     assert data["applications_received"][0]["pitch"].startswith("I cover street food")
-    assert data["notifications"][0]["notification_type"] == "application_received"
+    # And the export's own alert, made as it was downloaded (item 82).
+    assert {n["notification_type"] for n in data["notifications"]} == {
+        "application_received",
+        "data_exported",
+    }
     assert len(data["login_sessions"]) == 1
 
 
 def test_a_brand_sees_the_other_side_only_by_public_handle(client, scenario, now):
-    body = client.get(URL, headers=auth_for(scenario["brand_account"], now)).json()
+    body = download_export(client, auth_for(scenario["brand_account"], now)).json()
 
     received = body["data"]["applications_received"][0]
     assert received["creator_handle"] == "priya.eats"
@@ -227,7 +235,7 @@ def test_a_brands_export_never_carries_the_creators_phone(client, scenario, now)
     """The single most important assertion in this file."""
     creator_phone = scenario["creator_account"].phone
 
-    text = client.get(URL, headers=auth_for(scenario["brand_account"], now)).text
+    text = download_export(client, auth_for(scenario["brand_account"], now)).text
 
     assert creator_phone not in text
 
@@ -236,7 +244,7 @@ def test_a_brands_export_never_carries_the_creators_phone(client, scenario, now)
 
 
 def test_a_creator_gets_its_own_records(client, scenario, now):
-    body = client.get(URL, headers=auth_for(scenario["creator_account"], now)).json()
+    body = download_export(client, auth_for(scenario["creator_account"], now)).json()
     data = body["data"]
 
     assert data["creator_profile"][0]["handle"] == "priya.eats"
@@ -248,7 +256,7 @@ def test_a_creator_gets_its_own_records(client, scenario, now):
 def test_a_creators_export_never_carries_the_brands_contact_details(
     client, scenario, now
 ):
-    text = client.get(URL, headers=auth_for(scenario["creator_account"], now)).text
+    text = download_export(client, auth_for(scenario["creator_account"], now)).text
 
     assert "hello@ammasweets.in" not in text
     assert scenario["brand_account"].phone not in text
@@ -257,7 +265,7 @@ def test_a_creators_export_never_carries_the_brands_contact_details(
 def test_a_session_token_is_never_in_an_export(client, scenario, now):
     from app.modules.auth.models.auth_session import AuthSession
 
-    body = client.get(URL, headers=auth_for(scenario["brand_account"], now)).json()
+    body = download_export(client, auth_for(scenario["brand_account"], now)).json()
     exported = body["data"]["login_sessions"][0]
 
     assert "token_hash" not in exported
@@ -272,7 +280,7 @@ def test_a_brand_new_account_still_gets_a_file(client, db, now):
     """Someone who signed up and stopped still has an account and a right to it."""
     account = create_account(db, "creator")
 
-    body = client.get(URL, headers=auth_for(account, now)).json()
+    body = download_export(client, auth_for(account, now)).json()
 
     assert body["data"]["account"][0]["id"] == str(account.id)
     assert body["data"]["login_sessions"] == []
@@ -286,13 +294,13 @@ def test_every_export_matches_the_documented_file_shape(client, scenario, now):
     """The API documents the file with ExportFile; the route builds it by hand.
     This keeps the two from drifting: a new key, or a missing one, fails here."""
     for who in ("brand_account", "creator_account"):
-        body = client.get(URL, headers=auth_for(scenario[who], now)).json()
+        body = download_export(client, auth_for(scenario[who], now)).json()
 
         ExportFile.model_validate(body)
 
 
 def test_the_manifest_describes_every_section(client, scenario, now):
-    body = client.get(URL, headers=auth_for(scenario["brand_account"], now)).json()
+    body = download_export(client, auth_for(scenario["brand_account"], now)).json()
 
     named = {entry["section"] for entry in body["manifest"]}
     assert named == set(body["data"])
@@ -302,7 +310,7 @@ def test_the_manifest_describes_every_section(client, scenario, now):
 
 
 def test_the_file_says_what_was_left_out(client, scenario, now):
-    body = client.get(URL, headers=auth_for(scenario["brand_account"], now)).json()
+    body = download_export(client, auth_for(scenario["brand_account"], now)).json()
 
     left_out = {entry["data"]: entry["reason"] for entry in body["not_included"]}
     assert "otp_challenge" in left_out
@@ -310,7 +318,7 @@ def test_the_file_says_what_was_left_out(client, scenario, now):
 
 
 def test_the_file_carries_its_version_and_a_timestamp(client, scenario, now):
-    body = client.get(URL, headers=auth_for(scenario["brand_account"], now)).json()
+    body = download_export(client, auth_for(scenario["brand_account"], now)).json()
 
     assert body["schema_version"] == export_service.SCHEMA_VERSION
     assert body["generated_at"] == "2026-09-17T12:00:00Z"
@@ -324,7 +332,7 @@ def test_the_file_does_not_claim_we_hold_money(client, scenario, now):
     forbids them. This is the one place they are allowed to exist, and the
     checker must exclude it. Everywhere else, a hit is a real fault.
     """
-    text = client.get(URL, headers=auth_for(scenario["brand_account"], now)).text.lower()
+    text = download_export(client, auth_for(scenario["brand_account"], now)).text.lower()
 
     for word in ("escrow", "wallet", "guaranteed funds", "split settlement"):
         assert word not in text
@@ -334,7 +342,7 @@ def test_the_file_does_not_claim_we_hold_money(client, scenario, now):
 
 
 def test_it_arrives_as_a_download(client, scenario, now):
-    response = client.get(URL, headers=auth_for(scenario["brand_account"], now))
+    response = download_export(client, auth_for(scenario["brand_account"], now))
 
     disposition = response.headers["content-disposition"]
     assert disposition == 'attachment; filename="nicheconnect-export-2026-09-17.json"'
@@ -342,7 +350,7 @@ def test_it_arrives_as_a_download(client, scenario, now):
 
 def test_a_copy_is_never_left_in_a_cache(client, scenario, now):
     """Unlike the public Passport, this must not be stored by anything."""
-    response = client.get(URL, headers=auth_for(scenario["brand_account"], now))
+    response = download_export(client, auth_for(scenario["brand_account"], now))
 
     assert response.headers["cache-control"] == "no-store"
 
@@ -351,8 +359,9 @@ def test_exports_are_tightly_rate_limited(client, scenario, now):
     """Three an hour: it reads every table an account touches."""
     headers = auth_for(scenario["brand_account"], now)
     for _ in range(3):
-        assert client.get(URL, headers=headers).status_code == 200
+        assert download_export(client, headers).status_code == 200
 
+    # Over the limit, the code is never looked at.
     response = client.get(URL, headers=headers)
 
     assert response.status_code == 429

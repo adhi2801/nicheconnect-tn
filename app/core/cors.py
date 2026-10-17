@@ -42,6 +42,9 @@ ALLOWED_REQUEST_HEADERS = (
     # Revalidates a cached public Passport without downloading it again.
     "If-None-Match",
     REQUEST_ID_HEADER,
+    # The code a risky change carries (item 82): auth.step_up_service's
+    # STEP_UP_HEADER, written here because the core imports no module.
+    "Step-Up-Code",
 )
 
 EXPOSED_RESPONSE_HEADERS = (
@@ -49,6 +52,8 @@ EXPOSED_RESPONSE_HEADERS = (
     REQUEST_ID_HEADER,
     # When a 429 may be retried.
     "Retry-After",
+    # RFC 9470's challenge on a change that needs a code (item 82).
+    "WWW-Authenticate",
     # Where a newly created object lives.
     "Location",
     # The Passport's version, sent back as If-None-Match.

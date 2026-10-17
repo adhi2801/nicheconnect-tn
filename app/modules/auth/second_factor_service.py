@@ -159,6 +159,36 @@ def issue_ticket(db: Session, account: Account, now: datetime) -> str:
     return ticket
 
 
+def check_authenticator_code(
+    db: Session, account: Account, code: str, now: datetime
+) -> bool:
+    """Whether `code` is the admin's authenticator code now. The caller commits.
+
+    The step-up check before a risky change (item 82): an admin proves it
+    with the authenticator, under the same rules as at login. Each step's
+    code works once, a refusal counts towards the lock, and a locked or
+    missing factor refuses everything.
+    """
+    factor = _locked_factor(db, account.id)
+    if factor is None or factor.secret_ciphertext is None or factor.locked_at is not None:
+        return False
+    secret = second_factor_secrets.unseal(factor.secret_ciphertext, account.id)
+    step = (
+        None
+        if secret is None
+        else second_factor.accepted_step(secret, code, now, factor.last_used_step)
+    )
+    factor.updated_at = now
+    if step is None:
+        factor.consecutive_failures += 1
+        if factor.consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
+            factor.locked_at = now
+        return False
+    factor.last_used_step = step
+    factor.consecutive_failures = 0
+    return True
+
+
 def _admin_with_right_phone_code(
     db: Session, phone: str, code: str, now: datetime
 ) -> tuple[OtpChallenge, Account]:

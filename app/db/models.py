@@ -10,6 +10,7 @@ from app.modules.auth.models.brand import Brand  # noqa: F401
 from app.modules.auth.models.creator import Creator  # noqa: F401
 from app.modules.auth.models.device_token import DeviceToken  # noqa: F401
 from app.modules.auth.models.otp_challenge import OtpChallenge  # noqa: F401
+from app.modules.auth.models.step_up_challenge import StepUpChallenge  # noqa: F401
 from app.modules.auth.models.totp_factor import TotpFactor  # noqa: F401
 from app.modules.campaigns.models import (
     Application,  # noqa: F401
@@ -34,6 +35,7 @@ from app.modules.notifications.preference_models import (
     NotificationPreference,  # noqa: F401
 )
 from app.modules.payment_status.models import PaymentStatus  # noqa: F401
+from app.modules.payment_status.upi_change_models import CreatorUpiChange  # noqa: F401
 from app.modules.payment_status.upi_models import CreatorUpi  # noqa: F401
 from app.modules.profiles.brand_domain_models import BrandDomain  # noqa: F401
 from app.modules.profiles.models import (

@@ -11,7 +11,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import Any, NoReturn, cast
 
-from sqlalchemy import CursorResult, select, text, update
+from sqlalchemy import CursorResult, select, text, union_all, update
 from sqlalchemy.orm import Session
 
 from app.modules.auth import attribution_service as attribution
@@ -28,6 +28,7 @@ from app.modules.auth.exceptions import (
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.auth_session import AuthSession, refresh_token_expiry
 from app.modules.auth.models.otp_challenge import MAX_OTP_ATTEMPTS, OTP_TTL, OtpChallenge
+from app.modules.auth.models.step_up_challenge import StepUpChallenge
 from app.modules.auth.sender import OtpSender
 from app.modules.auth.tokens import (
     PHONE_CODE_ONLY,
@@ -76,7 +77,7 @@ class LoginResult:
     refresh_token_expires_at: datetime
 
 
-def _lock_phone(db: Session, phone: str) -> None:
+def lock_phone(db: Session, phone: str) -> None:
     """Serialize OTP work per phone until the transaction ends.
 
     Stops two concurrent requests from both passing a limit or both creating
@@ -88,15 +89,38 @@ def _lock_phone(db: Session, phone: str) -> None:
     )
 
 
-def _seconds_until_send_allowed(db: Session, phone: str, now: datetime) -> int:
+def codes_for_phone(
+    db: Session, phone: str, since: datetime
+) -> list[tuple[datetime, int]]:
+    """Every code sent to `phone` after `since`, with the wrong tries each used.
+
+    Login codes and step-up codes (item 82) together, so the caps on sending
+    and guessing are one budget per phone: asking for step-up codes buys no
+    extra messages and no extra guesses.
+    """
+    login_codes = select(OtpChallenge.created_at, OtpChallenge.attempts).where(
+        OtpChallenge.phone == phone, OtpChallenge.created_at > since
+    )
+    step_up_codes = (
+        select(StepUpChallenge.created_at, StepUpChallenge.attempts)
+        .join(Account, Account.id == StepUpChallenge.account_id)
+        .where(Account.phone == phone, StepUpChallenge.created_at > since)
+    )
+    return [
+        (created_at, attempts)
+        for created_at, attempts in db.execute(union_all(login_codes, step_up_codes))
+    ]
+
+
+def seconds_until_send_allowed(db: Session, phone: str, now: datetime) -> int:
     """0 if a code may be sent now, otherwise whole seconds until one may."""
+    longest = max(window for window, _ in OTP_SEND_LIMITS)
+    sent = sorted(
+        created_at for created_at, _ in codes_for_phone(db, phone, now - longest)
+    )
     wait = 0
     for window, max_codes in OTP_SEND_LIMITS:
-        sent_at = db.scalars(
-            select(OtpChallenge.created_at)
-            .where(OtpChallenge.phone == phone, OtpChallenge.created_at > now - window)
-            .order_by(OtpChallenge.created_at)
-        ).all()
+        sent_at = [created_at for created_at in sent if created_at > now - window]
         if len(sent_at) >= max_codes:
             # The window reopens when enough of the oldest codes fall out of it.
             reopens_at = sent_at[len(sent_at) - max_codes] + window
@@ -110,8 +134,8 @@ def request_otp(db: Session, phone: str, now: datetime) -> PendingOtp:
     Behaves the same whether or not the phone has an account.
     Raises OtpSendLimitReached if a per-phone send limit is reached.
     """
-    _lock_phone(db, phone)
-    retry_after = _seconds_until_send_allowed(db, phone, now)
+    lock_phone(db, phone)
+    retry_after = seconds_until_send_allowed(db, phone, now)
     if retry_after > 0:
         db.rollback()
         raise OtpSendLimitReached(headers={"Retry-After": str(retry_after)})
@@ -144,21 +168,13 @@ def deliver_otp(sender: OtpSender, pending: PendingOtp) -> None:
         logger.error("otp.send_failed error_type=%s", type(exc).__name__)
 
 
-def _seconds_until_verify_allowed(db: Session, phone: str, now: datetime) -> int:
+def seconds_until_verify_allowed(db: Session, phone: str, now: datetime) -> int:
     """0 if another guess is allowed for this number, else seconds to wait.
 
-    Counts wrong guesses across every code sent to the phone in the window.
+    Counts wrong guesses across every code sent to the phone in the window,
+    step-up codes included.
     """
-    window_start = now - VERIFY_ATTEMPT_WINDOW
-    rows = (
-        db.execute(
-            select(OtpChallenge.created_at, OtpChallenge.attempts).where(
-                OtpChallenge.phone == phone, OtpChallenge.created_at > window_start
-            )
-        )
-        .tuples()
-        .all()
-    )
+    rows = codes_for_phone(db, phone, now - VERIFY_ATTEMPT_WINDOW)
     used = sum(attempts for _, attempts in rows)
     if used < MAX_VERIFY_ATTEMPTS_PER_WINDOW:
         return 0
@@ -224,8 +240,8 @@ def check_phone_code(db: Session, phone: str, code: str, now: datetime) -> OtpCh
     Raises OtpVerifyLimitReached (too many wrong tries for this phone) and
     OtpInvalid (wrong, expired, used, exhausted or no code).
     """
-    _lock_phone(db, phone)
-    retry_after = _seconds_until_verify_allowed(db, phone, now)
+    lock_phone(db, phone)
+    retry_after = seconds_until_verify_allowed(db, phone, now)
     if retry_after > 0:
         db.rollback()
         raise OtpVerifyLimitReached(headers={"Retry-After": str(retry_after)})
@@ -395,7 +411,10 @@ def logout(
 
 
 def logout_all_sessions(db: Session, account_id: uuid.UUID, now: datetime) -> int:
-    """End every session of one account. Returns how many were still active."""
+    """End every session of one account. Returns how many were still active.
+
+    The caller commits, after spending the code that allowed it (item 82).
+    """
     # SQLAlchemy types Session.execute() as Result[Any], which has no rowcount.
     # An UPDATE returns a CursorResult at runtime, and that is where rowcount
     # lives; the cast is type-checker-only and emits no runtime code.
@@ -409,5 +428,4 @@ def logout_all_sessions(db: Session, account_id: uuid.UUID, now: datetime) -> in
     )
     # Logged out everywhere means told nowhere: every phone's push stops.
     devices.forget_all(db, account_id)
-    db.commit()
     return result.rowcount
