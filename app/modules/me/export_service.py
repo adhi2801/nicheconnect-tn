@@ -39,6 +39,7 @@ from app.modules.auth.models.totp_factor import TotpFactor
 from app.modules.campaigns import service as campaigns
 from app.modules.deal_memo import service as deal_memos
 from app.modules.disputes import service as disputes
+from app.modules.me import phone_change_service as phone_changes
 from app.modules.notifications import preference_service as notification_preferences
 from app.modules.notifications import service as notifications
 from app.modules.payment_status import service as payments
@@ -382,6 +383,7 @@ def collect_sections(db: Session, account: Account) -> list[ExportedSection]:
         *notification_preferences.export_for_account(db, account.id),
         *devices.export_for_account(db, account.id),
         *step_ups.export_for_account(db, account.id),
+        *phone_changes.export_for_account(db, account.id),
     ]
 
 
@@ -445,6 +447,7 @@ def exported_tables() -> frozenset[str]:
         | upi.EXPORTED_TABLES
         | disputes.EXPORTED_TABLES
         | step_ups.EXPORTED_TABLES
+        | phone_changes.EXPORTED_TABLES
     )
 
 

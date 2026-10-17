@@ -15,6 +15,20 @@ whole deals, 5 bank bulk transfers of 25 rows, and 30 rounds of rate card
 edits. All from one run, on a developer laptop under Docker Desktop for
 Windows.
 
+## Added 17 October: changing the phone number (item 80, D-108)
+
+Measured with `scripts/measure_performance.py --runs 50 --deals 30` on the seeded data, on a laptop, as the database owner, one run: 30 changes, each with a step-up code from the current number and a login code from the new one, read back and cancelled; then 30 runs of the job, each making one due change on an account made for it. The phones' send caps and the limiter are lifted for the run, as for item 82; they are not what is measured.
+
+| Endpoint | p50 ms | p95 ms | Budget | Verdict |
+| --- | --- | --- | --- | --- |
+| `POST /me/phone-change`, with both codes | 27.3 | 31.5 | 500 | OK |
+| `GET /me/phone-change` | 9.4 | 11.1 | 300 | OK |
+| `DELETE /me/phone-change` | 12.1 | 14.0 | 500 | OK |
+| The job, one run making one change | 9.2 | 12.4 | 500 | OK |
+| `POST /me/step-up` (its `change_phone` asks now among them) | 16.7 | 22.4 | 500 | OK |
+
+The change is one request a person waits on, with a fixed number of queries: both phones' locks, the waiting row, the new number's code and its caps, the current number's code and its caps, the account check, the upsert and the notification. The job's run makes each change in its own transaction; at 50 a minute (`MAX_CHANGES_PER_RUN`) a minute's run would take about 0.6 s at these figures. The same run measured the export at 316.9 ms p95, still over its 300 ms budget for the reason given below (a very busy account's rows, not the code); its follow-up is still owed.
+
 ## Added 17 October: the second check before risky changes (item 82, D-107)
 
 Measured with `scripts/measure_performance.py --runs 50 --deals 30` on the seeded data, on a laptop, as the database owner: 30 rounds, each asking for a code and spending it. The phone's send caps are lifted for the run, as the limiter is, since they are not what is measured.

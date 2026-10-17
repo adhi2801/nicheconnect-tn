@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.auth import attribution_service as attribution
 from app.modules.auth import device_service as devices
+from app.modules.auth import phone_changes
 from app.modules.auth.attribution_service import Arrival
 from app.modules.auth.exceptions import (
     AccountSuspended,
@@ -23,6 +24,7 @@ from app.modules.auth.exceptions import (
     OtpInvalid,
     OtpSendLimitReached,
     OtpVerifyLimitReached,
+    PhoneChangeWaiting,
     RoleMismatch,
 )
 from app.modules.auth.models.account import Account
@@ -87,6 +89,18 @@ def lock_phone(db: Session, phone: str) -> None:
         text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
         {"key": f"otp:{phone}"},
     )
+
+
+def lock_phones(db: Session, *phones: str) -> None:
+    """`lock_phone` for several numbers, always in sorted order.
+
+    Work that touches two numbers (a phone number change, item 80) takes
+    both. Sorted, so two transactions locking the same two numbers take them
+    in the same order and can never wait on each other in a circle; taking a
+    lock already held in this transaction returns at once.
+    """
+    for phone in sorted(set(phones)):
+        lock_phone(db, phone)
 
 
 def codes_for_phone(
@@ -195,8 +209,10 @@ def verify_otp(
 
     Only the latest code for the phone counts. A wrong code uses up one of
     MAX_OTP_ATTEMPTS attempts.
-    Raises OtpInvalid (wrong, expired, used, exhausted or no code) and
-    RoleMismatch (the account exists with another role; the code stays usable).
+    Raises OtpInvalid (wrong, expired, used, exhausted or no code),
+    RoleMismatch (the account exists with another role) and
+    PhoneChangeWaiting (no account has the number, but one is waiting to
+    move onto it, item 80); for both of those the code stays usable.
     """
     challenge = check_phone_code(db, phone, code, now)
 
@@ -207,6 +223,10 @@ def verify_otp(
         # exactly as a wrong code, attempt used and all (D-061).
         refuse_phone_code(db, challenge)
     account = db.scalars(select(Account).where(Account.phone == phone)).first()
+    if account is None and phone_changes.is_waiting_to_move(db, phone):
+        # A new account here would take the number from under the change.
+        db.rollback()
+        raise PhoneChangeWaiting()
     if account is not None and account.role != role:
         db.rollback()
         raise RoleMismatch()

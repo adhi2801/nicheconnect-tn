@@ -49,13 +49,21 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md`. Rule
   - Every view of an account's details and every admin action is written to the admin log with a reason. The log refuses updates and deletes at the database (`database.md` section 3).
   - **Enforced by** `tests/modules/auth/test_admin_login_api.py` and `tests/modules/admin/`.
 - **A second check before a risky change** (item 82, D-107; ASVS 5.0 7.5.1 to 7.5.3):
-  - setting a UPI ID, downloading the data export and logging out everywhere each need a 6-digit code from `POST /api/v1/me/step-up`, in the `Step-Up-Code` header;
-  - a code works once, for 5 minutes, for one action and, for a UPI ID, that exact ID (only HMACs of the code and the value are stored); only the newest counts; 5 wrong tries use it up;
+  - setting a UPI ID, downloading the data export, logging out everywhere and changing the phone number (item 80) each need a 6-digit code from `POST /api/v1/me/step-up`, in the `Step-Up-Code` header;
+  - a code works once, for 5 minutes, for one action and, for a UPI ID or a new phone number, that exact one (only HMACs of the code and the value are stored); only the newest counts; 5 wrong tries use it up;
   - without one, 401 `step_up_required` with RFC 9470's `insufficient_user_authentication` challenge;
   - step-up codes and login codes share the phone's caps, for sending and for guessing, under one per-phone lock;
   - admins use their authenticator's code instead, under the login's rules;
   - **it does not stop a SIM swap**, since the code goes to whoever has the number: a new UPI ID therefore waits 24 hours before brands see it, the owner is told by a notification nobody can mute, and can cancel it without a code;
   - **enforced by** `tests/modules/me/test_step_up_api.py`, `tests/modules/payment_status/test_upi_hold_api.py`, `test_upi_step_up_concurrency.py`, and the property and model tests beside them; each rule broken on purpose and seen caught.
+- **Changing the phone number** (item 80, D-108; NIST SP 800-63B-4 sections 3.1.3.3 and 4.1.2.1: binding a new authenticator):
+  - `POST /api/v1/me/phone-change` needs a step-up code from the current number, bound to the exact new number, and a login code from the new number, which it uses up; the new number's code is checked first, so a wrong one never spends the other;
+  - a number with an account, or one another account is waiting for, is refused only after its own code was right, so only its holder learns it;
+  - **the new number takes over 72 hours later**, by a job: the old number logs in meanwhile, the owner is told by notifications nobody can mute and can cancel with no code from any session; then every session ends, every push token is forgotten, and the old number is let go, so whoever is given it next (TRAI: after 90 days) finds a new account;
+  - while it waits, login refuses to make a new account on the new number (409 `phone_change_waiting`);
+  - every piece of work on two numbers takes both per-phone locks in sorted order, so a login, a code and a move run one at a time and cannot deadlock;
+  - admins cannot change their number through the API, only through `scripts/make_admin.py`;
+  - **enforced by** `tests/modules/me/test_phone_change_api.py`, `test_phone_change_concurrency.py`, `tests/modules/auth/test_phone_change_properties.py` and `test_account_phone_change_model.py`; each rule broken on purpose and seen caught.
 - A suspended account is refused at login, on refresh and on every request. **Enforced by** `tests/modules/auth/test_suspension_api.py`.
 - **Sign-up details** (D-080) are read only by the login that creates the account, so nobody can rewrite them afterwards.
 - **Adults only** (D-086): creating a profile checks a date of birth against today in Tamil Nadu and keeps only the time of the confirmation, never the date.
@@ -80,7 +88,7 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md`. Rule
 | API3 Broken object property level authorization | Separate create, update and read schemas; every request body refuses unknown fields; public responses built by hand | `tests/test_architecture.py` (all 39 bodies); contract fuzzing |
 | API4 Unrestricted resource consumption | Rate limits, bounded lists, a 1 MB body limit, statement timeouts, a cap on requests in flight (D-093), daily ceilings on paid APIs | Limit tests; 413 tests; the load test (D-092) |
 | API5 Broken function level authorization | Role checks on every route; admin routes separate and 404 | Role tests |
-| API6 Unrestricted access to sensitive business flows | Extra limits on code sending, applications, bulk payments; **a daily ceiling per account on everything that reaches another person** (item 58); a code for each risky change, and a 24-hour wait on a new UPI ID (item 82) | `tests/modules/test_daily_ceilings.py` reads the registered limits; `tests/modules/me/test_step_up_api.py` |
+| API6 Unrestricted access to sensitive business flows | Extra limits on code sending, applications, bulk payments; **a daily ceiling per account on everything that reaches another person** (item 58); a code for each risky change, a 24-hour wait on a new UPI ID (item 82), and a code from each number and a 72-hour wait on a new phone number (item 80) | `tests/modules/test_daily_ceilings.py` reads the registered limits; `tests/modules/me/test_step_up_api.py` |
 | API7 Server-side request forgery | No user-supplied URL is fetched; a brand's domain check (item 74) asks two fixed DNS-over-HTTPS resolvers and the registry IANA names, about one validated name, never a URL; proof and evidence links are stored, never fetched, and accepted only from a published host list with phishing shapes refused (item 57, `app/core/links.py`) | `tests/core/test_links.py` |
 | API8 Security misconfiguration | Security headers on every response, CORS allow-list, docs off in production (D-044) | Header tests, 500s included |
 | API9 Improper inventory management | Committed OpenAPI contract; a test fails on any unannounced change | Contract tests |
@@ -103,6 +111,7 @@ Examples:
 | Code send | 3 in 10 minutes | the address (the phone's caps are in section 1) |
 | Code verify | 10 in 10 minutes | the address (the phone's caps are in section 1) |
 | Asking for a step-up code (item 82) | 3 in 10 minutes, 10 a day | the account (and the phone's caps, shared with login codes) |
+| Changing the phone number (item 80) | 5 in 10 minutes, 10 a day | the account (and both numbers' code caps) |
 | Refresh and logout | 30 a minute | the address |
 | Writes | 30 a minute, most with a daily ceiling | the account |
 | Search and matching | 30 a minute | the account |
@@ -181,7 +190,7 @@ Examples:
 
 ## 11. Gaps, named
 
-**Closed on 17 October:** a stolen session setting a creator's UPI ID, taking their export or logging them out everywhere with the token alone (item 82, D-107).
+**Closed on 17 October:** a stolen session setting a creator's UPI ID, taking their export or logging them out everywhere with the token alone (item 82, D-107); and nobody able to change their phone number, so a number left behind and reissued by the carrier would log its next holder into the old account (item 80, D-108).
 
 **Closed on 16 October:** admins logging in with one factor, and admin sessions renewing for a day at every refresh with no overall limit (item 101, D-105).
 
@@ -193,7 +202,7 @@ Examples:
 |---|---|---|---|
 | 1 | **A code-scanning alert is open on GitHub and nobody here has read it** (https://github.com/adhi2801/nicheconnect-tn/security/code-scanning/1). GitHub's API needs a login to read it even on a public repository (checked 14 October). No workflow here uploads results, so it is likely GitHub's default CodeQL setup | Unknown until read | A founder reads it, or signs in to `gh` so it can be read here |
 | 2 | **No chapter-by-chapter ASVS 5.0 mapping** | "Level 2" cannot be claimed | Map V1 to V17 before the penetration test, so the tester checks what we claim |
-| 3 | **Brands and creators log in with one factor**, and the admins' second factor (D-105) can still be phished in real time, as any typed code can | A SIM swap is a brand's or creator's account; a convincing fake admin page could take both admin codes. Since item 82 a stolen session cannot change where a creator is paid, but a SIM swap still gets every code, so a new UPI ID's 24-hour wait and an in-app alert are the only answer to it; nothing yet delivers that alert outside the app (E1) | Passkeys (item 79) for everyone, admins first, once the domain and an admin web page exist |
+| 3 | **Brands and creators log in with one factor**, and the admins' second factor (D-105) can still be phished in real time, as any typed code can | A SIM swap is a brand's or creator's account; a convincing fake admin page could take both admin codes. Since item 82 a stolen session cannot change where a creator is paid, but a SIM swap still gets every code, so a new UPI ID's 24-hour wait, a new phone number's 72-hour wait and an in-app alert are the only answer to it; nothing yet delivers that alert outside the app (E1). Someone whose old number is already gone cannot change it themselves, and the admins' procedure for it is not yet written | Passkeys (item 79) for everyone, admins first, once the domain and an admin web page exist |
 | 4 | Incident plan not rehearsed; no penetration test; images not signed | Untested plans fail when needed | Section 10 |
 
 ## 12. Sources
@@ -208,6 +217,7 @@ Each link checked to exist on 14 October 2026.
 - [STRIDE, as Microsoft's threat modelling tool defines it](https://learn.microsoft.com/en-us/azure/security/develop/threat-modeling-tool-threats).
 - [CERT-In directions of 28 April 2022](https://www.cert-in.org.in/PDF/CERT-In_Directions_70B_28.04.2022.pdf): 6-hour incident reporting.
 - [RFC 9116](https://www.rfc-editor.org/rfc/rfc9116): `security.txt`.
+- Changing the phone number (read 17 October 2026, D-108): [NIST SP 800-63B-4, authenticator events](https://pages.nist.gov/800-63-4/sp800-63b/events/) (binding a new authenticator, notification, recovery); [WhatsApp: changing your number](https://faq.whatsapp.com/en/general/28030001) and [Guiding Tech on what it does](https://www.guidingtech.com/what-happens-change-whatsapp-number/); [TRAI to the Supreme Court: a deactivated number is not reissued for 90 days](https://www.livelaw.in/amp/top-stories/once-a-mobile-number-is-deactivated-it-is-not-assigned-to-a-new-user-for-90-days-trai-to-supreme-court-241506).
 - A second check before risky changes (read 17 October 2026, D-107): [RFC 9470](https://www.rfc-editor.org/rfc/rfc9470) (OAuth 2.0 step-up authentication challenge); [OWASP ASVS 5.0, V7 Session Management](https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x16-V7-Session-Management.md) section 7.5; [NIST SP 800-63B-4, authenticator events](https://pages.nist.gov/800-63-4/sp800-63b/events/); [the EBA on dynamic linking](https://www.eba.europa.eu/single-rule-book-qa/qna/view/publicId/2018_4414); [Upwork's hold on a new withdrawal method](https://support.upwork.com/hc/en-us/articles/211060918); [SBI on UPI's limits after a new device or PIN](https://sbi.co.in/web/yono/blog/understand-upi-transaction-limits-cooling-period-and-payment-tips).
 - The admins' second factor (read 16 October 2026, D-105): [RFC 6238](https://www.rfc-editor.org/rfc/rfc6238) (TOTP) and [RFC 8176](https://www.rfc-editor.org/rfc/rfc8176) (`amr` values); [OWASP ASVS 5.0, V6 Authentication](https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x15-V6-Authentication.md) and [V7 Session Management](https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x16-V7-Session-Management.md); [Cloudflare on the 2022 phishing attack](https://blog.cloudflare.com/2022-07-sms-phishing-attacks); [Help Net Security on the Retool breach](https://www.helpnetsecurity.com/2023/09/14/retool-breach/); [BleepingComputer on help-desk MFA resets](https://www.bleepingcomputer.com/news/security/3-key-takeaways-from-the-scattered-spider-attacks-on-insurance-firms/).
 - [SLSA levels](https://slsa.dev/spec/v1.0/levels): build provenance.

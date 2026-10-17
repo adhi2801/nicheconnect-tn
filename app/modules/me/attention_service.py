@@ -17,6 +17,7 @@ from app.core.attention import (
     by_urgency,
 )
 from app.core.clock import india_date
+from app.modules.auth import attention as logins
 from app.modules.auth.models.account import Account
 from app.modules.campaigns import attention as campaigns
 from app.modules.campaigns.service import get_brand_for_account, get_creator_for_account
@@ -42,6 +43,7 @@ def for_account(db: Session, account: Account, now: datetime) -> AttentionList:
             *payments.for_brand(db, brand.id),
             *disputes.for_brand(db, brand.id, today),
             *domains.for_brand(db, brand.id, now),
+            *logins.phone_change_for_account(db, account.id, now),
         ]
     else:
         creator = get_creator_for_account(db, account.id)
@@ -52,6 +54,7 @@ def for_account(db: Session, account: Account, now: datetime) -> AttentionList:
             *payments.for_creator(db, creator.id, today),
             *disputes.for_creator(db, creator.id, today),
             *payments.upi_change_for_creator(db, creator.id, now),
+            *logins.phone_change_for_account(db, account.id, now),
         ]
 
     ordered = by_urgency(found)

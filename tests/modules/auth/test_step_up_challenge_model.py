@@ -48,7 +48,7 @@ def test_a_good_row_is_kept(db):
 @pytest.mark.parametrize(
     ("overrides", "constraint"),
     [
-        ({"action": "change_phone"}, "action_allowed"),
+        ({"action": "delete_account"}, "action_allowed"),
         ({"value_hash": "A" * 64}, "value_hash_format"),
         ({"value_hash": "a" * 63}, "value_hash_format"),
         ({"code_hash": "123456"}, "code_hash_format"),

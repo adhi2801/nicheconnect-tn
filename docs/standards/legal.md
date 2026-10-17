@@ -52,7 +52,7 @@ Status words in this file:
 | Consent free, specific, withdrawable as easily as given | A withdraw endpoint for every consent. A new UPI ID waiting its 24 hours (D-107) carries its own consent and is withdrawn with the ID, or cancelled alone, never needing a code | Built for the Passport, rate card and UPI ID; **Confirm** the UPI notice says a new ID waits 24 hours |
 | Reasonable security safeguards (Rule 6) | `security.md`, ASVS level 2 | Owed: the items `security.md` lists |
 | Breach: tell the Data Protection Board and every affected person (Rule 7) | `docs/INCIDENT_RESPONSE.md` section 5. Sources describe a detailed report to the Board within 72 hours; the exact clock is a Confirm item | **Confirm** |
-| Erase when the purpose is served or consent is withdrawn; publish retention periods (Rule 8) | Account deletion (E8) waits on the retention answer | **Confirm**, then Owed |
+| Erase when the purpose is served or consent is withdrawn; publish retention periods (Rule 8) | Account deletion (E8) waits on the retention answer. A new phone number waiting to replace the old (D-108) is deleted once the change is made or cancelled, and no earlier number is kept | **Confirm**, then Owed |
 | **Children (under 18): verifiable parental consent; no tracking, behavioural monitoring or targeted advertising** (Section 9, Rule 10) | Adults only (D-086, section 3.10) | Built; **Confirm** |
 | A contact for privacy questions and grievances, published (Rule 14) | The grievance officer of section 3.3 can serve both | Owed (founders name the person) |
 | Processors on contract: AWS, Sentry, MSG91, Anthropic | Data processing terms with each, kept with the validation pack | Founders |
@@ -203,7 +203,7 @@ Criminal defamation is now section 356 of the Bharatiya Nyaya Sanhita, 2023, in 
 | Rule | What it means for us | Status |
 |---|---|---|
 | TRAI's commercial-messaging regulations (TCCCPR 2018): every SMS from a business goes from a registered sender, with a template registered on DLT; variable tags required on new templates from 14 January 2026 | Login codes go by WhatsApp first (MSG91, D-058). **Any SMS fallback needs DLT registration first** | Founders (DLT), with MSG91 |
-| WhatsApp's business policy: people opt in to business messages | Login codes, and the codes asked for before a risky change (D-107), are requested by the person, through the same authentication template; anything else waits for E1 and its opt-in | Owed with E1 |
+| WhatsApp's business policy: people opt in to business messages | Login codes, the codes asked for before a risky change (D-107), and the code to a new number before it replaces the old (D-108), are requested by the person, through the same authentication template; anything else waits for E1 and its opt-in | Owed with E1 |
 
 ### 3.14 Accessibility
 

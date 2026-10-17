@@ -26,6 +26,7 @@ from app.modules.deal_memo import (
 )
 from app.modules.deal_memo.anchor_models import DealRecordCheckpoint, DealRecordTimestamp
 from app.modules.deal_memo.timestamp_authority import Stamp
+from app.modules.me import phone_change_jobs
 from app.modules.profiles import brand_domain_jobs
 from app.modules.profiles.domain_lookup import FakeDomainLookup
 
@@ -261,3 +262,29 @@ def test_a_domain_run_with_nothing_due_asks_nobody(launched, monkeypatch):
 
     assert run.checked == run.verified == run.lapsed == 0
     assert fake.asked == []
+
+
+def test_phone_changes_are_made_every_minute_with_no_backfill(launched):
+    """Item 80: a change is made within a minute of its 72 hours ending."""
+    schedule = DBOS.get_schedule(phone_change_jobs.SCHEDULE_NAME)
+
+    assert schedule is not None
+    assert schedule["schedule"] == phone_change_jobs.EVERY_MINUTE_CRON == "* * * * *"
+    assert schedule["automatic_backfill"] is False
+
+
+def test_the_phone_change_workflow_runs_through_dbos(launched, monkeypatch):
+    runs = []
+    monkeypatch.setattr(
+        phone_change_jobs, "run_changes", lambda scheduled_at: runs.append(scheduled_at)
+    )
+
+    phone_change_jobs.make_phone_changes(SCHEDULED, None)
+
+    assert runs == [SCHEDULED]
+
+
+def test_a_phone_change_run_with_nothing_due_changes_nothing(launched):
+    run = phone_change_jobs.run_changes(SCHEDULED)
+
+    assert run.due == run.made == run.dropped == 0

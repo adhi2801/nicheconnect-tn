@@ -17,11 +17,13 @@ import pathlib
 import statistics
 import sys
 import time
+import uuid
 
 # Run as `python scripts/measure_performance.py` from the project root.
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
 from collections import defaultdict
+from contextlib import nullcontext
 from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
@@ -36,6 +38,10 @@ from app.modules.auth import second_factor, second_factor_secrets
 from app.modules.auth import service as login
 from app.modules.auth.dependencies import get_now
 from app.modules.auth.models.account import Account
+from app.modules.auth.models.account_phone_change import (
+    PHONE_CHANGE_WAIT,
+    AccountPhoneChange,
+)
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.models.otp_challenge import OtpChallenge
@@ -48,6 +54,7 @@ from app.modules.auth.tokens import (
     hash_otp_code,
 )
 from app.modules.campaigns.models import Campaign
+from app.modules.me import phone_change_service
 from app.modules.payment_status.service import MAX_BULK_MARK_PAID
 
 READ_BUDGET_MS = 300
@@ -151,6 +158,8 @@ def measure_writes(
     6. `deals` rounds of the second check (item 82): a code asked for and a
        UPI ID set with it, read back and its wait cancelled; the export and
        logging out everywhere, each with its own code.
+    7. `deals` phone number changes (item 80), each with both codes, read
+       and cancelled; then `deals` runs of the job, each making one change.
     """
     timings: dict[str, list[float]] = defaultdict(list)
     due_on = (now + timedelta(days=60)).date().isoformat()
@@ -584,6 +593,59 @@ def measure_writes(
                     "/api/v1/auth/logout-all",
                     with_code("POST /me/step-up", "log_out_everywhere"),
                 )
+
+            # Changing the phone number (item 80): both codes, the change, a
+            # read and the cancel; then the job making one due change, on an
+            # account made for it, timed as one whole run.
+            for _ in range(deals):
+                new_phone = f"+9197{uuid.uuid4().int % 10**8:08d}"
+                current = with_code(
+                    "POST /me/step-up", "change_phone", new_phone=new_phone
+                )
+                write(None, "/api/v1/auth/otp/request", {}, {"phone": new_phone})
+                write(
+                    "POST /me/phone-change (with both codes)",
+                    "/api/v1/me/phone-change",
+                    current,
+                    {
+                        "new_phone": new_phone,
+                        "new_phone_code": sender.last_code_for(new_phone) or "",
+                    },
+                )
+                write(
+                    "GET /me/phone-change",
+                    "/api/v1/me/phone-change",
+                    creator_headers,
+                    method="GET",
+                )
+                write(
+                    "DELETE /me/phone-change",
+                    "/api/v1/me/phone-change",
+                    creator_headers,
+                    method="DELETE",
+                )
+            for _ in range(deals):
+                moving = Account(
+                    phone=f"+9196{uuid.uuid4().int % 10**8:08d}", role="creator"
+                )
+                db.add(moving)
+                db.flush()
+                db.add(
+                    AccountPhoneChange(
+                        account_id=moving.id,
+                        new_phone=f"+9195{uuid.uuid4().int % 10**8:08d}",
+                        requested_at=now - PHONE_CHANGE_WAIT,
+                        takes_effect_at=now,
+                    )
+                )
+                db.commit()
+                started = time.perf_counter()
+                run = phone_change_service.run_changes(lambda: nullcontext(db), now)
+                timings["job: one phone change made"].append(
+                    (time.perf_counter() - started) * 1000
+                )
+                if run.made != 1:
+                    raise SystemExit(f"phone change job: {run}")
         finally:
             login.OTP_SEND_LIMITS = caps
             settings.upi_notice_version = notice

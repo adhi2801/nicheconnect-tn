@@ -112,3 +112,50 @@ class StepUpCodeInvalid(DomainError):
     status_code = HTTPStatus.BAD_REQUEST
     code = "step_up_code_invalid"
     title = "That code is not valid for this change. Check it or ask for a new one"
+
+
+# Changing the phone number (item 80, D-108).
+
+
+class PhoneChangeWaiting(DomainError):
+    # Login with a number another account is waiting to move onto. Only
+    # someone who typed the right code for the number gets here, and the
+    # change was asked for with a code from it, so nobody else learns of it.
+    status_code = HTTPStatus.CONFLICT
+    code = "phone_change_waiting"
+    title = "This number is waiting to replace the number on an account"
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Log in with that account's current number until the change is "
+            "made, or cancel the change from that account."
+        )
+
+
+class PhoneUnchanged(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "phone_unchanged"
+    title = "That is already your number"
+
+
+class PhoneInUse(DomainError):
+    # Said only after the new number's code was right: its holder may know.
+    status_code = HTTPStatus.CONFLICT
+    code = "phone_in_use"
+    title = "That number is already on an account, or waiting to move onto one"
+
+
+class PhoneChangeTakingEffect(DomainError):
+    # The 72 hours are over and the job makes the change within a minute;
+    # it can no longer be cancelled or replaced.
+    status_code = HTTPStatus.CONFLICT
+    code = "phone_change_taking_effect"
+    title = "Your phone number change is being made"
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Its 72 hours are over, so it can no longer be cancelled or "
+            "replaced. It is finished within a minute; then log in with the "
+            "new number.",
+            headers={"Retry-After": "60"},
+        )

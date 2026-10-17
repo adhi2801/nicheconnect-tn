@@ -22,7 +22,7 @@ Three things it does **not** mean:
 
 **Measured on 14 October 2026:** 2,985 tests; coverage 98.55% counting branches when last measured that day, before its last three changes, with CI holding the floors on every run (`docs/standards/testing.md` section 7); CI green on `main` (`d6a86b8`, every job): the secret scan, the module layers, migration linting and round trip, the release step, the suite run as the app's own login and then the owner's tests, coverage, API fuzzing, the dependency and image scans, and the infrastructure check.
 
-**Open in section 3: 63 items** (68 on 14 October; item 51 built on 15 October, items 52 and 101 on 16 October, items 74 and 82 on 17 October). 24 wait on something outside the code or on Erode Harish: the name and domain (4, 10), the Meta app (29 to 31, 67, 78), the validation pack (33, 39), the lawyer or CA (35, 50, 76), the MSG91 template (62), results data (83, 86), founders' decisions (7, 8, 13, 38, 41, 46, 48, 61, 72). **39 need only an approval**, among them account safety (79 to 81), look-alike brand names (75), counter-offers (44), campaign alerts (43) and a brand's days to pay (87). Section 4 holds the 9 that wait on someone outside.
+**Open in section 3: 62 items** (68 on 14 October; item 51 built on 15 October, items 52 and 101 on 16 October, items 74, 82 and 80 on 17 October). 24 wait on something outside the code or on Erode Harish: the name and domain (4, 10), the Meta app (29 to 31, 67, 78), the validation pack (33, 39), the lawyer or CA (35, 50, 76), the MSG91 template (62), results data (83, 86), founders' decisions (7, 8, 13, 38, 41, 46, 48, 61, 72). **38 need only an approval**, among them account safety (79, 81), look-alike brand names (75), counter-offers (44), campaign alerts (43) and a brand's days to pay (87). Section 4 holds the 9 that wait on someone outside.
 
 **Built and tested on `main`:**
 - before 1 October: Phases A, B and D of the backlog, C1 to C4, E3 and E4 (`docs/PRODUCT_BACKLOG.md`), creator search, the admin side, results read from proof (D-070, switched off), the deal record with its daily outside timestamp, proof files, and AWS described as code;
@@ -30,7 +30,7 @@ Three things it does **not** mean:
 - 14 October, marked in the tables: items 97, 98, 99 and 102 (the app's own database login, every foreign key indexed, dispute events sealed, reporters told the outcome; D-100), 100 (every route refuses a stranger) and 69 (deal dates as a calendar file; D-102), and structured JSON logs (D-102).
 - 15 October, marked in the tables: item 51 (the IT Rules' clocks on the report queue; D-103).
 - 16 October, marked in the tables: item 52 (taking down one item within 3 hours of a legal order; D-104) and item 101 (a second factor for admins; D-105).
-- 17 October, marked in the tables: item 74 (a brand proves it controls its website's domain; D-106) and item 82 (a second check before risky changes, and a new UPI ID's 24-hour wait; D-107).
+- 17 October, marked in the tables: item 74 (a brand proves it controls its website's domain; D-106), item 82 (a second check before risky changes, and a new UPI ID's 24-hour wait; D-107) and item 80 (changing one's phone number, with a code from each number and a 72-hour wait; D-108).
 
 ## 3. Left to build: no outside wait, a decision first
 
@@ -175,9 +175,9 @@ Approved by Adhi on 12 October: "I need them in the best way possible". Each was
 | # | Item | Who has it; why | Gate |
 |---|---|---|---|
 | 79 | Passkeys beside phone codes | Google, Apple, GitHub; phishing-proof, no SMS cost | Security |
-| 80 | Changing one's phone number safely | WhatsApp, banks; a lost SIM must not mean a lost account | Security |
+| 80 | Changing one's phone number safely | WhatsApp, banks; a lost SIM must not mean a lost account | Security · **Built 17 October (D-108)**: `POST /api/v1/me/phone-change` with a step-up code from the current number (bound to the new one) and a login code from the new number; the new number takes over 72 hours later, by a job that ends every session, and the old number is let go. Until then the old number logs in, the owner is told, and `DELETE /api/v1/me/phone-change` cancels with no code; login refuses a new account on the waiting number. A lost old number still needs the admins (no written procedure yet), and a self-service path waits on E1 |
 | 81 | Where you are logged in: every session, and logging out of one | Google, WhatsApp | Security |
-| 82 | A second check before risky changes (UPI ID, phone number, deleting the account) | Banks, Upwork | Security · **Built 17 October (D-107)**: `POST /api/v1/me/step-up` sends a code good for one change, once, for 5 minutes (a UPI ID: that exact ID), counted with login codes; setting a UPI ID, the export and logging out everywhere need it in `Step-Up-Code`; admins use their authenticator. A new UPI ID waits 24 hours before brands see it, with an alert and a cancel (`DELETE /api/v1/creators/me/upi/waiting`). Changing the phone number (80) and deleting the account name their action when built |
+| 82 | A second check before risky changes (UPI ID, phone number, deleting the account) | Banks, Upwork | Security · **Built 17 October (D-107)**: `POST /api/v1/me/step-up` sends a code good for one change, once, for 5 minutes (a UPI ID: that exact ID), counted with login codes; setting a UPI ID, the export and logging out everywhere need it in `Step-Up-Code`; admins use their authenticator. A new UPI ID waits 24 hours before brands see it, with an alert and a cancel (`DELETE /api/v1/creators/me/upi/waiting`). Changing the phone number (80, D-108) uses `change_phone`; deleting the account names its action when built |
 
 **Growth and data: our own novelties, numbered**
 

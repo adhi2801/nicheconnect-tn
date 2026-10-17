@@ -38,7 +38,8 @@ from app.modules.notifications.models import NOTIFICATION_TYPES
 # item 52); or someone may be inside an admin account, which a muted alert
 # would hide from the one person who could stop it (item 101); or someone
 # may be inside their own account, changing where they are paid, taking a
-# copy of their data, or logging everyone out (item 82).
+# copy of their data, or logging everyone out (item 82); or moving their
+# account onto another phone number (item 80).
 URGENT_TYPES: tuple[str, ...] = (
     "memo_sent",
     "proof_submitted",
@@ -54,6 +55,10 @@ URGENT_TYPES: tuple[str, ...] = (
     "upi_change_cancelled",
     "data_exported",
     "logged_out_everywhere",
+    "phone_change_requested",
+    "phone_change_cancelled",
+    "phone_changed",
+    "phone_change_failed",
 )
 MUTABLE_TYPES: tuple[str, ...] = tuple(
     kind for kind in NOTIFICATION_TYPES if kind not in URGENT_TYPES

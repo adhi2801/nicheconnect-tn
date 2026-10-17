@@ -32,6 +32,8 @@ BRAND_KINDS: tuple[str, ...] = (
     "fix_domain_record",
     "domain_lapsed",
     "domain_claim_expired",
+    # A new phone number waiting its 72 hours (item 80, D-108).
+    "phone_change_pending",
 )
 # What a creator can be asked to do, or needs to know.
 CREATOR_KINDS: tuple[str, ...] = (
@@ -46,15 +48,20 @@ CREATOR_KINDS: tuple[str, ...] = (
     # day brands start to see it, so a change that was not the creator's is
     # in front of them while it can still be cancelled.
     "upi_change_pending",
+    # A new phone number waiting its 72 hours (item 80, D-108): due the day
+    # it takes over the login, so a change that was not theirs is in front
+    # of them while it can still be cancelled.
+    "phone_change_pending",
 )
 # Between two items due the same day, the one about money or a dispute
 # first: those are the ones that turn into a record against somebody. A
-# waiting UPI ID before all: if it was not the creator, it is where their
-# money would go.
+# waiting phone number before all: if it was not them, it is the whole
+# account; then a waiting UPI ID, where a creator's money would go.
 _PRIORITY = {
     kind: rank
     for rank, kind in enumerate(
         (
+            "phone_change_pending",
             "upi_change_pending",
             "respond_to_dispute",
             "pay_creator",
@@ -87,7 +94,8 @@ class AttentionItem:
     # The Tamil Nadu date it is due by, or None when nothing sets a date.
     due_on: date | None
     # None for an item about the account itself rather than a campaign:
-    # the brand's domain (item 74), a creator's waiting UPI ID (item 82).
+    # the brand's domain (item 74), a creator's waiting UPI ID (item 82),
+    # a waiting phone number (item 80).
     campaign_id: uuid.UUID | None
     campaign_title: str | None
     # The other side: a creator's handle for a brand, a brand's name for a
