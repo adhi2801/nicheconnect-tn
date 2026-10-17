@@ -11,3 +11,8 @@ a946a9299afe8a590fa6d707bbb2c8a66b6637d5:tests/core/test_idempotency.py:generic-
 # A made-up Instagram handle with digits in it, used by the tracing tests to
 # prove no handle or path detail reaches a span (D-094). Not a credential.
 5dff4a79058d263d2650d25775cc15e1ac892e2d:tests/core/test_tracing.py:generic-api-key:27
+
+# A made-up domain-verification token in a test (item 74): base32 of fixed
+# text, never issued to anyone. Real ones are public by design, published in
+# a brand's DNS for anyone to read.
+45f6be3c25652ad137dcbd31eb34ffa84c3b22a7:tests/modules/profiles/test_brand_domains.py:generic-api-key:100
