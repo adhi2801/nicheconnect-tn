@@ -138,6 +138,58 @@ def change_my_phone(
     )
 
 
+@router.post(
+    "/phone-change/without-current-number",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=PhoneChangeRead,
+    summary="Move my account to a new number when my current number is lost",
+    description=(
+        "For when your current number is already gone, so no code can reach "
+        "it. Needs **a login at least 30 days old** (403 `login_too_recent`, "
+        "with `Retry-After`, from a newer one) and a code from the new number, "
+        "asked for at `POST /api/v1/auth/otp/request`, as `new_phone_code`. "
+        "**The new number takes over 7 days later**, and **any login with "
+        "your current number before then cancels it**, since that number was "
+        "not lost after all; you are told either way. Asking again replaces a "
+        "change still waiting. Brands and creators only. There is no other "
+        "way: we never move a number on someone's word, so a lost number "
+        "with no login this old cannot be recovered. Limits as for a change "
+        "with both numbers."
+    ),
+    responses={
+        **_COMMON,
+        400: problem_doc("The new number's code is wrong, expired or used"),
+        403: problem_doc(
+            "`role_not_allowed`: an admin's number cannot be changed here; "
+            "`login_too_recent`: this login is under 30 days old (see Retry-After)"
+        ),
+        409: problem_doc(
+            "`phone_unchanged`, `phone_in_use` or `phone_change_taking_effect`, "
+            "as for a change with both numbers"
+        ),
+        422: problem_doc("The new number or its code is not valid"),
+        429: problem_doc(
+            "Too many requests, or too many wrong codes for the new number; see "
+            "the Retry-After header"
+        ),
+    },
+)
+@rate_limit(CHANGE_LIMIT)
+def change_my_lost_phone(
+    request: Request,
+    body: PhoneChangeIn,
+    account: CurrentAccount,
+    login_time: LoginTime,
+    db: Session = Depends(get_db),
+    now: datetime = Depends(get_now),
+) -> PhoneChangeRead:
+    return _read(
+        service.request_change_without_current_number(
+            db, account, body.new_phone, body.new_phone_code, login_time, now
+        )
+    )
+
+
 @router.delete(
     "/phone-change",
     status_code=status.HTTP_204_NO_CONTENT,

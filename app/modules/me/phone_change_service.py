@@ -29,6 +29,12 @@ Threat model (security.md section 4):
   number some account is waiting for, and the move checks again under
   both numbers' locks; if it is taken anyway (an admin made by the script),
   the change is dropped and the owner told.
+- **A current number already lost** (D-110): the change may be asked
+  without its code, from a login at least 30 days old, and waits 7 days. A
+  thief holding only an old session can try this; the owner, who still has
+  the number, cancels it by logging in once, with no tap needed, and is
+  told. There is no other way round a lost number: admins never move one
+  (`docs/standards/security.md`), so a help desk cannot be talked round.
 - **Learning who has an account**: "already on an account" is said only
   after the new number's code was right, so only its holder learns it.
 
@@ -64,8 +70,8 @@ from app.modules.auth.exceptions import (
 )
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.account_phone_change import (
-    PHONE_CHANGE_WAIT,
     AccountPhoneChange,
+    wait_for,
 )
 from app.modules.notifications import service as notifications
 
@@ -73,7 +79,12 @@ logger = logging.getLogger(__name__)
 
 EXPORTED_TABLES = frozenset({"account_phone_change"})
 EXPORT_FIELDS = allow(
-    "new_phone", "requested_at", "takes_effect_at", "created_at", "updated_at"
+    "new_phone",
+    "requested_at",
+    "takes_effect_at",
+    "without_current_number",
+    "created_at",
+    "updated_at",
 )
 # An admin's number changes only through scripts/make_admin.py, as their
 # authenticator does: no route, so no help desk to talk round (D-105).
@@ -81,7 +92,7 @@ CHANGE_ROLES = ("brand", "creator")
 # Changes made in one run of the job; any more are made a minute later.
 MAX_CHANGES_PER_RUN = 50
 
-Outcome = Literal["made", "dropped"]
+Outcome = Literal["made", "dropped", "voided"]
 
 
 @dataclass(frozen=True)
@@ -99,6 +110,8 @@ class ChangeRun:
     due: int
     made: int
     dropped: int
+    # Made without the current number, which logged in since (D-110).
+    voided: int = 0
 
 
 def ensure_new_phone(account: Account, new_phone: str) -> None:
@@ -113,12 +126,18 @@ def ensure_new_phone(account: Account, new_phone: str) -> None:
 
 
 def get_for_account(db: Session, account: Account) -> PhoneChangeState:
-    """The account's number, and a new one still waiting to replace it."""
+    """The account's number, and a new one still waiting to replace it.
+
+    A change made without the current number, which that number has logged
+    in since, is off (D-110) and not shown; the job removes it.
+    """
     waiting = db.scalars(
         select(AccountPhoneChange)
         .where(AccountPhoneChange.account_id == account.id)
         .execution_options(populate_existing=True)
     ).first()
+    if waiting is not None and phone_changes.is_void(db, waiting):
+        waiting = None
     return PhoneChangeState(phone=account.phone, waiting=waiting)
 
 
@@ -156,6 +175,48 @@ def request_change(
     login_age.ensure_established(authenticated_at, now)
     if step_up_code is None:
         raise StepUpRequired()
+    return _claim(db, account, new_phone, new_phone_code, step_up_code, now)
+
+
+def request_change_without_current_number(
+    db: Session,
+    account: Account,
+    new_phone: str,
+    new_phone_code: str,
+    authenticated_at: datetime | None,
+    now: datetime,
+) -> PhoneChangeState:
+    """Start moving the account onto `new_phone` when its current number is lost (D-110).
+
+    No code from the current number can be had, so the login is the proof:
+    it must be at least LOST_NUMBER_LOGIN (30 days) old, and the change waits
+    PHONE_CHANGE_WAIT_WITHOUT_CURRENT (7 days). If anyone logs in with the
+    current number meanwhile, it was not lost, and the change is off
+    (`phone_changes.is_void`); the job then drops it and tells the account.
+    Otherwise as `request_change`, with a login code to `new_phone`.
+
+    Raises RoleNotAllowed, PhoneUnchanged, LoginTooRecent,
+    PhoneChangeTakingEffect, PhoneInUse, and what service.check_phone_code
+    raises for the new number's code.
+    """
+    ensure_new_phone(account, new_phone)
+    login_age.ensure_established(authenticated_at, now, login_age.LOST_NUMBER_LOGIN)
+    return _claim(db, account, new_phone, new_phone_code, None, now)
+
+
+def _claim(
+    db: Session,
+    account: Account,
+    new_phone: str,
+    new_phone_code: str,
+    step_up_code: str | None,
+    now: datetime,
+) -> PhoneChangeState:
+    """Both locks, the codes, the checks and the waiting row. Commits.
+
+    `step_up_code` None is a change without the current number (D-110).
+    """
+    without_current_number = step_up_code is None
     login.lock_phones(db, account.phone, new_phone)
     waiting = _locked_change(db, account.id)
     if waiting is not None and phone_changes.is_due(waiting, now):
@@ -163,17 +224,19 @@ def request_change(
         raise PhoneChangeTakingEffect()
 
     new_number = login.check_phone_code(db, new_phone, new_phone_code, now)
-    step_ups.consume(db, account, "change_phone", new_phone, step_up_code, now)
+    if step_up_code is not None:
+        step_ups.consume(db, account, "change_phone", new_phone, step_up_code, now)
     if db.scalar(select(exists().where(Account.phone == new_phone))):
         db.rollback()
         raise PhoneInUse()
 
     new_number.consumed_at = now
-    takes_effect_at = now + PHONE_CHANGE_WAIT
+    takes_effect_at = now + wait_for(without_current_number)
     values = {
         "new_phone": new_phone,
         "requested_at": now,
         "takes_effect_at": takes_effect_at,
+        "without_current_number": without_current_number,
         "updated_at": now,
     }
     try:
@@ -189,12 +252,15 @@ def request_change(
         # own rule (uq_account_phone_change_new_phone) is the check.
         db.rollback()
         raise PhoneInUse() from None
+    details: dict[str, object] = {"takes_effect_at": takes_effect_at.isoformat()}
+    if without_current_number:
+        details["without_current_number"] = True
     notifications.record(
         db,
         account_id=account.id,
         notification_type="phone_change_requested",
         now=now,
-        details={"takes_effect_at": takes_effect_at.isoformat()},
+        details=details,
     )
     db.commit()
     return get_for_account(db, account)
@@ -227,15 +293,21 @@ def cancel(db: Session, account: Account, now: datetime) -> None:
 def run_changes(
     session_factory: Callable[[], AbstractContextManager[Session]], now: datetime
 ) -> ChangeRun:
-    """One run of the job: make every change whose 72 hours are over.
+    """One run of the job: make every change whose wait is over.
 
-    Each in its own transaction, so one that fails leaves the rest made.
+    It also looks at every change made without the current number, due or
+    not, and drops any that number has logged in since (D-110), so the
+    account hears of it within a minute. Each in its own transaction, so one
+    that fails leaves the rest made.
     """
     with session_factory() as db:
         due = list(
             db.scalars(
                 select(AccountPhoneChange.id)
-                .where(AccountPhoneChange.takes_effect_at <= now)
+                .where(
+                    (AccountPhoneChange.takes_effect_at <= now)
+                    | AccountPhoneChange.without_current_number
+                )
                 .order_by(AccountPhoneChange.takes_effect_at, AccountPhoneChange.id)
                 .limit(MAX_CHANGES_PER_RUN)
             ).all()
@@ -245,10 +317,17 @@ def run_changes(
         with session_factory() as db:
             outcomes.append(make_change(db, change_id, now))
     run = ChangeRun(
-        due=len(due), made=outcomes.count("made"), dropped=outcomes.count("dropped")
+        due=len(due),
+        made=outcomes.count("made"),
+        dropped=outcomes.count("dropped"),
+        voided=outcomes.count("voided"),
     )
     logger.info(
-        "phone_change.run due=%d made=%d dropped=%d", run.due, run.made, run.dropped
+        "phone_change.run due=%d made=%d dropped=%d voided=%d",
+        run.due,
+        run.made,
+        run.dropped,
+        run.voided,
     )
     return run
 
@@ -258,9 +337,12 @@ def make_change(db: Session, change_id: uuid.UUID, now: datetime) -> Outcome | N
 
     Both numbers are locked first, as for asking, then the change and the
     account, and the change is read again under the locks: one already made
-    by another run, or not yet due, is left alone (None). Once due, a change
-    can be neither cancelled nor replaced, so its numbers cannot change
-    between the first read and the locks.
+    by another run, or not yet due, is left alone (None). One made without
+    the current number, which that number has logged in since, is dropped
+    and the account told ("voided", D-110); the lock on the current number
+    means a login with it lands wholly before or wholly after the move. Once
+    due, a change can be neither cancelled nor replaced, so its numbers
+    cannot change between the first read and the locks.
     If the new number now has an account, the change is dropped and the
     owner told ("dropped"). Otherwise the account takes the new number,
     every session ends and every push token is forgotten, and the owner is
@@ -282,7 +364,22 @@ def make_change(db: Session, change_id: uuid.UUID, now: datetime) -> Outcome | N
         .with_for_update()
         .execution_options(populate_existing=True)
     ).first()
-    if change is None or not phone_changes.is_due(change, now):
+    if change is None:
+        db.commit()
+        return None
+    if phone_changes.is_void(db, change):
+        db.delete(change)
+        notifications.record(
+            db,
+            account_id=change.account_id,
+            notification_type="phone_change_cancelled",
+            now=now,
+            details={"reason": "logged_in_with_current_number"},
+        )
+        db.commit()
+        logger.info("phone_change.voided change_id=%s", change_id)
+        return "voided"
+    if not phone_changes.is_due(change, now):
         db.commit()
         return None
     account = db.scalars(

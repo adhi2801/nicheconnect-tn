@@ -7455,12 +7455,18 @@
             "format": "date-time",
             "title": "Takes Effect At",
             "type": "string"
+          },
+          "without_current_number": {
+            "description": "Asked for without a code from your current number, which you said is lost: it waits 7 days, and any login with your current number before then cancels it.",
+            "title": "Without Current Number",
+            "type": "boolean"
           }
         },
         "required": [
           "new_phone",
           "requested_at",
-          "takes_effect_at"
+          "takes_effect_at",
+          "without_current_number"
         ],
         "title": "PhoneChangeWaitingRead",
         "type": "object"
@@ -25946,6 +25952,134 @@
           }
         ],
         "summary": "Move my account to a new phone number",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/me/phone-change/without-current-number": {
+      "post": {
+        "description": "For when your current number is already gone, so no code can reach it. Needs **a login at least 30 days old** (403 `login_too_recent`, with `Retry-After`, from a newer one) and a code from the new number, asked for at `POST /api/v1/auth/otp/request`, as `new_phone_code`. **The new number takes over 7 days later**, and **any login with your current number before then cancels it**, since that number was not lost after all; you are told either way. Asking again replaces a change still waiting. Brands and creators only. There is no other way: we never move a number on someone's word, so a lost number with no login this old cannot be recovered. Limits as for a change with both numbers.",
+        "operationId": "change_my_lost_phone_api_v1_me_phone_change_without_current_number_post",
+        "parameters": [
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhoneChangeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhoneChangeRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The new number's code is wrong, expired or used"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`role_not_allowed`: an admin's number cannot be changed here; `login_too_recent`: this login is under 30 days old (see Retry-After)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`phone_unchanged`, `phone_in_use` or `phone_change_taking_effect`, as for a change with both numbers. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The new number or its code is not valid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests, or too many wrong codes for the new number; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Move my account to a new number when my current number is lost",
         "tags": [
           "auth"
         ]

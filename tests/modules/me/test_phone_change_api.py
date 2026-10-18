@@ -177,6 +177,7 @@ def test_with_a_code_from_each_number_the_change_waits_72_hours(
             "new_phone": new_phone,
             "requested_at": clock.now.isoformat().replace("+00:00", "Z"),
             "takes_effect_at": takes_effect_at.isoformat().replace("+00:00", "Z"),
+            "without_current_number": False,
         },
     }
     assert client.get(URL, headers=creator.headers).json() == response.json()
@@ -672,6 +673,7 @@ def test_the_export_holds_a_waiting_change(client, db, sender, clock, creator):
         "new_phone",
         "requested_at",
         "takes_effect_at",
+        "without_current_number",
         "created_at",
         "updated_at",
     }
