@@ -15,7 +15,7 @@ Either of these works:
 
 - `GET /api/v1/deal-memos/{memo_id}/record`, as the brand or the creator of
   that deal; or
-- your data export (`GET /api/v1/me/export`), section `deal_record`, which
+- your data export (`POST /api/v1/me/exports`, then its download, D-111), section `deal_record`, which
   holds the same entries for every deal you are part of.
 
 **Keep `latest_seal`.** It is the one number that lets you catch a rewrite

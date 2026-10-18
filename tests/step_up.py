@@ -7,16 +7,21 @@ the real check rather than around it.
 """
 
 from collections.abc import Mapping
+from contextlib import nullcontext
 from typing import Any
 
 from fastapi.testclient import TestClient
 from httpx2 import Response
 
+from app.core.storage import memory_store
+from app.db.session import get_db
 from app.main import app
+from app.modules.auth.dependencies import get_now
 from app.modules.auth.sender import FakeOtpSender, get_otp_sender
+from app.modules.me import data_export_service
 
 STEP_UP_URL = "/api/v1/me/step-up"
-EXPORT_URL = "/api/v1/me/export"
+EXPORT_URL = "/api/v1/me/exports"
 LOGOUT_ALL_URL = "/api/v1/auth/logout-all"
 
 
@@ -24,13 +29,10 @@ def ask_for_code(
     client: TestClient,
     headers: Mapping[str, str],
     action: str,
-    *,
-    upi_id: str | None = None,
+    **fields: str,
 ) -> str:
-    """A fresh code for `action` (and `upi_id`), as sent to the person's phone."""
-    body: dict[str, Any] = {"action": action}
-    if upi_id is not None:
-        body["upi_id"] = upi_id
+    """A fresh code for `action` (and its value), as sent to the person's phone."""
+    body: dict[str, Any] = {"action": action, **fields}
     sender = FakeOtpSender()
     earlier = app.dependency_overrides.get(get_otp_sender)
     app.dependency_overrides[get_otp_sender] = lambda: sender
@@ -50,17 +52,47 @@ def with_code(
     client: TestClient,
     headers: Mapping[str, str],
     action: str,
-    *,
-    upi_id: str | None = None,
+    **fields: str,
 ) -> dict[str, str]:
     """`headers`, plus a fresh code for exactly this change."""
-    code = ask_for_code(client, headers, action, upi_id=upi_id)
+    code = ask_for_code(client, headers, action, **fields)
     return {**headers, "Step-Up-Code": code}
 
 
+def build_exports() -> data_export_service.ExportRun:
+    """One run of the export job, on the test's own session, clock and store."""
+    db = app.dependency_overrides[get_db]()
+    now = app.dependency_overrides[get_now]()
+    return data_export_service.run_exports(lambda: nullcontext(db), memory_store(), now)
+
+
+def ask_for_export(client: TestClient, headers: Mapping[str, str]) -> str:
+    """Ask for a data export through the second check; its id."""
+    asked = client.post(EXPORT_URL, headers=with_code(client, headers, "download_export"))
+    assert asked.status_code == 202, asked.text
+    export_id: str = asked.json()["id"]
+    return export_id
+
+
+def download_ready_export(
+    client: TestClient, headers: Mapping[str, str], export_id: str
+) -> Response:
+    """Download one ready export, with a code for exactly that export."""
+    return client.post(
+        f"{EXPORT_URL}/{export_id}/download",
+        headers=with_code(client, headers, "download_export", export_id=export_id),
+    )
+
+
 def download_export(client: TestClient, headers: Mapping[str, str]) -> Response:
-    """The person's data export, through the second check."""
-    return client.get(EXPORT_URL, headers=with_code(client, headers, "download_export"))
+    """The person's data export, as an app gets it (D-111).
+
+    Asked for with a code, built by one run of the job, then downloaded with
+    a code for that export.
+    """
+    export_id = ask_for_export(client, headers)
+    build_exports()
+    return download_ready_export(client, headers, export_id)
 
 
 def log_out_everywhere(client: TestClient, headers: Mapping[str, str]) -> Response:

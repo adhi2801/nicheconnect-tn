@@ -26,7 +26,7 @@ from app.modules.deal_memo import (
 )
 from app.modules.deal_memo.anchor_models import DealRecordCheckpoint, DealRecordTimestamp
 from app.modules.deal_memo.timestamp_authority import Stamp
-from app.modules.me import phone_change_jobs
+from app.modules.me import data_export_jobs, phone_change_jobs
 from app.modules.profiles import brand_domain_jobs
 from app.modules.profiles.domain_lookup import FakeDomainLookup
 
@@ -288,3 +288,29 @@ def test_a_phone_change_run_with_nothing_due_changes_nothing(launched):
     run = phone_change_jobs.run_changes(SCHEDULED)
 
     assert run.due == run.made == run.dropped == 0
+
+
+def test_data_exports_are_built_every_minute_with_no_backfill(launched):
+    """D-111: an export asked for is ready within about a minute."""
+    schedule = DBOS.get_schedule(data_export_jobs.SCHEDULE_NAME)
+
+    assert schedule is not None
+    assert schedule["schedule"] == data_export_jobs.EVERY_MINUTE_CRON == "* * * * *"
+    assert schedule["automatic_backfill"] is False
+
+
+def test_the_export_workflow_runs_through_dbos(launched, monkeypatch):
+    runs = []
+    monkeypatch.setattr(
+        data_export_jobs, "run_exports", lambda scheduled_at: runs.append(scheduled_at)
+    )
+
+    data_export_jobs.build_data_exports(SCHEDULED, None)
+
+    assert runs == [SCHEDULED]
+
+
+def test_an_export_run_with_nothing_asked_builds_nothing(launched):
+    run = data_export_jobs.run_exports(SCHEDULED)
+
+    assert run.built == run.failed == run.expired == 0

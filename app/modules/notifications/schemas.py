@@ -49,6 +49,7 @@ NotificationType = Literal[
     "phone_change_cancelled",
     "phone_changed",
     "phone_change_failed",
+    "data_export_ready",
 ]
 
 ensure_same_values("NotificationType", NotificationType, NOTIFICATION_TYPES)

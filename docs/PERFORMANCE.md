@@ -15,6 +15,18 @@ whole deals, 5 bank bulk transfers of 25 rows, and 30 rounds of rate card
 edits. All from one run, on a developer laptop under Docker Desktop for
 Windows.
 
+## Added 18 October: the data export in the background (D-111)
+
+The export that measured over its budget (below, 17 October) is no longer built in a request. Three runs of `scripts/measure_performance.py --runs 50 --deals 30` on freshly seeded data, the first before `ANALYZE` had run, on a laptop:
+
+| Step | p95 ms (three runs) | Budget | Verdict |
+| --- | --- | --- | --- |
+| `POST /me/exports`, with its code | 26.0, 22.6, 24.1 | 500 | OK |
+| `POST /me/exports/{id}/download`, with its code | 22.7, 28.3, 22.8 | 500 | OK |
+| The job building one busy account's file | 335.8, 315.1, 303.8 | none a person waits on; 500 as a guide | OK |
+
+So the person waits about 25 ms each way, and the build's cost, which still grows with an account's history, is paid in the background. **Closed: the export over budget.** In the first run, before `ANALYZE`, the bulk mark-paid (25 rows) read 605.1 ms p95; after it 466.7 and 463.9: the harness edge described on 14 October, not on this path.
+
 ## Added 18 October: a lost current number (D-110)
 
 Same run of `scripts/measure_performance.py --runs 50 --deals 30`, on a laptop: `POST /me/phone-change/without-current-number` **24.3 ms p50, 32.0 ms p95** (budget 500); with both numbers 34.9 ms p95; the job making one change 12.4 ms p95. The job now also reads every change made without the current number each minute, one indexed query per change for its logins; such changes are rare.

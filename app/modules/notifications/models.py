@@ -73,6 +73,9 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     "phone_change_cancelled",
     "phone_changed",
     "phone_change_failed",
+    # To the account itself, when the data export it asked for is ready to
+    # download, once, within 24 hours (D-111).
+    "data_export_ready",
 )
 MAX_DETAILS_LENGTH = 2000
 

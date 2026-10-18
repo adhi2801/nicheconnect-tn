@@ -82,6 +82,24 @@ resource "aws_iam_role_policy" "task_uploads" {
         Resource = ["${aws_s3_bucket.uploads.arn}/proof-files/*"]
       },
       {
+        # Data exports (D-111): the job writes each file, the download reads
+        # it once and destroys every version of it. Nothing else.
+        Sid      = "DataExports"
+        Effect   = "Allow"
+        Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:DeleteObjectVersion"]
+        Resource = ["${aws_s3_bucket.uploads.arn}/exports/*"]
+      },
+      {
+        # Destroying an export lists its versions first, under its prefix only.
+        Sid      = "ListDataExportVersions"
+        Effect   = "Allow"
+        Action   = ["s3:ListBucketVersions"]
+        Resource = [aws_s3_bucket.uploads.arn]
+        Condition = {
+          StringLike = { "s3:prefix" = ["exports/*"] }
+        }
+      },
+      {
         # Without this S3 answers a missing file with 403, not 404, and the
         # app could not tell "never uploaded" from "not allowed": a creator
         # who abandoned an upload would get a server error, and the cleaner

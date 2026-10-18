@@ -41,6 +41,11 @@ REDIS_URL = "redis://localhost:6379/2"
 # Login has its own rules and is not covered by D-040: replaying a one-time
 # code or a refresh response is a security question, decided separately.
 NOT_COVERED_PREFIX = "/api/v1/auth/"
+# Writes deliberately never replayed, each with its reason. A replay keeps
+# the first answer in the idempotency store, and this answer is a person's
+# whole data file, the copy D-111 refuses to keep; a lost answer means
+# asking for a new export instead.
+NEVER_REPLAYED = {"POST /api/v1/me/exports/{export_id}/download"}
 
 CAMPAIGN = {
     "title": "Pongal sweets launch",
@@ -102,10 +107,25 @@ def test_every_write_outside_login_accepts_an_idempotency_key():
         if not path.startswith(NOT_COVERED_PREFIX)
         for method, operation in operations.items()
         if method in ("post", "patch")
+        and f"{method.upper()} {path}" not in NEVER_REPLAYED
         and not any(p.get("name") == HEADER for p in operation.get("parameters", []))
     ]
 
     assert missing == [], "Writes a retry could repeat: " + ", ".join(missing)
+
+
+def test_what_is_never_replayed_exists_and_takes_no_key():
+    """The exemption names a real route, and that route really refuses to store."""
+    operations = {
+        f"{method.upper()} {path}": operation
+        for path, ops in app.openapi()["paths"].items()
+        for method, operation in ops.items()
+    }
+
+    for route in NEVER_REPLAYED:
+        assert route in operations, route
+        params = operations[route].get("parameters", [])
+        assert not any(p.get("name") == HEADER for p in params), route
 
 
 # --- what a retry used to do, and does no longer -------------------------------

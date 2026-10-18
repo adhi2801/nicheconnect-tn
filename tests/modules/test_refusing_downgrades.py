@@ -1,7 +1,7 @@
 """Every downgrade that would destroy unrecoverable data refuses while it exists.
 
 database.md section 6: losing such data must be a deliberate act, never a
-side effect of a rollback. Sixteen migrations refuse. Until 14 October 2026 each
+side effect of a rollback. Seventeen migrations refuse. Until 14 October 2026 each
 refusal had been proven only by hand, in the session that wrote it
 (database.md gap 6, item 98); a later edit to one could have let a rollback
 drop a deal's record or a person's block without anyone noticing.
@@ -51,6 +51,7 @@ REFUSING = {
     "44fc99b873a7": "new UPI IDs waiting their 24 hours, each with its consent",
     "d18c285488f0": "new phone numbers waiting their 72 hours, each proven by two codes",
     "8bfc55b8e5fe": "new phone numbers waiting 7 days without the current number",
+    "928b6af0172c": "data exports being prepared, or with a file still stored",
 }
 
 
@@ -370,4 +371,21 @@ def test_new_phone_numbers_waiting_without_the_current_number(db):
 
     assert f"{before + 1} accounts are waiting to move to a new phone number without" in (
         refusal(db, "8bfc55b8e5fe")
+    )
+
+
+def test_data_exports_with_a_file_still_stored(db):
+    before = count(
+        db,
+        "SELECT count(*) FROM data_export WHERE failed_at IS NULL "
+        "AND (ready_at IS NULL OR file_deleted_at IS NULL)",
+    )
+    account = create_account(db, "creator")
+    db.execute(
+        text("INSERT INTO data_export (account_id, requested_at) VALUES (:a, now())"),
+        {"a": account.id},
+    )
+
+    assert f"{before + 1} data exports are being prepared or have a file" in refusal(
+        db, "928b6af0172c"
     )

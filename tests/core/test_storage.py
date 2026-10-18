@@ -104,6 +104,30 @@ def test_write_describe_read_and_delete(s3):
     assert s3.describe("proof-files/clean/a.png") is None
 
 
+def test_destroying_removes_every_version_of_that_file_only(s3):
+    """D-111: a downloaded export must not survive as an older version."""
+    client = s3._client
+    client.put_bucket_versioning(
+        Bucket=BUCKET, VersioningConfiguration={"Status": "Enabled"}
+    )
+    s3.write("exports/a.json", b"first", content_type="application/json")
+    s3.write("exports/a.json", b"second", content_type="application/json")
+    s3.write("exports/a.json.other", b"kept", content_type="application/json")
+    s3.delete("exports/a.json")
+    hidden = client.list_object_versions(Bucket=BUCKET, Prefix="exports/a.json")
+    assert any(v["Key"] == "exports/a.json" for v in hidden["Versions"])
+
+    s3.destroy("exports/a.json")
+
+    left = client.list_object_versions(Bucket=BUCKET, Prefix="exports/")
+    keys = [v["Key"] for v in left.get("Versions", []) + left.get("DeleteMarkers", [])]
+    assert keys == ["exports/a.json.other"]
+
+
+def test_destroying_what_is_not_there_is_fine(s3):
+    s3.destroy("exports/never.json")
+
+
 def test_reading_more_than_agreed_is_refused(s3):
     s3.write("big", DATA, content_type="image/png")
 
@@ -264,6 +288,14 @@ def test_access_denied_is_raised_never_taken_for_a_missing_file():
 
     with pytest.raises(ClientError):
         S3FileStore(BUCKET, _DeniedClient()).describe("k")
+
+
+def test_the_stand_in_destroys_a_file(memory):
+    memory.write("exports/b.json", b"{}", content_type="application/json")
+
+    memory.destroy("exports/b.json")
+
+    assert memory.describe("exports/b.json") is None
 
 
 def test_the_stand_in_says_so_when_a_file_is_missing(memory):

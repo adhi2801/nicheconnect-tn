@@ -47,6 +47,7 @@ from app.modules.insights.rate_guidance_router import router as rate_guidance_ro
 from app.modules.matching.router import router as matching_router
 from app.modules.matching.search_router import router as search_router
 from app.modules.me.attention_router import router as attention_router
+from app.modules.me.export_router import download_router as export_download_router
 from app.modules.me.export_router import router as export_router
 from app.modules.me.phone_change_router import router as phone_change_router
 from app.modules.me.session_router import router as session_router
@@ -146,6 +147,7 @@ app.include_router(brand_router)
 app.include_router(creator_router)
 # Privacy: download everything we hold about you.
 app.include_router(export_router)
+app.include_router(export_download_router)
 app.include_router(attention_router)
 # Public: the Creator Passport, readable without logging in.
 app.include_router(public_router)

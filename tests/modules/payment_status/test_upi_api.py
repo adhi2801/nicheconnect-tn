@@ -20,6 +20,7 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 
 from app.core.config import settings
+from app.core.rate_limit import limiter
 from app.modules.auth.models.creator import Creator
 from app.modules.payment_status import upi_service
 from app.modules.payment_status.upi_change_models import UPI_CHANGE_HOLD
@@ -256,6 +257,9 @@ def test_giving_it_is_rate_limited(client, creator):
 def test_it_is_in_the_creators_export_and_not_the_brands(client, clock, creator, brand):
     give_and_wait(client, clock, creator)
     give(client, creator, "meena.new@okaxis")
+    # Two codes went on the IDs; the export takes two more (D-111). The
+    # limiter counts real minutes, which the test's clock does not move.
+    limiter.reset()
 
     creator_data = download_export(client, creator.headers).json()["data"]
     brand_data = download_export(client, brand.headers).json()["data"]

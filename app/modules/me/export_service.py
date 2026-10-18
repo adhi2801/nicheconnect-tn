@@ -40,6 +40,7 @@ from app.modules.campaigns import service as campaigns
 from app.modules.deal_memo import service as deal_memos
 from app.modules.disputes import service as disputes
 from app.modules.me import phone_change_service as phone_changes
+from app.modules.me.export_models import DataExport
 from app.modules.notifications import preference_service as notification_preferences
 from app.modules.notifications import service as notifications
 from app.modules.payment_status import service as payments
@@ -70,6 +71,8 @@ EXPORTED_TABLES = frozenset(
         "creator_channel",
         "creator_package",
         "report",
+        # The exports asked for (D-111): times and sizes, never the file.
+        "data_export",
     }
 )
 
@@ -112,6 +115,19 @@ NOT_EXPORTED: dict[str, str] = {
         "person, and each deal's proof includes the ones that cover it."
     ),
 }
+
+DATA_EXPORT_FIELDS = allow(
+    "id",
+    "requested_at",
+    "ready_at",
+    "expires_at",
+    "size_bytes",
+    "downloaded_at",
+    "failed_at",
+    "file_deleted_at",
+    "created_at",
+    "updated_at",
+)
 
 ACCOUNT_EXPORT_FIELDS = allow(
     "id",
@@ -384,24 +400,31 @@ def collect_sections(db: Session, account: Account) -> list[ExportedSection]:
         *devices.export_for_account(db, account.id),
         *step_ups.export_for_account(db, account.id),
         *phone_changes.export_for_account(db, account.id),
+        _exports_section(db, account),
     ]
 
 
-def release_export(
-    db: Session, account: Account, step_up_code: str | None, now: datetime
-) -> dict[str, Any]:
-    """The export, once the code asked for it is spent and the owner is told.
-
-    The file is the most sensitive answer this API gives, so a stolen
-    session alone cannot take it (item 82, D-107). The owner is told in the
-    app whoever downloaded it. Raises what step_up_service.consume raises.
-    """
-    step_ups.consume(db, account, "download_export", "", step_up_code, now)
-    notifications.record(
-        db, account_id=account.id, notification_type="data_exported", now=now
+def _exports_section(db: Session, account: Account) -> ExportedSection:
+    """The exports this account asked for (D-111): when, and what became of each."""
+    exports = list(
+        db.scalars(
+            select(DataExport)
+            .where(DataExport.account_id == account.id)
+            .order_by(DataExport.requested_at, DataExport.id)
+            .limit(MAX_ROWS_PER_SECTION + 1)
+        ).all()
     )
-    db.commit()
-    return build_export(db, account, now)
+    return build_section(
+        "data_exports",
+        table="data_export",
+        purpose=(
+            "Each time you asked for a copy of your data: when it was ready, "
+            "its size, and when it was downloaded or destroyed. The files "
+            "themselves are kept only until you download them, at most a day."
+        ),
+        objects=exports,
+        fields=DATA_EXPORT_FIELDS,
+    )
 
 
 def build_export(db: Session, account: Account, now: datetime) -> dict[str, Any]:
