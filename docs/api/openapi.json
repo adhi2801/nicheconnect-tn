@@ -5821,11 +5821,16 @@
                 "phone_changed",
                 "phone_change_failed",
                 "data_export_ready",
-                "data_export_failed"
+                "data_export_failed",
+                "passkey_added",
+                "passkey_removed",
+                "passkey_reset_requested",
+                "passkey_reset_cancelled",
+                "passkey_only_changed"
               ],
               "type": "string"
             },
-            "maxItems": 39,
+            "maxItems": 44,
             "title": "Muted Types",
             "type": "array"
           },
@@ -5916,7 +5921,12 @@
                 "phone_changed",
                 "phone_change_failed",
                 "data_export_ready",
-                "data_export_failed"
+                "data_export_failed",
+                "passkey_added",
+                "passkey_removed",
+                "passkey_reset_requested",
+                "passkey_reset_cancelled",
+                "passkey_only_changed"
               ],
               "type": "string"
             },
@@ -5981,7 +5991,12 @@
                 "phone_changed",
                 "phone_change_failed",
                 "data_export_ready",
-                "data_export_failed"
+                "data_export_failed",
+                "passkey_added",
+                "passkey_removed",
+                "passkey_reset_requested",
+                "passkey_reset_cancelled",
+                "passkey_only_changed"
               ],
               "type": "string"
             },
@@ -6120,7 +6135,12 @@
               "phone_changed",
               "phone_change_failed",
               "data_export_ready",
-              "data_export_failed"
+              "data_export_failed",
+              "passkey_added",
+              "passkey_removed",
+              "passkey_reset_requested",
+              "passkey_reset_cancelled",
+              "passkey_only_changed"
             ],
             "title": "Notification Type",
             "type": "string"
@@ -6871,6 +6891,231 @@
           "items"
         ],
         "title": "Page[TakedownRead]",
+        "type": "object"
+      },
+      "PasskeyCreate": {
+        "additionalProperties": false,
+        "description": "A new passkey: the phone's answer to the sign-up challenge, and a name.",
+        "properties": {
+          "credential": {
+            "additionalProperties": true,
+            "description": "The passkey's answer, exactly as `navigator.credentials` (or the phone's credential manager) gives it, in WebAuthn's JSON form",
+            "title": "Credential",
+            "type": "object"
+          },
+          "name": {
+            "description": "A name you will recognise it by",
+            "examples": [
+              "My phone"
+            ],
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "credential",
+          "name"
+        ],
+        "title": "PasskeyCreate",
+        "type": "object"
+      },
+      "PasskeyLoginIn": {
+        "additionalProperties": false,
+        "description": "A passkey's answer to a login challenge.",
+        "properties": {
+          "credential": {
+            "additionalProperties": true,
+            "description": "The passkey's answer, exactly as `navigator.credentials` (or the phone's credential manager) gives it, in WebAuthn's JSON form",
+            "title": "Credential",
+            "type": "object"
+          }
+        },
+        "required": [
+          "credential"
+        ],
+        "title": "PasskeyLoginIn",
+        "type": "object"
+      },
+      "PasskeyOnlySet": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "description": "True: only a passkey signs you in. False: a phone code does too.",
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "PasskeyOnlySet",
+        "type": "object"
+      },
+      "PasskeyRead": {
+        "description": "One of your passkeys, as you can recognise it.",
+        "properties": {
+          "aaguid": {
+            "description": "Which kind of authenticator made it (a password manager, a security key), as it says; never who you are",
+            "format": "uuid",
+            "title": "Aaguid",
+            "type": "string"
+          },
+          "backup_eligible": {
+            "description": "Whether it may sync to your other devices",
+            "title": "Backup Eligible",
+            "type": "boolean"
+          },
+          "backup_state": {
+            "description": "Whether it is synced now",
+            "title": "Backup State",
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "aaguid",
+          "backup_eligible",
+          "backup_state",
+          "last_used_at",
+          "created_at"
+        ],
+        "title": "PasskeyRead",
+        "type": "object"
+      },
+      "PasskeyRename": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "description": "A name you will recognise it by",
+            "examples": [
+              "My phone"
+            ],
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "PasskeyRename",
+        "type": "object"
+      },
+      "PasskeyResetIn": {
+        "additionalProperties": false,
+        "description": "Your number, and a login code sent to it.",
+        "properties": {
+          "code": {
+            "description": "The 6-digit code sent to the phone",
+            "examples": [
+              "042917"
+            ],
+            "pattern": "^[0-9]{6}$",
+            "title": "Code",
+            "type": "string"
+          },
+          "phone": {
+            "description": "Indian mobile number, stored as +91XXXXXXXXXX. Send it in that form. Spaces, dashes and brackets, and a leading +91, 91 or 0, are also accepted and normalised away.",
+            "examples": [
+              "+919876543210"
+            ],
+            "pattern": "^\\+91[6-9][0-9]{9}$",
+            "title": "Phone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone",
+          "code"
+        ],
+        "title": "PasskeyResetIn",
+        "type": "object"
+      },
+      "PasskeyResetRead": {
+        "description": "A reset of your passkeys, waiting.",
+        "properties": {
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "takes_effect_at": {
+            "description": "When every passkey is removed, 7 days after it was asked for. Any sign-in with a passkey before then cancels it.",
+            "format": "date-time",
+            "title": "Takes Effect At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "requested_at",
+          "takes_effect_at"
+        ],
+        "title": "PasskeyResetRead",
+        "type": "object"
+      },
+      "PasskeysRead": {
+        "description": "Your passkeys, whether only they sign you in, and a reset waiting.",
+        "properties": {
+          "items": {
+            "description": "Every passkey, oldest first: at most 10, a bound by rule",
+            "items": {
+              "$ref": "#/components/schemas/PasskeyRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "passkey_only": {
+            "description": "When true, a phone code no longer signs you in",
+            "title": "Passkey Only",
+            "type": "boolean"
+          },
+          "reset": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PasskeyResetRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "passkey_only",
+          "reset"
+        ],
+        "title": "PasskeysRead",
         "type": "object"
       },
       "PayDetailsRead": {
@@ -9933,7 +10178,10 @@
               "set_upi_id",
               "download_export",
               "log_out_everywhere",
-              "change_phone"
+              "change_phone",
+              "add_passkey",
+              "remove_passkey",
+              "passkey_only"
             ],
             "title": "Action",
             "type": "string"
@@ -9947,20 +10195,34 @@
                 "type": "null"
               }
             ],
-            "description": "How long the code works; null for an authenticator code",
+            "description": "How long the code, or the passkey's challenge, works; null for an authenticator code",
             "examples": [
               300
             ],
             "title": "Expires In Seconds"
           },
           "method": {
-            "description": "`phone_code`: a code was sent to your phone. `authenticator`: admins only; nothing was sent, use the code your authenticator app shows.",
+            "description": "`phone_code`: a code was sent to your phone. `authenticator`: admins only; nothing was sent, use the code your authenticator app shows. `passkey`: you have a passkey, so nothing was sent: answer `passkey_options` with it at `POST /api/v1/me/step-up/passkey`, which gives the code.",
             "enum": [
               "phone_code",
-              "authenticator"
+              "authenticator",
+              "passkey"
             ],
             "title": "Method",
             "type": "string"
+          },
+          "passkey_options": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For `passkey`: WebAuthn's request options, to pass to `navigator.credentials.get` (or the phone's credential manager)",
+            "title": "Passkey Options"
           }
         },
         "required": [
@@ -9973,10 +10235,13 @@
       },
       "StepUpForAccount": {
         "additionalProperties": false,
-        "description": "A code to log out of every device.",
+        "description": "A code to log out of every device, or to add a passkey (D-113).",
         "properties": {
           "action": {
-            "const": "log_out_everywhere",
+            "enum": [
+              "log_out_everywhere",
+              "add_passkey"
+            ],
             "title": "Action",
             "type": "string"
           }
@@ -10007,6 +10272,49 @@
           "export_id"
         ],
         "title": "StepUpForExport",
+        "type": "object"
+      },
+      "StepUpForPasskeyOnly": {
+        "additionalProperties": false,
+        "description": "A code to turn passkey-only sign-in exactly on, or exactly off (D-113).",
+        "properties": {
+          "action": {
+            "const": "passkey_only",
+            "title": "Action",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "action",
+          "enabled"
+        ],
+        "title": "StepUpForPasskeyOnly",
+        "type": "object"
+      },
+      "StepUpForPasskeyRemoval": {
+        "additionalProperties": false,
+        "description": "A code to remove one exact passkey (D-113).",
+        "properties": {
+          "action": {
+            "const": "remove_passkey",
+            "title": "Action",
+            "type": "string"
+          },
+          "passkey_id": {
+            "format": "uuid",
+            "title": "Passkey Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "passkey_id"
+        ],
+        "title": "StepUpForPasskeyRemoval",
         "type": "object"
       },
       "StepUpForPhone": {
@@ -10059,6 +10367,99 @@
           "upi_id"
         ],
         "title": "StepUpForUpiId",
+        "type": "object"
+      },
+      "StepUpGranted": {
+        "description": "The code for exactly this change, earned by the passkey (D-113).",
+        "properties": {
+          "action": {
+            "enum": [
+              "set_upi_id",
+              "download_export",
+              "log_out_everywhere",
+              "change_phone",
+              "add_passkey",
+              "remove_passkey",
+              "passkey_only"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "code": {
+            "description": "Send it in the `Step-Up-Code` header with the change itself",
+            "examples": [
+              "042917"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "expires_in_seconds": {
+            "examples": [
+              300
+            ],
+            "title": "Expires In Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "action",
+          "code",
+          "expires_in_seconds"
+        ],
+        "title": "StepUpGranted",
+        "type": "object"
+      },
+      "StepUpPasskeyIn": {
+        "additionalProperties": false,
+        "description": "A passkey's answer to the challenge for one change.",
+        "properties": {
+          "change": {
+            "discriminator": {
+              "mapping": {
+                "add_passkey": "#/components/schemas/StepUpForAccount",
+                "change_phone": "#/components/schemas/StepUpForPhone",
+                "download_export": "#/components/schemas/StepUpForExport",
+                "log_out_everywhere": "#/components/schemas/StepUpForAccount",
+                "passkey_only": "#/components/schemas/StepUpForPasskeyOnly",
+                "remove_passkey": "#/components/schemas/StepUpForPasskeyRemoval",
+                "set_upi_id": "#/components/schemas/StepUpForUpiId"
+              },
+              "propertyName": "action"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StepUpForUpiId"
+              },
+              {
+                "$ref": "#/components/schemas/StepUpForPhone"
+              },
+              {
+                "$ref": "#/components/schemas/StepUpForExport"
+              },
+              {
+                "$ref": "#/components/schemas/StepUpForAccount"
+              },
+              {
+                "$ref": "#/components/schemas/StepUpForPasskeyRemoval"
+              },
+              {
+                "$ref": "#/components/schemas/StepUpForPasskeyOnly"
+              }
+            ],
+            "title": "Change"
+          },
+          "credential": {
+            "additionalProperties": true,
+            "description": "The passkey's answer, exactly as `navigator.credentials` (or the phone's credential manager) gives it, in WebAuthn's JSON form",
+            "title": "Credential",
+            "type": "object"
+          }
+        },
+        "required": [
+          "change",
+          "credential"
+        ],
+        "title": "StepUpPasskeyIn",
         "type": "object"
       },
       "SuspendIn": {
@@ -14124,6 +14525,233 @@
           }
         },
         "summary": "Log in with a one-time code",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/passkey-reset": {
+      "post": {
+        "description": "For when every passkey is lost. Send your number and a login code sent to it (`POST /api/v1/auth/otp/request`); the code is used up here. **Every passkey is removed 7 days later**, and passkey-only sign-in turned off, unless anyone signs in with a passkey before then, which cancels it. You are told in the app either way. Asking again while one waits changes nothing. Limit: 10 per 10 minutes per address.",
+        "operationId": "start_a_passkey_reset_api_v1_auth_passkey_reset_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeyResetIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasskeyResetRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`otp_invalid`: the code is wrong, expired or used"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`no_passkey_to_reset`: the number's account has no passkey (said only once the code was right)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The number or the code is malformed"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many attempts; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Reset my passkeys, having lost them all",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/passkey/login": {
+      "post": {
+        "description": "Checks the passkey's answer and returns tokens, as a code login does. The session's tokens say it was proven by a passkey. Limit: 10 per 10 minutes per address.",
+        "operationId": "passkey_login_api_v1_auth_passkey_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeyLoginIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginTokens"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`passkey_invalid`: the answer could not be checked"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`account_suspended`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The answer is malformed"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many attempts; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`passkeys_unavailable`: passkeys are not switched on yet"
+          }
+        },
+        "summary": "Log in with a passkey",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/passkey/options": {
+      "post": {
+        "description": "WebAuthn's request options, to pass to `navigator.credentials.get` (or the phone's credential manager); no number is needed, as the phone offers the passkeys it holds for us. Its challenge works once, for 5 minutes. Limit: 10 per 10 minutes per address.",
+        "operationId": "passkey_login_options_api_v1_auth_passkey_options_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Passkey Login Options Api V1 Auth Passkey Options Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "WebAuthn's PublicKeyCredentialRequestOptions, as JSON"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`passkeys_unavailable`: passkeys are not switched on yet"
+          }
+        },
+        "summary": "Start logging in with a passkey",
         "tags": [
           "auth"
         ]
@@ -26101,6 +26729,727 @@
         ]
       }
     },
+    "/api/v1/me/passkeys": {
+      "get": {
+        "description": "Every passkey on your account, whether only they sign you in, and a reset waiting, if one was asked for with your number.",
+        "operationId": "list_my_passkeys_api_v1_me_passkeys_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasskeysRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My passkeys",
+        "tags": [
+          "passkeys"
+        ]
+      },
+      "post": {
+        "description": "Keeps the passkey your phone made. **Needs a code** for `add_passkey` from `POST /api/v1/me/step-up`: for your first passkey, a code sent to your phone, from a login at least 7 days old (or your account's very first login); for every later one, your passkey's approval. You are told on every device. At most 10.",
+        "operationId": "add_a_passkey_api_v1_me_passkeys_post",
+        "parameters": [
+          {
+            "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+            "in": "header",
+            "name": "Step-Up-Code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9]{6}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+              "title": "Step-Up-Code"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeyCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasskeyRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`passkey_invalid`: the answer could not be checked; or the code is wrong, expired or used"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired; or `step_up_required`: no code was sent"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Admins cannot add passkeys yet; or `login_too_recent` for a first passkey from a login under 7 days old"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`too_many_passkeys`: you have 10 already. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The name or the answer is malformed. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests, or too many wrong codes; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`passkeys_unavailable`: passkeys are not switched on yet. Or: Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add a passkey",
+        "tags": [
+          "passkeys"
+        ]
+      }
+    },
+    "/api/v1/me/passkeys/only": {
+      "put": {
+        "description": "With it on, a code sent to your phone no longer signs you in, so a SIM swapper cannot either; a code can then only start a 7-day reset. **Needs your passkey's approval** for `passkey_only` with exactly this `enabled`. You are told on every device.",
+        "operationId": "set_passkey_only_api_v1_me_passkeys_only_put",
+        "parameters": [
+          {
+            "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+            "in": "header",
+            "name": "Step-Up-Code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9]{6}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+              "title": "Step-Up-Code"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeyOnlySet"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasskeysRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The code is wrong, expired, used, or for another change"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired; or `step_up_required`: no code was sent"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Admins cannot use passkeys yet"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`passkey_needed_first`: add a passkey first"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`enabled` is missing or not true or false"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests, or too many wrong codes; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Sign in only with a passkey, or not",
+        "tags": [
+          "passkeys"
+        ]
+      }
+    },
+    "/api/v1/me/passkeys/options": {
+      "post": {
+        "description": "WebAuthn's creation options, to pass to `navigator.credentials.create` (or the phone's credential manager). Its challenge works once, for 5 minutes. Then send the answer to `POST /api/v1/me/passkeys`.",
+        "operationId": "start_adding_a_passkey_api_v1_me_passkeys_options_post",
+        "parameters": [
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Start Adding A Passkey Api V1 Me Passkeys Options Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "WebAuthn's PublicKeyCredentialCreationOptions, as JSON"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Admins cannot add passkeys yet"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`passkeys_unavailable`: passkeys are not switched on yet. Or: Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start adding a passkey",
+        "tags": [
+          "passkeys"
+        ]
+      }
+    },
+    "/api/v1/me/passkeys/{passkey_id}": {
+      "delete": {
+        "description": "**Needs your passkey's approval** for `remove_passkey` and this passkey's id. Removing the last one also turns passkey-only sign-in off. You are told on every device. Lost every passkey? Start a reset with your number at `POST /api/v1/auth/passkey-reset`.",
+        "operationId": "remove_a_passkey_api_v1_me_passkeys__passkey_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "passkey_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Passkey Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+            "in": "header",
+            "name": "Step-Up-Code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9]{6}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+              "title": "Step-Up-Code"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The code is wrong, expired, used, or for another change"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired; or `step_up_required`: no code was sent"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such passkey of yours"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests, or too many wrong codes; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove a passkey",
+        "tags": [
+          "passkeys"
+        ]
+      },
+      "patch": {
+        "description": "Changes only its name. No code is needed.",
+        "operationId": "rename_a_passkey_api_v1_me_passkeys__passkey_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "passkey_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Passkey Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeyRename"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasskeyRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such passkey of yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The name is blank or too long. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Rename a passkey",
+        "tags": [
+          "passkeys"
+        ]
+      }
+    },
     "/api/v1/me/phone-change": {
       "delete": {
         "description": "Drops the new number under `waiting`, so you keep logging in with the one you have. For when the change was not you: no code is needed, so it works from any of your sessions even if someone else has your number. Safe to repeat; nothing waiting is fine.",
@@ -26384,9 +27733,28 @@
     },
     "/api/v1/me/phone-change/without-current-number": {
       "post": {
-        "description": "For when your current number is already gone, so no code can reach it. Needs **a login at least 30 days old** (403 `login_too_recent`, with `Retry-After`, from a newer one) and a code from the new number, asked for at `POST /api/v1/auth/otp/request`, as `new_phone_code`. **The new number takes over 7 days later**, and **any login with your current number before then cancels it**, since that number was not lost after all; you are told either way. Asking again replaces a change still waiting. Brands and creators only. There is no other way: we never move a number on someone's word, so a lost number with no login this old cannot be recovered. Limits as for a change with both numbers.",
+        "description": "For when your current number is already gone, so no code can reach it. Needs **a login at least 30 days old** (403 `login_too_recent`, with `Retry-After`, from a newer one), or, once you have a passkey, the passkey's grant in `Step-Up-Code` instead; and a code from the new number, asked for at `POST /api/v1/auth/otp/request`, as `new_phone_code`. **The new number takes over 7 days later**, and **any login with your current number before then cancels it**, since that number was not lost after all; you are told either way. Asking again replaces a change still waiting. Brands and creators only. There is no other way: we never move a number on someone's word, so a lost number with no login this old cannot be recovered. Limits as for a change with both numbers.",
         "operationId": "change_my_lost_phone_api_v1_me_phone_change_without_current_number_post",
         "parameters": [
+          {
+            "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+            "in": "header",
+            "name": "Step-Up-Code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9]{6}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+              "title": "Step-Up-Code"
+            }
+          },
           {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
@@ -26534,9 +27902,12 @@
               "schema": {
                 "discriminator": {
                   "mapping": {
+                    "add_passkey": "#/components/schemas/StepUpForAccount",
                     "change_phone": "#/components/schemas/StepUpForPhone",
                     "download_export": "#/components/schemas/StepUpForExport",
                     "log_out_everywhere": "#/components/schemas/StepUpForAccount",
+                    "passkey_only": "#/components/schemas/StepUpForPasskeyOnly",
+                    "remove_passkey": "#/components/schemas/StepUpForPasskeyRemoval",
                     "set_upi_id": "#/components/schemas/StepUpForUpiId"
                   },
                   "propertyName": "action"
@@ -26553,6 +27924,12 @@
                   },
                   {
                     "$ref": "#/components/schemas/StepUpForAccount"
+                  },
+                  {
+                    "$ref": "#/components/schemas/StepUpForPasskeyRemoval"
+                  },
+                  {
+                    "$ref": "#/components/schemas/StepUpForPasskeyOnly"
                   }
                 ],
                 "title": "Body"
@@ -26666,6 +28043,134 @@
           }
         ],
         "summary": "Ask for a code before a risky change",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/me/step-up/passkey": {
+      "post": {
+        "description": "Once you have a passkey, a risky change is proven by it, never by a code sent to your phone, which a SIM swapper could read. Ask at `POST /api/v1/me/step-up` for the change: the answer's `passkey_options` is a challenge for exactly that change. Answer it with your passkey and send the answer here, with the same change. You get a code for exactly that change, working once, for 5 minutes: send it in `Step-Up-Code` with the change itself.",
+        "operationId": "approve_with_passkey_api_v1_me_step_up_passkey_post",
+        "parameters": [
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StepUpPasskeyIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StepUpGranted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The passkey's answer could not be checked"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "This account type cannot make this change"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The change or the answer is malformed. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`passkeys_unavailable`: passkeys are not switched on yet. Or: Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Approve a risky change with a passkey",
         "tags": [
           "auth"
         ]

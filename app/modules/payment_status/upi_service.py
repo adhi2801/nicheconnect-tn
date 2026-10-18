@@ -214,7 +214,10 @@ def ensure_may_replace(
     """
     current = in_effect(*_rows(db, creator_id), now)
     if current is not None and current.upi_id != upi_id:
-        login_age.ensure_established(authenticated_at, now)
+        account_id = db.scalars(
+            select(Creator.account_id).where(Creator.id == creator_id)
+        ).one()
+        login_age.ensure_established_unless_passkey(db, account_id, authenticated_at, now)
 
 
 def ensure_may_replace_for_account(

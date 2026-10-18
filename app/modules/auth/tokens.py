@@ -31,8 +31,11 @@ REFRESH_TOKEN_BYTES = 32
 # without `mfa`, so no admin session can come from the phone code alone.
 PHONE_CODE_ONLY: tuple[str, ...] = ("otp",)
 TWO_FACTORS: tuple[str, ...] = ("mfa", "otp")
+# A passkey (D-113): proof of possession of a key (`pop`), with the person
+# checked by the phone's own lock (`user`).
+PASSKEY: tuple[str, ...] = ("pop", "user")
 MULTI_FACTOR = "mfa"
-KNOWN_METHODS = frozenset(TWO_FACTORS)
+KNOWN_METHODS = frozenset(TWO_FACTORS) | frozenset(PASSKEY)
 
 
 @dataclass(frozen=True)

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, String, UniqueConstraint, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, String, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -70,6 +70,12 @@ class Account(Base):
     # before the rule, and until a profile is created.
     adult_confirmed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    # "Passkey only" sign-in (item 79, D-113): when true, a phone code no
+    # longer logs in; it can only start a passkey reset. Turned on and off
+    # with a passkey.
+    passkey_only: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

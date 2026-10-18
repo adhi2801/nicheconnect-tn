@@ -184,3 +184,63 @@ class LoginTooRecent(DomainError):
                 )
             },
         )
+
+
+# Passkeys (item 79, D-113).
+
+
+class PasskeysNotOpen(DomainError):
+    # Off until the name and the domain exist (item 4): a passkey is bound to
+    # its domain, and one made for a stand-in would never work on the real one.
+    status_code = HTTPStatus.SERVICE_UNAVAILABLE
+    code = "passkeys_unavailable"
+    title = "Passkeys are not available yet"
+
+
+class PasskeyInvalid(DomainError):
+    # One error for a wrong, expired, used or foreign challenge, an unknown
+    # key, a bad signature or a counter gone backwards: a caller learns
+    # nothing about which.
+    status_code = HTTPStatus.BAD_REQUEST
+    code = "passkey_invalid"
+    title = "That passkey could not be checked. Try again"
+
+
+class PasskeyNotFound(DomainError):
+    # Also someone else's passkey: 404, never 403.
+    status_code = HTTPStatus.NOT_FOUND
+    code = "passkey_not_found"
+    title = "That passkey is not one of yours"
+
+
+class TooManyPasskeys(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "too_many_passkeys"
+    title = "You have the most passkeys an account may hold; remove one first"
+
+
+class PasskeyOnly(DomainError):
+    # A phone code was right, but this account signs in only with a passkey
+    # (D-113). Only someone holding the number learns it; the code stays
+    # usable, so it can start a reset at once.
+    status_code = HTTPStatus.FORBIDDEN
+    code = "passkey_only"
+    title = "This account signs in with a passkey"
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Sign in with your passkey. If you lost every passkey, the same code "
+            "can start a reset at POST /api/v1/auth/passkey-reset, which takes 7 days."
+        )
+
+
+class NoPasskeyToReset(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "no_passkey_to_reset"
+    title = "This number's account has no passkey to reset"
+
+
+class PasskeyNeededFirst(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "passkey_needed_first"
+    title = "Add a passkey before turning on passkey-only sign-in"

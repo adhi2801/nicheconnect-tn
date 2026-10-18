@@ -39,6 +39,7 @@ from app.modules.auth.models.totp_factor import TotpFactor
 from app.modules.campaigns import service as campaigns
 from app.modules.deal_memo import service as deal_memos
 from app.modules.disputes import service as disputes
+from app.modules.me import passkey_service as passkey_changes
 from app.modules.me import phone_change_service as phone_changes
 from app.modules.me.export_models import DataExport
 from app.modules.notifications import preference_service as notification_preferences
@@ -79,6 +80,11 @@ EXPORTED_TABLES = frozenset(
 # Things we hold that are deliberately left out, and why. Printed in the file
 # itself: a person is entitled to know what exists, not only what we hand over.
 NOT_EXPORTED: dict[str, str] = {
+    "passkey_challenge": (
+        "The one-time challenges we sent your passkeys to sign, each working "
+        "once for 5 minutes and deleted a day after. Random numbers, holding "
+        "nothing about you; your passkeys themselves are in this file."
+    ),
     "otp_challenge": (
         "One-time login codes. We store only an unreadable hash of each code, "
         "never the code itself, and the record is tied to a phone number rather "
@@ -215,6 +221,8 @@ SESSION_EXPORT_FIELDS = allow(
     "expires_at",
     # When the sign-in behind it proved a second factor (D-105).
     "second_factor_at",
+    # When a passkey proved the sign-in behind it (D-113).
+    "passkey_at",
     "used_at",
     "revoked_at",
 )
@@ -400,6 +408,7 @@ def collect_sections(db: Session, account: Account) -> list[ExportedSection]:
         *devices.export_for_account(db, account.id),
         *step_ups.export_for_account(db, account.id),
         *phone_changes.export_for_account(db, account.id),
+        *passkey_changes.export_for_account(db, account.id),
         _exports_section(db, account),
     ]
 
@@ -471,6 +480,7 @@ def exported_tables() -> frozenset[str]:
         | disputes.EXPORTED_TABLES
         | step_ups.EXPORTED_TABLES
         | phone_changes.EXPORTED_TABLES
+        | passkey_changes.EXPORTED_TABLES
     )
 
 

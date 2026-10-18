@@ -29,6 +29,7 @@ from app.modules.admin.takedown_router import router as admin_takedown_router
 from app.modules.auth.attribution_router import router as attribution_router
 from app.modules.auth.dependencies import idempotency_identity
 from app.modules.auth.device_router import router as devices_router
+from app.modules.auth.passkey_router import router as passkey_login_router
 from app.modules.auth.router import router as auth_router
 from app.modules.campaigns.application_router import router as applications_router
 from app.modules.campaigns.invitation_router import router as invitations_router
@@ -49,6 +50,8 @@ from app.modules.matching.search_router import router as search_router
 from app.modules.me.attention_router import router as attention_router
 from app.modules.me.export_router import download_router as export_download_router
 from app.modules.me.export_router import router as export_router
+from app.modules.me.passkey_reset_router import router as passkey_reset_router
+from app.modules.me.passkey_router import router as passkey_router
 from app.modules.me.phone_change_router import router as phone_change_router
 from app.modules.me.session_router import router as session_router
 from app.modules.me.step_up_router import router as step_up_router
@@ -142,6 +145,9 @@ app.include_router(auth_router)
 app.include_router(session_router)
 app.include_router(step_up_router)
 app.include_router(phone_change_router)
+app.include_router(passkey_router)
+app.include_router(passkey_reset_router)
+app.include_router(passkey_login_router)
 app.include_router(admin_login_router)
 app.include_router(brand_router)
 app.include_router(creator_router)

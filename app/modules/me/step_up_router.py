@@ -15,20 +15,17 @@ from app.core.errors import problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
-from app.modules.auth import login_age, step_up_service
 from app.modules.auth import service as login
+from app.modules.auth import step_up_service
 from app.modules.auth.dependencies import CurrentAccount, LoginTime, get_now
 from app.modules.auth.sender import OtpSender, get_otp_sender
-from app.modules.me import data_export_service as data_exports
-from app.modules.me import phone_change_service as phone_changes
+from app.modules.me import step_up_changes
 from app.modules.me.step_up_schemas import (
     StepUpAccepted,
-    StepUpForExport,
-    StepUpForPhone,
-    StepUpForUpiId,
+    StepUpGranted,
     StepUpIn,
+    StepUpPasskeyIn,
 )
-from app.modules.payment_status import upi_service
 
 # Per account, beside the phone's own caps, which login codes share.
 STEP_UP_LIMIT = "3 per 10 minutes;10 per day"
@@ -86,19 +83,7 @@ def ask_for_step_up(
     now: datetime = Depends(get_now),
 ) -> StepUpAccepted:
     # Before a message is sent for a change that would be refused.
-    value = ""
-    if isinstance(body, StepUpForUpiId):
-        upi_service.ensure_may_replace_for_account(
-            db, account, body.upi_id, login_time, now
-        )
-        value = body.upi_id
-    elif isinstance(body, StepUpForPhone):
-        phone_changes.ensure_new_phone(account, body.new_phone)
-        login_age.ensure_established(login_time, now)
-        value = body.new_phone
-    elif isinstance(body, StepUpForExport):
-        data_exports.ensure_downloadable(db, account, body.export_id, now)
-        value = str(body.export_id)
+    value = step_up_changes.value_of(db, account, body, login_time, now)
     code = step_up_service.request_code(db, account, body.action, value, now)
     if code.pending is not None:
         background_tasks.add_task(login.deliver_otp, sender, code.pending)
@@ -110,4 +95,47 @@ def ask_for_step_up(
             if code.expires_at is None
             else int((code.expires_at - now).total_seconds())
         ),
+        passkey_options=code.passkey_options,
+    )
+
+
+@router.post(
+    "/step-up/passkey",
+    response_model=StepUpGranted,
+    summary="Approve a risky change with a passkey",
+    description=(
+        "Once you have a passkey, a risky change is proven by it, never by a "
+        "code sent to your phone, which a SIM swapper could read. Ask at "
+        "`POST /api/v1/me/step-up` for the change: the answer's "
+        "`passkey_options` is a challenge for exactly that change. Answer it "
+        "with your passkey and send the answer here, with the same change. "
+        "You get a code for exactly that change, working once, for 5 "
+        "minutes: send it in `Step-Up-Code` with the change itself."
+    ),
+    responses={
+        400: problem_doc("The passkey's answer could not be checked"),
+        401: problem_doc("No access token, or it is invalid or expired"),
+        403: problem_doc("This account type cannot make this change"),
+        422: problem_doc("The change or the answer is malformed"),
+        429: problem_doc("Too many requests; see the Retry-After header"),
+        503: problem_doc("`passkeys_unavailable`: passkeys are not switched on yet"),
+    },
+)
+@rate_limit(STEP_UP_LIMIT)
+def approve_with_passkey(
+    request: Request,
+    body: StepUpPasskeyIn,
+    account: CurrentAccount,
+    login_time: LoginTime,
+    db: Session = Depends(get_db),
+    now: datetime = Depends(get_now),
+) -> StepUpGranted:
+    value = step_up_changes.value_of(db, account, body.change, login_time, now)
+    grant = step_up_service.grant_for_passkey(
+        db, account, body.change.action, value, body.credential, now
+    )
+    return StepUpGranted(
+        action=grant.action,
+        code=grant.code,
+        expires_in_seconds=int((grant.expires_at - now).total_seconds()),
     )

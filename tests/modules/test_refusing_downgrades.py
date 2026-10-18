@@ -1,7 +1,7 @@
 """Every downgrade that would destroy unrecoverable data refuses while it exists.
 
 database.md section 6: losing such data must be a deliberate act, never a
-side effect of a rollback. Seventeen migrations refuse. Until 14 October 2026 each
+side effect of a rollback. Eighteen migrations refuse. Until 14 October 2026 each
 refusal had been proven only by hand, in the session that wrote it
 (database.md gap 6, item 98); a later edit to one could have let a rollback
 drop a deal's record or a person's block without anyone noticing.
@@ -52,6 +52,7 @@ REFUSING = {
     "d18c285488f0": "new phone numbers waiting their 72 hours, each proven by two codes",
     "8bfc55b8e5fe": "new phone numbers waiting 7 days without the current number",
     "928b6af0172c": "data exports being prepared, or with a file still stored",
+    "ceeda50f8c0b": "passkeys guarding people's accounts",
 }
 
 
@@ -388,4 +389,26 @@ def test_data_exports_with_a_file_still_stored(db):
 
     assert f"{before + 1} data exports are being prepared or have a file" in refusal(
         db, "928b6af0172c"
+    )
+
+
+def test_passkeys(db):
+    before = count(db, "SELECT count(*) FROM passkey")
+    account = create_account(db, "creator")
+    db.execute(
+        text(
+            "INSERT INTO passkey (account_id, credential_id, public_key, sign_count, "
+            "aaguid, backup_eligible, backup_state, name) VALUES (:a, :c, :k, 0, "
+            ":g, true, true, 'My phone')"
+        ),
+        {
+            "a": account.id,
+            "c": uuid.uuid4().bytes,
+            "k": b"\xa1\x01\x02",
+            "g": uuid.UUID(int=0),
+        },
+    )
+
+    assert f"{before + 1} passkeys are on people's accounts" in refusal(
+        db, "ceeda50f8c0b"
     )

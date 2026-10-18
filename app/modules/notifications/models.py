@@ -78,6 +78,15 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     "data_export_ready",
     # When building it failed every try (D-112): ask for a new one.
     "data_export_failed",
+    # To the account itself, about its passkeys (item 79, D-113): one added,
+    # one or all removed (by the owner, or by a reset), a reset asked for
+    # with the number and waiting 7 days, that reset cancelled by a passkey
+    # sign-in, and passkey-only sign-in turned on or off.
+    "passkey_added",
+    "passkey_removed",
+    "passkey_reset_requested",
+    "passkey_reset_cancelled",
+    "passkey_only_changed",
 )
 MAX_DETAILS_LENGTH = 2000
 

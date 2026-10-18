@@ -34,6 +34,7 @@ from app.core.clock import india_date
 from app.core.errors import _leaf_routes
 from app.core.rate_limit import limiter
 from app.main import app
+from app.modules.auth.models.passkey import Passkey
 from app.modules.deal_memo.anchor_service import create_checkpoint
 from tests.deal_flow import (
     CAMPAIGNS_URL,
@@ -132,6 +133,7 @@ BODIES: dict[str, dict[str, Any]] = {
     "DisputeOpen": {"reason": REASON},
     "DisputeEntryCreate": {"note": "My bank statement shows nothing."},
     "DisputeClose": {"outcome": "resolved_paid"},
+    "PasskeyRename": {"name": "Mine now"},
 }
 
 
@@ -254,6 +256,23 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
     ).json()["id"]
     # A data export of the creator's own, built and ready (D-111).
     export_id = ask_for_export(client, creator.headers)
+    # A passkey of the creator's own (D-113), as a row: its routes only need
+    # one to exist, and passkeys are off in this test.
+    passkey = Passkey(
+        account_id=creator.account_id,
+        credential_id=uuid.uuid4().bytes,
+        public_key=bytes.fromhex("a10102"),
+        sign_count=0,
+        aaguid=uuid.UUID(int=0),
+        backup_eligible=True,
+        backup_state=True,
+        name="My phone",
+        created_at=clock.now,
+        updated_at=clock.now,
+    )
+    db.add(passkey)
+    db.flush()
+    passkey_id = passkey.id
     build_exports()
     report_id = client.post(
         "/api/v1/reports",
@@ -311,6 +330,7 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
         "package_id": package_id,
         "report_id": report_id,
         "export_id": export_id,
+        "passkey_id": passkey_id,
         "takedown_id": takedown_id,
         "account_id": brand.account_id,
         "city": city,

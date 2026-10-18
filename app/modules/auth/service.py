@@ -24,6 +24,7 @@ from app.modules.auth.exceptions import (
     OtpInvalid,
     OtpSendLimitReached,
     OtpVerifyLimitReached,
+    PasskeyOnly,
     PhoneChangeWaiting,
     RoleMismatch,
 )
@@ -33,6 +34,7 @@ from app.modules.auth.models.otp_challenge import MAX_OTP_ATTEMPTS, OTP_TTL, Otp
 from app.modules.auth.models.step_up_challenge import StepUpChallenge
 from app.modules.auth.sender import OtpSender
 from app.modules.auth.tokens import (
+    PASSKEY,
     PHONE_CODE_ONLY,
     TWO_FACTORS,
     create_access_token,
@@ -104,13 +106,15 @@ def lock_phones(db: Session, *phones: str) -> None:
 
 
 def codes_for_phone(
-    db: Session, phone: str, since: datetime
+    db: Session, phone: str, since: datetime, *, sent_only: bool = False
 ) -> list[tuple[datetime, int]]:
-    """Every code sent to `phone` after `since`, with the wrong tries each used.
+    """Every code for `phone` after `since`, with the wrong tries each used.
 
     Login codes and step-up codes (item 82) together, so the caps on sending
     and guessing are one budget per phone: asking for step-up codes buys no
-    extra messages and no extra guesses.
+    extra messages and no extra guesses. `sent_only` leaves out grants a
+    passkey earned (D-113), which no message carried; their wrong tries
+    still count.
     """
     login_codes = select(OtpChallenge.created_at, OtpChallenge.attempts).where(
         OtpChallenge.phone == phone, OtpChallenge.created_at > since
@@ -120,6 +124,8 @@ def codes_for_phone(
         .join(Account, Account.id == StepUpChallenge.account_id)
         .where(Account.phone == phone, StepUpChallenge.created_at > since)
     )
+    if sent_only:
+        step_up_codes = step_up_codes.where(StepUpChallenge.method == "phone_code")
     return [
         (created_at, attempts)
         for created_at, attempts in db.execute(union_all(login_codes, step_up_codes))
@@ -130,7 +136,8 @@ def seconds_until_send_allowed(db: Session, phone: str, now: datetime) -> int:
     """0 if a code may be sent now, otherwise whole seconds until one may."""
     longest = max(window for window, _ in OTP_SEND_LIMITS)
     sent = sorted(
-        created_at for created_at, _ in codes_for_phone(db, phone, now - longest)
+        created_at
+        for created_at, _ in codes_for_phone(db, phone, now - longest, sent_only=True)
     )
     wait = 0
     for window, max_codes in OTP_SEND_LIMITS:
@@ -234,6 +241,11 @@ def verify_otp(
         # The code is right, so the person is told; it stays unused (D-061).
         db.rollback()
         raise AccountSuspended.because(account.suspension_reason)
+    if account is not None and account.passkey_only:
+        # A phone code no longer logs this account in (D-113). The code stays
+        # unused, so the same one can start a passkey reset.
+        db.rollback()
+        raise PasskeyOnly()
 
     is_new_account = account is None
     if account is None:
@@ -316,6 +328,7 @@ def issue_session(
     *,
     second_factor_at: datetime | None = None,
     authenticated_at: datetime | None = None,
+    passkey_at: datetime | None = None,
 ) -> LoginResult:
     """Create one session in `family_id` and return its tokens. The caller commits.
 
@@ -323,6 +336,8 @@ def issue_session(
     on every session of the family, and makes its access tokens say `mfa`.
     `authenticated_at` is when the family's login was proven, `now` for a
     new login; its access tokens carry it as `auth_time` (D-109).
+    `passkey_at` is when a passkey proved the login, kept on every session
+    of the family, and makes its access tokens say so (D-113).
     """
     refresh_token = new_refresh_token()
     refresh_expires_at = refresh_token_expiry(account.role, now, second_factor_at)
@@ -333,15 +348,22 @@ def issue_session(
             token_hash=hash_refresh_token(refresh_token),
             expires_at=refresh_expires_at,
             second_factor_at=second_factor_at,
+            passkey_at=passkey_at,
             created_at=now,
             updated_at=now,
         )
     )
+    if second_factor_at is not None:
+        methods = TWO_FACTORS
+    elif passkey_at is not None:
+        methods = PASSKEY
+    else:
+        methods = PHONE_CODE_ONLY
     access_token, access_expires_at = create_access_token(
         account.id,
         account.role,
         now,
-        methods=PHONE_CODE_ONLY if second_factor_at is None else TWO_FACTORS,
+        methods=methods,
         not_after=refresh_expires_at if account.role == "admin" else None,
         authenticated_at=now if authenticated_at is None else authenticated_at,
     )
@@ -408,6 +430,7 @@ def refresh_session(db: Session, refresh_token: str, now: datetime) -> LoginResu
         now,
         second_factor_at=auth_session.second_factor_at,
         authenticated_at=logged_in_at(db, auth_session.family_id),
+        passkey_at=auth_session.passkey_at,
     )
     db.commit()
     return result

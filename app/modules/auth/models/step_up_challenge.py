@@ -32,7 +32,16 @@ STEP_UP_ACTIONS: tuple[str, ...] = (
     # Moving the account onto a new phone number (item 80, D-108): the
     # value is the new number, so the code cannot move it anywhere else.
     "change_phone",
+    # Passkeys (item 79, D-113): adding one, removing one (its id is the
+    # value), and turning "passkey only" sign-in on or off ("on", "off").
+    "add_passkey",
+    "remove_passkey",
+    "passkey_only",
 )
+# How a step-up was proven (D-113): a code sent to the phone, or a passkey
+# answering a challenge for exactly this change. Once an account has a
+# passkey, only the second is accepted.
+STEP_UP_METHODS: tuple[str, ...] = ("phone_code", "passkey")
 STEP_UP_TTL = timedelta(minutes=5)
 MAX_STEP_UP_ATTEMPTS = MAX_OTP_ATTEMPTS
 VALUE_HASH_PATTERN = CODE_HASH_PATTERN
@@ -55,6 +64,7 @@ class StepUpChallenge(Base):
             "consumed_at IS NULL OR consumed_at >= created_at",
             name="consumed_after_created",
         ),
+        CheckConstraint(f"method IN {STEP_UP_METHODS}", name="method_allowed"),
         # The account's latest code, and the send and guess caps counted per
         # account; its first column also serves the foreign key.
         Index(
@@ -76,6 +86,10 @@ class StepUpChallenge(Base):
     # action without one), keyed by OTP_HASH_KEY.
     value_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    # A phone code, or a grant issued once a passkey answered (D-113).
+    method: Mapped[str] = mapped_column(
+        String(12), nullable=False, server_default=text("'phone_code'")
+    )
     attempts: Mapped[int] = mapped_column(
         SmallInteger, nullable=False, server_default=text("0")
     )
