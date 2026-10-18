@@ -399,3 +399,48 @@ def test_the_placeholder_aws_holds_before_the_claude_key_is_pasted_stops_the_app
     )
     # Switched off, the placeholder is harmless: the app starts.
     assert load(anthropic_api_key=placeholder.group(1)).proof_reading_enabled is False
+
+
+# --- passkeys (D-113) -------------------------------------------------------------
+
+APK_ORIGIN = "android:apk-key-hash:" + "A" * 43
+
+
+def test_passkeys_are_off_unless_a_domain_is_set():
+    assert load().passkey_rp_id is None
+    assert load(passkey_rp_id="").passkey_rp_id is None
+
+
+def test_passkeys_on_load_with_the_website_and_the_app():
+    settings = load(
+        environment="production",
+        passkey_rp_id="colyv.in",
+        passkey_origins=f"https://colyv.in,https://app.colyv.in,{APK_ORIGIN}",
+    )
+
+    assert settings.passkey_origin_list == (
+        "https://colyv.in",
+        "https://app.colyv.in",
+        APK_ORIGIN,
+    )
+
+
+@pytest.mark.parametrize(
+    "origins",
+    [
+        "",
+        "https://evil.example",
+        "https://colyv.in.evil.example",
+        "https://notcolyv.in",
+        "http://colyv.in",
+        "android:apk-key-hash:short",
+        "https://colyv.in/",
+    ],
+)
+def test_passkeys_on_refuse_an_origin_off_their_domain(origins):
+    with pytest.raises(ValidationError):
+        load(environment="production", passkey_rp_id="colyv.in", passkey_origins=origins)
+
+
+def test_a_passkey_domain_must_be_a_bare_host():
+    assert_rejected("passkey_rp_id", passkey_rp_id="https://colyv.in")

@@ -77,6 +77,12 @@ class AuthSession(Base):
     second_factor_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # When the login behind this session was proven by a passkey, carried
+    # through every rotation like `second_factor_at`, so every token of the
+    # session says so (D-113). NULL means a phone code.
+    passkey_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     # Nullable on purpose: empty until this token is rotated.
     used_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

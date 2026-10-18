@@ -54,6 +54,7 @@ Status words in this file:
 | Breach: tell the Data Protection Board and every affected person (Rule 7) | `docs/INCIDENT_RESPONSE.md` section 5. Sources describe a detailed report to the Board within 72 hours; the exact clock is a Confirm item | **Confirm** |
 | Erase when the purpose is served or consent is withdrawn; publish retention periods (Rule 8) | Account deletion (E8) waits on the retention answer. A data export's file is kept only until it is downloaded, at most 24 hours (D-111). A new phone number waiting to replace the old (D-108) is deleted once the change is made or cancelled, and no earlier number is kept | **Confirm**, then Owed |
 | **Children (under 18): verifiable parental consent; no tracking, behavioural monitoring or targeted advertising** (Section 9, Rule 10) | Adults only (D-086, section 3.10) | Built; **Confirm** |
+| No biometric data held (passkeys, D-113) | A fingerprint or face only unlocks the key on the person's own phone and never reaches us; we keep each key's public half, its authenticator's make and a name | Built |
 | A contact for privacy questions and grievances, published (Rule 14) | The grievance officer of section 3.3 can serve both | Owed (founders name the person) |
 | Processors on contract: AWS, Sentry, MSG91, Anthropic | Data processing terms with each, kept with the validation pack | Founders |
 | Data leaving India | Allowed unless the government restricts a country; Sentry and Anthropic process outside India | **Confirm** |

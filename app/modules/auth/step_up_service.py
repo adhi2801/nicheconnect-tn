@@ -32,16 +32,17 @@ uncommitted, so the code is spent only if the change itself commits.
 import hashlib
 import hmac
 import uuid
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.export import MAX_ROWS_PER_SECTION, ExportedSection, allow, build_section
-from app.modules.auth import second_factor_service
+from app.modules.auth import passkeys, second_factor_service
 from app.modules.auth import service as login
 from app.modules.auth.exceptions import (
     OtpSendLimitReached,
@@ -50,6 +51,7 @@ from app.modules.auth.exceptions import (
     StepUpCodeInvalid,
     StepUpRequired,
 )
+from app.modules.auth.models import passkey as passkey_models
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.step_up_challenge import (
     MAX_STEP_UP_ATTEMPTS,
@@ -60,9 +62,15 @@ from app.modules.auth.service import PendingOtp
 from app.modules.auth.tokens import generate_otp_code, hash_otp_code, otp_code_matches
 
 StepUpAction = Literal[
-    "set_upi_id", "download_export", "log_out_everywhere", "change_phone"
+    "set_upi_id",
+    "download_export",
+    "log_out_everywhere",
+    "change_phone",
+    "add_passkey",
+    "remove_passkey",
+    "passkey_only",
 ]
-StepUpMethod = Literal["phone_code", "authenticator"]
+StepUpMethod = Literal["phone_code", "authenticator", "passkey"]
 # The request header a risky change carries its code in.
 STEP_UP_HEADER = "Step-Up-Code"
 # Who may ask for each; an action not named here is for every role.
@@ -70,12 +78,23 @@ STEP_UP_HEADER = "Step-Up-Code"
 ACTION_ROLES: dict[str, tuple[str, ...]] = {
     "set_upi_id": ("creator",),
     "change_phone": ("brand", "creator"),
+    # Passkeys are for brands and creators; admins' wait for their web page.
+    "add_passkey": ("brand", "creator"),
+    "remove_passkey": ("brand", "creator"),
+    "passkey_only": ("brand", "creator"),
 }
 
 EXPORTED_TABLES = frozenset({"step_up_challenge"})
 # What was asked for and when, never the hashes of the code or the value.
 EXPORT_FIELDS = allow(
-    "id", "action", "attempts", "expires_at", "consumed_at", "created_at", "updated_at"
+    "id",
+    "action",
+    "method",
+    "attempts",
+    "expires_at",
+    "consumed_at",
+    "created_at",
+    "updated_at",
 )
 
 
@@ -88,6 +107,18 @@ class StepUpCode:
     # None for an authenticator code, which lasts its 30-second step.
     expires_at: datetime | None
     pending: PendingOtp | None
+    # For an account with a passkey: the challenge its passkey answers
+    # (WebAuthn's request options), instead of a message (D-113).
+    passkey_options: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True)
+class StepUpGrant:
+    """A one-use grant for one change, issued once a passkey answered (D-113)."""
+
+    action: StepUpAction
+    code: str
+    expires_at: datetime
 
 
 def value_hash(action: StepUpAction, value: str) -> str:
@@ -106,7 +137,10 @@ def request_code(
 ) -> StepUpCode:
     """A code for this account to do `action` with `value`. Commits.
 
-    For an admin nothing is sent: their authenticator gives the code.
+    For an admin nothing is sent: their authenticator gives the code. For an
+    account with a passkey nothing is sent either: the answer carries the
+    challenge its passkey signs, and `grant_for_passkey` turns that into the
+    code (D-113).
     Raises RoleNotAllowed (only creators give a UPI ID; admins change no
     phone number here) and
     OtpSendLimitReached (the phone's caps are reached).
@@ -116,6 +150,19 @@ def request_code(
     if account.role == "admin":
         return StepUpCode(
             action=action, method="authenticator", expires_at=None, pending=None
+        )
+    if passkeys.has_any(db, account.id):
+        # Once an account has a passkey, only a passkey proves a change: no
+        # message is sent, which a SIM swapper could read (D-113).
+        options = passkeys.step_up_options(
+            db, account, action, value_hash(action, value), now
+        )
+        return StepUpCode(
+            action=action,
+            method="passkey",
+            expires_at=now + passkey_models.PASSKEY_CHALLENGE_TTL,
+            pending=None,
+            passkey_options=options,
         )
     login.lock_phone(db, account.phone)
     retry_after = login.seconds_until_send_allowed(db, account.phone, now)
@@ -143,6 +190,50 @@ def request_code(
         expires_at=expires_at,
         pending=PendingOtp(phone=account.phone, code=code, expires_at=expires_at),
     )
+
+
+def grant_for_passkey(
+    db: Session,
+    account: Account,
+    action: StepUpAction,
+    value: str,
+    credential: Mapping[str, Any],
+    now: datetime,
+) -> StepUpGrant:
+    """A one-use grant for exactly this change, once a passkey answered. Commits.
+
+    The passkey must be the account's, answering a challenge made for this
+    action and value. The grant is kept as a step-up code proven by a
+    passkey: it works once, for 5 minutes, for this change only, and its
+    wrong tries count towards the same caps (D-113). Raises PasskeysNotOpen
+    and PasskeyInvalid.
+    """
+    digest = value_hash(action, value)
+    passkeys.verify(
+        db,
+        credential,
+        purpose="step_up",
+        account_id=account.id,
+        now=now,
+        action=action,
+        value_hash=digest,
+    )
+    code = generate_otp_code()
+    expires_at = now + STEP_UP_TTL
+    db.add(
+        StepUpChallenge(
+            account_id=account.id,
+            action=action,
+            value_hash=digest,
+            code_hash=hash_otp_code(code),
+            method="passkey",
+            expires_at=expires_at,
+            created_at=now,
+            updated_at=now,
+        )
+    )
+    db.commit()
+    return StepUpGrant(action=action, code=code, expires_at=expires_at)
 
 
 def consume(
@@ -175,7 +266,11 @@ def consume(
         db.rollback()
         raise OtpVerifyLimitReached(headers={"Retry-After": str(retry_after)})
 
-    challenge = _latest(db, account.id, action)
+    # With a passkey, a phone code no longer proves anything: only a grant
+    # a passkey earned does (D-113).
+    challenge = _latest(
+        db, account.id, action, "passkey" if passkeys.has_any(db, account.id) else None
+    )
     if (
         challenge is None
         or challenge.consumed_at is not None
@@ -196,17 +291,21 @@ def consume(
 
 
 def _latest(
-    db: Session, account_id: uuid.UUID, action: StepUpAction
+    db: Session, account_id: uuid.UUID, action: StepUpAction, method: str | None
 ) -> StepUpChallenge | None:
     """The account's newest code for `action`; only it counts, as for login.
 
-    Two asked for in the same instant are told apart by their ids, which
-    uuidv7 orders by when they were made.
+    `method` limits it to codes proven that way. Two asked for in the same
+    instant are told apart by their ids, which uuidv7 orders by when they
+    were made.
     """
+    query = select(StepUpChallenge).where(
+        StepUpChallenge.account_id == account_id, StepUpChallenge.action == action
+    )
+    if method is not None:
+        query = query.where(StepUpChallenge.method == method)
     return db.scalars(
-        select(StepUpChallenge)
-        .where(StepUpChallenge.account_id == account_id, StepUpChallenge.action == action)
-        .order_by(StepUpChallenge.created_at.desc(), StepUpChallenge.id.desc())
+        query.order_by(StepUpChallenge.created_at.desc(), StepUpChallenge.id.desc())
         .limit(1)
         .execution_options(populate_existing=True)
     ).first()

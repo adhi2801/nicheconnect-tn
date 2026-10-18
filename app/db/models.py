@@ -13,6 +13,11 @@ from app.modules.auth.models.brand import Brand  # noqa: F401
 from app.modules.auth.models.creator import Creator  # noqa: F401
 from app.modules.auth.models.device_token import DeviceToken  # noqa: F401
 from app.modules.auth.models.otp_challenge import OtpChallenge  # noqa: F401
+from app.modules.auth.models.passkey import (
+    Passkey,  # noqa: F401
+    PasskeyChallenge,  # noqa: F401
+    PasskeyReset,  # noqa: F401
+)
 from app.modules.auth.models.step_up_challenge import StepUpChallenge  # noqa: F401
 from app.modules.auth.models.totp_factor import TotpFactor  # noqa: F401
 from app.modules.campaigns.models import (

@@ -146,7 +146,9 @@ def change_my_phone(
     description=(
         "For when your current number is already gone, so no code can reach "
         "it. Needs **a login at least 30 days old** (403 `login_too_recent`, "
-        "with `Retry-After`, from a newer one) and a code from the new number, "
+        "with `Retry-After`, from a newer one), or, once you have a passkey, "
+        "the passkey's grant in `Step-Up-Code` instead; and a code from the "
+        "new number, "
         "asked for at `POST /api/v1/auth/otp/request`, as `new_phone_code`. "
         "**The new number takes over 7 days later**, and **any login with "
         "your current number before then cancels it**, since that number was "
@@ -180,12 +182,19 @@ def change_my_lost_phone(
     body: PhoneChangeIn,
     account: CurrentAccount,
     login_time: LoginTime,
+    step_up_code: StepUpCode = None,
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> PhoneChangeRead:
     return _read(
         service.request_change_without_current_number(
-            db, account, body.new_phone, body.new_phone_code, login_time, now
+            db,
+            account,
+            body.new_phone,
+            body.new_phone_code,
+            login_time,
+            now,
+            step_up_code=step_up_code,
         )
     )
 

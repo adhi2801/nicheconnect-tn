@@ -111,6 +111,7 @@ def test_a_code_is_sent_to_the_phone_for_one_change(client, db, sender, creator)
         "action": "log_out_everywhere",
         "method": "phone_code",
         "expires_in_seconds": 300,
+        "passkey_options": None,
     }
     [sent] = sender.sent
     assert sent.phone == phone_of(db, creator)
@@ -491,6 +492,7 @@ def test_an_admin_is_sent_nothing(client, db, sender, admin):
         "action": "log_out_everywhere",
         "method": "authenticator",
         "expires_in_seconds": None,
+        "passkey_options": None,
     }
     assert sender.sent == []
     assert (

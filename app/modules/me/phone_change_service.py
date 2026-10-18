@@ -58,7 +58,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.export import ExportedSection, allow, build_section
-from app.modules.auth import login_age, phone_changes
+from app.modules.auth import login_age, passkeys, phone_changes
 from app.modules.auth import service as login
 from app.modules.auth import step_up_service as step_ups
 from app.modules.auth.exceptions import (
@@ -172,10 +172,18 @@ def request_change(
     what step_up_service.consume raises for the current number's.
     """
     ensure_new_phone(account, new_phone)
-    login_age.ensure_established(authenticated_at, now)
+    login_age.ensure_established_unless_passkey(db, account.id, authenticated_at, now)
     if step_up_code is None:
         raise StepUpRequired()
-    return _claim(db, account, new_phone, new_phone_code, step_up_code, now)
+    return _claim(
+        db,
+        account,
+        new_phone,
+        new_phone_code,
+        step_up_code,
+        now,
+        without_current_number=False,
+    )
 
 
 def request_change_without_current_number(
@@ -185,6 +193,7 @@ def request_change_without_current_number(
     new_phone_code: str,
     authenticated_at: datetime | None,
     now: datetime,
+    step_up_code: str | None = None,
 ) -> PhoneChangeState:
     """Start moving the account onto `new_phone` when its current number is lost (D-110).
 
@@ -195,13 +204,31 @@ def request_change_without_current_number(
     (`phone_changes.is_void`); the job then drops it and tells the account.
     Otherwise as `request_change`, with a login code to `new_phone`.
 
-    Raises RoleNotAllowed, PhoneUnchanged, LoginTooRecent,
-    PhoneChangeTakingEffect, PhoneInUse, and what service.check_phone_code
-    raises for the new number's code.
+    An account with a passkey proves it with the passkey instead of the
+    login's age: `step_up_code` is then a passkey's grant for `change_phone`
+    to exactly `new_phone`, so a stolen session cannot use this path around
+    the passkey (D-113).
+
+    Raises RoleNotAllowed, PhoneUnchanged, LoginTooRecent, StepUpRequired,
+    PhoneChangeTakingEffect, PhoneInUse, what service.check_phone_code raises
+    for the new number's code, and what step_up_service.consume raises.
     """
     ensure_new_phone(account, new_phone)
-    login_age.ensure_established(authenticated_at, now, login_age.LOST_NUMBER_LOGIN)
-    return _claim(db, account, new_phone, new_phone_code, None, now)
+    if passkeys.has_any(db, account.id):
+        if step_up_code is None:
+            raise StepUpRequired()
+    else:
+        login_age.ensure_established(authenticated_at, now, login_age.LOST_NUMBER_LOGIN)
+        step_up_code = None
+    return _claim(
+        db,
+        account,
+        new_phone,
+        new_phone_code,
+        step_up_code,
+        now,
+        without_current_number=True,
+    )
 
 
 def _claim(
@@ -211,12 +238,15 @@ def _claim(
     new_phone_code: str,
     step_up_code: str | None,
     now: datetime,
+    *,
+    without_current_number: bool,
 ) -> PhoneChangeState:
     """Both locks, the codes, the checks and the waiting row. Commits.
 
-    `step_up_code` None is a change without the current number (D-110).
+    `step_up_code` is spent when given: a code from the current number, or a
+    passkey's grant (D-113). Without the current number and no passkey,
+    there is none (D-110).
     """
-    without_current_number = step_up_code is None
     login.lock_phones(db, account.phone, new_phone)
     waiting = _locked_change(db, account.id)
     if waiting is not None and phone_changes.is_due(waiting, now):

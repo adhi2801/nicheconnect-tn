@@ -22,6 +22,9 @@ PLAIN_HTTP_ENVIRONMENTS = frozenset({"local", "test"})
 # A host name as a browser writes it in the Origin header: lower case, digits,
 # dots and hyphens. An international name arrives as punycode, so this covers it.
 HOST_NAME = re.compile(r"[a-z0-9-]+(\.[a-z0-9-]+)*")
+# An Android app's own origin for passkeys: its signing key's SHA-256,
+# base64url without padding (43 characters).
+ANDROID_APP_ORIGIN = re.compile(r"android:apk-key-hash:[A-Za-z0-9_-]{43}")
 DEFAULT_PORTS = {"http": 80, "https": 443}
 
 # How login codes reach a phone (D-058). "fake" keeps them in memory and only
@@ -186,12 +189,26 @@ class Settings(BaseSettings):
     upi_notice_version: str | None = Field(
         default=None, pattern=r"^[A-Za-z0-9._-]{1,40}$"
     )
+    # Passkeys (item 79, D-113): the domain they are bound to, WebAuthn's
+    # relying party ID. Unset until the name and the domain exist (item 4);
+    # passkeys are off until then. A passkey made for one domain never works
+    # on another, so it is set once, to the domain we will keep.
+    passkey_rp_id: str | None = Field(
+        default=None, pattern=r"^[a-z0-9-]+(\.[a-z0-9-]+)*$"
+    )
+    # The name a phone shows when it offers the passkey.
+    passkey_rp_name: str = Field(default="NicheConnect TN", min_length=1, max_length=64)
+    # Where a passkey's answer may come from, comma-separated: the website's
+    # own origins (the domain or its subdomains), and each app's
+    # android:apk-key-hash:<hash>. iOS apps answer with the website's origin.
+    passkey_origins: str = ""
 
     @field_validator(
         "sentry_dsn",
         "app_release",
         "upi_notice_version",
         "traces_endpoint",
+        "passkey_rp_id",
         mode="before",
     )
     @classmethod
@@ -204,6 +221,32 @@ class Settings(BaseSettings):
     def empty_key_is_no_key(cls, value: object) -> object:
         # `ANTHROPIC_API_KEY=` in .env means "none", not an empty key.
         return None if value == "" else value
+
+    @model_validator(mode="after")
+    def passkeys_are_usable(self) -> Settings:
+        """Passkeys on need somewhere to be used from, each on their domain (D-113)."""
+        if self.passkey_rp_id is None:
+            return self
+        origins = split_origins(self.passkey_origins)
+        if not origins:
+            raise ValueError("passkey_rp_id is set, so PASSKEY_ORIGINS must list origins")
+        allow_http = self.environment in PLAIN_HTTP_ENVIRONMENTS
+        for origin in origins:
+            if ANDROID_APP_ORIGIN.fullmatch(origin):
+                continue
+            problem = origin_problem(origin, allow_http=allow_http)
+            if problem:
+                raise ValueError(f"passkey origin '{origin}' {problem}")
+            host = urlsplit(origin).hostname or ""
+            if host != self.passkey_rp_id and not host.endswith("." + self.passkey_rp_id):
+                raise ValueError(
+                    f"passkey origin '{origin}' is not on {self.passkey_rp_id}"
+                )
+        return self
+
+    @property
+    def passkey_origin_list(self) -> tuple[str, ...]:
+        return split_origins(self.passkey_origins)
 
     @model_validator(mode="after")
     def proof_reading_is_usable(self) -> Settings:

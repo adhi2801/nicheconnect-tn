@@ -12,8 +12,12 @@ every refresh (`service.logged_in_at`), so a stolen access token cannot
 claim to be older than the login it came from.
 """
 
+import uuid
 from datetime import datetime, timedelta
 
+from sqlalchemy.orm import Session
+
+from app.modules.auth import passkeys
 from app.modules.auth.exceptions import LoginTooRecent
 
 # Google's period for sensitive actions from a new device (read 18 October
@@ -34,6 +38,23 @@ def allowed_from(
     A token with no login time counts as a login made at `now`.
     """
     return (now if authenticated_at is None else authenticated_at) + age
+
+
+def ensure_established_unless_passkey(
+    db: Session,
+    account_id: uuid.UUID,
+    authenticated_at: datetime | None,
+    now: datetime,
+    age: timedelta = ESTABLISHED_LOGIN,
+) -> None:
+    """`ensure_established`, unless the account has a passkey (D-113).
+
+    With a passkey, every such change is proven by the passkey itself, which
+    a SIM swapper cannot have, so a new login need not wait a week.
+    """
+    if passkeys.has_any(db, account_id):
+        return
+    ensure_established(authenticated_at, now, age)
 
 
 def ensure_established(

@@ -44,6 +44,18 @@ PUBLIC = {
         "POST",
         "/api/v1/auth/logout",
     ): "the refresh token in the body is the credential; always 204",
+    (
+        "POST",
+        "/api/v1/auth/passkey/options",
+    ): "how a passkey login starts: nobody is known yet (D-113)",
+    (
+        "POST",
+        "/api/v1/auth/passkey/login",
+    ): "how a passkey login finishes: the passkey's answer is the credential (D-113)",
+    (
+        "POST",
+        "/api/v1/auth/passkey-reset",
+    ): "a passkey reset: the number and its code are the credential (D-113)",
     ("GET", "/api/v1/creators/by-handle/{handle}"): "the public Creator Passport (D-036)",
     ("GET", "/api/v1/cities"): "cities with public figures (D-078)",
     ("GET", "/api/v1/cities/{city}/figures"): "a city's public figures (D-078)",

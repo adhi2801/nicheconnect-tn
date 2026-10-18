@@ -51,6 +51,11 @@ NotificationType = Literal[
     "phone_change_failed",
     "data_export_ready",
     "data_export_failed",
+    "passkey_added",
+    "passkey_removed",
+    "passkey_reset_requested",
+    "passkey_reset_cancelled",
+    "passkey_only_changed",
 ]
 
 ensure_same_values("NotificationType", NotificationType, NOTIFICATION_TYPES)
