@@ -168,7 +168,7 @@ One shape for every non-2xx answer, RFC 9457 Problem Details:
 
 - DBOS runs them (D-060): durable workflows whose state lives in Postgres, with no broker and no extra service.
 - Jobs are idempotent: running one twice is safe, and a test proves it.
-- Every job logs its start, success or failure with its id. Failed jobs retry with backoff, then land in a failed state someone can see.
+- Every job logs its start, success or failure with its id. Failed jobs retry with backoff, then land in a failed state someone can see: the data export tries 3 runs a minute apart, then is marked failed and its owner told (D-112).
 - A job that spends money (the Claude API) has a daily ceiling in settings (D-070).
 
 ## 8. Configuration

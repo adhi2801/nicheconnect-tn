@@ -79,14 +79,14 @@ def _read(export: DataExport, now: datetime) -> DataExportRead:
     description=(
         "Starts building one JSON file of everything we hold about the "
         "signed-in account, with a manifest saying why we hold each part and "
-        "what is deliberately left out. **Needs a code**: ask at `POST "
-        "/api/v1/me/step-up` with `download_export` and no `export_id`, and "
-        "send it in the `Step-Up-Code` header. You are told in the app when "
-        "it is ready, usually within minutes; then download it, once, within "
-        "24 hours. One is prepared at a time. Limited to 3 an hour."
+        "what is deliberately left out. No code is needed to ask: the "
+        "download needs one. You are told in the app when it is ready, "
+        "usually within minutes, or if it could not be made after three "
+        "tries; then download it, once, within 24 hours. One is prepared at "
+        "a time. Limited to 3 an hour."
     ),
     responses={
-        **_CODE,
+        **_COMMON,
         409: problem_doc("`export_already_preparing`: one is already being prepared"),
     },
 )
@@ -96,9 +96,8 @@ def ask_for_my_data(
     account: CurrentAccount,
     db: Annotated[Session, Depends(get_db)],
     now: Annotated[datetime, Depends(get_now)],
-    step_up_code: StepUpCode = None,
 ) -> DataExportRead:
-    return _read(service.request(db, account, step_up_code, now), now)
+    return _read(service.request(db, account, now), now)
 
 
 @router.get(

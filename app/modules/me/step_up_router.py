@@ -45,8 +45,8 @@ router = APIRouter(prefix="/api/v1/me", tags=["auth"], route_class=IdempotentRou
     summary="Ask for a code before a risky change",
     description=(
         "Sends a 6-digit code to your phone for one change: setting a UPI ID "
-        "(this exact one), asking for a copy of your data or downloading one "
-        "exact copy, logging out everywhere, or "
+        "(this exact one), downloading one exact copy of your data, logging "
+        "out everywhere, or "
         "moving your account to a new phone number (this exact one). "
         "Then make the change with the code in the `Step-Up-Code` header, "
         "within 5 minutes. A code works once, and only for the change it was "
@@ -96,7 +96,7 @@ def ask_for_step_up(
         phone_changes.ensure_new_phone(account, body.new_phone)
         login_age.ensure_established(login_time, now)
         value = body.new_phone
-    elif isinstance(body, StepUpForExport) and body.export_id is not None:
+    elif isinstance(body, StepUpForExport):
         data_exports.ensure_downloadable(db, account, body.export_id, now)
         value = str(body.export_id)
     code = step_up_service.request_code(db, account, body.action, value, now)

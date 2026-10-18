@@ -24,7 +24,15 @@ from app.modules.me.step_up_router import STEP_UP_LIMIT
 from app.modules.notifications.models import Notification
 from tests.deal_flow import Clock, User, brand_user, creator_user
 from tests.factories import build_auth_session, create_account
-from tests.step_up import EXPORT_URL, LOGOUT_ALL_URL, STEP_UP_URL, download_export
+from tests.step_up import (
+    EXPORT_URL,
+    LOGOUT_ALL_URL,
+    STEP_UP_URL,
+    ask_for_export,
+    build_exports,
+    download_export,
+    log_out_everywhere,
+)
 
 UPI_ID = "meena.cooks@okhdfcbank"
 OTP_REQUEST_URL = "/api/v1/auth/otp/request"
@@ -96,11 +104,11 @@ def told(db, user: User, kind: str) -> list[Notification]:
 
 
 def test_a_code_is_sent_to_the_phone_for_one_change(client, db, sender, creator):
-    response = ask(client, creator, "download_export")
+    response = ask(client, creator, "log_out_everywhere")
 
     assert response.status_code == 202, response.text
     assert response.json() == {
-        "action": "download_export",
+        "action": "log_out_everywhere",
         "method": "phone_code",
         "expires_in_seconds": 300,
     }
@@ -109,7 +117,7 @@ def test_a_code_is_sent_to_the_phone_for_one_change(client, db, sender, creator)
     [row] = db.scalars(
         select(StepUpChallenge).where(StepUpChallenge.account_id == creator.account_id)
     ).all()
-    assert row.action == "download_export"
+    assert row.action == "log_out_everywhere"
     assert sent.code not in (row.code_hash, row.value_hash)
 
 
@@ -145,6 +153,8 @@ def test_only_a_creator_asks_to_set_a_upi_id(client, db, sender, brand, clock):
         {"action": "set_upi_id", "upi_id": "9876543210@ybl"},
         {"action": "set_upi_id", "upi_id": "meena"},
         {"action": "download_export", "upi_id": UPI_ID},
+        {"action": "download_export"},
+        {"action": "download_export", "export_id": "not-an-id"},
         {"action": "log_out_everywhere", "note": "hi"},
     ],
     ids=[
@@ -154,6 +164,8 @@ def test_only_a_creator_asks_to_set_a_upi_id(client, db, sender, brand, clock):
         "phone-number upi",
         "not a upi id",
         "export with a value",
+        "export without its id",
+        "export with a malformed id",
         "unknown field",
     ],
 )
@@ -166,7 +178,9 @@ def test_a_request_that_is_not_one_change_is_refused(client, sender, creator, bo
 
 def test_asking_needs_a_login(client, sender):
     assert_problem(
-        client.post(STEP_UP_URL, json={"action": "download_export"}), 401, "invalid_token"
+        client.post(STEP_UP_URL, json={"action": "log_out_everywhere"}),
+        401,
+        "invalid_token",
     )
 
 
@@ -187,12 +201,14 @@ def test_login_codes_and_step_up_codes_share_the_phones_send_cap(
     phone = phone_of(db, creator)
     for _ in range(2):
         assert client.post(OTP_REQUEST_URL, json={"phone": phone}).status_code == 202
-    assert ask(client, creator, "download_export").status_code == 202
+    assert ask(client, creator, "log_out_everywhere").status_code == 202
 
     assert_problem(
         client.post(OTP_REQUEST_URL, json={"phone": phone}), 429, "otp_send_limit_reached"
     )
-    assert_problem(ask(client, creator, "download_export"), 429, "otp_send_limit_reached")
+    assert_problem(
+        ask(client, creator, "log_out_everywhere"), 429, "otp_send_limit_reached"
+    )
 
 
 def test_wrong_step_up_codes_use_up_the_phones_guesses(
@@ -241,7 +257,7 @@ def test_after_ten_wrong_tries_even_the_right_code_waits(
 def test_without_a_code_the_change_is_refused_with_the_rfc_9470_challenge(
     client, creator
 ):
-    response = client.post(EXPORT_URL, headers=creator.headers)
+    response = client.post(LOGOUT_ALL_URL, headers=creator.headers)
 
     assert_problem(response, 401, "step_up_required")
     challenge = response.headers["www-authenticate"]
@@ -249,22 +265,26 @@ def test_without_a_code_the_change_is_refused_with_the_rfc_9470_challenge(
 
 
 def test_the_right_code_allows_it(client, db, sender, creator):
-    code = code_for(client, db, sender, creator, "download_export")
+    code = code_for(client, db, sender, creator, "log_out_everywhere")
 
-    assert client.post(EXPORT_URL, headers=with_header(creator, code)).status_code == 202
+    assert (
+        client.post(LOGOUT_ALL_URL, headers=with_header(creator, code)).status_code == 200
+    )
 
 
 def test_a_wrong_code_is_refused_and_the_right_one_still_works(
     client, db, sender, creator
 ):
-    code = code_for(client, db, sender, creator, "download_export")
+    code = code_for(client, db, sender, creator, "log_out_everywhere")
 
     assert_problem(
-        client.post(EXPORT_URL, headers=with_header(creator, wrong(code))),
+        client.post(LOGOUT_ALL_URL, headers=with_header(creator, wrong(code))),
         400,
         "step_up_code_invalid",
     )
-    assert client.post(EXPORT_URL, headers=with_header(creator, code)).status_code == 202
+    assert (
+        client.post(LOGOUT_ALL_URL, headers=with_header(creator, code)).status_code == 200
+    )
 
 
 def test_a_code_works_once(client, db, sender, creator):
@@ -301,11 +321,18 @@ def test_a_code_works_until_its_last_second(client, db, sender, clock, creator):
 
 
 def test_a_code_for_one_change_cannot_make_another(client, db, sender, creator):
+    export_id = ask_for_export(client, creator.headers)
+    build_exports()
     for_logout = code_for(client, db, sender, creator, "log_out_everywhere")
-    for_export = code_for(client, db, sender, creator, "download_export")
+    for_export = code_for(
+        client, db, sender, creator, "download_export", export_id=export_id
+    )
 
     assert_problem(
-        client.post(EXPORT_URL, headers=with_header(creator, for_logout)),
+        client.post(
+            f"{EXPORT_URL}/{export_id}/download",
+            headers=with_header(creator, for_logout),
+        ),
         400,
         "step_up_code_invalid",
     )
@@ -346,11 +373,11 @@ def test_five_wrong_tries_use_up_a_code(client, db, sender, creator):
 
 def test_one_persons_code_is_no_use_to_another(client, db, sender, creator, clock):
     someone = creator_user(db, clock)
-    code = code_for(client, db, sender, creator, "download_export")
-    code_for(client, db, sender, someone, "download_export")
+    code = code_for(client, db, sender, creator, "log_out_everywhere")
+    code_for(client, db, sender, someone, "log_out_everywhere")
 
     assert_problem(
-        client.post(EXPORT_URL, headers=with_header(someone, code)),
+        client.post(LOGOUT_ALL_URL, headers=with_header(someone, code)),
         400,
         "step_up_code_invalid",
     )
@@ -358,7 +385,7 @@ def test_one_persons_code_is_no_use_to_another(client, db, sender, creator, cloc
 
 @pytest.mark.parametrize("code", ["12345", "1234567", "12345a", " 12345"])
 def test_a_code_that_is_not_six_digits_is_refused(client, creator, code):
-    response = client.post(EXPORT_URL, headers=with_header(creator, code))
+    response = client.post(LOGOUT_ALL_URL, headers=with_header(creator, code))
 
     assert response.status_code == 422
 
@@ -372,19 +399,24 @@ def test_downloading_the_export_tells_the_owner(client, db, creator):
     assert len(told(db, creator, "data_exported")) == 1
 
 
-def test_a_refused_export_tells_nobody_anything(client, db, creator):
-    client.post(EXPORT_URL, headers=creator.headers)
+def test_a_refused_download_tells_nobody_anything(client, db, creator):
+    export_id = ask_for_export(client, creator.headers)
+    build_exports()
 
+    refused = client.post(f"{EXPORT_URL}/{export_id}/download", headers=creator.headers)
+
+    assert_problem(refused, 401, "step_up_required")
     assert told(db, creator, "data_exported") == []
 
 
 def test_the_export_lists_the_codes_but_never_their_hashes(client, db, creator):
-    # The file is built after the code that asked for it, before the one
-    # that downloads it, so it holds the first (D-111).
+    log_out_everywhere(client, creator.headers)
+    # The file is built before the code that downloads it, so it holds the
+    # earlier one (D-111, D-112).
     body = download_export(client, creator.headers).json()
 
     [row] = body["data"]["step_up_codes"]
-    assert row["action"] == "download_export"
+    assert row["action"] == "log_out_everywhere"
     assert row["consumed_at"] is not None
     assert set(row) == set(step_up_service.EXPORT_FIELDS)
     assert "hash" not in str(sorted(row))
@@ -452,11 +484,11 @@ def factor_of(db, user: User) -> TotpFactor:
 def test_an_admin_is_sent_nothing(client, db, sender, admin):
     user, _ = admin
 
-    response = ask(client, user, "download_export")
+    response = ask(client, user, "log_out_everywhere")
 
     assert response.status_code == 202
     assert response.json() == {
-        "action": "download_export",
+        "action": "log_out_everywhere",
         "method": "authenticator",
         "expires_in_seconds": None,
     }
@@ -472,16 +504,18 @@ def test_an_admin_is_sent_nothing(client, db, sender, admin):
 def test_an_admin_proves_it_with_the_authenticator(client, db, clock, admin):
     user, secret = admin
 
-    response = client.post(EXPORT_URL, headers=with_header(user, shown(secret, clock)))
+    response = client.post(
+        LOGOUT_ALL_URL, headers=with_header(user, shown(secret, clock))
+    )
 
-    assert response.status_code == 202, response.text
+    assert response.status_code == 200, response.text
 
 
 def test_an_admin_s_wrong_code_counts_towards_the_lock(client, db, clock, admin):
     user, secret = admin
 
     response = client.post(
-        EXPORT_URL, headers=with_header(user, wrong(shown(secret, clock)))
+        LOGOUT_ALL_URL, headers=with_header(user, wrong(shown(secret, clock)))
     )
 
     assert_problem(response, 400, "step_up_code_invalid")
@@ -519,7 +553,7 @@ def test_an_admin_without_an_authenticator_cannot_step_up(client, db, clock):
     user = User(create_account(db, "admin").id, "admin", clock)
 
     assert_problem(
-        client.post(EXPORT_URL, headers=with_header(user, "123456")),
+        client.post(LOGOUT_ALL_URL, headers=with_header(user, "123456")),
         400,
         "step_up_code_invalid",
     )

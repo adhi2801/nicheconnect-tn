@@ -60,6 +60,7 @@ URGENT_TYPES: tuple[str, ...] = (
     "phone_changed",
     "phone_change_failed",
     "data_export_ready",
+    "data_export_failed",
 )
 MUTABLE_TYPES: tuple[str, ...] = tuple(
     kind for kind in NOTIFICATION_TYPES if kind not in URGENT_TYPES

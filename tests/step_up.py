@@ -67,8 +67,8 @@ def build_exports() -> data_export_service.ExportRun:
 
 
 def ask_for_export(client: TestClient, headers: Mapping[str, str]) -> str:
-    """Ask for a data export through the second check; its id."""
-    asked = client.post(EXPORT_URL, headers=with_code(client, headers, "download_export"))
+    """Ask for a data export (no code needed to ask, D-112); its id."""
+    asked = client.post(EXPORT_URL, headers=dict(headers))
     assert asked.status_code == 202, asked.text
     export_id: str = asked.json()["id"]
     return export_id
@@ -85,10 +85,10 @@ def download_ready_export(
 
 
 def download_export(client: TestClient, headers: Mapping[str, str]) -> Response:
-    """The person's data export, as an app gets it (D-111).
+    """The person's data export, as an app gets it (D-111, D-112).
 
-    Asked for with a code, built by one run of the job, then downloaded with
-    a code for that export.
+    Asked for, built by one run of the job, then downloaded with a code for
+    that export.
     """
     export_id = ask_for_export(client, headers)
     build_exports()

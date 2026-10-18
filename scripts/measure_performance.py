@@ -587,9 +587,9 @@ def measure_writes(
                 # The export (D-111): asked for, built by the job, then
                 # downloaded once, each step timed on its own.
                 asked = write(
-                    "POST /me/exports (with its code)",
+                    "POST /me/exports",
                     "/api/v1/me/exports",
-                    with_code("POST /me/step-up", "download_export"),
+                    creator_headers,
                 )
                 started = time.perf_counter()
                 data_export_service.run_exports(

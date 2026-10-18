@@ -7,16 +7,23 @@ ever reachable. What the file holds is tests/modules/me/test_export_api.py.
 """
 
 import json
+from contextlib import nullcontext
 from datetime import timedelta
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.core.rate_limit import limiter
 from app.core.storage import memory_store
+from app.modules.auth.models.step_up_challenge import StepUpChallenge
 from app.modules.me import data_export_service, export_service
 from app.modules.me.data_export_service import RECENT_EXPORTS
-from app.modules.me.export_models import EXPORT_KEPT_FOR, DataExport, object_key
+from app.modules.me.export_models import (
+    EXPORT_KEPT_FOR,
+    MAX_BUILD_ATTEMPTS,
+    DataExport,
+    object_key,
+)
 from app.modules.notifications.models import Notification
 from tests.deal_flow import User, creator_user
 from tests.step_up import (
@@ -26,7 +33,6 @@ from tests.step_up import (
     ask_for_export,
     build_exports,
     download_ready_export,
-    with_code,
 )
 
 
@@ -78,9 +84,7 @@ def ready_export(client, user: User) -> str:
 
 
 def test_asking_answers_at_once_and_the_export_is_prepared(client, clock, creator):
-    response = client.post(
-        EXPORT_URL, headers=with_code(client, creator.headers, "download_export")
-    )
+    response = client.post(EXPORT_URL, headers=creator.headers)
 
     assert response.status_code == 202, response.text
     body = response.json()
@@ -94,19 +98,36 @@ def test_asking_answers_at_once_and_the_export_is_prepared(client, clock, creato
     assert read(client, creator, body["id"]).json() == body
 
 
-def test_asking_needs_a_code(client, creator):
+def test_asking_needs_no_code_and_spends_none(client, db, creator):
+    """Asking releases nothing (D-112): the download is where a code is needed."""
     response = client.post(EXPORT_URL, headers=creator.headers)
 
-    assert_problem(response, 401, "step_up_required")
+    assert response.status_code == 202, response.text
+    assert (
+        db.scalars(
+            select(StepUpChallenge).where(
+                StepUpChallenge.account_id == creator.account_id
+            )
+        ).all()
+        == []
+    )
 
 
-def test_one_is_prepared_at_a_time_and_a_refusal_spends_no_code(client, creator):
+def test_someone_else_asking_in_your_session_still_alerts_you(client, db, creator):
+    """A stolen session can only start a build, and the owner hears of it."""
     ask_for_export(client, creator.headers)
-    code = ask_for_code(client, creator.headers, "download_export")
 
-    refused = client.post(EXPORT_URL, headers={**creator.headers, "Step-Up-Code": code})
     build_exports()
-    accepted = client.post(EXPORT_URL, headers={**creator.headers, "Step-Up-Code": code})
+
+    assert len(told(db, creator, "data_export_ready")) == 1
+
+
+def test_one_is_prepared_at_a_time(client, creator):
+    ask_for_export(client, creator.headers)
+
+    refused = client.post(EXPORT_URL, headers=creator.headers)
+    build_exports()
+    accepted = client.post(EXPORT_URL, headers=creator.headers)
 
     assert_problem(refused, 409, "export_already_preparing")
     assert accepted.status_code == 202, accepted.text
@@ -158,29 +179,66 @@ def test_running_the_job_again_builds_nothing_twice(client, db, creator):
     assert len(told(db, creator, "data_export_ready")) == 1
 
 
-def test_a_build_that_fails_is_marked_and_another_may_be_asked(
+def broken(*args, **kwargs):
+    raise RuntimeError("storage went away for a moment")
+
+
+def test_a_failed_try_is_retried_next_run_and_can_still_succeed(
     client, db, creator, monkeypatch
 ):
     export_id = ask_for_export(client, creator.headers)
 
-    def broken(*args, **kwargs):
-        raise RuntimeError("the database went away")
-
     monkeypatch.setattr(export_service, "build_export", broken)
-    run = build_exports()
+    failed_once = build_exports()
     monkeypatch.undo()
+    then = build_exports()
 
-    assert (run.built, run.failed) == (0, 1)
+    assert (failed_once.retrying, failed_once.failed) == (1, 0)
+    assert then.built == 1
+    assert read(client, creator, export_id).json()["status"] == "ready"
+    assert told(db, creator, "data_export_failed") == []
+
+
+def test_after_its_last_try_it_fails_and_the_owner_is_told(
+    client, db, creator, monkeypatch
+):
+    export_id = ask_for_export(client, creator.headers)
+    monkeypatch.setattr(export_service, "build_export", broken)
+
+    runs = [build_exports() for _ in range(MAX_BUILD_ATTEMPTS + 1)]
+
+    assert [(run.retrying, run.failed) for run in runs] == [
+        *[(1, 0)] * (MAX_BUILD_ATTEMPTS - 1),
+        (0, 1),
+        (0, 0),
+    ]
     assert read(client, creator, export_id).json()["status"] == "failed"
     assert memory_store().keys() == set()
     assert told(db, creator, "data_export_ready") == []
-    limiter.reset()
-    assert (
-        client.post(
-            EXPORT_URL, headers=with_code(client, creator.headers, "download_export")
-        ).status_code
-        == 202
+    [notice] = told(db, creator, "data_export_failed")
+    assert notice.details == {"export_id": export_id}
+    monkeypatch.undo()
+    assert client.post(EXPORT_URL, headers=creator.headers).status_code == 202
+
+
+def test_a_try_is_never_counted_past_the_last(client, db, creator):
+    """An overlapping run finding every try spent counts nothing, never a fourth."""
+    import uuid
+
+    export_id = ask_for_export(client, creator.headers)
+    db.execute(
+        update(DataExport)
+        .where(DataExport.id == uuid.UUID(export_id))
+        .values(attempts=MAX_BUILD_ATTEMPTS)
     )
+    db.commit()
+
+    outcome = data_export_service._count_failed_try(
+        lambda: nullcontext(db), uuid.UUID(export_id), creator.clock.now
+    )
+
+    assert outcome == "settled"
+    assert told(db, creator, "data_export_failed") == []
 
 
 def test_a_file_over_the_size_cap_fails_and_is_never_stored(
@@ -189,9 +247,9 @@ def test_a_file_over_the_size_cap_fails_and_is_never_stored(
     export_id = ask_for_export(client, creator.headers)
     monkeypatch.setattr(data_export_service, "MAX_EXPORT_BYTES", 10)
 
-    run = build_exports()
+    runs = [build_exports() for _ in range(MAX_BUILD_ATTEMPTS)]
 
-    assert (run.built, run.failed) == (0, 1)
+    assert runs[-1].failed == 1
     assert read(client, creator, export_id).json()["status"] == "failed"
     assert memory_store().keys() == set()
 
@@ -199,7 +257,8 @@ def test_a_file_over_the_size_cap_fails_and_is_never_stored(
 def test_a_failed_export_cannot_be_downloaded(client, creator, monkeypatch):
     export_id = ask_for_export(client, creator.headers)
     monkeypatch.setattr(data_export_service, "MAX_EXPORT_BYTES", 10)
-    build_exports()
+    for _ in range(MAX_BUILD_ATTEMPTS):
+        build_exports()
 
     asked = client.post(
         STEP_UP_URL,
@@ -244,12 +303,12 @@ def test_a_second_download_is_refused_before_any_code_is_sent(client, creator):
 
 def test_a_download_needs_a_code_for_that_export(client, creator):
     export_id = ready_export(client, creator)
-    for_asking = ask_for_code(client, creator.headers, "download_export")
+    for_another_change = ask_for_code(client, creator.headers, "log_out_everywhere")
 
     no_code = client.post(f"{EXPORT_URL}/{export_id}/download", headers=creator.headers)
     wrong_code = client.post(
         f"{EXPORT_URL}/{export_id}/download",
-        headers={**creator.headers, "Step-Up-Code": for_asking},
+        headers={**creator.headers, "Step-Up-Code": for_another_change},
     )
 
     assert_problem(no_code, 401, "step_up_required")

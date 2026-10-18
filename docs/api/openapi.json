@@ -5820,11 +5820,12 @@
                 "phone_change_cancelled",
                 "phone_changed",
                 "phone_change_failed",
-                "data_export_ready"
+                "data_export_ready",
+                "data_export_failed"
               ],
               "type": "string"
             },
-            "maxItems": 38,
+            "maxItems": 39,
             "title": "Muted Types",
             "type": "array"
           },
@@ -5914,7 +5915,8 @@
                 "phone_change_cancelled",
                 "phone_changed",
                 "phone_change_failed",
-                "data_export_ready"
+                "data_export_ready",
+                "data_export_failed"
               ],
               "type": "string"
             },
@@ -5978,7 +5980,8 @@
                 "phone_change_cancelled",
                 "phone_changed",
                 "phone_change_failed",
-                "data_export_ready"
+                "data_export_ready",
+                "data_export_failed"
               ],
               "type": "string"
             },
@@ -6116,7 +6119,8 @@
               "phone_change_cancelled",
               "phone_changed",
               "phone_change_failed",
-              "data_export_ready"
+              "data_export_ready",
+              "data_export_failed"
             ],
             "title": "Notification Type",
             "type": "string"
@@ -9985,7 +9989,7 @@
       },
       "StepUpForExport": {
         "additionalProperties": false,
-        "description": "A code to ask for a data export, or to download one exact export (D-111).",
+        "description": "A code to download one exact data export, which must be ready (D-111, D-112).",
         "properties": {
           "action": {
             "const": "download_export",
@@ -9993,21 +9997,14 @@
             "type": "string"
           },
           "export_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Leave out to ask for a new export; give an export's id to download that one, which must be ready",
-            "title": "Export Id"
+            "format": "uuid",
+            "title": "Export Id",
+            "type": "string"
           }
         },
         "required": [
-          "action"
+          "action",
+          "export_id"
         ],
         "title": "StepUpForExport",
         "type": "object"
@@ -25449,28 +25446,9 @@
         ]
       },
       "post": {
-        "description": "Starts building one JSON file of everything we hold about the signed-in account, with a manifest saying why we hold each part and what is deliberately left out. **Needs a code**: ask at `POST /api/v1/me/step-up` with `download_export` and no `export_id`, and send it in the `Step-Up-Code` header. You are told in the app when it is ready, usually within minutes; then download it, once, within 24 hours. One is prepared at a time. Limited to 3 an hour.",
+        "description": "Starts building one JSON file of everything we hold about the signed-in account, with a manifest saying why we hold each part and what is deliberately left out. No code is needed to ask: the download needs one. You are told in the app when it is ready, usually within minutes, or if it could not be made after three tries; then download it, once, within 24 hours. One is prepared at a time. Limited to 3 an hour.",
         "operationId": "ask_for_my_data_api_v1_me_exports_post",
         "parameters": [
-          {
-            "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
-            "in": "header",
-            "name": "Step-Up-Code",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "pattern": "^[0-9]{6}$",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
-              "title": "Step-Up-Code"
-            }
-          },
           {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
@@ -25495,17 +25473,6 @@
             },
             "description": "Successful Response"
           },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/problem+json": {}
-            },
-            "description": "The code is wrong, expired, used, or for another change"
-          },
           "401": {
             "content": {
               "application/json": {
@@ -25515,7 +25482,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "No access token, or it is invalid or expired; or `step_up_required`: no code was sent"
+            "description": "No access token, or it is invalid or expired"
           },
           "409": {
             "content": {
@@ -25537,7 +25504,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "The code is not 6 digits. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+            "description": "The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
           },
           "429": {
             "content": {
@@ -25548,7 +25515,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "Too many requests, or too many wrong codes for your phone; see the Retry-After header"
+            "description": "Too many requests; see the Retry-After header"
           },
           "503": {
             "content": {
@@ -26545,7 +26512,7 @@
     },
     "/api/v1/me/step-up": {
       "post": {
-        "description": "Sends a 6-digit code to your phone for one change: setting a UPI ID (this exact one), asking for a copy of your data or downloading one exact copy, logging out everywhere, or moving your account to a new phone number (this exact one). Then make the change with the code in the `Step-Up-Code` header, within 5 minutes. A code works once, and only for the change it was asked for. Admins are sent nothing: they use their authenticator app's code. Limits: 3 per 10 minutes and 10 a day, counted with login codes for your phone.",
+        "description": "Sends a 6-digit code to your phone for one change: setting a UPI ID (this exact one), downloading one exact copy of your data, logging out everywhere, or moving your account to a new phone number (this exact one). Then make the change with the code in the `Step-Up-Code` header, within 5 minutes. A code works once, and only for the change it was asked for. Admins are sent nothing: they use their authenticator app's code. Limits: 3 per 10 minutes and 10 a day, counted with login codes for your phone.",
         "operationId": "ask_for_step_up_api_v1_me_step_up_post",
         "parameters": [
           {

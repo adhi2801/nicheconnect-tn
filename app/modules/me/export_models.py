@@ -15,7 +15,15 @@ expired (ready, never downloaded, `expires_at` passed).
 import uuid
 from datetime import datetime, timedelta
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, text
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    SmallInteger,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -25,6 +33,10 @@ from app.db.base import Base
 # Long enough to come back for it the same day; short enough that a copy of
 # someone's whole record does not sit in storage.
 EXPORT_KEPT_FOR = timedelta(hours=24)
+# Tries at building one before it is marked failed, a run (a minute) apart:
+# most failures (storage briefly unreachable) pass by the next minute
+# (D-112; backend.md section 7: failed jobs retry, then fail visibly).
+MAX_BUILD_ATTEMPTS = 3
 
 
 class DataExport(Base):
@@ -56,6 +68,14 @@ class DataExport(Base):
         CheckConstraint(
             "file_deleted_at IS NULL OR ready_at IS NOT NULL",
             name="deleted_only_once_made",
+        ),
+        CheckConstraint(
+            f"attempts BETWEEN 0 AND {MAX_BUILD_ATTEMPTS}", name="attempts_range"
+        ),
+        # Failed only once every try is spent (D-112).
+        CheckConstraint(
+            f"failed_at IS NULL OR attempts = {MAX_BUILD_ATTEMPTS}",
+            name="failed_after_every_try",
         ),
         # At most one being prepared per account; it also serves the
         # job's search for work.
@@ -101,6 +121,10 @@ class DataExport(Base):
     # NULL unless building it failed; then it is never ready.
     failed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    # Tries at building it that failed (D-112).
+    attempts: Mapped[int] = mapped_column(
+        SmallInteger, nullable=False, server_default=text("0")
     )
     # NULL while the file is stored: set when it is downloaded or expires.
     file_deleted_at: Mapped[datetime | None] = mapped_column(
