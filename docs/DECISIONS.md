@@ -1376,3 +1376,16 @@ Newest entries at the bottom.
   5. **The table** (`data_export`): times and size only, never the file, with the database holding ready-has-a-file, expires-exactly-24-hours-after-ready, downloaded-only-while-ready, failed-never-ready, and at most one being prepared per account (a partial unique index). It is in the export itself (`data_exports`). The downgrade refuses while an export is being prepared or has a file stored (seventeen refusing migrations).
   6. **Measured**: asking 22.6 to 26.0 ms p95, downloading 22.7 to 28.3 ms, the job's build 303.8 to 335.8 ms, in the background (three runs on seeded data).
   7. **Weak, said plainly**: a failed build tells the owner nothing; they see `failed` when they look, and may ask again. Asking and downloading take two codes, so two messages. The download holds the row's lock while it reads from storage.
+
+## D-112: A failed export retries and then tells its owner; asking for an export needs no code (the weaknesses D-111 named)
+- Date: 2026-10-18
+- Approved by: Adhi, in this session: "A", after the proposal fixing the two export weaknesses D-111's report named ("still weak should not solved"). **Not reviewed by the other founder** (D-051).
+- Context: A build that failed was marked failed at once and nobody was told, against `backend.md` section 7 (failed jobs retry, then fail where someone can see). And an export took two codes, so two messages: one to ask, one to download, though only the download releases anything.
+- Options considered: A) a failed build retried up to 3 runs a minute apart, then marked failed and the owner told by an alert nobody can mute; and no code to ask, the download keeping its code for that exact export; B) the retry and alert only, keeping two codes.
+- Chosen: A.
+- Reason: the download's code alone guards the data; a stolen session asking can only start a build (3 an hour), and the owner is told when it is ready, which is itself an alarm.
+- Consequences / follow-ups:
+  1. **Retries**: `data_export.attempts` (0 to 3) counts failed tries; each run tries again what still waits; the third failure marks it failed and records `data_export_failed` (urgent, with `export_id`). The database holds that an export is failed only once all 3 tries are spent. A try is counted only while the export still waits, so an overlapping run never counts past the last.
+  2. **No code to ask**: `POST /api/v1/me/exports` takes no `Step-Up-Code`; `POST /api/v1/me/step-up` with `download_export` now requires `export_id`, and is refused before anything is sent unless that export is ready. This supersedes D-111 point 1's code for asking.
+  3. **Measured** for the record, in a throwaway database with every request committed, as production runs: the bulk mark-paid (25 rows) **337 ms p95** over 12 rounds (median 293 ms), within its 500 ms; the harness's 465 to 605 ms was its savepoint chain, as `docs/PERFORMANCE.md` explained on 14 October.
+  4. **What is left, said plainly**: a SIM swap held unnoticed for over a week, or malware on the owner's own logged-in device, still beats a login code; passkeys (item 79, which needs the domain) and alerts outside the app (E1) are the answer. The storage rules for exports (D-111) go live at the first deploy, which needs the AWS account.

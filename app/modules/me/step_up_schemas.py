@@ -38,18 +38,12 @@ class StepUpForPhone(BaseModel):
 
 
 class StepUpForExport(BaseModel):
-    """A code to ask for a data export, or to download one exact export (D-111)."""
+    """A code to download one exact data export, which must be ready (D-111, D-112)."""
 
     model_config = ConfigDict(extra="forbid")
 
     action: Literal["download_export"]
-    export_id: uuid.UUID | None = Field(
-        default=None,
-        description=(
-            "Leave out to ask for a new export; give an export's id to download "
-            "that one, which must be ready"
-        ),
-    )
+    export_id: uuid.UUID
 
 
 class StepUpForAccount(BaseModel):

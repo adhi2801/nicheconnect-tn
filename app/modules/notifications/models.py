@@ -76,6 +76,8 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     # To the account itself, when the data export it asked for is ready to
     # download, once, within 24 hours (D-111).
     "data_export_ready",
+    # When building it failed every try (D-112): ask for a new one.
+    "data_export_failed",
 )
 MAX_DETAILS_LENGTH = 2000
 

@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 
-from app.modules.me.export_models import EXPORT_KEPT_FOR, DataExport
+from app.modules.me.export_models import EXPORT_KEPT_FOR, MAX_BUILD_ATTEMPTS, DataExport
 from tests.factories import FIXED_NOW, create_account
 
 READY = FIXED_NOW + timedelta(minutes=2)
@@ -22,14 +22,15 @@ def _insert(db, account_id, **overrides: object) -> None:
         "downloaded_at": None,
         "failed_at": None,
         "file_deleted_at": None,
+        "attempts": 0,
         **overrides,
     }
     db.execute(
         text(
             "INSERT INTO data_export (account_id, requested_at, ready_at, expires_at, "
-            "size_bytes, downloaded_at, failed_at, file_deleted_at) VALUES "
+            "size_bytes, downloaded_at, failed_at, file_deleted_at, attempts) VALUES "
             "(:account_id, :requested_at, :ready_at, :expires_at, :size_bytes, "
-            ":downloaded_at, :failed_at, :file_deleted_at)"
+            ":downloaded_at, :failed_at, :file_deleted_at, :attempts)"
         ),
         values,
     )
@@ -73,8 +74,16 @@ def test_a_ready_export_and_one_being_prepared_are_kept(db):
         ({"downloaded_at": READY - timedelta(seconds=1)}, "downloaded_while_ready"),
         ({"downloaded_at": READY + EXPORT_KEPT_FOR}, "downloaded_while_ready"),
         (preparing(downloaded_at=READY), "downloaded_while_ready"),
-        ({"failed_at": READY}, "failed_never_ready"),
-        (preparing(failed_at=FIXED_NOW - timedelta(seconds=1)), "failed_never_ready"),
+        ({"failed_at": READY, "attempts": MAX_BUILD_ATTEMPTS}, "failed_never_ready"),
+        (
+            preparing(
+                failed_at=FIXED_NOW - timedelta(seconds=1), attempts=MAX_BUILD_ATTEMPTS
+            ),
+            "failed_never_ready",
+        ),
+        (preparing(attempts=-1), "attempts_range"),
+        (preparing(attempts=MAX_BUILD_ATTEMPTS + 1), "attempts_range"),
+        (preparing(failed_at=FIXED_NOW, attempts=1), "failed_after_every_try"),
         (preparing(file_deleted_at=READY), "deleted_only_once_made"),
     ],
 )
@@ -97,7 +106,7 @@ def test_one_export_is_prepared_at_a_time(db):
 
 def test_a_failed_one_does_not_hold_the_place_of_the_next(db):
     account = create_account(db, "creator")
-    _insert(db, account.id, **preparing(failed_at=FIXED_NOW))
+    _insert(db, account.id, **preparing(failed_at=FIXED_NOW, attempts=MAX_BUILD_ATTEMPTS))
 
     _insert(db, account.id, **preparing(requested_at=FIXED_NOW + timedelta(minutes=1)))
 

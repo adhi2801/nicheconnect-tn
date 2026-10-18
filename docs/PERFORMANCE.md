@@ -15,6 +15,10 @@ whole deals, 5 bank bulk transfers of 25 rows, and 30 rounds of rate card
 edits. All from one run, on a developer laptop under Docker Desktop for
 Windows.
 
+## Added 18 October: the bulk mark-paid, committed (D-112)
+
+The bulk mark-paid (25 rows) has read near or over its 500 ms budget in this harness since 30 September, each figure resting on 5 calls inside one rolled-back transaction (14 October, below). Measured as production runs it, in a throwaway database (`nicheconnect_bench`, migrated and seeded, then dropped), every request committing through the app's own session, 12 rounds of 25 approved deals: **293.3 ms p50, 336.8 ms p95, 381.8 ms max**. Within budget, with 163 ms to spare: the harness figure was its savepoint chain. **Closed: the write to watch.** Re-measure it the same way if the 25-row limit changes.
+
 ## Added 18 October: the data export in the background (D-111)
 
 The export that measured over its budget (below, 17 October) is no longer built in a request. Three runs of `scripts/measure_performance.py --runs 50 --deals 30` on freshly seeded data, the first before `ANALYZE` had run, on a laptop:

@@ -42,7 +42,6 @@ from tests.step_up import (
     build_exports,
     download_export,
     download_ready_export,
-    with_code,
 )
 
 URL = EXPORT_URL
@@ -202,7 +201,7 @@ def test_there_is_no_way_to_ask_for_someone_else(client, scenario, now):
 
     asked = client.post(
         f"{URL}?account_id={other.id}",
-        headers=with_code(client, headers, "download_export"),
+        headers=headers,
     )
     build_exports()
     response = download_ready_export(client, headers, asked.json()["id"])
@@ -366,7 +365,7 @@ def test_exports_are_tightly_rate_limited(client, scenario, now):
     """Three an hour: it reads every table an account touches."""
     headers = auth_for(scenario["brand_account"], now)
     for _ in range(3):
-        asked = client.post(URL, headers=with_code(client, headers, "download_export"))
+        asked = client.post(URL, headers=headers)
         assert asked.status_code == 202, asked.text
         build_exports()
 

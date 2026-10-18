@@ -16,9 +16,12 @@ The privacy rules for the copy this leaves in storage:
 - **Never kept long**: one not downloaded is destroyed EXPORT_KEPT_FOR
   (24 hours) after it was ready; the bucket's own rule removes anything left
   a day later still.
-- **A code each way**: asking needs a `download_export` code; downloading a
+- **A code where the data leaves**: downloading needs a `download_export`
   code for that exact export (its id is the code's value), so a code tricked
-  out of someone for one cannot release another.
+  out of someone for one cannot release another. Asking needs none (D-112):
+  it releases nothing, and the owner is told when the file is ready.
+- **A failure retries**, up to MAX_BUILD_ATTEMPTS runs a minute apart, then
+  is marked failed and the owner told (D-112).
 - **Never cached**: the download is not replayed for a retried request, so
   no copy sits in the idempotency store (`export_router`).
 """
@@ -48,7 +51,12 @@ from app.modules.me.exceptions import (
     ExportNotFound,
     ExportNotReady,
 )
-from app.modules.me.export_models import EXPORT_KEPT_FOR, DataExport, object_key
+from app.modules.me.export_models import (
+    EXPORT_KEPT_FOR,
+    MAX_BUILD_ATTEMPTS,
+    DataExport,
+    object_key,
+)
 from app.modules.notifications import service as notifications
 
 logger = logging.getLogger(__name__)
@@ -62,6 +70,7 @@ RECENT_EXPORTS = 5
 MAX_BUILDS_PER_RUN = 10
 
 ExportStatus = Literal["preparing", "failed", "ready", "downloaded", "expired"]
+BuildOutcome = Literal["built", "retrying", "failed", "settled"]
 
 
 @dataclass(frozen=True)
@@ -69,6 +78,9 @@ class ExportRun:
     """What one run of the job did."""
 
     built: int
+    # Failed this run, to be tried again next run (D-112).
+    retrying: int
+    # Failed its last try: marked failed and the owner told.
     failed: int
     expired: int
 
@@ -86,17 +98,15 @@ def status_of(export: DataExport, now: datetime) -> ExportStatus:
     return "ready"
 
 
-def request(
-    db: Session, account: Account, step_up_code: str | None, now: datetime
-) -> DataExport:
+def request(db: Session, account: Account, now: datetime) -> DataExport:
     """Ask for a new export, built in the background. Commits.
 
-    Spends a `download_export` code asked for with no value. Raises
-    ExportAlreadyPreparing (one is being prepared: the database's partial
-    unique index is the check, and the code is not spent), and what
-    step_up_service.consume raises.
+    No code is asked for here (D-112): asking releases nothing, and tells
+    the owner when the file is ready, so a stolen session asking is itself
+    an alarm. The download, where the data leaves, needs a code for that
+    exact export. Raises ExportAlreadyPreparing (one is being prepared: the
+    database's partial unique index is the check).
     """
-    step_ups.consume(db, account, "download_export", "", step_up_code, now)
     export = DataExport(
         account_id=account.id, requested_at=now, created_at=now, updated_at=now
     )
@@ -205,15 +215,22 @@ def run_exports(
                 .limit(MAX_BUILDS_PER_RUN)
             ).all()
         )
-    built = failed = 0
-    for export_id in waiting:
-        if _build(session_factory, store, export_id, now):
-            built += 1
-        else:
-            failed += 1
+    outcomes = [_build(session_factory, store, export_id, now) for export_id in waiting]
     expired = _destroy_expired(session_factory, store, now)
-    logger.info("data_export.run built=%d failed=%d expired=%d", built, failed, expired)
-    return ExportRun(built=built, failed=failed, expired=expired)
+    run = ExportRun(
+        built=outcomes.count("built"),
+        retrying=outcomes.count("retrying"),
+        failed=outcomes.count("failed"),
+        expired=expired,
+    )
+    logger.info(
+        "data_export.run built=%d retrying=%d failed=%d expired=%d",
+        run.built,
+        run.retrying,
+        run.failed,
+        run.expired,
+    )
+    return run
 
 
 def _build(
@@ -221,8 +238,8 @@ def _build(
     store: FileStore,
     export_id: uuid.UUID,
     now: datetime,
-) -> bool:
-    """Build one export's file and mark it ready. False if it failed."""
+) -> BuildOutcome:
+    """Build one export's file and mark it ready, or count a failed try."""
     try:
         with session_factory() as db:
             export = db.get_one(DataExport, export_id)
@@ -237,22 +254,11 @@ def _build(
     except Exception as error:
         # Its type only: a message could carry personal data (backend.md 9).
         logger.error(
-            "data_export.failed export_id=%s error_type=%s",
+            "data_export.build_failed export_id=%s error_type=%s",
             export_id,
             type(error).__name__,
         )
-        with session_factory() as db:
-            db.execute(
-                update(DataExport)
-                .where(
-                    DataExport.id == export_id,
-                    DataExport.ready_at.is_(None),
-                    DataExport.failed_at.is_(None),
-                )
-                .values(failed_at=now, updated_at=now)
-            )
-            db.commit()
-        return False
+        return _count_failed_try(session_factory, export_id, now)
 
     expires_at = now + EXPORT_KEPT_FOR
     with session_factory() as db:
@@ -280,7 +286,54 @@ def _build(
                 },
             )
         db.commit()
-    return True
+    return "built"
+
+
+def _count_failed_try(
+    session_factory: Callable[[], AbstractContextManager[Session]],
+    export_id: uuid.UUID,
+    now: datetime,
+) -> BuildOutcome:
+    """One more failed try; on the last, mark it failed and tell the owner (D-112).
+
+    Counted only while it still waits, so an overlapping run never counts a
+    try twice past the last.
+    """
+    with session_factory() as db:
+        tried = db.execute(
+            update(DataExport)
+            .where(
+                DataExport.id == export_id,
+                DataExport.ready_at.is_(None),
+                DataExport.failed_at.is_(None),
+                DataExport.attempts < MAX_BUILD_ATTEMPTS,
+            )
+            .values(attempts=DataExport.attempts + 1, updated_at=now)
+            .returning(DataExport.attempts, DataExport.account_id)
+        ).first()
+        if tried is None:
+            # Made ready, or failed, by an overlapping run meanwhile.
+            db.commit()
+            return "settled"
+        attempts, account_id = tried
+        if attempts < MAX_BUILD_ATTEMPTS:
+            db.commit()
+            return "retrying"
+        db.execute(
+            update(DataExport)
+            .where(DataExport.id == export_id)
+            .values(failed_at=now, updated_at=now)
+        )
+        notifications.record(
+            db,
+            account_id=account_id,
+            notification_type="data_export_failed",
+            now=now,
+            details={"export_id": str(export_id)},
+        )
+        db.commit()
+    logger.error("data_export.failed export_id=%s", export_id)
+    return "failed"
 
 
 def _destroy_expired(

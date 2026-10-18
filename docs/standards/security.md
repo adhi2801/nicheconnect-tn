@@ -49,7 +49,7 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md`. Rule
   - Every view of an account's details and every admin action is written to the admin log with a reason. The log refuses updates and deletes at the database (`database.md` section 3).
   - **Enforced by** `tests/modules/auth/test_admin_login_api.py` and `tests/modules/admin/`.
 - **A second check before a risky change** (item 82, D-107; ASVS 5.0 7.5.1 to 7.5.3):
-  - setting a UPI ID, asking for the data export and downloading it (a code for that exact export, D-111), logging out everywhere and changing the phone number (item 80) each need a 6-digit code from `POST /api/v1/me/step-up`, in the `Step-Up-Code` header;
+  - setting a UPI ID, downloading the data export (a code for that exact export, D-111; asking for one needs none, D-112), logging out everywhere and changing the phone number (item 80) each need a 6-digit code from `POST /api/v1/me/step-up`, in the `Step-Up-Code` header;
   - a code works once, for 5 minutes, for one action and, for a UPI ID or a new phone number, that exact one (only HMACs of the code and the value are stored); only the newest counts; 5 wrong tries use it up;
   - without one, 401 `step_up_required` with RFC 9470's `insufficient_user_authentication` challenge;
   - step-up codes and login codes share the phone's caps, for sending and for guessing, under one per-phone lock;

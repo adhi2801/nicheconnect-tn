@@ -76,7 +76,7 @@ def test_four_asks_at_once_leave_one_being_prepared(account_id, slow_writes):
         with SessionLocal() as session:
             account = session.get_one(Account, account_id)
             try:
-                service.request(session, account, "123456", CONCURRENCY_NOW)
+                service.request(session, account, CONCURRENCY_NOW)
             except ExportAlreadyPreparing as refused:
                 return refused.code
         return "asked"
@@ -95,7 +95,7 @@ def test_four_asks_at_once_leave_one_being_prepared(account_id, slow_writes):
 def test_four_downloads_at_once_give_the_file_once(account_id, slow_writes):
     with SessionLocal() as session:
         account = session.get_one(Account, account_id)
-        export_id = service.request(session, account, "123456", CONCURRENCY_NOW).id
+        export_id = service.request(session, account, CONCURRENCY_NOW).id
     service.run_exports(SessionLocal, memory_store(), CONCURRENCY_NOW)
     destroyed: list[str] = []
     destroy = memory_store().destroy
@@ -140,7 +140,7 @@ def test_four_downloads_at_once_give_the_file_once(account_id, slow_writes):
 def test_the_job_run_twice_at_once_builds_it_once(account_id, slow_writes):
     with SessionLocal() as session:
         account = session.get_one(Account, account_id)
-        service.request(session, account, "123456", CONCURRENCY_NOW)
+        service.request(session, account, CONCURRENCY_NOW)
 
     def run() -> int:
         return service.run_exports(SessionLocal, memory_store(), CONCURRENCY_NOW).built
