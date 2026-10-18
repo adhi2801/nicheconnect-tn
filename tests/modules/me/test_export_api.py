@@ -37,9 +37,15 @@ from tests.factories import (
     build_creator,
     create_account,
 )
-from tests.step_up import download_export, with_code
+from tests.step_up import (
+    EXPORT_URL,
+    build_exports,
+    download_export,
+    download_ready_export,
+    with_code,
+)
 
-URL = "/api/v1/me/export"
+URL = EXPORT_URL
 
 # Which declared field list belongs to which table. The structural tests read
 # this, so a field list added without a table here is noticed.
@@ -182,9 +188,8 @@ def test_declaring_a_secret_field_is_refused():
 
 
 def test_an_export_needs_a_login(client):
-    response = client.get(URL)
-
-    assert response.status_code == 401
+    assert client.post(URL).status_code == 401
+    assert client.get(URL).status_code == 401
 
 
 def test_there_is_no_way_to_ask_for_someone_else(client, scenario, now):
@@ -195,10 +200,12 @@ def test_there_is_no_way_to_ask_for_someone_else(client, scenario, now):
     headers = auth_for(scenario["brand_account"], now)
     other = scenario["creator_account"]
 
-    response = client.get(
+    asked = client.post(
         f"{URL}?account_id={other.id}",
         headers=with_code(client, headers, "download_export"),
     )
+    build_exports()
+    response = download_ready_export(client, headers, asked.json()["id"])
 
     assert response.status_code == 200
     assert response.json()["account_id"] == str(scenario["brand_account"].id)
@@ -215,10 +222,10 @@ def test_a_brand_gets_its_own_records(client, scenario, now):
     assert data["brand_profile"][0]["name"] == "Amma Sweets"
     assert data["campaigns"][0]["title"] == "Pongal sweets launch"
     assert data["applications_received"][0]["pitch"].startswith("I cover street food")
-    # And the export's own alert, made as it was downloaded (item 82).
+    # The export's own alerts (ready, downloaded) come after its file is
+    # built, so they are in the next one (D-111).
     assert {n["notification_type"] for n in data["notifications"]} == {
         "application_received",
-        "data_exported",
     }
     assert len(data["login_sessions"]) == 1
 
@@ -359,10 +366,12 @@ def test_exports_are_tightly_rate_limited(client, scenario, now):
     """Three an hour: it reads every table an account touches."""
     headers = auth_for(scenario["brand_account"], now)
     for _ in range(3):
-        assert download_export(client, headers).status_code == 200
+        asked = client.post(URL, headers=with_code(client, headers, "download_export"))
+        assert asked.status_code == 202, asked.text
+        build_exports()
 
     # Over the limit, the code is never looked at.
-    response = client.get(URL, headers=headers)
+    response = client.post(URL, headers=headers)
 
     assert response.status_code == 429
     assert response.json()["code"] == "rate_limited"

@@ -19,9 +19,11 @@ from app.modules.auth import login_age, step_up_service
 from app.modules.auth import service as login
 from app.modules.auth.dependencies import CurrentAccount, LoginTime, get_now
 from app.modules.auth.sender import OtpSender, get_otp_sender
+from app.modules.me import data_export_service as data_exports
 from app.modules.me import phone_change_service as phone_changes
 from app.modules.me.step_up_schemas import (
     StepUpAccepted,
+    StepUpForExport,
     StepUpForPhone,
     StepUpForUpiId,
     StepUpIn,
@@ -43,7 +45,8 @@ router = APIRouter(prefix="/api/v1/me", tags=["auth"], route_class=IdempotentRou
     summary="Ask for a code before a risky change",
     description=(
         "Sends a 6-digit code to your phone for one change: setting a UPI ID "
-        "(this exact one), downloading your data, logging out everywhere, or "
+        "(this exact one), asking for a copy of your data or downloading one "
+        "exact copy, logging out everywhere, or "
         "moving your account to a new phone number (this exact one). "
         "Then make the change with the code in the `Step-Up-Code` header, "
         "within 5 minutes. A code works once, and only for the change it was "
@@ -59,7 +62,12 @@ router = APIRouter(prefix="/api/v1/me", tags=["auth"], route_class=IdempotentRou
             "number, or replacing a UPI ID in effect, needs a login at least 7 "
             "days old (see Retry-After)"
         ),
-        409: problem_doc("`phone_unchanged`: that is already your number"),
+        404: problem_doc("`export_not_found`: no such export of yours"),
+        409: problem_doc(
+            "`phone_unchanged`: that is already your number; or the export "
+            "cannot be downloaded (`export_not_ready`, `export_failed`, "
+            "`export_already_downloaded`, `export_expired`)"
+        ),
         422: problem_doc(
             "The action is unknown, or the UPI ID or new number is not usable"
         ),
@@ -88,6 +96,9 @@ def ask_for_step_up(
         phone_changes.ensure_new_phone(account, body.new_phone)
         login_age.ensure_established(login_time, now)
         value = body.new_phone
+    elif isinstance(body, StepUpForExport) and body.export_id is not None:
+        data_exports.ensure_downloadable(db, account, body.export_id, now)
+        value = str(body.export_id)
     code = step_up_service.request_code(db, account, body.action, value, now)
     if code.pending is not None:
         background_tasks.add_task(login.deliver_otp, sender, code.pending)

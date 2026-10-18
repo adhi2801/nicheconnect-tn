@@ -84,6 +84,10 @@ class FileStore(Protocol):
 
     def delete(self, key: str) -> None: ...
 
+    def destroy(self, key: str) -> None:
+        """Delete the object and every earlier version of it, beyond recovery."""
+        ...
+
     def view_url(self, key: str, *, expires_in: timedelta, filename: str) -> str: ...
 
 
@@ -179,6 +183,16 @@ class S3FileStore:
 
     def delete(self, key: str) -> None:
         self._client.delete_object(Bucket=self.bucket, Key=key)
+
+    def destroy(self, key: str) -> None:
+        # The bucket keeps versions, so a plain delete only hides an object
+        # for a month (`tidy`). Deleting each version by its id removes it.
+        listed = self._client.list_object_versions(Bucket=self.bucket, Prefix=key)
+        for entry in [*listed.get("Versions", []), *listed.get("DeleteMarkers", [])]:
+            if entry["Key"] == key:
+                self._client.delete_object(
+                    Bucket=self.bucket, Key=key, VersionId=entry["VersionId"]
+                )
 
     def view_url(self, key: str, *, expires_in: timedelta, filename: str) -> str:
         url: str = self._client.generate_presigned_url(
@@ -299,6 +313,10 @@ class MemoryFileStore:
 
     def view_url(self, key: str, *, expires_in: timedelta, filename: str) -> str:
         return f"{self.URL}/{key}?filename={filename}&expires={int(expires_in.total_seconds())}"
+
+    def destroy(self, key: str) -> None:
+        # No versions are kept here, so deleting is destroying.
+        self.delete(key)
 
     def keys(self) -> set[str]:
         """What is stored, for tests."""

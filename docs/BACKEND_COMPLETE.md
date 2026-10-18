@@ -30,6 +30,7 @@ Three things it does **not** mean:
 - 14 October, marked in the tables: items 97, 98, 99 and 102 (the app's own database login, every foreign key indexed, dispute events sealed, reporters told the outcome; D-100), 100 (every route refuses a stranger) and 69 (deal dates as a calendar file; D-102), and structured JSON logs (D-102).
 - 15 October, marked in the tables: item 51 (the IT Rules' clocks on the report queue; D-103).
 - 16 October, marked in the tables: item 52 (taking down one item within 3 hours of a legal order; D-104) and item 101 (a second factor for admins; D-105).
+- 18 October: the three weaknesses item 80's report named, fixed: a login at least a week old before changing the phone number or a UPI ID in effect (D-109), a lost current number (D-110), and the data export built in the background, downloaded once (D-111).
 - 17 October, marked in the tables: item 74 (a brand proves it controls its website's domain; D-106), item 82 (a second check before risky changes, and a new UPI ID's 24-hour wait; D-107) and item 80 (changing one's phone number, with a code from each number and a 72-hour wait; D-108).
 
 ## 3. Left to build: no outside wait, a decision first

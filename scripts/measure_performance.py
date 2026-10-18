@@ -32,6 +32,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.rate_limit import limiter
+from app.core.storage import get_file_store
 from app.db.session import SessionLocal, engine, get_db
 from app.main import app
 from app.modules.auth import second_factor, second_factor_secrets
@@ -54,7 +55,7 @@ from app.modules.auth.tokens import (
     hash_otp_code,
 )
 from app.modules.campaigns.models import Campaign
-from app.modules.me import phone_change_service
+from app.modules.me import data_export_service, phone_change_service
 from app.modules.payment_status.service import MAX_BULK_MARK_PAID
 
 READ_BUDGET_MS = 300
@@ -156,8 +157,9 @@ def measure_writes(
     5. Those campaigns withheld on an order, the takedown lists and discovery
        read with them in place, then each lifted (item 52).
     6. `deals` rounds of the second check (item 82): a code asked for and a
-       UPI ID set with it, read back and its wait cancelled; the export and
-       logging out everywhere, each with its own code.
+       UPI ID set with it, read back and its wait cancelled; the export
+       asked for, built by the job and downloaded (D-111), and logging out
+       everywhere, each with its own code.
     7. `deals` phone number changes (item 80), each with both codes, read
        and cancelled; then `deals` runs of the job, each making one change.
     """
@@ -582,11 +584,27 @@ def measure_writes(
                     creator_headers,
                     method="DELETE",
                 )
-                write(
-                    "GET /me/export (with its code)",
-                    "/api/v1/me/export",
+                # The export (D-111): asked for, built by the job, then
+                # downloaded once, each step timed on its own.
+                asked = write(
+                    "POST /me/exports (with its code)",
+                    "/api/v1/me/exports",
                     with_code("POST /me/step-up", "download_export"),
-                    method="GET",
+                )
+                started = time.perf_counter()
+                data_export_service.run_exports(
+                    lambda: nullcontext(db), get_file_store(), now
+                )
+                timings["job: one data export built"].append(
+                    (time.perf_counter() - started) * 1000
+                )
+                download_headers = with_code(
+                    "POST /me/step-up", "download_export", export_id=asked["id"]
+                )
+                write(
+                    "POST /me/exports/{id}/download (with its code)",
+                    f"/api/v1/me/exports/{asked['id']}/download",
+                    download_headers,
                 )
                 write(
                     "POST /auth/logout-all (with its code)",

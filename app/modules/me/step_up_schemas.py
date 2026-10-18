@@ -1,5 +1,6 @@
 """Request and response shapes for asking for a second check (item 82, D-107)."""
 
+import uuid
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -36,16 +37,32 @@ class StepUpForPhone(BaseModel):
     new_phone: IndianMobile
 
 
-class StepUpForAccount(BaseModel):
-    """A code to download your data, or to log out of every device."""
+class StepUpForExport(BaseModel):
+    """A code to ask for a data export, or to download one exact export (D-111)."""
 
     model_config = ConfigDict(extra="forbid")
 
-    action: Literal["download_export", "log_out_everywhere"]
+    action: Literal["download_export"]
+    export_id: uuid.UUID | None = Field(
+        default=None,
+        description=(
+            "Leave out to ask for a new export; give an export's id to download "
+            "that one, which must be ready"
+        ),
+    )
+
+
+class StepUpForAccount(BaseModel):
+    """A code to log out of every device."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    action: Literal["log_out_everywhere"]
 
 
 StepUpIn = Annotated[
-    StepUpForUpiId | StepUpForPhone | StepUpForAccount, Field(discriminator="action")
+    StepUpForUpiId | StepUpForPhone | StepUpForExport | StepUpForAccount,
+    Field(discriminator="action"),
 ]
 
 

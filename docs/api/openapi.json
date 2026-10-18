@@ -3527,6 +3527,111 @@
         "title": "CreatorSearchResultRead",
         "type": "object"
       },
+      "DataExportList": {
+        "description": "The account's newest exports.",
+        "properties": {
+          "items": {
+            "description": "At most the 5 newest, newest first: a bound by rule, not paged",
+            "items": {
+              "$ref": "#/components/schemas/DataExportRead"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "DataExportList",
+        "type": "object"
+      },
+      "DataExportRead": {
+        "description": "One export asked for, and where it stands.",
+        "properties": {
+          "downloaded_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Downloaded At"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When an undownloaded file is destroyed; null until ready",
+            "title": "Expires At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ready_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ready At"
+          },
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The file's size; null until ready",
+            "title": "Size Bytes"
+          },
+          "status": {
+            "description": "`preparing`, then `ready` (download it, once, before `expires_at`), then `downloaded`; or `failed`, or `expired` if not downloaded in 24 hours. Ask for a new one after any of the last three.",
+            "enum": [
+              "preparing",
+              "failed",
+              "ready",
+              "downloaded",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "requested_at",
+          "ready_at",
+          "expires_at",
+          "size_bytes",
+          "downloaded_at"
+        ],
+        "title": "DataExportRead",
+        "type": "object"
+      },
       "DealRecordEntryRead": {
         "description": "One sealed step. `facts` holds figures and fingerprints, never typed text.",
         "properties": {
@@ -4172,7 +4277,7 @@
       },
       "ExportFile": {
         "additionalProperties": false,
-        "description": "The file `GET /api/v1/me/export` returns, for the API documentation.\n\nThe route builds the file itself so it can offer it as a download, so\nFastAPI cannot see this shape on its own. A test checks every real\nexport against this model, so the two cannot drift apart.",
+        "description": "The file `POST /api/v1/me/exports/{export_id}/download` returns, for the API docs.\n\nThe route builds the file itself so it can offer it as a download, so\nFastAPI cannot see this shape on its own. A test checks every real\nexport against this model, so the two cannot drift apart.",
         "properties": {
           "about": {
             "title": "About",
@@ -5714,11 +5819,12 @@
                 "phone_change_requested",
                 "phone_change_cancelled",
                 "phone_changed",
-                "phone_change_failed"
+                "phone_change_failed",
+                "data_export_ready"
               ],
               "type": "string"
             },
-            "maxItems": 37,
+            "maxItems": 38,
             "title": "Muted Types",
             "type": "array"
           },
@@ -5807,7 +5913,8 @@
                 "phone_change_requested",
                 "phone_change_cancelled",
                 "phone_changed",
-                "phone_change_failed"
+                "phone_change_failed",
+                "data_export_ready"
               ],
               "type": "string"
             },
@@ -5870,7 +5977,8 @@
                 "phone_change_requested",
                 "phone_change_cancelled",
                 "phone_changed",
-                "phone_change_failed"
+                "phone_change_failed",
+                "data_export_ready"
               ],
               "type": "string"
             },
@@ -6007,7 +6115,8 @@
               "phone_change_requested",
               "phone_change_cancelled",
               "phone_changed",
-              "phone_change_failed"
+              "phone_change_failed",
+              "data_export_ready"
             ],
             "title": "Notification Type",
             "type": "string"
@@ -9860,13 +9969,10 @@
       },
       "StepUpForAccount": {
         "additionalProperties": false,
-        "description": "A code to download your data, or to log out of every device.",
+        "description": "A code to log out of every device.",
         "properties": {
           "action": {
-            "enum": [
-              "download_export",
-              "log_out_everywhere"
-            ],
+            "const": "log_out_everywhere",
             "title": "Action",
             "type": "string"
           }
@@ -9875,6 +9981,35 @@
           "action"
         ],
         "title": "StepUpForAccount",
+        "type": "object"
+      },
+      "StepUpForExport": {
+        "additionalProperties": false,
+        "description": "A code to ask for a data export, or to download one exact export (D-111).",
+        "properties": {
+          "action": {
+            "const": "download_export",
+            "title": "Action",
+            "type": "string"
+          },
+          "export_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Leave out to ask for a new export; give an export's id to download that one, which must be ready",
+            "title": "Export Id"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "title": "StepUpForExport",
         "type": "object"
       },
       "StepUpForPhone": {
@@ -25247,11 +25382,312 @@
         ]
       }
     },
-    "/api/v1/me/export": {
+    "/api/v1/me/exports": {
       "get": {
-        "description": "Everything we hold about the signed-in account, as one JSON file. Includes a manifest explaining each section and why we hold it, and a list of what is deliberately not included. **Needs a code**: ask for one at `POST /api/v1/me/step-up` with `download_export`, then send it in the `Step-Up-Code` header; you are told in the app each time the file is downloaded. Limited to 3 requests an hour.",
-        "operationId": "export_my_data_api_v1_me_export_get",
+        "description": "The 5 newest exports you asked for, newest first, and where each stands.",
+        "operationId": "list_my_exports_api_v1_me_exports_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataExportList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My data exports",
+        "tags": [
+          "privacy"
+        ]
+      },
+      "post": {
+        "description": "Starts building one JSON file of everything we hold about the signed-in account, with a manifest saying why we hold each part and what is deliberately left out. **Needs a code**: ask at `POST /api/v1/me/step-up` with `download_export` and no `export_id`, and send it in the `Step-Up-Code` header. You are told in the app when it is ready, usually within minutes; then download it, once, within 24 hours. One is prepared at a time. Limited to 3 an hour.",
+        "operationId": "ask_for_my_data_api_v1_me_exports_post",
         "parameters": [
+          {
+            "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+            "in": "header",
+            "name": "Step-Up-Code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9]{6}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+              "title": "Step-Up-Code"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataExportRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The code is wrong, expired, used, or for another change"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired; or `step_up_required`: no code was sent"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`export_already_preparing`: one is already being prepared. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The code is not 6 digits. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests, or too many wrong codes for your phone; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ask for a copy of my data",
+        "tags": [
+          "privacy"
+        ]
+      }
+    },
+    "/api/v1/me/exports/{export_id}": {
+      "get": {
+        "description": "Where one export you asked for stands.",
+        "operationId": "read_my_export_api_v1_me_exports__export_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "export_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Export Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataExportRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such export of yours"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "One of my data exports",
+        "tags": [
+          "privacy"
+        ]
+      }
+    },
+    "/api/v1/me/exports/{export_id}/download": {
+      "post": {
+        "description": "Returns the export's file, offered as a download, and destroys the stored copy: it can be downloaded once. **Needs a code for this export**: ask at `POST /api/v1/me/step-up` with `download_export` and this `export_id`. You are told in the app each time a file is downloaded. Not replayed for a retried request, so no copy is kept anywhere: if the download breaks, ask for a new export. Limited to 10 an hour.",
+        "operationId": "download_my_data_api_v1_me_exports__export_id__download_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "export_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Export Id",
+              "type": "string"
+            }
+          },
           {
             "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
             "in": "header",
@@ -25305,6 +25741,28 @@
             },
             "description": "No access token, or it is invalid or expired; or `step_up_required`: no code was sent"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such export of yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`export_not_ready`, `export_failed`, `export_already_downloaded` or `export_expired`"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -25351,7 +25809,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Download my data",
+        "summary": "Download a copy of my data, once",
         "tags": [
           "privacy"
         ]
@@ -26087,7 +26545,7 @@
     },
     "/api/v1/me/step-up": {
       "post": {
-        "description": "Sends a 6-digit code to your phone for one change: setting a UPI ID (this exact one), downloading your data, logging out everywhere, or moving your account to a new phone number (this exact one). Then make the change with the code in the `Step-Up-Code` header, within 5 minutes. A code works once, and only for the change it was asked for. Admins are sent nothing: they use their authenticator app's code. Limits: 3 per 10 minutes and 10 a day, counted with login codes for your phone.",
+        "description": "Sends a 6-digit code to your phone for one change: setting a UPI ID (this exact one), asking for a copy of your data or downloading one exact copy, logging out everywhere, or moving your account to a new phone number (this exact one). Then make the change with the code in the `Step-Up-Code` header, within 5 minutes. A code works once, and only for the change it was asked for. Admins are sent nothing: they use their authenticator app's code. Limits: 3 per 10 minutes and 10 a day, counted with login codes for your phone.",
         "operationId": "ask_for_step_up_api_v1_me_step_up_post",
         "parameters": [
           {
@@ -26110,7 +26568,7 @@
                 "discriminator": {
                   "mapping": {
                     "change_phone": "#/components/schemas/StepUpForPhone",
-                    "download_export": "#/components/schemas/StepUpForAccount",
+                    "download_export": "#/components/schemas/StepUpForExport",
                     "log_out_everywhere": "#/components/schemas/StepUpForAccount",
                     "set_upi_id": "#/components/schemas/StepUpForUpiId"
                   },
@@ -26122,6 +26580,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/StepUpForPhone"
+                  },
+                  {
+                    "$ref": "#/components/schemas/StepUpForExport"
                   },
                   {
                     "$ref": "#/components/schemas/StepUpForAccount"
@@ -26176,6 +26637,17 @@
             },
             "description": "Only a creator may ask to set a UPI ID; an admin may not change their phone number here; or `login_too_recent`: changing the phone number, or replacing a UPI ID in effect, needs a login at least 7 days old (see Retry-After)"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`export_not_found`: no such export of yours"
+          },
           "409": {
             "content": {
               "application/json": {
@@ -26185,7 +26657,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "`phone_unchanged`: that is already your number. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+            "description": "`phone_unchanged`: that is already your number; or the export cannot be downloaded (`export_not_ready`, `export_failed`, `export_already_downloaded`, `export_expired`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
           },
           "422": {
             "content": {

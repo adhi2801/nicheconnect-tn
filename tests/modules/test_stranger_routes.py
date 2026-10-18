@@ -45,6 +45,7 @@ from tests.deal_flow import (
     creator_user,
 )
 from tests.factories import create_account
+from tests.step_up import ask_for_export, build_exports
 
 SHA = "a" * 64
 
@@ -251,6 +252,9 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
         },
         headers=creator.headers,
     ).json()["id"]
+    # A data export of the creator's own, built and ready (D-111).
+    export_id = ask_for_export(client, creator.headers)
+    build_exports()
     report_id = client.post(
         "/api/v1/reports",
         json={
@@ -306,6 +310,7 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
         "block_id": block_id,
         "package_id": package_id,
         "report_id": report_id,
+        "export_id": export_id,
         "takedown_id": takedown_id,
         "account_id": brand.account_id,
         "city": city,

@@ -35,6 +35,7 @@ from app.modules.auth.tokens import (
 from app.modules.notifications.models import Notification
 from tests.deal_flow import Clock, User
 from tests.factories import build_auth_session, create_account, fake_phone
+from tests.step_up import EXPORT_URL, build_exports
 
 LOGIN = "/api/v1/auth/admin/login"
 SET_UP = "/api/v1/auth/admin/second-factor"
@@ -712,9 +713,20 @@ def test_the_export_shows_the_factor_but_never_its_secret(
     secret = enrol(client, db, sender, clock, admin)
     factor = factor_of(db, admin)
 
-    # An admin's second check is the authenticator's code (item 82).
-    response = client.get(
-        "/api/v1/me/export",
+    # An admin's second check is the authenticator's code (item 82), each
+    # 30-second step's once: one to ask for the export, the next to take it.
+    asked = client.post(
+        EXPORT_URL,
+        headers={
+            **User(admin.id, "admin", clock).headers,
+            "Step-Up-Code": shown(secret, clock),
+        },
+    )
+    assert asked.status_code == 202, asked.text
+    build_exports()
+    clock.advance(timedelta(seconds=30))
+    response = client.post(
+        f"{EXPORT_URL}/{asked.json()['id']}/download",
         headers={
             **User(admin.id, "admin", clock).headers,
             "Step-Up-Code": shown(secret, clock),

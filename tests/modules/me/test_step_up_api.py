@@ -24,7 +24,7 @@ from app.modules.me.step_up_router import STEP_UP_LIMIT
 from app.modules.notifications.models import Notification
 from tests.deal_flow import Clock, User, brand_user, creator_user
 from tests.factories import build_auth_session, create_account
-from tests.step_up import EXPORT_URL, LOGOUT_ALL_URL, STEP_UP_URL
+from tests.step_up import EXPORT_URL, LOGOUT_ALL_URL, STEP_UP_URL, download_export
 
 UPI_ID = "meena.cooks@okhdfcbank"
 OTP_REQUEST_URL = "/api/v1/auth/otp/request"
@@ -241,7 +241,7 @@ def test_after_ten_wrong_tries_even_the_right_code_waits(
 def test_without_a_code_the_change_is_refused_with_the_rfc_9470_challenge(
     client, creator
 ):
-    response = client.get(EXPORT_URL, headers=creator.headers)
+    response = client.post(EXPORT_URL, headers=creator.headers)
 
     assert_problem(response, 401, "step_up_required")
     challenge = response.headers["www-authenticate"]
@@ -251,7 +251,7 @@ def test_without_a_code_the_change_is_refused_with_the_rfc_9470_challenge(
 def test_the_right_code_allows_it(client, db, sender, creator):
     code = code_for(client, db, sender, creator, "download_export")
 
-    assert client.get(EXPORT_URL, headers=with_header(creator, code)).status_code == 200
+    assert client.post(EXPORT_URL, headers=with_header(creator, code)).status_code == 202
 
 
 def test_a_wrong_code_is_refused_and_the_right_one_still_works(
@@ -260,11 +260,11 @@ def test_a_wrong_code_is_refused_and_the_right_one_still_works(
     code = code_for(client, db, sender, creator, "download_export")
 
     assert_problem(
-        client.get(EXPORT_URL, headers=with_header(creator, wrong(code))),
+        client.post(EXPORT_URL, headers=with_header(creator, wrong(code))),
         400,
         "step_up_code_invalid",
     )
-    assert client.get(EXPORT_URL, headers=with_header(creator, code)).status_code == 200
+    assert client.post(EXPORT_URL, headers=with_header(creator, code)).status_code == 202
 
 
 def test_a_code_works_once(client, db, sender, creator):
@@ -305,7 +305,7 @@ def test_a_code_for_one_change_cannot_make_another(client, db, sender, creator):
     for_export = code_for(client, db, sender, creator, "download_export")
 
     assert_problem(
-        client.get(EXPORT_URL, headers=with_header(creator, for_logout)),
+        client.post(EXPORT_URL, headers=with_header(creator, for_logout)),
         400,
         "step_up_code_invalid",
     )
@@ -350,7 +350,7 @@ def test_one_persons_code_is_no_use_to_another(client, db, sender, creator, cloc
     code_for(client, db, sender, someone, "download_export")
 
     assert_problem(
-        client.get(EXPORT_URL, headers=with_header(someone, code)),
+        client.post(EXPORT_URL, headers=with_header(someone, code)),
         400,
         "step_up_code_invalid",
     )
@@ -358,7 +358,7 @@ def test_one_persons_code_is_no_use_to_another(client, db, sender, creator, cloc
 
 @pytest.mark.parametrize("code", ["12345", "1234567", "12345a", " 12345"])
 def test_a_code_that_is_not_six_digits_is_refused(client, creator, code):
-    response = client.get(EXPORT_URL, headers=with_header(creator, code))
+    response = client.post(EXPORT_URL, headers=with_header(creator, code))
 
     assert response.status_code == 422
 
@@ -366,23 +366,22 @@ def test_a_code_that_is_not_six_digits_is_refused(client, creator, code):
 # --- the export and logging out everywhere ------------------------------------------------
 
 
-def test_downloading_the_export_tells_the_owner(client, db, sender, creator):
-    code = code_for(client, db, sender, creator, "download_export")
-    client.get(EXPORT_URL, headers=with_header(creator, code))
+def test_downloading_the_export_tells_the_owner(client, db, creator):
+    assert download_export(client, creator.headers).status_code == 200
 
     assert len(told(db, creator, "data_exported")) == 1
 
 
 def test_a_refused_export_tells_nobody_anything(client, db, creator):
-    client.get(EXPORT_URL, headers=creator.headers)
+    client.post(EXPORT_URL, headers=creator.headers)
 
     assert told(db, creator, "data_exported") == []
 
 
-def test_the_export_lists_the_codes_but_never_their_hashes(client, db, sender, creator):
-    code = code_for(client, db, sender, creator, "download_export")
-
-    body = client.get(EXPORT_URL, headers=with_header(creator, code)).json()
+def test_the_export_lists_the_codes_but_never_their_hashes(client, db, creator):
+    # The file is built after the code that asked for it, before the one
+    # that downloads it, so it holds the first (D-111).
+    body = download_export(client, creator.headers).json()
 
     [row] = body["data"]["step_up_codes"]
     assert row["action"] == "download_export"
@@ -473,15 +472,15 @@ def test_an_admin_is_sent_nothing(client, db, sender, admin):
 def test_an_admin_proves_it_with_the_authenticator(client, db, clock, admin):
     user, secret = admin
 
-    response = client.get(EXPORT_URL, headers=with_header(user, shown(secret, clock)))
+    response = client.post(EXPORT_URL, headers=with_header(user, shown(secret, clock)))
 
-    assert response.status_code == 200, response.text
+    assert response.status_code == 202, response.text
 
 
 def test_an_admin_s_wrong_code_counts_towards_the_lock(client, db, clock, admin):
     user, secret = admin
 
-    response = client.get(
+    response = client.post(
         EXPORT_URL, headers=with_header(user, wrong(shown(secret, clock)))
     )
 
@@ -520,7 +519,7 @@ def test_an_admin_without_an_authenticator_cannot_step_up(client, db, clock):
     user = User(create_account(db, "admin").id, "admin", clock)
 
     assert_problem(
-        client.get(EXPORT_URL, headers=with_header(user, "123456")),
+        client.post(EXPORT_URL, headers=with_header(user, "123456")),
         400,
         "step_up_code_invalid",
     )

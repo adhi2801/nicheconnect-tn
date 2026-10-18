@@ -157,6 +157,21 @@ resource "aws_s3_bucket_lifecycle_configuration" "uploads" {
       noncurrent_days = 1
     }
   }
+  # Data exports (D-111). The app destroys each file when it is downloaded
+  # or 24 hours after it was ready; this is the backstop if it ever did not.
+  rule {
+    id     = "data-exports"
+    status = "Enabled"
+    filter {
+      prefix = "exports/"
+    }
+    expiration {
+      days = 2
+    }
+    noncurrent_version_expiration {
+      noncurrent_days = 1
+    }
+  }
 }
 
 # The website uploads proof straight to the bucket (D-062), so the browser

@@ -35,7 +35,7 @@ class ExportNotIncluded(BaseModel):
 
 
 class ExportFile(BaseModel):
-    """The file `GET /api/v1/me/export` returns, for the API documentation.
+    """The file `POST /api/v1/me/exports/{export_id}/download` returns, for the API docs.
 
     The route builds the file itself so it can offer it as a download, so
     FastAPI cannot see this shape on its own. A test checks every real
