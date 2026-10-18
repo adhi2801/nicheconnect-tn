@@ -15,6 +15,10 @@ whole deals, 5 bank bulk transfers of 25 rows, and 30 rounds of rate card
 edits. All from one run, on a developer laptop under Docker Desktop for
 Windows.
 
+## Added 18 October: a lost current number (D-110)
+
+Same run of `scripts/measure_performance.py --runs 50 --deals 30`, on a laptop: `POST /me/phone-change/without-current-number` **24.3 ms p50, 32.0 ms p95** (budget 500); with both numbers 34.9 ms p95; the job making one change 12.4 ms p95. The job now also reads every change made without the current number each minute, one indexed query per change for its logins; such changes are rare.
+
 ## Added 18 October: the login's age in every token (D-109)
 
 `POST /auth/refresh` now reads the login's time from its session family (one indexed query). Timed with a rolled-back script over a 100-long rotation chain, on a laptop: **12.7 ms p50, 16.0 ms p95** after, against 14.5 and 21.5 ms before on the same machine minutes earlier, so no measurable cost. Re-run `scripts/measure_performance.py --runs 50 --deals 30` after the change: `POST /me/phone-change` 39.9 ms p95, `PUT /creators/me/upi` 42.9, `POST /me/step-up` 38.3, all within budget; the export 386.2 ms, still over (its own fix, the background export, is next).

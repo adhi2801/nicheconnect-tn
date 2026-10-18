@@ -35,6 +35,13 @@ class PhoneChangeWaitingRead(BaseModel):
             "session ends, within a minute, and you log in with the new number."
         )
     )
+    without_current_number: bool = Field(
+        description=(
+            "Asked for without a code from your current number, which you said "
+            "is lost: it waits 7 days, and any login with your current number "
+            "before then cancels it."
+        )
+    )
 
 
 class PhoneChangeRead(BaseModel):

@@ -624,6 +624,19 @@ def measure_writes(
                     creator_headers,
                     method="DELETE",
                 )
+                # The same without the current number (D-110), then cancelled.
+                lost_phone = f"+9197{uuid.uuid4().int % 10**8:08d}"
+                write(None, "/api/v1/auth/otp/request", {}, {"phone": lost_phone})
+                write(
+                    "POST /me/phone-change/without-current-number",
+                    "/api/v1/me/phone-change/without-current-number",
+                    creator_headers,
+                    {
+                        "new_phone": lost_phone,
+                        "new_phone_code": sender.last_code_for(lost_phone) or "",
+                    },
+                )
+                write(None, "/api/v1/me/phone-change", creator_headers, method="DELETE")
             for _ in range(deals):
                 moving = Account(
                     phone=f"+9196{uuid.uuid4().int % 10**8:08d}", role="creator"
@@ -737,10 +750,11 @@ def main() -> int:
     now = datetime.now(UTC)
     app.dependency_overrides[get_now] = lambda: now
     brand_token, _ = create_access_token(brand.account_id, "brand", now)
-    # Logged in a month ago, as a seeded creator would be: changing a phone
-    # number asks for a login at least a week old (D-109).
+    # Logged in two months ago, as a seeded creator would be: changing a
+    # phone number asks for a login a week old, or 30 days without the
+    # current number (D-109, D-110).
     creator_token, _ = create_access_token(
-        creator.account_id, "creator", now, authenticated_at=now - timedelta(days=30)
+        creator.account_id, "creator", now, authenticated_at=now - timedelta(days=60)
     )
     brand_headers = {"Authorization": f"Bearer {brand_token}"}
     creator_headers = {"Authorization": f"Bearer {creator_token}"}

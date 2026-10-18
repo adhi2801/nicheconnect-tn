@@ -8,6 +8,9 @@ Real committed connections, threads started together on a barrier
   and neither waits on the other forever, since every piece of work on two
   numbers locks them in one order;
 - two runs of the job making the same change at once: it is made once;
+- a login with the current number at the moment a change made without it
+  falls due (D-110): the login lands first and cancels it, never after the
+  move on the moved account;
 - a login with the old number at the moment the change is made: the login
   either lands before the move, and its session is ended with the rest, or
   after it, on a new account. It never keeps a session on the moved account,
@@ -30,8 +33,8 @@ from app.modules.auth import step_up_service
 from app.modules.auth.exceptions import OtpInvalid, PhoneInUse
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.account_phone_change import (
-    PHONE_CHANGE_WAIT,
     AccountPhoneChange,
+    wait_for,
 )
 from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.otp_challenge import OtpChallenge
@@ -96,22 +99,26 @@ def committed_account(numbers: Numbers) -> tuple[uuid.UUID, str]:
         return account.id, phone
 
 
-def due_change(numbers: Numbers) -> tuple[uuid.UUID, uuid.UUID, str, str]:
+def due_change(
+    numbers: Numbers, *, without_current_number: bool = False
+) -> tuple[uuid.UUID, uuid.UUID, str, str]:
     """A committed account whose change to a new number is due at CONCURRENCY_NOW."""
     account_id, old_phone = committed_account(numbers)
     new_phone = new_number(numbers)
+    wait = wait_for(without_current_number)
     with SessionLocal() as session:
         session.execute(
             text(
-                "INSERT INTO account_phone_change "
-                "(account_id, new_phone, requested_at, takes_effect_at) "
-                "VALUES (:a, :p, :at, :due)"
+                "INSERT INTO account_phone_change (account_id, new_phone, "
+                "requested_at, takes_effect_at, without_current_number) "
+                "VALUES (:a, :p, :at, :due, :lost)"
             ),
             {
                 "a": account_id,
                 "p": new_phone,
-                "at": CONCURRENCY_NOW - PHONE_CHANGE_WAIT,
+                "at": CONCURRENCY_NOW - wait,
                 "due": CONCURRENCY_NOW,
+                "lost": without_current_number,
             },
         )
         session.commit()
@@ -315,3 +322,44 @@ def test_a_login_with_the_old_number_as_the_change_is_made_keeps_no_session_on_i
             )
         ).all()
     assert live == []
+
+
+def test_a_login_with_the_current_number_as_a_lost_number_change_falls_due_cancels_it(
+    numbers, monkeypatch
+):
+    change_id, account_id, old_phone, _new = due_change(
+        numbers, without_current_number=True
+    )
+    with SessionLocal() as session:
+        code = login.request_otp(session, old_phone, CONCURRENCY_NOW).code
+
+    # As above: the login holds its number's lock while it writes its session,
+    # and the job starts inside that window. Without the job's lock on the
+    # current number, it would move the account before the login's session
+    # was written, and that session would land on the moved account.
+    issue_session = login.issue_session
+
+    def slow_issue_session(*args, **kwargs):
+        time.sleep(0.3)
+        return issue_session(*args, **kwargs)
+
+    monkeypatch.setattr(login, "issue_session", slow_issue_session)
+
+    def log_in() -> uuid.UUID:
+        with SessionLocal() as session:
+            return login.verify_otp(
+                session, old_phone, code, "creator", CONCURRENCY_NOW
+            ).account_id
+
+    def make() -> str | None:
+        time.sleep(0.1)
+        with SessionLocal() as session:
+            return service.make_change(session, change_id, CONCURRENCY_NOW)
+
+    outcomes, errors = at_once(log_in, make)
+
+    assert errors == []
+    assert "voided" in outcomes
+    assert account_id in outcomes
+    with SessionLocal() as session:
+        assert session.get_one(Account, account_id).phone == old_phone

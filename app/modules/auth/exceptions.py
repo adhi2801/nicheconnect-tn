@@ -1,7 +1,7 @@
 """Domain errors for the auth module (mapped to Problem Details by app/core/errors.py)."""
 
 import math
-from datetime import datetime
+from datetime import datetime, timedelta
 from http import HTTPStatus
 
 from app.core.errors import DomainError
@@ -168,12 +168,14 @@ class LoginTooRecent(DomainError):
     # a week (D-109): their login is always new. Retry-After says when.
     status_code = HTTPStatus.FORBIDDEN
     code = "login_too_recent"
-    title = "This change needs a login at least 7 days old"
+    title = "This change needs an older login"
 
-    def __init__(self, allowed_from: datetime, now: datetime) -> None:
+    def __init__(
+        self, allowed_from: datetime, now: datetime, age: timedelta = timedelta(days=7)
+    ) -> None:
         super().__init__(
-            "For your safety, a login on a new device must be a week old "
-            "before it can make this change. It is allowed from "
+            f"For your safety, a login must be {age.days} days old before it "
+            "can make this change. It is allowed from "
             f"{allowed_from.isoformat().replace('+00:00', 'Z')}, or now from a "
             "device you have been logged in on for longer.",
             headers={

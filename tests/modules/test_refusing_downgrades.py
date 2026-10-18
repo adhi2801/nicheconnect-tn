@@ -1,7 +1,7 @@
 """Every downgrade that would destroy unrecoverable data refuses while it exists.
 
 database.md section 6: losing such data must be a deliberate act, never a
-side effect of a rollback. Fifteen migrations refuse. Until 14 October 2026 each
+side effect of a rollback. Sixteen migrations refuse. Until 14 October 2026 each
 refusal had been proven only by hand, in the session that wrote it
 (database.md gap 6, item 98); a later edit to one could have let a rollback
 drop a deal's record or a person's block without anyone noticing.
@@ -50,6 +50,7 @@ REFUSING = {
     "8a974ebde203": "brands' verified domains",
     "44fc99b873a7": "new UPI IDs waiting their 24 hours, each with its consent",
     "d18c285488f0": "new phone numbers waiting their 72 hours, each proven by two codes",
+    "8bfc55b8e5fe": "new phone numbers waiting 7 days without the current number",
 }
 
 
@@ -350,4 +351,23 @@ def test_new_phone_numbers_waiting(db):
 
     assert f"{before + 1} accounts are waiting to move to a new phone number" in (
         refusal(db, "d18c285488f0")
+    )
+
+
+def test_new_phone_numbers_waiting_without_the_current_number(db):
+    before = count(
+        db, "SELECT count(*) FROM account_phone_change WHERE without_current_number"
+    )
+    account = create_account(db, "creator")
+    db.execute(
+        text(
+            "INSERT INTO account_phone_change (account_id, new_phone, requested_at, "
+            "takes_effect_at, without_current_number) "
+            "VALUES (:a, :p, now(), now() + interval '7 days', true)"
+        ),
+        {"a": account.id, "p": unique_test_phone()},
+    )
+
+    assert f"{before + 1} accounts are waiting to move to a new phone number without" in (
+        refusal(db, "8bfc55b8e5fe")
     )

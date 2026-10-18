@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.attention import AttentionItem
 from app.core.clock import india_date
+from app.modules.auth import phone_changes
 from app.modules.auth.models.account_phone_change import AccountPhoneChange
 
 
@@ -17,16 +18,18 @@ def phone_change_for_account(
     """A new phone number still waiting its 72 hours (item 80, D-108).
 
     Due the day it takes over the login; gone once its wait is over, when it
-    can no longer be cancelled, or once it is cancelled.
+    can no longer be cancelled, once it is cancelled, or, for one made
+    without the current number, once that number has logged in (D-110).
     """
-    takes_effect_at = db.scalars(
-        select(AccountPhoneChange.takes_effect_at).where(
+    change = db.scalars(
+        select(AccountPhoneChange).where(
             AccountPhoneChange.account_id == account_id,
             AccountPhoneChange.takes_effect_at > now,
         )
     ).first()
-    if takes_effect_at is None:
+    if change is None or phone_changes.is_void(db, change):
         return []
+    takes_effect_at = change.takes_effect_at
     return [
         AttentionItem(
             kind="phone_change_pending",

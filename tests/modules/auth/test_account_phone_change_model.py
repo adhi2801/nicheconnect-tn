@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.modules.auth.models.account_phone_change import (
     PHONE_CHANGE_WAIT,
+    PHONE_CHANGE_WAIT_WITHOUT_CURRENT,
     AccountPhoneChange,
 )
 from tests.factories import FIXED_NOW, create_account, unique_test_phone
@@ -19,13 +20,15 @@ def _insert(db, account_id, **overrides: object) -> None:
         "new_phone": unique_test_phone(),
         "requested_at": FIXED_NOW,
         "takes_effect_at": FIXED_NOW + PHONE_CHANGE_WAIT,
+        "without_current_number": False,
         **overrides,
     }
     db.execute(
         text(
             "INSERT INTO account_phone_change "
-            "(account_id, new_phone, requested_at, takes_effect_at) "
-            "VALUES (:account_id, :new_phone, :requested_at, :takes_effect_at)"
+            "(account_id, new_phone, requested_at, takes_effect_at, "
+            "without_current_number) VALUES (:account_id, :new_phone, "
+            ":requested_at, :takes_effect_at, :without_current_number)"
         ),
         values,
     )
@@ -51,12 +54,27 @@ def test_a_good_row_is_kept(db):
         ({"new_phone": "+915812300001"}, "new_phone_format"),
         (
             {"takes_effect_at": FIXED_NOW + PHONE_CHANGE_WAIT - timedelta(seconds=1)},
-            "takes_effect_three_days_after_request",
+            "takes_effect_after_its_wait",
         ),
-        ({"takes_effect_at": FIXED_NOW}, "takes_effect_three_days_after_request"),
+        ({"takes_effect_at": FIXED_NOW}, "takes_effect_after_its_wait"),
         (
             {"takes_effect_at": FIXED_NOW + timedelta(days=30)},
-            "takes_effect_three_days_after_request",
+            "takes_effect_after_its_wait",
+        ),
+        (
+            {"takes_effect_at": FIXED_NOW + timedelta(days=7)},
+            "takes_effect_after_its_wait",
+        ),
+        (
+            {"without_current_number": True},
+            "takes_effect_after_its_wait",
+        ),
+        (
+            {
+                "without_current_number": True,
+                "takes_effect_at": FIXED_NOW + timedelta(days=7, seconds=-1),
+            },
+            "takes_effect_after_its_wait",
         ),
     ],
 )
@@ -65,6 +83,23 @@ def test_the_database_refuses_a_bad_row(db, overrides, constraint):
 
     with pytest.raises(IntegrityError, match=f"ck_account_phone_change_{constraint}"):
         _insert(db, account.id, **overrides)
+
+
+def test_a_change_without_the_current_number_waits_exactly_seven_days(db):
+    account = create_account(db, "creator")
+
+    _insert(
+        db,
+        account.id,
+        without_current_number=True,
+        takes_effect_at=FIXED_NOW + PHONE_CHANGE_WAIT_WITHOUT_CURRENT,
+    )
+
+    assert db.scalars(
+        select(AccountPhoneChange.without_current_number).where(
+            AccountPhoneChange.account_id == account.id
+        )
+    ).all() == [True]
 
 
 def test_an_account_waits_on_one_number_at_most(db):
