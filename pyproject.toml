@@ -21,18 +21,18 @@ requires-python = "==3.14.*"
 # image installs (D-063). Every pin is exact; changing one needs the
 # dependency approval in CLAUDE.md section 5.
 dependencies = [
-    "fastapi==0.142.2",
+    "fastapi==0.143.0",
     # Pinned although FastAPI pulls it in: FastAPI only asks for >=0.46.0,
     # and advisories in that range stay open until 1.3.1. Left unpinned, a
     # fresh install could resolve to a vulnerable Starlette (security.md
     # section 8).
     "starlette==1.7.0",
     "uvicorn[standard]==0.54.0",
-    "sqlalchemy==2.1.3",
+    "sqlalchemy==2.1.4",
     # In the image because migrations run from it, as a step before each deploy.
     "alembic==1.20.0",
     "psycopg[binary]==3.3.6",
-    "pgvector==0.5.0",
+    "pgvector==0.5.1",
     "redis==8.1.0",
     "pydantic-settings==2.15.0",
     "slowapi==0.1.10",
@@ -56,14 +56,14 @@ dependencies = [
     "certifi==2026.7.22",
     # Proof files in S3 (D-065): signs the upload and view links and checks
     # the objects. Signing requests by hand is security code we should not own.
-    "boto3==1.43.108",
+    "boto3==1.43.111",
     # Re-encodes every uploaded image so no GPS location or hidden data
     # reaches a brand (D-065). Security releases are frequent: the dependency
     # audit fails CI until it is upgraded, which is the point.
     "pillow==12.3.0",
     # Reads the numbers on cleaned proof screenshots, in a background job only
     # (D-070). Built on httpx2 2.x, the same client the app pins above.
-    "anthropic==1.11.0",
+    "anthropic==1.13.0",
     # Error tracking (D-074): every unexpected error and every error log line
     # reaches a founder with its stack trace, scrubbed of personal data first
     # (app/core/error_tracking.py). Off unless SENTRY_DSN is set.
@@ -91,7 +91,7 @@ dependencies = [
 # the dependency audit covers them too. Never in an image.
 dev = [
     "pytest==9.1.1",
-    "ruff==0.16.10",
+    "ruff==0.17.0",
     "mypy==2.4.0",
     "pytest-cov==7.1.0",
     # Pinned although pytest-cov pulls it in: unpinned, local and CI runs
@@ -99,9 +99,9 @@ dev = [
     "coverage==7.16.2",
     # API fuzz testing (D-047). Reads docs/api/openapi.json, generates
     # thousands of requests from it and checks every answer.
-    "schemathesis==4.29.2",
+    "schemathesis==4.30.1",
     # Imitates S3 in tests, so the storage code is tested without AWS (D-065).
-    "moto==5.2.3",
+    "moto==5.2.4",
     # Property-based tests (D-090): one test states a rule, Hypothesis tries
     # hundreds of generated inputs and shrinks any failure to the smallest.
     # Schemathesis pulls it in too; pinned here because tests import it.
