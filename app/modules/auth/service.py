@@ -81,6 +81,14 @@ class LoginResult:
     refresh_token_expires_at: datetime
 
 
+@dataclass(frozen=True)
+class ClientDevice:
+    """What the app said it is, at sign-in (D-114). Never checked, only shown."""
+
+    platform: str
+    label: str
+
+
 def lock_phone(db: Session, phone: str) -> None:
     """Serialize OTP work per phone until the transaction ends.
 
@@ -211,11 +219,12 @@ def verify_otp(
     role: str,
     now: datetime,
     arrival: Arrival | None = None,
+    device: ClientDevice | None = None,
 ) -> LoginResult:
     """Check a code and log the phone in, creating the account if it is new.
 
     Only the latest code for the phone counts. A wrong code uses up one of
-    MAX_OTP_ATTEMPTS attempts.
+    MAX_OTP_ATTEMPTS attempts. `device` is what the app said it is (D-114).
     Raises OtpInvalid (wrong, expired, used, exhausted or no code),
     RoleMismatch (the account exists with another role) and
     PhoneChangeWaiting (no account has the number, but one is waiting to
@@ -258,7 +267,7 @@ def verify_otp(
 
     challenge.consumed_at = now
     # A fresh login starts its own rotation family.
-    result = issue_session(db, account, uuid.uuid4(), now)
+    result = issue_session(db, account, uuid.uuid4(), now, device=device)
     db.commit()
     return replace(result, is_new_account=is_new_account)
 
@@ -369,6 +378,7 @@ def issue_session(
     second_factor_at: datetime | None = None,
     authenticated_at: datetime | None = None,
     passkey_at: datetime | None = None,
+    device: ClientDevice | None = None,
 ) -> LoginResult:
     """Create one session in `family_id` and return its tokens. The caller commits.
 
@@ -378,6 +388,9 @@ def issue_session(
     new login; its access tokens carry it as `auth_time` (D-109).
     `passkey_at` is when a passkey proved the login, kept on every session
     of the family, and makes its access tokens say so (D-113).
+    `device` is what the app said it is, kept on every session of the
+    family, so its owner can tell it from the others (D-114). Every access
+    token carries the family as `sid`, so ending it ends them at once.
     """
     refresh_token = new_refresh_token()
     refresh_expires_at = refresh_token_expiry(account.role, now, second_factor_at)
@@ -389,6 +402,8 @@ def issue_session(
             expires_at=refresh_expires_at,
             second_factor_at=second_factor_at,
             passkey_at=passkey_at,
+            client_platform=None if device is None else device.platform,
+            client_label=None if device is None else device.label,
             created_at=now,
             updated_at=now,
         )
@@ -406,6 +421,7 @@ def issue_session(
         methods=methods,
         not_after=refresh_expires_at if account.role == "admin" else None,
         authenticated_at=now if authenticated_at is None else authenticated_at,
+        session_id=family_id,
     )
     return LoginResult(
         account_id=account.id,
@@ -481,9 +497,19 @@ def refresh_session(db: Session, refresh_token: str, now: datetime) -> LoginResu
         second_factor_at=auth_session.second_factor_at,
         authenticated_at=logged_in_at(db, auth_session.family_id),
         passkey_at=auth_session.passkey_at,
+        device=_device_of(auth_session),
     )
     db.commit()
     return result
+
+
+def _device_of(auth_session: AuthSession) -> ClientDevice | None:
+    """The device a session's sign-in named, to carry to its next row."""
+    if auth_session.client_platform is None or auth_session.client_label is None:
+        return None
+    return ClientDevice(
+        platform=auth_session.client_platform, label=auth_session.client_label
+    )
 
 
 def logged_in_at(db: Session, family_id: uuid.UUID) -> datetime:

@@ -73,13 +73,23 @@ class StepUpForPasskeyOnly(BaseModel):
     enabled: bool
 
 
+class StepUpForSession(BaseModel):
+    """A code to end one exact other session of yours (item 81, D-114)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    action: Literal["end_session"]
+    session_id: uuid.UUID
+
+
 StepUpIn = Annotated[
     StepUpForUpiId
     | StepUpForPhone
     | StepUpForExport
     | StepUpForAccount
     | StepUpForPasskeyRemoval
-    | StepUpForPasskeyOnly,
+    | StepUpForPasskeyOnly
+    | StepUpForSession,
     Field(discriminator="action"),
 ]
 

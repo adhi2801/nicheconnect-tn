@@ -4,6 +4,8 @@ from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.modules.auth.schemas import DEVICE_FIELD, DeviceIn
+
 # A passkey's answer, as the browser or phone gives it (WebAuthn's JSON form
 # of a PublicKeyCredential). Checked by fido2, never trusted as it comes.
 WebAuthnCredential = Annotated[
@@ -23,3 +25,4 @@ class PasskeyLoginIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     credential: WebAuthnCredential
+    device: DeviceIn | None = DEVICE_FIELD

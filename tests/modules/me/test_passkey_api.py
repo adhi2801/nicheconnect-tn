@@ -19,6 +19,7 @@ from sqlalchemy import select
 from app.core.config import settings
 from app.core.rate_limit import limiter
 from app.main import app
+from app.modules.auth import service as login
 from app.modules.auth import step_up_service
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.auth_session import AuthSession
@@ -30,7 +31,7 @@ from app.modules.auth.models.passkey import (
 )
 from app.modules.auth.models.step_up_challenge import StepUpChallenge
 from app.modules.auth.sender import FakeOtpSender, get_otp_sender
-from app.modules.auth.tokens import decode_access_token, hash_otp_code
+from app.modules.auth.tokens import decode_access_token, hash_otp_code, hash_refresh_token
 from app.modules.me import passkey_service
 from app.modules.notifications.models import Notification
 from tests.deal_flow import User, creator_user
@@ -347,6 +348,39 @@ def test_passkey_approvals_use_none_of_the_phones_messages(
     assert response.status_code == 202, response.text
 
 
+def test_with_a_passkey_only_the_passkey_ends_another_session(
+    client, db, sender, clock, creator
+):
+    """D-114's end_session is a risky change like any other (D-113)."""
+    key = with_a_passkey(client, creator)
+    account = db.get_one(Account, creator.account_id)
+    other = login.issue_session(db, account, uuid.uuid4(), clock.now)
+    db.flush()
+    session_id = str(
+        db.scalars(
+            select(AuthSession.family_id).where(
+                AuthSession.token_hash == hash_refresh_token(other.refresh_token)
+            )
+        ).one()
+    )
+    sent_before = len(sender.sent)
+
+    code = approve(
+        client, creator, key, {"action": "end_session", "session_id": session_id}
+    )
+    response = client.delete(
+        f"/api/v1/me/sessions/{session_id}",
+        headers={**creator.headers, "Step-Up-Code": code},
+    )
+
+    assert response.status_code == 204, response.text
+    assert len(sender.sent) == sent_before
+    ended = client.get(
+        "/api/v1/auth/me", headers={"Authorization": f"Bearer {other.access_token}"}
+    )
+    assert ended.status_code == 401
+
+
 def test_an_account_holds_ten_passkeys_at_most(client, db, clock, creator):
     key = with_a_passkey(client, creator)
     for n in range(MAX_PASSKEYS - 1):
@@ -415,6 +449,25 @@ def test_a_passkey_logs_in_and_its_tokens_say_so_through_every_refresh(
         select(AuthSession).where(AuthSession.account_id == creator.account_id)
     ).first()
     assert session is not None and session.passkey_at is not None
+
+
+def test_a_passkey_login_names_its_device_in_the_session_list(client, creator):
+    key = with_a_passkey(client, creator)
+    options = client.post(LOGIN_OPTIONS).json()
+
+    response = client.post(
+        LOGIN,
+        json={
+            "credential": key.get(options),
+            "device": {"platform": "web", "label": "Safari on Mac"},
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    headers = {"Authorization": f"Bearer {response.json()['access_token']}"}
+    sessions = client.get("/api/v1/me/sessions", headers=headers).json()["items"]
+    [current] = [item for item in sessions if item["is_current"]]
+    assert (current["label"], current["signed_in_with"]) == ("Safari on Mac", "passkey")
 
 
 @pytest.mark.parametrize(

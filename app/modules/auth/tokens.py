@@ -49,6 +49,11 @@ class AccessTokenClaims:
     # `auth_time`, kept through every refresh of that login (D-109). None
     # for a token signed before it, which counts as a login made just now.
     authenticated_at: datetime | None = None
+    # Which session the token belongs to: its login's family id, as OpenID
+    # Connect's `sid` (D-114). Every request checks the session is still
+    # live, so ending it ends its access tokens at once. None for a token
+    # signed before D-114, which lives out its 15 minutes.
+    session_id: uuid.UUID | None = None
 
     @property
     def is_multi_factor(self) -> bool:
@@ -63,12 +68,14 @@ def create_access_token(
     methods: tuple[str, ...] = PHONE_CODE_ONLY,
     not_after: datetime | None = None,
     authenticated_at: datetime | None = None,
+    session_id: uuid.UUID | None = None,
 ) -> tuple[str, datetime]:
     """Sign a short-lived access token. Returns the token and its expiry time.
 
     `not_after` ends it sooner, so a session's own limit binds its last
     access token too (an admin's 12 hours, D-105). `authenticated_at` is
-    when its login was proven, signed as `auth_time` (D-109).
+    when its login was proven, signed as `auth_time` (D-109). `session_id`
+    is the session's family, signed as `sid` (D-114).
     """
     expires_at = now + timedelta(minutes=settings.access_token_expire_minutes)
     if not_after is not None:
@@ -85,6 +92,8 @@ def create_access_token(
     if authenticated_at is not None:
         # Rounded up, so a login never reads as older than it is.
         claims["auth_time"] = math.ceil(authenticated_at.timestamp())
+    if session_id is not None:
+        claims["sid"] = str(session_id)
     token = jwt.encode(
         claims,
         settings.secret_key.get_secret_value(),
@@ -137,6 +146,14 @@ def _verified_claims(token: str) -> dict[str, Any]:
         isinstance(claims["auth_time"], bool) or not isinstance(claims["auth_time"], int)
     ):
         raise InvalidToken()
+    # Optional for the same reason (D-114); a UUID when present.
+    if "sid" in claims:
+        if not isinstance(claims["sid"], str):
+            raise InvalidToken()
+        try:
+            uuid.UUID(claims["sid"])
+        except ValueError as exc:
+            raise InvalidToken() from exc
     return claims
 
 
@@ -160,6 +177,7 @@ def decode_access_token(token: str, now: datetime) -> AccessTokenClaims:
             if "auth_time" in claims
             else None
         ),
+        session_id=uuid.UUID(claims["sid"]) if "sid" in claims else None,
     )
 
 

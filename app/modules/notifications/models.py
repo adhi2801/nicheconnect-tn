@@ -87,6 +87,9 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     "passkey_reset_requested",
     "passkey_reset_cancelled",
     "passkey_only_changed",
+    # To the account itself, when one of its sessions was ended from another
+    # (item 81, D-114).
+    "session_ended",
 )
 MAX_DETAILS_LENGTH = 2000
 

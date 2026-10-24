@@ -39,7 +39,8 @@ from app.modules.notifications.models import NOTIFICATION_TYPES
 # would hide from the one person who could stop it (item 101); or someone
 # may be inside their own account, changing where they are paid, taking a
 # copy of their data, or logging everyone out (item 82); or moving their
-# account onto another phone number (item 80).
+# account onto another phone number (item 80); or ending one of its
+# sessions (item 81).
 URGENT_TYPES: tuple[str, ...] = (
     "memo_sent",
     "proof_submitted",
@@ -66,6 +67,7 @@ URGENT_TYPES: tuple[str, ...] = (
     "passkey_reset_requested",
     "passkey_reset_cancelled",
     "passkey_only_changed",
+    "session_ended",
 )
 MUTABLE_TYPES: tuple[str, ...] = tuple(
     kind for kind in NOTIFICATION_TYPES if kind not in URGENT_TYPES

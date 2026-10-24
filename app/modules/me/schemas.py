@@ -1,8 +1,8 @@
 """Response shapes for what is waiting on you and your data export (D-099)."""
 
 import uuid
-from datetime import date
-from typing import Any, Literal
+from datetime import date, datetime
+from typing import Any, Literal, cast
 
 from pydantic import (
     BaseModel,
@@ -12,7 +12,7 @@ from pydantic import (
 
 from app.core.attention import AttentionList
 from app.core.taxonomy import CURRENCY
-from app.modules.auth.schemas import AttentionKind
+from app.modules.auth.schemas import AttentionKind, ClientPlatform, SignInMethod
 
 
 class ExportManifestEntry(BaseModel):
@@ -89,6 +89,28 @@ class AttentionItemRead(BaseModel):
         default=None,
         description="The brand's domain, for fix_domain_record, domain_lapsed and domain_claim_expired",
     )
+    session_id: uuid.UUID | None = Field(
+        default=None,
+        description="For new_sign_in: the session, to end at DELETE /api/v1/me/sessions/{id}",
+    )
+    signed_in_at: datetime | None = Field(
+        default=None, description="For new_sign_in: when it signed in"
+    )
+    device_platform: ClientPlatform | None = Field(
+        default=None,
+        description="For new_sign_in: what the app said it is; null when it said nothing",
+    )
+    device_label: str | None = Field(
+        default=None,
+        description=(
+            "For new_sign_in: the name the app gave itself, never checked; "
+            "null when it said nothing"
+        ),
+    )
+    signed_in_with: SignInMethod | None = Field(
+        default=None,
+        description="For new_sign_in: `phone_code`, `passkey` or `two_factors`",
+    )
 
 
 class AttentionRead(BaseModel):
@@ -128,6 +150,11 @@ def to_attention_read(result: AttentionList) -> AttentionRead:
                 currency=None if item.amount_paise is None else CURRENCY,
                 count=item.count,
                 domain=item.domain,
+                session_id=item.session_id,
+                signed_in_at=item.signed_in_at,
+                device_platform=cast("ClientPlatform | None", item.device_platform),
+                device_label=item.device_label,
+                signed_in_with=cast("SignInMethod | None", item.signed_in_with),
             )
             for item in result.items
         ],

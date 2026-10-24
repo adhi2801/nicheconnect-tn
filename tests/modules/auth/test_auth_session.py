@@ -3,6 +3,7 @@ import uuid
 from datetime import timedelta
 
 import pytest
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from app.core.config import settings
@@ -98,6 +99,57 @@ def test_session_for_unknown_account_is_rejected(db):
 @pytest.mark.parametrize("missing", ["account_id", "family_id", "expires_at"])
 def test_session_missing_a_required_field_is_rejected(db, missing):
     assert_rejected_by(db, build_auth_session(db, **{missing: None}), missing)
+
+
+def insert_session(db, platform: str | None, label: str | None) -> None:
+    """A session row written with raw SQL, so only the database judges it (D-114)."""
+    account = create_account(db, "creator")
+    db.execute(
+        text(
+            "INSERT INTO auth_session (account_id, family_id, token_hash, expires_at,"
+            " client_platform, client_label)"
+            " VALUES (:a, :f, :t, :e, :p, :l)"
+        ),
+        {
+            "a": account.id,
+            "f": uuid.uuid4(),
+            "t": fake_token_hash(),
+            "e": FIXED_NOW + timedelta(days=30),
+            "p": platform,
+            "l": label,
+        },
+    )
+
+
+@pytest.mark.parametrize(
+    ("platform", "label"),
+    [
+        (None, None),
+        ("android", "Pixel 8"),
+        ("web", "Chrome on Windows"),
+        ("ios", "x" * 60),
+    ],
+)
+def test_a_session_may_name_its_device_or_not(db, platform, label):
+    insert_session(db, platform, label)
+
+
+@pytest.mark.parametrize(
+    ("platform", "label", "constraint"),
+    [
+        ("windows", "My PC", "client_platform_allowed"),
+        ("android", "", "client_label_shape"),
+        ("android", " Pixel 8", "client_label_shape"),
+        ("android", "Pixel 8 ", "client_label_shape"),
+        ("android", "Pixel" + chr(10) + "8", "client_label_shape"),
+        ("android", "Pixel" + chr(0x9B) + "8", "client_label_shape"),
+        ("android", None, "client_platform_and_label_together"),
+        (None, "Pixel 8", "client_platform_and_label_together"),
+    ],
+)
+def test_the_database_refuses_a_bad_device(db, platform, label, constraint):
+    with pytest.raises(IntegrityError, match=f"ck_auth_session_{constraint}"):
+        insert_session(db, platform, label)
 
 
 def test_deleting_an_account_deletes_its_sessions(db):

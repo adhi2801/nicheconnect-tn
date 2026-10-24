@@ -59,7 +59,10 @@ router = APIRouter(prefix="/api/v1/me", tags=["auth"], route_class=IdempotentRou
             "number, or replacing a UPI ID in effect, needs a login at least 7 "
             "days old (see Retry-After)"
         ),
-        404: problem_doc("`export_not_found`: no such export of yours"),
+        404: problem_doc(
+            "`export_not_found`: no such export of yours; `passkey_not_found`; "
+            "or `session_not_found`: no such live session of yours"
+        ),
         409: problem_doc(
             "`phone_unchanged`: that is already your number; or the export "
             "cannot be downloaded (`export_not_ready`, `export_failed`, "

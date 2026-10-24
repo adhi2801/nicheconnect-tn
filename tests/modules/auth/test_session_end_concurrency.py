@@ -22,9 +22,11 @@ from sqlalchemy import delete, func, select
 
 from app.db.session import SessionLocal
 from app.modules.auth import service as login
-from app.modules.auth.exceptions import InvalidToken
+from app.modules.auth import sessions
+from app.modules.auth.exceptions import InvalidToken, SessionNotFound
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.auth_session import AuthSession
+from app.modules.me import session_service
 from tests.factories import create_account, unique_test_phone
 from tests.modules.conftest import CONCURRENCY_NOW
 
@@ -159,4 +161,62 @@ def test_a_refresh_waiting_behind_a_logout_is_refused(signed_in, monkeypatch):
     for thread in threads:
         thread.join()
     assert refused == [True]
+    assert _live_sessions(account_id) == 0
+
+
+def _family_of(account_id: uuid.UUID) -> uuid.UUID:
+    with SessionLocal() as session:
+        return session.scalars(
+            select(AuthSession.family_id).where(AuthSession.account_id == account_id)
+        ).first()
+
+
+def test_a_refresh_at_the_moment_one_session_is_ended_does_not_outlive_it(
+    signed_in, slow_refresh
+):
+    account_id, refresh_token = signed_in
+    family_id = _family_of(account_id)
+
+    def end() -> None:
+        with SessionLocal() as session:
+            sessions.end_one(session, account_id, family_id, LATER)
+            session.commit()
+
+    assert _race(refresh_token, end) == []
+    assert _live_sessions(account_id) == 0
+
+
+def test_two_requests_ending_one_session_at_once_end_it_once(signed_in, monkeypatch):
+    """Exactly one ends it; the other is told it is not found, never a raw error."""
+    account_id, _ = signed_in
+    family_id = _family_of(account_id)
+    end_sessions = login.end_sessions
+
+    def held(db, account_id, now, **kwargs):
+        time.sleep(0.3)
+        return end_sessions(db, account_id, now, **kwargs)
+
+    monkeypatch.setattr(login, "end_sessions", held)
+    barrier = threading.Barrier(2)
+    outcomes: list[str] = []
+
+    def end() -> None:
+        barrier.wait()
+        with SessionLocal() as session:
+            account = session.get_one(Account, account_id)
+            try:
+                session_service.end_one(
+                    session, account, family_id, family_id, None, LATER
+                )
+                outcomes.append("ended")
+            except SessionNotFound:
+                outcomes.append("not_found")
+
+    threads = [threading.Thread(target=end) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert sorted(outcomes) == ["ended", "not_found"]
     assert _live_sessions(account_id) == 0

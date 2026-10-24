@@ -59,6 +59,7 @@ The design direction (Modern Tamil, `docs/DESIGN_DIRECTION.md`, on `main` since 
 10. Sign-up confirms the person is 18 or over (D-086), asking for the date of birth once and saying it is not kept
 11. A person who reported someone sees what became of it, and is told when it is resolved (item 102)
 12. A brand hands on a campaign's report (item 47), and either side adds a deal's dates to their calendar (item 69)
+13. Either side sees where they are logged in, and ends a session they do not recognise; a sign-in from another device is in front of them the next time they open the app (item 81)
 
 ## 4. Design system
 

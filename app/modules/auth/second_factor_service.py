@@ -58,9 +58,14 @@ class SecondFactorCheck:
 
 
 def check_admin_login(
-    db: Session, phone: str, code: str, authenticator_code: str, now: datetime
+    db: Session,
+    phone: str,
+    code: str,
+    authenticator_code: str,
+    now: datetime,
+    device: login.ClientDevice | None = None,
 ) -> SecondFactorCheck:
-    """Check both codes; on success, a new admin session.
+    """Check both codes; on success, a new admin session, on `device` (D-114).
 
     Raises OtpInvalid (the phone code is wrong, or the number is not an
     admin's: committed, as at /auth/otp/verify), OtpVerifyLimitReached and
@@ -96,7 +101,9 @@ def check_admin_login(
     factor.updated_at = now
     challenge.consumed_at = now
     # A fresh login starts its own rotation family; the 12 hours start now.
-    result = login.issue_session(db, account, uuid.uuid4(), now, second_factor_at=now)
+    result = login.issue_session(
+        db, account, uuid.uuid4(), now, second_factor_at=now, device=device
+    )
     return SecondFactorCheck(account=account, login=result)
 
 

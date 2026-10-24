@@ -13,6 +13,7 @@ from app.modules.auth import passkeys
 from app.modules.auth.dependencies import get_now
 from app.modules.auth.passkey_schemas import PasskeyLoginIn
 from app.modules.auth.schemas import AccountSummary, LoginTokens
+from app.modules.auth.service import ClientDevice
 
 # As for login codes: per address, since nobody is known yet.
 PASSKEY_LOGIN_LIMIT = "10 per 10 minutes"
@@ -69,7 +70,8 @@ def passkey_login(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> LoginTokens:
-    result = passkeys.log_in(db, body.credential, now)
+    device = ClientDevice(**body.device.model_dump()) if body.device is not None else None
+    result = passkeys.log_in(db, body.credential, now, device)
     # Tokens must never be cached by browsers or proxies.
     response.headers["Cache-Control"] = "no-store"
     return LoginTokens(

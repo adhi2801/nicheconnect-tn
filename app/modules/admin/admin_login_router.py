@@ -22,6 +22,7 @@ from app.modules.admin.schemas import (
 )
 from app.modules.auth.dependencies import get_now
 from app.modules.auth.schemas import AccountSummary, LoginTokens
+from app.modules.auth.service import ClientDevice
 
 # Per address, as for the phone-code login (security.md section 5). The
 # phone's own guess limits and the factor's lock sit behind it.
@@ -68,7 +69,10 @@ def log_in(
     db: Annotated[Session, Depends(get_db)],
     now: Annotated[datetime, Depends(get_now)],
 ) -> LoginTokens:
-    result = service.log_in(db, body.phone, body.code, body.authenticator_code, now)
+    device = ClientDevice(**body.device.model_dump()) if body.device is not None else None
+    result = service.log_in(
+        db, body.phone, body.code, body.authenticator_code, now, device
+    )
     # Tokens must never be cached by browsers or proxies.
     response.headers["Cache-Control"] = "no-store"
     return LoginTokens(

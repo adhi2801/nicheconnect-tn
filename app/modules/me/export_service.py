@@ -223,6 +223,9 @@ SESSION_EXPORT_FIELDS = allow(
     "second_factor_at",
     # When a passkey proved the sign-in behind it (D-113).
     "passkey_at",
+    # What the app said it is at sign-in, so you can tell sessions apart (D-114).
+    "client_platform",
+    "client_label",
     "used_at",
     "revoked_at",
 )
@@ -364,8 +367,10 @@ def _account_sections(db: Session, account: Account) -> list[ExportedSection]:
             "login_sessions",
             table="auth_session",
             purpose=(
-                "When you signed in, when each session expires, and whether it "
-                "was logged out. The sign-in tokens themselves are not included."
+                "When you signed in, on what the app said it was, when each "
+                "session expires, and whether it was logged out, so you can see "
+                "where you are logged in. The sign-in tokens themselves are not "
+                "included."
             ),
             objects=sessions,
             fields=SESSION_EXPORT_FIELDS,

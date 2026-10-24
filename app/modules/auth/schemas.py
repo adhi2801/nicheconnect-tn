@@ -22,6 +22,10 @@ from app.modules.auth.models.account import (
     PHONE_PATTERN,
 )
 from app.modules.auth.models.attribution import ARRIVAL_SOURCES
+from app.modules.auth.models.auth_session import (
+    CLIENT_LABEL_MAX_LENGTH,
+    CLIENT_PLATFORMS,
+)
 from app.modules.auth.models.creator import BIO_MAX_LENGTH, HANDLE_PATTERN
 
 # The media kit nests the delivery record as its own module defines it, so
@@ -165,6 +169,47 @@ class ArrivalIn(BaseModel):
     )
 
 
+ClientPlatform = Literal["android", "ios", "web"]
+# How a session's sign-in was proven (D-114): a phone code, a passkey, or an
+# admin's two factors.
+SignInMethod = Literal["phone_code", "passkey", "two_factors"]
+ensure_same_values("ClientPlatform", ClientPlatform, CLIENT_PLATFORMS)
+# No control characters, nor the line and paragraph separators, which the
+# database counts as control characters too.
+CLIENT_LABEL_PATTERN = r"^[^\x00-\x1f\x7f-\x9f\u2028\u2029]+$"
+
+
+class DeviceIn(BaseModel):
+    """What this app is, so its owner can tell this session from the others (D-114).
+
+    Optional, said by the app and never checked: the session list shows it
+    beside when and how the session signed in, which no app can choose.
+    """
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    platform: ClientPlatform
+    label: str = Field(
+        min_length=1,
+        max_length=CLIENT_LABEL_MAX_LENGTH,
+        pattern=CLIENT_LABEL_PATTERN,
+        description=(
+            "A name the person will recognise: the phone's model, or the "
+            "browser and computer"
+        ),
+        examples=["Pixel 8", "Chrome on Windows"],
+    )
+
+
+DEVICE_FIELD = Field(
+    default=None,
+    description=(
+        "Optional: what this app is, shown in the person's list of sessions "
+        "(`GET /api/v1/me/sessions`)"
+    ),
+)
+
+
 class OtpVerifyIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -181,6 +226,7 @@ class OtpVerifyIn(BaseModel):
         default=None,
         description="Optional, and read only when this login creates the account",
     )
+    device: DeviceIn | None = DEVICE_FIELD
 
 
 class AccountSummary(BaseModel):
@@ -352,6 +398,7 @@ AttentionKind = Literal[
     "answer_invitation",
     "upi_change_pending",
     "phone_change_pending",
+    "new_sign_in",
 ]
 
 ensure_same_values("AttentionKind", AttentionKind, (*BRAND_KINDS, *CREATOR_KINDS))

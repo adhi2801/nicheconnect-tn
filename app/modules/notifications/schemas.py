@@ -56,6 +56,7 @@ NotificationType = Literal[
     "passkey_reset_requested",
     "passkey_reset_cancelled",
     "passkey_only_changed",
+    "session_ended",
 ]
 
 ensure_same_values("NotificationType", NotificationType, NOTIFICATION_TYPES)

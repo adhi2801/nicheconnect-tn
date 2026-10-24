@@ -218,19 +218,26 @@ def login_options(db: Session, now: datetime) -> dict[str, Any]:
     return dict(options)
 
 
-def log_in(db: Session, credential: Mapping[str, Any], now: datetime) -> LoginResult:
+def log_in(
+    db: Session,
+    credential: Mapping[str, Any],
+    now: datetime,
+    device: login.ClientDevice | None = None,
+) -> LoginResult:
     """Log in with a passkey's answer. Commits.
 
     A new session family, proven by a passkey (`passkey_at`), so its tokens
-    say so through every refresh. Raises PasskeysNotOpen, PasskeyInvalid and
-    AccountSuspended.
+    say so through every refresh; `device` is what the app said it is
+    (D-114). Raises PasskeysNotOpen, PasskeyInvalid and AccountSuspended.
     """
     passkey = verify(db, credential, purpose="login", account_id=None, now=now)
     account = db.get_one(Account, passkey.account_id)
     if account.suspended_at is not None:
         db.rollback()
         raise AccountSuspended.because(account.suspension_reason)
-    result = login.issue_session(db, account, uuid.uuid4(), now, passkey_at=now)
+    result = login.issue_session(
+        db, account, uuid.uuid4(), now, passkey_at=now, device=device
+    )
     db.commit()
     return result
 

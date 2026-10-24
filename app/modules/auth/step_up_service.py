@@ -69,6 +69,7 @@ StepUpAction = Literal[
     "add_passkey",
     "remove_passkey",
     "passkey_only",
+    "end_session",
 ]
 StepUpMethod = Literal["phone_code", "authenticator", "passkey"]
 # The request header a risky change carries its code in.

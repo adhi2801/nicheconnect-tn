@@ -25,7 +25,7 @@ from app.modules.auth import second_factor_service as rules
 from app.modules.auth.exceptions import OtpInvalid
 from app.modules.auth.models.account import Account
 from app.modules.auth.second_factor_service import SecondFactorCheck
-from app.modules.auth.service import LoginResult
+from app.modules.auth.service import ClientDevice, LoginResult
 from app.modules.notifications import service as notifications
 
 logger = logging.getLogger(__name__)
@@ -40,13 +40,18 @@ class SecondFactorSetup:
 
 
 def log_in(
-    db: Session, phone: str, code: str, authenticator_code: str, now: datetime
+    db: Session,
+    phone: str,
+    code: str,
+    authenticator_code: str,
+    now: datetime,
+    device: ClientDevice | None = None,
 ) -> LoginResult:
     """An admin session for both codes right; OtpInvalid for anything else.
 
     Raises OtpInvalid, OtpVerifyLimitReached and AccountSuspended.
     """
-    check = rules.check_admin_login(db, phone, code, authenticator_code, now)
+    check = rules.check_admin_login(db, phone, code, authenticator_code, now, device)
     if check.login is None:
         _refused(db, check, now)
     _tell_every_admin(db, "admin_signed_in", check.account, now, {})

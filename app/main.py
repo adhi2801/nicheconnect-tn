@@ -53,6 +53,7 @@ from app.modules.me.export_router import router as export_router
 from app.modules.me.passkey_reset_router import router as passkey_reset_router
 from app.modules.me.passkey_router import router as passkey_router
 from app.modules.me.phone_change_router import router as phone_change_router
+from app.modules.me.session_list_router import router as session_list_router
 from app.modules.me.session_router import router as session_router
 from app.modules.me.step_up_router import router as step_up_router
 from app.modules.notifications.preference_router import (
@@ -143,6 +144,7 @@ if tracer_provider is not None:
 app.include_router(security_txt_router)
 app.include_router(auth_router)
 app.include_router(session_router)
+app.include_router(session_list_router)
 app.include_router(step_up_router)
 app.include_router(phone_change_router)
 app.include_router(passkey_router)

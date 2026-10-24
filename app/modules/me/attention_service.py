@@ -5,6 +5,7 @@ right ones for the account's role and puts the answers in order, the way
 `export_service` gathers export sections. See app/core/attention.py.
 """
 
+import uuid
 from datetime import datetime
 
 from sqlalchemy.orm import Session
@@ -27,8 +28,15 @@ from app.modules.payment_status import attention as payments
 from app.modules.profiles import attention as domains
 
 
-def for_account(db: Session, account: Account, now: datetime) -> AttentionList:
+def for_account(
+    db: Session,
+    account: Account,
+    now: datetime,
+    current_session_id: uuid.UUID | None = None,
+) -> AttentionList:
     """What is waiting on this account now, most urgent first.
+
+    `current_session_id` is the asking session's, left out of new sign-ins.
 
     Raises BrandProfileRequired or CreatorProfileRequired when the profile
     has not been created yet, as every other signed-in endpoint does.
@@ -44,6 +52,7 @@ def for_account(db: Session, account: Account, now: datetime) -> AttentionList:
             *disputes.for_brand(db, brand.id, today),
             *domains.for_brand(db, brand.id, now),
             *logins.phone_change_for_account(db, account.id, now),
+            *logins.new_sign_ins_for_account(db, account.id, current_session_id, now),
         ]
     else:
         creator = get_creator_for_account(db, account.id)
@@ -55,6 +64,7 @@ def for_account(db: Session, account: Account, now: datetime) -> AttentionList:
             *disputes.for_creator(db, creator.id, today),
             *payments.upi_change_for_creator(db, creator.id, now),
             *logins.phone_change_for_account(db, account.id, now),
+            *logins.new_sign_ins_for_account(db, account.id, current_session_id, now),
         ]
 
     ordered = by_urgency(found)

@@ -272,6 +272,17 @@
             "title": "Code",
             "type": "string"
           },
+          "device": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeviceIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional: what this app is, shown in the person's list of sessions (`GET /api/v1/me/sessions`)"
+          },
           "phone": {
             "description": "Indian mobile number, stored as +91XXXXXXXXXX. Send it in that form. Spaces, dashes and brackets, and a leading +91, 91 or 0, are also accepted and normalised away.",
             "examples": [
@@ -1257,6 +1268,35 @@
             "description": "Days until due_on; negative when overdue, 0 on the day itself",
             "title": "Days Left"
           },
+          "device_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For new_sign_in: the name the app gave itself, never checked; null when it said nothing",
+            "title": "Device Label"
+          },
+          "device_platform": {
+            "anyOf": [
+              {
+                "enum": [
+                  "android",
+                  "ios",
+                  "web"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For new_sign_in: what the app said it is; null when it said nothing",
+            "title": "Device Platform"
+          },
           "domain": {
             "anyOf": [
               {
@@ -1300,7 +1340,8 @@
               "answer_memo",
               "answer_invitation",
               "upi_change_pending",
-              "phone_change_pending"
+              "phone_change_pending",
+              "new_sign_in"
             ],
             "title": "Kind",
             "type": "string"
@@ -1328,6 +1369,49 @@
               }
             ],
             "title": "Proof Id"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For new_sign_in: the session, to end at DELETE /api/v1/me/sessions/{id}",
+            "title": "Session Id"
+          },
+          "signed_in_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For new_sign_in: when it signed in",
+            "title": "Signed In At"
+          },
+          "signed_in_with": {
+            "anyOf": [
+              {
+                "enum": [
+                  "phone_code",
+                  "passkey",
+                  "two_factors"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For new_sign_in: `phone_code`, `passkey` or `two_factors`",
+            "title": "Signed In With"
           }
         },
         "required": [
@@ -1379,7 +1463,8 @@
                 "answer_memo",
                 "answer_invitation",
                 "upi_change_pending",
-                "phone_change_pending"
+                "phone_change_pending",
+                "new_sign_in"
               ]
             },
             "title": "Counts",
@@ -3921,6 +4006,39 @@
         "title": "DealStageCountsRead",
         "type": "object"
       },
+      "DeviceIn": {
+        "additionalProperties": false,
+        "description": "What this app is, so its owner can tell this session from the others (D-114).\n\nOptional, said by the app and never checked: the session list shows it\nbeside when and how the session signed in, which no app can choose.",
+        "properties": {
+          "label": {
+            "description": "A name the person will recognise: the phone's model, or the browser and computer",
+            "examples": [
+              "Pixel 8",
+              "Chrome on Windows"
+            ],
+            "maxLength": 60,
+            "minLength": 1,
+            "pattern": "^[^\\x00-\\x1f\\x7f-\\x9f\\u2028\\u2029]+$",
+            "title": "Label",
+            "type": "string"
+          },
+          "platform": {
+            "enum": [
+              "android",
+              "ios",
+              "web"
+            ],
+            "title": "Platform",
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform",
+          "label"
+        ],
+        "title": "DeviceIn",
+        "type": "object"
+      },
       "DeviceRead": {
         "description": "A registered phone. Its token is never returned.",
         "properties": {
@@ -5826,11 +5944,12 @@
                 "passkey_removed",
                 "passkey_reset_requested",
                 "passkey_reset_cancelled",
-                "passkey_only_changed"
+                "passkey_only_changed",
+                "session_ended"
               ],
               "type": "string"
             },
-            "maxItems": 44,
+            "maxItems": 45,
             "title": "Muted Types",
             "type": "array"
           },
@@ -5926,7 +6045,8 @@
                 "passkey_removed",
                 "passkey_reset_requested",
                 "passkey_reset_cancelled",
-                "passkey_only_changed"
+                "passkey_only_changed",
+                "session_ended"
               ],
               "type": "string"
             },
@@ -5996,7 +6116,8 @@
                 "passkey_removed",
                 "passkey_reset_requested",
                 "passkey_reset_cancelled",
-                "passkey_only_changed"
+                "passkey_only_changed",
+                "session_ended"
               ],
               "type": "string"
             },
@@ -6140,7 +6261,8 @@
               "passkey_removed",
               "passkey_reset_requested",
               "passkey_reset_cancelled",
-              "passkey_only_changed"
+              "passkey_only_changed",
+              "session_ended"
             ],
             "title": "Notification Type",
             "type": "string"
@@ -6227,6 +6349,17 @@
             "pattern": "^[0-9]{6}$",
             "title": "Code",
             "type": "string"
+          },
+          "device": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeviceIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional: what this app is, shown in the person's list of sessions (`GET /api/v1/me/sessions`)"
           },
           "phone": {
             "description": "Indian mobile number, stored as +91XXXXXXXXXX. Send it in that form. Spaces, dashes and brackets, and a leading +91, 91 or 0, are also accepted and normalised away.",
@@ -6865,6 +6998,34 @@
         "title": "Page[ReportRead]",
         "type": "object"
       },
+      "Page_SessionRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SessionRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as ?cursor= to get the next page",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[SessionRead]",
+        "type": "object"
+      },
       "Page_TakedownRead_": {
         "properties": {
           "items": {
@@ -6930,6 +7091,17 @@
             "description": "The passkey's answer, exactly as `navigator.credentials` (or the phone's credential manager) gives it, in WebAuthn's JSON form",
             "title": "Credential",
             "type": "object"
+          },
+          "device": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeviceIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional: what this app is, shown in the person's list of sessions (`GET /api/v1/me/sessions`)"
           }
         },
         "required": [
@@ -10135,6 +10307,94 @@
         "title": "SecondFactorSetupRead",
         "type": "object"
       },
+      "SessionRead": {
+        "description": "One login still able to refresh, as its owner sees it.",
+        "properties": {
+          "expires_at": {
+            "description": "When it ends unless it is used again before then",
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "description": "The session; end it at DELETE /api/v1/me/sessions/{id}",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_current": {
+            "description": "True for the session making this request",
+            "title": "Is Current",
+            "type": "boolean"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The name the app gave itself at sign-in, never checked; null when it said nothing. Show it beside `signed_in_at` and `signed_in_with`, which no app can choose",
+            "examples": [
+              "Pixel 8"
+            ],
+            "title": "Label"
+          },
+          "last_active_at": {
+            "description": "When it last renewed its access, at most 15 minutes behind its last use while in use",
+            "format": "date-time",
+            "title": "Last Active At",
+            "type": "string"
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "enum": [
+                  "android",
+                  "ios",
+                  "web"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the app said it is at sign-in; null when it said nothing",
+            "title": "Platform"
+          },
+          "signed_in_at": {
+            "description": "When this login was made",
+            "format": "date-time",
+            "title": "Signed In At",
+            "type": "string"
+          },
+          "signed_in_with": {
+            "description": "`phone_code`, `passkey`, or `two_factors` (an admin's phone code and authenticator)",
+            "enum": [
+              "phone_code",
+              "passkey",
+              "two_factors"
+            ],
+            "title": "Signed In With",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "platform",
+          "label",
+          "signed_in_at",
+          "last_active_at",
+          "expires_at",
+          "signed_in_with",
+          "is_current"
+        ],
+        "title": "SessionRead",
+        "type": "object"
+      },
       "SignupCountRead": {
         "properties": {
           "accounts": {
@@ -10181,7 +10441,8 @@
               "change_phone",
               "add_passkey",
               "remove_passkey",
-              "passkey_only"
+              "passkey_only",
+              "end_session"
             ],
             "title": "Action",
             "type": "string"
@@ -10343,6 +10604,28 @@
         "title": "StepUpForPhone",
         "type": "object"
       },
+      "StepUpForSession": {
+        "additionalProperties": false,
+        "description": "A code to end one exact other session of yours (item 81, D-114).",
+        "properties": {
+          "action": {
+            "const": "end_session",
+            "title": "Action",
+            "type": "string"
+          },
+          "session_id": {
+            "format": "uuid",
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "session_id"
+        ],
+        "title": "StepUpForSession",
+        "type": "object"
+      },
       "StepUpForUpiId": {
         "additionalProperties": false,
         "description": "A code to set one exact UPI ID: it cannot set any other.",
@@ -10380,7 +10663,8 @@
               "change_phone",
               "add_passkey",
               "remove_passkey",
-              "passkey_only"
+              "passkey_only",
+              "end_session"
             ],
             "title": "Action",
             "type": "string"
@@ -10419,6 +10703,7 @@
                 "add_passkey": "#/components/schemas/StepUpForAccount",
                 "change_phone": "#/components/schemas/StepUpForPhone",
                 "download_export": "#/components/schemas/StepUpForExport",
+                "end_session": "#/components/schemas/StepUpForSession",
                 "log_out_everywhere": "#/components/schemas/StepUpForAccount",
                 "passkey_only": "#/components/schemas/StepUpForPasskeyOnly",
                 "remove_passkey": "#/components/schemas/StepUpForPasskeyRemoval",
@@ -10444,6 +10729,9 @@
               },
               {
                 "$ref": "#/components/schemas/StepUpForPasskeyOnly"
+              },
+              {
+                "$ref": "#/components/schemas/StepUpForSession"
               }
             ],
             "title": "Change"
@@ -25409,7 +25697,7 @@
     },
     "/api/v1/me/attention": {
       "get": {
-        "description": "Everything waiting on the signed-in brand or creator, the most urgent first: overdue, then soonest due, then anything without a date. For a brand: applications to review, memos to draft or revise, proof to review before it approves itself, creators to pay, and disputes to answer. For a creator: memos to answer, work to deliver or redo, payments to confirm, payments owed past their date, and disputes to answer. Worked out from the records each time, so an item disappears the moment it is done. Items carry a `kind` code and the facts; the wording belongs to the app. At most 50 items; `counts` and `total` always cover everything.",
+        "description": "Everything waiting on the signed-in brand or creator, the most urgent first: any `new_sign_in` (a session signed in during the last 7 days, other than this one: if it was not you, end it at `DELETE /api/v1/me/sessions/{session_id}`), then overdue, then soonest due, then anything without a date. For a brand: applications to review, memos to draft or revise, proof to review before it approves itself, creators to pay, and disputes to answer. For a creator: memos to answer, work to deliver or redo, payments to confirm, payments owed past their date, and disputes to answer. Worked out from the records each time, so an item disappears the moment it is done. Items carry a `kind` code and the facts; the wording belongs to the app. At most 50 items; `counts` and `total` always cover everything, except that at most 50 new sign-ins are counted.",
         "operationId": "read_my_attention_api_v1_me_attention_get",
         "responses": {
           "200": {
@@ -27878,6 +28166,240 @@
         ]
       }
     },
+    "/api/v1/me/sessions": {
+      "get": {
+        "description": "Every session of yours that can still renew itself, the latest sign-in first, with what each app said it is, when and how it signed in, and when it was last active. `is_current` marks the one asking. A label is whatever the app sent at sign-in, never checked: show it beside the sign-in time and method, which no app can choose. No address or location is kept. Paginated: `limit` (default 20, at most 100) and `cursor`. Limit: 60 requests per minute.",
+        "operationId": "list_my_sessions_api_v1_me_sessions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "From a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "From a previous page",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_SessionRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`limit` is out of range, or `cursor` is not one of ours"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Where I am logged in",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/me/sessions/{session_id}": {
+      "delete": {
+        "description": "Logs that session out at once: its access token stops working on its next request, and it can no longer renew. Ending **this** session needs nothing more; it is logging out. Ending any **other** needs a code: ask at `POST /api/v1/me/step-up` with `end_session` and this session's id, then send it in the `Step-Up-Code` header; you are then told in the app. That way someone holding a stolen session cannot throw you out. To stop push notifications to this phone too, log out with `POST /api/v1/auth/logout` and its push token instead. Limit: 30 requests per minute.",
+        "operationId": "end_my_session_api_v1_me_sessions__session_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+            "in": "header",
+            "name": "Step-Up-Code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9]{6}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+              "title": "Step-Up-Code"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The session has ended"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The code is wrong, expired, used, or for another change"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired; or `step_up_required`: no code was sent for another session"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`session_not_found`: no live session of yours has this id (another account's reads the same, as does one already ended)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The id or the code is malformed"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests, or too many wrong codes for your phone; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "End one session",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/me/step-up": {
       "post": {
         "description": "Sends a 6-digit code to your phone for one change: setting a UPI ID (this exact one), downloading one exact copy of your data, logging out everywhere, or moving your account to a new phone number (this exact one). Then make the change with the code in the `Step-Up-Code` header, within 5 minutes. A code works once, and only for the change it was asked for. Admins are sent nothing: they use their authenticator app's code. Limits: 3 per 10 minutes and 10 a day, counted with login codes for your phone.",
@@ -27905,6 +28427,7 @@
                     "add_passkey": "#/components/schemas/StepUpForAccount",
                     "change_phone": "#/components/schemas/StepUpForPhone",
                     "download_export": "#/components/schemas/StepUpForExport",
+                    "end_session": "#/components/schemas/StepUpForSession",
                     "log_out_everywhere": "#/components/schemas/StepUpForAccount",
                     "passkey_only": "#/components/schemas/StepUpForPasskeyOnly",
                     "remove_passkey": "#/components/schemas/StepUpForPasskeyRemoval",
@@ -27930,6 +28453,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/StepUpForPasskeyOnly"
+                  },
+                  {
+                    "$ref": "#/components/schemas/StepUpForSession"
                   }
                 ],
                 "title": "Body"
@@ -27990,7 +28516,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "`export_not_found`: no such export of yours"
+            "description": "`export_not_found`: no such export of yours; `passkey_not_found`; or `session_not_found`: no such live session of yours"
           },
           "409": {
             "content": {

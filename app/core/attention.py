@@ -17,7 +17,13 @@ carries a kind code and the facts, never a sentence.
 import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
+
+# A sign-in to the account in the last 7 days, from a session other than
+# the one asking (item 81, D-114). For brands and creators alike. It has no
+# date to be due by, and is listed before everything else: if it was not
+# them, someone else is inside the account, and every other item is theirs.
+NEW_SIGN_IN = "new_sign_in"
 
 # What a brand can be asked to do.
 BRAND_KINDS: tuple[str, ...] = (
@@ -34,6 +40,7 @@ BRAND_KINDS: tuple[str, ...] = (
     "domain_claim_expired",
     # A new phone number waiting its 72 hours (item 80, D-108).
     "phone_change_pending",
+    NEW_SIGN_IN,
 )
 # What a creator can be asked to do, or needs to know.
 CREATOR_KINDS: tuple[str, ...] = (
@@ -52,6 +59,7 @@ CREATOR_KINDS: tuple[str, ...] = (
     # it takes over the login, so a change that was not theirs is in front
     # of them while it can still be cancelled.
     "phone_change_pending",
+    NEW_SIGN_IN,
 )
 # Between two items due the same day, the one about money or a dispute
 # first: those are the ones that turn into a record against somebody. A
@@ -61,6 +69,7 @@ _PRIORITY = {
     kind: rank
     for rank, kind in enumerate(
         (
+            NEW_SIGN_IN,
             "phone_change_pending",
             "upi_change_pending",
             "respond_to_dispute",
@@ -109,6 +118,13 @@ class AttentionItem:
     count: int | None = None
     # The brand's domain, for the domain items.
     domain: str | None = None
+    # For a new sign-in (D-114): which session, when, on what the app said
+    # it is, and how it was proven.
+    session_id: uuid.UUID | None = None
+    signed_in_at: datetime | None = None
+    device_platform: str | None = None
+    device_label: str | None = None
+    signed_in_with: str | None = None
 
 
 @dataclass(frozen=True)
@@ -126,21 +142,23 @@ class AttentionList:
 
 
 def by_urgency(items: Iterable[AttentionItem]) -> list[AttentionItem]:
-    """Overdue first, then the soonest due, then anything without a date.
+    """New sign-ins first; then overdue, the soonest due, and anything without a date.
 
     Ties go to money and disputes first, then to a stable id, so the same
     records always give the same order.
     """
 
-    def key(item: AttentionItem) -> tuple[bool, date, int, str]:
+    def key(item: AttentionItem) -> tuple[bool, bool, date, int, str]:
         tie = (
             item.proof_id
             or item.memo_id
             or item.application_id
             or item.campaign_id
             or item.domain
+            or item.session_id
         )
         return (
+            item.kind != NEW_SIGN_IN,
             item.due_on is None,
             item.due_on or date.max,
             _PRIORITY[item.kind],

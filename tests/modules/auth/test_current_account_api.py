@@ -215,13 +215,16 @@ def test_logout_all_does_not_touch_another_account(client, sender, db):
     assert all(s.revoked_at is None for s in other_sessions)
 
 
-def test_logout_all_twice_reports_nothing_left_to_end(client, sender):
+def test_after_logging_out_everywhere_the_same_access_token_is_refused_at_once(
+    client, sender
+):
+    """Until D-114 it kept working for up to 15 minutes, and could even ask again."""
     login = log_in(client, sender)
     log_out_everywhere(client, auth(login["access_token"]))
 
-    response = log_out_everywhere(client, auth(login["access_token"]))
+    response = client.get("/api/v1/auth/me", headers=auth(login["access_token"]))
 
-    assert response.json() == {"sessions_ended": 0}
+    assert_problem(response, 401, "invalid_token")
 
 
 def test_logout_all_without_a_token_is_rejected(client):
