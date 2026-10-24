@@ -1,7 +1,15 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKeyConstraint, String, text
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Index,
+    String,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -25,6 +33,18 @@ class Brand(Base):
             ["account.id", "account.role"],
             ondelete="RESTRICT",
         ),
+        # A clearance is the exact name an admin cleared and when (D-119);
+        # who cleared it may be forgotten (SET NULL), the fact never alone.
+        CheckConstraint(
+            "(name_cleared IS NULL) = (name_cleared_at IS NULL)",
+            name="name_cleared_with_its_time",
+        ),
+        CheckConstraint(
+            "name_cleared_by_account_id IS NULL OR name_cleared IS NOT NULL",
+            name="name_cleared_by_only_with_a_clearance",
+        ),
+        # The foreign key's index (database.md section 5).
+        Index("ix_brand_name_cleared_by_account_id", "name_cleared_by_account_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -44,6 +64,18 @@ class Brand(Base):
     )
     name: Mapped[str] = mapped_column(String(150), nullable=False)
     email: Mapped[str] = mapped_column(String(320), nullable=False, unique=True)
+    # An admin's review of a name that looks like a protected brand's (item 75,
+    # D-119): the exact name cleared, so it counts only while the brand keeps
+    # it, and a rename is looked at afresh. NULL means never cleared.
+    name_cleared: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    name_cleared_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # SET NULL: the clearance outlives the admin's account; the admin log
+    # keeps who it was.
+    name_cleared_by_account_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("account.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

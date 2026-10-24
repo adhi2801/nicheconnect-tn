@@ -134,6 +134,7 @@ BODIES: dict[str, dict[str, Any]] = {
     "DisputeEntryCreate": {"note": "My bank statement shows nothing."},
     "DisputeClose": {"outcome": "resolved_paid"},
     "PasskeyRename": {"name": "Mine now"},
+    "NameClearanceIn": {"note": "Checked the business behind it."},
 }
 
 

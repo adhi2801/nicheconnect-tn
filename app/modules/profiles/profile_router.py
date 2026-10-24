@@ -17,6 +17,7 @@ from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentBrand, CurrentCreator, get_now
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
+from app.modules.profiles import brand_name_service
 from app.modules.profiles import profile_service as profiles
 from app.modules.profiles.schemas import (
     BrandProfileCreate,
@@ -25,6 +26,7 @@ from app.modules.profiles.schemas import (
     CreatorProfileCreate,
     CreatorProfileRead,
     CreatorProfileUpdate,
+    to_brand_name_flag_read,
 )
 
 WRITE_LIMIT = "30 per minute"
@@ -74,7 +76,15 @@ def create_brand_profile(
         born_on=body.date_of_birth,
     )
     response.headers["Location"] = "/api/v1/brands/me"
-    return BrandProfileRead.model_validate(profile)
+    return _brand_read(db, profile)
+
+
+def _brand_read(db: Session, profile: Brand) -> BrandProfileRead:
+    """The brand's own profile, with any hold on its name (item 75, D-118)."""
+    flag = brand_name_service.flags_for(db, [profile.id]).get(profile.id)
+    return BrandProfileRead.model_validate(profile).model_copy(
+        update={"name_hold": None if flag is None else to_brand_name_flag_read(flag)}
+    )
 
 
 @brand_router.get(
@@ -96,7 +106,7 @@ def read_brand_profile(
     account: CurrentBrand,
     db: Session = Depends(get_db),
 ) -> BrandProfileRead:
-    return BrandProfileRead.model_validate(profiles.get_profile(db, Brand, account.id))
+    return _brand_read(db, profiles.get_profile(db, Brand, account.id))
 
 
 @brand_router.patch(
@@ -124,9 +134,7 @@ def update_brand_profile(
 ) -> BrandProfileRead:
     profile = profiles.get_profile(db, Brand, account.id)
     changes = body.model_dump(exclude_unset=True)
-    return BrandProfileRead.model_validate(
-        profiles.update_profile(db, profile, changes, now)
-    )
+    return _brand_read(db, profiles.update_profile(db, profile, changes, now))
 
 
 @creator_router.post(

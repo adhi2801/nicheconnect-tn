@@ -1483,3 +1483,17 @@ Newest entries at the bottom.
   5. **Admins**: `GET /api/v1/admin/brands/look-alikes`, the newest 100 flagged brands with their accounts.
   6. **Not built**: an admin clearing an innocent name (three columns on `brand`, a refusing downgrade): until its schema is approved, a genuine shop whose name is close to a protected one can only rename or verify the resembled domain. A brand on neither list is not protected; the list is hand-made. Legal **Confirm**: naming other companies' brands in the list, and the hold's wording.
   7. Proven: the confusable data's hash, UTS #39's own examples, the rules by example and by property (which found filler words read in the wrong form, fixed), the API, query counts, and thirteen rules broken on purpose, each seen caught.
+
+## D-119: An admin may clear a look-alike brand name after review, for that exact name
+- Date: 2026-10-24
+- Approved by: Adhi, in this session: "yes", to the schema request naming the three columns, the migration and the refusing downgrade, and "no weakness should be there". **Not reviewed by the other founder** (D-051).
+- Context: D-118 holds a brand whose name looks like a protected brand's until it verifies that brand's domain. A genuine shop with a close name and no website ("Amazon Organics Coimbatore") had no way through but to rename.
+- Options considered: A) an admin clears the exact name, with a note in the admin log; B) clear the brand whatever it is called later.
+- Chosen: A.
+- Reason: a clearance of the name, not the brand, means a later rename to something closer to a protected brand is looked at again.
+- Consequences / follow-ups:
+  1. Migration `82bb81b5eed4`: `brand.name_cleared`, `name_cleared_at`, `name_cleared_by_account_id` (SET NULL, indexed CONCURRENTLY), held together by two checks, each constraint added NOT VALID and validated after; `clear_brand_name` and `withdraw_brand_name_clearance` added to the admin log's actions. The downgrade refuses while any clearance or such log entry exists (twenty refusing migrations).
+  2. `POST /api/v1/admin/brands/{brand_id}/name-clearance` and `.../withdraw`, each with a note of 3 to 1,000 characters, decided under the brand's row lock (a race test: four admins at once clear it once); only a name the check holds can be cleared, once.
+  3. A cleared name is not flagged to creators and may publish, while the brand keeps that exact name; the admins' list leaves it out.
+  4. The brand sees its own hold (`name_hold` on `GET /api/v1/brands/me`), so it learns of it before trying to publish.
+  5. The clearance and its time are in the brand's export; which admin gave it is not (another person's account), and is in the admin log.

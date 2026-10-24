@@ -86,3 +86,22 @@ class ReportNamesAnotherItem(DomainError):
     status_code = HTTPStatus.UNPROCESSABLE_ENTITY
     code = "report_names_another_item"
     title = "That report is about something else"
+
+
+class BrandNameNotFlagged(DomainError):
+    # Only a name the look-alike check holds can be cleared (D-119).
+    status_code = HTTPStatus.CONFLICT
+    code = "brand_name_not_flagged"
+    title = "This brand's name is not held as a look-alike, so there is nothing to clear"
+
+
+class BrandNameAlreadyCleared(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "brand_name_already_cleared"
+    title = "This brand's current name has already been cleared"
+
+
+class BrandNameNotCleared(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "brand_name_not_cleared"
+    title = "This brand's current name has not been cleared"

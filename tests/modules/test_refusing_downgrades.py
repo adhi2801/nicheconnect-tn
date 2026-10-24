@@ -54,6 +54,7 @@ REFUSING = {
     "928b6af0172c": "data exports being prepared, or with a file still stored",
     "ceeda50f8c0b": "passkeys guarding people's accounts",
     "de322e936678": "notices telling people one of their sessions was ended",
+    "82bb81b5eed4": "admins' clearances of look-alike brand names, and their log entries",
 }
 
 
@@ -430,4 +431,39 @@ def test_notices_that_a_session_was_ended(db):
 
     assert f"{before + 1} notices tell people that one of their sessions" in refusal(
         db, "de322e936678"
+    )
+
+
+def test_clearances_of_look_alike_names(db):
+    before = count(db, "SELECT count(*) FROM brand WHERE name_cleared IS NOT NULL")
+    brand = build_brand(db, email=f"r-{uuid.uuid4().hex[:10]}@example.com")
+    db.add(brand)
+    db.flush()
+    db.execute(
+        text(
+            "UPDATE brand SET name_cleared = name, name_cleared_at = now() WHERE id = :b"
+        ),
+        {"b": brand.id},
+    )
+
+    assert f"{before + 1} brands hold an admin's clearance" in refusal(db, "82bb81b5eed4")
+
+
+def test_log_entries_of_clearing_names(db):
+    before = count(
+        db,
+        "SELECT count(*) FROM admin_action WHERE action IN"
+        " ('clear_brand_name', 'withdraw_brand_name_clearance')",
+    )
+    admin = create_account(db, "admin")
+    db.execute(
+        text(
+            "INSERT INTO admin_action (admin_account_id, action, note)"
+            " VALUES (:a, 'clear_brand_name', 'checked')"
+        ),
+        {"a": admin.id},
+    )
+
+    assert f"{before + 1} admin log entries record clearing" in refusal(
+        db, "82bb81b5eed4"
     )
