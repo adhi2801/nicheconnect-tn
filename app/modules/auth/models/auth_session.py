@@ -43,11 +43,33 @@ def refresh_token_expiry(
 
 TOKEN_HASH_PATTERN = r"^[0-9a-f]{64}$"  # noqa: S105 - a format check, not a secret
 
+# What the app said it is, at sign-in (item 81, D-114), so its owner can
+# tell one session from another. Said by the app, never checked: a list of
+# sessions shows it beside when and how each signed in, which an app cannot
+# choose.
+CLIENT_PLATFORMS: tuple[str, ...] = ("android", "ios", "web")
+CLIENT_LABEL_MAX_LENGTH = 60
+
 
 class AuthSession(Base):
     __tablename__ = "auth_session"
     __table_args__ = (
         CheckConstraint(f"token_hash ~ '{TOKEN_HASH_PATTERN}'", name="token_hash_format"),
+        CheckConstraint(
+            f"client_platform IS NULL OR client_platform IN {CLIENT_PLATFORMS}",
+            name="client_platform_allowed",
+        ),
+        CheckConstraint(
+            "client_label IS NULL OR ("
+            f"char_length(client_label) BETWEEN 1 AND {CLIENT_LABEL_MAX_LENGTH}"
+            " AND client_label = btrim(client_label)"
+            " AND client_label !~ '[[:cntrl:]]')",
+            name="client_label_shape",
+        ),
+        CheckConstraint(
+            "(client_platform IS NULL) = (client_label IS NULL)",
+            name="client_platform_and_label_together",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -82,6 +104,13 @@ class AuthSession(Base):
     # session says so (D-113). NULL means a phone code.
     passkey_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    # The device the app said it is, at sign-in, carried through every
+    # rotation like `passkey_at` (D-114). Both NULL when it said nothing: a
+    # login from before D-114, or an app that sends no device.
+    client_platform: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    client_label: Mapped[str | None] = mapped_column(
+        String(CLIENT_LABEL_MAX_LENGTH), nullable=True
     )
     # Nullable on purpose: empty until this token is rotated.
     used_at: Mapped[datetime | None] = mapped_column(

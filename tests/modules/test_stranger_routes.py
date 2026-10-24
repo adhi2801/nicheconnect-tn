@@ -45,7 +45,7 @@ from tests.deal_flow import (
     brand_user,
     creator_user,
 )
-from tests.factories import create_account
+from tests.factories import build_auth_session, create_account
 from tests.step_up import ask_for_export, build_exports
 
 SHA = "a" * 64
@@ -271,8 +271,18 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
         updated_at=clock.now,
     )
     db.add(passkey)
+    # A live session of the creator's own (D-114), for ending one session.
+    own_session = build_auth_session(
+        db,
+        account_id=creator.account_id,
+        expires_at=clock.now + timedelta(days=30),
+        created_at=clock.now,
+        updated_at=clock.now,
+    )
+    db.add(own_session)
     db.flush()
     passkey_id = passkey.id
+    session_id = own_session.family_id
     build_exports()
     report_id = client.post(
         "/api/v1/reports",
@@ -331,6 +341,7 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
         "report_id": report_id,
         "export_id": export_id,
         "passkey_id": passkey_id,
+        "session_id": session_id,
         "takedown_id": takedown_id,
         "account_id": brand.account_id,
         "city": city,

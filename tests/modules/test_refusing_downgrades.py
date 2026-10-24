@@ -53,6 +53,7 @@ REFUSING = {
     "8bfc55b8e5fe": "new phone numbers waiting 7 days without the current number",
     "928b6af0172c": "data exports being prepared, or with a file still stored",
     "ceeda50f8c0b": "passkeys guarding people's accounts",
+    "de322e936678": "notices telling people one of their sessions was ended",
 }
 
 
@@ -411,4 +412,22 @@ def test_passkeys(db):
 
     assert f"{before + 1} passkeys are on people's accounts" in refusal(
         db, "ceeda50f8c0b"
+    )
+
+
+def test_notices_that_a_session_was_ended(db):
+    before = count(
+        db, "SELECT count(*) FROM notification WHERE notification_type = 'session_ended'"
+    )
+    account = create_account(db, "creator")
+    db.execute(
+        text(
+            "INSERT INTO notification (account_id, notification_type, details) "
+            "VALUES (:a, 'session_ended', '{}')"
+        ),
+        {"a": account.id},
+    )
+
+    assert f"{before + 1} notices tell people that one of their sessions" in refusal(
+        db, "de322e936678"
     )

@@ -1,5 +1,6 @@
 """FastAPI dependencies for the auth module."""
 
+import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Annotated
@@ -10,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import DomainError
 from app.db.session import get_db
+from app.modules.auth import sessions
 from app.modules.auth.exceptions import (
     AccountSuspended,
     AdminNotFound,
@@ -76,7 +78,9 @@ def _authenticate(
         raise InvalidToken(headers=UNAUTHENTICATED_HEADERS)
 
     claims = decode_access_token(credentials.credentials, now)
-    account = db.get(Account, claims.account_id)
+    account, session_live = sessions.account_for_token(
+        db, claims.account_id, claims.session_id
+    )
     if account is None or account.role != claims.role:
         # Account deleted, or its role changed after the token was issued.
         raise InvalidToken(headers=UNAUTHENTICATED_HEADERS)
@@ -84,10 +88,17 @@ def _authenticate(
         # Checked here, on every request, so a suspension takes effect at once
         # even for a token that has not expired (D-061).
         raise AccountSuspended.because(account.suspension_reason)
+    if not session_live:
+        # Its session was ended: a logout, logging out everywhere, ending it
+        # from another device, a phone number moved. Checked on every
+        # request, so the token stops at once, not when it expires (D-114).
+        raise InvalidToken(headers=UNAUTHENTICATED_HEADERS)
     # For logging and later ownership checks.
     request.state.account_id = account.id
     # For the checks that need the login to be old enough (D-109).
     request.state.authenticated_at = claims.authenticated_at
+    # For telling this device's session from the others (D-114).
+    request.state.session_id = claims.session_id
     return account, claims
 
 
@@ -105,6 +116,19 @@ def get_login_time(request: Request, account: CurrentAccount) -> datetime | None
 
 
 LoginTime = Annotated[datetime | None, Depends(get_login_time)]
+
+
+def get_session_id(request: Request, account: CurrentAccount) -> uuid.UUID | None:
+    """Which session the signed-in person's token belongs to (its `sid`).
+
+    None for a token signed before D-114. Depends on CurrentAccount, so the
+    token is always checked first.
+    """
+    session_id: uuid.UUID | None = request.state.session_id
+    return session_id
+
+
+CurrentSessionId = Annotated[uuid.UUID | None, Depends(get_session_id)]
 
 
 def require_role(role: str) -> Callable[[Account], Account]:

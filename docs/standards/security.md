@@ -35,6 +35,8 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md`. Rule
   - A 15-minute access token, plus a rotating 30-day refresh token stored hashed. Settings cannot raise either (`le=15`, `le=30`).
   - Reusing an old refresh token ends the whole session family (RFC 9700's reuse detection).
   - Logout ends one session; "log out everywhere" ends all of them and clears the push tokens (D-095).
+  - **Every access token names its session** (`sid`, its login's family) and every request checks that session is not ended, in the query that loads the account, so any logout ends its access tokens at once rather than after their 15 minutes (D-114). Tokens signed before D-114 carry none and lived out their 15 minutes.
+  - **A refresh at the moment of a logout cannot outlive it** (D-114): every refresh and every way of ending sessions takes one lock per account first (`auth.service.lock_sessions_of`), then ends sessions in a statement of its own. Until 24 October the refresh's new row was invisible to a logout waiting on the old one, and the logged-out phone kept a working session.
   - Keys are at least 32 characters, read from the environment, and refused at startup when they are the `.env.example` placeholder. Infra generates 64 random letters and digits (about 380 bits); `.env.example` says to generate 256 bits. Tokens carry a key id (`kid`) so keys can be rotated.
   - **Enforced by** the token, refresh and session tests.
 - **Admins** (D-061):
@@ -77,6 +79,12 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md`. Rule
   - the first passkey needs a phone code and a login at least 7 days old (or the account's very first login); every later one a passkey;
   - **passkey-only sign-in**, optional: a phone code then cannot log in, only start a 7-day reset that any passkey sign-in cancels;
   - **enforced by** `tests/modules/me/test_passkey_api.py` (real signatures, from `tests/passkeys.py`), `test_passkey_concurrency.py`, `tests/modules/auth/test_passkey_model.py`, `test_passkey_properties.py`; each rule broken on purpose and seen caught.
+- **Where you are logged in** (item 81, D-114; ASVS 5.0 7.5.2):
+  - `GET /api/v1/me/sessions` lists each live session: what its app said it is (a platform and a label, never checked), when and how it signed in, when it last renewed, and which is the one asking. No address or location is kept;
+  - `DELETE /api/v1/me/sessions/{session_id}` ends one at once. The asking session's own needs nothing more; any other needs a step-up code for `end_session` bound to that exact session (or a passkey's approval), so a stolen session cannot throw the owner out, and the owner is told by a notification nobody can mute. Someone else's session, or one already ended, is 404 before any code is asked for;
+  - a sign-in in the last 7 days, other than the one asking, leads the attention list, so a SIM swapper's login is in front of the owner the next time they open the app;
+  - **it does not stop** someone who holds the number and asks for the code first; it makes their session visible and lets the owner end it. Push tokens are not yet tied to sessions (before E1 delivers);
+  - **enforced by** `tests/modules/me/test_session_list_api.py`, `test_new_sign_in_attention_api.py`, `tests/modules/auth/test_session_end_concurrency.py`, `test_session_label_properties.py` and `test_auth_session.py`; each rule broken on purpose and seen caught.
 - **No help-desk recovery** (D-110), binding on every admin: **an admin never moves an account to another number, never restores access, and never sends or reads out a code, on anyone's word, documents or urgency.** The only ways to a new number are the two above, done by the person themselves. Someone with neither their number nor a login 30 days old cannot recover the account; they are told so plainly, and may start a new one. Help-desk resets are how Scattered Spider took over accounts at MGM and M&S. *(review only)*, beyond the fact that no admin route changes a number, which the committed contract shows.
 - A suspended account is refused at login, on refresh and on every request. **Enforced by** `tests/modules/auth/test_suspension_api.py`.
 - **Sign-up details** (D-080) are read only by the login that creates the account, so nobody can rewrite them afterwards.
@@ -98,7 +106,7 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md`. Rule
 | Risk | Our control | Proven by |
 |---|---|---|
 | API1 Broken object level authorization | Access checks on every object | `tests/modules/test_stranger_routes.py`, every object route (item 100) |
-| API2 Broken authentication | Section 1; auth routes strictly rate limited | OTP, refresh and session test suites |
+| API2 Broken authentication | Section 1; auth routes strictly rate limited; an ended session's tokens refused at once (D-114) | OTP, refresh and session test suites; `tests/modules/auth/test_session_end_concurrency.py` |
 | API3 Broken object property level authorization | Separate create, update and read schemas; every request body refuses unknown fields; public responses built by hand | `tests/test_architecture.py` (all 39 bodies); contract fuzzing |
 | API4 Unrestricted resource consumption | Rate limits, bounded lists, a 1 MB body limit, statement timeouts, a cap on requests in flight (D-093), daily ceilings on paid APIs | Limit tests; 413 tests; the load test (D-092) |
 | API5 Broken function level authorization | Role checks on every route; admin routes separate and 404 | Role tests |
@@ -127,6 +135,7 @@ Examples:
 | Asking for a step-up code (item 82) | 3 in 10 minutes, 10 a day | the account (and the phone's caps, shared with login codes) |
 | Changing the phone number (item 80) | 5 in 10 minutes, 10 a day | the account (and both numbers' code caps) |
 | Refresh and logout | 30 a minute | the address |
+| Listing sessions; ending one (item 81) | 60 a minute; 30 a minute | the account (and, for another session, the phone's code caps) |
 | Writes | 30 a minute, most with a daily ceiling | the account |
 | Search and matching | 30 a minute | the account |
 | Public pages | 60 a minute | the address |
@@ -205,6 +214,8 @@ Examples:
 
 ## 11. Gaps, named
 
+**Closed on 24 October** (D-114): a refresh at the moment of a logout outliving it, which left a logged-out phone with a working session; every logout leaving its last access token working for up to 15 minutes; and nobody able to see their sessions or end one alone (item 81).
+
 **Closed on 17 October:** a stolen session setting a creator's UPI ID, taking their export or logging them out everywhere with the token alone (item 82, D-107); and nobody able to change their phone number, so a number left behind and reissued by the carrier would log its next holder into the old account (item 80, D-108).
 
 **Closed on 16 October:** admins logging in with one factor, and admin sessions renewing for a day at every refresh with no overall limit (item 101, D-105).
@@ -232,6 +243,7 @@ Each link checked to exist on 14 October 2026.
 - [STRIDE, as Microsoft's threat modelling tool defines it](https://learn.microsoft.com/en-us/azure/security/develop/threat-modeling-tool-threats).
 - [CERT-In directions of 28 April 2022](https://www.cert-in.org.in/PDF/CERT-In_Directions_70B_28.04.2022.pdf): 6-hour incident reporting.
 - [RFC 9116](https://www.rfc-editor.org/rfc/rfc9116): `security.txt`.
+- Seeing and ending sessions (read 24 October 2026, D-114): [OWASP ASVS 5.0, V7 Session Management](https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x16-V7-Session-Management.md) 7.4.1 and 7.5.2; [Google: see devices with account access](https://support.google.com/accounts/answer/3067630?hl=en) and [review security notifications](https://support.google.com/accounts/answer/2733203?hl=en); [GitHub: viewing and managing your sessions](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/viewing-and-managing-your-sessions); [PostgreSQL 18: read committed isolation](https://www.postgresql.org/docs/18/transaction-iso.html#XACT-READ-COMMITTED), why a waiting update never saw the refresh's new row.
 - A week-old login before changing the phone number or UPI ID (read 18 October 2026, D-109): [Google: verify it's you when you complete a sensitive action](https://support.google.com/accounts/answer/7162782) (the 7 days); [the DoT's 24-hour SMS bar on a swapped SIM](https://dotws.cdot.in/sites/default/files/SIM%20Exchange%2024%20Hours%20Barring%20formal%20instructions%2027092022.pdf?download=1); [TRAI's 7 days before a swapped SIM's number may be ported](https://telecomtalk.info/?p=927504); [OpenID Connect Core 1.0, `auth_time`](https://openid.net/specs/openid-connect-core-1_0.html#IDToken).
 - Changing the phone number (read 17 October 2026, D-108): [NIST SP 800-63B-4, authenticator events](https://pages.nist.gov/800-63-4/sp800-63b/events/) (binding a new authenticator, notification, recovery); [WhatsApp: changing your number](https://faq.whatsapp.com/en/general/28030001) and [Guiding Tech on what it does](https://www.guidingtech.com/what-happens-change-whatsapp-number/); [TRAI to the Supreme Court: a deactivated number is not reissued for 90 days](https://www.livelaw.in/amp/top-stories/once-a-mobile-number-is-deactivated-it-is-not-assigned-to-a-new-user-for-90-days-trai-to-supreme-court-241506).
 - A second check before risky changes (read 17 October 2026, D-107): [RFC 9470](https://www.rfc-editor.org/rfc/rfc9470) (OAuth 2.0 step-up authentication challenge); [OWASP ASVS 5.0, V7 Session Management](https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x16-V7-Session-Management.md) section 7.5; [NIST SP 800-63B-4, authenticator events](https://pages.nist.gov/800-63-4/sp800-63b/events/); [the EBA on dynamic linking](https://www.eba.europa.eu/single-rule-book-qa/qna/view/publicId/2018_4414); [Upwork's hold on a new withdrawal method](https://support.upwork.com/hc/en-us/articles/211060918); [SBI on UPI's limits after a new device or PIN](https://sbi.co.in/web/yono/blog/understand-upi-transaction-limits-cooling-period-and-payment-tips).

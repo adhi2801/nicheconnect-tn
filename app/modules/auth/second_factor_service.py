@@ -25,14 +25,13 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Literal
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.modules.auth import second_factor, second_factor_secrets
 from app.modules.auth import service as login
 from app.modules.auth.exceptions import AccountSuspended
 from app.modules.auth.models.account import Account
-from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.otp_challenge import OtpChallenge
 from app.modules.auth.models.totp_factor import MAX_CONSECUTIVE_FAILURES, TotpFactor
 from app.modules.auth.service import LoginResult
@@ -59,9 +58,14 @@ class SecondFactorCheck:
 
 
 def check_admin_login(
-    db: Session, phone: str, code: str, authenticator_code: str, now: datetime
+    db: Session,
+    phone: str,
+    code: str,
+    authenticator_code: str,
+    now: datetime,
+    device: login.ClientDevice | None = None,
 ) -> SecondFactorCheck:
-    """Check both codes; on success, a new admin session.
+    """Check both codes; on success, a new admin session, on `device` (D-114).
 
     Raises OtpInvalid (the phone code is wrong, or the number is not an
     admin's: committed, as at /auth/otp/verify), OtpVerifyLimitReached and
@@ -97,7 +101,9 @@ def check_admin_login(
     factor.updated_at = now
     challenge.consumed_at = now
     # A fresh login starts its own rotation family; the 12 hours start now.
-    result = login.issue_session(db, account, uuid.uuid4(), now, second_factor_at=now)
+    result = login.issue_session(
+        db, account, uuid.uuid4(), now, second_factor_at=now, device=device
+    )
     return SecondFactorCheck(account=account, login=result)
 
 
@@ -151,11 +157,7 @@ def issue_ticket(db: Session, account: Account, now: datetime) -> str:
     factor.locked_at = None
     factor.updated_at = now
     # Whoever held a session made with the old authenticator is out.
-    db.execute(
-        update(AuthSession)
-        .where(AuthSession.account_id == account.id, AuthSession.revoked_at.is_(None))
-        .values(revoked_at=now, updated_at=now)
-    )
+    login.end_sessions(db, account.id, now)
     return ticket
 
 

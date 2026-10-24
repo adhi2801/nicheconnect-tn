@@ -203,6 +203,32 @@ def test_an_admin_logs_in_with_both_codes(client, db, sender, clock, admin):
     )
 
 
+def test_an_admin_login_names_its_device_and_lists_as_two_factors(
+    client, db, sender, clock, admin
+):
+    secret = enrol(client, db, sender, clock, admin)
+
+    response = client.post(
+        LOGIN,
+        json={
+            "phone": admin.phone,
+            "code": phone_code(client, sender, admin.phone),
+            "authenticator_code": shown(secret, clock),
+            "device": {"platform": "web", "label": "Firefox on Linux"},
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    sessions = client.get(
+        "/api/v1/me/sessions", headers=bearer(response.json()["access_token"])
+    ).json()["items"]
+    [current] = [item for item in sessions if item["is_current"]]
+    assert (current["label"], current["signed_in_with"]) == (
+        "Firefox on Linux",
+        "two_factors",
+    )
+
+
 def test_the_code_from_the_step_before_still_works(client, db, sender, clock, admin):
     secret = enrol(client, db, sender, clock, admin)
 

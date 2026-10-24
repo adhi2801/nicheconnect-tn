@@ -14,7 +14,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import ColumnElement, func, literal, or_, select, tuple_, update
+from sqlalchemy import ColumnElement, func, literal, or_, select, tuple_
 from sqlalchemy.orm import Session
 
 from app.core.pagination import Slice, build_slice, decode_cursor, older_than_cursor
@@ -27,9 +27,9 @@ from app.modules.admin.exceptions import (
 )
 from app.modules.admin.models.admin_action import AdminAction
 from app.modules.admin.models.report import Report
+from app.modules.auth import service as login
 from app.modules.auth.exceptions import AdminNotFound
 from app.modules.auth.models.account import Account
-from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.models import Application, Campaign
@@ -198,11 +198,7 @@ def suspend(
         raise AlreadySuspended()
     account.suspended_at = now
     account.suspension_reason = reason
-    db.execute(
-        update(AuthSession)
-        .where(AuthSession.account_id == account.id, AuthSession.revoked_at.is_(None))
-        .values(revoked_at=now, updated_at=now)
-    )
+    login.end_sessions(db, account.id, now)
     log_action(db, admin, "suspend", now, subject_account_id=account.id, note=note)
     db.commit()
     db.refresh(account)

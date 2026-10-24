@@ -17,7 +17,7 @@ from app.core.literals import ensure_same_values
 from app.modules.admin.models.admin_action import ADMIN_ACTIONS
 from app.modules.admin.models.report import REPORT_SUBJECTS
 from app.modules.auth.models.account import REPORT_CATEGORIES
-from app.modules.auth.schemas import IndianMobile, OtpCode, Role
+from app.modules.auth.schemas import DEVICE_FIELD, DeviceIn, IndianMobile, OtpCode, Role
 from app.modules.safety.takedown_models import (
     ORDER_TEXT_MAX_LENGTH,
     TAKEDOWN_BASES,
@@ -411,6 +411,7 @@ class AdminLoginIn(BaseModel):
     phone: IndianMobile
     code: OtpCode
     authenticator_code: AuthenticatorCode
+    device: DeviceIn | None = DEVICE_FIELD
 
 
 class SecondFactorSetupIn(BaseModel):

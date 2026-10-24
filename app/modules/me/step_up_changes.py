@@ -12,7 +12,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from app.modules.auth import login_age
+from app.modules.auth import login_age, sessions
 from app.modules.auth.models.account import Account
 from app.modules.me import data_export_service as data_exports
 from app.modules.me import passkey_service as passkey_changes
@@ -22,6 +22,7 @@ from app.modules.me.step_up_schemas import (
     StepUpForPasskeyOnly,
     StepUpForPasskeyRemoval,
     StepUpForPhone,
+    StepUpForSession,
     StepUpForUpiId,
     StepUpIn,
 )
@@ -39,7 +40,7 @@ def value_of(
 
     Raises what each change's own early checks raise: LoginTooRecent,
     PhoneUnchanged, RoleNotAllowed, ExportNotFound and the export's state,
-    PasskeyNotFound.
+    PasskeyNotFound, SessionNotFound.
     """
     if isinstance(change, StepUpForUpiId):
         upi_service.ensure_may_replace_for_account(
@@ -56,6 +57,9 @@ def value_of(
     if isinstance(change, StepUpForPasskeyRemoval):
         passkey_changes.ensure_own(db, account, change.passkey_id)
         return str(change.passkey_id)
+    if isinstance(change, StepUpForSession):
+        sessions.ensure_live(db, account.id, change.session_id, now)
+        return str(change.session_id)
     if isinstance(change, StepUpForPasskeyOnly):
         passkey_changes.ensure_may_have_passkeys(account)
         return "on" if change.enabled else "off"

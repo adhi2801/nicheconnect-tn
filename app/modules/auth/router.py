@@ -97,8 +97,13 @@ def verify_code(
     now: datetime = Depends(get_now),
 ) -> LoginTokens:
     arrival = Arrival(**body.arrival.model_dump()) if body.arrival is not None else None
+    device = (
+        service.ClientDevice(**body.device.model_dump())
+        if body.device is not None
+        else None
+    )
     result = service.verify_otp(
-        db, body.phone, body.code, body.role, now, arrival=arrival
+        db, body.phone, body.code, body.role, now, arrival=arrival, device=device
     )
     # Tokens must never be cached by browsers or proxies.
     response.headers["Cache-Control"] = "no-store"

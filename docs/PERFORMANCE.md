@@ -15,6 +15,21 @@ whole deals, 5 bank bulk transfers of 25 rows, and 30 rounds of rate card
 edits. All from one run, on a developer laptop under Docker Desktop for
 Windows.
 
+## Added 24 October: where you are logged in (D-114)
+
+Timed in-process against the seeded database (10 brands, 200 creators), one seeded creator with 10 live sessions, 100 runs per read and 40 ends, inside one rolled-back transaction, on a laptop; the script was scratch, not kept:
+
+| Route | p50 ms | p95 ms | Budget |
+| --- | --- | --- | --- |
+| `GET /auth/me`, a token without `sid` (as before D-114) | 6.9 | 17.8 | 300 |
+| `GET /auth/me`, a token with `sid`, its session checked | 8.9 | 16.7 | 300 |
+| `GET /me/sessions`, 10 live | 14.1 | 20.4 | 300 |
+| `GET /me/attention`, 9 new sign-ins | 24.5 | 45.7 | 300 |
+| `POST /me/step-up`, `end_session` | 19.2 | 23.0 | 500 |
+| `DELETE /me/sessions/{id}`, another, with its code | 21.7 | 27.8 | 500 |
+
+The session check on every request costs about 2 ms at the median and nothing measurable at p95. Its plan (`EXPLAIN ANALYZE`, a session row for every seeded account): an index scan on `ix_auth_session_account_id`, 0.049 ms. Every renewal adds a row, so an account's rows grow by about 96 a day per device in use until retention exists: to be re-measured as they grow. `scripts/measure_performance.py --runs 50 --deals 30` afterwards: every route within budget (its tokens carry no `sid`, so it times everything else, not the check). **Not measured:** the login routes with a `device`, which only store two more columns.
+
 ## Added 18 October: passkeys (D-113)
 
 Timed in-process against the test database with real signatures from `tests/passkeys.py`, 50 rounds (8 for adding a later key, which stops at the cap of 10), on a laptop; the script was scratch, not kept:

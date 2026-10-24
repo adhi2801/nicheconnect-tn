@@ -213,6 +213,13 @@ class PasskeyNotFound(DomainError):
     title = "That passkey is not one of yours"
 
 
+class SessionNotFound(DomainError):
+    # Also someone else's session, or one already ended: 404, never 403.
+    status_code = HTTPStatus.NOT_FOUND
+    code = "session_not_found"
+    title = "That session is not one of yours, or it has already ended"
+
+
 class TooManyPasskeys(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "too_many_passkeys"
