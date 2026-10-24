@@ -198,6 +198,7 @@ Criminal defamation is now section 356 of the Bharatiya Nyaya Sanhita, 2023, in 
 - the sample size beside every figure, and `null` below the floor (D-038);
 - the other side's account beside a dispute (D-028, D-035), and "unresolved is a fact about the dispute, not a finding about either of you";
 - no adjectives about a person, ever.
+- a look-alike name (item 75, D-118) is shown as two facts: which protected name it reads as, and that this account has not verified that brand's domain; never "fake". **Confirm** whether naming other companies' brands in the curated list needs anything, and the wording of the publishing hold;
 - a brand's verified domain (item 74, D-106) is shown as what was checked: the domain, since when, and when the registry says it was registered; never "verified brand". It changes no ranking (section 3.4). **Confirm** whether showing a business's registration date needs wording.
 
 ### 3.13 Login codes and messages: TRAI
@@ -213,7 +214,7 @@ The Rights of Persons with Disabilities Act, 2016 requires accessible informatio
 
 ### 3.15 Open-source licences
 
-Every dependency's licence is known before it is added (`security.md`); a copyleft licence (GPL, AGPL) in the served app needs a decision. Syft's SBOM lists every licence in the API image on each CI run, and **CI fails on any licence not on the approved list** (D-086): permissive licences, plus LGPL-3.0 and MPL-2.0 for libraries used unchanged.
+Unicode's confusables data (`app/core/unicode_data/`, D-118) is vendored under the Unicode License v3, a permissive licence whose notice is kept beside the file, as it requires. Every dependency's licence is known before it is added (`security.md`); a copyleft licence (GPL, AGPL) in the served app needs a decision. Syft's SBOM lists every licence in the API image on each CI run, and **CI fails on any licence not on the approved list** (D-086): permissive licences, plus LGPL-3.0 and MPL-2.0 for libraries used unchanged.
 
 ### 3.16 Our own AI features
 

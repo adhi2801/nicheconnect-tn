@@ -1821,6 +1821,53 @@
         "title": "BrandDomainRead",
         "type": "object"
       },
+      "BrandNameFlagRead": {
+        "description": "What a creator is told about a brand's name (item 75, D-118). Facts, never a verdict.\n\nThe brand's name looks like a protected brand's, and this account has not\nverified that brand's domain; or its name mixes Latin letters with\nlook-alike letters from another alphabet. Shown beside the brand's name,\nnever in place of it.",
+        "properties": {
+          "mixed_script": {
+            "description": "True when the name mixes Latin letters with Cyrillic, Greek, Armenian or Cherokee ones, which is how look-alike names are made",
+            "title": "Mixed Script",
+            "type": "boolean"
+          },
+          "resembles_domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "That brand's real domain, which this account has not verified",
+            "examples": [
+              "nykaa.com"
+            ],
+            "title": "Resembles Domain"
+          },
+          "resembles_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The protected brand this name looks like; null for a mixed-alphabet name only",
+            "examples": [
+              "Nykaa"
+            ],
+            "title": "Resembles Name"
+          }
+        },
+        "required": [
+          "resembles_name",
+          "resembles_domain",
+          "mixed_script"
+        ],
+        "title": "BrandNameFlagRead",
+        "type": "object"
+      },
       "BrandProfileCreate": {
         "additionalProperties": false,
         "properties": {
@@ -1944,6 +1991,17 @@
             "format": "uuid",
             "title": "Brand Id",
             "type": "string"
+          },
+          "brand_name_flag": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BrandNameFlagRead"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set when the brand's name looks like a protected brand's whose domain it has not verified, or mixes look-alike letters (item 75). Show it beside the brand's name; null when there is nothing to say"
           },
           "currently_overdue": {
             "title": "Currently Overdue",
@@ -2419,6 +2477,17 @@
             "format": "uuid",
             "title": "Brand Id",
             "type": "string"
+          },
+          "brand_name_flag": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BrandNameFlagRead"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set when the brand's name looks like a protected brand's and the brand has not verified that brand's domain, or mixes look-alike letters (item 75). Show it beside the brand's name: \"looks like Nykaa; nykaa.com is not verified by this account\". Such a brand cannot publish a new campaign; one already open keeps this warning"
           },
           "budget_max_paise": {
             "anyOf": [
@@ -4827,6 +4896,90 @@
           "refresh_token"
         ],
         "title": "LogoutIn",
+        "type": "object"
+      },
+      "LookAlikeBrandRead": {
+        "description": "A brand whose name looks like a protected brand's, as an admin sees it.",
+        "properties": {
+          "account_id": {
+            "description": "To open the account at /api/v1/admin/accounts/{id}",
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "brand_id": {
+            "format": "uuid",
+            "title": "Brand Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "mixed_script": {
+            "title": "Mixed Script",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "resembles_domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resembles Domain"
+          },
+          "resembles_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resembles Name"
+          }
+        },
+        "required": [
+          "brand_id",
+          "account_id",
+          "name",
+          "created_at",
+          "resembles_name",
+          "resembles_domain",
+          "mixed_script"
+        ],
+        "title": "LookAlikeBrandRead",
+        "type": "object"
+      },
+      "LookAlikeListRead": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LookAlikeBrandRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "truncated": {
+            "description": "True when more than the 100 listed are flagged",
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items",
+          "truncated"
+        ],
+        "title": "LookAlikeListRead",
         "type": "object"
       },
       "MarkPaidRequest": {
@@ -11915,6 +12068,73 @@
         ]
       }
     },
+    "/api/v1/admin/brands/look-alikes": {
+      "get": {
+        "description": "Every brand whose name looks like a protected brand's (the curated list, or a brand here with a verified domain) and has not verified that brand's domain, or mixes look-alike letters, newest first, at most 100. Each cannot publish a campaign until it verifies the domain (item 75). Worked out from the names each time. Limit: 60 requests per minute.",
+        "operationId": "list_look_alike_brands_api_v1_admin_brands_look_alikes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LookAlikeListRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Not found, which is also the answer for anyone who is not an admin"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Brands whose names look like a protected brand's",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/numbers": {
       "get": {
         "description": "How dense the market is and whether the business is alive, for a period of 1 to 90 Tamil Nadu days ending on `ending_on` (today by default), beside the same length before it. Campaign fill rate, time to a first application, application success, repeat deals, payments on time, and active brands and creators. **Every rate is null below five examples**, and a campaign counts towards the fill rate only once it is 14 days old. Optionally for one city. Totals only. Admins only; anyone else gets 404.",
@@ -18019,7 +18239,7 @@
     },
     "/api/v1/campaigns/{campaign_id}/publish": {
       "post": {
-        "description": "Moves a draft to open, so creators can see and apply to it.",
+        "description": "Moves a draft to open, so creators can see and apply to it. A brand whose name looks like a protected brand's is refused, 409 `brand_name_needs_domain`, until it verifies that brand's domain at `POST /api/v1/brands/me/domain` (item 75); the detail names the brand and the domain.",
         "operationId": "campaign_publish_api_v1_campaigns__campaign_id__publish_post",
         "parameters": [
           {

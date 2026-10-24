@@ -1,0 +1,23 @@
+{
+  "about": "Well-known brands whose names scammers borrow to approach creators (item 75, D-118). A brand whose name looks like one of these is flagged, and cannot publish a campaign until it verifies this domain (item 74) or an admin clears it. Curated by hand: each domain was checked to resolve on 24 October 2026, not to belong to the brand, and the list is the founders' to review. `match: exact` is for a name that is also an everyday word, flagged only when the whole name is it.",
+  "checked_on": "2026-10-24",
+  "brands": [
+    {"name": "Nykaa", "domain": "nykaa.com", "match": "word"},
+    {"name": "Mamaearth", "domain": "mamaearth.in", "match": "word"},
+    {"name": "Myntra", "domain": "myntra.com", "match": "word"},
+    {"name": "Flipkart", "domain": "flipkart.com", "match": "word"},
+    {"name": "Meesho", "domain": "meesho.com", "match": "word"},
+    {"name": "Zomato", "domain": "zomato.com", "match": "word"},
+    {"name": "Swiggy", "domain": "swiggy.com", "match": "word"},
+    {"name": "Tanishq", "domain": "tanishq.co.in", "match": "word"},
+    {"name": "Lenskart", "domain": "lenskart.com", "match": "word"},
+    {"name": "SUGAR Cosmetics", "domain": "sugarcosmetics.com", "match": "word"},
+    {"name": "Lakme", "domain": "lakmeindia.com", "match": "word"},
+    {"name": "Bewakoof", "domain": "bewakoof.com", "match": "word"},
+    {"name": "mCaffeine", "domain": "mcaffeine.com", "match": "word"},
+    {"name": "Pothys", "domain": "pothys.com", "match": "word"},
+    {"name": "Amazon", "domain": "amazon.in", "match": "word"},
+    {"name": "Plum", "domain": "plumgoodness.com", "match": "exact"},
+    {"name": "boAt", "domain": "boat-lifestyle.com", "match": "exact"}
+  ]
+}

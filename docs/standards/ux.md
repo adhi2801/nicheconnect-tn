@@ -36,7 +36,7 @@ The design direction (Modern Tamil, `docs/DESIGN_DIRECTION.md`, on `main` since 
 
 ## 2. Research and validation
 
-- Before designing a flow: at least 5 conversations with real target users (brands and creators separately), notes in `docs/research/`, using the Mom Test template in `docs/research/README.md`. **None is recorded yet** (section 8, gap 1).
+- **Design first, then test it with people (D-117).** Design waits for Erode Harish's canvas additions; when it starts, the design system and the core screens come first as prototypes, and before any flow is final, at least 5 conversations with real target users (brands and creators separately) are held on them, notes in `docs/research/`, using the Mom Test template in `docs/research/README.md`. **None is recorded yet** (section 8, gap 1).
 - **The five-second test** on any visual direction: what is this, and would you trust it with a deal? 10 brand owners and 10 creators.
 - Every core journey is usability-tested with at least 5 users before it is built, and again before launch.
 - **Measured success** (Google's HEART framework, on the core journeys):

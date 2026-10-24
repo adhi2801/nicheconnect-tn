@@ -29,7 +29,13 @@ from app.modules.payment_status.service import (
     is_auto_matchable,
 )
 from app.modules.profiles.brand_domain_models import BrandDomain
-from app.modules.profiles.schemas import VerifiedDomainRead, to_verified_domain_read
+from app.modules.profiles.brand_names import NameFlag
+from app.modules.profiles.schemas import (
+    BrandNameFlagRead,
+    VerifiedDomainRead,
+    to_brand_name_flag_read,
+    to_verified_domain_read,
+)
 
 PaymentMethod = Literal["upi", "bank_transfer", "cash"]
 PaymentState = Literal["due", "late", "unpaid", "paid", "unconfirmed", "confirmed"]
@@ -155,10 +161,20 @@ class BrandReliabilityRead(BaseModel):
             "verdict on the brand"
         ),
     )
+    brand_name_flag: BrandNameFlagRead | None = Field(
+        default=None,
+        description=(
+            "Set when the brand's name looks like a protected brand's whose domain "
+            "it has not verified, or mixes look-alike letters (item 75). Show it "
+            "beside the brand's name; null when there is nothing to say"
+        ),
+    )
 
 
 def to_reliability_read(
-    record: ReliabilityRecord, domain: BrandDomain | None = None
+    record: ReliabilityRecord,
+    domain: BrandDomain | None = None,
+    name_flag: NameFlag | None = None,
 ) -> BrandReliabilityRead:
     return BrandReliabilityRead(
         brand_id=record.brand_id,
@@ -171,6 +187,7 @@ def to_reliability_read(
         median_days_to_pay=record.median_days_to_pay,
         distinct_creators=record.distinct_creators,
         verified_domain=None if domain is None else to_verified_domain_read(domain),
+        brand_name_flag=None if name_flag is None else to_brand_name_flag_read(name_flag),
     )
 
 

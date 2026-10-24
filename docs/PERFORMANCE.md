@@ -15,6 +15,10 @@ whole deals, 5 bank bulk transfers of 25 rows, and 30 rounds of rate card
 edits. All from one run, on a developer laptop under Docker Desktop for
 Windows.
 
+## Added 24 October: look-alike brand names (D-118)
+
+`scripts/measure_performance.py --runs 50 --deals 10` on the seeded database (10 brands, 200 creators, 150 campaigns), every campaign read now carrying each brand's look-alike flag: `GET /campaigns/discover` 84.8 ms p95 (its first run, a cold start, peaked at 463.7), with a city and niche 40.9, `GET /campaigns/{id}` 25.1; every route within budget. The flags cost one query a page, measured by `tests/modules/campaigns/test_brand_name_flag_api.py`. **Not measured:** with thousands of verified brands, which every page reads (`docs/ARCHITECTURE_SCALE.md` S10).
+
 ## Added 24 October: where you are logged in (D-114)
 
 Timed in-process against the seeded database (10 brands, 200 creators), one seeded creator with 10 live sessions, 100 runs per read and 40 ends, inside one rolled-back transaction, on a laptop; the script was scratch, not kept:

@@ -33,6 +33,7 @@ from app.modules.profiles.brand_domain_models import (
     BrandDomain,
 )
 from app.modules.profiles.brand_domains import record_name, record_value
+from app.modules.profiles.brand_names import NameFlag
 
 
 class BrandProfileCreate(BaseModel):
@@ -327,4 +328,37 @@ def to_brand_domain_read(row: BrandDomain) -> BrandDomainRead:
         lapsed_at=row.lapsed_at,
         registered_on=row.registered_on,
         dnssec_validated=row.dnssec_validated,
+    )
+
+
+class BrandNameFlagRead(BaseModel):
+    """What a creator is told about a brand's name (item 75, D-118). Facts, never a verdict.
+
+    The brand's name looks like a protected brand's, and this account has not
+    verified that brand's domain; or its name mixes Latin letters with
+    look-alike letters from another alphabet. Shown beside the brand's name,
+    never in place of it.
+    """
+
+    resembles_name: str | None = Field(
+        description="The protected brand this name looks like; null for a mixed-alphabet name only",
+        examples=["Nykaa"],
+    )
+    resembles_domain: str | None = Field(
+        description="That brand's real domain, which this account has not verified",
+        examples=["nykaa.com"],
+    )
+    mixed_script: bool = Field(
+        description=(
+            "True when the name mixes Latin letters with Cyrillic, Greek, "
+            "Armenian or Cherokee ones, which is how look-alike names are made"
+        )
+    )
+
+
+def to_brand_name_flag_read(flag: NameFlag) -> BrandNameFlagRead:
+    return BrandNameFlagRead(
+        resembles_name=None if flag.resembles is None else flag.resembles.name,
+        resembles_domain=None if flag.resembles is None else flag.resembles.domain,
+        mixed_script=flag.mixed_script,
     )

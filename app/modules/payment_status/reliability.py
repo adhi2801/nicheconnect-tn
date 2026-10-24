@@ -55,7 +55,9 @@ from app.modules.payment_status.service import (
     derive_state,
 )
 from app.modules.profiles import brand_domain_service as brand_domains
+from app.modules.profiles import brand_name_service
 from app.modules.profiles.brand_domain_models import BrandDomain
+from app.modules.profiles.brand_names import NameFlag
 
 # Below this, the figures are withheld rather than shown with a caveat
 # nobody reads (D-027).
@@ -257,3 +259,8 @@ def brand_exists(db: Session, brand_id: uuid.UUID) -> bool:
 def verified_domain_of(db: Session, brand_id: uuid.UUID) -> BrandDomain | None:
     """The brand's verified domain (item 74), shown beside how it pays."""
     return brand_domains.verified_for_brands(db, [brand_id]).get(brand_id)
+
+
+def name_flag_of(db: Session, brand_id: uuid.UUID) -> NameFlag | None:
+    """Whether the brand's name looks like a protected brand's (item 75)."""
+    return brand_name_service.flags_for(db, [brand_id]).get(brand_id)

@@ -439,3 +439,25 @@ class SecondFactorSetupRead(BaseModel):
     digits: Literal[6] = 6
     period_seconds: Literal[30] = 30
     algorithm: Literal["SHA1"] = "SHA1"
+
+
+# --- look-alike brand names (item 75, D-118) ---------------------------------------------
+
+
+class LookAlikeBrandRead(BaseModel):
+    """A brand whose name looks like a protected brand's, as an admin sees it."""
+
+    brand_id: uuid.UUID
+    account_id: uuid.UUID = Field(
+        description="To open the account at /api/v1/admin/accounts/{id}"
+    )
+    name: str
+    created_at: datetime
+    resembles_name: str | None
+    resembles_domain: str | None
+    mixed_script: bool
+
+
+class LookAlikeListRead(BaseModel):
+    items: list[LookAlikeBrandRead]
+    truncated: bool = Field(description="True when more than the 100 listed are flagged")

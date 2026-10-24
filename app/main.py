@@ -22,6 +22,7 @@ from app.core.unexpected_error import UnexpectedErrorMiddleware
 from app.db.session import engine
 from app.modules.admin.admin_login_router import router as admin_login_router
 from app.modules.admin.admin_router import router as admin_router
+from app.modules.admin.look_alike_router import router as look_alike_router
 from app.modules.admin.numbers_router import router as numbers_router
 from app.modules.admin.report_clock_router import router as report_clock_router
 from app.modules.admin.report_router import router as report_router
@@ -169,6 +170,7 @@ app.include_router(takedown_router)
 app.include_router(search_router)
 app.include_router(report_router)
 app.include_router(admin_router)
+app.include_router(look_alike_router)
 app.include_router(numbers_router)
 app.include_router(report_clock_router)
 app.include_router(admin_takedown_router)

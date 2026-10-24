@@ -44,7 +44,13 @@ from app.modules.campaigns.exceptions import (
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.notifications import service as notifications
 from app.modules.profiles import brand_domain_service as brand_domains
-from app.modules.profiles.schemas import VerifiedDomainRead, to_verified_domain_read
+from app.modules.profiles import brand_name_service
+from app.modules.profiles.schemas import (
+    BrandNameFlagRead,
+    VerifiedDomainRead,
+    to_brand_name_flag_read,
+    to_verified_domain_read,
+)
 from app.modules.safety.blocks import blocked_between, not_blocked_with_brand
 from app.modules.safety.exceptions import ContentWithheld, OwnContentWithheld
 from app.modules.safety.takedowns import (
@@ -139,6 +145,17 @@ def verified_domains_for(
     return {brand_id: to_verified_domain_read(row) for brand_id, row in found.items()}
 
 
+def brand_name_flags_for(
+    db: Session, campaigns: list[Campaign]
+) -> dict[uuid.UUID, BrandNameFlagRead]:
+    """Each flagged brand's look-alike name warning (item 75), for these campaigns.
+
+    One query however many campaigns (`brand_name_service.flags_for`).
+    """
+    found = brand_name_service.flags_for(db, {c.brand_id for c in campaigns})
+    return {brand_id: to_brand_name_flag_read(flag) for brand_id, flag in found.items()}
+
+
 def get_brand_for_account(db: Session, account_id: uuid.UUID) -> Brand:
     """The brand profile of a signed-in brand account.
 
@@ -207,6 +224,10 @@ def change_status(
         raise CampaignStatusConflict(
             f"A {campaign.status} campaign cannot become {new_status}."
         )
+    if new_status == "open":
+        # A name that looks like a protected brand's publishes nothing until
+        # the brand verifies that brand's domain (item 75, option B).
+        brand_name_service.ensure_may_publish(db, campaign.brand_id)
     campaign.status = new_status
     campaign.updated_at = now
     db.commit()

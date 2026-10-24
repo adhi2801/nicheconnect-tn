@@ -103,7 +103,9 @@ def test_campaign_discovery_query_count_does_not_grow_with_rows(client, db):
         f"{with_three} queries for 3 rows, {with_twenty} for 20: the endpoint "
         "is querying per row"
     )
-    # Account lookup + the list itself; a small, stable budget.
+    # The account, the list, the brands' verified domains (item 74), and the
+    # brands' names beside every verified brand's (item 75): fixed, whatever
+    # the page holds.
     assert with_twenty <= 4
 
 
