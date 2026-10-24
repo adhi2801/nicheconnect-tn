@@ -172,6 +172,7 @@ Examples:
   - `X-Content-Type-Options: nosniff`;
   - `Referrer-Policy: no-referrer`;
   - `X-Frame-Options: DENY`;
+  - `X-Robots-Tag: noindex`, so search engines index the website's pages, never this API's answers (D-121);
   - a `Content-Security-Policy` chosen by path.
 - CORS: an explicit allow-list in `CORS_ALLOWED_ORIGINS`, each origin written exactly as a browser sends it. Never `*`; no cookies across sites (D-044).
 - **Enforced by** `tests/core/test_security_headers.py` and the CORS tests.

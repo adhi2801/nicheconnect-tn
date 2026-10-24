@@ -4705,6 +4705,30 @@
         "title": "HealthRead",
         "type": "object"
       },
+      "IndexablePassportRead": {
+        "description": "One Passport for the website's sitemap.xml (item 85).",
+        "properties": {
+          "handle": {
+            "examples": [
+              "priya.eats"
+            ],
+            "title": "Handle",
+            "type": "string"
+          },
+          "last_modified": {
+            "description": "When what its readers see last changed: the sitemap's lastmod",
+            "format": "date-time",
+            "title": "Last Modified",
+            "type": "string"
+          }
+        },
+        "required": [
+          "handle",
+          "last_modified"
+        ],
+        "title": "IndexablePassportRead",
+        "type": "object"
+      },
       "InvitationCreate": {
         "additionalProperties": false,
         "description": "A brand invites one creator to one of its open campaigns (D-084).",
@@ -7111,6 +7135,34 @@
         "title": "Page[CreatorSearchResultRead]",
         "type": "object"
       },
+      "Page_IndexablePassportRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/IndexablePassportRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as ?cursor= to get the next page",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[IndexablePassportRead]",
+        "type": "object"
+      },
       "Page_MemoWithStageRead_": {
         "properties": {
           "items": {
@@ -9111,6 +9163,19 @@
             },
             "title": "Packages",
             "type": "array"
+          },
+          "structured_data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "schema.org ProfilePage JSON-LD for the website to embed in this Passport's page, so search engines read it (item 85): the published name, handle, bio, channel links and dates, nothing else. The website adds the page's URL. Null while indexing is switched off",
+            "title": "Structured Data"
           }
         },
         "required": [
@@ -19675,6 +19740,116 @@
           }
         },
         "summary": "Read a creator's public profile",
+        "tags": [
+          "public"
+        ]
+      }
+    },
+    "/api/v1/creators/indexable": {
+      "get": {
+        "description": "For the website's sitemap.xml (item 85): each published Passport's handle and when what its readers see last changed, newest Passport first. Exactly the Passports anyone may read: published by their creator, not suspended, not withheld. Readable without logging in. Empty until indexing is switched on, once the publish notice says search engines will show the Passport. Paginated: `limit` (default 20, at most 100) and `cursor`. Cached for 5 minutes, with an ETag.",
+        "operationId": "list_indexable_passports_api_v1_creators_indexable_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "From a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "From a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "header",
+            "name": "if-none-match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-None-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_IndexablePassportRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`limit` is out of range, or `cursor` is not one of ours"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Every Passport search engines may show",
         "tags": [
           "public"
         ]

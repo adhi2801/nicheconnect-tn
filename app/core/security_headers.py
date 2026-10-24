@@ -65,6 +65,9 @@ BASE_HEADERS = {
     "Referrer-Policy": "no-referrer",
     # Nobody frames us; defends against clickjacking on any HTML we serve.
     "X-Frame-Options": "DENY",
+    # Search engines index the website's pages, never this API's JSON: a
+    # Passport is found through the page that shows it (item 85, D-121).
+    "X-Robots-Tag": "noindex",
 }
 
 

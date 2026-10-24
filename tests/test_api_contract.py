@@ -57,6 +57,9 @@ PUBLIC = {
         "/api/v1/auth/passkey-reset",
     ): "a passkey reset: the number and its code are the credential (D-113)",
     ("GET", "/api/v1/creators/by-handle/{handle}"): "the public Creator Passport (D-036)",
+    ("GET", "/api/v1/creators/indexable"): (
+        "the published Passports, for the website's sitemap (item 85, D-121)"
+    ),
     ("GET", "/api/v1/cities"): "cities with public figures (D-078)",
     ("GET", "/api/v1/cities/{city}/figures"): "a city's public figures (D-078)",
 }

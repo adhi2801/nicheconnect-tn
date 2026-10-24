@@ -202,6 +202,11 @@ class Settings(BaseSettings):
     # own origins (the domain or its subdomains), and each app's
     # android:apk-key-hash:<hash>. iOS apps answer with the website's origin.
     passkey_origins: str = ""
+    # Published Passports offered to search engines (item 85, D-121): the
+    # feed for the website's sitemap and each Passport's structured data. Off
+    # until the publish notice says search engines will show the Passport
+    # (legal.md section 3.1, a Confirm item).
+    passport_indexing: bool = False
 
     @field_validator(
         "sentry_dsn",

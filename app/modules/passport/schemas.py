@@ -1,6 +1,8 @@
 """Request and response shapes for the public Creator Passport and the media kit (D-099)."""
 
 import uuid
+from datetime import datetime
+from typing import Any
 
 from pydantic import (
     BaseModel,
@@ -29,6 +31,24 @@ class PublicCreatorRead(PublicCreatorSummary):
             "Prices, only when the creator has chosen to publish them (D-055). "
             "Empty otherwise, which looks the same as having none"
         )
+    )
+    structured_data: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "schema.org ProfilePage JSON-LD for the website to embed in this "
+            "Passport's page, so search engines read it (item 85): the published "
+            "name, handle, bio, channel links and dates, nothing else. The website "
+            "adds the page's URL. Null while indexing is switched off"
+        ),
+    )
+
+
+class IndexablePassportRead(BaseModel):
+    """One Passport for the website's sitemap.xml (item 85)."""
+
+    handle: str = Field(examples=["priya.eats"])
+    last_modified: datetime = Field(
+        description="When what its readers see last changed: the sitemap's lastmod"
     )
 
 
