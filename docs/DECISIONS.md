@@ -1410,3 +1410,15 @@ Newest entries at the bottom.
   10. **Personal data**: public keys only; the authenticator's make (AAGUID), whether it syncs, a name and its last use; all in the export except the key and its id. Challenges are not exported (random numbers) and are deleted a day after expiry. The downgrade refuses while any passkey exists (eighteen refusing migrations).
   11. **What is left, said plainly**: nothing reaches anyone until the domain exists and the apps are built; until then the D-107 to D-112 defences stand alone. A person who turns passkey-only on and loses every key waits 7 days. Admins keep their authenticator until their web page exists.
   12. **CI's fuzz step switches passkeys on** for `nicheconnect.test`, approved by Adhi in this session ("Switch on in the fuzz step") after the first CI run failed: while off, the two public passkey routes answer 503 by design, which the fuzzer counts as a server error. Switched on, it fuzzes the real checks; locally, 120 seconds found no server error. Production is unchanged.
+
+## D-115: Pillow 13.0.0 and certifi 2026.10.19, for 38 published advisories
+- Date: 2026-10-24
+- Approved by: Adhi, in this session: "yes", to the dependency request naming both packages, why, the alternatives, the risk and the rollback. **Not reviewed by the other founder** (D-051).
+- Context: CI's dependency audit (pip-audit) and image scan (Grype) failed on 24 October for advisories published that week: 37 in Pillow 12.3.0, fixed in 13.0.0 (2 critical, among them a JPEG decoder buffer overflow; 13 high), and one critical in certifi 2026.7.22, fixed in 2026.10.19. The lock file on `main` carried both, so every branch failed the two scans, `main` included.
+- Options considered: A) upgrade both now; B) hold them back, listing them as accepted risks (wrong for advisories with a fix); C) wait for Dependabot's pull request #64 (Pillow only, not certifi).
+- Chosen: A, on its own branch before item 81 merges.
+- Reason: Pillow re-encodes every uploaded proof image (D-065); a decoder overflow there is reachable by anyone who uploads a file. Security fixes come at once (D-047).
+- Consequences / follow-ups:
+  1. Pillow 13 is a major version. Its release notes (read 24 October) remove `Image._show`, `ImageCmsProfile.product_name` and `product_info`, and `ExifTags.IFD.Makernote`, and change PNG saving of `I` mode images; the app calls none of these. It uses `Image.open`, the decompression-bomb error and warning, and `ImageOps.exif_transpose`, all unchanged.
+  2. Proven locally: the full suite passes; pip-audit finds no known vulnerability; the API image, built fresh, passes Grype with `--only-fixed --fail-on negligible`.
+  3. Dependabot's pull request #64 becomes redundant once this merges.
