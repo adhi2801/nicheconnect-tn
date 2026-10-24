@@ -1455,3 +1455,31 @@ Newest entries at the bottom.
   3. `auth.service.end_sessions` unregisters the ended sessions' phones in the same transaction: one session's when one ends, every phone of the account when all end.
   4. Tokens registered before D-114 have no session; they go with their phone's own logout (sending the token, as before) or logging out everywhere, and take a session the next time their app registers, which it does on every start.
   5. One behaviour changed on purpose: logging out of a phone now unregisters it even when the app does not send its token. Two tests that held the old behaviour were rewritten to the new one.
+
+## D-117: Design waits for Erode Harish's canvas; when it starts, design first and test it with real people
+- Date: 2026-10-24
+- Approved by: Adhi, in this session, choosing "Wait for Harish" and "Design now, test after" when asked how to start the UI and UX design he wants far beyond Interview Coach AI. **Not reviewed by the other founder** (D-051); Erode Harish owns design (section 0 of `CLAUDE.md`).
+- Context: Adhi asked for the frontend design. Design is Erode Harish's track; on 4 October Adhi said to wait for Harish's additions to the wireframe canvas before settling any design; and `docs/standards/ux.md` section 2 asked for five conversations a side before any flow is designed, and none are recorded.
+- Options considered: who designs: A) Claude designs now as a proposal for Harish, B) wait for Harish, C) Adhi decides alone now. Research: A) design now and test after, B) interviews first, C) skip research.
+- Chosen: B for who; A for research.
+- Reason: Harish's canvas additions come first, as agreed on 4 October; once design starts, testable prototypes give the interviews something real to react to, which talk about an idea does not (the Mom Test, `docs/research/README.md`).
+- Consequences / follow-ups:
+  1. No design work starts until Harish pushes his canvas additions; the backend carries on meanwhile.
+  2. `ux.md` section 2 changes: when design starts, the design system and the core screens come first as prototypes, and the five conversations a side and the five-second test run on them before any flow is final.
+  3. "Better than Interview Coach AI" is measured, never multiplied: server-rendered public pages, the budgets and CI gates in `docs/standards/frontend.md`, accessibility beyond AA, and its own tests.
+
+## D-118: Look-alike brand names are flagged, and cannot publish until the real brand's domain is verified (item 75, option B)
+- Date: 2026-10-24
+- Approved by: Adhi, in this session: "B", after the proposal naming the matching, the protected list, the vendored Unicode data, the legal questions and its weak points. **Not reviewed by the other founder** (D-051). The schema for an admin clearing a name was asked for separately and is not yet approved, so it is not built.
+- Context: the pay-to-collab scam starts with a believable fake brand (trust-and-safety.md section 2); item 74's verified domain lets a real brand stand apart, but nothing stopped "Nykaa Collabs" from posting campaigns. Read 24 October 2026: UTS #39 version 18.0.0 (27 August 2026) on confusable detection, its skeleton and mixed-script levels; no maintained Python library implements it; reports of brand impersonation in India rising.
+- Options considered: A) flag only, to creators and admins; B) A plus a hold on publishing until the brand verifies the resembled brand's domain.
+- Chosen: B.
+- Reason: fake well-known brands are the top scam, and the domain check gives the genuine brand a way through in minutes that an impersonator cannot take.
+- Consequences / follow-ups:
+  1. **Matching** (`app/modules/profiles/brand_names.py`, pure): case folded and made comparable by Unicode's skeleton (`app/core/confusables.py`, `confusables.txt` 18.0.0 of 6 August 2026 vendored byte for byte under the Unicode License v3, its SHA-256 checked by a test and kept by `.gitattributes`); filler words ("official", "india", "collabs", "team", "pvt ltd" and more) dropped in the same form; one slip (Damerau's distance 1) allowed for protected names of 5 letters or more. A protected name matches anywhere as a word, or, for an everyday word ("Plum", "boAt"), only whole. Latin mixed with Cyrillic, Greek, Armenian or Cherokee letters is flagged on its own.
+  2. **Protected**: a curated list of 17 well-known brands with their domains (`app/modules/profiles/protected_brands.json`, each domain checked to resolve on 24 October, not to belong to the brand; the founders' to review), and every brand here with a verified domain (item 74). A brand never resembles a name whose domain, or a subdomain of it, it has itself verified; a look-alike domain does not count.
+  3. **Shown**: `brand_name_flag` (resembled name, its domain, mixed alphabet) on every campaign read and on the brand's payment record, as facts beside the name. Worked out on read, one query a page.
+  4. **Held**: publishing a campaign under a flagged name answers 409 `brand_name_needs_domain`, its detail naming the brand and the domain to verify. Campaigns already open stay open, with the flag.
+  5. **Admins**: `GET /api/v1/admin/brands/look-alikes`, the newest 100 flagged brands with their accounts.
+  6. **Not built**: an admin clearing an innocent name (three columns on `brand`, a refusing downgrade): until its schema is approved, a genuine shop whose name is close to a protected one can only rename or verify the resembled domain. A brand on neither list is not protected; the list is hand-made. Legal **Confirm**: naming other companies' brands in the list, and the hold's wording.
+  7. Proven: the confusable data's hash, UTS #39's own examples, the rules by example and by property (which found filler words read in the wrong form, fixed), the API, query counts, and thirteen rules broken on purpose, each seen caught.

@@ -98,3 +98,28 @@ class DomainClaimExpired(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "domain_claim_expired"
     title = "This token expired after 7 days. Claim the domain again for a new one"
+
+
+# --- look-alike brand names (item 75, D-118) ---------------------------------------------
+
+
+class BrandNameNeedsDomain(DomainError):
+    # Option B: a name that looks like a protected brand's publishes nothing
+    # until the brand proves it is that brand, by its domain (item 74).
+    status_code = HTTPStatus.CONFLICT
+    code = "brand_name_needs_domain"
+    title = "Your brand name looks like another brand's. Verify your domain to publish"
+
+    @classmethod
+    def for_name(
+        cls, name: str | None, domain: str | None, mixed: bool
+    ) -> BrandNameNeedsDomain:
+        if name is not None and domain is not None:
+            return cls(
+                f"Your name looks like {name}'s. Verify {domain} at "
+                "POST /api/v1/brands/me/domain to publish, or ask us to review it."
+            )
+        return cls(
+            "Your name mixes Latin letters with look-alike letters from another "
+            "alphabet. Rename the brand, or ask us to review it."
+        )

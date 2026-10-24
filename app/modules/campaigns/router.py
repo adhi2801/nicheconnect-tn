@@ -45,11 +45,19 @@ Cursor = Annotated[str | None, Query(description="From a previous page's next_cu
 
 
 def _reads(db: Session, campaigns: list[Campaign]) -> list[CampaignRead]:
-    """Each campaign with its brand's verified domain: one query for the page."""
+    """Each campaign with its brand's verified domain and any look-alike name warning.
+
+    Two queries for the page, however long: the domains (item 74), then the
+    brands' names beside every verified brand's (item 75).
+    """
     domains = service.verified_domains_for(db, campaigns)
+    name_flags = service.brand_name_flags_for(db, campaigns)
     return [
         CampaignRead.model_validate(campaign).model_copy(
-            update={"verified_domain": domains.get(campaign.brand_id)}
+            update={
+                "verified_domain": domains.get(campaign.brand_id),
+                "brand_name_flag": name_flags.get(campaign.brand_id),
+            }
         )
         for campaign in campaigns
     ]
@@ -295,7 +303,11 @@ publish_campaign = _status_endpoint(
     "publish",
     "open",
     "Publish a campaign",
-    "Moves a draft to open, so creators can see and apply to it.",
+    "Moves a draft to open, so creators can see and apply to it. A brand whose "
+    "name looks like a protected brand's is refused, 409 "
+    "`brand_name_needs_domain`, until it verifies that brand's domain at `POST "
+    "/api/v1/brands/me/domain` (item 75); the detail names the brand and the "
+    "domain.",
 )
 close_campaign = _status_endpoint(
     "close",

@@ -26,7 +26,7 @@ from app.modules.campaigns.models import (
     REJECTION_REASONS,
     TITLE_MAX_LENGTH,
 )
-from app.modules.profiles.schemas import VerifiedDomainRead
+from app.modules.profiles.schemas import BrandNameFlagRead, VerifiedDomainRead
 
 CampaignType = Literal["paid", "barter", "commission", "local_business"]
 CampaignStatus = Literal["draft", "open", "closed", "cancelled"]
@@ -146,6 +146,16 @@ class CampaignRead(BaseModel):
             "with when it was registered (item 74). Null when it has none. It "
             "says the brand controls this domain, not that the brand is who its "
             "name claims: show the domain itself, never only a badge"
+        ),
+    )
+    brand_name_flag: BrandNameFlagRead | None = Field(
+        default=None,
+        description=(
+            "Set when the brand's name looks like a protected brand's and the "
+            "brand has not verified that brand's domain, or mixes look-alike "
+            "letters (item 75). Show it beside the brand's name: \"looks like "
+            'Nykaa; nykaa.com is not verified by this account". Such a brand '
+            "cannot publish a new campaign; one already open keeps this warning"
         ),
     )
 
