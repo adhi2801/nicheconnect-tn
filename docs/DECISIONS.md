@@ -1441,3 +1441,17 @@ Newest entries at the bottom.
   1. Pillow 13 is a major version. Its release notes (read 24 October) remove `Image._show`, `ImageCmsProfile.product_name` and `product_info`, and `ExifTags.IFD.Makernote`, and change PNG saving of `I` mode images; the app calls none of these. It uses `Image.open`, the decompression-bomb error and warning, and `ImageOps.exif_transpose`, all unchanged.
   2. Proven locally: the full suite passes; pip-audit finds no known vulnerability; the API image, built fresh, passes Grype with `--only-fixed --fail-on negligible`.
   3. Dependabot's pull request #64 becomes redundant once this merges.
+
+## D-116: A phone's push token follows its session (the gap D-114 named)
+- Date: 2026-10-24
+- Approved by: Adhi, in this session: "yes", to the proposal with its ten dimensions, tables, gates and rollback. **Not reviewed by the other founder** (D-051).
+- Context: D-114 let a person end a session from another device, but the phone behind it stayed registered for push (D-095), so once push is delivered (E1) a stolen phone logged out from elsewhere would keep showing the owner's deals and payments. Firebase's token guide (read 24 October 2026) covers stale and invalid tokens, not logout; this is ours to do.
+- Options considered: A) record on each push token the session that registered it, and unregister it whenever that session ends; B) leave it to the app to send its token at logout, as before, which an ended session's phone never does.
+- Chosen: A.
+- Reason: Only the server sees every way a session ends: a logout, ending it from another device, logging out everywhere, a moved phone number, a suspension.
+- Consequences / follow-ups:
+  1. `device_token.session_id` (migration `ecb64002aa29`): the session family that last registered the token, nullable, no foreign key (a family is not a row of its own), indexed where set, built CONCURRENTLY. In the export.
+  2. `PUT /api/v1/me/devices` records the asking token's `sid`; a phone registering again moves to the session now using it. A session already ended is refused 401, checked under the account's lock, the lock every ending of a session takes, so the two cannot interleave (a race test, both orders).
+  3. `auth.service.end_sessions` unregisters the ended sessions' phones in the same transaction: one session's when one ends, every phone of the account when all end.
+  4. Tokens registered before D-114 have no session; they go with their phone's own logout (sending the token, as before) or logging out everywhere, and take a session the next time their app registers, which it does on every start.
+  5. One behaviour changed on purpose: logging out of a phone now unregisters it even when the app does not send its token. Two tests that held the old behaviour were rewritten to the new one.
