@@ -220,6 +220,14 @@ class SessionNotFound(DomainError):
     title = "That session is not one of yours, or it has already ended"
 
 
+class AcknowledgeNotAllowed(DomainError):
+    # D-120: only a session that signed in earlier may vouch for a later one,
+    # so an intruder can never hide their own first sign-in.
+    status_code = HTTPStatus.CONFLICT
+    code = "acknowledge_from_an_earlier_session"
+    title = "Confirm a sign-in from a device that was signed in before it"
+
+
 class TooManyPasskeys(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "too_many_passkeys"

@@ -13,6 +13,7 @@ import pytest
 from app.modules.auth import service as login
 from app.modules.auth.models.account import Account
 from app.modules.auth.service import ClientDevice
+from app.modules.auth.tokens import decode_access_token
 from tests.deal_flow import accepted_memo, brand_user, creator_user
 from tests.query_counts import queries_for
 
@@ -126,3 +127,100 @@ def test_a_brand_sees_its_new_sign_ins_too(client, db, clock):
     mine = sign_in(db, brand.account_id, clock, CHROME)
 
     assert len(new_sign_ins(client, mine)) == 1
+
+
+# --- "it was me" (D-120) -------------------------------------------------------------------
+
+
+def session_of(db, result) -> str:
+    """The session a login made: the `sid` its access token carries."""
+    moment = result.access_token_expires_at - timedelta(minutes=1)
+    return str(decode_access_token(result.access_token, moment).session_id)
+
+
+def ack(client, db, by, target):
+    return client.post(
+        f"/api/v1/me/sessions/{session_of(db, target)}/acknowledge", headers=auth(by)
+    )
+
+
+def test_an_earlier_device_vouches_for_a_later_sign_in(client, db, clock, creator):
+    phone = sign_in(db, creator.account_id, clock, PIXEL)
+    clock.advance(timedelta(minutes=5))
+    laptop = sign_in(db, creator.account_id, clock, CHROME)
+
+    response = ack(client, db, phone, laptop)
+
+    assert response.status_code == 204, response.text
+    assert new_sign_ins(client, phone) == []
+    listed = client.get("/api/v1/me/sessions", headers=auth(phone)).json()["items"]
+    [entry] = [item for item in listed if item["id"] == session_of(db, laptop)]
+    assert entry["sign_in_acknowledged_at"] is not None
+
+
+def test_a_later_sign_in_can_never_vouch_for_itself_or_an_earlier_one(
+    client, db, clock, creator
+):
+    owner = sign_in(db, creator.account_id, clock, PIXEL)
+    clock.advance(timedelta(minutes=5))
+    intruder = sign_in(db, creator.account_id, clock, CHROME)
+    # Kept past the refusal's rollback, as a real login's commit keeps it.
+    db.commit()
+
+    itself = ack(client, db, intruder, intruder)
+    earlier = ack(client, db, intruder, owner)
+
+    for response in (itself, earlier):
+        assert response.status_code == 409, response.text
+        assert response.json()["code"] == "acknowledge_from_an_earlier_session"
+    assert [i["session_id"] for i in new_sign_ins(client, owner)] == [
+        session_of(db, intruder)
+    ]
+
+
+def test_an_intruder_with_two_sign_ins_cannot_hide_the_first(client, db, clock, creator):
+    owner = sign_in(db, creator.account_id, clock, PIXEL)
+    clock.advance(timedelta(minutes=2))
+    first = sign_in(db, creator.account_id, clock, CHROME)
+    clock.advance(timedelta(minutes=2))
+    second = sign_in(db, creator.account_id, clock, CHROME)
+
+    assert ack(client, db, first, second).status_code == 204
+
+    shown = {item["session_id"] for item in new_sign_ins(client, owner)}
+    assert session_of(db, first) in shown
+
+
+def test_an_acknowledgement_survives_the_sessions_next_refresh(
+    client, db, clock, creator
+):
+    phone = sign_in(db, creator.account_id, clock, PIXEL)
+    clock.advance(timedelta(minutes=5))
+    laptop = sign_in(db, creator.account_id, clock, CHROME)
+    assert ack(client, db, phone, laptop).status_code == 204
+
+    refreshed = client.post(
+        "/api/v1/auth/refresh", json={"refresh_token": laptop.refresh_token}
+    )
+
+    assert refreshed.status_code == 200, refreshed.text
+    assert new_sign_ins(client, phone) == []
+
+
+def test_a_token_from_before_sessions_were_named_cannot_vouch(client, db, clock, creator):
+    laptop = sign_in(db, creator.account_id, clock, CHROME)
+
+    response = client.post(
+        f"/api/v1/me/sessions/{session_of(db, laptop)}/acknowledge",
+        headers=creator.headers,
+    )
+
+    assert response.status_code == 409
+
+
+def test_another_accounts_sign_in_is_not_found(client, db, clock, creator):
+    mine = sign_in(db, creator.account_id, clock, PIXEL)
+    clock.advance(timedelta(minutes=1))
+    theirs = sign_in(db, creator_user(db, clock).account_id, clock, CHROME)
+
+    assert ack(client, db, mine, theirs).status_code == 404

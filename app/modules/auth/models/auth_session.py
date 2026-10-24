@@ -105,6 +105,12 @@ class AuthSession(Base):
     passkey_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # When the owner said this sign-in was theirs, from a session that signed
+    # in before it (D-120), so it leaves the attention list. Carried through
+    # every rotation. NULL means not acknowledged.
+    sign_in_acknowledged_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     # The device the app said it is, at sign-in, carried through every
     # rotation like `passkey_at` (D-114). Both NULL when it said nothing: a
     # login from before D-114, or an app that sends no device.

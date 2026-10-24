@@ -382,6 +382,7 @@ def issue_session(
     authenticated_at: datetime | None = None,
     passkey_at: datetime | None = None,
     device: ClientDevice | None = None,
+    sign_in_acknowledged_at: datetime | None = None,
 ) -> LoginResult:
     """Create one session in `family_id` and return its tokens. The caller commits.
 
@@ -394,6 +395,7 @@ def issue_session(
     `device` is what the app said it is, kept on every session of the
     family, so its owner can tell it from the others (D-114). Every access
     token carries the family as `sid`, so ending it ends them at once.
+    `sign_in_acknowledged_at` is carried the same way (D-120).
     """
     refresh_token = new_refresh_token()
     refresh_expires_at = refresh_token_expiry(account.role, now, second_factor_at)
@@ -405,6 +407,7 @@ def issue_session(
             expires_at=refresh_expires_at,
             second_factor_at=second_factor_at,
             passkey_at=passkey_at,
+            sign_in_acknowledged_at=sign_in_acknowledged_at,
             client_platform=None if device is None else device.platform,
             client_label=None if device is None else device.label,
             created_at=now,
@@ -500,6 +503,7 @@ def refresh_session(db: Session, refresh_token: str, now: datetime) -> LoginResu
         second_factor_at=auth_session.second_factor_at,
         authenticated_at=logged_in_at(db, auth_session.family_id),
         passkey_at=auth_session.passkey_at,
+        sign_in_acknowledged_at=auth_session.sign_in_acknowledged_at,
         device=_device_of(auth_session),
     )
     db.commit()

@@ -24,12 +24,13 @@ from sqlalchemy import (
     literal,
     select,
     tuple_,
+    update,
 )
 from sqlalchemy.orm import Session, aliased
 
 from app.core.pagination import Slice, build_slice, decode_cursor
 from app.modules.auth import service as login
-from app.modules.auth.exceptions import SessionNotFound
+from app.modules.auth.exceptions import AcknowledgeNotAllowed, SessionNotFound
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.schemas import SignInMethod
@@ -50,6 +51,7 @@ class LiveSession:
     last_active_at: datetime
     expires_at: datetime
     signed_in_with: SignInMethod
+    acknowledged_at: datetime | None = None
 
 
 def _live(now: datetime) -> ColumnElement[bool]:
@@ -133,6 +135,7 @@ def _to_live(session: AuthSession, signed_in_at: datetime) -> LiveSession:
         last_active_at=session.created_at,
         expires_at=session.expires_at,
         signed_in_with=_signed_in_with(session),
+        acknowledged_at=session.sign_in_acknowledged_at,
     )
 
 
@@ -177,7 +180,10 @@ def recent_sign_ins(
     sign of a SIM swap, and a list of sessions nobody opens tells nobody.
     """
     statement, live = _live_sessions(account_id, now)
-    statement = statement.where(live.c.signed_in_at > now - RECENT_SIGN_IN)
+    statement = statement.where(
+        live.c.signed_in_at > now - RECENT_SIGN_IN,
+        live.c.sign_in_acknowledged_at.is_(None),
+    )
     if excluding is not None:
         statement = statement.where(live.c.family_id != excluding)
     return [
@@ -223,3 +229,41 @@ def end_one(
     found = ensure_live(db, account_id, session_id, now)
     login.end_sessions(db, account_id, now, family_id=session_id)
     return found
+
+
+def acknowledge(
+    db: Session,
+    account_id: uuid.UUID,
+    session_id: uuid.UUID,
+    by_session_id: uuid.UUID | None,
+    now: datetime,
+) -> None:
+    """The owner says this sign-in was theirs, so it leaves the attention list (D-120).
+
+    Only from a session that signed in **before** it: the owner's existing
+    phone may vouch for their new laptop, but whoever signed in last, which
+    is where an intruder always is, can never vouch for their own earliest
+    sign-in, so the owner always sees it. Locked first, as ending a session
+    is, so a refresh at the same moment carries the acknowledgement on. The
+    caller commits. Raises SessionNotFound and AcknowledgeNotAllowed.
+    """
+    login.lock_sessions_of(db, account_id)
+    ensure_live(db, account_id, session_id, now)
+    # A token from before D-114 names no session to vouch from. A session
+    # vouching for itself fails the comparison below: no login is earlier
+    # than itself.
+    if by_session_id is None:
+        db.rollback()
+        raise AcknowledgeNotAllowed()
+    ensure_live(db, account_id, by_session_id, now)
+    if not login.logged_in_at(db, by_session_id) < login.logged_in_at(db, session_id):
+        db.rollback()
+        raise AcknowledgeNotAllowed()
+    db.execute(
+        update(AuthSession)
+        .where(
+            AuthSession.family_id == session_id,
+            AuthSession.sign_in_acknowledged_at.is_(None),
+        )
+        .values(sign_in_acknowledged_at=now, updated_at=now)
+    )

@@ -1497,3 +1497,16 @@ Newest entries at the bottom.
   3. A cleared name is not flagged to creators and may publish, while the brand keeps that exact name; the admins' list leaves it out.
   4. The brand sees its own hold (`name_hold` on `GET /api/v1/brands/me`), so it learns of it before trying to publish.
   5. The clearance and its time are in the brand's export; which admin gave it is not (another person's account), and is in the admin log.
+
+## D-120: "It was me" on a new sign-in, only from a session that signed in before it
+- Date: 2026-10-24
+- Approved by: Adhi, in this session: "yes", to the schema request. **Not reviewed by the other founder** (D-051).
+- Context: a new sign-in leads the owner's attention list for 7 days (D-114), even when it was the owner's own laptop; there was no way to say so. A plain "dismiss" would let a SIM swapper, signed in as the owner, hide their own sign-in.
+- Options considered: A) any session may acknowledge any other; B) only a session that signed in earlier may acknowledge a later one.
+- Chosen: B (built within the approved schema; stated before building).
+- Reason: an intruder's sessions are always the newest, so the earliest of them can only be vouched for by the owner's older device; the owner always sees at least one.
+- Consequences / follow-ups:
+  1. `auth_session.sign_in_acknowledged_at` (migration `c80694db3a26`), carried through every refresh; set under the account's sessions lock, so a refresh at the same moment carries it on (a race test).
+  2. `POST /api/v1/me/sessions/{session_id}/acknowledge` (204); 409 `acknowledge_from_an_earlier_session` from the session itself, a later one, or a token naming no session; 404 for another account's or an ended one.
+  3. An acknowledged sign-in leaves the attention list; the session stays listed, with `sign_in_acknowledged_at`, and can still be ended.
+  4. A new device's own list keeps showing an older device's sign-in for its 7 days, since it cannot vouch for an earlier one. That is the price of the rule, and harmless: it is the owner's own device.

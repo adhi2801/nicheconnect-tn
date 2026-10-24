@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.errors import ResponseDocs, problem_doc
+from app.core.idempotent_route import IdempotentRoute
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
@@ -28,7 +29,8 @@ READ_LIMIT = "60 per minute"
 # phone stands behind every session but this one, with the phone's caps.
 END_LIMIT = "30 per minute"
 
-router = APIRouter(prefix="/api/v1/me", tags=["auth"])
+# route_class: a repeated acknowledgement answers as the first did (D-040).
+router = APIRouter(prefix="/api/v1/me", tags=["auth"], route_class=IdempotentRoute)
 
 _COMMON: ResponseDocs = {
     401: problem_doc("No access token, or it is invalid or expired"),
@@ -76,6 +78,7 @@ def list_my_sessions(
                 expires_at=found.expires_at,
                 signed_in_with=found.signed_in_with,
                 is_current=found.id == current_session_id,
+                sign_in_acknowledged_at=found.acknowledged_at,
             )
             for found in page.rows
         ],
@@ -127,4 +130,41 @@ def end_my_session(
     step_up_code: StepUpCode = None,
 ) -> Response:
     service.end_one(db, account, session_id, current_session_id, step_up_code, now)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/sessions/{session_id}/acknowledge",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Say a sign-in was yours",
+    description=(
+        "Takes a `new_sign_in` off your attention list once you know it was you, "
+        "for example your new laptop. Only from a device that was signed in "
+        "**before** that sign-in: whoever signed in last can never vouch for "
+        "themselves, so a sign-in you did not make always stays in front of "
+        "you. The session stays listed and can still be ended. Limit: 30 "
+        "requests per minute."
+    ),
+    responses={
+        204: {"description": "The sign-in is acknowledged"},
+        401: problem_doc("No access token, or it is invalid or expired"),
+        404: problem_doc("`session_not_found`: no live session of yours has this id"),
+        409: problem_doc(
+            "`acknowledge_from_an_earlier_session`: this device signed in after "
+            "that one, or is that one"
+        ),
+        422: problem_doc("The id is malformed"),
+        429: problem_doc("Too many requests; see the Retry-After header"),
+    },
+)
+@rate_limit(END_LIMIT)
+def acknowledge_sign_in(
+    request: Request,
+    session_id: uuid.UUID,
+    account: CurrentAccount,
+    current_session_id: CurrentSessionId,
+    db: Annotated[Session, Depends(get_db)],
+    now: Annotated[datetime, Depends(get_now)],
+) -> Response:
+    service.acknowledge(db, account, session_id, current_session_id, now)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
