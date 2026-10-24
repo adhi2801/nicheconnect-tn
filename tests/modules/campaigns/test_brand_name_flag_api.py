@@ -218,3 +218,154 @@ def test_anyone_but_an_admin_is_told_it_does_not_exist(client, db, clock, role):
     user = User(create_account(db, role).id, role, clock)
 
     assert client.get(LOOK_ALIKES_URL, headers=user.headers).status_code == 404
+
+
+# --- an admin clearing a genuine name (D-119) -------------------------------------------
+
+
+def clearance_url(brand: Brand, withdraw: bool = False) -> str:
+    return f"/api/v1/admin/brands/{brand.id}/name-clearance" + (
+        "/withdraw" if withdraw else ""
+    )
+
+
+NOTE = {"note": "Spoke to the owner; a Coimbatore shop since 2011, no relation."}
+
+
+@pytest.fixture
+def admin(db, clock) -> User:
+    return User(create_account(db, "admin").id, "admin", clock)
+
+
+def test_a_cleared_name_publishes_and_shows_no_warning(client, db, clock, admin, creator):
+    user, brand = brand_named(db, clock, "Amazon Organics Coimbatore")
+    campaign_id = draft(client, user)
+    assert publish(client, user, campaign_id).status_code == 409
+
+    cleared = client.post(clearance_url(brand), json=NOTE, headers=admin.headers)
+
+    assert cleared.status_code == 200, cleared.text
+    assert cleared.json()["name_cleared"] is True
+    published = publish(client, user, campaign_id)
+    assert published.status_code == 200, published.text
+    assert published.json()["brand_name_flag"] is None
+    record = client.get(f"/api/v1/brands/{brand.id}/reliability", headers=creator.headers)
+    assert record.json()["brand_name_flag"] is None
+    listed = client.get(LOOK_ALIKES_URL, headers=admin.headers).json()["items"]
+    assert str(brand.id) not in {item["brand_id"] for item in listed}
+
+
+def test_clearing_and_withdrawing_go_in_the_admin_log(client, db, clock, admin):
+    _, brand = brand_named(db, clock, "Nykaa Collabs")
+    client.post(clearance_url(brand), json=NOTE, headers=admin.headers)
+    client.post(clearance_url(brand, withdraw=True), json=NOTE, headers=admin.headers)
+
+    log = client.get("/api/v1/admin/actions", headers=admin.headers).json()["items"]
+    mine = [
+        entry["action"]
+        for entry in log
+        if entry["subject_account_id"] == str(brand.account_id)
+    ]
+    assert mine == ["withdraw_brand_name_clearance", "clear_brand_name"]
+    assert all(
+        entry["note"] == NOTE["note"]
+        for entry in log
+        if entry["subject_account_id"] == str(brand.account_id)
+    )
+
+
+def test_a_rename_is_held_again_until_looked_at(client, db, clock, admin):
+    user, brand = brand_named(db, clock, "Nykaa Collabs")
+    client.post(clearance_url(brand), json=NOTE, headers=admin.headers)
+    brand.name = "Nykaa Collabs India"
+    db.flush()
+
+    assert publish(client, user, draft(client, user)).status_code == 409
+
+
+def test_a_withdrawn_clearance_holds_the_name_again(client, db, clock, admin):
+    user, brand = brand_named(db, clock, "Nykaa Collabs")
+    client.post(clearance_url(brand), json=NOTE, headers=admin.headers)
+
+    withdrawn = client.post(
+        clearance_url(brand, withdraw=True), json=NOTE, headers=admin.headers
+    )
+
+    assert withdrawn.status_code == 200, withdrawn.text
+    assert withdrawn.json()["name_cleared"] is False
+    assert publish(client, user, draft(client, user)).status_code == 409
+
+
+@pytest.mark.parametrize(
+    ("setup", "url_kind", "code"),
+    [
+        ("plain", "clear", "brand_name_not_flagged"),
+        ("cleared", "clear", "brand_name_already_cleared"),
+        ("flagged", "withdraw", "brand_name_not_cleared"),
+    ],
+)
+def test_clearances_refuse_what_makes_no_sense(
+    client, db, clock, admin, setup, url_kind, code
+):
+    _, brand = brand_named(
+        db, clock, "Amma Sweets" if setup == "plain" else "Nykaa Collabs"
+    )
+    if setup == "cleared":
+        client.post(clearance_url(brand), json=NOTE, headers=admin.headers)
+
+    response = client.post(
+        clearance_url(brand, withdraw=url_kind == "withdraw"),
+        json=NOTE,
+        headers=admin.headers,
+    )
+
+    assert response.status_code == 409, response.text
+    assert response.json()["code"] == code
+
+
+def test_an_unknown_brand_is_not_found(client, db, clock, admin):
+    response = client.post(
+        f"/api/v1/admin/brands/{uuid.uuid4()}/name-clearance",
+        json=NOTE,
+        headers=admin.headers,
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.parametrize("role", ["brand", "creator"])
+def test_only_an_admin_clears_a_name(client, db, clock, role):
+    _, brand = brand_named(db, clock, "Nykaa Collabs")
+    user = User(create_account(db, role).id, role, clock)
+
+    response = client.post(clearance_url(brand), json=NOTE, headers=user.headers)
+
+    assert response.status_code == 404
+    db.refresh(brand)
+    assert brand.name_cleared is None
+
+
+@pytest.mark.parametrize("note", ["", "ok", "x" * 1001])
+def test_a_clearance_needs_a_real_note(client, db, clock, admin, note):
+    _, brand = brand_named(db, clock, "Nykaa Collabs")
+
+    response = client.post(
+        clearance_url(brand), json={"note": note}, headers=admin.headers
+    )
+
+    assert response.status_code == 422
+
+
+def test_a_held_brand_sees_its_hold_on_its_own_profile(client, db, clock, admin):
+    user, brand = brand_named(db, clock, "Nykaa Collabs")
+
+    held = client.get("/api/v1/brands/me", headers=user.headers).json()["name_hold"]
+    client.post(clearance_url(brand), json=NOTE, headers=admin.headers)
+    lifted = client.get("/api/v1/brands/me", headers=user.headers).json()["name_hold"]
+
+    assert held == {
+        "resembles_name": "Nykaa",
+        "resembles_domain": "nykaa.com",
+        "mixed_script": False,
+    }
+    assert lifted is None

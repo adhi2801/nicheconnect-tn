@@ -23,6 +23,10 @@ ADMIN_ACTIONS: tuple[str, ...] = (
     # A takedown placed and lifted (item 52).
     "withhold",
     "lift_withhold",
+    # A look-alike brand name cleared after review, and that clearance
+    # withdrawn (item 75, D-119).
+    "clear_brand_name",
+    "withdraw_brand_name_clearance",
 )
 NOTE_MAX_LENGTH = 1000
 

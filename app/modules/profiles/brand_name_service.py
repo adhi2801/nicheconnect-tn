@@ -24,19 +24,22 @@ from app.modules.profiles.brand_names import NameFlag
 from app.modules.profiles.exceptions import BrandNameNeedsDomain
 
 
-def flags_for(db: Session, brand_ids: Iterable[uuid.UUID]) -> dict[uuid.UUID, NameFlag]:
+def flags_for(
+    db: Session, brand_ids: Iterable[uuid.UUID], *, ignore_clearance: bool = False
+) -> dict[uuid.UUID, NameFlag]:
     """Each flagged brand among `brand_ids`, with what its name resembles. One query.
 
     The one query reads the brands asked about and every brand with a
     verified domain, each with that domain, so a page of any length costs the
-    same.
+    same. A brand whose current name an admin cleared (D-119) is not flagged,
+    unless `ignore_clearance`, which the admins' own review asks for.
     """
     wanted = set(brand_ids)
     if not wanted:
         return {}
     rows = (
         db.execute(
-            select(Brand.id, Brand.name, BrandDomain.domain)
+            select(Brand.id, Brand.name, Brand.name_cleared, BrandDomain.domain)
             .outerjoin(
                 BrandDomain,
                 (BrandDomain.brand_id == Brand.id) & (BrandDomain.status == "verified"),
@@ -46,8 +49,12 @@ def flags_for(db: Session, brand_ids: Iterable[uuid.UUID]) -> dict[uuid.UUID, Na
         .tuples()
         .all()
     )
-    names = {brand_id: name for brand_id, name, _ in rows if brand_id in wanted}
-    verified = [(brand_id, name, domain) for brand_id, name, domain in rows if domain]
+    names = {
+        brand_id: name
+        for brand_id, name, cleared, _ in rows
+        if brand_id in wanted and (ignore_clearance or cleared != name)
+    }
+    verified = [(brand_id, name, domain) for brand_id, name, _, domain in rows if domain]
     own_domain = {brand_id: domain for brand_id, _, domain in verified}
     flags: dict[uuid.UUID, NameFlag] = {}
     for brand_id, name in names.items():

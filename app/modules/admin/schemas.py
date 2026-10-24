@@ -173,6 +173,8 @@ class AdminActionRead(BaseModel):
         "resolve_report",
         "withhold",
         "lift_withhold",
+        "clear_brand_name",
+        "withdraw_brand_name_clearance",
     ]
     subject_account_id: uuid.UUID | None
     report_id: uuid.UUID | None
@@ -461,3 +463,27 @@ class LookAlikeBrandRead(BaseModel):
 class LookAlikeListRead(BaseModel):
     items: list[LookAlikeBrandRead]
     truncated: bool = Field(description="True when more than the 100 listed are flagged")
+
+
+class NameClearanceIn(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    note: str = Field(
+        min_length=3,
+        max_length=1000,
+        description="What you checked and why the name is genuine. Written to the admin log",
+        examples=[
+            "Spoke to the owner; a Coimbatore bakery since 2011, no relation to Nykaa."
+        ],
+    )
+
+
+class NameClearanceRead(BaseModel):
+    """A brand's name, and whether an admin cleared it as it stands now."""
+
+    brand_id: uuid.UUID
+    name: str
+    name_cleared: bool = Field(
+        description="True while the brand keeps the name that was cleared"
+    )
+    name_cleared_at: datetime | None

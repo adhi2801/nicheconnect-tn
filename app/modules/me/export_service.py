@@ -164,7 +164,11 @@ REPORT_EXPORT_FIELDS = allow(
     "created_at",
 )
 
-BRAND_EXPORT_FIELDS = allow("id", "name", "email", "created_at", "updated_at")
+# Whether an admin cleared the name as a look-alike, and when (D-119); never
+# which admin, whose account is someone else's.
+BRAND_EXPORT_FIELDS = allow(
+    "id", "name", "email", "name_cleared", "name_cleared_at", "created_at", "updated_at"
+)
 
 CREATOR_EXPORT_FIELDS = allow(
     "id",

@@ -66,6 +66,16 @@ class BrandProfileRead(BaseModel):
     email: str
     created_at: datetime
     updated_at: datetime
+    # Defined further down, with the other look-alike shapes; rebuilt there.
+    name_hold: BrandNameFlagRead | None = Field(
+        default=None,
+        description=(
+            "Set while your name looks like a protected brand's and you have not "
+            "verified that brand's domain, or mixes look-alike letters (item 75): "
+            "you cannot publish a campaign, and creators see the warning. Verify "
+            "the domain named, rename, or ask us to review it"
+        ),
+    )
 
 
 class CreatorProfileCreate(BaseModel):
@@ -362,3 +372,7 @@ def to_brand_name_flag_read(flag: NameFlag) -> BrandNameFlagRead:
         resembles_domain=None if flag.resembles is None else flag.resembles.domain,
         mixed_script=flag.mixed_script,
     )
+
+
+# BrandProfileRead names BrandNameFlagRead before it is defined.
+BrandProfileRead.model_rebuild()

@@ -183,7 +183,9 @@
               "restore",
               "resolve_report",
               "withhold",
-              "lift_withhold"
+              "lift_withhold",
+              "clear_brand_name",
+              "withdraw_brand_name_clearance"
             ],
             "title": "Action",
             "type": "string"
@@ -1929,6 +1931,17 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "name_hold": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BrandNameFlagRead"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set while your name looks like a protected brand's and you have not verified that brand's domain, or mixes look-alike letters (item 75): you cannot publish a campaign, and creators see the warning. Verify the domain named, rename, or ask us to review it"
           },
           "updated_at": {
             "format": "date-time",
@@ -5945,6 +5958,65 @@
           "note"
         ],
         "title": "MisreadMark",
+        "type": "object"
+      },
+      "NameClearanceIn": {
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "description": "What you checked and why the name is genuine. Written to the admin log",
+            "examples": [
+              "Spoke to the owner; a Coimbatore bakery since 2011, no relation to Nykaa."
+            ],
+            "maxLength": 1000,
+            "minLength": 3,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "title": "NameClearanceIn",
+        "type": "object"
+      },
+      "NameClearanceRead": {
+        "description": "A brand's name, and whether an admin cleared it as it stands now.",
+        "properties": {
+          "brand_id": {
+            "format": "uuid",
+            "title": "Brand Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "name_cleared": {
+            "description": "True while the brand keeps the name that was cleared",
+            "title": "Name Cleared",
+            "type": "boolean"
+          },
+          "name_cleared_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name Cleared At"
+          }
+        },
+        "required": [
+          "brand_id",
+          "name",
+          "name_cleared",
+          "name_cleared_at"
+        ],
+        "title": "NameClearanceRead",
         "type": "object"
       },
       "NarrowedTo": {
@@ -12130,6 +12202,262 @@
           }
         ],
         "summary": "Brands whose names look like a protected brand's",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/brands/{brand_id}/name-clearance": {
+      "post": {
+        "description": "For a genuine brand whose name is close to a protected one and that cannot verify that brand's domain: after looking at the business behind it, clear its current name, so it can publish and creators see no warning. Only that exact name: a rename is held again until looked at. Written to the admin log with your note. Limit: 60 requests per minute.",
+        "operationId": "clear_brand_name_api_v1_admin_brands__brand_id__name_clearance_post",
+        "parameters": [
+          {
+            "description": "The brand's id",
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "description": "The brand's id",
+              "format": "uuid",
+              "title": "Brand Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NameClearanceIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NameClearanceRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such brand; also the answer for anyone who is not an admin"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_name_not_flagged`, `brand_name_already_cleared` or `brand_name_not_cleared`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The note is missing or too short. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Clear a brand's look-alike name after review",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/brands/{brand_id}/name-clearance/withdraw": {
+      "post": {
+        "description": "Puts the brand's current name back on hold: it cannot publish a new campaign, and creators see the warning again. Written to the admin log with your note. Limit: 60 requests per minute.",
+        "operationId": "withdraw_brand_name_clearance_api_v1_admin_brands__brand_id__name_clearance_withdraw_post",
+        "parameters": [
+          {
+            "description": "The brand's id",
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "description": "The brand's id",
+              "format": "uuid",
+              "title": "Brand Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NameClearanceIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NameClearanceRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such brand; also the answer for anyone who is not an admin"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_name_not_flagged`, `brand_name_already_cleared` or `brand_name_not_cleared`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The note is missing or too short. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Withdraw a brand name's clearance",
         "tags": [
           "admin"
         ]
