@@ -1429,3 +1429,15 @@ Newest entries at the bottom.
   8. **Personal data**: the device platform and label, in the export's login sessions with their purpose. No address and no location (option A).
   9. **Changes from the proposal, all inside its gates**: the race fix also covers suspension and a new admin ticket, which ended sessions the same way; a new sign-in is listed before everything else rather than among items without a date; a stranger's session id is answered 404 before a code is asked for, found by the stranger-routes test; one existing test (`test_logout_all_twice_reports_nothing_left_to_end`) asserted the 15-minute weakness and now asserts the token is refused at once.
   10. **What is left, said plainly**: push tokens are not tied to sessions, so an ended session's phone stays registered for push; nothing is delivered by push yet (E1), and this must be closed before E1 delivers. A label is whatever the app says. Last active is the last renewal, up to 15 minutes behind. A new sign-in stays on the list for its 7 days even when it was the owner's; there is no "it was me". Every renewal adds a session row (about 96 a day per device in use), never deleted until the validation pack sets retention; the per-request check reads one account's rows by index (0.05 ms measured), to be watched as rows grow.
+
+## D-115: Pillow 13.0.0 and certifi 2026.10.19, for 38 published advisories
+- Date: 2026-10-24
+- Approved by: Adhi, in this session: "yes", to the dependency request naming both packages, why, the alternatives, the risk and the rollback. **Not reviewed by the other founder** (D-051).
+- Context: CI's dependency audit (pip-audit) and image scan (Grype) failed on 24 October for advisories published that week: 37 in Pillow 12.3.0, fixed in 13.0.0 (2 critical, among them a JPEG decoder buffer overflow; 13 high), and one critical in certifi 2026.7.22, fixed in 2026.10.19. The lock file on `main` carried both, so every branch failed the two scans, `main` included.
+- Options considered: A) upgrade both now; B) hold them back, listing them as accepted risks (wrong for advisories with a fix); C) wait for Dependabot's pull request #64 (Pillow only, not certifi).
+- Chosen: A, on its own branch before item 81 merges.
+- Reason: Pillow re-encodes every uploaded proof image (D-065); a decoder overflow there is reachable by anyone who uploads a file. Security fixes come at once (D-047).
+- Consequences / follow-ups:
+  1. Pillow 13 is a major version. Its release notes (read 24 October) remove `Image._show`, `ImageCmsProfile.product_name` and `product_info`, and `ExifTags.IFD.Makernote`, and change PNG saving of `I` mode images; the app calls none of these. It uses `Image.open`, the decompression-bomb error and warning, and `ImageOps.exif_transpose`, all unchanged.
+  2. Proven locally: the full suite passes; pip-audit finds no known vulnerability; the API image, built fresh, passes Grype with `--only-fixed --fail-on negligible`.
+  3. Dependabot's pull request #64 becomes redundant once this merges.
