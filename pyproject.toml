@@ -53,14 +53,14 @@ dependencies = [
     # The Mozilla root certificate list, which the timestamp checks trust.
     # Pinned directly: it once arrived only through a developer tool, and the
     # app could not start without it.
-    "certifi==2026.7.22",
+    "certifi==2026.10.19",
     # Proof files in S3 (D-065): signs the upload and view links and checks
     # the objects. Signing requests by hand is security code we should not own.
     "boto3==1.43.108",
     # Re-encodes every uploaded image so no GPS location or hidden data
     # reaches a brand (D-065). Security releases are frequent: the dependency
     # audit fails CI until it is upgraded, which is the point.
-    "pillow==12.3.0",
+    "pillow==13.0.0",
     # Reads the numbers on cleaned proof screenshots, in a background job only
     # (D-070). Built on httpx2 2.x, the same client the app pins above.
     "anthropic==1.11.0",
