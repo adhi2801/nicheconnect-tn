@@ -52,6 +52,12 @@ class DeviceToken(Base):
         # An account's phones, most recently seen first: for the cap and the
         # sender. Also the index the foreign key needs (database.md section 5).
         Index("ix_device_token_account_id_last_seen_at", "account_id", "last_seen_at"),
+        # A session's phones, removed when the session ends (D-116).
+        Index(
+            "ix_device_token_session_id",
+            "session_id",
+            postgresql_where=text("session_id IS NOT NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -70,6 +76,15 @@ class DeviceToken(Base):
     # NULL when the app did not say.
     app_version: Mapped[str | None] = mapped_column(
         String(APP_VERSION_MAX_LENGTH), nullable=True
+    )
+    # The session that last registered it: its login's family id, as access
+    # tokens carry it in `sid` (D-114). Ending that session removes the token,
+    # so a phone logged out from elsewhere stops receiving this account's
+    # notifications (D-116). Not a foreign key: a family is not a row of its
+    # own. NULL means registered by a token from before D-114; such a token
+    # goes only on logging out everywhere, or when its phone registers again.
+    session_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True
     )
     # When the app last registered it: apps re-register on every start.
     last_seen_at: Mapped[datetime] = mapped_column(

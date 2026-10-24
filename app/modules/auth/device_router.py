@@ -11,7 +11,7 @@ from app.core.errors import ResponseDocs, problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth import device_service
-from app.modules.auth.dependencies import CurrentAccount, get_now
+from app.modules.auth.dependencies import CurrentAccount, CurrentSessionId, get_now
 from app.modules.auth.device_schemas import DeviceRead, DeviceRegister
 
 # Apps register on every start and when a token changes: a handful a day.
@@ -37,6 +37,9 @@ _ERRORS: ResponseDocs = {
         "repeat. A token already registered to another account moves to this "
         "one, so a phone handed on stops showing the last person's "
         "notifications. Each account keeps its 10 most recently seen phones. "
+        "The phone belongs to the session registering it: when that session "
+        "ends, by a logout, from another device or everywhere, the phone is "
+        "unregistered with it. A session already ended is refused (401). "
         "The token is never returned; keep the `id` to unregister."
     ),
     responses=_ERRORS,
@@ -46,6 +49,7 @@ def register_device(
     request: Request,
     body: DeviceRegister,
     account: CurrentAccount,
+    session_id: CurrentSessionId,
     db: Annotated[Session, Depends(get_db)],
     now: Annotated[datetime, Depends(get_now)],
 ) -> DeviceRead:
@@ -56,6 +60,7 @@ def register_device(
         platform=body.platform,
         app_version=body.app_version,
         now=now,
+        session_id=session_id,
     )
     return DeviceRead(
         id=device.id,
@@ -72,7 +77,7 @@ def register_device(
     summary="Stop push notifications to a phone",
     description=(
         "Unregisters one of your phones, by the `id` registering it returned. "
-        "Logging out of a phone does this too, when the app sends its token."
+        "Ending the session that registered it does this too."
     ),
     responses={
         **_ERRORS,

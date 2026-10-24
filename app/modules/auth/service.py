@@ -347,7 +347,9 @@ def end_sessions(
 
     Returns how many rows were still active. Locks first (`lock_sessions_of`),
     so the update, a statement of its own, sees any row a refresh added while
-    it waited.
+    it waited. The phones those sessions registered for push are forgotten
+    with them (D-116), so a phone logged out from elsewhere is told nothing
+    more.
     """
     lock_sessions_of(db, account_id)
     statement = update(AuthSession).where(
@@ -361,6 +363,7 @@ def end_sessions(
     result = cast(
         "CursorResult[Any]", db.execute(statement.values(revoked_at=now, updated_at=now))
     )
+    devices.forget_session(db, account_id, family_id)
     return result.rowcount
 
 

@@ -10,8 +10,11 @@ them a new token; it is safe to repeat. Three rules, each with a reason:
    recently seen. Every reinstall makes a new token, and the old ones lead
    nowhere. The account's row is locked first, so two registrations at once
    cannot both see room for one more.
-3. **Gone when the person leaves.** Logging out of a phone removes its token
-   when the app sends it; logging out everywhere removes them all.
+3. **Gone when the person leaves.** Each token remembers the session that
+   registered it, and ending that session removes it, however it ends: a
+   logout, ending it from another device, logging out everywhere, a moved
+   phone number, a suspension (D-116). A token registered before sessions
+   were named goes when its phone logs out with it, or everywhere.
 
 A token is personal data: never logged, never in a URL, never in a response.
 """
@@ -24,15 +27,18 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.core.export import ExportedSection, allow, build_section
-from app.modules.auth.exceptions import DeviceNotFound
+from app.modules.auth.exceptions import DeviceNotFound, InvalidToken
 from app.modules.auth.models.account import Account
+from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.device_token import MAX_DEVICES_PER_ACCOUNT, DeviceToken
 
 EXPORTED_TABLES = frozenset({"device_token"})
 # The token itself is never exported (app/core/export.py refuses the name): it
 # is an address only our push sender can use, and the platform and dates say
 # all a person needs to recognise their own phones.
-EXPORT_FIELDS = allow("id", "platform", "app_version", "last_seen_at", "created_at")
+EXPORT_FIELDS = allow(
+    "id", "platform", "app_version", "session_id", "last_seen_at", "created_at"
+)
 
 
 def register(
@@ -43,13 +49,21 @@ def register(
     platform: str,
     app_version: str | None,
     now: datetime,
+    session_id: uuid.UUID | None = None,
 ) -> DeviceToken:
-    """Record this phone for this account, or refresh it. Commits.
+    """Record this phone for this account and session, or refresh it. Commits.
 
     One `INSERT ... ON CONFLICT`, so a token registered by two accounts at
-    once ends with exactly one of them, never an error.
+    once ends with exactly one of them, never an error. The account's row
+    is locked first, as everything that ends a session locks it, so a
+    session ended while this waited is seen, and its phone is refused
+    rather than registered to a session that no longer exists (D-116).
+    Raises InvalidToken for that.
     """
     db.execute(select(Account.id).where(Account.id == account_id).with_for_update())
+    if session_id is not None and not _session_live(db, account_id, session_id):
+        db.rollback()
+        raise InvalidToken()
     device = db.scalars(
         insert(DeviceToken)
         .values(
@@ -57,6 +71,7 @@ def register(
             platform=platform,
             token=token,
             app_version=app_version,
+            session_id=session_id,
             last_seen_at=now,
             created_at=now,
             updated_at=now,
@@ -67,6 +82,7 @@ def register(
                 "account_id": account_id,
                 "platform": platform,
                 "app_version": app_version,
+                "session_id": session_id,
                 "last_seen_at": now,
                 "updated_at": now,
             },
@@ -77,6 +93,34 @@ def register(
     _keep_most_recent(db, account_id)
     db.commit()
     return device
+
+
+def _session_live(db: Session, account_id: uuid.UUID, session_id: uuid.UUID) -> bool:
+    """Whether the session has a row not yet revoked, as every request checks."""
+    found = db.scalar(
+        select(AuthSession.id)
+        .where(
+            AuthSession.account_id == account_id,
+            AuthSession.family_id == session_id,
+            AuthSession.revoked_at.is_(None),
+        )
+        .limit(1)
+    )
+    return found is not None
+
+
+def forget_session(
+    db: Session, account_id: uuid.UUID, session_id: uuid.UUID | None = None
+) -> None:
+    """When sessions end: the phones they registered. Never commits.
+
+    One session's (`session_id`), or, with none given, every phone of the
+    account, since every session of it ended.
+    """
+    statement = delete(DeviceToken).where(DeviceToken.account_id == account_id)
+    if session_id is not None:
+        statement = statement.where(DeviceToken.session_id == session_id)
+    db.execute(statement)
 
 
 def _keep_most_recent(db: Session, account_id: uuid.UUID) -> None:

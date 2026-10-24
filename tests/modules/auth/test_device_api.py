@@ -11,7 +11,9 @@ from sqlalchemy import func, select
 from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.main import app
+from app.modules.auth import service as login
 from app.modules.auth.dependencies import get_now
+from app.modules.auth.models.account import Account
 from app.modules.auth.models.device_token import MAX_DEVICES_PER_ACCOUNT, DeviceToken
 from app.modules.auth.sender import FakeOtpSender, get_otp_sender
 from app.modules.auth.tokens import decode_access_token
@@ -233,10 +235,22 @@ def test_unregistering_needs_a_login(client):
 # --- logging out -------------------------------------------------------------------------
 
 
-def test_logging_out_of_a_phone_stops_its_notifications(client, db, person):
+def another_session(db, clock, who: Person) -> dict[str, str]:
+    """The same person, signed in on a second phone: a session of its own."""
+    account = db.get_one(Account, who.account_id)
+    result = login.issue_session(db, account, uuid.uuid4(), clock.now)
+    db.flush()
+    return {"Authorization": f"Bearer {result.access_token}"}
+
+
+def register_as(client, headers: dict[str, str], token: str):
+    return client.put(URL, json={"token": token, "platform": "android"}, headers=headers)
+
+
+def test_logging_out_of_a_phone_stops_its_notifications(client, db, clock, person):
     here, elsewhere = a_token("here"), a_token("elsewhere")
     register(client, person, here)
-    register(client, person, elsewhere)
+    register_as(client, another_session(db, clock, person), elsewhere)
 
     response = client.post(
         LOGOUT_URL, json={"refresh_token": person.refresh, "device_token": here}
@@ -258,13 +272,77 @@ def test_logging_out_cannot_remove_another_accounts_phone(client, db, sender, pe
     assert tokens_of(db, other.account_id) == {theirs}
 
 
-def test_logging_out_without_a_token_keeps_the_phones(client, db, person):
+def test_logging_out_without_its_token_still_stops_the_phone_it_registered(
+    client, db, clock, person
+):
+    """Until D-116 the app had to send the token, or the phone kept receiving."""
+    mine, other_phone = a_token("mine"), a_token("other")
+    register(client, person, mine)
+    register_as(client, another_session(db, clock, person), other_phone)
+
+    client.post(LOGOUT_URL, json={"refresh_token": person.refresh})
+
+    assert tokens_of(db, person.account_id) == {other_phone}
+
+
+def test_ending_a_session_from_another_phone_stops_its_notifications(
+    client, db, clock, person
+):
+    stolen, mine = a_token("stolen"), a_token("mine")
+    register(client, person, stolen)
+    owner = another_session(db, clock, person)
+    register_as(client, owner, mine)
+    session_id = str(decode_access_token(person.access, clock.now).session_id)
+
+    # Its own session needs no code: ended from the phone itself.
+    response = client.delete(f"/api/v1/me/sessions/{session_id}", headers=person.headers)
+
+    assert response.status_code == 204, response.text
+    assert tokens_of(db, person.account_id) == {mine}
+
+
+def test_a_phone_registering_again_moves_to_the_session_now_using_it(
+    client, db, clock, person
+):
     token = a_token()
     register(client, person, token)
+    later = another_session(db, clock, person)
+    register_as(client, later, token)
 
     client.post(LOGOUT_URL, json={"refresh_token": person.refresh})
 
     assert tokens_of(db, person.account_id) == {token}
+
+
+def test_a_phone_registered_before_sessions_were_named_stays_until_everywhere(
+    client, db, clock, person
+):
+    """A token from an old app has no session; logging out of one phone leaves it."""
+    token = a_token()
+    db.add(
+        DeviceToken(
+            account_id=person.account_id,
+            platform="android",
+            token=token,
+            last_seen_at=clock.now,
+        )
+    )
+    db.flush()
+
+    client.post(LOGOUT_URL, json={"refresh_token": person.refresh})
+    assert tokens_of(db, person.account_id) == {token}
+
+    login.end_sessions(db, person.account_id, clock.now)
+    assert tokens_of(db, person.account_id) == set()
+
+
+def test_a_session_that_has_ended_cannot_register_a_phone(client, db, clock, person):
+    login.logout(db, person.refresh, clock.now)
+
+    response = register(client, person, a_token())
+
+    assert response.status_code == 401
+    assert tokens_of(db, person.account_id) == set()
 
 
 def test_logging_out_everywhere_stops_every_phone(client, db, person):

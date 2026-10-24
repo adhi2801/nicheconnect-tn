@@ -26103,7 +26103,7 @@
     },
     "/api/v1/me/devices": {
       "put": {
-        "description": "Records the push token Firebase or Apple gave this install, or refreshes it; send it on every app start and whenever the token changes. Safe to repeat. A token already registered to another account moves to this one, so a phone handed on stops showing the last person's notifications. Each account keeps its 10 most recently seen phones. The token is never returned; keep the `id` to unregister.",
+        "description": "Records the push token Firebase or Apple gave this install, or refreshes it; send it on every app start and whenever the token changes. Safe to repeat. A token already registered to another account moves to this one, so a phone handed on stops showing the last person's notifications. Each account keeps its 10 most recently seen phones. The phone belongs to the session registering it: when that session ends, by a logout, from another device or everywhere, the phone is unregistered with it. A session already ended is refused (401). The token is never returned; keep the `id` to unregister.",
         "operationId": "register_device_api_v1_me_devices_put",
         "requestBody": {
           "content": {
@@ -26201,7 +26201,7 @@
     },
     "/api/v1/me/devices/{device_id}": {
       "delete": {
-        "description": "Unregisters one of your phones, by the `id` registering it returned. Logging out of a phone does this too, when the app sends its token.",
+        "description": "Unregisters one of your phones, by the `id` registering it returned. Ending the session that registered it does this too.",
         "operationId": "remove_device_api_v1_me_devices__device_id__delete",
         "parameters": [
           {

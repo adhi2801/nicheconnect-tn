@@ -21,11 +21,12 @@ import pytest
 from sqlalchemy import delete, func, select
 
 from app.db.session import SessionLocal
+from app.modules.auth import device_service, sessions
 from app.modules.auth import service as login
-from app.modules.auth import sessions
 from app.modules.auth.exceptions import InvalidToken, SessionNotFound
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.auth_session import AuthSession
+from app.modules.auth.models.device_token import DeviceToken
 from app.modules.me import session_service
 from tests.factories import create_account, unique_test_phone
 from tests.modules.conftest import CONCURRENCY_NOW
@@ -219,4 +220,74 @@ def test_two_requests_ending_one_session_at_once_end_it_once(signed_in, monkeypa
         thread.join()
 
     assert sorted(outcomes) == ["ended", "not_found"]
+    assert _live_sessions(account_id) == 0
+
+
+def _tokens_of(account_id: uuid.UUID) -> int:
+    with SessionLocal() as session:
+        return session.scalar(
+            select(func.count())
+            .select_from(DeviceToken)
+            .where(DeviceToken.account_id == account_id)
+        )
+
+
+@pytest.mark.parametrize("first", ["register", "end"])
+def test_a_phone_registering_as_its_session_ends_is_never_left_behind(
+    signed_in, monkeypatch, first
+):
+    """Either order, the ended session ends up with no phone (D-116)."""
+    account_id, _ = signed_in
+    family_id = _family_of(account_id)
+    keep = device_service._keep_most_recent
+    end_sessions = login.end_sessions
+
+    def held_register(db, account_id):
+        time.sleep(0.3)
+        keep(db, account_id)
+
+    def held_end(db, account_id, now, **kwargs):
+        login.lock_sessions_of(db, account_id)
+        time.sleep(0.3)
+        return end_sessions(db, account_id, now, **kwargs)
+
+    if first == "register":
+        monkeypatch.setattr(device_service, "_keep_most_recent", held_register)
+    else:
+        monkeypatch.setattr(login, "end_sessions", held_end)
+    outcomes: list[str] = []
+
+    def register() -> None:
+        if first == "end":
+            time.sleep(0.1)
+        with SessionLocal() as session:
+            try:
+                device_service.register(
+                    session,
+                    account_id,
+                    token=uuid.uuid4().hex * 2,
+                    platform="android",
+                    app_version=None,
+                    now=LATER,
+                    session_id=family_id,
+                )
+                outcomes.append("registered")
+            except InvalidToken:
+                outcomes.append("refused")
+
+    def end() -> None:
+        if first == "register":
+            time.sleep(0.1)
+        with SessionLocal() as session:
+            sessions.end_one(session, account_id, family_id, LATER)
+            session.commit()
+
+    threads = [threading.Thread(target=register), threading.Thread(target=end)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert outcomes == (["registered"] if first == "register" else ["refused"])
+    assert _tokens_of(account_id) == 0
     assert _live_sessions(account_id) == 0
