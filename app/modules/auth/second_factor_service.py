@@ -25,14 +25,13 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Literal
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.modules.auth import second_factor, second_factor_secrets
 from app.modules.auth import service as login
 from app.modules.auth.exceptions import AccountSuspended
 from app.modules.auth.models.account import Account
-from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.otp_challenge import OtpChallenge
 from app.modules.auth.models.totp_factor import MAX_CONSECUTIVE_FAILURES, TotpFactor
 from app.modules.auth.service import LoginResult
@@ -151,11 +150,7 @@ def issue_ticket(db: Session, account: Account, now: datetime) -> str:
     factor.locked_at = None
     factor.updated_at = now
     # Whoever held a session made with the old authenticator is out.
-    db.execute(
-        update(AuthSession)
-        .where(AuthSession.account_id == account.id, AuthSession.revoked_at.is_(None))
-        .values(revoked_at=now, updated_at=now)
-    )
+    login.end_sessions(db, account.id, now)
     return ticket
 
 

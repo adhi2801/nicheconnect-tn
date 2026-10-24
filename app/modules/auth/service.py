@@ -311,13 +311,53 @@ def count_failed_attempt(challenge: OtpChallenge) -> None:
     challenge.attempts += 1
 
 
-def _revoke_family(db: Session, family_id: uuid.UUID, now: datetime) -> None:
-    """End every session in one login's rotation chain."""
+def lock_sessions_of(db: Session, account_id: uuid.UUID) -> None:
+    """Hold the account's sessions still until the transaction ends (D-114).
+
+    Every refresh and every way of ending a session takes this lock first,
+    so they run one at a time per account. Without it, a refresh holding its
+    token's row while a logout waited on it would add the session's next row
+    after the logout's statement began, and read committed isolation would
+    hide that row from the logout: the logged-out phone kept a working
+    session. `FOR NO KEY UPDATE` on the account row, so rows that only point
+    at the account (a new session's own foreign key) are never held up by it.
+    """
     db.execute(
-        update(AuthSession)
-        .where(AuthSession.family_id == family_id, AuthSession.revoked_at.is_(None))
-        .values(revoked_at=now, updated_at=now)
+        select(Account.id).where(Account.id == account_id).with_for_update(key_share=True)
     )
+
+
+def end_sessions(
+    db: Session,
+    account_id: uuid.UUID,
+    now: datetime,
+    *,
+    family_id: uuid.UUID | None = None,
+) -> int:
+    """End the account's sessions, or one login's (`family_id`). The caller commits.
+
+    Returns how many rows were still active. Locks first (`lock_sessions_of`),
+    so the update, a statement of its own, sees any row a refresh added while
+    it waited.
+    """
+    lock_sessions_of(db, account_id)
+    statement = update(AuthSession).where(
+        AuthSession.account_id == account_id, AuthSession.revoked_at.is_(None)
+    )
+    if family_id is not None:
+        statement = statement.where(AuthSession.family_id == family_id)
+    # SQLAlchemy types Session.execute() as Result[Any], which has no rowcount.
+    # An UPDATE returns a CursorResult at runtime, and that is where rowcount
+    # lives; the cast is type-checker-only and emits no runtime code.
+    result = cast(
+        "CursorResult[Any]", db.execute(statement.values(revoked_at=now, updated_at=now))
+    )
+    return result.rowcount
+
+
+def _revoke_family(db: Session, auth_session: AuthSession, now: datetime) -> None:
+    """End every session in one login's rotation chain."""
+    end_sessions(db, auth_session.account_id, now, family_id=auth_session.family_id)
 
 
 def issue_session(
@@ -386,20 +426,30 @@ def refresh_session(db: Session, refresh_token: str, now: datetime) -> LoginResu
     is revoked and the caller must log in again.
     Raises InvalidToken for unknown, expired, revoked or reused tokens.
     """
-    # Locked so two callers cannot rotate the same token at once.
+    token_hash = hash_refresh_token(refresh_token)
+    account_id = db.scalar(
+        select(AuthSession.account_id).where(AuthSession.token_hash == token_hash)
+    )
+    if account_id is None:
+        db.rollback()
+        raise InvalidToken()
+    # The account's sessions first, as everything that ends one does, then
+    # this token's row, read again under the lock: a logout that ran while
+    # this waited is seen, and two callers cannot rotate one token at once.
+    lock_sessions_of(db, account_id)
     auth_session = db.scalars(
         select(AuthSession)
-        .where(AuthSession.token_hash == hash_refresh_token(refresh_token))
+        .where(AuthSession.token_hash == token_hash)
         .with_for_update()
+        .execution_options(populate_existing=True)
     ).first()
-
-    if auth_session is None:
+    if auth_session is None:  # pragma: no cover - its account went meanwhile
         db.rollback()
         raise InvalidToken()
 
     if auth_session.used_at is not None:
         # Token reuse: assume theft and end every session in the family.
-        _revoke_family(db, auth_session.family_id, now)
+        _revoke_family(db, auth_session, now)
         db.commit()
         logger.warning("auth.refresh_token_reused family_id=%s", auth_session.family_id)
         raise InvalidToken()
@@ -413,14 +463,14 @@ def refresh_session(db: Session, refresh_token: str, now: datetime) -> LoginResu
     account = db.get_one(Account, auth_session.account_id)
     if account.suspended_at is not None:
         # A suspension ends every session; this catches any it missed.
-        _revoke_family(db, auth_session.family_id, now)
+        _revoke_family(db, auth_session, now)
         db.commit()
         raise AccountSuspended.because(account.suspension_reason)
     if account.role == "admin" and auth_session.second_factor_at is None:
         # An admin session from before D-105, or made any way but the
         # two-factor login: the migration ended them all, and this ends any
         # that slipped past it.
-        _revoke_family(db, auth_session.family_id, now)
+        _revoke_family(db, auth_session, now)
         db.commit()
         raise InvalidToken()
     result = issue_session(
@@ -463,7 +513,7 @@ def logout(
         )
     ).first()
     if auth_session is not None:
-        _revoke_family(db, auth_session.family_id, now)
+        _revoke_family(db, auth_session, now)
         if device_token is not None:
             devices.forget_token(db, auth_session.account_id, device_token)
     db.commit()
@@ -474,17 +524,7 @@ def logout_all_sessions(db: Session, account_id: uuid.UUID, now: datetime) -> in
 
     The caller commits, after spending the code that allowed it (item 82).
     """
-    # SQLAlchemy types Session.execute() as Result[Any], which has no rowcount.
-    # An UPDATE returns a CursorResult at runtime, and that is where rowcount
-    # lives; the cast is type-checker-only and emits no runtime code.
-    result = cast(
-        "CursorResult[Any]",
-        db.execute(
-            update(AuthSession)
-            .where(AuthSession.account_id == account_id, AuthSession.revoked_at.is_(None))
-            .values(revoked_at=now, updated_at=now)
-        ),
-    )
+    ended = end_sessions(db, account_id, now)
     # Logged out everywhere means told nowhere: every phone's push stops.
     devices.forget_all(db, account_id)
-    return result.rowcount
+    return ended
