@@ -15,6 +15,10 @@ whole deals, 5 bank bulk transfers of 25 rows, and 30 rounds of rate card
 edits. All from one run, on a developer laptop under Docker Desktop for
 Windows.
 
+## Added 24 October: Passports search engines can read (D-121)
+
+Timed in-process on the seeded database (94 published Passports), indexing on, 100 runs each, nothing written; the script was scratch, not kept: `GET /creators/indexable?limit=100` 11.1 ms p50, 14.9 p95; `GET /creators/by-handle/{handle}` with its structured data 12.6 p50, 16.6 p95. Budget 300. One query a page, measured by `tests/modules/passport/test_findable_passports_api.py`.
+
 ## Added 24 October: look-alike brand names (D-118)
 
 `scripts/measure_performance.py --runs 50 --deals 10` on the seeded database (10 brands, 200 creators, 150 campaigns), every campaign read now carrying each brand's look-alike flag: `GET /campaigns/discover` 84.8 ms p95 (its first run, a cold start, peaked at 463.7), with a city and niche 40.9, `GET /campaigns/{id}` 25.1; every route within budget. The flags cost one query a page, measured by `tests/modules/campaigns/test_brand_name_flag_api.py`. **Not measured:** with thousands of verified brands, which every page reads (`docs/ARCHITECTURE_SCALE.md` S10).

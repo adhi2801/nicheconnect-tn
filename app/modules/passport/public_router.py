@@ -22,19 +22,22 @@ profile only appears here once its owner has turned the Passport on
 """
 
 import hashlib
-from typing import Annotated
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Header, Request, Response, status
+from fastapi import APIRouter, Depends, Header, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.errors import problem_doc
+from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.exceptions import ProfileNotFound
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.schemas import _normalize_handle
-from app.modules.passport import passport_service
+from app.modules.passport import passport_service, structured_data
 from app.modules.passport.schemas import (
+    IndexablePassportRead,
     PublicChannelRead,
     PublicCreatorRead,
     PublicPackageRead,
@@ -63,6 +66,37 @@ def _etag(page: PublicCreatorRead) -> str:
     return '"' + digest[:32] + '"'
 
 
+def _structured_data(
+    creator: Creator,
+    channels: list[CreatorChannel],
+    packages: list[CreatorPackage],
+) -> dict[str, Any] | None:
+    """The Passport as search engines read it (item 85), or None while that is off."""
+    if not settings.passport_indexing:
+        return None
+    prices_public = passport_service.prices_are_public(creator)
+    return structured_data.profile_page(
+        structured_data.PassportFacts(
+            creator_id=creator.id,
+            handle=creator.handle,
+            display_name=creator.display_name,
+            bio=creator.bio,
+            created_at=creator.created_at,
+            # The rule `passport_service.last_modified_sql` applies in SQL.
+            last_modified=structured_data.last_modified(
+                [
+                    creator.updated_at,
+                    creator.passport_published_at,
+                    *(channel.updated_at for channel in channels),
+                    creator.rate_card_public_at if prices_public else None,
+                    *(package.updated_at for package in packages),
+                ]
+            ),
+            channel_urls=[channel.profile_url for channel in channels],
+        )
+    )
+
+
 def _to_public(
     creator: Creator,
     channels: list[CreatorChannel],
@@ -83,6 +117,7 @@ def _to_public(
             for c in channels
         ],
         packages=[PublicPackageRead.model_validate(p) for p in packages],
+        structured_data=_structured_data(creator, channels, packages),
     )
 
 
@@ -140,5 +175,49 @@ def read_public_profile(
         # Unchanged since the reader last saw it: no body to send.
         return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=cache_headers)
 
+    response.headers.update(cache_headers)
+    return page
+
+
+@router.get(
+    "/indexable",
+    response_model=Page[IndexablePassportRead],
+    summary="Every Passport search engines may show",
+    description=(
+        "For the website's sitemap.xml (item 85): each published Passport's "
+        "handle and when what its readers see last changed, newest Passport "
+        "first. Exactly the Passports anyone may read: published by their "
+        "creator, not suspended, not withheld. Readable without logging in. "
+        "Empty until indexing is switched on, once the publish notice says "
+        "search engines will show the Passport. Paginated: `limit` (default "
+        "20, at most 100) and `cursor`. Cached for 5 minutes, with an ETag."
+    ),
+    responses={
+        422: problem_doc("`limit` is out of range, or `cursor` is not one of ours"),
+        429: problem_doc("Too many requests; see the Retry-After header"),
+    },
+)
+@rate_limit(PUBLIC_READ_LIMIT)
+def list_indexable_passports(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+    limit: Annotated[int, Query(ge=1, le=MAX_LIMIT)] = DEFAULT_LIMIT,
+    cursor: Annotated[str | None, Query(description="From a previous page")] = None,
+    if_none_match: Annotated[str | None, Header()] = None,
+) -> Response | Page[IndexablePassportRead]:
+    """Anyone may call this. Nothing here depends on who is asking."""
+    found = passport_service.indexable_passports(db, limit=limit, cursor=cursor)
+    page = Page[IndexablePassportRead](
+        items=[
+            IndexablePassportRead(handle=item.handle, last_modified=item.last_modified)
+            for item in found.rows
+        ],
+        next_cursor=found.next_cursor,
+    )
+    etag = '"' + hashlib.sha256(page.model_dump_json().encode()).hexdigest()[:32] + '"'
+    cache_headers = {"Cache-Control": f"public, max-age={CACHE_SECONDS}", "ETag": etag}
+    if if_none_match == etag:
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=cache_headers)
     response.headers.update(cache_headers)
     return page

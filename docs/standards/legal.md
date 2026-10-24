@@ -48,6 +48,7 @@ Status words in this file:
 
 | Duty | What we do | Status |
 |---|---|---|
+| Search engines showing a published Passport (item 85, D-121) | The sitemap feed and the Passport's structured data are built and stay off (`PASSPORT_INDEXING`) until the publish notice says the Passport may appear in search engines and AI search. Unpublishing removes it from the feed at once; search engines drop it on their next visit | Built (off); **Confirm** (the notice's wording) |
 | Notice before consent, in plain English, listing the data, the purpose and how to withdraw (Rule 3) | Every consent records the notice version it answered (D-036, D-055, D-085). The wording itself comes from the validation pack | Built (mechanism); **Confirm** (wording) |
 | Consent free, specific, withdrawable as easily as given | A withdraw endpoint for every consent. A new UPI ID waiting its 24 hours (D-107) carries its own consent and is withdrawn with the ID, or cancelled alone, never needing a code | Built for the Passport, rate card and UPI ID; **Confirm** the UPI notice says a new ID waits 24 hours |
 | Reasonable security safeguards (Rule 6) | `security.md`, ASVS level 2 | Owed: the items `security.md` lists |

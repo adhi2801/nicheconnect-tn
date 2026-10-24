@@ -1510,3 +1510,17 @@ Newest entries at the bottom.
   2. `POST /api/v1/me/sessions/{session_id}/acknowledge` (204); 409 `acknowledge_from_an_earlier_session` from the session itself, a later one, or a token naming no session; 404 for another account's or an ended one.
   3. An acknowledged sign-in leaves the attention list; the session stays listed, with `sign_in_acknowledged_at`, and can still be ended.
   4. A new device's own list keeps showing an older device's sign-in for its 7 days, since it cannot vouch for an earlier one. That is the price of the rule, and harmless: it is the owner's own device.
+
+## D-121: Published Passports offered to search engines, switched off until the consent notice says so (item 85)
+- Date: 2026-10-24
+- Approved by: Adhi, in this session: "yes", to the proposal with its ten dimensions, the switch and its Infrastructure gate. **Not reviewed by the other founder** (D-051).
+- Context: a Passport is the creator's public record, but nothing helped search engines or AI search find or read it; Interview Coach AI, the founder's earlier project, renders in the browser and is invisible to them (measured 1 October). Read 24 October 2026: Google's ProfilePage structured data (for profiles of people affiliated with the site; name required; handle, identifier, description, dates and `sameAs` recommended; statistics only from the hosting platform) and its sitemap guidance (50,000 URLs a file; `lastmod` used only when accurate; `priority` and `changefreq` ignored).
+- Options considered: A) the feed, the structured data and `noindex` on the API, behind a switch that stays off until the publish notice mentions search engines; B) the same, on at once.
+- Chosen: A.
+- Reason: making a Passport findable by search engines is a wider use than a link in a bio, so the notice the creator consents to should say so (legal.md section 1, rule 1: a Confirm item that decides wording ships behind a setting that stays off).
+- Consequences / follow-ups:
+  1. `GET /api/v1/creators/indexable`: every Passport anyone may read (published, not suspended, not withheld), newest first, keyset pages, one query, cached 5 minutes with an ETag; each with its handle and when what its readers see last changed (the profile, its publishing, its channels and, while prices are public, its packages and their publishing). A deleted channel or package does not move it.
+  2. The public Passport gains `structured_data`, a schema.org ProfilePage of the published name, handle, creator id, bio, channel links and dates; never contact details or follower figures. The feed's and the Passport's times are held equal by a test.
+  3. `X-Robots-Tag: noindex` on every API answer, errors included.
+  4. `PASSPORT_INDEXING` (default off): while off the feed is empty and `structured_data` null. Infra passes nothing yet; switching on is a founder step once the validation pack gives the wording.
+  5. The website renders the pages, `sitemap.xml` and `robots.txt`, and embeds the markup with each page's URL: frontend work.
