@@ -60,7 +60,7 @@ dependencies = [
     # Re-encodes every uploaded image so no GPS location or hidden data
     # reaches a brand (D-065). Security releases are frequent: the dependency
     # audit fails CI until it is upgraded, which is the point.
-    "pillow==12.3.0",
+    "pillow==13.0.0",
     # Reads the numbers on cleaned proof screenshots, in a background job only
     # (D-070). Built on httpx2 2.x, the same client the app pins above.
     "anthropic==1.11.0",
