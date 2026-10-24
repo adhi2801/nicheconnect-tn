@@ -42,3 +42,10 @@ class SessionRead(BaseModel):
         )
     )
     is_current: bool = Field(description="True for the session making this request")
+    sign_in_acknowledged_at: datetime | None = Field(
+        default=None,
+        description=(
+            "When you said this sign-in was yours, from a device signed in before "
+            "it; it then leaves the attention list. Null until then"
+        ),
+    )

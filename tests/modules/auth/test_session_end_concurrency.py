@@ -291,3 +291,34 @@ def test_a_phone_registering_as_its_session_ends_is_never_left_behind(
     assert outcomes == (["registered"] if first == "register" else ["refused"])
     assert _tokens_of(account_id) == 0
     assert _live_sessions(account_id) == 0
+
+
+def test_an_acknowledgement_at_the_moment_of_a_refresh_is_carried_on(
+    signed_in, slow_refresh
+):
+    """D-120: the refresh's new row must not lose the owner's "it was me"."""
+    account_id, refresh_token = signed_in
+    later_family = _family_of(account_id)
+    with SessionLocal() as session:
+        earlier_family = uuid.uuid4()
+        account = session.get_one(Account, account_id)
+        login.issue_session(
+            session, account, earlier_family, CONCURRENCY_NOW - timedelta(hours=1)
+        )
+        session.commit()
+
+    def end() -> None:
+        with SessionLocal() as session:
+            sessions.acknowledge(session, account_id, later_family, earlier_family, LATER)
+            session.commit()
+
+    assert _race(refresh_token, end) == []
+    with SessionLocal() as session:
+        live = session.scalars(
+            select(AuthSession).where(
+                AuthSession.family_id == later_family,
+                AuthSession.used_at.is_(None),
+                AuthSession.revoked_at.is_(None),
+            )
+        ).one()
+        assert live.sign_in_acknowledged_at is not None

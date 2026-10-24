@@ -92,3 +92,18 @@ def log_out_everywhere(
     )
     db.commit()
     return ended
+
+
+def acknowledge(
+    db: Session,
+    account: Account,
+    session_id: uuid.UUID,
+    current_session_id: uuid.UUID | None,
+    now: datetime,
+) -> None:
+    """Say a sign-in was yours, from a session that signed in before it (D-120). Commits.
+
+    Raises SessionNotFound and AcknowledgeNotAllowed.
+    """
+    sessions.acknowledge(db, account.id, session_id, current_session_id, now)
+    db.commit()
