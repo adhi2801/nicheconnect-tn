@@ -36,6 +36,7 @@ from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.models.totp_factor import TotpFactor
+from app.modules.campaigns import offer_service as quote_offers
 from app.modules.campaigns import service as campaigns
 from app.modules.deal_memo import service as deal_memos
 from app.modules.disputes import service as disputes
@@ -413,6 +414,7 @@ def collect_sections(db: Session, account: Account) -> list[ExportedSection]:
         *takedowns.export_for_account(db, account.id),
         *brand_domains.export_for_account(db, account.id),
         *campaigns.export_for_account(db, account.id),
+        *quote_offers.export_for_account(db, account.id),
         *deal_memos.export_for_account(db, account.id),
         *payments.export_for_account(db, account.id),
         *upi.export_for_account(db, account.id),
@@ -485,6 +487,7 @@ def exported_tables() -> frozenset[str]:
         | takedowns.EXPORTED_TABLES
         | brand_domains.EXPORTED_TABLES
         | campaigns.EXPORTED_TABLES
+        | quote_offers.EXPORTED_TABLES
         | deal_memos.EXPORTED_TABLES
         | notifications.EXPORTED_TABLES
         | notification_preferences.EXPORTED_TABLES

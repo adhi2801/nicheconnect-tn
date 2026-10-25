@@ -56,6 +56,7 @@ REFUSING = {
     "de322e936678": "notices telling people one of their sessions was ended",
     "82bb81b5eed4": "admins' clearances of look-alike brand names, and their log entries",
     "b7e026caa4a9": "accounts waiting to be deleted, or deleted, which lack a number",
+    "8b6662af4839": "counter-offers on quotes, both sides' record of the negotiation",
 }
 
 
@@ -486,3 +487,36 @@ def test_accounts_asked_to_be_deleted(db):
     assert f"{before + 1} accounts have asked to be deleted" in refusal(
         db, "b7e026caa4a9"
     )
+
+
+def test_counter_offers(client, db, clock):
+    before = count(db, "SELECT count(*) FROM quote_offer")
+    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    campaign_id = client.post(
+        "/api/v1/campaigns",
+        json={
+            "title": "Pongal sweets launch",
+            "description": "Three reels featuring our new sweet box.",
+            "campaign_type": "paid",
+            "budget_min_paise": 500_000,
+            "budget_max_paise": 1_500_000,
+            "cities": ["Madurai"],
+            "niches": ["food"],
+            "deliverables": "3 Instagram reels",
+        },
+        headers=brand.headers,
+    ).json()["id"]
+    client.post(f"/api/v1/campaigns/{campaign_id}/publish", headers=brand.headers)
+    application_id = client.post(
+        f"/api/v1/campaigns/{campaign_id}/applications",
+        json={"pitch": "I run a Madurai street-food page with 12,000 followers."},
+        headers=creator.headers,
+    ).json()["id"]
+    offered = client.post(
+        f"/api/v1/applications/{application_id}/offers",
+        json={"amount_paise": 600_000},
+        headers=brand.headers,
+    )
+    assert offered.status_code == 201, offered.text
+
+    assert f"{before + 1} quote offers exist" in refusal(db, "8b6662af4839")

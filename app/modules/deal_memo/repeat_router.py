@@ -10,6 +10,7 @@ from app.core.idempotent_route import IdempotentRoute
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import get_now
+from app.modules.campaigns import offer_service as offers
 from app.modules.campaigns.dependencies import CurrentBrandProfile
 from app.modules.campaigns.schemas import ApplicationRead, RepeatCreate
 from app.modules.deal_memo import repeat_service
@@ -67,4 +68,4 @@ def repeat_deal(
         db, memo, brand, body.campaign_id, body.note, now
     )
     response.headers["Location"] = f"/api/v1/applications/{invitation.id}"
-    return ApplicationRead.model_validate(invitation)
+    return offers.read_application(db, invitation)

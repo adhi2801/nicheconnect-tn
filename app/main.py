@@ -34,6 +34,7 @@ from app.modules.auth.passkey_router import router as passkey_login_router
 from app.modules.auth.router import router as auth_router
 from app.modules.campaigns.application_router import router as applications_router
 from app.modules.campaigns.invitation_router import router as invitations_router
+from app.modules.campaigns.offer_router import router as offers_router
 from app.modules.campaigns.report_router import router as campaign_report_router
 from app.modules.campaigns.router import router as campaigns_router
 from app.modules.deal_memo.calendar_router import router as deal_calendar_router
@@ -183,6 +184,7 @@ app.include_router(campaigns_router)
 app.include_router(campaign_report_router)
 app.include_router(applications_router)
 app.include_router(invitations_router)
+app.include_router(offers_router)
 app.include_router(notifications_router)
 app.include_router(devices_router)
 app.include_router(notification_preferences_router)

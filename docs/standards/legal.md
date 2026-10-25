@@ -112,7 +112,7 @@ Notified 30 November 2023. The Consumer Protection Authority's advisory of June 
 | Forced action | No feature requires an unrelated action (sharing contacts, publishing a Passport) to use another |
 | Subscription trap | When we charge, cancelling is one action, as easy as subscribing, and no card is taken for a "free" trial |
 | Interface interference | The choice that is better for us is never styled to look like the only choice |
-| Bait and switch | The terms shown are the terms applied; a memo once accepted does not change, and the deal record proves it (D-057) |
+| Bait and switch | The terms shown are the terms applied; a memo once accepted does not change, and the deal record proves it (D-057). A figure agreed through a counter-offer is shown beside a different memo fee, so the creator sees any change before accepting (D-123) |
 | Drip pricing | Every charge is shown before commitment, in full, never revealed at the last step |
 | Disguised advertisement | Anything paid for is labelled; creators' content carries its ad disclosure (section 3.7) |
 | **Nagging** | Notifications obey each person's preferences and quiet hours (D-079). A reminder repeats only on a real change or a real deadline |

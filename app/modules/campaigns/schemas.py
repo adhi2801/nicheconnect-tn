@@ -26,6 +26,11 @@ from app.modules.campaigns.models import (
     REJECTION_REASONS,
     TITLE_MAX_LENGTH,
 )
+from app.modules.campaigns.offer_models import (
+    OFFER_NOTE_MAX_LENGTH,
+    OFFER_OUTCOMES,
+    OFFER_SIDES,
+)
 from app.modules.profiles.schemas import BrandNameFlagRead, VerifiedDomainRead
 
 CampaignType = Literal["paid", "barter", "commission", "local_business"]
@@ -270,14 +275,71 @@ class InvitationDecline(BaseModel):
     reason: DeclineReason
 
 
-class ApplicationRead(BaseModel):
-    """A creator on a campaign, whether they applied or were invited.
+# --- counter-offers on a quote (item 44, D-123) -------------------------------
 
-    `origin` says which. An invitation has no `pitch`; it may carry the
-    brand's `invitation_note`. `repeat_of_application_id` names the earlier
-    deal a repeat invitation repeats. Clients must tolerate statuses they do
-    not know: `invited` and `declined` were added on 10 October 2026.
-    """
+OfferSide = Literal["brand", "creator"]
+OfferOutcome = Literal["accepted", "declined", "replaced", "withdrawn"]
+
+ensure_same_values("OfferSide", OfferSide, OFFER_SIDES)
+ensure_same_values("OfferOutcome", OfferOutcome, OFFER_OUTCOMES)
+
+OfferNote = Annotated[
+    str,
+    Field(
+        min_length=1,
+        max_length=OFFER_NOTE_MAX_LENGTH,
+        description="A few words beside the figure, shown to the other side",
+        examples=["Two reels at this fee, or three at 9,000."],
+    ),
+]
+
+
+class OfferCreate(BaseModel):
+    """A figure named on a waiting application, by either side."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    amount_paise: Paise
+    note: OfferNote | None = None
+
+
+class OfferRead(BaseModel):
+    """One offer, and how it was answered."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    application_id: uuid.UUID
+    side: OfferSide = Field(description="Who offered it")
+    amount_paise: int
+    currency: Literal["INR"]
+    note: str | None
+    made_at: datetime
+    outcome: OfferOutcome | None = Field(
+        description=(
+            "Null while it waits for the other side. `replaced`: they answered "
+            "with an offer of their own. `withdrawn`: taken back, or closed "
+            "when the application ended. Clients tolerate outcomes they do not know"
+        )
+    )
+    answered_at: datetime | None
+
+    @computed_field(  # type: ignore[prop-decorator]  # pydantic documents this
+        description=(
+            "Warnings on the note, worked out on every read: a request for "
+            "money from a creator, or contact details before a deal is agreed. "
+            "Show each beside the note; never hide it"
+        )
+    )
+    @property
+    def text_flags(self) -> list[FieldFlag]:
+        # A brand's words reach a creator: money and contact. A creator
+        # naming their own price is ordinary, so only contact.
+        return field_flags({"note": self.note}, money=self.side == "brand", contact=True)
+
+
+class ApplicationFields(BaseModel):
+    """What an application says by itself; `ApplicationRead` adds its negotiation."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -328,6 +390,46 @@ class ApplicationRead(BaseModel):
             ),
             *field_flags({"pitch": self.pitch}, money=False, contact=before_a_deal),
         ]
+
+
+class ApplicationRead(ApplicationFields):
+    """A creator on a campaign, whether they applied or were invited.
+
+    `origin` says which. An invitation has no `pitch`; it may carry the
+    brand's `invitation_note`. `repeat_of_application_id` names the earlier
+    deal a repeat invitation repeats. Clients must tolerate statuses they do
+    not know: `invited` and `declined` were added on 10 October 2026.
+    `open_offer` and `agreed_amount_paise` were added on 25 October 2026.
+    """
+
+    open_offer: OfferRead | None = Field(
+        description=(
+            "A counter-offer waiting for an answer (item 44): the side that did "
+            "not make it accepts, declines or answers with its own at "
+            "`/api/v1/applications/{id}/offers`. While one waits, the "
+            "application cannot be accepted"
+        )
+    )
+    agreed_amount_paise: int | None = Field(
+        description=(
+            "The figure both sides agreed through an offer, in paise. It "
+            "pre-fills the memo's fee; the memo is still the contract. Null when "
+            "none was agreed"
+        )
+    )
+
+
+def to_application_read(
+    application: object, open_offer: object | None, agreed_amount_paise: int | None
+) -> ApplicationRead:
+    """An application with its negotiation, as `offer_service.summaries_for` finds it."""
+    return ApplicationRead(
+        **ApplicationFields.model_validate(application).model_dump(),
+        open_offer=OfferRead.model_validate(open_offer)
+        if open_offer is not None
+        else None,
+        agreed_amount_paise=agreed_amount_paise,
+    )
 
 
 class ApplicationFeedbackRead(BaseModel):

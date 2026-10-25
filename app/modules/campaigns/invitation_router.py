@@ -17,6 +17,7 @@ from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import get_now
 from app.modules.campaigns import invitation_service as invitations
+from app.modules.campaigns import offer_service as offers
 from app.modules.campaigns.dependencies import (
     BrandApplication,
     CreatorApplication,
@@ -90,7 +91,7 @@ def invite_creator(
 ) -> ApplicationRead:
     invitation = invitations.invite_creator(db, campaign, body.creator_id, body.note, now)
     response.headers["Location"] = f"/api/v1/applications/{invitation.id}"
-    return ApplicationRead.model_validate(invitation)
+    return offers.read_application(db, invitation)
 
 
 @router.post(
@@ -111,9 +112,7 @@ def accept_invitation(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> ApplicationRead:
-    return ApplicationRead.model_validate(
-        invitations.accept_invitation(db, invitation, now)
-    )
+    return offers.read_application(db, invitations.accept_invitation(db, invitation, now))
 
 
 @router.post(
@@ -137,8 +136,8 @@ def decline_invitation(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> ApplicationRead:
-    return ApplicationRead.model_validate(
-        invitations.decline_invitation(db, invitation, body.reason, now)
+    return offers.read_application(
+        db, invitations.decline_invitation(db, invitation, body.reason, now)
     )
 
 
@@ -163,6 +162,6 @@ def withdraw_invitation(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> ApplicationRead:
-    return ApplicationRead.model_validate(
-        invitations.withdraw_invitation(db, invitation, now)
+    return offers.read_application(
+        db, invitations.withdraw_invitation(db, invitation, now)
     )

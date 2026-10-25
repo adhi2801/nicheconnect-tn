@@ -25,6 +25,7 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.modules.campaigns import offer_service as offers
 from app.modules.campaigns.models import Application, Campaign
 
 # What ends, and how: the status each waiting status becomes.
@@ -85,19 +86,23 @@ def end_for_brand(
     for campaign in campaigns:
         campaign.status = CAMPAIGN_LEAVING[campaign.status]
         campaign.updated_at = now
-    _end(applications, BRAND_LEAVING, now)
+    _end(db, applications, BRAND_LEAVING, now)
 
 
-def end_for_creator(applications: list[Application], now: datetime) -> None:
+def end_for_creator(db: Session, applications: list[Application], now: datetime) -> None:
     """Withdraw the creator's waiting applications, decline waiting invitations."""
-    _end(applications, CREATOR_LEAVING, now)
+    _end(db, applications, CREATOR_LEAVING, now)
 
 
-def _end(applications: list[Application], moves: dict[str, str], now: datetime) -> None:
-    for application in applications:
-        new_status = moves.get(application.status)
-        if new_status is None:
-            continue
+def _end(
+    db: Session, applications: list[Application], moves: dict[str, str], now: datetime
+) -> None:
+    ending = [application for application in applications if application.status in moves]
+    # Their open counter-offers end with them, withdrawn (item 44, D-123).
+    if ending:
+        offers.close_open(db, [a.id for a in ending], None, now)
+    for application in ending:
+        new_status = moves[application.status]
         application.status = new_status
         application.decline_reason = (
             LEAVING_DECLINE_REASON if new_status == "declined" else None
