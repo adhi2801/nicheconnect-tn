@@ -1559,3 +1559,12 @@ Newest entries at the bottom.
   6. 100 offers a day per account (trust-and-safety.md rule 2), and blocks, takedowns, suspensions and deletions end a negotiation as they end anything new.
   7. Migration `8b6662af4839`: `quote_offer`, new and empty; the two allowed-value lists widened, staged; its downgrade refuses while any offer exists. Held on deletion as a deal record (D-122's registry).
   8. Item 87 (a brand's median days to pay) was found already built by D-027 and D-034, in the brand payment record that matching shows creators; the backlog now says so.
+
+## D-124: Three advisories fixed in packages the served app does not install
+- Date: 2026-10-25
+- Approved by: Adhi, in this session, choosing "fix all three". **Not reviewed by the other founder** (D-051).
+- Context: pushing item 44, GitHub reported 5 Dependabot advisories on `main` (1 critical, 1 high, 3 low). CI's audit was clean because it checks only what the app installs; an audit of every dependency group found 6 advisories in 3 transitive packages: `filelock` 4.0.8 and `setuptools` 84.0.0, both through `torch` and `sentence-transformers` (the `ml` group, which the embeddings image installs, D-052), and `brotli` 1.2.0 through Locust (the `load` group, laptop only).
+- Options considered: A) raise all three to their first fixed versions in `uv.lock`; B) only the two the embeddings image carries; C) leave them.
+- Chosen: A, to exactly the first fixed versions the advisories name (`filelock` 4.2.1, `setuptools` 84.1.0, `brotli` 1.2.1), not the newest releases `uv` would pick, which have had less time to settle (D-047).
+- Reason: D-047 says security fixes come at once; these are compatible patch and minor releases of tools already approved, and `pyproject.toml` does not change.
+- Consequences / follow-ups: (1) Every group audits clean (`torch`'s CPU build is not on PyPI and is skipped, as before). (2) **A gap named:** CI audits only the app's own packages and only reports the embeddings image's findings, so advisories in the `ml` and `load` groups never turn CI red; GitHub's alert was the only signal. Widening the audit to every group is a CI change, an Infrastructure gate, proposed separately rather than slipped in here.
