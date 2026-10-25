@@ -117,6 +117,7 @@ BODIES: dict[str, dict[str, Any]] = {
     "ApplicationReject": {"reason": "budget_mismatch"},
     "InvitationCreate": {"creator_id": "{creator_id}"},
     "InvitationDecline": {"reason": "timing"},
+    "OfferCreate": {"amount_paise": 750_000},
     "MemoCreate": {
         "deliverables": "3 Instagram reels.",
         "fee_amount_paise": 800_000,
@@ -221,6 +222,12 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
     invitation_id = client.post(
         f"{CAMPAIGNS_URL}/{second}/invitations",
         json={"creator_id": str(creator_id)},
+        headers=brand.headers,
+    ).json()["id"]
+    # A counter-offer on that invitation, for the offer routes (item 44).
+    offer_id = client.post(
+        f"/api/v1/applications/{invitation_id}/offers",
+        json={"amount_paise": 700_000},
         headers=brand.headers,
     ).json()["id"]
 
@@ -335,6 +342,7 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
         "proof_id": proof_id,
         "file_id": file_id,
         "invitation_id": invitation_id,
+        "offer_id": offer_id,
         "notification_id": notification_id,
         "device_id": device_id,
         "block_id": block_id,
@@ -359,8 +367,9 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
 
 def fill(route: APIRoute, ids: dict[str, str]) -> str:
     path = route.path
-    if "invitation" in path:
-        # The invitation routes act on the invited application.
+    if "invitation" in path or "/offers" in path:
+        # The invitation routes act on the invited application, and so do
+        # the offer routes: its offer is the one that waits.
         path = path.replace("{application_id}", ids["invitation_id"])
     if path.endswith("/pay-details"):
         # Pay details close once a payment is marked sent: an unpaid deal.

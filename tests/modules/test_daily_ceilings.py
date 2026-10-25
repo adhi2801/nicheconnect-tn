@@ -17,6 +17,7 @@ REACH = (
     "app.modules.campaigns.invitation_router.invite_creator",
     "app.modules.deal_memo.repeat_router.repeat_deal",
     "app.modules.campaigns.application_router.apply_to_campaign",
+    "app.modules.campaigns.offer_router.make_offer",
     "app.modules.campaigns.router.create_campaign",
     "app.modules.admin.report_router.file_report",
     "app.modules.disputes.router.open_dispute",

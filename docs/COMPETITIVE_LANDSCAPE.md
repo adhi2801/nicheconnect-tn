@@ -116,6 +116,7 @@ Status checked against the code, 10 October 2026.
 | Ours | Status | Why nobody else has it |
 |---|---|---|
 | **Brand payment record**: on-time share, median days to pay, unpaid deals, and debts owed now that "new" cannot hide | Built (D-034) | Platforms that move money have no reason to show a brand's record. Platforms that don't have no data |
+| **Counter-offers on the record**: both sides name a figure, 3 each, the agreed one carried into the memo and shown beside any change | Built (D-123) | Upfluence (rework of 20 February 2026) lets creators counter without declining; JoinBrands only higher-level creators, capped at 5x; neither carries the figure into a contract with the change shown, and Collabstr and TikTok One leave it to chat (read 25 October 2026) |
 | **Creator delivery record**: delivered, on time, disclosure confirmed, no-shows counted by the calendar | Built (D-038, D-039) | Collabstr has star reviews, which are opinions. Nobody records what actually happened |
 | **A deal record nobody can quietly change**: append-only, chained, stamped daily by outside timestamp authorities, checkable by anyone with the export | Built (D-057, D-060) | Every competitor's history is rows it can edit |
 | **Proof as files, cleaned of location and hidden data, sealed in the record** | Built (D-065, D-066, D-067) | Others keep files as uploaded, or keep links that die with the post |

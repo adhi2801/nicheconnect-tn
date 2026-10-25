@@ -428,3 +428,37 @@ def test_the_brand_lookup_is_tied_to_each_campaign():
 
     assert "brand.id = campaign.brand_id" in sql
     assert "FROM brand, campaign" not in sql
+
+
+@pytest.mark.parametrize("blocker", ["brand", "creator"])
+def test_no_counter_offer_across_a_block(client, db, brand, creator, blocker):
+    """Item 44: an application made before the block takes no offer either way,
+    and an open offer cannot be accepted; saying no stays open to both."""
+    from tests.modules.campaigns.test_offer_api import apply, made, offers_url
+
+    application_id = apply(client, brand, creator)
+    offer_id = made(client, brand, application_id, 400_000)
+    brand_id, creator_id = ids(db, brand, creator)
+    if blocker == "creator":
+        placed = client.post(URL, json={"brand_id": brand_id}, headers=creator.headers)
+    else:
+        placed = client.post(URL, json={"creator_id": creator_id}, headers=brand.headers)
+    assert placed.status_code == 201, placed.text
+
+    for user in (brand, creator):
+        response = client.post(
+            offers_url(application_id),
+            json={"amount_paise": 500_000},
+            headers=user.headers,
+        )
+        assert response.status_code == 404
+        assert response.json()["code"] == "application_not_found"
+    accepted = client.post(
+        f"{offers_url(application_id)}/{offer_id}/accept", headers=creator.headers
+    )
+    declined = client.post(
+        f"{offers_url(application_id)}/{offer_id}/decline", headers=creator.headers
+    )
+
+    assert accepted.status_code == 404
+    assert declined.status_code == 200, declined.text

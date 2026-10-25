@@ -22,7 +22,7 @@ Three things it does **not** mean:
 
 **Measured on 14 October 2026:** 2,985 tests; coverage 98.55% counting branches when last measured that day, before its last three changes, with CI holding the floors on every run (`docs/standards/testing.md` section 7); CI green on `main` (`d6a86b8`, every job): the secret scan, the module layers, migration linting and round trip, the release step, the suite run as the app's own login and then the owner's tests, coverage, API fuzzing, the dependency and image scans, and the infrastructure check.
 
-**Open in section 3: 57 items** (68 on 14 October; item 51 built on 15 October, items 52 and 101 on 16 October, items 74, 82 and 80 on 17 October, item 79 on 18 October, items 81, 75 and 85 on 24 October, item 6 on 25 October). 24 wait on something outside the code or on Erode Harish: the name and domain (4, 10), the Meta app (29 to 31, 67, 78), the validation pack (33, 39), the lawyer or CA (35, 50, 76), the MSG91 template (62), results data (83, 86), founders' decisions (7, 8, 13, 38, 41, 46, 48, 61, 72). **34 need only an approval**, among them counter-offers (44), campaign alerts (43) and a brand's days to pay (87). Section 4 holds the 9 that wait on someone outside.
+**Open in section 3: 55 items** (68 on 14 October; item 51 built on 15 October, items 52 and 101 on 16 October, items 74, 82 and 80 on 17 October, item 79 on 18 October, items 81, 75 and 85 on 24 October, items 6 and 44 on 25 October, and item 87 found built since 20 September). 24 wait on something outside the code or on Erode Harish: the name and domain (4, 10), the Meta app (29 to 31, 67, 78), the validation pack (33, 39), the lawyer or CA (35, 50, 76), the MSG91 template (62), results data (83, 86), founders' decisions (7, 8, 13, 38, 41, 46, 48, 61, 72). **31 need only an approval**, among them campaign alerts (43). Section 4 holds the 9 that wait on someone outside.
 
 **Built and tested on `main`:**
 - before 1 October: Phases A, B and D of the backlog, C1 to C4, E3 and E4 (`docs/PRODUCT_BACKLOG.md`), creator search, the admin side, results read from proof (D-070, switched off), the deal record with its daily outside timestamp, proof files, and AWS described as code;
@@ -108,7 +108,7 @@ Built already from the same list: deal stage and campaign summary (D-076), the p
 | 40 | A campaign brief from a few sentences | |
 | 41 | An MCP server for brands' and creators' own AI assistants | Security; after 11 |
 | 43 | Campaign alerts for creators | Database |
-| 44 | Counter-offers on quotes | Database |
+| 44 | Counter-offers on quotes | Database · **Built 25 October (D-123)**: either side of a waiting application names a figure at `POST /api/v1/applications/{id}/offers`; the other accepts, declines or counters; at most 3 each, one open at a time, none once agreed; the application cannot be accepted while one waits; an agreed figure pre-fills the memo's fee and is shown beside a different one |
 | 46 | An agency workspace | Founders, security, database |
 | 48 | Readiness for ISO 27001 or SOC 2 | Founders |
 | 49 | A public status page and service levels | Infrastructure |
@@ -190,7 +190,7 @@ Approved by Adhi on 12 October: "I need them in the best way possible". Each was
 | 84 | A free quarterly city rate report from anonymous figures (novelty 4) | We hold asking and agreed prices | Copy |
 | 85 | Search-engine-ready public pages: a sitemap and structured data | Reach from Google and AI search | None · **Built 24 October (D-121), switched off**: `GET /api/v1/creators/indexable` feeds the website's sitemap with every Passport anyone may read and when it last changed; each Passport carries schema.org ProfilePage JSON-LD of its published fields; no API answer is indexed itself (`X-Robots-Tag: noindex`). `PASSPORT_INDEXING` turns it on once the publish notice says search engines will show the Passport (legal.md 3.1, Confirm). The pages and sitemap.xml are the website's |
 | 86 | A creator's results against the city and niche median | From sealed results, not bought data | After results data |
-| 87 | A brand's median days to pay, from the records | Answers TikTok's One Pay without holding money | Payment logic |
+| 87 | A brand's median days to pay, from the records | Answers TikTok's One Pay without holding money | Payment logic · **Built 20 September (D-027, D-034)**, found on 25 October: `median_days_to_pay` is in the brand payment record (`GET /api/v1/brands/{brand_id}/reliability`), withheld below three deals, and matching shows it to creators beside each campaign. Listed here later without being marked |
 
 **Running it**
 

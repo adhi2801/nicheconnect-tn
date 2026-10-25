@@ -926,8 +926,20 @@
         "type": "object"
       },
       "ApplicationRead": {
-        "description": "A creator on a campaign, whether they applied or were invited.\n\n`origin` says which. An invitation has no `pitch`; it may carry the\nbrand's `invitation_note`. `repeat_of_application_id` names the earlier\ndeal a repeat invitation repeats. Clients must tolerate statuses they do\nnot know: `invited` and `declined` were added on 10 October 2026.",
+        "description": "A creator on a campaign, whether they applied or were invited.\n\n`origin` says which. An invitation has no `pitch`; it may carry the\nbrand's `invitation_note`. `repeat_of_application_id` names the earlier\ndeal a repeat invitation repeats. Clients must tolerate statuses they do\nnot know: `invited` and `declined` were added on 10 October 2026.\n`open_offer` and `agreed_amount_paise` were added on 25 October 2026.",
         "properties": {
+          "agreed_amount_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The figure both sides agreed through an offer, in paise. It pre-fills the memo's fee; the memo is still the contract. Null when none was agreed",
+            "title": "Agreed Amount Paise"
+          },
           "campaign_id": {
             "format": "uuid",
             "title": "Campaign Id",
@@ -994,6 +1006,17 @@
               }
             ],
             "title": "Invitation Note"
+          },
+          "open_offer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OfferRead"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A counter-offer waiting for an answer (item 44): the side that did not make it accepts, declines or answers with its own at `/api/v1/applications/{id}/offers`. While one waits, the application cannot be accepted"
           },
           "origin": {
             "enum": [
@@ -1118,6 +1141,8 @@
           "first_answered_at",
           "created_at",
           "updated_at",
+          "open_offer",
+          "agreed_amount_paise",
           "text_flags"
         ],
         "title": "ApplicationRead",
@@ -5482,6 +5507,18 @@
             ],
             "title": "Accepted At"
           },
+          "agreed_amount_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The figure both sides agreed through a counter-offer on the application (item 44), in paise; null when none was. It pre-filled `fee_amount_paise`. When the two differ, show both: the creator accepts the memo's fee, so they see the change before they do",
+            "title": "Agreed Amount Paise"
+          },
           "application_id": {
             "format": "uuid",
             "title": "Application Id",
@@ -5699,6 +5736,7 @@
           "change_request_message",
           "created_at",
           "updated_at",
+          "agreed_amount_paise",
           "text_flags"
         ],
         "title": "MemoRead",
@@ -5843,6 +5881,18 @@
               }
             ],
             "title": "Accepted At"
+          },
+          "agreed_amount_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The figure both sides agreed through a counter-offer on the application (item 44), in paise; null when none was. It pre-filled `fee_amount_paise`. When the two differ, show both: the creator accepts the memo's fee, so they see the change before they do",
+            "title": "Agreed Amount Paise"
           },
           "application_id": {
             "format": "uuid",
@@ -6095,6 +6145,7 @@
           "change_request_message",
           "created_at",
           "updated_at",
+          "agreed_amount_paise",
           "stage",
           "waiting_on",
           "has_open_dispute",
@@ -6336,11 +6387,15 @@
                 "session_ended",
                 "deletion_requested",
                 "deletion_cancelled",
-                "deletion_held_by_deals"
+                "deletion_held_by_deals",
+                "offer_received",
+                "offer_accepted",
+                "offer_declined",
+                "offer_withdrawn"
               ],
               "type": "string"
             },
-            "maxItems": 48,
+            "maxItems": 52,
             "title": "Muted Types",
             "type": "array"
           },
@@ -6440,7 +6495,11 @@
                 "session_ended",
                 "deletion_requested",
                 "deletion_cancelled",
-                "deletion_held_by_deals"
+                "deletion_held_by_deals",
+                "offer_received",
+                "offer_accepted",
+                "offer_declined",
+                "offer_withdrawn"
               ],
               "type": "string"
             },
@@ -6514,7 +6573,11 @@
                 "session_ended",
                 "deletion_requested",
                 "deletion_cancelled",
-                "deletion_held_by_deals"
+                "deletion_held_by_deals",
+                "offer_received",
+                "offer_accepted",
+                "offer_declined",
+                "offer_withdrawn"
               ],
               "type": "string"
             },
@@ -6662,7 +6725,11 @@
               "session_ended",
               "deletion_requested",
               "deletion_cancelled",
-              "deletion_held_by_deals"
+              "deletion_held_by_deals",
+              "offer_received",
+              "offer_accepted",
+              "offer_declined",
+              "offer_withdrawn"
             ],
             "title": "Notification Type",
             "type": "string"
@@ -6690,6 +6757,143 @@
           "created_at"
         ],
         "title": "NotificationRead",
+        "type": "object"
+      },
+      "OfferCreate": {
+        "additionalProperties": false,
+        "description": "A figure named on a waiting application, by either side.",
+        "properties": {
+          "amount_paise": {
+            "description": "Whole paise, e.g. 500000 is Rs 5,000",
+            "exclusiveMinimum": 0.0,
+            "maximum": 10000000000.0,
+            "title": "Amount Paise",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "description": "A few words beside the figure, shown to the other side",
+                "examples": [
+                  "Two reels at this fee, or three at 9,000."
+                ],
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "required": [
+          "amount_paise"
+        ],
+        "title": "OfferCreate",
+        "type": "object"
+      },
+      "OfferRead": {
+        "description": "One offer, and how it was answered.",
+        "properties": {
+          "amount_paise": {
+            "title": "Amount Paise",
+            "type": "integer"
+          },
+          "answered_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answered At"
+          },
+          "application_id": {
+            "format": "uuid",
+            "title": "Application Id",
+            "type": "string"
+          },
+          "currency": {
+            "const": "INR",
+            "title": "Currency",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "made_at": {
+            "format": "date-time",
+            "title": "Made At",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "enum": [
+                  "accepted",
+                  "declined",
+                  "replaced",
+                  "withdrawn"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null while it waits for the other side. `replaced`: they answered with an offer of their own. `withdrawn`: taken back, or closed when the application ended. Clients tolerate outcomes they do not know",
+            "title": "Outcome"
+          },
+          "side": {
+            "description": "Who offered it",
+            "enum": [
+              "brand",
+              "creator"
+            ],
+            "title": "Side",
+            "type": "string"
+          },
+          "text_flags": {
+            "description": "Warnings on the note, worked out on every read: a request for money from a creator, or contact details before a deal is agreed. Show each beside the note; never hide it",
+            "items": {
+              "$ref": "#/components/schemas/FieldFlag"
+            },
+            "readOnly": true,
+            "title": "Text Flags",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "application_id",
+          "side",
+          "amount_paise",
+          "currency",
+          "note",
+          "made_at",
+          "outcome",
+          "answered_at",
+          "text_flags"
+        ],
+        "title": "OfferRead",
         "type": "object"
       },
       "OtpRequestAccepted": {
@@ -14429,6 +14633,651 @@
         "summary": "Decline an invitation",
         "tags": [
           "invitations"
+        ]
+      }
+    },
+    "/api/v1/applications/{application_id}/offers": {
+      "get": {
+        "description": "Every figure either side named on this application, oldest first, with how each was answered. Whole, not paged: at most 6, since each side makes at most 3. For the creator who applied and the brand whose campaign it is.",
+        "operationId": "list_offers_api_v1_applications__application_id__offers_get",
+        "parameters": [
+          {
+            "description": "The application's id",
+            "in": "path",
+            "name": "application_id",
+            "required": true,
+            "schema": {
+              "description": "The application's id",
+              "format": "uuid",
+              "title": "Application Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OfferRead"
+                  },
+                  "title": "Response List Offers Api V1 Applications  Application Id  Offers Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such application or offer, or it is not yours"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The offers on an application",
+        "tags": [
+          "applications"
+        ]
+      },
+      "post": {
+        "description": "Names a figure, in paise, on an application still waiting (submitted, shortlisted, or an invitation not yet answered), with an optional note. The other side is told, and accepts, declines or answers with an offer of its own, which replaces this one. Each side makes at most 3 on one application, and one is open at a time: withdraw your own before making another. While an offer is open the application cannot be accepted, so the figure is settled first. Limits: 30 a minute and 100 a day.",
+        "operationId": "make_offer_api_v1_applications__application_id__offers_post",
+        "parameters": [
+          {
+            "description": "The application's id",
+            "in": "path",
+            "name": "application_id",
+            "required": true,
+            "schema": {
+              "description": "The application's id",
+              "format": "uuid",
+              "title": "Application Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OfferCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfferRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such application or offer, or it is not yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`offers_closed`: the application is no longer waiting, the campaign is barter, or the other side has gone; `campaign_not_open`; `offer_already_agreed`: a figure is agreed, so changes go through the memo; `offer_limit_reached`: you have made 3; `offer_open`: your own offer still waits; `own_content_withheld`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The amount or the note is not valid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "451": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The other side is withheld for legal reasons (item 52)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Offer a figure on an application",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/v1/applications/{application_id}/offers/{offer_id}": {
+      "delete": {
+        "description": "Takes back your own offer while it waits. The other side is told.",
+        "operationId": "withdraw_offer_api_v1_applications__application_id__offers__offer_id__delete",
+        "parameters": [
+          {
+            "description": "The offer's id",
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "description": "The offer's id",
+              "format": "uuid",
+              "title": "Offer Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The application's id",
+            "in": "path",
+            "name": "application_id",
+            "required": true,
+            "schema": {
+              "description": "The application's id",
+              "format": "uuid",
+              "title": "Application Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such application or offer, or it is not yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`offer_already_answered`; `offer_not_yours_to_answer`: it is the other side's offer, theirs to withdraw"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Withdraw my offer",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/v1/applications/{application_id}/offers/{offer_id}/accept": {
+      "post": {
+        "description": "Agrees the figure. It pre-fills the deal memo's fee; the memo is still the contract, and a different fee there is shown beside this one. Negotiation then closes.",
+        "operationId": "accept_offer_api_v1_applications__application_id__offers__offer_id__accept_post",
+        "parameters": [
+          {
+            "description": "The offer's id",
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "description": "The offer's id",
+              "format": "uuid",
+              "title": "Offer Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The application's id",
+            "in": "path",
+            "name": "application_id",
+            "required": true,
+            "schema": {
+              "description": "The application's id",
+              "format": "uuid",
+              "title": "Application Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfferRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such application or offer, or it is not yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`offers_closed`: the application is no longer waiting, the campaign is barter, or the other side has gone; `campaign_not_open`; `offer_already_agreed`: a figure is agreed, so changes go through the memo; `offer_already_answered`; `offer_not_yours_to_answer`: it is your own offer; `own_content_withheld`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "451": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The other side is withheld for legal reasons (item 52)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Accept the other side's offer",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/v1/applications/{application_id}/offers/{offer_id}/decline": {
+      "post": {
+        "description": "Says no to the figure. The application waits on as it was, and either side may still make another offer while it can.",
+        "operationId": "decline_offer_api_v1_applications__application_id__offers__offer_id__decline_post",
+        "parameters": [
+          {
+            "description": "The offer's id",
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "description": "The offer's id",
+              "format": "uuid",
+              "title": "Offer Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The application's id",
+            "in": "path",
+            "name": "application_id",
+            "required": true,
+            "schema": {
+              "description": "The application's id",
+              "format": "uuid",
+              "title": "Application Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfferRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such application or offer, or it is not yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`offer_already_answered`; `offer_not_yours_to_answer`: it is your own offer. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Decline the other side's offer",
+        "tags": [
+          "applications"
         ]
       }
     },

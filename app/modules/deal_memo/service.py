@@ -23,6 +23,7 @@ from app.core.pagination import Slice, build_slice, older_than_cursor
 from app.modules.auth import suspension
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
+from app.modules.campaigns import offer_service as offers
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo import record_service as record
 from app.modules.deal_memo.exceptions import (
@@ -268,6 +269,12 @@ def create_memo(
         db.rollback()
         raise MemoAlreadyExists()
 
+    # A figure agreed through a counter-offer (item 44, D-123) pre-fills the
+    # fee; a fee the brand writes instead stands, shown beside it on reads.
+    if fields.get("fee_amount_paise") is None:
+        agreed = offers.summary_for(db, application.id).agreed_amount_paise
+        if agreed is not None:
+            fields = {**fields, "fee_amount_paise": agreed}
     campaign = _campaign_of(db, application)
     _check_fee_against_campaign(campaign, fields.get("fee_amount_paise"))
 
@@ -352,6 +359,10 @@ def draft_repeat_memo(db: Session, application: Application, now: datetime) -> D
         updated_at=now,
         **{term: getattr(previous, term) for term in REPEATED_TERMS},
     )
+    # A figure agreed on the repeat itself is newer than the old deal's fee.
+    agreed = offers.summary_for(db, application.id).agreed_amount_paise
+    if agreed is not None:
+        memo.fee_amount_paise = agreed
     db.add(memo)
     return memo
 
@@ -735,3 +746,13 @@ def notify_party(
     the joins and risking telling the wrong person about their money.
     """
     _notify_other_side(db, memo, to=to, notification_type=notification_type, now=now)
+
+
+def agreed_amounts(db: Session, memos: list[DealMemo]) -> dict[uuid.UUID, int | None]:
+    """Each memo's figure agreed through a counter-offer, in one query for all."""
+    summaries = offers.summaries_for(db, [memo.application_id for memo in memos])
+    return {memo.id: summaries[memo.application_id].agreed_amount_paise for memo in memos}
+
+
+def agreed_amount(db: Session, memo: DealMemo) -> int | None:
+    return agreed_amounts(db, [memo])[memo.id]

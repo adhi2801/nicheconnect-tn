@@ -96,6 +96,12 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     "deletion_requested",
     "deletion_cancelled",
     "deletion_held_by_deals",
+    # To the other side of a waiting application, about a counter-offer on
+    # its quote (item 44, D-123): one made, accepted, declined or taken back.
+    "offer_received",
+    "offer_accepted",
+    "offer_declined",
+    "offer_withdrawn",
 )
 MAX_DETAILS_LENGTH = 2000
 

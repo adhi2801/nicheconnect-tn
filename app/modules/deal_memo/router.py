@@ -30,6 +30,7 @@ from app.modules.deal_memo.schemas import (
     MemoStatus,
     MemoUpdate,
     MemoWithStageRead,
+    to_memo_read,
     with_stage,
 )
 from app.modules.deal_memo.stage import stages_for
@@ -56,11 +57,16 @@ _COMMON_ERRORS: ResponseDocs = {
 }
 
 
+def _read(db: Session, memo: DealMemo) -> MemoRead:
+    return to_memo_read(memo, service.agreed_amount(db, memo))
+
+
 def _page(db: Session, result: Slice[DealMemo], now: datetime) -> Page[MemoWithStageRead]:
     # Every row's stage in a fixed number of queries, never one per row.
     stages = stages_for(db, result.rows, now)
+    agreed = service.agreed_amounts(db, result.rows)
     return Page[MemoWithStageRead](
-        items=[with_stage(row, stages[row.id]) for row in result.rows],
+        items=[with_stage(row, stages[row.id], agreed[row.id]) for row in result.rows],
         next_cursor=result.next_cursor,
     )
 
@@ -96,7 +102,7 @@ def create_memo(
 ) -> MemoRead:
     memo = service.create_memo(db, application, body.model_dump(), now)
     response.headers["Location"] = f"/api/v1/deal-memos/{memo.id}"
-    return MemoRead.model_validate(memo)
+    return _read(db, memo)
 
 
 @router.get(
@@ -169,7 +175,9 @@ def read_memo(
     now: datetime = Depends(get_now),
 ) -> MemoWithStageRead:
     memo = visible_memo_for_account(db, memo_id, account.id, account.role)
-    return with_stage(memo, stages_for(db, [memo], now)[memo.id])
+    return with_stage(
+        memo, stages_for(db, [memo], now)[memo.id], service.agreed_amount(db, memo)
+    )
 
 
 @router.patch(
@@ -199,7 +207,7 @@ def update_memo(
     now: datetime = Depends(get_now),
 ) -> MemoRead:
     changes = body.model_dump(exclude_unset=True)
-    return MemoRead.model_validate(service.update_memo(db, memo, changes, now))
+    return _read(db, service.update_memo(db, memo, changes, now))
 
 
 def _brand_move(
@@ -224,9 +232,7 @@ def _brand_move(
         db: Session = Depends(get_db),
         now: datetime = Depends(get_now),
     ) -> MemoRead:
-        return MemoRead.model_validate(
-            service.change_status(db, memo, new_status, now, actor="brand")
-        )
+        return _read(db, service.change_status(db, memo, new_status, now, actor="brand"))
 
     return endpoint
 
@@ -276,8 +282,8 @@ def _creator_move(
         db: Session = Depends(get_db),
         now: datetime = Depends(get_now),
     ) -> MemoRead:
-        return MemoRead.model_validate(
-            service.change_status(db, memo, new_status, now, actor="creator")
+        return _read(
+            db, service.change_status(db, memo, new_status, now, actor="creator")
         )
 
     return endpoint
@@ -335,8 +341,9 @@ def request_change(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> MemoRead:
-    return MemoRead.model_validate(
+    return _read(
+        db,
         service.change_status(
             db, memo, "change_requested", now, actor="creator", message=body.message
-        )
+        ),
     )

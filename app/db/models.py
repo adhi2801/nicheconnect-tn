@@ -24,6 +24,7 @@ from app.modules.campaigns.models import (
     Application,  # noqa: F401
     Campaign,  # noqa: F401
 )
+from app.modules.campaigns.offer_models import QuoteOffer  # noqa: F401
 from app.modules.deal_memo.anchor_models import (
     DealRecordCheckpoint,  # noqa: F401
     DealRecordTimestamp,  # noqa: F401

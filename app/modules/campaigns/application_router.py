@@ -20,6 +20,7 @@ from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import get_now
 from app.modules.campaigns import feedback, service
+from app.modules.campaigns import offer_service as offers
 from app.modules.campaigns.dependencies import (
     BrandApplication,
     CreatorApplication,
@@ -57,9 +58,10 @@ _COMMON_ERRORS: ResponseDocs = {
 }
 
 
-def _page(result: Slice[Application]) -> Page[ApplicationRead]:
+def _page(db: Session, result: Slice[Application]) -> Page[ApplicationRead]:
+    # Every row's offers in one query, never one per row.
     return Page[ApplicationRead](
-        items=[ApplicationRead.model_validate(row) for row in result.rows],
+        items=offers.read_applications(db, result.rows),
         next_cursor=result.next_cursor,
     )
 
@@ -101,7 +103,7 @@ def apply_to_campaign(
         db, campaign_id, creator, body.model_dump(), now
     )
     response.headers["Location"] = f"/api/v1/applications/{application.id}"
-    return ApplicationRead.model_validate(application)
+    return offers.read_application(db, application)
 
 
 @router.get(
@@ -126,9 +128,10 @@ def list_campaign_applications(
     db: Session = Depends(get_db),
 ) -> Page[ApplicationRead]:
     return _page(
+        db,
         service.list_campaign_applications(
             db, campaign, limit=limit, cursor=cursor, status=application_status
-        )
+        ),
     )
 
 
@@ -153,9 +156,10 @@ def list_my_applications(
     db: Session = Depends(get_db),
 ) -> Page[ApplicationRead]:
     return _page(
+        db,
         service.list_creator_applications(
             db, creator, limit=limit, cursor=cursor, status=application_status
-        )
+        ),
     )
 
 
@@ -198,9 +202,9 @@ def read_my_application_feedback(
 )
 @rate_limit(READ_LIMIT)
 def read_application(
-    request: Request, application: VisibleApplication
+    request: Request, application: VisibleApplication, db: Session = Depends(get_db)
 ) -> ApplicationRead:
-    return ApplicationRead.model_validate(application)
+    return offers.read_application(db, application)
 
 
 def _brand_decision(
@@ -232,10 +236,11 @@ def _brand_decision(
         db: Session = Depends(get_db),
         now: datetime = Depends(get_now),
     ) -> ApplicationRead:
-        return ApplicationRead.model_validate(
+        return offers.read_application(
+            db,
             service.change_application_status(
                 db, application, new_status, now, actor="brand"
-            )
+            ),
         )
 
     return endpoint
@@ -278,7 +283,8 @@ def reject_application(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> ApplicationRead:
-    return ApplicationRead.model_validate(
+    return offers.read_application(
+        db,
         service.change_application_status(
             db,
             application,
@@ -287,7 +293,7 @@ def reject_application(
             actor="brand",
             rejection_reason=body.reason,
             rejection_note=body.note,
-        )
+        ),
     )
 
 
@@ -309,8 +315,9 @@ def withdraw_application(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> ApplicationRead:
-    return ApplicationRead.model_validate(
+    return offers.read_application(
+        db,
         service.change_application_status(
             db, application, "withdrawn", now, actor="creator"
-        )
+        ),
     )

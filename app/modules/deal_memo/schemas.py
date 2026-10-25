@@ -112,8 +112,8 @@ class ChangeRequest(BaseModel):
     ]
 
 
-class MemoRead(BaseModel):
-    """A memo as the API returns it."""
+class MemoFields(BaseModel):
+    """What a memo says by itself; `MemoRead` adds the figure agreed before it."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -174,6 +174,26 @@ class MemoRead(BaseModel):
         )
 
 
+class MemoRead(MemoFields):
+    """A memo as the API returns it."""
+
+    agreed_amount_paise: int | None = Field(
+        description=(
+            "The figure both sides agreed through a counter-offer on the "
+            "application (item 44), in paise; null when none was. It pre-filled "
+            "`fee_amount_paise`. When the two differ, show both: the creator "
+            "accepts the memo's fee, so they see the change before they do"
+        )
+    )
+
+
+def to_memo_read(memo: DealMemo, agreed_amount_paise: int | None) -> MemoRead:
+    return MemoRead(
+        **MemoFields.model_validate(memo).model_dump(),
+        agreed_amount_paise=agreed_amount_paise,
+    )
+
+
 DealStageName = Literal[
     "draft",
     "memo_sent",
@@ -207,9 +227,11 @@ class MemoWithStageRead(MemoRead):
     has_open_dispute: bool
 
 
-def with_stage(memo: DealMemo, found: DealStage) -> MemoWithStageRead:
+def with_stage(
+    memo: DealMemo, found: DealStage, agreed_amount_paise: int | None
+) -> MemoWithStageRead:
     return MemoWithStageRead(
-        **MemoRead.model_validate(memo).model_dump(),
+        **to_memo_read(memo, agreed_amount_paise).model_dump(),
         stage=found.stage,
         waiting_on=found.waiting_on,
         has_open_dispute=found.has_open_dispute,

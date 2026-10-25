@@ -342,7 +342,7 @@ def erase(db: Session, account_id: uuid.UUID, now: datetime) -> Outcome | None:
         departures.end_for_brand(db, profile.id, applications, now)
         brand_domains.erase_for_brand(db, profile.id)
     elif isinstance(profile, Creator):
-        departures.end_for_creator(applications, now)
+        departures.end_for_creator(db, applications, now)
         upi.erase_for_creator(db, profile.id)
         rate_cards.erase_for_creator(db, profile.id)
         matching.erase_for_creator(db, profile.id)

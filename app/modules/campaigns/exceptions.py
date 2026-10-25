@@ -100,3 +100,51 @@ class InvitationPending(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "invitation_pending"
     title = "You have been invited to this campaign: accept the invitation instead"
+
+
+class OfferNotFound(DomainError):
+    # Also an offer on someone else's application: 404, never 403.
+    status_code = HTTPStatus.NOT_FOUND
+    code = "offer_not_found"
+    title = "That offer does not exist"
+
+
+class OffersClosed(DomainError):
+    # Only a waiting application can be negotiated (item 44, D-123).
+    status_code = HTTPStatus.CONFLICT
+    code = "offers_closed"
+    title = "This application is no longer open to offers"
+
+
+class OfferAlreadyAgreed(DomainError):
+    # Once a figure is agreed, later changes go through the memo.
+    status_code = HTTPStatus.CONFLICT
+    code = "offer_already_agreed"
+    title = "A figure is already agreed on this application"
+
+
+class OfferLimitReached(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "offer_limit_reached"
+    title = "You have made every offer you can on this application"
+
+
+class OfferOpen(DomainError):
+    # The figure must be settled before the deal moves on, so nobody can say
+    # afterwards which price was agreed.
+    status_code = HTTPStatus.CONFLICT
+    code = "offer_open"
+    title = "Answer or withdraw the open offer first"
+
+
+class OfferNotYours(DomainError):
+    # Accepting or declining is the other side's move; withdrawing is the maker's.
+    status_code = HTTPStatus.CONFLICT
+    code = "offer_not_yours_to_answer"
+    title = "That move on this offer belongs to the other side"
+
+
+class OfferAnswered(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "offer_already_answered"
+    title = "That offer has already been answered or taken back"

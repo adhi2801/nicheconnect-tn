@@ -28,6 +28,7 @@ from app.core.pagination import Slice, build_slice, older_than_cursor
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import brand_is_active, brand_is_unavailable
+from app.modules.campaigns import offer_service as offers
 from app.modules.campaigns.exceptions import (
     AlreadyApplied,
     ApplicationsClosed,
@@ -40,6 +41,7 @@ from app.modules.campaigns.exceptions import (
     CreatorProfileRequired,
     FieldNotEditableNow,
     InvitationPending,
+    OfferOpen,
 )
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.notifications import service as notifications
@@ -541,6 +543,14 @@ def move_application(
         if is_withheld(db, "creator", application.creator_id):
             db.rollback()
             raise ContentWithheld()
+    # A counter-offer (item 44, D-123): the figure is settled before the deal
+    # moves on, so nobody can say afterwards which price was agreed; saying
+    # no ends the open offer with the application.
+    if new_status == "accepted" and offers.has_open(db, application.id):
+        db.rollback()
+        raise OfferOpen()
+    if new_status in {"rejected", "withdrawn", "declined"}:
+        offers.close_open(db, [application.id], actor, now)
     application.status = new_status
     application.rejection_reason = rejection_reason if new_status == "rejected" else None
     application.rejection_note = rejection_note if new_status == "rejected" else None

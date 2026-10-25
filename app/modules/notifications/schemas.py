@@ -60,6 +60,10 @@ NotificationType = Literal[
     "deletion_requested",
     "deletion_cancelled",
     "deletion_held_by_deals",
+    "offer_received",
+    "offer_accepted",
+    "offer_declined",
+    "offer_withdrawn",
 ]
 
 ensure_same_values("NotificationType", NotificationType, NOTIFICATION_TYPES)
