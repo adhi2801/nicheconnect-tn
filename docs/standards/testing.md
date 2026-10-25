@@ -142,8 +142,8 @@ tests/
 8. The full suite: no failures, no unexplained skips. It includes the banned money words in every file and every commit message (`test_banned_terms.py`), files git does not track yet included; the incident plan's rotation steps (`test_incident_response.py`); every document's references (`test_docs.py`); the file-kind rules (`test_architecture.py`); and the schema read against `database.md` (`test_schema_rules.py`)
 9. Coverage floors, overall and per `service.py`
 10. The API fuzzed against its contract (Schemathesis)
-11. Dependency audit (pip-audit), and every dependency's licence on the approved list (pip-licenses, D-086)
-12. Images built and scanned; any fixable vulnerability blocks (Grype); the API image's bill of materials written (Syft)
+11. Dependency audit (pip-audit): the app's own packages, strictly, and since D-125 every dependency group too (the embeddings image's `ml` group, the load test's, the tools'), so an advisory anywhere we install turns the run red; and every dependency's licence on the approved list (pip-licenses, D-086)
+12. Images built and scanned; any fixable vulnerability in the API image blocks (Grype); the API image's bill of materials written (Syft). The embeddings image is built and its scan reported on every push to `main`, for pull requests, and on a branch that changes what goes into it (D-125); until then it was built for pull requests only, and merges made without one (D-101) skipped it
 13. Private vulnerability reporting switched on for the repository, since `SECURITY.md` sends researchers there (its own job, `repository-settings`)
 14. The OpenTofu files formatted and every environment valid against its locked providers (its own job, `infrastructure`, D-086)
 
