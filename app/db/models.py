@@ -20,6 +20,7 @@ from app.modules.auth.models.passkey import (
 )
 from app.modules.auth.models.step_up_challenge import StepUpChallenge  # noqa: F401
 from app.modules.auth.models.totp_factor import TotpFactor  # noqa: F401
+from app.modules.campaigns.deliverable_models import CampaignDeliverable  # noqa: F401
 from app.modules.campaigns.models import (
     Application,  # noqa: F401
     Campaign,  # noqa: F401
@@ -29,6 +30,7 @@ from app.modules.deal_memo.anchor_models import (
     DealRecordCheckpoint,  # noqa: F401
     DealRecordTimestamp,  # noqa: F401
 )
+from app.modules.deal_memo.deliverable_models import MemoDeliverable  # noqa: F401
 from app.modules.deal_memo.models import DealMemo  # noqa: F401
 from app.modules.deal_memo.proof_models import DeliverableProof, ProofFile  # noqa: F401
 from app.modules.deal_memo.proof_reading_models import ProofFileReading  # noqa: F401

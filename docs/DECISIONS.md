@@ -1592,3 +1592,18 @@ Newest entries at the bottom.
   4. Deleting one side (D-122) erases that account only, and the number's login codes stay while the other side does.
   5. Applying, inviting and repeating between the two accounts of a number read as not found, like a block; offers and memos need an application, so they follow.
   6. A test whose clock never moves can give a number two codes in one instant, and "the latest code counts" then ties on its timestamp; real codes never do. Found while testing, existing behaviour, noted rather than changed.
+
+## D-127: Deliverables as a list on campaigns and memos, sealed from terms version 2 (item 26)
+- Date: 2026-10-26
+- Approved by: Adhi, in this session: "1A 2B 3A", to the proposal with its ten dimensions. **Not reviewed by the other founder** (D-051).
+- Context: "3 Instagram reels, 1 story set" was free text on campaigns and memos, so nothing could count it: agreed fees could not be compared per reel (fair-rate guidance step 2, D-056), reports could not say what was asked, and the apps would have to parse prose. Read 26 October 2026: TikTok One sets a count of videos per creator; Aspire's briefs list deliverables with their due dates; neither seals the list into a record both sides can verify.
+- Options considered: 1) where: A) campaigns and memos, the campaign's list pre-filling the memo's; B) memos only. 2) proof: A) per deliverable, a deal delivered only when every line is approved; B) the list agreed, sealed, shown and counted, with proof per deal as today. 3) the text: A) kept as the summary; B) replaced by the list.
+- Chosen: 1A, 2B, 3A.
+- Reason: a brand writes the list once (1A); per-deliverable proof would change deal stage, the approval clock and when payment falls due, and deserves its own proposal (2B); the summary is what people read (3A).
+- Consequences / follow-ups:
+  1. `campaign_deliverable` and `memo_deliverable`: platform and format from the rate card's vocabulary (D-055), quantity 1 to 20, a note of at most 200 characters, at most 10 lines; CASCADE on the campaign, RESTRICT on the memo. Campaign and memo bodies take `deliverable_items`, and every read returns it, loaded in one more query a page.
+  2. A memo with no list given copies its campaign's; a repeat deal copies the deal it repeats; a memo's list changes only while it is editable.
+  3. **Terms versions:** `deal_memo.terms_version` was added with 1 for every existing memo, whose fingerprint stays exactly as sealed, for ever; new memos are version 2, and their fingerprint adds the list (`docs/DEAL_RECORD_VERIFY.md` section 5). Changing a sealed line shows as terms changed since acceptance. Migration `413468ae18cf`; its downgrade refuses while any version 2 memo or any line exists.
+  4. Both exports gain the lists; the deletion registry holds them as deal records (D-122).
+  5. Three query-count ceilings rose by one, for the one query that loads every row's list; each test still proves a long page costs the same as a short one.
+  6. Next: per-deliverable proof (choice 2A, its own proposal), and agreed-fee guidance per format (D-056 step 2), which the list now makes possible.

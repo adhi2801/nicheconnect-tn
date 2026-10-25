@@ -2456,6 +2456,16 @@
             "title": "Cities",
             "type": "array"
           },
+          "deliverable_items": {
+            "default": [],
+            "description": "The deliverables as a list, in order: at most 10 lines. The `deliverables` text stays, as the summary both sides read",
+            "items": {
+              "$ref": "#/components/schemas/DeliverableIn"
+            },
+            "maxItems": 10,
+            "title": "Deliverable Items",
+            "type": "array"
+          },
           "deliverables": {
             "examples": [
               "3 Instagram reels, 1 story set"
@@ -2690,6 +2700,13 @@
             "title": "Currency",
             "type": "string"
           },
+          "deliverable_items": {
+            "items": {
+              "$ref": "#/components/schemas/DeliverableRead"
+            },
+            "title": "Deliverable Items",
+            "type": "array"
+          },
           "deliverables": {
             "title": "Deliverables",
             "type": "string"
@@ -2761,6 +2778,7 @@
           "cities",
           "niches",
           "deliverables",
+          "deliverable_items",
           "applications_close_on",
           "status",
           "created_at",
@@ -2965,6 +2983,22 @@
               }
             ],
             "title": "Cities"
+          },
+          "deliverable_items": {
+            "anyOf": [
+              {
+                "description": "The deliverables as a list, in order: at most 10 lines. The `deliverables` text stays, as the summary both sides read",
+                "items": {
+                  "$ref": "#/components/schemas/DeliverableIn"
+                },
+                "maxItems": 10,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deliverable Items"
           },
           "deliverables": {
             "anyOf": [
@@ -4226,6 +4260,114 @@
         "title": "DealStageCountsRead",
         "type": "object"
       },
+      "DeliverableIn": {
+        "additionalProperties": false,
+        "description": "One line of what is asked or agreed: \"2 Instagram reels\".",
+        "properties": {
+          "format": {
+            "description": "The rate card's own words (D-055); `other` when none fits",
+            "enum": [
+              "post",
+              "reel",
+              "story",
+              "short",
+              "video",
+              "live",
+              "other"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "60 seconds, in Tamil"
+            ],
+            "title": "Note"
+          },
+          "platform": {
+            "enum": [
+              "instagram",
+              "youtube"
+            ],
+            "title": "Platform",
+            "type": "string"
+          },
+          "quantity": {
+            "default": 1,
+            "examples": [
+              2
+            ],
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Quantity",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "platform",
+          "format"
+        ],
+        "title": "DeliverableIn",
+        "type": "object"
+      },
+      "DeliverableRead": {
+        "properties": {
+          "format": {
+            "enum": [
+              "post",
+              "reel",
+              "story",
+              "short",
+              "video",
+              "live",
+              "other"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "platform": {
+            "enum": [
+              "instagram",
+              "youtube"
+            ],
+            "title": "Platform",
+            "type": "string"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "platform",
+          "format",
+          "quantity",
+          "note"
+        ],
+        "title": "DeliverableRead",
+        "type": "object"
+      },
       "DeviceIn": {
         "additionalProperties": false,
         "description": "What this app is, so its owner can tell this session from the others (D-114).\n\nOptional, said by the app and never checked: the session list shows it\nbeside when and how the session signed in, which no app can choose.",
@@ -5442,6 +5584,23 @@
             ],
             "title": "Content Due On"
           },
+          "deliverable_items": {
+            "anyOf": [
+              {
+                "description": "The deliverables as a list, in order: at most 10 lines. The `deliverables` text stays, as the summary both sides read",
+                "items": {
+                  "$ref": "#/components/schemas/DeliverableIn"
+                },
+                "maxItems": 10,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The deliverables as a list (D-127). Left out, the campaign's own list is copied; an empty list means none",
+            "title": "Deliverable Items"
+          },
           "deliverables": {
             "examples": [
               "3 Instagram reels, 1 story set"
@@ -5625,6 +5784,14 @@
             "description": "When the creator declined. Null otherwise, and on memos declined before 12 October 2026, when it was first kept",
             "title": "Declined At"
           },
+          "deliverable_items": {
+            "description": "The deliverables as a list, in order (D-127). Sealed with the terms from 25 October 2026; empty on memos made before",
+            "items": {
+              "$ref": "#/components/schemas/DeliverableRead"
+            },
+            "title": "Deliverable Items",
+            "type": "array"
+          },
           "deliverables": {
             "title": "Deliverables",
             "type": "string"
@@ -5734,6 +5901,7 @@
           "id",
           "application_id",
           "deliverables",
+          "deliverable_items",
           "fee_amount_paise",
           "cancellation_fee_paise",
           "approval_window_days",
@@ -5800,6 +5968,22 @@
               }
             ],
             "title": "Content Due On"
+          },
+          "deliverable_items": {
+            "anyOf": [
+              {
+                "description": "The deliverables as a list, in order: at most 10 lines. The `deliverables` text stays, as the summary both sides read",
+                "items": {
+                  "$ref": "#/components/schemas/DeliverableIn"
+                },
+                "maxItems": 10,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deliverable Items"
           },
           "deliverables": {
             "anyOf": [
@@ -6000,6 +6184,14 @@
             "description": "When the creator declined. Null otherwise, and on memos declined before 12 October 2026, when it was first kept",
             "title": "Declined At"
           },
+          "deliverable_items": {
+            "description": "The deliverables as a list, in order (D-127). Sealed with the terms from 25 October 2026; empty on memos made before",
+            "items": {
+              "$ref": "#/components/schemas/DeliverableRead"
+            },
+            "title": "Deliverable Items",
+            "type": "array"
+          },
           "deliverables": {
             "title": "Deliverables",
             "type": "string"
@@ -6143,6 +6335,7 @@
           "id",
           "application_id",
           "deliverables",
+          "deliverable_items",
           "fee_amount_paise",
           "cancellation_fee_paise",
           "approval_window_days",

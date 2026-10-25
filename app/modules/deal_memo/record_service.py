@@ -100,11 +100,30 @@ def fingerprint(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+# A deliverable's fields, as terms version 2 seals them (item 26, D-127).
+DELIVERABLE_FIELDS: tuple[str, ...] = ("platform", "format", "quantity", "note")
+
+
 def terms_fingerprint(memo: DealMemo) -> str:
+    """The SHA-256 of the memo's terms, as its terms version defines them.
+
+    Version 1 (every memo before 25 October 2026) is TERMS_FIELDS alone, and
+    stays exactly that forever, so no seal made before then changes. Version
+    2 adds the list of deliverables, in order (D-127).
+    """
     terms: dict[str, Any] = {}
     for field in TERMS_FIELDS:
         value = getattr(memo, field)
         terms[field] = value.isoformat() if isinstance(value, date) else value
+    if memo.terms_version is None:
+        # Set when the memo is saved; a fingerprint of terms not yet on the
+        # record would prove nothing.
+        raise ValueError("A memo has no terms version until it is saved")
+    if memo.terms_version >= 2:
+        terms["deliverable_items"] = [
+            {field: getattr(item, field) for field in DELIVERABLE_FIELDS}
+            for item in memo.deliverable_items
+        ]
     return hashlib.sha256(canonical(terms)).hexdigest()
 
 

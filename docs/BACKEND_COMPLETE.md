@@ -22,7 +22,7 @@ Three things it does **not** mean:
 
 **Measured on 14 October 2026:** 2,985 tests; coverage 98.55% counting branches when last measured that day, before its last three changes, with CI holding the floors on every run (`docs/standards/testing.md` section 7); CI green on `main` (`d6a86b8`, every job): the secret scan, the module layers, migration linting and round trip, the release step, the suite run as the app's own login and then the owner's tests, coverage, API fuzzing, the dependency and image scans, and the infrastructure check.
 
-**Open in section 3: 54 items** (68 on 14 October; item 51 built on 15 October, items 52 and 101 on 16 October, items 74, 82 and 80 on 17 October, item 79 on 18 October, items 81, 75 and 85 on 24 October, items 6, 44 and 8 on 25 October, and item 87 found built since 20 September). 23 wait on something outside the code or on Erode Harish: the name and domain (4, 10), the Meta app (29 to 31, 67, 78), the validation pack (33, 39), the lawyer or CA (35, 50, 76), the MSG91 template (62), results data (83, 86), founders' decisions (7, 13, 38, 41, 46, 48, 61, 72). **31 need only an approval**, among them campaign alerts (43). Section 4 holds the 9 that wait on someone outside.
+**Open in section 3: 53 items** (68 on 14 October; item 51 built on 15 October, items 52 and 101 on 16 October, items 74, 82 and 80 on 17 October, item 79 on 18 October, items 81, 75 and 85 on 24 October, items 6, 44 and 8 on 25 October, item 26 on 26 October, and item 87 found built since 20 September). 23 wait on something outside the code or on Erode Harish: the name and domain (4, 10), the Meta app (29 to 31, 67, 78), the validation pack (33, 39), the lawyer or CA (35, 50, 76), the MSG91 template (62), results data (83, 86), founders' decisions (7, 13, 38, 41, 46, 48, 61, 72). **30 need only an approval**, among them campaign alerts (43). Section 4 holds the 9 that wait on someone outside.
 
 **Built and tested on `main`:**
 - before 1 October: Phases A, B and D of the backlog, C1 to C4, E3 and E4 (`docs/PRODUCT_BACKLOG.md`), creator search, the admin side, results read from proof (D-070, switched off), the deal record with its daily outside timestamp, proof files, and AWS described as code;
@@ -87,7 +87,7 @@ Built already from the same list: deal stage and campaign summary (D-076), the p
 | # | Item | Why | Gate |
 |---|---|---|---|
 | 23 | **The pilot join list**: a waitlist endpoint for the landing page's Join form | The form has nowhere to send; consent wording is the validation pack's | Database; DPDP consent text |
-| 26 | **Deliverables as a list**, one row per deliverable, on campaigns and memos | The deal pass tracks each deliverable; also step 2 of fair-rate guidance (D-056) | A product decision; database |
+| 26 | **Deliverables as a list**, one row per deliverable, on campaigns and memos | The deal pass tracks each deliverable; also step 2 of fair-rate guidance (D-056) | A product decision; database · **Built 26 October (D-127)**: `deliverable_items` on campaigns and memos (platform, format, quantity, note; at most 10), the campaign's pre-filling the memo's, sealed with the terms from terms version 2 while every earlier seal stays version 1. **Still owed:** proof per deliverable, a proposal of its own |
 | 27 | **Draft first**: a creator sends a draft, the brand approves it, then it is posted | Proposed in the wireframes; changes the proof flow and its clock (D-025) | A product decision; database |
 
 ### 3.8 From the billion-dollar gap research (8 October, `docs/BILLION_DOLLAR_GAP.md`)

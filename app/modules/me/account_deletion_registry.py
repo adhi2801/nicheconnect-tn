@@ -79,6 +79,10 @@ KEPT: tuple[KeptKind, ...] = (
         tables=frozenset(
             {
                 "campaign",
+                # The deliverables as a list (item 26), each the brief's or
+                # the terms' own lines.
+                "campaign_deliverable",
+                "memo_deliverable",
                 "application",
                 # Counter-offers on a quote (item 44): the negotiation both
                 # sides keep a record of.
