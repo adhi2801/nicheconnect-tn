@@ -444,3 +444,35 @@ def test_passkeys_on_refuse_an_origin_off_their_domain(origins):
 
 def test_a_passkey_domain_must_be_a_bare_host():
     assert_rejected("passkey_rp_id", passkey_rp_id="https://colyv.in")
+
+
+# --- Retention after deletion (item 6, D-122) ----------------------------
+
+RETENTION_FIELDS = [
+    name for name in Settings.model_fields if name.startswith("retention_")
+]
+
+
+def test_the_retention_settings_are_found():
+    assert len(RETENTION_FIELDS) == 7
+
+
+@pytest.mark.parametrize("field", RETENTION_FIELDS)
+def test_an_empty_retention_period_means_unset(field):
+    """`RETENTION_..._DAYS=` in .env means "kept, as the law may require"."""
+    assert getattr(load(**{field: ""}), field) is None
+
+
+@pytest.mark.parametrize("field", RETENTION_FIELDS)
+def test_a_retention_period_is_read_in_days(field):
+    assert getattr(load(**{field: "400"}), field) == 400
+
+
+@pytest.mark.parametrize("field", RETENTION_FIELDS)
+def test_a_retention_period_of_no_days_is_refused(field):
+    assert_rejected(field, **{field: 0})
+
+
+def test_a_takedown_is_kept_at_least_the_180_days_the_it_rules_ask():
+    assert_rejected("retention_takedown_days", retention_takedown_days=179)
+    assert load(retention_takedown_days=180).retention_takedown_days == 180

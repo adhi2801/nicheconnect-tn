@@ -19,6 +19,7 @@ import uuid
 from datetime import date, datetime
 from urllib.parse import urlparse
 
+from sqlalchemy import delete as sa_delete
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -238,3 +239,9 @@ def unpublish_rate_card(db: Session, creator: Creator) -> Creator:
         db.refresh(creator)
     # As above: nothing to undo, so nothing is rolled back.
     return creator
+
+
+def erase_for_creator(db: Session, creator_id: uuid.UUID) -> None:
+    """On deleting the account (D-122): the creator's channels and packages. Never commits."""
+    db.execute(sa_delete(CreatorPackage).where(CreatorPackage.creator_id == creator_id))
+    db.execute(sa_delete(CreatorChannel).where(CreatorChannel.creator_id == creator_id))

@@ -27,7 +27,7 @@ from app.core.export import (
 from app.core.pagination import Slice, build_slice, older_than_cursor
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
-from app.modules.auth.suspension import brand_is_active, brand_is_suspended
+from app.modules.auth.suspension import brand_is_active, brand_is_unavailable
 from app.modules.campaigns.exceptions import (
     AlreadyApplied,
     ApplicationsClosed,
@@ -388,7 +388,7 @@ def apply_to_campaign(
     if campaign is None:
         db.rollback()
         raise CampaignNotFound()
-    if campaign.status != "open" or brand_is_suspended(db, campaign.brand_id):
+    if campaign.status != "open" or brand_is_unavailable(db, campaign.brand_id):
         # A suspended brand's campaign cannot be applied to, even by its id.
         db.rollback()
         raise CampaignNotOpen()
@@ -521,7 +521,7 @@ def move_application(
         )
     campaign = db.get_one(Campaign, application.campaign_id)
     if (actor, new_status) == ("creator", "accepted") and (
-        campaign.status != "open" or brand_is_suspended(db, campaign.brand_id)
+        campaign.status != "open" or brand_is_unavailable(db, campaign.brand_id)
     ):
         db.rollback()
         raise CampaignNotOpen()

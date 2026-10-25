@@ -68,6 +68,9 @@ URGENT_TYPES: tuple[str, ...] = (
     "passkey_reset_cancelled",
     "passkey_only_changed",
     "session_ended",
+    "deletion_requested",
+    "deletion_cancelled",
+    "deletion_held_by_deals",
 )
 MUTABLE_TYPES: tuple[str, ...] = tuple(
     kind for kind in NOTIFICATION_TYPES if kind not in URGENT_TYPES

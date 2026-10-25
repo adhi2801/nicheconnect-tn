@@ -90,6 +90,12 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     # To the account itself, when one of its sessions was ended from another
     # (item 81, D-114).
     "session_ended",
+    # To the account itself, about deleting it (item 6, D-122): asked for and
+    # waiting 30 days, cancelled, or held at the end of its wait by a deal
+    # still unfinished.
+    "deletion_requested",
+    "deletion_cancelled",
+    "deletion_held_by_deals",
 )
 MAX_DETAILS_LENGTH = 2000
 

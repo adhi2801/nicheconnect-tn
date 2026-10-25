@@ -89,6 +89,18 @@ class ClientDevice:
     label: str
 
 
+def phone_of(account: Account) -> str:
+    """The number an account logs in with. Raises InvalidToken for a deleted one.
+
+    Only a deleted account has none (D-122), and a deleted account has no
+    session, so no request reaches here for one; this says so rather than
+    assume it.
+    """
+    if account.phone is None:
+        raise InvalidToken()
+    return account.phone
+
+
 def lock_phone(db: Session, phone: str) -> None:
     """Serialize OTP work per phone until the transaction ends.
 

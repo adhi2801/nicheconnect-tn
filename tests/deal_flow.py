@@ -122,3 +122,29 @@ def accepted_memo(
     accepted = client.post(f"{MEMOS_URL}/{memo_id}/accept", headers=creator.headers)
     assert accepted.status_code == 200, accepted.text
     return str(memo_id)
+
+
+# A 12-digit UPI reference, as a brand marking a payment sends.
+PAYMENT_REFERENCE = "412345678901"
+
+
+def finish_deal(client: TestClient, brand: User, creator: User, memo_id: str) -> None:
+    """Work sent and approved, money sent and confirmed: a finished deal."""
+    proof = client.post(
+        f"{MEMOS_URL}/{memo_id}/proof",
+        json={"content_url": LINK, "format": "reel", "disclosure_confirmed": True},
+        headers=creator.headers,
+    )
+    assert proof.status_code == 201, proof.text
+    client.post(
+        f"{MEMOS_URL}/{memo_id}/proof/{proof.json()['id']}/approve", headers=brand.headers
+    )
+    client.post(
+        f"{MEMOS_URL}/{memo_id}/payment/mark-paid",
+        json={"method": "upi", "reference": PAYMENT_REFERENCE},
+        headers=brand.headers,
+    )
+    confirmed = client.post(
+        f"{MEMOS_URL}/{memo_id}/payment/confirm", headers=creator.headers
+    )
+    assert confirmed.status_code == 200, confirmed.text

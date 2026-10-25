@@ -398,6 +398,7 @@ AttentionKind = Literal[
     "answer_invitation",
     "upi_change_pending",
     "phone_change_pending",
+    "deletion_pending",
     "new_sign_in",
 ]
 

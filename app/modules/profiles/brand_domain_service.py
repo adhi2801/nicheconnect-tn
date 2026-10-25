@@ -23,7 +23,7 @@ from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, delete, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -382,3 +382,12 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
             fields=EXPORT_FIELDS,
         )
     ]
+
+
+def erase_for_brand(db: Session, brand_id: uuid.UUID) -> None:
+    """On deleting the account (D-122): the brand's domain claim. Never commits.
+
+    The domain is then free for another brand to prove. A check running at
+    the same moment finds the claim gone under its own lock and does nothing.
+    """
+    db.execute(delete(BrandDomain).where(BrandDomain.brand_id == brand_id))

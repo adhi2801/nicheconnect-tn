@@ -1,6 +1,78 @@
 {
   "components": {
     "schemas": {
+      "AccountDeletionRead": {
+        "description": "Where deleting your account stands, and what would hold or survive it.",
+        "properties": {
+          "kept": {
+            "description": "What is kept after deletion, because a law may require it. Everything else about you is erased, and your name, handle and number go from the deals the other side keeps",
+            "items": {
+              "$ref": "#/components/schemas/KeptKindRead"
+            },
+            "title": "Kept",
+            "type": "array"
+          },
+          "requested_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested At"
+          },
+          "status": {
+            "description": "`none`: not asked for, or cancelled. `waiting`: it takes effect at `takes_effect_at`. `held`: its 30 days are over, but a deal begun meanwhile is not finished; it takes effect once it is, within 15 minutes. Cancel either with `DELETE /api/v1/me/deletion`",
+            "enum": [
+              "none",
+              "waiting",
+              "held"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "takes_effect_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "30 days after it was asked for. Until then everything works as before, and you can cancel with no code",
+            "title": "Takes Effect At"
+          },
+          "unfinished_deal_ids": {
+            "description": "The memos of the first 20 of them, by id",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Unfinished Deal Ids",
+            "type": "array"
+          },
+          "unfinished_deals": {
+            "description": "Your deals not yet finished, declined or cancelled, or with a payment dispute open. Asking is refused while any is, and an erasure is held by one begun meanwhile",
+            "title": "Unfinished Deals",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "status",
+          "requested_at",
+          "takes_effect_at",
+          "unfinished_deals",
+          "unfinished_deal_ids",
+          "kept"
+        ],
+        "title": "AccountDeletionRead",
+        "type": "object"
+      },
       "AccountRead": {
         "description": "The signed-in account, returned to its owner only.",
         "properties": {
@@ -85,14 +157,35 @@
             "title": "Deals",
             "type": "integer"
           },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the account was deleted at its owner's request (D-122)",
+            "title": "Deleted At"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
           },
           "phone": {
-            "title": "Phone",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null once the account is deleted: the number is let go (D-122)",
+            "title": "Phone"
           },
           "profile": {
             "anyOf": [
@@ -164,6 +257,7 @@
           "phone",
           "created_at",
           "suspended_at",
+          "deleted_at",
           "suspension_reason",
           "profile",
           "deals",
@@ -1343,6 +1437,7 @@
               "answer_invitation",
               "upi_change_pending",
               "phone_change_pending",
+              "deletion_pending",
               "new_sign_in"
             ],
             "title": "Kind",
@@ -1466,6 +1561,7 @@
                 "answer_invitation",
                 "upi_change_pending",
                 "phone_change_pending",
+                "deletion_pending",
                 "new_sign_in"
               ]
             },
@@ -4823,6 +4919,49 @@
         "title": "InviteCountsRead",
         "type": "object"
       },
+      "KeptKindRead": {
+        "description": "One kind of record kept after the account is deleted.",
+        "properties": {
+          "kept_for_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How many days it is kept after the account is deleted. Null: kept, as the law may require, until a period is set; we do not guess one",
+            "title": "Kept For Days"
+          },
+          "kind": {
+            "description": "Clients tolerate kinds they do not know (backend.md section 2)",
+            "enum": [
+              "deal_record",
+              "payment_record",
+              "dispute",
+              "proof_file",
+              "report",
+              "takedown",
+              "admin_log"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "what": {
+            "description": "What it holds, in plain words, safe to show",
+            "title": "What",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "what",
+          "kept_for_days"
+        ],
+        "title": "KeptKindRead",
+        "type": "object"
+      },
       "LiftTakedownIn": {
         "additionalProperties": false,
         "properties": {
@@ -6194,11 +6333,14 @@
                 "passkey_reset_requested",
                 "passkey_reset_cancelled",
                 "passkey_only_changed",
-                "session_ended"
+                "session_ended",
+                "deletion_requested",
+                "deletion_cancelled",
+                "deletion_held_by_deals"
               ],
               "type": "string"
             },
-            "maxItems": 45,
+            "maxItems": 48,
             "title": "Muted Types",
             "type": "array"
           },
@@ -6295,7 +6437,10 @@
                 "passkey_reset_requested",
                 "passkey_reset_cancelled",
                 "passkey_only_changed",
-                "session_ended"
+                "session_ended",
+                "deletion_requested",
+                "deletion_cancelled",
+                "deletion_held_by_deals"
               ],
               "type": "string"
             },
@@ -6366,7 +6511,10 @@
                 "passkey_reset_requested",
                 "passkey_reset_cancelled",
                 "passkey_only_changed",
-                "session_ended"
+                "session_ended",
+                "deletion_requested",
+                "deletion_cancelled",
+                "deletion_held_by_deals"
               ],
               "type": "string"
             },
@@ -6511,7 +6659,10 @@
               "passkey_reset_requested",
               "passkey_reset_cancelled",
               "passkey_only_changed",
-              "session_ended"
+              "session_ended",
+              "deletion_requested",
+              "deletion_cancelled",
+              "deletion_held_by_deals"
             ],
             "title": "Notification Type",
             "type": "string"
@@ -10745,7 +10896,8 @@
               "add_passkey",
               "remove_passkey",
               "passkey_only",
-              "end_session"
+              "end_session",
+              "delete_account"
             ],
             "title": "Action",
             "type": "string"
@@ -10799,12 +10951,13 @@
       },
       "StepUpForAccount": {
         "additionalProperties": false,
-        "description": "A code to log out of every device, or to add a passkey (D-113).",
+        "description": "A code to log out of every device, to add a passkey (D-113), or to delete the account (D-122).",
         "properties": {
           "action": {
             "enum": [
               "log_out_everywhere",
-              "add_passkey"
+              "add_passkey",
+              "delete_account"
             ],
             "title": "Action",
             "type": "string"
@@ -10967,7 +11120,8 @@
               "add_passkey",
               "remove_passkey",
               "passkey_only",
-              "end_session"
+              "end_session",
+              "delete_account"
             ],
             "title": "Action",
             "type": "string"
@@ -11005,6 +11159,7 @@
               "mapping": {
                 "add_passkey": "#/components/schemas/StepUpForAccount",
                 "change_phone": "#/components/schemas/StepUpForPhone",
+                "delete_account": "#/components/schemas/StepUpForAccount",
                 "download_export": "#/components/schemas/StepUpForExport",
                 "end_session": "#/components/schemas/StepUpForSession",
                 "log_out_everywhere": "#/components/schemas/StepUpForAccount",
@@ -26837,6 +26992,266 @@
         ]
       }
     },
+    "/api/v1/me/deletion": {
+      "delete": {
+        "description": "Cancels a deletion waiting its 30 days, or held by a deal. For when it was not you: no code is needed, so it works from any of your sessions even if someone else has your number. Safe to repeat; nothing waiting is fine.",
+        "operationId": "cancel_my_deletion_api_v1_me_deletion_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Keep my account: cancel its deletion",
+        "tags": [
+          "auth"
+        ]
+      },
+      "get": {
+        "description": "Whether your account is waiting to be deleted and when, the deals that would hold it, and what is kept afterwards because a law may require it. Show a waiting deletion at the top of every screen, with a one-tap cancel: if it was not you, someone may have your number.",
+        "operationId": "read_my_deletion_api_v1_me_deletion_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountDeletionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Deleting my account: where it stands",
+        "tags": [
+          "auth"
+        ]
+      },
+      "post": {
+        "description": "Needs **a code**: ask at `POST /api/v1/me/step-up` with `delete_account`, and send it in the `Step-Up-Code` header. Refused while any of your deals is unfinished: finish, decline or cancel each first. **It takes effect 30 days later**: until then everything works as before, you are told in the app, and you can cancel with no code. Then what no law asks us to keep is erased: your number, sessions, passkeys, notifications, prices, channels, UPI IDs, blocks, exports, Passport, and your name and handle, which the other side's deals then show as someone who left. What is kept is listed under `kept`. Your number is free to make a new account with. A deal begun in the 30 days holds the deletion until it is finished. Brands and creators only. Limits: 5 per 10 minutes and 10 a day.",
+        "operationId": "delete_my_account_api_v1_me_deletion_post",
+        "parameters": [
+          {
+            "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+            "in": "header",
+            "name": "Step-Up-Code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9]{6}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+              "title": "Step-Up-Code"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountDeletionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`step_up_code_invalid`: the code is wrong, expired or used"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired; or `step_up_required`: no code was sent"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`role_not_allowed`: an admin account is removed by the founders"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`deletion_already_requested`: it is already waiting; `deletion_held_by_deals`: a deal of yours is unfinished. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests, or too many wrong codes for your phone; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete my account, 30 days from now",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/me/devices": {
       "put": {
         "description": "Records the push token Firebase or Apple gave this install, or refreshes it; send it on every app start and whenever the token changes. Safe to repeat. A token already registered to another account moves to this one, so a phone handed on stops showing the last person's notifications. Each account keeps its 10 most recently seen phones. The phone belongs to the session registering it: when that session ends, by a logout, from another device or everywhere, the phone is unregistered with it. A session already ended is refused (401). The token is never returned; keep the `id` to unregister.",
@@ -29248,7 +29663,7 @@
     },
     "/api/v1/me/step-up": {
       "post": {
-        "description": "Sends a 6-digit code to your phone for one change: setting a UPI ID (this exact one), downloading one exact copy of your data, logging out everywhere, or moving your account to a new phone number (this exact one). Then make the change with the code in the `Step-Up-Code` header, within 5 minutes. A code works once, and only for the change it was asked for. Admins are sent nothing: they use their authenticator app's code. Limits: 3 per 10 minutes and 10 a day, counted with login codes for your phone.",
+        "description": "Sends a 6-digit code to your phone for one change: setting a UPI ID (this exact one), downloading one exact copy of your data, logging out everywhere, moving your account to a new phone number (this exact one), or deleting your account (`delete_account`). Then make the change with the code in the `Step-Up-Code` header, within 5 minutes. A code works once, and only for the change it was asked for. Admins are sent nothing: they use their authenticator app's code. Limits: 3 per 10 minutes and 10 a day, counted with login codes for your phone.",
         "operationId": "ask_for_step_up_api_v1_me_step_up_post",
         "parameters": [
           {
@@ -29272,6 +29687,7 @@
                   "mapping": {
                     "add_passkey": "#/components/schemas/StepUpForAccount",
                     "change_phone": "#/components/schemas/StepUpForPhone",
+                    "delete_account": "#/components/schemas/StepUpForAccount",
                     "download_export": "#/components/schemas/StepUpForExport",
                     "end_session": "#/components/schemas/StepUpForSession",
                     "log_out_everywhere": "#/components/schemas/StepUpForAccount",
@@ -29351,7 +29767,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "Only a creator may ask to set a UPI ID; an admin may not change their phone number here; or `login_too_recent`: changing the phone number, or replacing a UPI ID in effect, needs a login at least 7 days old (see Retry-After)"
+            "description": "Only a creator may ask to set a UPI ID; an admin may not change their phone number here; or `login_too_recent`: changing the phone number, or replacing a UPI ID in effect, needs a login at least 7 days old (see Retry-After); an admin account cannot be deleted here"
           },
           "404": {
             "content": {
@@ -29373,7 +29789,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "`phone_unchanged`: that is already your number; or the export cannot be downloaded (`export_not_ready`, `export_failed`, `export_already_downloaded`, `export_expired`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+            "description": "`phone_unchanged`: that is already your number; or the export cannot be downloaded (`export_not_ready`, `export_failed`, `export_already_downloaded`, `export_expired`); or the account cannot be deleted yet (`deletion_already_requested`, `deletion_held_by_deals`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
           },
           "422": {
             "content": {

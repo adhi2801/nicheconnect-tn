@@ -201,6 +201,6 @@ def me(request: Request, account: CurrentAccount) -> AccountRead:
     return AccountRead(
         id=account.id,
         role=account.role,
-        phone=account.phone,
+        phone=service.phone_of(account),
         created_at=account.created_at,
     )

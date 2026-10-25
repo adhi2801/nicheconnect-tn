@@ -6,9 +6,10 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.attention import MAX_ITEMS, NEW_SIGN_IN, AttentionItem
+from app.core.attention import DELETION_PENDING, MAX_ITEMS, NEW_SIGN_IN, AttentionItem
 from app.core.clock import india_date
 from app.modules.auth import phone_changes, sessions
+from app.modules.auth.models.account import Account
 from app.modules.auth.models.account_phone_change import AccountPhoneChange
 
 
@@ -33,6 +34,25 @@ def phone_change_for_account(
     return [
         AttentionItem(
             kind="phone_change_pending",
+            due_on=india_date(takes_effect_at),
+            campaign_id=None,
+            campaign_title=None,
+        )
+    ]
+
+
+def deletion_for_account(account: Account) -> list[AttentionItem]:
+    """The account waiting to be deleted, or held by a deal (item 6, D-122).
+
+    Due the day it takes effect; gone once it is cancelled. No query: the
+    account is already loaded.
+    """
+    takes_effect_at = account.deletion_takes_effect_at
+    if takes_effect_at is None:
+        return []
+    return [
+        AttentionItem(
+            kind=DELETION_PENDING,
             due_on=india_date(takes_effect_at),
             campaign_id=None,
             campaign_title=None,

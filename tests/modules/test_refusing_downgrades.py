@@ -55,6 +55,7 @@ REFUSING = {
     "ceeda50f8c0b": "passkeys guarding people's accounts",
     "de322e936678": "notices telling people one of their sessions was ended",
     "82bb81b5eed4": "admins' clearances of look-alike brand names, and their log entries",
+    "b7e026caa4a9": "accounts waiting to be deleted, or deleted, which lack a number",
 }
 
 
@@ -466,4 +467,22 @@ def test_log_entries_of_clearing_names(db):
 
     assert f"{before + 1} admin log entries record clearing" in refusal(
         db, "82bb81b5eed4"
+    )
+
+
+def test_accounts_asked_to_be_deleted(db):
+    before = count(
+        db, "SELECT count(*) FROM account WHERE deletion_requested_at IS NOT NULL"
+    )
+    account = create_account(db, "creator")
+    db.execute(
+        text(
+            "UPDATE account SET deletion_requested_at = now(),"
+            " deletion_takes_effect_at = now() + interval '30 days' WHERE id = :a"
+        ),
+        {"a": account.id},
+    )
+
+    assert f"{before + 1} accounts have asked to be deleted" in refusal(
+        db, "b7e026caa4a9"
     )

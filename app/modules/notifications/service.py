@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Any, cast
 
 from sqlalchemy import CursorResult, func, select, update
+from sqlalchemy import delete as sa_delete
 from sqlalchemy.orm import Session
 
 from app.core.export import (
@@ -21,6 +22,7 @@ from app.core.export import (
 from app.core.pagination import Slice, build_slice, older_than_cursor
 from app.modules.notifications.exceptions import NotificationNotFound
 from app.modules.notifications.models import Notification
+from app.modules.notifications.preference_models import NotificationPreference
 
 # Tables this module answers for in a data export. The completeness test in
 # tests/modules/me/test_export_api.py reads this, so a new table here
@@ -173,3 +175,13 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
             fields=EXPORT_FIELDS,
         )
     ]
+
+
+def erase_for_account(db: Session, account_id: uuid.UUID) -> None:
+    """On deleting the account (D-122): every notification and its preferences. Never commits."""
+    db.execute(sa_delete(Notification).where(Notification.account_id == account_id))
+    db.execute(
+        sa_delete(NotificationPreference).where(
+            NotificationPreference.account_id == account_id
+        )
+    )

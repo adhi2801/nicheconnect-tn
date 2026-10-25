@@ -70,6 +70,7 @@ StepUpAction = Literal[
     "remove_passkey",
     "passkey_only",
     "end_session",
+    "delete_account",
 ]
 StepUpMethod = Literal["phone_code", "authenticator", "passkey"]
 # The request header a risky change carries its code in.
@@ -83,6 +84,8 @@ ACTION_ROLES: dict[str, tuple[str, ...]] = {
     "add_passkey": ("brand", "creator"),
     "remove_passkey": ("brand", "creator"),
     "passkey_only": ("brand", "creator"),
+    # An admin account is removed only by a founder, never from the app (D-122).
+    "delete_account": ("brand", "creator"),
 }
 
 EXPORTED_TABLES = frozenset({"step_up_challenge"})
@@ -165,8 +168,8 @@ def request_code(
             pending=None,
             passkey_options=options,
         )
-    login.lock_phone(db, account.phone)
-    retry_after = login.seconds_until_send_allowed(db, account.phone, now)
+    login.lock_phone(db, login.phone_of(account))
+    retry_after = login.seconds_until_send_allowed(db, login.phone_of(account), now)
     if retry_after > 0:
         db.rollback()
         raise OtpSendLimitReached(headers={"Retry-After": str(retry_after)})
@@ -189,7 +192,9 @@ def request_code(
         action=action,
         method="phone_code",
         expires_at=expires_at,
-        pending=PendingOtp(phone=account.phone, code=code, expires_at=expires_at),
+        pending=PendingOtp(
+            phone=login.phone_of(account), code=code, expires_at=expires_at
+        ),
     )
 
 
@@ -261,8 +266,8 @@ def consume(
             raise StepUpCodeInvalid()
         return
 
-    login.lock_phone(db, account.phone)
-    retry_after = login.seconds_until_verify_allowed(db, account.phone, now)
+    login.lock_phone(db, login.phone_of(account))
+    retry_after = login.seconds_until_verify_allowed(db, login.phone_of(account), now)
     if retry_after > 0:
         db.rollback()
         raise OtpVerifyLimitReached(headers={"Retry-After": str(retry_after)})

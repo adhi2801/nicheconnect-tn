@@ -43,8 +43,9 @@ router = APIRouter(prefix="/api/v1/me", tags=["auth"], route_class=IdempotentRou
     description=(
         "Sends a 6-digit code to your phone for one change: setting a UPI ID "
         "(this exact one), downloading one exact copy of your data, logging "
-        "out everywhere, or "
-        "moving your account to a new phone number (this exact one). "
+        "out everywhere, "
+        "moving your account to a new phone number (this exact one), or "
+        "deleting your account (`delete_account`). "
         "Then make the change with the code in the `Step-Up-Code` header, "
         "within 5 minutes. A code works once, and only for the change it was "
         "asked for. Admins are sent nothing: they use their authenticator "
@@ -57,7 +58,7 @@ router = APIRouter(prefix="/api/v1/me", tags=["auth"], route_class=IdempotentRou
             "Only a creator may ask to set a UPI ID; an admin may not change "
             "their phone number here; or `login_too_recent`: changing the phone "
             "number, or replacing a UPI ID in effect, needs a login at least 7 "
-            "days old (see Retry-After)"
+            "days old (see Retry-After); an admin account cannot be deleted here"
         ),
         404: problem_doc(
             "`export_not_found`: no such export of yours; `passkey_not_found`; "
@@ -66,7 +67,9 @@ router = APIRouter(prefix="/api/v1/me", tags=["auth"], route_class=IdempotentRou
         409: problem_doc(
             "`phone_unchanged`: that is already your number; or the export "
             "cannot be downloaded (`export_not_ready`, `export_failed`, "
-            "`export_already_downloaded`, `export_expired`)"
+            "`export_already_downloaded`, `export_expired`); or the account "
+            "cannot be deleted yet (`deletion_already_requested`, "
+            "`deletion_held_by_deals`)"
         ),
         422: problem_doc(
             "The action is unknown, or the UPI ID or new number is not usable"

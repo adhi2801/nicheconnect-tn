@@ -65,7 +65,7 @@ The blueprint's flow 2.3 runs the whole journey inside WhatsApp: apply, accept, 
 | Inbox | v1.1 | A notification history (D-022, D-023): `GET /notifications`, read, read-all, unread count. Messages delivered by WhatsApp wait on Meta verification (E1) | **Built** (in-app) |
 | Notifications | MVP | Same, with preferences: quiet hours, digest, muting, urgent never held (`/me/notification-preferences`, D-079) | **Built** |
 | What needs me | MVP | `GET /me/attention`: everything waiting on the person, most urgent first | **Built** |
-| Settings + DPDP privacy | MVP | Export (`POST /me/exports`, ready within minutes, downloaded once: D-111), log out everywhere, notification preferences, blocks (`/me/blocks`), UPI ID with consent (`/creators/me/upi`, D-085), invite code. **Account deletion** waits on the validation pack (E8) | **Partial** |
+| Settings + DPDP privacy | MVP | Export (`POST /me/exports`, ready within minutes, downloaded once: D-111), log out everywhere, notification preferences, blocks (`/me/blocks`), UPI ID with consent (`/creators/me/upi`, D-085), invite code. **Account deletion** (`/me/deletion`: ask with a code, 30 days to cancel, what is kept listed; D-122) | **Built** |
 | AI Copilot panel | MVP | Not built; the brief builder (item 40) and an MCP server for people's own assistants (item 41) come first | Blocked (decision) |
 
 ---

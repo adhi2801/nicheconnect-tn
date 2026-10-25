@@ -35,7 +35,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, exists, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -362,6 +362,64 @@ def _destroy_expired(
             )
             db.commit()
     return len(due)
+
+
+def destroy_files_of(
+    session_factory: Callable[[], AbstractContextManager[Session]],
+    store: FileStore,
+    account_id: uuid.UUID,
+    now: datetime,
+) -> int:
+    """On deleting the account (D-122): destroy every file of its still stored.
+
+    With no transaction open while storage is called, as for expired files.
+    Returns how many were destroyed.
+    """
+    with session_factory() as db:
+        stored = list(
+            db.scalars(
+                select(DataExport.id).where(
+                    DataExport.account_id == account_id,
+                    DataExport.ready_at.is_not(None),
+                    DataExport.file_deleted_at.is_(None),
+                )
+            ).all()
+        )
+    for export_id in stored:
+        store.destroy(object_key(export_id))
+        with session_factory() as db:
+            db.execute(
+                update(DataExport)
+                .where(DataExport.id == export_id, DataExport.file_deleted_at.is_(None))
+                .values(file_deleted_at=now, updated_at=now)
+            )
+            db.commit()
+    return len(stored)
+
+
+def blocks_erasure(db: Session, account_id: uuid.UUID) -> bool:
+    """True while an export is being prepared, or a file of one is still stored.
+
+    The erasure waits for both (D-122): one being prepared would write a
+    file after its row was gone, and a stored one is destroyed first, by
+    `destroy_files_of`, outside the erasure's transaction.
+    """
+    return bool(
+        db.scalar(
+            select(
+                exists().where(
+                    DataExport.account_id == account_id,
+                    DataExport.file_deleted_at.is_(None),
+                    DataExport.failed_at.is_(None),
+                )
+            )
+        )
+    )
+
+
+def erase_for_account(db: Session, account_id: uuid.UUID) -> None:
+    """On deleting the account (D-122): the record of its exports. Never commits."""
+    db.execute(delete(DataExport).where(DataExport.account_id == account_id))
 
 
 def _refuse_unless_ready(export: DataExport, now: datetime) -> None:

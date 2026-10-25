@@ -207,6 +207,21 @@ class Settings(BaseSettings):
     # until the publish notice says search engines will show the Passport
     # (legal.md section 3.1, a Confirm item).
     passport_indexing: bool = False
+    # How long what a law may require us to keep is kept after its account
+    # is deleted (item 6, D-122), in days, one setting a kind. Unset means
+    # kept, as the law may require: the periods come from the validation
+    # pack (constraint 6) and are never guessed here. Each kind's tables are
+    # in app/modules/me/account_deletion_registry.py. The upper bound only
+    # catches a typo.
+    retention_deal_record_days: int | None = Field(default=None, ge=1, le=36_500)
+    retention_payment_record_days: int | None = Field(default=None, ge=1, le=36_500)
+    retention_dispute_days: int | None = Field(default=None, ge=1, le=36_500)
+    retention_proof_file_days: int | None = Field(default=None, ge=1, le=36_500)
+    retention_report_days: int | None = Field(default=None, ge=1, le=36_500)
+    # The IT Rules keep a takedown and its records at least 180 days (rule
+    # 3(1)(g), legal.md section 3.3), so less is refused.
+    retention_takedown_days: int | None = Field(default=None, ge=180, le=36_500)
+    retention_admin_log_days: int | None = Field(default=None, ge=1, le=36_500)
 
     @field_validator(
         "sentry_dsn",
@@ -214,6 +229,13 @@ class Settings(BaseSettings):
         "upi_notice_version",
         "traces_endpoint",
         "passkey_rp_id",
+        "retention_deal_record_days",
+        "retention_payment_record_days",
+        "retention_dispute_days",
+        "retention_proof_file_days",
+        "retention_report_days",
+        "retention_takedown_days",
+        "retention_admin_log_days",
         mode="before",
     )
     @classmethod

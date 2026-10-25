@@ -138,7 +138,7 @@ def get_for_account(db: Session, account: Account) -> PhoneChangeState:
     ).first()
     if waiting is not None and phone_changes.is_void(db, waiting):
         waiting = None
-    return PhoneChangeState(phone=account.phone, waiting=waiting)
+    return PhoneChangeState(phone=login.phone_of(account), waiting=waiting)
 
 
 def request_change(
@@ -247,7 +247,7 @@ def _claim(
     passkey's grant (D-113). Without the current number and no passkey,
     there is none (D-110).
     """
-    login.lock_phones(db, account.phone, new_phone)
+    login.lock_phones(db, login.phone_of(account), new_phone)
     waiting = _locked_change(db, account.id)
     if waiting is not None and phone_changes.is_due(waiting, now):
         db.rollback()
@@ -383,10 +383,12 @@ def make_change(db: Session, change_id: uuid.UUID, now: datetime) -> Outcome | N
         .join(Account, Account.id == AccountPhoneChange.account_id)
         .where(AccountPhoneChange.id == change_id)
     ).first()
-    if found is None:
+    # A deleted account has no number, and its waiting change was erased
+    # with it (D-122); either way there is nothing to make.
+    old_phone, new_phone = (None, None) if found is None else found
+    if old_phone is None or new_phone is None:
         db.commit()
         return None
-    old_phone, new_phone = found
     login.lock_phones(db, old_phone, new_phone)
     change = db.scalars(
         select(AccountPhoneChange)

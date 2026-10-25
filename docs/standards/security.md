@@ -51,7 +51,7 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md`. Rule
   - Every view of an account's details and every admin action is written to the admin log with a reason. The log refuses updates and deletes at the database (`database.md` section 3).
   - **Enforced by** `tests/modules/auth/test_admin_login_api.py` and `tests/modules/admin/`.
 - **A second check before a risky change** (item 82, D-107; ASVS 5.0 7.5.1 to 7.5.3):
-  - setting a UPI ID, downloading the data export (a code for that exact export, D-111; asking for one needs none, D-112), logging out everywhere and changing the phone number (item 80) each need a 6-digit code from `POST /api/v1/me/step-up`, in the `Step-Up-Code` header;
+  - setting a UPI ID, downloading the data export (a code for that exact export, D-111; asking for one needs none, D-112), logging out everywhere, changing the phone number (item 80) and deleting the account (item 6) each need a 6-digit code from `POST /api/v1/me/step-up`, in the `Step-Up-Code` header;
   - a code works once, for 5 minutes, for one action and, for a UPI ID or a new phone number, that exact one (only HMACs of the code and the value are stored); only the newest counts; 5 wrong tries use it up;
   - without one, 401 `step_up_required` with RFC 9470's `insufficient_user_authentication` challenge;
   - step-up codes and login codes share the phone's caps, for sending and for guessing, under one per-phone lock;
@@ -135,6 +135,7 @@ Examples:
 | Code verify | 10 in 10 minutes | the address (the phone's caps are in section 1) |
 | Asking for a step-up code (item 82) | 3 in 10 minutes, 10 a day | the account (and the phone's caps, shared with login codes) |
 | Changing the phone number (item 80) | 5 in 10 minutes, 10 a day | the account (and both numbers' code caps) |
+| Asking to delete the account (item 6) | 5 in 10 minutes, 10 a day | the account (and the phone's code caps) |
 | Refresh and logout | 30 a minute | the address |
 | Listing sessions; ending one (item 81) | 60 a minute; 30 a minute | the account (and, for another session, the phone's code caps) |
 | Writes | 30 a minute, most with a daily ceiling | the account |
@@ -163,7 +164,7 @@ Examples:
 - **Consent is a recorded event with a timestamp, never a default** (D-036: nobody is public until they choose).
 - Consent wording, retention periods, deletion, and the consent-manager rules that take effect on 13 November 2026 follow the validation pack (constraint 6). Nothing is invented.
 - **A personal-data breach is reported to the Data Protection Board and to the people affected within the time the DPDP Rules set** (the validation pack confirms the clock), and a cyber incident to CERT-In within 6 hours (CERT-In directions of 28 April 2022). The plan is `docs/INCIDENT_RESPONSE.md`; the law behind both is `docs/standards/legal.md` sections 3.1 and 3.2.
-- Account deletion is tested end to end once the policy is decided (E8).
+- **Deleting the account** (item 6, D-122): asked with a step-up code for `delete_account`, refused while a deal is unfinished, and done 30 days later; the owner is told by notices nobody can mute, it leads their attention list, and any of their sessions cancels it with no code, so a SIM swapper's deletion is undone in time. Then a job erases what no law asks us to keep and empties the account, its number let go; a deleted account's tokens are refused on the next request. The erasure takes the phone's lock, the profile, its campaigns and applications, then the account, the order every other path takes them in: account-first deadlocked with an invitation in the race tests. Placeholders for a handle or an email are random, never derived from a visible id, so nobody can block someone's deletion by taking one first. Admins are removed only by the founders. **Enforced by** `tests/modules/me/test_account_deletion_api.py`, `test_account_deletion_erasure.py`, `test_account_deletion_concurrency.py`, `test_account_deletion_registry.py` and `tests/modules/auth/test_account_deletion_model.py`; each rule broken on purpose and seen caught. How long what is kept is kept waits on the validation pack.
 
 ## 8. Transport and headers
 

@@ -30,7 +30,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
-from app.modules.auth.suspension import is_suspended
+from app.modules.auth.suspension import is_unavailable
 from app.modules.campaigns import service as campaigns
 from app.modules.campaigns.exceptions import (
     AlreadyOnCampaign,
@@ -65,7 +65,8 @@ def invite_creator(
 
     The campaign's row is locked first, so the count of waiting invitations
     and a close or cancel of the campaign cannot interleave with the write.
-    Raises CampaignNotOpen, CreatorNotFound, InvitationLimitReached,
+    Raises CampaignNotOpen, CreatorNotFound (also suspended, deleted or
+    blocked), InvitationLimitReached,
     AlreadyOnCampaign, OwnContentWithheld (the campaign or the brand is
     withheld) and ContentWithheld (the creator is: item 52).
     """
@@ -73,13 +74,21 @@ def invite_creator(
     if campaign.status != "open":
         db.rollback()
         raise CampaignNotOpen()
-    creator = db.get(Creator, creator_id)
+    # Shared lock: erasing a creator who left (D-122) locks the row for
+    # update, so an invitation lands wholly before it, and is withdrawn with
+    # the rest, or after it, and finds the creator gone.
+    creator = db.scalars(
+        select(Creator)
+        .where(Creator.id == creator_id)
+        .with_for_update(read=True)
+        .execution_options(populate_existing=True)
+    ).first()
     brand_account_id = db.scalar(
         select(Brand.account_id).where(Brand.id == campaign.brand_id)
     )
     if (
         creator is None
-        or is_suspended(db, creator.account_id)
+        or is_unavailable(db, creator.account_id)
         # Blocked either way (item 59): not found, so the block stays private.
         or (
             brand_account_id is not None
