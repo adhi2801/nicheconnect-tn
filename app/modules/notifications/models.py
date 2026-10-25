@@ -102,6 +102,8 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     "offer_accepted",
     "offer_declined",
     "offer_withdrawn",
+    # To the other side of a deal, when a note is written on it (item 17, D-128).
+    "note_added",
 )
 MAX_DETAILS_LENGTH = 2000
 

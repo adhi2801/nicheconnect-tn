@@ -83,6 +83,8 @@ KEPT: tuple[KeptKind, ...] = (
                 # the terms' own lines.
                 "campaign_deliverable",
                 "memo_deliverable",
+                # Notes written on a deal (item 17), sealed onto its record.
+                "deal_note",
                 "application",
                 # Counter-offers on a quote (item 44): the negotiation both
                 # sides keep a record of.

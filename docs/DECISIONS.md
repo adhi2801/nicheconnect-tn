@@ -1607,3 +1607,17 @@ Newest entries at the bottom.
   4. Both exports gain the lists; the deletion registry holds them as deal records (D-122).
   5. Three query-count ceilings rose by one, for the one query that loads every row's list; each test still proves a long page costs the same as a short one.
   6. Next: per-deliverable proof (choice 2A, its own proposal), and agreed-fee guidance per format (D-056 step 2), which the list now makes possible.
+
+## D-128: Deal notes on the record, sealed and append-only, in place of chat (item 17)
+- Date: 2026-10-26
+- Approved by: Adhi, in this session: "all as recommended i mean the best", to the batch proposal of items 17, 66 and 43 with their dimensions. **Not reviewed by the other founder** (D-051).
+- Context: once a deal was agreed the talk went to WhatsApp, so "we agreed two reels, not three" could not be proven. Wobb, Collabstr and Passionfroot run in-app chats (`docs/COMPETITIVE_LANDSCAPE.md` section 3), and their messages prove nothing.
+- Options considered: (a) when: A) from the memo being sent; B) only once it is accepted. (b) what: A) sealed and append-only; B) editable and unsealed.
+- Chosen: A and A.
+- Reason: most of what needs proving is said while the terms are argued over (aA); a note that can be edited proves nothing, and sealing is what no chat offers (bA).
+- Consequences / follow-ups:
+  1. `GET` and `POST /api/v1/deal-memos/{memo_id}/notes`: either party, plain text up to 1,000 characters, from `sent` through `accepted`; a draft or an ended deal answers `notes_closed`. Newest first in keyset pages. The other side is told (`note_added`, mutable).
+  2. Each note and its `note_added` record entry, carrying `note_sha256`, are written in one transaction under the deal's lock, so notes at once all land, in one unbroken chain. `GET .../record` gains `notes_unchanged`, which catches a note rewritten by someone who switched the triggers off.
+  3. `deal_note` refuses UPDATE, DELETE and TRUNCATE by trigger, and the app's own role lost those rights (D-100); a correction is another note.
+  4. A brand's note is flagged for fee requests; contact details are not flagged, the two being matched. 200 notes a day per account. An agreed deal carries on across a block (item 59), so do its notes.
+  5. Both exports hold the notes; the deletion registry holds them as deal records (D-122). Migration `a9188046bec4`; its downgrade refuses while any note or sealed note entry exists.

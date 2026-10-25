@@ -36,6 +36,7 @@ from tests.step_up import download_export
 
 SEALED = {
     "admin_action",
+    "deal_note",
     "deal_record_checkpoint",
     "deal_record_entry",
     "deal_record_timestamp",

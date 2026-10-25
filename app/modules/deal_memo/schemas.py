@@ -27,6 +27,7 @@ from app.modules.deal_memo.models import (
     TERMS_MAX_LENGTH,
     DealMemo,
 )
+from app.modules.deal_memo.note_models import NOTE_MAX_LENGTH, NOTE_SIDES
 from app.modules.deal_memo.response_times import MIN_EXAMPLES, ResponseTime
 from app.modules.deal_memo.stage import DEAL_SIDES, DEAL_STAGES, DealStage
 
@@ -375,6 +376,13 @@ class DealRecordRead(BaseModel):
     terms_unchanged_since_accepted: bool | None = Field(
         description="Null until accepted; then whether today's terms are the accepted ones"
     )
+    notes_unchanged: bool | None = Field(
+        default=None,
+        description=(
+            "Null when the deal has no notes; otherwise whether every note still "
+            "matches the fingerprint sealed for it (D-128)"
+        ),
+    )
     latest_seal: str | None = Field(description="Save this to detect a later rewrite")
     entries: list[DealRecordEntryRead]
 
@@ -471,3 +479,48 @@ class CreatorResponseTimesRead(BaseModel):
     creator_id: uuid.UUID
     memo_answered: ResponseTimeRead
     payment_confirmed: ResponseTimeRead
+
+
+# --- deal notes (item 17, D-128) ------------------------------------------------
+
+NoteSide = Literal["brand", "creator"]
+
+ensure_same_values("NoteSide", NoteSide, NOTE_SIDES)
+
+
+class NoteCreate(BaseModel):
+    """A note one side writes on the deal, sealed onto its record."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    body: str = Field(
+        min_length=1,
+        max_length=NOTE_MAX_LENGTH,
+        examples=["Can the second reel go up on Saturday instead of Friday?"],
+    )
+
+
+class NoteRead(BaseModel):
+    """A note, as both sides read it. It never changes once written."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    deal_memo_id: uuid.UUID
+    author_side: NoteSide = Field(description="Who wrote it")
+    body: str
+    created_at: datetime
+
+    @computed_field(  # type: ignore[prop-decorator]  # pydantic documents this
+        description=(
+            "Warnings on the note, worked out on every read: a request for money "
+            "from a creator. The two are matched, so contact details are not a "
+            "warning. Show each beside the note; never hide it"
+        )
+    )
+    @property
+    def text_flags(self) -> list[FieldFlag]:
+        # A brand's words reach a creator: a fee request is the scam to catch.
+        return field_flags(
+            {"body": self.body}, money=self.author_side == "brand", contact=False
+        )

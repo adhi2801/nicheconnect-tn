@@ -157,3 +157,10 @@ class ProofReadingAlreadyMarked(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "proof_reading_already_marked"
     title = "This reading has already been marked as misread"
+
+
+class NotesClosed(DomainError):
+    # Notes run from the memo being sent until the deal ends (D-128).
+    status_code = HTTPStatus.CONFLICT
+    code = "notes_closed"
+    title = "Notes can be written once the memo is sent, until the deal ends"
