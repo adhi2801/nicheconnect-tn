@@ -287,6 +287,19 @@ jobs:
           uv export --locked --no-emit-project --format requirements-txt --no-hashes > audit-requirements.txt
           uvx pip-audit@2.10.1 --requirement audit-requirements.txt --no-deps --disable-pip --strict --desc
 
+      # The same, over EVERY dependency group (D-125): the ml group the
+      # embeddings image installs, the load group, the tools. The step above
+      # sees only what the API installs, so on 25 October 2026 six advisories
+      # in those groups left every run green and only GitHub's push warning
+      # said so (D-124). Not --strict, because torch's CPU build is not on
+      # PyPI and cannot be checked; it is reported as skipped instead. Any
+      # advisory fails the build; accept one knowingly with --ignore-vuln <ID>
+      # and a comment saying who decided and why.
+      - name: Audit every dependency group for known vulnerabilities
+        run: |
+          uv export --locked --all-groups --no-emit-project --format requirements-txt --no-hashes > audit-all-requirements.txt
+          uvx pip-audit@2.10.1 --requirement audit-all-requirements.txt --no-deps --disable-pip --desc
+
       # Every dependency's licence is one we approved (legal.md section
       # 3.15, D-086). An allow-list, not a deny-list, so a new or unknown
       # licence fails until someone reads it. Permissive licences, plus the
@@ -311,6 +324,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # The whole history, so a branch can be compared with main below.
+          fetch-depth: 0
 
       # Grype (Anchore), chosen over Trivy because Trivy's own distribution
       # was hijacked on 19 March 2026 (D-064). It is installed from the
@@ -374,16 +389,37 @@ jobs:
           if-no-files-found: error
 
       # The embeddings image carries CPU torch and the 1.2 GB model, so it is
-      # built only for pull requests to main. Its scan reports and does not
+      # not built on every run: on every push to main, for pull requests to
+      # main, and on a branch whose changes against main touch what goes into
+      # it (D-125). Until 25 October 2026 it was built for pull requests only,
+      # and merges made without one (D-101) skipped it unseen. Anything that
+      # cannot be compared counts as a change. Its scan reports and does not
       # fail: D-052 kept torch out of the strict audit the API is held to.
       # The build itself is still a gate, since it proves the pinned model
       # revision can be fetched.
+      - name: Decide whether the embeddings image is checked
+        id: embeddings
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+        run: |
+          if [ "$EVENT" = "pull_request" ] || [ "$REF" = "refs/heads/main" ]; then
+            echo "check=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git fetch --no-tags origin main:refs/remotes/origin/main || true
+          if git diff --quiet origin/main...HEAD -- uv.lock pyproject.toml Dockerfile .dockerignore app/modules/matching; then
+            echo "check=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "check=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build the embeddings image
-        if: github.event_name == 'pull_request'
+        if: steps.embeddings.outputs.check == 'true'
         run: docker build --target embeddings -t nicheconnect-embeddings:ci .
 
       - name: Report known vulnerabilities in the embeddings image
-        if: github.event_name == 'pull_request'
+        if: steps.embeddings.outputs.check == 'true'
         run: grype docker:nicheconnect-embeddings:ci -c .grype.yaml
 
   # The OpenTofu files that describe AWS (D-062), checked on every push:

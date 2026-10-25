@@ -182,7 +182,7 @@ Examples:
 
 - **Dependencies:**
   - Every dependency is pinned, approved (`CLAUDE.md` section 5) and locked with hashes in `uv.lock` (D-072); only the app's own group reaches a server.
-  - `pip-audit` blocks merge on any known vulnerability (D-031).
+  - `pip-audit` blocks merge on any known vulnerability (D-031): in the app's own packages, and in every other dependency group since D-125, after six advisories in the `ml` and `load` groups passed every run unseen (D-124).
   - Prefer maintained libraries with recent releases; avoid anything abandoned for over a year. *(review only)*
 - **CI:**
   - Every action is pinned to a commit hash, credentials are not persisted, and permissions are least-privilege.
