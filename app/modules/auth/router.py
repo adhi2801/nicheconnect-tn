@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
-from app.modules.auth import service
+from app.modules.auth import service, sides
 from app.modules.auth.attribution_service import Arrival
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.auth.schemas import (
@@ -71,18 +71,25 @@ def request_code(
     response_model=LoginTokens,
     summary="Log in with a one-time code",
     description=(
-        "Checks the latest code sent to the phone. A new number gets an account with "
-        "the given role, and `arrival` (optional) records how it found us; a "
+        "Checks the latest code sent to the phone, and signs in to the number's "
+        "account for the given role. A number may hold a brand and a creator "
+        "account of one person (D-126): signing in as a role the number has no "
+        "account for yet makes that account, and `arrival` (optional) records how it found us; a "
         "returning login ignores `arrival`. Returns a 15-minute access token and a 30-day refresh token. "
         "Limit: 10 requests per 10 minutes per IP address; each code allows 5 attempts."
     ),
     responses={
         400: problem_doc("The code is wrong, expired, already used, or was never sent"),
+        403: problem_doc(
+            "`account_suspended`: the account, or the number's other account "
+            "when starting a second, is suspended"
+        ),
         409: problem_doc(
-            "`role_mismatch`: the number is registered with the other role; "
-            "`phone_change_waiting`: it has no account, but an account is "
-            "waiting to move onto it (log in with that account's current "
-            "number until the change is made). Either way the code stays usable"
+            "`role_mismatch`: the number is an admin's, which holds no other "
+            "account; `phone_change_waiting`: it has no account, but an account "
+            "is waiting to move onto it (log in with that account's current "
+            "number until the change is made), or its other account is waiting "
+            "to move off it. The code stays usable"
         ),
         422: problem_doc("A field is missing or invalid"),
         429: problem_doc("Too many attempts; see the Retry-After header"),
@@ -197,10 +204,13 @@ def logout(
     },
 )
 @rate_limit(SESSION_LIMIT)
-def me(request: Request, account: CurrentAccount) -> AccountRead:
+def me(
+    request: Request, account: CurrentAccount, db: Session = Depends(get_db)
+) -> AccountRead:
     return AccountRead(
         id=account.id,
         role=account.role,
         phone=service.phone_of(account),
         created_at=account.created_at,
+        other_side=sides.other_side(db, account),
     )

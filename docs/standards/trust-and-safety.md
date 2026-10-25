@@ -102,7 +102,7 @@ Researched 10 October 2026, sources in section 8.
 
 | Way | Protection | Status |
 |---|---|---|
-| Many accounts from one person | One account per phone number (unique); login-code limits per phone and network (`security.md` sections 1 and 5) | Built |
+| Many accounts from one person | One account per role per phone number (`uq_account_phone_role`, D-126): a brand and a creator account of one person may share a number, and those two never deal with each other (applying, inviting and repeating read as not found); login-code limits per phone and network (`security.md` sections 1 and 5) | Built |
 | Scraping creators | Search and matching are signed-in brands only, 30 a minute and 600 a day per account; no contact details anywhere | Built: the matching and search tests, the daily-ceiling test |
 | Running up our AI bill | Daily ceiling on proof reading (D-070) | Built |
 | Using our domain checks to query someone's DNS over and over | 5 checks a minute and 10 a day per brand; a check asks two fixed resolvers about one name, never a URL anyone gives us (item 74) | Built: `test_checks_are_limited_per_brand` |

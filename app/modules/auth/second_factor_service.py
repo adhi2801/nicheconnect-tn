@@ -195,8 +195,11 @@ def _admin_with_right_phone_code(
     db: Session, phone: str, code: str, now: datetime
 ) -> tuple[OtpChallenge, Account]:
     challenge = login.check_phone_code(db, phone, code, now)
-    account = db.scalars(select(Account).where(Account.phone == phone)).first()
-    if account is None or account.role != "admin":
+    # The admin account on the number; an admin's number holds no other (D-126).
+    account = db.scalars(
+        select(Account).where(Account.phone == phone, Account.role == "admin")
+    ).first()
+    if account is None:
         # Never reveal who is an admin: exactly a wrong code (D-061).
         login.refuse_phone_code(db, challenge)
     if account.suspended_at is not None:

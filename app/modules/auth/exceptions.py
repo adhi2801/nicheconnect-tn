@@ -259,3 +259,30 @@ class PasskeyNeededFirst(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "passkey_needed_first"
     title = "Add a passkey before turning on passkey-only sign-in"
+
+
+class PhoneChangeOnOtherSide(DomainError):
+    # One number, both sides (D-126): a change moves every account on the
+    # number, so only one change waits for a number at a time.
+    status_code = HTTPStatus.CONFLICT
+    code = "phone_change_on_other_side"
+    title = "Your other account on this number is already moving it"
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Cancel that change, from your other account, or wait for it: it "
+            "moves both accounts."
+        )
+
+
+class DeletionWaitingOnNumber(DomainError):
+    # A deletion takes the number away from one account (D-122); moving the
+    # number while one waits would move it under the deletion.
+    status_code = HTTPStatus.CONFLICT
+    code = "deletion_waiting"
+    title = "An account on this number is waiting to be deleted"
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Cancel the deletion first, or let it finish, then move the number."
+        )

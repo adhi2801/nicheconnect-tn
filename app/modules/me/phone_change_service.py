@@ -58,10 +58,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.export import ExportedSection, allow, build_section
-from app.modules.auth import login_age, passkeys, phone_changes
+from app.modules.auth import login_age, passkeys, phone_changes, sides
 from app.modules.auth import service as login
 from app.modules.auth import step_up_service as step_ups
 from app.modules.auth.exceptions import (
+    DeletionWaitingOnNumber,
+    PhoneChangeOnOtherSide,
     PhoneChangeTakingEffect,
     PhoneInUse,
     PhoneUnchanged,
@@ -252,6 +254,15 @@ def _claim(
     if waiting is not None and phone_changes.is_due(waiting, now):
         db.rollback()
         raise PhoneChangeTakingEffect()
+    # The number's other side (D-126): its own change would move this
+    # account too, and a waiting deletion would lose the number mid-move.
+    on_number = sides.on_number(db, login.phone_of(account))
+    if phone_changes.any_waiting(db, [a.id for a in on_number if a.id != account.id]):
+        db.rollback()
+        raise PhoneChangeOnOtherSide()
+    if any(a.deletion_requested_at is not None for a in on_number):
+        db.rollback()
+        raise DeletionWaitingOnNumber()
 
     new_number = login.check_phone_code(db, new_phone, new_phone_code, now)
     if step_up_code is not None:
@@ -414,32 +425,42 @@ def make_change(db: Session, change_id: uuid.UUID, now: datetime) -> Outcome | N
     if not phone_changes.is_due(change, now):
         db.commit()
         return None
-    account = db.scalars(
-        select(Account)
-        .where(Account.id == change.account_id)
-        .with_for_update()
-        .execution_options(populate_existing=True)
-    ).one()
+    # Every account on the old number moves with it (D-126): a brand and a
+    # creator account of one person, so the number's next holder never
+    # reaches the side left behind.
+    accounts = list(
+        db.scalars(
+            select(Account)
+            .where(Account.phone == old_phone)
+            .order_by(Account.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        ).all()
+    )
 
     db.delete(change)
     if db.scalar(select(exists().where(Account.phone == new_phone))):
         notifications.record(
-            db, account_id=account.id, notification_type="phone_change_failed", now=now
+            db,
+            account_id=change.account_id,
+            notification_type="phone_change_failed",
+            now=now,
         )
         db.commit()
         logger.warning("phone_change.dropped change_id=%s", change_id)
         return "dropped"
 
-    account.phone = new_phone
-    account.updated_at = now
-    ended = login.logout_all_sessions(db, account.id, now)
-    notifications.record(
-        db,
-        account_id=account.id,
-        notification_type="phone_changed",
-        now=now,
-        details={"sessions_ended": ended},
-    )
+    for account in accounts:
+        account.phone = new_phone
+        account.updated_at = now
+        ended = login.logout_all_sessions(db, account.id, now)
+        notifications.record(
+            db,
+            account_id=account.id,
+            notification_type="phone_changed",
+            now=now,
+            details={"sessions_ended": ended},
+        )
     db.commit()
     return "made"
 
