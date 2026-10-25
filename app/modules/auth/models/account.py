@@ -42,6 +42,10 @@ class Account(Base):
         # can only belong to an account of its own role (D-014).
         # Full name given: the uq naming convention covers only the first column.
         UniqueConstraint("id", "role", name="uq_account_id_role"),
+        # One account per role on a number (item 8, D-126): a person may be a
+        # brand and a creator on one phone, as two accounts, each exactly as
+        # before. Its index, phone first, serves every lookup by number.
+        UniqueConstraint("phone", "role", name="uq_account_phone_role"),
         CheckConstraint(
             f"suspension_reason IS NULL OR suspension_reason IN {REPORT_CATEGORIES}",
             name="suspension_reason_allowed",
@@ -77,8 +81,10 @@ class Account(Base):
         primary_key=True,
         server_default=text("gen_random_uuid()"),
     )
-    # NULL only once the account is deleted (D-122).
-    phone: Mapped[str | None] = mapped_column(String(16), nullable=True, unique=True)
+    # NULL only once the account is deleted (D-122). Shared by at most a
+    # brand and a creator account of one person (D-126); see
+    # uq_account_phone_role above.
+    phone: Mapped[str | None] = mapped_column(String(16), nullable=True)
     role: Mapped[str] = mapped_column(String(16), nullable=False)
     # Set by an admin; checked on every request (D-061).
     suspended_at: Mapped[datetime | None] = mapped_column(

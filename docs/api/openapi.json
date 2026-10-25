@@ -86,6 +86,22 @@
             "title": "Id",
             "type": "string"
           },
+          "other_side": {
+            "anyOf": [
+              {
+                "enum": [
+                  "brand",
+                  "creator"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The other account on this number, if you have one (D-126): sign in as it with a code for this number and that role. Null when you have none; a brand or creator may start one by signing in as it. Added on 25 October 2026",
+            "title": "Other Side"
+          },
           "phone": {
             "description": "Indian mobile number, stored as +91XXXXXXXXXX. Send it in that form. Spaces, dashes and brackets, and a leading +91, 91 or 0, are also accepted and normalised away.",
             "examples": [
@@ -109,7 +125,8 @@
           "id",
           "role",
           "phone",
-          "created_at"
+          "created_at",
+          "other_side"
         ],
         "title": "AccountRead",
         "type": "object"
@@ -16356,7 +16373,7 @@
     },
     "/api/v1/auth/otp/verify": {
       "post": {
-        "description": "Checks the latest code sent to the phone. A new number gets an account with the given role, and `arrival` (optional) records how it found us; a returning login ignores `arrival`. Returns a 15-minute access token and a 30-day refresh token. Limit: 10 requests per 10 minutes per IP address; each code allows 5 attempts.",
+        "description": "Checks the latest code sent to the phone, and signs in to the number's account for the given role. A number may hold a brand and a creator account of one person (D-126): signing in as a role the number has no account for yet makes that account, and `arrival` (optional) records how it found us; a returning login ignores `arrival`. Returns a 15-minute access token and a 30-day refresh token. Limit: 10 requests per 10 minutes per IP address; each code allows 5 attempts.",
         "operationId": "verify_code_api_v1_auth_otp_verify_post",
         "requestBody": {
           "content": {
@@ -16390,6 +16407,17 @@
             },
             "description": "The code is wrong, expired, already used, or was never sent"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`account_suspended`: the account, or the number's other account when starting a second, is suspended"
+          },
           "409": {
             "content": {
               "application/json": {
@@ -16399,7 +16427,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "`role_mismatch`: the number is registered with the other role; `phone_change_waiting`: it has no account, but an account is waiting to move onto it (log in with that account's current number until the change is made). Either way the code stays usable"
+            "description": "`role_mismatch`: the number is an admin's, which holds no other account; `phone_change_waiting`: it has no account, but an account is waiting to move onto it (log in with that account's current number until the change is made), or its other account is waiting to move off it. The code stays usable"
           },
           "422": {
             "content": {
@@ -29874,7 +29902,7 @@
         ]
       },
       "post": {
-        "description": "Needs **a login at least 7 days old**, which a SIM swapper never has: from a newer one, 403 `login_too_recent`, with `Retry-After` saying when. And **a code from each number**: from your current number, ask at `POST /api/v1/me/step-up` with `change_phone` and this exact new number, and send it in the `Step-Up-Code` header; from the new number, ask at `POST /api/v1/auth/otp/request`, and send it as `new_phone_code`. **The new number takes over 72 hours later**: until then you log in with your current number, are told in the app, and can cancel with no code. Then every session ends, and you log in with the new number; the old one no longer reaches this account. Asking again replaces a change still waiting and starts its 72 hours again. Brands and creators only: an admin's number is changed by the founders. Limits: 5 per 10 minutes and 10 a day, beside each number's own limits on codes.",
+        "description": "Needs **a login at least 7 days old**, which a SIM swapper never has: from a newer one, 403 `login_too_recent`, with `Retry-After` saying when. And **a code from each number**: from your current number, ask at `POST /api/v1/me/step-up` with `change_phone` and this exact new number, and send it in the `Step-Up-Code` header; from the new number, ask at `POST /api/v1/auth/otp/request`, and send it as `new_phone_code`. **The new number takes over 72 hours later**: until then you log in with your current number, are told in the app, and can cancel with no code. Then every session ends, and you log in with the new number; the old one no longer reaches this account. If the number also holds your other account (a brand and a creator, D-126), both move together and both are logged out. Asking again replaces a change still waiting and starts its 72 hours again. Brands and creators only: an admin's number is changed by the founders. Limits: 5 per 10 minutes and 10 a day, beside each number's own limits on codes.",
         "operationId": "change_my_phone_api_v1_me_phone_change_post",
         "parameters": [
           {
@@ -29972,7 +30000,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "`phone_unchanged`: it is already your number; `phone_in_use`: the new number is on an account, or waiting to move onto one; `phone_change_taking_effect`: the change waiting is past its 72 hours and being made. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+            "description": "`phone_unchanged`: it is already your number; `phone_in_use`: the new number is on an account, or waiting to move onto one; `phone_change_taking_effect`: the change waiting is past its 72 hours and being made; `phone_change_on_other_side`: your other account on this number is already moving it (D-126: a change moves both); `deletion_waiting`: an account on the number is waiting to be deleted. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
           },
           "422": {
             "content": {
@@ -30119,7 +30147,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "`phone_unchanged`, `phone_in_use` or `phone_change_taking_effect`, as for a change with both numbers. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+            "description": "`phone_unchanged`, `phone_in_use`, `phone_change_taking_effect`, `phone_change_on_other_side` or `deletion_waiting`, as for a change with both numbers. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
           },
           "422": {
             "content": {

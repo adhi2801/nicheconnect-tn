@@ -57,6 +57,7 @@ REFUSING = {
     "82bb81b5eed4": "admins' clearances of look-alike brand names, and their log entries",
     "b7e026caa4a9": "accounts waiting to be deleted, or deleted, which lack a number",
     "8b6662af4839": "counter-offers on quotes, both sides' record of the negotiation",
+    "3cab62503c56": "numbers holding both a brand and a creator account",
 }
 
 
@@ -520,3 +521,15 @@ def test_counter_offers(client, db, clock):
     assert offered.status_code == 201, offered.text
 
     assert f"{before + 1} quote offers exist" in refusal(db, "8b6662af4839")
+
+
+def test_numbers_holding_both_sides(db):
+    before = count(
+        db,
+        "SELECT count(*) FROM (SELECT phone FROM account WHERE phone IS NOT NULL"
+        " GROUP BY phone HAVING count(*) > 1) AS shared",
+    )
+    brand = create_account(db, "brand")
+    create_account(db, "creator", phone=brand.phone)
+
+    assert f"{before + 1} phone numbers hold both" in refusal(db, "3cab62503c56")

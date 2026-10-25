@@ -255,8 +255,8 @@ def test_code_for_another_phone_is_rejected(db):
         verify_otp(db, other, pending.code, "creator", FIXED_NOW)
 
 
-def test_role_mismatch_is_refused_and_code_stays_usable(db):
-    account = create_account(db, "brand")
+def test_a_second_side_on_an_admins_number_is_refused_and_code_stays_usable(db):
+    account = create_account(db, "admin")
     pending = request_otp(db, account.phone, FIXED_NOW)
 
     with pytest.raises(RoleMismatch):
@@ -264,12 +264,22 @@ def test_role_mismatch_is_refused_and_code_stays_usable(db):
 
     [challenge] = challenges_for(db, account.phone)
     assert challenge.consumed_at is None and challenge.attempts == 0
-    assert (
-        db.scalars(select(AuthSession).where(AuthSession.account_id == account.id)).all()
-        == []
-    )
-    result = verify_otp(db, account.phone, pending.code, "brand", FIXED_NOW)
-    assert result.account_id == account.id
+    assert db.scalars(select(Account).where(Account.phone == account.phone)).all() == [
+        account
+    ]
+
+
+def test_a_second_side_is_its_own_account_on_the_same_number(db):
+    """D-126: the creator side is a new account; the brand side is untouched."""
+    brand = create_account(db, "brand")
+    pending = request_otp(db, brand.phone, FIXED_NOW)
+
+    result = verify_otp(db, brand.phone, pending.code, "creator", FIXED_NOW)
+
+    assert result.account_id != brand.id
+    assert result.is_new_account
+    roles = db.scalars(select(Account.role).where(Account.phone == brand.phone)).all()
+    assert sorted(roles) == ["brand", "creator"]
 
 
 def test_failure_while_logging_in_leaves_no_partial_account(db):

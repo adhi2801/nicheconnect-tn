@@ -25,6 +25,7 @@ from app.core.export import (
     build_section,
 )
 from app.core.pagination import Slice, build_slice, older_than_cursor
+from app.modules.auth import sides
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import brand_is_active, brand_is_unavailable
@@ -395,8 +396,10 @@ def apply_to_campaign(
         db.rollback()
         raise CampaignNotOpen()
     brand_account_id = _brand_account_id(db, campaign)
-    if brand_account_id is not None and blocked_between(
-        db, creator.account_id, brand_account_id
+    if brand_account_id is not None and (
+        blocked_between(db, creator.account_id, brand_account_id)
+        # One person's two sides on one number never deal (D-126).
+        or sides.same_person(db, creator.account_id, brand_account_id)
     ):
         # Blocked either way (item 59): it reads as not found, so the block
         # is never revealed.

@@ -142,8 +142,8 @@ def test_unknown_account_is_still_refused(db):
     )
 
 
-def test_phone_stays_unique_per_account(db):
+def test_phone_stays_unique_per_role(db):
     phone = fake_phone()
-    create_account(db, "brand", phone=phone)
+    create_account(db, "creator", phone=phone)
 
-    assert_rejected_by(db, Account(phone=phone, role="creator"), "uq_account_phone")
+    assert_rejected_by(db, Account(phone=phone, role="creator"), "uq_account_phone_role")

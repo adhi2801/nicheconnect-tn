@@ -30,7 +30,7 @@ Nothing here commits.
 import secrets
 from datetime import datetime
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, exists, select
 from sqlalchemy.orm import Session
 
 from app.modules.auth.models.account import Account
@@ -94,7 +94,11 @@ def erase_for_account(db: Session, account: Account) -> None:
     db.execute(delete(PasskeyReset).where(PasskeyReset.account_id == account_id))
     db.execute(delete(Passkey).where(Passkey.account_id == account_id))
     db.execute(delete(StepUpChallenge).where(StepUpChallenge.account_id == account_id))
-    if account.phone is not None:
+    # The number's login codes go with it, unless its other side stays
+    # (D-126): they are the number's, and still serve that account.
+    if account.phone is not None and not db.scalar(
+        select(exists().where(Account.phone == account.phone, Account.id != account_id))
+    ):
         db.execute(delete(OtpChallenge).where(OtpChallenge.phone == account.phone))
     db.execute(
         delete(AccountPhoneChange).where(AccountPhoneChange.account_id == account_id)

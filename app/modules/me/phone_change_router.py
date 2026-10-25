@@ -83,7 +83,9 @@ def read_my_phone_change(
         "until then you log in with your current number, are told in the "
         "app, and can cancel with no code. Then every session ends, and you "
         "log in with the new number; the old one no longer reaches this "
-        "account. Asking again replaces a change still waiting and starts its "
+        "account. If the number also holds your other account (a brand and "
+        "a creator, D-126), both move together and both are logged out. "
+        "Asking again replaces a change still waiting and starts its "
         "72 hours again. Brands and creators only: an admin's number is "
         "changed by the founders. Limits: 5 per 10 minutes and 10 a day, "
         "beside each number's own limits on codes."
@@ -106,7 +108,10 @@ def read_my_phone_change(
             "`phone_unchanged`: it is already your number; `phone_in_use`: the "
             "new number is on an account, or waiting to move onto one; "
             "`phone_change_taking_effect`: the change waiting is past its 72 "
-            "hours and being made"
+            "hours and being made; `phone_change_on_other_side`: your other "
+            "account on this number is already moving it (D-126: a change "
+            "moves both); `deletion_waiting`: an account on the number is "
+            "waiting to be deleted"
         ),
         422: problem_doc("The new number or its code is not valid"),
         429: problem_doc(
@@ -166,8 +171,9 @@ def change_my_phone(
             "`login_too_recent`: this login is under 30 days old (see Retry-After)"
         ),
         409: problem_doc(
-            "`phone_unchanged`, `phone_in_use` or `phone_change_taking_effect`, "
-            "as for a change with both numbers"
+            "`phone_unchanged`, `phone_in_use`, `phone_change_taking_effect`, "
+            "`phone_change_on_other_side` or `deletion_waiting`, as for a change "
+            "with both numbers"
         ),
         422: problem_doc("The new number or its code is not valid"),
         429: problem_doc(

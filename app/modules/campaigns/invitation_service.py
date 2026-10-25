@@ -28,6 +28,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.modules.auth import sides
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import is_unavailable
@@ -93,6 +94,11 @@ def invite_creator(
         or (
             brand_account_id is not None
             and blocked_between(db, brand_account_id, creator.account_id)
+        )
+        # One person's two sides on one number never deal (D-126).
+        or (
+            brand_account_id is not None
+            and sides.same_person(db, brand_account_id, creator.account_id)
         )
     ):
         db.rollback()

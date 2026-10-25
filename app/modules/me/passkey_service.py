@@ -33,7 +33,7 @@ from sqlalchemy import delete, exists, func, select
 from sqlalchemy.orm import Session
 
 from app.core.export import ExportedSection, allow, build_section
-from app.modules.auth import login_age, passkeys
+from app.modules.auth import login_age, passkeys, sides
 from app.modules.auth import service as login
 from app.modules.auth import step_up_service as step_ups
 from app.modules.auth.exceptions import (
@@ -226,22 +226,35 @@ def set_passkey_only(
 
 
 def request_reset(db: Session, phone: str, code: str, now: datetime) -> PasskeyReset:
-    """Start removing every passkey of the account on `phone`, which lost them. Commits.
+    """Start removing every passkey of the accounts on `phone`, which lost them. Commits.
 
     Proven by a login code for the number, used up here. It takes effect
     PASSKEY_RESET_WAIT later, unless a passkey signs in before then; the
     owner is told. One already waiting is kept, never restarted, so asking
     again cannot push the owner's chance to cancel further away, nor bring
-    the reset nearer. Raises what service.check_phone_code raises, and
-    NoPasskeyToReset (no account on the number, or none with a passkey;
-    told only to someone whose code was right).
+    the reset nearer. A number holding a brand and a creator account (D-126)
+    resets each that has a passkey: one phone lost loses both sides' keys.
+    Returns the soonest reset. Raises what service.check_phone_code raises,
+    and NoPasskeyToReset (no account on the number has a passkey; told only
+    to someone whose code was right).
     """
     challenge = login.check_phone_code(db, phone, code, now)
-    account = db.scalars(select(Account).where(Account.phone == phone)).first()
-    if account is None or not passkeys.has_any(db, account.id):
+    with_passkeys = [
+        account
+        for account in sides.on_number(db, phone)
+        if passkeys.has_any(db, account.id)
+    ]
+    if not with_passkeys:
         db.rollback()
         raise NoPasskeyToReset()
     challenge.consumed_at = now
+    resets = [_reset_for(db, account, now) for account in with_passkeys]
+    db.commit()
+    return min(resets, key=lambda reset: reset.takes_effect_at)
+
+
+def _reset_for(db: Session, account: Account, now: datetime) -> PasskeyReset:
+    """The account's reset: the one waiting, or a new one, told. Never commits."""
     reset = db.scalars(
         select(PasskeyReset)
         .where(PasskeyReset.account_id == account.id)
@@ -249,7 +262,6 @@ def request_reset(db: Session, phone: str, code: str, now: datetime) -> PasskeyR
         .execution_options(populate_existing=True)
     ).first()
     if reset is not None and not _cancelled_by_a_sign_in(db, reset):
-        db.commit()
         return reset
     if reset is not None:
         db.delete(reset)
@@ -269,7 +281,6 @@ def request_reset(db: Session, phone: str, code: str, now: datetime) -> PasskeyR
         now=now,
         details={"takes_effect_at": reset.takes_effect_at.isoformat()},
     )
-    db.commit()
     return reset
 
 

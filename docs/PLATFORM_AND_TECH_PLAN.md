@@ -42,7 +42,7 @@
 - **The backend needs no rework for this.** Every endpoint already serves whichever role is signed in, from any client.
 - **Order stays backend first (D-004).** Design, then the website and apps, start when the backend is complete.
 
-**Open question for both founders:** today one phone number is one account with one role (`account.phone` is unique; D-014). With one app for both sides, someone who is both a food creator and a bakery owner needs two phone numbers. Keep that, or allow both roles on one number with a switch? The second changes the account tables (Data track, a migration, and a security review).
+**Decided on 25 October 2026 (D-126):** a number may hold a brand account and a creator account of one person, each exactly as before (D-014 holds for each). Someone who is both a food creator and a bakery owner signs in as either side with the same number, and the app's account menu offers "Sign in as a creator" (or brand) from `GET /api/v1/auth/me`'s `other_side`. The two sides never deal with each other, and a phone change moves both.
 
 ---
 

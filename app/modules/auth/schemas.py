@@ -289,6 +289,14 @@ class AccountRead(BaseModel):
     role: Role
     phone: IndianMobile
     created_at: datetime
+    other_side: Literal["brand", "creator"] | None = Field(
+        description=(
+            "The other account on this number, if you have one (D-126): sign "
+            "in as it with a code for this number and that role. Null when "
+            "you have none; a brand or creator may start one by signing in as "
+            "it. Added on 25 October 2026"
+        )
+    )
 
 
 class LoggedOutAll(BaseModel):

@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.auth import attribution_service as attribution
 from app.modules.auth import device_service as devices
-from app.modules.auth import phone_changes
+from app.modules.auth import phone_changes, sides
 from app.modules.auth.attribution_service import Arrival
 from app.modules.auth.exceptions import (
     AccountSuspended,
@@ -238,9 +238,11 @@ def verify_otp(
     Only the latest code for the phone counts. A wrong code uses up one of
     MAX_OTP_ATTEMPTS attempts. `device` is what the app said it is (D-114).
     Raises OtpInvalid (wrong, expired, used, exhausted or no code),
-    RoleMismatch (the account exists with another role) and
-    PhoneChangeWaiting (no account has the number, but one is waiting to
-    move onto it, item 80); for both of those the code stays usable.
+    RoleMismatch (the number is an admin's; a brand and a creator account
+    may share a number, D-126), AccountSuspended, and PhoneChangeWaiting
+    (no account has the number but one is waiting to move onto it, item 80,
+    or the other side on it is waiting to move off); for those the code
+    stays usable.
     """
     challenge = check_phone_code(db, phone, code, now)
 
@@ -250,14 +252,14 @@ def verify_otp(
         # reveal who is one: so for anyone, admin or not, this is answered
         # exactly as a wrong code, attempt used and all (D-061).
         refuse_phone_code(db, challenge)
-    account = db.scalars(select(Account).where(Account.phone == phone)).first()
+    on_number = sides.on_number(db, phone)
+    account = next((found for found in on_number if found.role == role), None)
     if account is None and phone_changes.is_waiting_to_move(db, phone):
         # A new account here would take the number from under the change.
         db.rollback()
         raise PhoneChangeWaiting()
-    if account is not None and account.role != role:
-        db.rollback()
-        raise RoleMismatch()
+    if account is None and on_number:
+        _ensure_second_side_allowed(db, on_number)
     if account is not None and account.suspended_at is not None:
         # The code is right, so the person is told; it stays unused (D-061).
         db.rollback()
@@ -282,6 +284,29 @@ def verify_otp(
     result = issue_session(db, account, uuid.uuid4(), now, device=device)
     db.commit()
     return replace(result, is_new_account=is_new_account)
+
+
+def _ensure_second_side_allowed(db: Session, on_number: list[Account]) -> None:
+    """Refuse a second side on a number already in use, where it cannot be (D-126).
+
+    An admin's number holds the admin alone, refused as a role mismatch was
+    before, so nothing reveals who is an admin. A suspended side cannot be
+    stepped round by starting the other. And a side waiting to move to a
+    new number would carry the new account with it to the owner's number.
+    Raises RoleMismatch, AccountSuspended and PhoneChangeWaiting.
+    """
+    if any(found.role not in sides.SIDES for found in on_number):
+        db.rollback()
+        raise RoleMismatch()
+    suspended = next(
+        (found for found in on_number if found.suspended_at is not None), None
+    )
+    if suspended is not None:
+        db.rollback()
+        raise AccountSuspended.because(suspended.suspension_reason)
+    if phone_changes.any_waiting(db, [found.id for found in on_number]):
+        db.rollback()
+        raise PhoneChangeWaiting()
 
 
 def check_phone_code(db: Session, phone: str, code: str, now: datetime) -> OtpChallenge:
