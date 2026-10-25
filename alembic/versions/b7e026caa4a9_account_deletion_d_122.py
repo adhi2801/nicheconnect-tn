@@ -144,7 +144,16 @@ def _action_lists(values: tuple[str, ...]) -> None:
 def upgrade() -> None:
     for name in ("deletion_requested_at", "deletion_takes_effect_at", "deleted_at"):
         op.add_column("account", sa.Column(name, sa.DateTime(timezone=True), nullable=True))
-    op.alter_column("account", "phone", existing_type=sa.String(length=16), nullable=True)
+    # Deliberate (D-122): a deleted account lets its number go. Squawk warns
+    # that readers may expect a value; the only reader is this app, which
+    # reads it through auth.service.phone_of or handles null, and the API
+    # contract says where it can be null (no frontend exists yet, D-053).
+    # One statement with its comment, so the ignore applies to exactly this
+    # line, as in 2c3bf71783d2.
+    op.execute(
+        "-- squawk-ignore ban-drop-not-null\n"
+        "ALTER TABLE account ALTER COLUMN phone DROP NOT NULL"
+    )
     for name, condition in CHECKS.items():
         op.execute(f"ALTER TABLE account ADD CONSTRAINT {name} CHECK ({condition}) NOT VALID")
     _action_lists(NEW_ACTIONS)
