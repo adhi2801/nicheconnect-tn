@@ -40,6 +40,8 @@ STEP_UP_ACTIONS: tuple[str, ...] = (
     # Ending one other session (item 81, D-114): the value is its id, so a
     # code for one session cannot end another.
     "end_session",
+    # Deleting the account (item 6, D-122).
+    "delete_account",
 )
 # How a step-up was proven (D-113): a code sent to the phone, or a passkey
 # answering a challenge for exactly this change. Once an account has a

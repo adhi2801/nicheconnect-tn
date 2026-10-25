@@ -20,6 +20,7 @@ from app.core.export import (
     build_section,
 )
 from app.core.pagination import Slice, build_slice, older_than_cursor
+from app.modules.auth import suspension
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.models import Application, Campaign
@@ -27,6 +28,7 @@ from app.modules.deal_memo import record_service as record
 from app.modules.deal_memo.exceptions import (
     ApplicationNotAccepted,
     BarterMemoHasNoFee,
+    CreatorLeft,
     DueDateHasPassed,
     MemoAlreadyExists,
     MemoNeedsDueDate,
@@ -235,12 +237,16 @@ def create_memo(
 ) -> DealMemo:
     """Draft a memo for an accepted application.
 
-    Raises ApplicationNotAccepted, MemoAlreadyExists, and the fee errors.
+    Raises ApplicationNotAccepted, CreatorLeft (the creator deleted their
+    account, D-122), MemoAlreadyExists, and the fee errors.
 
     The application's row is locked and read again first: two requests at
     once would otherwise both find no memo, and the database's unique rule
     would refuse the second as a raw error, a 500, instead of the conflict
     the API documents. Locked, the second waits and finds the first's memo.
+    Erasing a creator who left locks their applications too, so a memo
+    lands wholly before it, and holds the deletion, or after it, and is
+    refused.
     """
     db.scalars(
         select(Application)
@@ -251,6 +257,10 @@ def create_memo(
     if application.status != "accepted":
         db.rollback()
         raise ApplicationNotAccepted()
+    creator_account_id = _creator_account_id(db, application)
+    if creator_account_id is not None and suspension.is_deleted(db, creator_account_id):
+        db.rollback()
+        raise CreatorLeft()
     existing = db.scalars(
         select(DealMemo).where(DealMemo.application_id == application.id)
     ).first()

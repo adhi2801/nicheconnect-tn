@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any, Protocol
 
-from sqlalchemy import desc, exists, func, null, nulls_last, or_, select
+from sqlalchemy import delete, desc, exists, func, null, nulls_last, or_, select
 from sqlalchemy.orm import Session
 
 from app.modules.auth.models.creator import Creator
@@ -159,6 +159,16 @@ def refresh_campaigns(
         to_text=campaign_text,
         force=force,
     )
+
+
+def erase_for_creator(db: Session, creator_id: uuid.UUID) -> None:
+    """On deleting the account (D-122): the creator's embedding. Never commits.
+
+    `refresh_creators` never makes it again: a creator who left has no
+    published Passport and no active account. Campaign embeddings stay, as
+    the campaigns do: they describe a campaign, not a person.
+    """
+    db.execute(delete(CreatorEmbedding).where(CreatorEmbedding.creator_id == creator_id))
 
 
 # --- finding creators for a campaign (D2 and D3) --------------------------

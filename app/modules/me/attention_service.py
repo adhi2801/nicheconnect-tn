@@ -52,6 +52,7 @@ def for_account(
             *disputes.for_brand(db, brand.id, today),
             *domains.for_brand(db, brand.id, now),
             *logins.phone_change_for_account(db, account.id, now),
+            *logins.deletion_for_account(account),
             *logins.new_sign_ins_for_account(db, account.id, current_session_id, now),
         ]
     else:
@@ -64,6 +65,7 @@ def for_account(
             *disputes.for_creator(db, creator.id, today),
             *payments.upi_change_for_creator(db, creator.id, now),
             *logins.phone_change_for_account(db, account.id, now),
+            *logins.deletion_for_account(account),
             *logins.new_sign_ins_for_account(db, account.id, current_session_id, now),
         ]
 

@@ -81,8 +81,9 @@ def _authenticate(
     account, session_live = sessions.account_for_token(
         db, claims.account_id, claims.session_id
     )
-    if account is None or account.role != claims.role:
-        # Account deleted, or its role changed after the token was issued.
+    if account is None or account.role != claims.role or account.deleted_at is not None:
+        # Account gone or deleted (D-122), or its role changed after the token
+        # was issued.
         raise InvalidToken(headers=UNAUTHENTICATED_HEADERS)
     if account.suspended_at is not None:
         # Checked here, on every request, so a suspension takes effect at once

@@ -146,6 +146,11 @@ ACCOUNT_EXPORT_FIELDS = allow(
     # When you confirmed you are 18 or over (D-086). The date of birth
     # itself was never kept.
     "adult_confirmed_at",
+    # Deleting the account (D-122): when you asked, and when it takes
+    # effect unless you cancel. Once it is done there is no account to
+    # export, so `deleted_at` is never in a file.
+    "deletion_requested_at",
+    "deletion_takes_effect_at",
     "created_at",
     "updated_at",
 )

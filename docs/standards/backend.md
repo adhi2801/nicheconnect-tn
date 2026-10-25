@@ -29,7 +29,7 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md` befor
 
 | Layer | Modules | What lives there |
 |---|---|---|
-| 7 | `me` | Views of one account that read every module: attention, the data export; and the two account actions that need modules above `auth`: asking for a step-up code (it checks a UPI ID by `payment_status`'s rule) and logging out everywhere (its alert needs `notifications`), item 82; and changing the phone number, with its job (its alerts too), item 80; and listing sessions and ending one (its alert too), item 81 |
+| 7 | `me` | Views of one account that read every module: attention, the data export; and the two account actions that need modules above `auth`: asking for a step-up code (it checks a UPI ID by `payment_status`'s rule) and logging out everywhere (its alert needs `notifications`), item 82; and changing the phone number, with its job (its alerts too), item 80; and listing sessions and ending one (its alert too), item 81; and deleting the account, with its job, which reaches every module, item 6 |
 | 6 | `admin` | The admin API and its log, the founders' numbers, user reports |
 | 5 | `matching` \| `insights` \| `passport` | Who fits whom and creator search; anonymous market figures; how a creator is shown |
 | 4 | `campaigns` : `deal_memo` : `payment_status` : `disputes` | The deal domain. `:` lets them import each other until item 96 untangles them |

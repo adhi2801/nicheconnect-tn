@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.auth import login_age, sessions
 from app.modules.auth.models.account import Account
+from app.modules.me import account_deletion_service as deletions
 from app.modules.me import data_export_service as data_exports
 from app.modules.me import passkey_service as passkey_changes
 from app.modules.me import phone_change_service as phone_changes
@@ -40,7 +41,8 @@ def value_of(
 
     Raises what each change's own early checks raise: LoginTooRecent,
     PhoneUnchanged, RoleNotAllowed, ExportNotFound and the export's state,
-    PasskeyNotFound, SessionNotFound.
+    PasskeyNotFound, SessionNotFound, DeletionAlreadyRequested and
+    DeletionHeldByDeals.
     """
     if isinstance(change, StepUpForUpiId):
         upi_service.ensure_may_replace_for_account(
@@ -65,4 +67,6 @@ def value_of(
         return "on" if change.enabled else "off"
     if change.action == "add_passkey":
         passkey_changes.ensure_may_have_passkeys(account)
+    if change.action == "delete_account":
+        deletions.ensure_may_request(db, account, now)
     return ""

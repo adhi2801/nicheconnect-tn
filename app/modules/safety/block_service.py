@@ -175,3 +175,13 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
             fields=EXPORT_FIELDS,
         )
     ]
+
+
+def erase_for_account(db: Session, account_id: uuid.UUID) -> None:
+    """On deleting the account (D-122): its blocks, made by it or of it. Never commits."""
+    db.execute(
+        delete(AccountBlock).where(
+            (AccountBlock.blocker_account_id == account_id)
+            | (AccountBlock.blocked_account_id == account_id)
+        )
+    )

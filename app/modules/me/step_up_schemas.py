@@ -48,11 +48,11 @@ class StepUpForExport(BaseModel):
 
 
 class StepUpForAccount(BaseModel):
-    """A code to log out of every device, or to add a passkey (D-113)."""
+    """A code to log out of every device, to add a passkey (D-113), or to delete the account (D-122)."""
 
     model_config = ConfigDict(extra="forbid")
 
-    action: Literal["log_out_everywhere", "add_passkey"]
+    action: Literal["log_out_everywhere", "add_passkey", "delete_account"]
 
 
 class StepUpForPasskeyRemoval(BaseModel):

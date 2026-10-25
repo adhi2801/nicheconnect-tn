@@ -400,3 +400,13 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
             fields=CHANGE_EXPORT_FIELDS,
         ),
     ]
+
+
+def erase_for_creator(db: Session, creator_id: uuid.UUID) -> None:
+    """On deleting the account (D-122): the creator's UPI IDs, in effect and waiting.
+
+    Payment records keep their own reference and amount, never the UPI ID.
+    Never commits.
+    """
+    db.execute(delete(CreatorUpiChange).where(CreatorUpiChange.creator_id == creator_id))
+    db.execute(delete(CreatorUpi).where(CreatorUpi.creator_id == creator_id))

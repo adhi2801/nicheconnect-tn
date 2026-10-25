@@ -26,7 +26,12 @@ from app.modules.deal_memo import (
 )
 from app.modules.deal_memo.anchor_models import DealRecordCheckpoint, DealRecordTimestamp
 from app.modules.deal_memo.timestamp_authority import Stamp
-from app.modules.me import data_export_jobs, passkey_jobs, phone_change_jobs
+from app.modules.me import (
+    account_deletion_jobs,
+    data_export_jobs,
+    passkey_jobs,
+    phone_change_jobs,
+)
 from app.modules.profiles import brand_domain_jobs
 from app.modules.profiles.domain_lookup import FakeDomainLookup
 
@@ -340,3 +345,35 @@ def test_a_passkey_run_with_nothing_waiting_resets_nothing(launched):
     run = passkey_jobs.run_resets(SCHEDULED)
 
     assert run.reset == run.cancelled == 0
+
+
+def test_account_deletions_run_every_15_minutes_with_no_backfill(launched):
+    """D-122: an account is erased within 15 minutes of its 30 days ending."""
+    schedule = DBOS.get_schedule(account_deletion_jobs.SCHEDULE_NAME)
+
+    assert schedule is not None
+    assert (
+        schedule["schedule"]
+        == account_deletion_jobs.EVERY_15_MINUTES_CRON
+        == "*/15 * * * *"
+    )
+    assert schedule["automatic_backfill"] is False
+
+
+def test_the_deletion_workflow_runs_through_dbos(launched, monkeypatch):
+    runs = []
+    monkeypatch.setattr(
+        account_deletion_jobs,
+        "run_deletions",
+        lambda scheduled_at: runs.append(scheduled_at),
+    )
+
+    account_deletion_jobs.erase_accounts(SCHEDULED, None)
+
+    assert runs == [SCHEDULED]
+
+
+def test_a_deletion_run_with_nothing_due_erases_nothing(launched):
+    run = account_deletion_jobs.run_deletions(SCHEDULED)
+
+    assert run.due == run.erased == run.held == run.waiting_for_export == 0

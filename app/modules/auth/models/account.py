@@ -51,6 +51,25 @@ class Account(Base):
             "(suspended_at IS NULL) = (suspension_reason IS NULL)",
             name="suspension_has_reason",
         ),
+        # Deleting the account (item 6, D-122): asked for, then 30 days in
+        # which it can be cancelled, then done. Only a deleted account lacks
+        # a phone number, and a deleted one never has one, so the number is
+        # free for whoever holds it next.
+        CheckConstraint(
+            "(deletion_requested_at IS NULL) = (deletion_takes_effect_at IS NULL)",
+            name="deletion_requested_with_its_date",
+        ),
+        CheckConstraint(
+            "deletion_takes_effect_at = deletion_requested_at + interval '30 days'",
+            name="deletion_takes_effect_thirty_days_after",
+        ),
+        CheckConstraint(
+            "deleted_at IS NULL OR deletion_requested_at IS NOT NULL",
+            name="deleted_only_after_a_request",
+        ),
+        CheckConstraint(
+            "(deleted_at IS NULL) = (phone IS NOT NULL)", name="phone_until_deleted"
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -58,7 +77,8 @@ class Account(Base):
         primary_key=True,
         server_default=text("gen_random_uuid()"),
     )
-    phone: Mapped[str] = mapped_column(String(16), nullable=False, unique=True)
+    # NULL only once the account is deleted (D-122).
+    phone: Mapped[str | None] = mapped_column(String(16), nullable=True, unique=True)
     role: Mapped[str] = mapped_column(String(16), nullable=False)
     # Set by an admin; checked on every request (D-061).
     suspended_at: Mapped[datetime | None] = mapped_column(
@@ -76,6 +96,18 @@ class Account(Base):
     # with a passkey.
     passkey_only: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
+    )
+    # Deleting the account (D-122): when its owner asked, when it takes
+    # effect unless cancelled, and when it was done. NULL means never asked,
+    # or cancelled; a deleted account keeps the first two as its history.
+    deletion_requested_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    deletion_takes_effect_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

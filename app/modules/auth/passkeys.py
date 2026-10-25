@@ -126,9 +126,9 @@ def registration_options(db: Session, account: Account, now: datetime) -> dict[s
         PublicKeyCredentialUserEntity(
             # The person's own number, shown by their own phone in its list
             # of passkeys, so they can tell their accounts apart.
-            name=account.phone,
+            name=login.phone_of(account),
             id=account.id.bytes,
-            display_name=account.phone,
+            display_name=login.phone_of(account),
         ),
         credentials=[_descriptor(passkey) for passkey in for_account(db, account.id)],
         resident_key_requirement=ResidentKeyRequirement.REQUIRED,

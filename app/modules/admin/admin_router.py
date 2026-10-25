@@ -81,6 +81,7 @@ def _account_read(detail: service.AccountDetail) -> AdminAccountRead:
         phone=account.phone,
         created_at=account.created_at,
         suspended_at=account.suspended_at,
+        deleted_at=account.deleted_at,
         suspension_reason=account.suspension_reason,
         profile=profile,
         deals=detail.deals,

@@ -128,9 +128,14 @@ class AdminAccountRead(BaseModel):
 
     id: uuid.UUID
     role: Role
-    phone: str
+    phone: str | None = Field(
+        description="Null once the account is deleted: the number is let go (D-122)"
+    )
     created_at: datetime
     suspended_at: datetime | None
+    deleted_at: datetime | None = Field(
+        description="When the account was deleted at its owner's request (D-122)"
+    )
     suspension_reason: ReportCategory | None
     profile: AdminProfileRead | None
     deals: int = Field(description="Deal memos this account is a party to")

@@ -53,7 +53,7 @@ def public_creator(db: Session, handle: str) -> Creator:
     if (
         creator is None
         or not passport_is_public(creator)
-        or suspension.is_suspended(db, creator.account_id)
+        or suspension.is_unavailable(db, creator.account_id)
     ):
         raise ProfileNotFound()
     if is_withheld(db, "creator", creator.id):

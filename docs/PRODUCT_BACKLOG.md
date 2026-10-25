@@ -119,7 +119,7 @@ scheduled AWS task (D-063), outside the API; that runs once AWS exists.
 | E5 | City leaderboards, festival templates, creator collectives | **Not started** | Group applications need their own model |
 | E6 | Invoices and yearly earnings statement | **Blocked** | needs validation pack (GST, TDS) |
 | E7 | ASCI disclosure check before submission | **Blocked** | needs validation pack |
-| E8 | Data export and account deletion | **Half** | Export is done. **Deletion is not, and no app store will accept us without it in the app** |
+| E8 | Data export and account deletion | **Built, periods owed** | Export is done (D-111); deletion is built (item 6, D-122): asked in the app, 30 days to cancel, then erased. The retention periods of what is kept wait on the validation pack |
 | E9 | Public read API and webhooks for agencies | **Not started** | After the contract is stable |
 
 ### Where that leaves us
@@ -141,9 +141,9 @@ until the AWS account, the MSG91 account and Meta verification exist, no real
 person can reach any endpoint. Those are founder steps, listed in
 `infra/README.md` and D-058.
 
-**Three launch blockers sit outside this list.** In-app account deletion does
-not exist and no app store will accept either app without it (E8, validation
-pack). DPDP consent-manager rules land 13 November 2026. And **how we earn is
+**Two launch blockers sit outside this list.** In-app account deletion, which
+every app store requires, is built (E8, D-122), but how long what it keeps is
+kept waits on the validation pack. DPDP consent-manager rules land 13 November 2026. And **how we earn is
 not decided** (`docs/PLAYBOOK_GAPS.md` section 1): no plan, price or invoice
 exists in the code.
 

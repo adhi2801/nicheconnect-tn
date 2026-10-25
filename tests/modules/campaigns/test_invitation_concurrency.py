@@ -163,13 +163,13 @@ def rows() -> Iterator[Rows]:
 def test_simultaneous_invitations_never_pass_the_limit(rows, monkeypatch):
     # One repeat is already waiting, so two more fill a limit of three.
     monkeypatch.setattr(invitation_service, "MAX_WAITING_INVITATIONS", 3)
-    original = invitation_service.is_suspended
+    original = invitation_service.is_unavailable
 
     def slow(*args, **kwargs):  # between the lock and the count
         time.sleep(0.2)
         return original(*args, **kwargs)
 
-    monkeypatch.setattr(invitation_service, "is_suspended", slow)
+    monkeypatch.setattr(invitation_service, "is_unavailable", slow)
     queue = list(rows.creator_ids)
 
     results = run_at_once(

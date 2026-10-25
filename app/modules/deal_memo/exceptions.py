@@ -19,6 +19,14 @@ class ApplicationNotAccepted(DomainError):
     title = "Accept the application before writing a deal memo"
 
 
+class CreatorLeft(DomainError):
+    # The creator deleted their account (D-122): nothing new starts with
+    # someone who left, though deals already agreed stay on the record.
+    status_code = HTTPStatus.CONFLICT
+    code = "creator_left"
+    title = "This creator has left the platform"
+
+
 class MemoAlreadyExists(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "memo_already_exists"

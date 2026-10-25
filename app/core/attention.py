@@ -24,6 +24,11 @@ from datetime import date, datetime
 # date to be due by, and is listed before everything else: if it was not
 # them, someone else is inside the account, and every other item is theirs.
 NEW_SIGN_IN = "new_sign_in"
+# The account itself waiting its 30 days to be deleted (item 6, D-122), or
+# held at the end by a deal, until it is erased or cancelled: due the day it
+# takes effect, so a deletion that was not the owner's is in front of them
+# while it can still be cancelled.
+DELETION_PENDING = "deletion_pending"
 
 # What a brand can be asked to do.
 BRAND_KINDS: tuple[str, ...] = (
@@ -40,6 +45,8 @@ BRAND_KINDS: tuple[str, ...] = (
     "domain_claim_expired",
     # A new phone number waiting its 72 hours (item 80, D-108).
     "phone_change_pending",
+    # The account waiting its 30 days to be deleted (item 6, D-122).
+    DELETION_PENDING,
     NEW_SIGN_IN,
 )
 # What a creator can be asked to do, or needs to know.
@@ -59,17 +66,20 @@ CREATOR_KINDS: tuple[str, ...] = (
     # it takes over the login, so a change that was not theirs is in front
     # of them while it can still be cancelled.
     "phone_change_pending",
+    DELETION_PENDING,
     NEW_SIGN_IN,
 )
 # Between two items due the same day, the one about money or a dispute
 # first: those are the ones that turn into a record against somebody. A
 # waiting phone number before all: if it was not them, it is the whole
-# account; then a waiting UPI ID, where a creator's money would go.
+# account, as is a waiting deletion; then a waiting UPI ID, where a
+# creator's money would go.
 _PRIORITY = {
     kind: rank
     for rank, kind in enumerate(
         (
             NEW_SIGN_IN,
+            DELETION_PENDING,
             "phone_change_pending",
             "upi_change_pending",
             "respond_to_dispute",
@@ -104,7 +114,7 @@ class AttentionItem:
     due_on: date | None
     # None for an item about the account itself rather than a campaign:
     # the brand's domain (item 74), a creator's waiting UPI ID (item 82),
-    # a waiting phone number (item 80).
+    # a waiting phone number (item 80), a waiting deletion (item 6).
     campaign_id: uuid.UUID | None
     campaign_title: str | None
     # The other side: a creator's handle for a brand, a brand's name for a
