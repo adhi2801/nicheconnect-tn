@@ -10,6 +10,7 @@ from pydantic_core import PydanticCustomError
 from app.core.literals import ensure_same_values
 from app.core.taxonomy import CURRENCY
 from app.core.text_flags import FieldFlag, field_flags
+from app.modules.campaigns.schemas import DeliverableItems, DeliverableRead
 from app.modules.deal_memo.delivery_record import (
     HAS_HISTORY,
     NO_HISTORY_YET,
@@ -63,6 +64,13 @@ class MemoCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     deliverables: Deliverables
+    deliverable_items: DeliverableItems | None = Field(
+        default=None,
+        description=(
+            "The deliverables as a list (D-127). Left out, the campaign's own "
+            "list is copied; an empty list means none"
+        ),
+    )
     # Required for paid and local-business campaigns, refused for barter.
     # The campaign decides, so the service checks it, not this schema.
     fee_amount_paise: Paise | None = None
@@ -81,6 +89,7 @@ class MemoUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     deliverables: Deliverables | None = None
+    deliverable_items: DeliverableItems | None = None
     fee_amount_paise: Paise | None = None
     cancellation_fee_paise: CancellationFee | None = None
     approval_window_days: WindowDays | None = None
@@ -120,6 +129,12 @@ class MemoFields(BaseModel):
     id: uuid.UUID
     application_id: uuid.UUID
     deliverables: str
+    deliverable_items: list[DeliverableRead] = Field(
+        description=(
+            "The deliverables as a list, in order (D-127). Sealed with the "
+            "terms from 25 October 2026; empty on memos made before"
+        )
+    )
     fee_amount_paise: int | None
     currency: Literal["INR"] = CURRENCY
     cancellation_fee_paise: int

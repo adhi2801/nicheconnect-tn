@@ -14,11 +14,12 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.core.taxonomy import CURRENCY, MAX_NICHES, NICHES, sql_text_array
 from app.db.base import Base
+from app.modules.campaigns.deliverable_models import CampaignDeliverable
 
 # What a brand asks for (D-016). Money is whole paise (D-015); no float ever.
 
@@ -113,6 +114,14 @@ class Campaign(Base):
     cities: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
     niches: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
     deliverables: Mapped[str] = mapped_column(Text, nullable=False)
+    # The same, as rows (item 26, D-127), in the brand's order. "selectin": a
+    # page of campaigns loads every list in one more query, never one each.
+    deliverable_items: Mapped[list[CampaignDeliverable]] = relationship(
+        "CampaignDeliverable",
+        order_by="CampaignDeliverable.position",
+        lazy="selectin",
+        viewonly=True,
+    )
     # Nullable on purpose: a campaign need not have a closing date.
     applications_close_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     status: Mapped[str] = mapped_column(

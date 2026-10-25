@@ -20,8 +20,10 @@ from tests.modules.deal_memo.test_deal_record_model import make_memo
 
 
 def make_memo_terms() -> DealMemo:
-    """Terms only, never saved: what the terms fingerprint reads."""
+    """Terms only, never saved: what the terms fingerprint reads. Version 1:
+    the terms of every memo made before 25 October 2026 (D-127)."""
     return DealMemo(
+        terms_version=1,
         deliverables="2 reels.",
         fee_amount_paise=800_000,
         currency="INR",
@@ -110,6 +112,57 @@ def test_the_terms_fingerprint_spells_a_date_as_iso():
     ).hexdigest()
 
     assert record_service.terms_fingerprint(memo) == by_hand
+
+
+def test_the_v2_fingerprint_adds_the_list_in_order_and_nothing_else():
+    """Terms version 2 (D-127): version 1's fields, then the deliverables."""
+    from app.modules.deal_memo.deliverable_models import MemoDeliverable
+
+    memo = make_memo_terms()
+    memo.terms_version = 2
+    memo.deliverable_items = [
+        MemoDeliverable(
+            position=0, platform="instagram", format="reel", quantity=2, note=None
+        ),
+        MemoDeliverable(
+            position=1, platform="instagram", format="story", quantity=1, note="Tamil"
+        ),
+    ]
+    terms = {field: getattr(memo, field) for field in record_service.TERMS_FIELDS}
+    terms["content_due_on"] = "2026-12-31"
+    terms["deliverable_items"] = [
+        {"platform": "instagram", "format": "reel", "quantity": 2, "note": None},
+        {"platform": "instagram", "format": "story", "quantity": 1, "note": "Tamil"},
+    ]
+    by_hand = hashlib.sha256(
+        json.dumps(terms, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+    assert record_service.terms_fingerprint(memo) == by_hand
+
+
+def test_the_list_never_touches_a_version_1_fingerprint():
+    from app.modules.deal_memo.deliverable_models import MemoDeliverable
+
+    plain = make_memo_terms()
+    with_list = make_memo_terms()
+    with_list.deliverable_items = [
+        MemoDeliverable(
+            position=0, platform="youtube", format="video", quantity=1, note=None
+        )
+    ]
+
+    assert record_service.terms_fingerprint(
+        with_list
+    ) == record_service.terms_fingerprint(plain)
+
+
+def test_a_memo_with_no_terms_version_has_no_fingerprint():
+    memo = make_memo_terms()
+    memo.terms_version = None
+
+    with pytest.raises(ValueError, match="terms version"):
+        record_service.terms_fingerprint(memo)
 
 
 def test_times_have_one_spelling_whatever_zone_they_arrive_in():

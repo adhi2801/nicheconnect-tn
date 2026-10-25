@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Select, select
+from sqlalchemy import delete as sa_delete
 from sqlalchemy.orm import Session
 
 from app.core.clock import india_date
@@ -24,8 +25,10 @@ from app.modules.auth import suspension
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns import offer_service as offers
+from app.modules.campaigns.deliverable_models import CampaignDeliverable
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo import record_service as record
+from app.modules.deal_memo.deliverable_models import MemoDeliverable
 from app.modules.deal_memo.exceptions import (
     ApplicationNotAccepted,
     BarterMemoHasNoFee,
@@ -48,6 +51,7 @@ from app.modules.notifications import service as notifications
 EXPORTED_TABLES = frozenset(
     {
         "deal_memo",
+        "memo_deliverable",
         "deliverable_proof",
         "proof_file",
         "proof_file_reading",
@@ -80,6 +84,8 @@ MEMO_EXPORT_FIELDS = allow(
     "content_due_on",
     "disclosure_required",
     "extra_terms",
+    # Which terms the record's fingerprint covers (D-127).
+    "terms_version",
     "status",
     "revision_count",
     "sent_at",
@@ -93,6 +99,17 @@ MEMO_EXPORT_FIELDS = allow(
     "updated_at",
 )
 
+DELIVERABLE_EXPORT_FIELDS = allow(
+    "id",
+    "deal_memo_id",
+    "position",
+    "platform",
+    "format",
+    "quantity",
+    "note",
+    "created_at",
+    "updated_at",
+)
 PROOF_EXPORT_FIELDS = allow(
     "id",
     "deal_memo_id",
@@ -269,6 +286,8 @@ def create_memo(
         db.rollback()
         raise MemoAlreadyExists()
 
+    # The list of deliverables (item 26, D-127): left out, the campaign's.
+    items = fields.pop("deliverable_items", None)
     # A figure agreed through a counter-offer (item 44, D-123) pre-fills the
     # fee; a fee the brand writes instead stands, shown beside it on reads.
     if fields.get("fee_amount_paise") is None:
@@ -286,6 +305,10 @@ def create_memo(
         **fields,
     )
     db.add(memo)
+    db.flush()
+    if items is None:
+        items = [_item_fields(item) for item in campaign.deliverable_items]
+    replace_deliverables(db, memo.id, items, now)
     db.commit()
     db.refresh(memo)
     return memo
@@ -320,6 +343,7 @@ NOT_REPEATED: dict[str, str] = {
     "cancellation_kind": "not cancelled",
     "declined_at": "not declined",
     "change_request_message": "the old deal's request, already answered",
+    "terms_version": "the new memo's own, the current version (D-127)",
     "created_at": "now",
     "updated_at": "now",
 }
@@ -364,7 +388,39 @@ def draft_repeat_memo(db: Session, application: Application, now: datetime) -> D
     if agreed is not None:
         memo.fee_amount_paise = agreed
     db.add(memo)
+    db.flush()
+    # The same deliverables as the deal it repeats (D-127).
+    replace_deliverables(
+        db, memo.id, [_item_fields(item) for item in previous.deliverable_items], now
+    )
     return memo
+
+
+def _item_fields(item: CampaignDeliverable | MemoDeliverable) -> dict[str, Any]:
+    return {field: getattr(item, field) for field in record.DELIVERABLE_FIELDS}
+
+
+def replace_deliverables(
+    db: Session, memo_id: uuid.UUID, items: list[dict[str, Any]], now: datetime
+) -> None:
+    """The memo's list of deliverables, replaced whole (D-127). Never commits.
+
+    Only while the memo is editable, which its callers check: once sent, the
+    list is part of the terms the record seals.
+    """
+    db.execute(sa_delete(MemoDeliverable).where(MemoDeliverable.deal_memo_id == memo_id))
+    db.flush()
+    db.add_all(
+        MemoDeliverable(
+            deal_memo_id=memo_id,
+            position=position,
+            created_at=now,
+            updated_at=now,
+            **item,
+        )
+        for position, item in enumerate(items)
+    )
+    db.flush()
 
 
 def update_memo(
@@ -381,8 +437,11 @@ def update_memo(
             _campaign_of(db, application), changes["fee_amount_paise"]
         )
 
+    items = changes.pop("deliverable_items", None)
     for field, value in changes.items():
         setattr(memo, field, value)
+    if items is not None:
+        replace_deliverables(db, memo.id, items, now)
     memo.updated_at = now
     db.commit()
     db.refresh(memo)
@@ -670,6 +729,16 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
             ),
             objects=memos,
             fields=MEMO_EXPORT_FIELDS,
+        ),
+        build_section(
+            "memo_deliverables",
+            table="memo_deliverable",
+            purpose=(
+                "Each memo's deliverables as a list, in the order agreed: "
+                "platform, format, how many and a note (D-127)."
+            ),
+            objects=[item for memo in memos for item in memo.deliverable_items],
+            fields=DELIVERABLE_EXPORT_FIELDS,
         ),
         build_section(
             "deliverable_proofs",

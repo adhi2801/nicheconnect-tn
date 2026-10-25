@@ -14,7 +14,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -30,6 +30,7 @@ from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import brand_is_active, brand_is_unavailable
 from app.modules.campaigns import offer_service as offers
+from app.modules.campaigns.deliverable_models import CampaignDeliverable
 from app.modules.campaigns.exceptions import (
     AlreadyApplied,
     ApplicationsClosed,
@@ -64,7 +65,18 @@ from app.modules.safety.takedowns import (
 
 # Tables this module answers for in a data export (see
 # tests/modules/me/test_export_api.py, which fails if one is missed).
-EXPORTED_TABLES = frozenset({"campaign", "application"})
+CAMPAIGN_DELIVERABLE_EXPORT_FIELDS = allow(
+    "id",
+    "campaign_id",
+    "position",
+    "platform",
+    "format",
+    "quantity",
+    "note",
+    "created_at",
+    "updated_at",
+)
+EXPORTED_TABLES = frozenset({"campaign", "campaign_deliverable", "application"})
 
 CAMPAIGN_EXPORT_FIELDS = allow(
     "id",
@@ -109,7 +121,9 @@ ALLOWED_TRANSITIONS: dict[str, frozenset[str]] = {
     "cancelled": frozenset(),
 }
 # Once creators can apply, the deal on offer must not change under them.
-EDITABLE_WHILE_OPEN = frozenset({"description", "deliverables", "applications_close_on"})
+EDITABLE_WHILE_OPEN = frozenset(
+    {"description", "deliverables", "deliverable_items", "applications_close_on"}
+)
 
 
 def get_visible_campaign(
@@ -174,6 +188,7 @@ def create_campaign(
     db: Session, brand: Brand, fields: dict[str, Any], now: datetime
 ) -> Campaign:
     """Create a campaign as a draft. Only publishing makes it visible."""
+    items = fields.pop("deliverable_items", None) or []
     campaign = Campaign(
         brand_id=brand.id,
         status="draft",
@@ -182,6 +197,8 @@ def create_campaign(
         **fields,
     )
     db.add(campaign)
+    db.flush()
+    replace_deliverables(db, campaign.id, items, now)
     db.commit()
     db.refresh(campaign)
     return campaign
@@ -207,12 +224,36 @@ def update_campaign(
                 f"Cannot change {', '.join(sorted(blocked))} while the campaign is open."
             )
 
+    items = changes.pop("deliverable_items", None)
     for field, value in changes.items():
         setattr(campaign, field, value)
+    if items is not None:
+        replace_deliverables(db, campaign.id, items, now)
     campaign.updated_at = now
     db.commit()
     db.refresh(campaign)
     return campaign
+
+
+def replace_deliverables(
+    db: Session, campaign_id: uuid.UUID, items: list[dict[str, Any]], now: datetime
+) -> None:
+    """The campaign's list of deliverables, replaced whole (item 26, D-127). Never commits."""
+    db.execute(
+        delete(CampaignDeliverable).where(CampaignDeliverable.campaign_id == campaign_id)
+    )
+    db.flush()
+    db.add_all(
+        CampaignDeliverable(
+            campaign_id=campaign_id,
+            position=position,
+            created_at=now,
+            updated_at=now,
+            **item,
+        )
+        for position, item in enumerate(items)
+    )
+    db.flush()
 
 
 def change_status(
@@ -693,6 +734,17 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
                 purpose="The campaigns you posted, including ones still in draft.",
                 objects=campaigns,
                 fields=CAMPAIGN_EXPORT_FIELDS,
+            )
+        )
+        sections.append(
+            build_section(
+                "campaign_deliverables",
+                table="campaign_deliverable",
+                purpose="Each campaign's deliverables as a list, in your order (D-127).",
+                objects=[
+                    item for campaign in campaigns for item in campaign.deliverable_items
+                ],
+                fields=CAMPAIGN_DELIVERABLE_EXPORT_FIELDS,
             )
         )
 

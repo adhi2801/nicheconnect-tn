@@ -103,10 +103,10 @@ def test_campaign_discovery_query_count_does_not_grow_with_rows(client, db):
         f"{with_three} queries for 3 rows, {with_twenty} for 20: the endpoint "
         "is querying per row"
     )
-    # The account, the list, the brands' verified domains (item 74), and the
-    # brands' names beside every verified brand's (item 75): fixed, whatever
-    # the page holds.
-    assert with_twenty <= 4
+    # The account, the list, the brands' verified domains (item 74), the
+    # brands' names beside every verified brand's (item 75), and every row's
+    # deliverables in one query (D-127): fixed, whatever the page holds.
+    assert with_twenty <= 5
 
 
 def test_my_campaigns_query_count_does_not_grow_with_rows(client, db):
@@ -119,8 +119,9 @@ def test_my_campaigns_query_count_does_not_grow_with_rows(client, db):
     with_twenty = queries_for(client, CAMPAIGNS_URL, headers)
 
     assert with_three == with_twenty
-    # Account, brand profile, then the list.
-    assert with_twenty <= 5
+    # Account, brand profile, then the list, and every row's deliverables in
+    # one query (D-127).
+    assert with_twenty <= 6
 
 
 def test_application_list_query_count_does_not_grow_with_rows(client, db):
@@ -173,7 +174,8 @@ def test_reading_one_campaign_is_a_handful_of_queries(client, db):
         client, f"{CAMPAIGNS_URL}/{campaign.id}", auth(brand.account_id, "brand")
     )
 
-    assert count <= 4
+    # Its deliverables are one more (D-127).
+    assert count <= 5
 
 
 def test_my_applications_query_count_does_not_grow_with_rows(client, db):

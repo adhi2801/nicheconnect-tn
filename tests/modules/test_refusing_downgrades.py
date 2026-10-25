@@ -58,6 +58,7 @@ REFUSING = {
     "b7e026caa4a9": "accounts waiting to be deleted, or deleted, which lack a number",
     "8b6662af4839": "counter-offers on quotes, both sides' record of the negotiation",
     "3cab62503c56": "numbers holding both a brand and a creator account",
+    "413468ae18cf": "memos sealed with their deliverables, and the deliverables themselves",
 }
 
 
@@ -533,3 +534,16 @@ def test_numbers_holding_both_sides(db):
     create_account(db, "creator", phone=brand.phone)
 
     assert f"{before + 1} phone numbers hold both" in refusal(db, "3cab62503c56")
+
+
+def test_memos_sealed_with_their_deliverables(client, db, clock):
+    from tests.modules.deal_memo.test_memo_deliverables_api import (
+        accepted_application,
+        draft,
+    )
+
+    before = count(db, "SELECT count(*) FROM deal_memo WHERE terms_version = 2")
+    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    draft(client, brand, accepted_application(client, brand, creator))
+
+    assert f"{before + 1} memos carry terms version 2" in refusal(db, "413468ae18cf")

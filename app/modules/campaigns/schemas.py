@@ -10,6 +10,13 @@ from pydantic_core import PydanticCustomError
 from app.core.literals import ensure_same_values
 from app.core.taxonomy import CURRENCY, MAX_NICHES, Niche
 from app.core.text_flags import FieldFlag, field_flags
+from app.modules.campaigns.deliverable_models import (
+    DELIVERABLE_FORMATS,
+    DELIVERABLE_NOTE_MAX_LENGTH,
+    DELIVERABLE_PLATFORMS,
+    MAX_DELIVERABLE_QUANTITY,
+    MAX_DELIVERABLES,
+)
 from app.modules.campaigns.models import (
     APPLICATION_ORIGINS,
     APPLICATION_STATUSES,
@@ -81,6 +88,51 @@ def _check_budget(campaign_type: str, minimum: int | None, maximum: int | None) 
         )
 
 
+# --- deliverables as a list (item 26, D-127) --------------------------------
+
+DeliverablePlatform = Literal["instagram", "youtube"]
+DeliverableFormat = Literal["post", "reel", "story", "short", "video", "live", "other"]
+
+ensure_same_values("DeliverablePlatform", DeliverablePlatform, DELIVERABLE_PLATFORMS)
+ensure_same_values("DeliverableFormat", DeliverableFormat, DELIVERABLE_FORMATS)
+
+
+class DeliverableIn(BaseModel):
+    """One line of what is asked or agreed: "2 Instagram reels"."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    platform: DeliverablePlatform
+    format: DeliverableFormat = Field(
+        description="The rate card's own words (D-055); `other` when none fits"
+    )
+    quantity: int = Field(default=1, ge=1, le=MAX_DELIVERABLE_QUANTITY, examples=[2])
+    note: (
+        Annotated[str, Field(min_length=1, max_length=DELIVERABLE_NOTE_MAX_LENGTH)] | None
+    ) = Field(default=None, examples=["60 seconds, in Tamil"])
+
+
+class DeliverableRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    platform: DeliverablePlatform
+    format: DeliverableFormat
+    quantity: int
+    note: str | None
+
+
+DeliverableItems = Annotated[
+    list[DeliverableIn],
+    Field(
+        max_length=MAX_DELIVERABLES,
+        description=(
+            "The deliverables as a list, in order: at most 10 lines. The "
+            "`deliverables` text stays, as the summary both sides read"
+        ),
+    ),
+]
+
+
 class CampaignCreate(BaseModel):
     """What a brand sends to create a campaign. It starts as a draft."""
 
@@ -94,6 +146,7 @@ class CampaignCreate(BaseModel):
     cities: Cities
     niches: Niches
     deliverables: Deliverables
+    deliverable_items: DeliverableItems = []
     applications_close_on: date | None = None
 
     @model_validator(mode="after")
@@ -115,6 +168,7 @@ class CampaignUpdate(BaseModel):
     cities: Cities | None = None
     niches: Niches | None = None
     deliverables: Deliverables | None = None
+    deliverable_items: DeliverableItems | None = None
     applications_close_on: date | None = None
 
     @model_validator(mode="after")
@@ -140,6 +194,7 @@ class CampaignRead(BaseModel):
     cities: list[str]
     niches: list[str]
     deliverables: str
+    deliverable_items: list[DeliverableRead]
     applications_close_on: date | None
     status: CampaignStatus
     created_at: datetime

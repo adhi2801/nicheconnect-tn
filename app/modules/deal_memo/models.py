@@ -9,16 +9,18 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    SmallInteger,
     String,
     Text,
     text,
 )
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.core.taxonomy import CURRENCY
 from app.db.base import Base
+from app.modules.deal_memo.deliverable_models import MemoDeliverable
 
 # What the two sides agreed, for one accepted application (D-024 to D-027).
 # One memo per application: the deal is the thing, not the paperwork.
@@ -66,6 +68,7 @@ class DealMemo(Base):
     __tablename__ = "deal_memo"
     __table_args__ = (
         CheckConstraint(f"status IN {tuple(MEMO_STATUSES)}", name="status_allowed"),
+        CheckConstraint("terms_version IN (1, 2)", name="terms_version_known"),
         CheckConstraint(
             f"cancellation_kind IS NULL OR cancellation_kind IN {tuple(CANCELLATION_KINDS)}",
             name="cancellation_kind_allowed",
@@ -136,6 +139,20 @@ class DealMemo(Base):
         unique=True,
     )
     deliverables: Mapped[str] = mapped_column(Text, nullable=False)
+    # The same, as rows (item 26, D-127), in the order agreed; loaded with
+    # the memo in one more query a page, never one a memo.
+    deliverable_items: Mapped[list[MemoDeliverable]] = relationship(
+        "MemoDeliverable",
+        order_by="MemoDeliverable.position",
+        lazy="selectin",
+        viewonly=True,
+    )
+    # Which terms the deal record's fingerprint covers (D-127): 1 is every
+    # memo before 25 October 2026, fingerprinted as it always was, forever;
+    # 2 adds the list of deliverables. Never changes once set.
+    terms_version: Mapped[int] = mapped_column(
+        SmallInteger, nullable=False, server_default=text("2")
+    )
     # Paise (D-015). Empty for barter, where the payment is goods.
     fee_amount_paise: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     currency: Mapped[str] = mapped_column(
