@@ -18,6 +18,7 @@ from collections.abc import Iterable
 
 from sqlalchemy import delete, select, text
 
+from app.modules.deal_memo.feedback_models import DealFeedback
 from app.modules.deal_memo.note_models import DealNote
 from app.modules.deal_memo.record_models import DealRecordEntry
 from app.modules.deal_memo.shipment_models import BarterShipment
@@ -46,6 +47,10 @@ def remove_deal_records(memo_ids: Iterable[uuid.UUID]) -> None:
         )
         # Deal notes are sealed the same way (D-128).
         connection.execute(delete(DealNote).where(DealNote.deal_memo_id.in_(memos)))
+        # Feedback is sealed the same way (D-136).
+        connection.execute(
+            delete(DealFeedback).where(DealFeedback.deal_memo_id.in_(memos))
+        )
         # A barter shipment holds its memo by RESTRICT too (D-131).
         connection.execute(
             delete(BarterShipment).where(BarterShipment.deal_memo_id.in_(memos))

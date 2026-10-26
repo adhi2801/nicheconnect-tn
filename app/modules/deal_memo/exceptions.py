@@ -1,6 +1,7 @@
 """Domain errors for the deal memo module."""
 
 from http import HTTPStatus
+from typing import ClassVar
 
 from app.core.errors import DomainError
 
@@ -184,3 +185,20 @@ class ShipmentNotFound(DomainError):
     status_code = HTTPStatus.NOT_FOUND
     code = "shipment_not_found"
     title = "No shipment has been recorded on this deal yet"
+
+
+class FeedbackClosed(DomainError):
+    # Feedback runs from a deal finishing for 14 days, once a side (D-136).
+    status_code = HTTPStatus.CONFLICT
+    code = "feedback_closed"
+    title = "Feedback can't be given on this deal now"
+
+    REASONS: ClassVar[dict[str, str]] = {
+        "not_finished": "The deal has not finished: feedback opens once it is paid and confirmed, or its barter work approved.",
+        "already_given": "You have already given feedback on this deal; it can't be changed.",
+        "closed": "The 14 days for feedback on this deal have passed.",
+    }
+
+    @classmethod
+    def because(cls, reason: str) -> FeedbackClosed:
+        return cls(cls.REASONS[reason])

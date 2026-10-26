@@ -1717,3 +1717,17 @@ Newest entries at the bottom.
   1. `PublicCreatorRead.connected_accounts`: platform, handle, `connected_since`; never a count. `MediaKitRead.connected_accounts` and each search channel's `verified_followers` and `verified_as_of` carry the count, beside `followers`, never instead.
   2. An expired connection shows nowhere. Item 29's daily job (`me.connection_jobs`) renews tokens, reads the counts, and expires a connection the platform refuses, telling its creator (`connection_expired`, migration `3e711c2efcc6`).
   3. Item 29 counts as built (`docs/BACKEND_COMPLETE.md` section 1): only Meta App Review, Google verification and the connect notice remain, and they only switch it on.
+
+## D-136: Feedback on a finished deal, revealed only when both sides have answered (item 77)
+- Date: 2026-10-26
+- Approved by: Adhi, in this session: "all as recommended", to the proposal of items 77, 27 and 11 with their dimensions and choices. **Not reviewed by the other founder** (D-051).
+- Context: the records say what happened; they cannot say whether a brief was clear or a creator was easy to work with. Reviews usually break by retaliation, by being bought, or by being buried. Airbnb and Upwork answer retaliation with 14-day double-blind reviews (read 26 October 2026, `docs/COMPETITIVE_LANDSCAPE.md` section 4).
+- Options considered: (a) A) three fixed questions, 1 to 5; B) free stars. (b) A) a 14-day window; B) 30 days.
+- Chosen: A and A.
+- Reason: fixed questions are comparable and harder to game; 14 days is long enough to answer and short enough to remember (aA, bA).
+- Consequences / follow-ups:
+  1. `GET` and `POST /api/v1/deal-memos/{memo_id}/feedback`: the deal's two parties; once a side, within 14 days of the deal finishing (paid and confirmed, or barter with its work approved); `feedback_closed` otherwise. Scores `brief`, `reliability`, `easy`, 1 to 5, read for whoever is answered about, and an optional note of at most 500 characters, a brand's flagged for fee requests. 50 a day per account.
+  2. Neither side's answer is seen, by the other side, the profile figures, the notes lists or the other side's export, until both answered or the window closed (`feedback_rules.revealed`, with property tests; asked in SQL by `feedback_service._shown`). A person always sees their own.
+  3. `deal_feedback` is sealed like deal notes: triggers refuse UPDATE, DELETE and TRUNCATE, and the app's role may only read and add; each answer is also sealed onto the deal record (`feedback_given`, with its fingerprint). The other side is told an answer exists (`feedback_received`), never what it says.
+  4. `GET /api/v1/creators/{creator_id}/feedback` (brands, or the creator) and `GET /api/v1/brands/{brand_id}/feedback` (anyone signed in): averages of revealed answers, null below three, with the number of answers and of different partners; `.../feedback/notes` pages the revealed notes, each beside the subject's own words on that deal.
+  5. Kept as a deal record on deletion (D-122); in both exports, the other side's once revealed. Migration `a2a642dc46be`; its downgrade refuses while any feedback or feedback entry exists. Whether a note may be removed, and on what grounds, is a legal.md Confirm item.

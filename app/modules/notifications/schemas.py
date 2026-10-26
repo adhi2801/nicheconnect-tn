@@ -69,6 +69,7 @@ NotificationType = Literal[
     "product_shipped",
     "product_received",
     "connection_expired",
+    "feedback_received",
 ]
 
 ensure_same_values("NotificationType", NotificationType, NOTIFICATION_TYPES)

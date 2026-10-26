@@ -145,7 +145,7 @@ Persuasion is not the enemy; deception is. Every lever below is legal **because 
 
 ### 3.6 Reviews and ratings: IS 19000:2022
 
-The Bureau of Indian Standards' standard for online consumer reviews has applied since 25 November 2022. It is described as **voluntary** as of July 2025, and the government has consulted on making it mandatory. We meet it anyway: our ratings and records come only from real deals between the two parties; they are never bought, never written by us, never hidden for being negative; each shows its date and how many deals it rests on (D-038).
+The Bureau of Indian Standards' standard for online consumer reviews has applied since 25 November 2022. It is described as **voluntary** as of July 2025, and the government has consulted on making it mandatory. We meet it anyway: our ratings and records come only from real deals between the two parties; they are never bought, never written by us, never hidden for being negative; each shows its date and how many deals it rests on (D-038). Feedback after a finished deal (item 77, D-136) follows the same rules: three fixed scores and a note from each side, sealed, hidden until both answered or 14 days passed, shown beside the other side's own words and beside the hard records, null below three. **Confirm** whether we may, or must, remove a note, and on what grounds (it is the writer's statement, shown as theirs: section 3.12).
 
 ### 3.7 Advertising by creators: ASCI and the Consumer Protection Authority
 

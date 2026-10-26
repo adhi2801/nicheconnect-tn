@@ -87,6 +87,22 @@ PUBLIC: dict[tuple[str, str], tuple[frozenset[str], str]] = {
         BRANDS,
         "how fast a creator answers (D-077), for brands",
     ),
+    ("GET", "/api/v1/creators/{creator_id}/feedback"): (
+        BRANDS,
+        "what brands said after finished deals (D-136), for brands",
+    ),
+    ("GET", "/api/v1/creators/{creator_id}/feedback/notes"): (
+        BRANDS,
+        "brands' revealed notes after finished deals (D-136), for brands",
+    ),
+    ("GET", "/api/v1/brands/{brand_id}/feedback"): (
+        EVERYONE,
+        "what creators said after finished deals (D-136)",
+    ),
+    ("GET", "/api/v1/brands/{brand_id}/feedback/notes"): (
+        EVERYONE,
+        "creators' revealed notes after finished deals (D-136)",
+    ),
     ("GET", "/api/v1/platforms/meta/data-deletion/{confirmation_code}"): (
         EVERYONE,
         "the deletion status page Meta requires: a random code, naming no one (D-134)",
@@ -146,6 +162,7 @@ BODIES: dict[str, dict[str, Any]] = {
     "NameClearanceIn": {"note": "Checked the business behind it."},
     "CreatorListIn": {"name": "Diwali food creators"},
     "ShipmentIn": {"carrier": "india_post", "tracking_number": "EE123456789IN"},
+    "FeedbackIn": {"brief": 5, "reliability": 5, "easy": 5},
 }
 
 

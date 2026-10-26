@@ -18,6 +18,8 @@ from app.modules.deal_memo.delivery_record import (
     NO_HISTORY_YET,
     DeliveryRecord,
 )
+from app.modules.deal_memo.feedback_models import FEEDBACK_NOTE_MAX_LENGTH, FEEDBACK_SIDES
+from app.modules.deal_memo.feedback_rules import SCORE_MAX, SCORE_MIN
 from app.modules.deal_memo.models import (
     CANCELLATION_KINDS,
     CHANGE_REQUEST_MAX_LENGTH,
@@ -653,3 +655,96 @@ class ContentItemRead(BaseModel):
             "memo states no days"
         )
     )
+
+
+# --- feedback on a finished deal (item 77, D-136) --------------------------------
+
+FeedbackSide = Literal["brand", "creator"]
+ensure_same_values("FeedbackSide", FeedbackSide, FEEDBACK_SIDES)
+Score = Annotated[int, Field(ge=SCORE_MIN, le=SCORE_MAX)]
+
+
+class FeedbackIn(BaseModel):
+    """One side's answer about the other, once, never changed."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    brief: Score = Field(
+        description="Followed the brief (about a creator), or gave a clear one (about a brand)"
+    )
+    reliability: Score = Field(
+        description="Delivered on time (about a creator), or paid as agreed (about a brand)"
+    )
+    easy: Score = Field(description="Easy to work with")
+    note: str | None = Field(
+        default=None, min_length=1, max_length=FEEDBACK_NOTE_MAX_LENGTH
+    )
+
+
+class FeedbackRead(BaseModel):
+    """One answer, as its writer, or the other side once revealed, reads it."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    author_side: FeedbackSide
+    brief: int
+    reliability: int
+    easy: int
+    note: str | None
+    created_at: datetime
+
+    @computed_field(  # type: ignore[prop-decorator]  # pydantic documents this
+        description="Warnings worked out on read: a brand's request for money. Show beside the note"
+    )
+    @property
+    def text_flags(self) -> list[FieldFlag]:
+        if self.note is None:
+            return []
+        return field_flags(
+            {"note": self.note}, money=self.author_side == "brand", contact=False
+        )
+
+
+class DealFeedbackRead(BaseModel):
+    """A deal's feedback, as one side may see it now."""
+
+    window_ends_at: datetime | None = Field(
+        description="When answers may no longer be given, and are all shown; null until the deal finishes"
+    )
+    open: bool = Field(description="Whether you may still answer")
+    mine: FeedbackRead | None
+    theirs: FeedbackRead | None = Field(
+        description="The other side's, only once you have both answered or the window has closed"
+    )
+
+
+class FeedbackFiguresRead(BaseModel):
+    """What the other sides of someone's finished deals said, once revealed."""
+
+    answers: int = Field(description="How many revealed answers these rest on")
+    counterparties: int = Field(
+        description="How many different brands or creators gave them: twelve from one say less than twelve from nine"
+    )
+    brief: float | None = Field(
+        description="Average, 1 to 5. Null below three answers: not enough to say, never zero"
+    )
+    reliability: float | None
+    easy: float | None
+
+
+class FeedbackNoteRead(BaseModel):
+    """A revealed note about someone, and their own words on the same deal."""
+
+    note: str
+    reply: str | None = Field(description="What the person it is about said on that deal")
+    author_side: FeedbackSide
+    created_at: datetime
+
+    @computed_field(  # type: ignore[prop-decorator]  # pydantic documents this
+        description="Warnings worked out on read: a brand's request for money"
+    )
+    @property
+    def text_flags(self) -> list[FieldFlag]:
+        return field_flags(
+            {"note": self.note}, money=self.author_side == "brand", contact=False
+        )

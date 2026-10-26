@@ -71,6 +71,8 @@ RECORD_KINDS: tuple[str, ...] = (
     # fingerprint, and the creator saying they arrived (item 68, D-131).
     "product_shipped",
     "product_received",
+    # One side's feedback on a finished deal (item 77, D-136): its fingerprint.
+    "feedback_given",
 )
 # "system" is us acting on the deal's own rules, such as approving work at the
 # end of the review window (D-025) or opening the payment record it causes.
