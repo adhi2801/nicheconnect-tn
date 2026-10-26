@@ -118,6 +118,7 @@ BODIES: dict[str, dict[str, Any]] = {
     "InvitationCreate": {"creator_id": "{creator_id}"},
     "InvitationDecline": {"reason": "timing"},
     "OfferCreate": {"amount_paise": 750_000},
+    "NoteCreate": {"body": "Can the second reel go up on Saturday?"},
     "MemoCreate": {
         "deliverables": "3 Instagram reels.",
         "fee_amount_paise": 800_000,

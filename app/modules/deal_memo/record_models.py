@@ -65,6 +65,8 @@ RECORD_KINDS: tuple[str, ...] = (
     "dispute_opened",
     "dispute_entry_added",
     "dispute_closed",
+    # A note one side wrote about the deal (item 17, D-128): its fingerprint.
+    "note_added",
 )
 # "system" is us acting on the deal's own rules, such as approving work at the
 # end of the review window (D-025) or opening the payment record it causes.

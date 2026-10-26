@@ -4187,6 +4187,18 @@
             "description": "Save this to detect a later rewrite",
             "title": "Latest Seal"
           },
+          "notes_unchanged": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when the deal has no notes; otherwise whether every note still matches the fingerprint sealed for it (D-128)",
+            "title": "Notes Unchanged"
+          },
           "terms_unchanged_since_accepted": {
             "anyOf": [
               {
@@ -6526,6 +6538,78 @@
         "title": "NicheCountRead",
         "type": "object"
       },
+      "NoteCreate": {
+        "additionalProperties": false,
+        "description": "A note one side writes on the deal, sealed onto its record.",
+        "properties": {
+          "body": {
+            "examples": [
+              "Can the second reel go up on Saturday instead of Friday?"
+            ],
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "title": "NoteCreate",
+        "type": "object"
+      },
+      "NoteRead": {
+        "description": "A note, as both sides read it. It never changes once written.",
+        "properties": {
+          "author_side": {
+            "description": "Who wrote it",
+            "enum": [
+              "brand",
+              "creator"
+            ],
+            "title": "Author Side",
+            "type": "string"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "deal_memo_id": {
+            "format": "uuid",
+            "title": "Deal Memo Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "text_flags": {
+            "description": "Warnings on the note, worked out on every read: a request for money from a creator. The two are matched, so contact details are not a warning. Show each beside the note; never hide it",
+            "items": {
+              "$ref": "#/components/schemas/FieldFlag"
+            },
+            "readOnly": true,
+            "title": "Text Flags",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "deal_memo_id",
+          "author_side",
+          "body",
+          "created_at",
+          "text_flags"
+        ],
+        "title": "NoteRead",
+        "type": "object"
+      },
       "NotificationPreferencesIn": {
         "additionalProperties": false,
         "description": "The whole set of preferences. Saving replaces them all, so a retry is safe.",
@@ -6601,11 +6685,12 @@
                 "offer_received",
                 "offer_accepted",
                 "offer_declined",
-                "offer_withdrawn"
+                "offer_withdrawn",
+                "note_added"
               ],
               "type": "string"
             },
-            "maxItems": 52,
+            "maxItems": 53,
             "title": "Muted Types",
             "type": "array"
           },
@@ -6709,7 +6794,8 @@
                 "offer_received",
                 "offer_accepted",
                 "offer_declined",
-                "offer_withdrawn"
+                "offer_withdrawn",
+                "note_added"
               ],
               "type": "string"
             },
@@ -6787,7 +6873,8 @@
                 "offer_received",
                 "offer_accepted",
                 "offer_declined",
-                "offer_withdrawn"
+                "offer_withdrawn",
+                "note_added"
               ],
               "type": "string"
             },
@@ -6939,7 +7026,8 @@
               "offer_received",
               "offer_accepted",
               "offer_declined",
-              "offer_withdrawn"
+              "offer_withdrawn",
+              "note_added"
             ],
             "title": "Notification Type",
             "type": "string"
@@ -7754,6 +7842,34 @@
           "items"
         ],
         "title": "Page[MemoWithStageRead]",
+        "type": "object"
+      },
+      "Page_NoteRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NoteRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as ?cursor= to get the next page",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[NoteRead]",
         "type": "object"
       },
       "Page_NotificationRead_": {
@@ -24751,6 +24867,278 @@
           }
         ],
         "summary": "Decline the memo",
+        "tags": [
+          "deal memos"
+        ]
+      }
+    },
+    "/api/v1/deal-memos/{memo_id}/notes": {
+      "get": {
+        "description": "Every note either side wrote on this deal, newest first; pass `next_cursor` back as `cursor` for older ones. Each is sealed onto the deal's record (`GET /api/v1/deal-memos/{memo_id}/record`, `notes_unchanged`). The brand and the creator of this deal only.",
+        "operationId": "list_notes_api_v1_deal_memos__memo_id__notes_get",
+        "parameters": [
+          {
+            "description": "The memo's id",
+            "in": "path",
+            "name": "memo_id",
+            "required": true,
+            "schema": {
+              "description": "The memo's id",
+              "format": "uuid",
+              "title": "Memo Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Notes per page",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Notes per page",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "From a previous page's next_cursor",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "From a previous page's next_cursor",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_NoteRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such deal, or it is not yours"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A query parameter or the cursor is invalid"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "A deal's notes",
+        "tags": [
+          "deal memos"
+        ]
+      },
+      "post": {
+        "description": "A plain note, at most 1,000 characters, from the memo being sent until the deal ends. It is sealed onto the deal's record by its fingerprint, so either side can prove later what was said, and it never changes: a correction is another note. The other side is told. Limits: 30 a minute and 200 a day.",
+        "operationId": "write_note_api_v1_deal_memos__memo_id__notes_post",
+        "parameters": [
+          {
+            "description": "The memo's id",
+            "in": "path",
+            "name": "memo_id",
+            "required": true,
+            "schema": {
+              "description": "The memo's id",
+              "format": "uuid",
+              "title": "Memo Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such deal, or it is not yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`notes_closed`: the memo is a draft, or the deal has ended. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The note is empty or too long. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Write a note on a deal",
         "tags": [
           "deal memos"
         ]

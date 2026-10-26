@@ -22,7 +22,7 @@ Three things it does **not** mean:
 
 **Measured on 14 October 2026:** 2,985 tests; coverage 98.55% counting branches when last measured that day, before its last three changes, with CI holding the floors on every run (`docs/standards/testing.md` section 7); CI green on `main` (`d6a86b8`, every job): the secret scan, the module layers, migration linting and round trip, the release step, the suite run as the app's own login and then the owner's tests, coverage, API fuzzing, the dependency and image scans, and the infrastructure check.
 
-**Open in section 3: 53 items** (68 on 14 October; item 51 built on 15 October, items 52 and 101 on 16 October, items 74, 82 and 80 on 17 October, item 79 on 18 October, items 81, 75 and 85 on 24 October, items 6, 44 and 8 on 25 October, item 26 on 26 October, and item 87 found built since 20 September). 23 wait on something outside the code or on Erode Harish: the name and domain (4, 10), the Meta app (29 to 31, 67, 78), the validation pack (33, 39), the lawyer or CA (35, 50, 76), the MSG91 template (62), results data (83, 86), founders' decisions (7, 13, 38, 41, 46, 48, 61, 72). **30 need only an approval**, among them campaign alerts (43). Section 4 holds the 9 that wait on someone outside.
+**Open in section 3: 52 items** (68 on 14 October; item 51 built on 15 October, items 52 and 101 on 16 October, items 74, 82 and 80 on 17 October, item 79 on 18 October, items 81, 75 and 85 on 24 October, items 6, 44 and 8 on 25 October, items 26 and 17 on 26 October, and item 87 found built since 20 September). 23 wait on something outside the code or on Erode Harish: the name and domain (4, 10), the Meta app (29 to 31, 67, 78), the validation pack (33, 39), the lawyer or CA (35, 50, 76), the MSG91 template (62), results data (83, 86), founders' decisions (7, 13, 38, 41, 46, 48, 61, 72). **29 need only an approval**, among them campaign alerts (43). Section 4 holds the 9 that wait on someone outside.
 
 **Built and tested on `main`:**
 - before 1 October: Phases A, B and D of the backlog, C1 to C4, E3 and E4 (`docs/PRODUCT_BACKLOG.md`), creator search, the admin side, results read from proof (D-070, switched off), the deal record with its daily outside timestamp, proof files, and AWS described as code;
@@ -70,7 +70,7 @@ From `docs/PLATFORM_AND_TECH_PLAN.md` section 2.7 and the platform plan:
 | 14 | **E5**: city leaderboards, festival campaign templates, creator collectives | A design decision |
 | 15 | **E9**: public read API and webhooks for agencies | A design decision; security |
 | 16 | **Competitive gap: fake-follower screening** (`docs/COMPETITIVE_LANDSCAPE.md` section 4), built from observed reach on real deals rather than bought data | After results from proof has real data; a decision |
-| 17 | **Competitive gap: structured deal notes** that join the deal record, in place of chat | A product decision |
+| 17 | **Competitive gap: structured deal notes** that join the deal record, in place of chat | A product decision · **Built 26 October (D-128)**: `POST /api/v1/deal-memos/{memo_id}/notes` from the memo being sent until the deal ends; each note sealed onto the deal record by its fingerprint, the table append-only, `notes_unchanged` on the record |
 
 ### 3.5 From psychology and trust (`docs/PSYCHOLOGY_AND_TRUST.md`)
 

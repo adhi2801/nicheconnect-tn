@@ -59,6 +59,7 @@ REFUSING = {
     "8b6662af4839": "counter-offers on quotes, both sides' record of the negotiation",
     "3cab62503c56": "numbers holding both a brand and a creator account",
     "413468ae18cf": "memos sealed with their deliverables, and the deliverables themselves",
+    "a9188046bec4": "deal notes, and their sealed record entries",
 }
 
 
@@ -547,3 +548,14 @@ def test_memos_sealed_with_their_deliverables(client, db, clock):
     draft(client, brand, accepted_application(client, brand, creator))
 
     assert f"{before + 1} memos carry terms version 2" in refusal(db, "413468ae18cf")
+
+
+def test_deal_notes(client, db, clock):
+    from tests.modules.deal_memo.test_deal_notes_api import sent_memo, write
+
+    before = count(db, "SELECT count(*) FROM deal_note")
+    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    memo_id = sent_memo(client, brand, creator)
+    assert write(client, brand, memo_id).status_code == 201
+
+    assert f"{before + 1} deal notes" in refusal(db, "a9188046bec4")
