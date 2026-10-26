@@ -331,7 +331,9 @@ def test_pages_have_no_gaps_or_repeats(client, db, clock, brand):
     assert seen == expected
 
 
-def test_a_long_page_costs_the_same_queries_as_a_short_one(client, db, clock, brand):
+def test_a_long_page_costs_the_same_queries_as_a_short_one(
+    client, db, clock, brand, unlimited
+):
     short, long = start(client, brand, "Short"), start(client, brand, "Long")
     # Each creator with a deal, so every page reads deals and proofs.
     for list_id in [short["id"]] + [long["id"]] * 6:

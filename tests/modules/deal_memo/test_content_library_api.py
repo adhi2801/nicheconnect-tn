@@ -118,7 +118,7 @@ def test_each_state_filters_to_exactly_its_posts(client, db, clock, brand):
     assert len(library(client, brand)["items"]) == 4
 
 
-def test_the_sql_filter_says_what_the_rule_says(client, db, clock, brand):
+def test_the_sql_filter_says_what_the_rule_says(client, db, clock, brand, unlimited):
     """Windows around every edge, asked both ways, today and a month on.
 
     Approved at 20:00 UTC, 01:30 the next day in Tamil Nadu, so a window
