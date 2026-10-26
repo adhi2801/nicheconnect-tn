@@ -67,6 +67,10 @@ RECORD_KINDS: tuple[str, ...] = (
     "dispute_closed",
     # A note one side wrote about the deal (item 17, D-128): its fingerprint.
     "note_added",
+    # A barter deal's goods sent, with the courier and the tracking number's
+    # fingerprint, and the creator saying they arrived (item 68, D-131).
+    "product_shipped",
+    "product_received",
 )
 # "system" is us acting on the deal's own rules, such as approving work at the
 # end of the review window (D-025) or opening the payment record it causes.

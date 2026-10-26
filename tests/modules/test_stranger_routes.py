@@ -138,6 +138,7 @@ BODIES: dict[str, dict[str, Any]] = {
     "PasskeyRename": {"name": "Mine now"},
     "NameClearanceIn": {"note": "Checked the business behind it."},
     "CreatorListIn": {"name": "Diwali food creators"},
+    "ShipmentIn": {"carrier": "india_post", "tracking_number": "EE123456789IN"},
 }
 
 
@@ -328,6 +329,12 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
         c=creator_id,
     )
 
+    # An agreed barter deal of theirs, its goods shipped (item 68).
+    from tests.modules.deal_memo.test_barter_shipment_api import barter_memo, shipped
+
+    barter_memo_id = barter_memo(client, brand, creator)
+    shipped(client, brand, barter_memo_id)
+
     # A campaign alert of the creator's (item 43).
     alert_id = client.post(
         "/api/v1/me/campaign-alerts", json={"niche": "food"}, headers=creator.headers
@@ -371,6 +378,7 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
         "takedown_id": takedown_id,
         "list_id": list_id,
         "alert_id": alert_id,
+        "barter_memo_id": barter_memo_id,
         "account_id": brand.account_id,
         "city": city,
         "unpaid_memo_id": unpaid_memo_id,
@@ -390,6 +398,9 @@ def fill(route: APIRoute, ids: dict[str, str]) -> str:
         # The invitation routes act on the invited application, and so do
         # the offer routes: its offer is the one that waits.
         path = path.replace("{application_id}", ids["invitation_id"])
+    if "/shipment" in path:
+        # A shipment is a barter deal's: the world's agreed barter deal.
+        path = path.replace("{memo_id}", ids["barter_memo_id"])
     if path.endswith("/pay-details"):
         # Pay details close once a payment is marked sent: an unpaid deal.
         path = path.replace("{memo_id}", ids["unpaid_memo_id"])

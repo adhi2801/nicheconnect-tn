@@ -4429,6 +4429,18 @@
             "description": "Null when the deal has no notes; otherwise whether every note still matches the fingerprint sealed for it (D-128)",
             "title": "Notes Unchanged"
           },
+          "shipment_unchanged": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when the deal has no shipment; otherwise whether its courier and tracking number still match what was last sealed for them (D-131)",
+            "title": "Shipment Unchanged"
+          },
           "terms_unchanged_since_accepted": {
             "anyOf": [
               {
@@ -7026,11 +7038,13 @@
                 "offer_declined",
                 "offer_withdrawn",
                 "note_added",
-                "campaign_alert"
+                "campaign_alert",
+                "product_shipped",
+                "product_received"
               ],
               "type": "string"
             },
-            "maxItems": 54,
+            "maxItems": 56,
             "title": "Muted Types",
             "type": "array"
           },
@@ -7136,7 +7150,9 @@
                 "offer_declined",
                 "offer_withdrawn",
                 "note_added",
-                "campaign_alert"
+                "campaign_alert",
+                "product_shipped",
+                "product_received"
               ],
               "type": "string"
             },
@@ -7216,7 +7232,9 @@
                 "offer_declined",
                 "offer_withdrawn",
                 "note_added",
-                "campaign_alert"
+                "campaign_alert",
+                "product_shipped",
+                "product_received"
               ],
               "type": "string"
             },
@@ -7370,7 +7388,9 @@
               "offer_declined",
               "offer_withdrawn",
               "note_added",
-              "campaign_alert"
+              "campaign_alert",
+              "product_shipped",
+              "product_received"
             ],
             "title": "Notification Type",
             "type": "string"
@@ -11748,6 +11768,106 @@
           "is_current"
         ],
         "title": "SessionRead",
+        "type": "object"
+      },
+      "ShipmentIn": {
+        "additionalProperties": false,
+        "description": "How the goods were sent. Never an address: that stays between you.",
+        "properties": {
+          "carrier": {
+            "enum": [
+              "india_post",
+              "delhivery",
+              "blue_dart",
+              "dtdc",
+              "ecom_express",
+              "xpressbees",
+              "shadowfax",
+              "ekart",
+              "other"
+            ],
+            "title": "Carrier",
+            "type": "string"
+          },
+          "tracking_number": {
+            "description": "As the courier gives it; spaces and dashes are dropped and letters made capital. India Post numbers are two letters, nine digits, then IN",
+            "examples": [
+              "EE123456789IN"
+            ],
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Tracking Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "carrier",
+          "tracking_number"
+        ],
+        "title": "ShipmentIn",
+        "type": "object"
+      },
+      "ShipmentRead": {
+        "description": "A barter deal's shipment, as both sides read it.",
+        "properties": {
+          "carrier": {
+            "enum": [
+              "india_post",
+              "delhivery",
+              "blue_dart",
+              "dtdc",
+              "ecom_express",
+              "xpressbees",
+              "shadowfax",
+              "ekart",
+              "other"
+            ],
+            "title": "Carrier",
+            "type": "string"
+          },
+          "deal_memo_id": {
+            "format": "uuid",
+            "title": "Deal Memo Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "received_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the creator said it arrived; null until they do",
+            "title": "Received At"
+          },
+          "shipped_at": {
+            "format": "date-time",
+            "title": "Shipped At",
+            "type": "string"
+          },
+          "tracking_number": {
+            "description": "Shown as text, never as a link: look it up on the courier's own site",
+            "title": "Tracking Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "deal_memo_id",
+          "carrier",
+          "tracking_number",
+          "shipped_at",
+          "received_at"
+        ],
+        "title": "ShipmentRead",
         "type": "object"
       },
       "SignupCountRead": {
@@ -29132,6 +29252,381 @@
           }
         ],
         "summary": "Send the memo to the creator",
+        "tags": [
+          "deal memos"
+        ]
+      }
+    },
+    "/api/v1/deal-memos/{memo_id}/shipment": {
+      "get": {
+        "description": "How the brand sent the goods, and when the creator said they arrived. Show the tracking number as text, never as a link. The brand and the creator of this deal only.",
+        "operationId": "read_shipment_api_v1_deal_memos__memo_id__shipment_get",
+        "parameters": [
+          {
+            "description": "The memo's id",
+            "in": "path",
+            "name": "memo_id",
+            "required": true,
+            "schema": {
+              "description": "The memo's id",
+              "format": "uuid",
+              "title": "Memo Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such deal of yours, or no shipment recorded yet (`shipment_not_found`)"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "A barter deal's shipment",
+        "tags": [
+          "deal memos"
+        ]
+      },
+      "put": {
+        "description": "The courier and the tracking number, once the deal is agreed; never an address. It is sealed onto the deal's record and the creator is told. Until the creator says the goods arrived, a mistyped number may be corrected, and each version stays on the record; the same courier and number again changes nothing. The deal's brand only.",
+        "operationId": "record_shipment_api_v1_deal_memos__memo_id__shipment_put",
+        "parameters": [
+          {
+            "description": "The memo's id",
+            "in": "path",
+            "name": "memo_id",
+            "required": true,
+            "schema": {
+              "description": "The memo's id",
+              "format": "uuid",
+              "title": "Memo Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShipmentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only the deal's brand records the shipment"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such deal of yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`shipment_closed`: not an agreed barter deal; `shipment_already_received`: the creator has said it arrived"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "An unknown courier, or a tracking number of the wrong shape"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Record how a barter deal's goods were sent",
+        "tags": [
+          "deal memos"
+        ]
+      }
+    },
+    "/api/v1/deal-memos/{memo_id}/shipment/received": {
+      "post": {
+        "description": "Only the creator says so, once, the way only the creator confirms a payment arrived. It is sealed onto the deal's record and the brand is told. The deal's creator only.",
+        "operationId": "receive_shipment_api_v1_deal_memos__memo_id__shipment_received_post",
+        "parameters": [
+          {
+            "description": "The memo's id",
+            "in": "path",
+            "name": "memo_id",
+            "required": true,
+            "schema": {
+              "description": "The memo's id",
+              "format": "uuid",
+              "title": "Memo Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only the deal's creator says the goods arrived"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such deal of yours, or no shipment recorded yet (`shipment_not_found`)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`shipment_already_received`: already said. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Say a barter deal's goods arrived",
         "tags": [
           "deal memos"
         ]

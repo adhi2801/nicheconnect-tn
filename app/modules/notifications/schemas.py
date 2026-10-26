@@ -66,6 +66,8 @@ NotificationType = Literal[
     "offer_withdrawn",
     "note_added",
     "campaign_alert",
+    "product_shipped",
+    "product_received",
 ]
 
 ensure_same_values("NotificationType", NotificationType, NOTIFICATION_TYPES)

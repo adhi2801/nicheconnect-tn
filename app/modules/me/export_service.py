@@ -41,6 +41,7 @@ from app.modules.campaigns import offer_service as quote_offers
 from app.modules.campaigns import service as campaigns
 from app.modules.deal_memo import note_service as deal_notes
 from app.modules.deal_memo import service as deal_memos
+from app.modules.deal_memo import shipment_service as shipments
 from app.modules.disputes import service as disputes
 from app.modules.matching import creator_list_service as creator_lists
 from app.modules.me import passkey_service as passkey_changes
@@ -426,6 +427,7 @@ def collect_sections(db: Session, account: Account) -> list[ExportedSection]:
         *campaign_alerts.export_for_account(db, account.id),
         *deal_notes.export_for_account(db, account.id),
         *deal_memos.export_for_account(db, account.id),
+        *shipments.export_for_account(db, account.id),
         *payments.export_for_account(db, account.id),
         *upi.export_for_account(db, account.id),
         *disputes.export_for_account(db, account.id),
@@ -502,6 +504,7 @@ def exported_tables() -> frozenset[str]:
         | campaign_alerts.EXPORTED_TABLES
         | deal_notes.EXPORTED_TABLES
         | deal_memos.EXPORTED_TABLES
+        | shipments.EXPORTED_TABLES
         | notifications.EXPORTED_TABLES
         | notification_preferences.EXPORTED_TABLES
         | devices.EXPORTED_TABLES

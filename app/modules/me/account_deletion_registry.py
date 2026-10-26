@@ -89,6 +89,8 @@ KEPT: tuple[KeptKind, ...] = (
                 "memo_deliverable",
                 # Notes written on a deal (item 17), sealed onto its record.
                 "deal_note",
+                # A barter deal's shipment (item 68), sealed onto its record.
+                "barter_shipment",
                 "application",
                 # Counter-offers on a quote (item 44): the negotiation both
                 # sides keep a record of.

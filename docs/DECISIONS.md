@@ -1650,3 +1650,17 @@ Newest entries at the bottom.
   4. Nobody is told across a block either way, by a suspended, deleted or withheld brand, of a campaign withheld or closed before its turn, or as a suspended, deleted or withheld creator; never the brand's own other side (D-126). Campaigns already open when this shipped are not alerted.
   5. The creator's export holds their alerts; deleting the account erases them (D-122). Delivery outside the app, and so quiet hours, wait on push (E1).
   6. Tables `campaign_alert` and `campaign_alert_send`, migration `d78ed34127dd`, which also widens the notification and mutable types; its downgrade refuses while any alert exists.
+
+## D-131: A barter deal's shipment on the record (item 68)
+- Date: 2026-10-26
+- Approved by: Adhi, in this session: "carry on i need the best the standards limit should be sky", to the proposal of items 68, 70 and 65 with their dimensions. **Not reviewed by the other founder** (D-051).
+- Context: on a barter deal the fight is "I sent it" against "I never got it", and nothing on the record answered it. GRIN tracks delivery, and Kyra and Billo show a "received" the creator sets (read 26 October 2026, `docs/COMPETITIVE_LANDSCAPE.md` section 4); none of them seals it as evidence.
+- Options considered: A) the courier and tracking number, sealed, with the creator's "received" sealed; B) also the delivery address, to check against the courier.
+- Chosen: A.
+- Reason: a tracking number names no one and settles the dispute; an address is personal data we would only hold to look at (legal.md rule 6).
+- Consequences / follow-ups:
+  1. `PUT /api/v1/deal-memos/{memo_id}/shipment`: the deal's brand, on an agreed barter deal only (`shipment_closed` otherwise). A courier from a fixed list and a tracking number of 8 to 20 letters and digits, spaces and dashes dropped; India Post's held to two letters, nine digits, then IN. Correctable until the creator says it arrived, each version sealed as `product_shipped` with the number's fingerprint; the same again changes nothing.
+  2. `POST .../shipment/received`: the deal's creator only, once (`shipment_already_received`), sealed as `product_received`. Afterwards neither side changes the shipment. `GET .../shipment` for either party; each step tells the other side; 100 writes a day per account.
+  3. Each step runs under the deal's lock with its record entry, so a correction racing "it arrived" never lands after it. `GET .../record` gains `shipment_unchanged`, which catches a row rewritten behind the app's back.
+  4. Both parties' exports hold the shipment; the deletion registry keeps it as a deal record (D-122). An agreed deal carries on across a block (item 59), and so does its shipment.
+  5. Table `barter_shipment` (ON DELETE RESTRICT on the memo), migration `b7c240ab2d4b`, which widens the record kinds and the notification and mutable types; its downgrade refuses while any shipment or shipment entry exists. Courier status fetched from the courier is not built: it needs an outside service and a founder decision.

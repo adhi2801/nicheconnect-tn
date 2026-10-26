@@ -1,5 +1,6 @@
 """Request and response shapes for deal memos."""
 
+import re
 import uuid
 from datetime import date, datetime
 from typing import Annotated, Any, Literal
@@ -29,6 +30,12 @@ from app.modules.deal_memo.models import (
 )
 from app.modules.deal_memo.note_models import NOTE_MAX_LENGTH, NOTE_SIDES
 from app.modules.deal_memo.response_times import MIN_EXAMPLES, ResponseTime
+from app.modules.deal_memo.shipment_models import (
+    CARRIERS,
+    INDIA_POST_PATTERN,
+    TRACKING_MAX_LENGTH,
+    TRACKING_PATTERN,
+)
 from app.modules.deal_memo.stage import DEAL_SIDES, DEAL_STAGES, DealStage
 
 MemoStatus = Literal[
@@ -383,6 +390,13 @@ class DealRecordRead(BaseModel):
             "matches the fingerprint sealed for it (D-128)"
         ),
     )
+    shipment_unchanged: bool | None = Field(
+        default=None,
+        description=(
+            "Null when the deal has no shipment; otherwise whether its courier and "
+            "tracking number still match what was last sealed for them (D-131)"
+        ),
+    )
     latest_seal: str | None = Field(description="Save this to detect a later rewrite")
     entries: list[DealRecordEntryRead]
 
@@ -524,3 +538,72 @@ class NoteRead(BaseModel):
         return field_flags(
             {"body": self.body}, money=self.author_side == "brand", contact=False
         )
+
+
+# --- a barter deal's shipment (item 68, D-131) ----------------------------------
+
+Carrier = Literal[
+    "india_post",
+    "delhivery",
+    "blue_dart",
+    "dtdc",
+    "ecom_express",
+    "xpressbees",
+    "shadowfax",
+    "ekart",
+    "other",
+]
+
+ensure_same_values("Carrier", Carrier, CARRIERS)
+
+
+class ShipmentIn(BaseModel):
+    """How the goods were sent. Never an address: that stays between you."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    carrier: Carrier
+    tracking_number: str = Field(
+        min_length=1,
+        max_length=40,
+        examples=["EE123456789IN"],
+        description=(
+            "As the courier gives it; spaces and dashes are dropped and letters "
+            "made capital. India Post numbers are two letters, nine digits, then IN"
+        ),
+    )
+
+    @model_validator(mode="after")
+    def tracking_number_shape(self) -> ShipmentIn:
+        cleaned = "".join(ch for ch in self.tracking_number.upper() if ch not in " -\t")
+        if len(cleaned) > TRACKING_MAX_LENGTH or not re.fullmatch(
+            TRACKING_PATTERN, cleaned
+        ):
+            raise PydanticCustomError(
+                "tracking_number_shape",
+                "A tracking number is 8 to 20 letters and digits",
+            )
+        if self.carrier == "india_post" and not re.fullmatch(INDIA_POST_PATTERN, cleaned):
+            raise PydanticCustomError(
+                "india_post_number_shape",
+                "An India Post number is two letters, nine digits, then IN",
+            )
+        self.tracking_number = cleaned
+        return self
+
+
+class ShipmentRead(BaseModel):
+    """A barter deal's shipment, as both sides read it."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    deal_memo_id: uuid.UUID
+    carrier: Carrier
+    tracking_number: str = Field(
+        description="Shown as text, never as a link: look it up on the courier's own site"
+    )
+    shipped_at: datetime
+    received_at: datetime | None = Field(
+        description="When the creator said it arrived; null until they do"
+    )
