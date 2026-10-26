@@ -22,7 +22,7 @@ Three things it does **not** mean:
 
 **Measured on 14 October 2026:** 2,985 tests; coverage 98.55% counting branches when last measured that day, before its last three changes, with CI holding the floors on every run (`docs/standards/testing.md` section 7); CI green on `main` (`d6a86b8`, every job): the secret scan, the module layers, migration linting and round trip, the release step, the suite run as the app's own login and then the owner's tests, coverage, API fuzzing, the dependency and image scans, and the infrastructure check.
 
-**Open in section 3: 52 items** (68 on 14 October; item 51 built on 15 October, items 52 and 101 on 16 October, items 74, 82 and 80 on 17 October, item 79 on 18 October, items 81, 75 and 85 on 24 October, items 6, 44 and 8 on 25 October, items 26 and 17 on 26 October, and item 87 found built since 20 September). 23 wait on something outside the code or on Erode Harish: the name and domain (4, 10), the Meta app (29 to 31, 67, 78), the validation pack (33, 39), the lawyer or CA (35, 50, 76), the MSG91 template (62), results data (83, 86), founders' decisions (7, 13, 38, 41, 46, 48, 61, 72). **29 need only an approval**, among them campaign alerts (43). Section 4 holds the 9 that wait on someone outside.
+**Open in section 3: 51 items** (68 on 14 October; item 51 built on 15 October, items 52 and 101 on 16 October, items 74, 82 and 80 on 17 October, item 79 on 18 October, items 81, 75 and 85 on 24 October, items 6, 44 and 8 on 25 October, items 26, 17 and 66 on 26 October, and item 87 found built since 20 September). 23 wait on something outside the code or on Erode Harish: the name and domain (4, 10), the Meta app (29 to 31, 67, 78), the validation pack (33, 39), the lawyer or CA (35, 50, 76), the MSG91 template (62), results data (83, 86), founders' decisions (7, 13, 38, 41, 46, 48, 61, 72). **28 need only an approval**, among them campaign alerts (43). Section 4 holds the 9 that wait on someone outside.
 
 **Built and tested on `main`:**
 - before 1 October: Phases A, B and D of the backlog, C1 to C4, E3 and E4 (`docs/PRODUCT_BACKLOG.md`), creator search, the admin side, results read from proof (D-070, switched off), the deal record with its daily outside timestamp, proof files, and AWS described as code;
@@ -149,7 +149,7 @@ Approved by Adhi on 12 October: "I need them in the best way possible". Each was
 |---|---|---|---|
 | 64 | Creator search in plain words ("café creators in Coimbatore, 5k to 20k followers, free in November") | TikTok One's Creator AI Search; ours explains every result and counts only real records | Dependency (AI) |
 | 65 | "More like the creators who delivered for you" | Meta's Similar Creators; ours ranks by delivered and paid records, not ad clicks | Matching |
-| 66 | Saved creator lists across campaigns, shared with a brand's team | Every enterprise tool | Database |
+| 66 | Saved creator lists across campaigns, shared with a brand's team | Every enterprise tool | Database · **Built 26 October (D-129)**: `/api/v1/creator-lists`, at most 50 private lists of 200 creators per brand, each creator shown with search's facts and their delivery record, only while the brand could find them in search; sharing with a team waits on item 13 |
 | 67 | Creators who already mention the brand | Meta; from connected accounts, with consent | After 29 |
 
 **Workflow**

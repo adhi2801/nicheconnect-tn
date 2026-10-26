@@ -50,6 +50,8 @@ ERASED: frozenset[str] = frozenset(
         "brand_domain",
         # matching
         "creator_embedding",
+        "creator_list",
+        "creator_list_entry",
         # me
         "data_export",
     }

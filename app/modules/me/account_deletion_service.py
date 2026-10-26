@@ -59,6 +59,7 @@ from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns import departure_service as departures
 from app.modules.deal_memo.unfinished import unfinished_deals
+from app.modules.matching import creator_list_service as creator_lists
 from app.modules.matching import service as matching
 from app.modules.me import data_export_service as data_exports
 from app.modules.me.account_deletion_registry import KEPT, KeptKind
@@ -341,11 +342,13 @@ def erase(db: Session, account_id: uuid.UUID, now: datetime) -> Outcome | None:
     if isinstance(profile, Brand):
         departures.end_for_brand(db, profile.id, applications, now)
         brand_domains.erase_for_brand(db, profile.id)
+        creator_lists.erase_for_brand(db, profile.id)
     elif isinstance(profile, Creator):
         departures.end_for_creator(db, applications, now)
         upi.erase_for_creator(db, profile.id)
         rate_cards.erase_for_creator(db, profile.id)
         matching.erase_for_creator(db, profile.id)
+        creator_lists.erase_for_creator(db, profile.id)
     notifications.erase_for_account(db, account.id)
     blocks.erase_for_account(db, account.id)
     data_exports.erase_for_account(db, account.id)

@@ -234,28 +234,54 @@ def creator_id_for_account(db: Session, account_id: uuid.UUID) -> uuid.UUID | No
 
 def for_creator(db: Session, creator_id: uuid.UUID, now: datetime) -> DeliveryRecord:
     """This creator's delivery record as of `now`, in two queries."""
-    rows = list(
-        db.execute(
-            select(DealMemo, Campaign.campaign_type, Campaign.brand_id)
-            .join(Application, Application.id == DealMemo.application_id)
-            .join(Campaign, Campaign.id == Application.campaign_id)
-            .where(
-                Application.creator_id == creator_id,
-                # Only deals the creator agreed to: a memo they declined, or
-                # one withdrawn before they answered, promised nothing.
-                DealMemo.accepted_at.is_not(None),
-            )
-            .order_by(DealMemo.accepted_at, DealMemo.id)
-        ).tuples()
+    return for_creators(db, [creator_id], now)[creator_id]
+
+
+def for_creators(
+    db: Session, creator_ids: list[uuid.UUID], now: datetime
+) -> dict[uuid.UUID, DeliveryRecord]:
+    """Each creator's delivery record as of `now`, in two queries however many.
+
+    For a page of creators (a saved list, D-129): never a query per creator.
+    """
+    rows = (
+        list(
+            db.execute(
+                select(
+                    DealMemo,
+                    Campaign.campaign_type,
+                    Campaign.brand_id,
+                    Application.creator_id,
+                )
+                .join(Application, Application.id == DealMemo.application_id)
+                .join(Campaign, Campaign.id == Application.campaign_id)
+                .where(
+                    Application.creator_id.in_(creator_ids),
+                    # Only deals the creator agreed to: a memo they declined, or
+                    # one withdrawn before they answered, promised nothing.
+                    DealMemo.accepted_at.is_not(None),
+                )
+                .order_by(DealMemo.accepted_at, DealMemo.id)
+            ).all()
+        )
+        if creator_ids
+        else []
     )
-    deals = [(memo, campaign_type) for memo, campaign_type, _ in rows]
-    brand_of = {memo.id: brand_id for memo, _, brand_id in rows}
+    deals_of: dict[uuid.UUID, list[tuple[DealMemo, str]]] = defaultdict(list)
+    for memo, campaign_type, _, creator_id in rows:
+        deals_of[creator_id].append((memo, campaign_type))
+    brand_of = {memo.id: brand_id for memo, _, brand_id, _ in rows}
     proofs_by_memo: dict[uuid.UUID, list[DeliverableProof]] = defaultdict(list)
-    if deals:
+    if rows:
         for proof in db.scalars(
             select(DeliverableProof)
-            .where(DeliverableProof.deal_memo_id.in_([memo.id for memo, _ in deals]))
+            .where(DeliverableProof.deal_memo_id.in_([memo.id for memo, *_ in rows]))
             .order_by(DeliverableProof.created_at, DeliverableProof.id)
         ):
             proofs_by_memo[proof.deal_memo_id].append(proof)
-    return build_record(deals, proofs_by_memo, creator_id, now, brand_of)
+    return {
+        creator_id: build_record(
+            deals_of.get(creator_id, []), proofs_by_memo, creator_id, now, brand_of
+        )
+        for creator_id in creator_ids
+    }

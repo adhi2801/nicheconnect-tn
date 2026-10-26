@@ -137,6 +137,7 @@ BODIES: dict[str, dict[str, Any]] = {
     "DisputeClose": {"outcome": "resolved_paid"},
     "PasskeyRename": {"name": "Mine now"},
     "NameClearanceIn": {"note": "Checked the business behind it."},
+    "CreatorListIn": {"name": "Diwali food creators"},
 }
 
 
@@ -317,6 +318,16 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
         r=report_id,
     )
 
+    # A saved list of the brand's, with the creator on it (item 66).
+    list_id = client.post(
+        "/api/v1/creator-lists", json={"name": "Madurai food"}, headers=brand.headers
+    ).json()["id"]
+    one(
+        "INSERT INTO creator_list_entry (list_id, creator_id) VALUES (:l, :c) RETURNING id",
+        l=list_id,
+        c=creator_id,
+    )
+
     # A second deal, approved but not yet paid, for the pay details.
     unpaid_creator = creator_user(db, clock)
     unpaid_memo_id = accepted_memo(client, brand, unpaid_creator)
@@ -353,6 +364,7 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
         "passkey_id": passkey_id,
         "session_id": session_id,
         "takedown_id": takedown_id,
+        "list_id": list_id,
         "account_id": brand.account_id,
         "city": city,
         "unpaid_memo_id": unpaid_memo_id,

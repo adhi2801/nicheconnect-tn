@@ -40,6 +40,7 @@ from app.modules.auth.models.step_up_challenge import StepUpChallenge
 from app.modules.auth.models.totp_factor import TotpFactor
 from app.modules.auth.sender import FakeOtpSender, get_otp_sender
 from app.modules.campaigns.models import Application, Campaign
+from app.modules.matching.creator_list_models import CreatorList, CreatorListEntry
 from app.modules.matching.models import EMBEDDING_DIMENSIONS, CreatorEmbedding
 from app.modules.me import account_deletion_service as service
 from app.modules.me.account_deletion_registry import ERASED
@@ -247,12 +248,18 @@ def fill(db: Session, who: Person, other: Person, clock: Clock) -> set[str]:
                 ),
             ]
         )
+        # On the other side's list: the line goes, the brand's list stays.
+        kept = CreatorList(brand_id=other.profile_id, name=f"Kept {uuid.uuid4().hex[:8]}")
+        db.add(kept)
+        db.flush()
+        db.add(CreatorListEntry(list_id=kept.id, creator_id=who.profile_id))
         tables |= {
             "creator_channel",
             "creator_package",
             "creator_upi",
             "creator_upi_change",
             "creator_embedding",
+            "creator_list_entry",
         }
     else:
         db.add(
@@ -266,7 +273,12 @@ def fill(db: Session, who: Person, other: Person, clock: Clock) -> set[str]:
                 token_expires_at=now + timedelta(days=7),
             )
         )
-        tables.add("brand_domain")
+        # The brand's own list, and its line about a creator who stays.
+        saved = CreatorList(brand_id=who.profile_id, name="Diwali food creators")
+        db.add(saved)
+        db.flush()
+        db.add(CreatorListEntry(list_id=saved.id, creator_id=other.profile_id))
+        tables |= {"brand_domain", "creator_list"}
     db.flush()
     return tables
 
@@ -359,8 +371,9 @@ def test_every_erased_table_is_emptied_for_the_person_only(
 
 def test_the_fills_cover_every_erased_table(db, clock, brand, creator, bystanders):
     """Between them, the two fills above reach every table the registry erases."""
-    filled = fill(db, person(db, brand), person(db, bystanders[0]), clock) | fill(
-        db, person(db, creator), person(db, bystanders[1]), clock
+    # Each beside one of the other side: a list of a brand's, about a creator.
+    filled = fill(db, person(db, brand), person(db, bystanders[1]), clock) | fill(
+        db, person(db, creator), person(db, bystanders[0]), clock
     )
 
     assert filled == ERASED
