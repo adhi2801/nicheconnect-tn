@@ -1621,3 +1621,17 @@ Newest entries at the bottom.
   3. `deal_note` refuses UPDATE, DELETE and TRUNCATE by trigger, and the app's own role lost those rights (D-100); a correction is another note.
   4. A brand's note is flagged for fee requests; contact details are not flagged, the two being matched. 200 notes a day per account. An agreed deal carries on across a block (item 59), so do its notes.
   5. Both exports hold the notes; the deletion registry holds them as deal records (D-122). Migration `a9188046bec4`; its downgrade refuses while any note or sealed note entry exists.
+
+## D-129: Saved creator lists, private to the brand, showing only creators search would (item 66)
+- Date: 2026-10-26
+- Approved by: Adhi, in this session: "all as recommended i mean the best", to the batch proposal of items 17, 66 and 43 with their dimensions. **Not reviewed by the other founder** (D-051).
+- Context: a brand found creators in search or matches and lost them again by the next campaign. Every enterprise tool keeps lists (`docs/COMPETITIVE_LANDSCAPE.md`); ours put each creator's delivery record, what happened on their deals, beside the name.
+- Options considered: A) one list belongs to one brand account, shared with a team later under item 13; B) team sharing now, before team seats exist.
+- Chosen: A.
+- Reason: team seats (item 13) wait on a founders' decision, and a list shared before there is a team would have to guess who the team is.
+- Consequences / follow-ups:
+  1. `GET` and `POST /api/v1/creator-lists`, `PATCH` and `DELETE /{list_id}`, `GET /{list_id}/creators` (keyset pages), `PUT` and `DELETE /{list_id}/creators/{creator_id}`. Brands only; another brand's list answers 404 `creator_list_not_found`. A name is 1 to 60 characters, trimmed, and once per brand (`creator_list_name_taken`). At most 50 lists (`creator_lists_full`) of 200 creators (`creator_list_full`), each cap counted under a row lock. Saving a creator twice keeps one line.
+  2. Who appears follows search's own rule, now one function (`search_service.visible`): a creator who unpublished, was suspended, deleted or withheld, or a block either way, drops out of every list and its count, and saving one is refused as `creator_not_found`. Each creator carries search's facts, their delivery record (the new `delivery_record.for_creators`, two queries for a whole page) and `saved_at`.
+  3. Reading a list's creators has search's ceiling, 30 a minute and 600 a day per account, so a list is never a way round it. The proposal said no ceiling was needed, since nothing reaches the creator; this is stricter, and is said here so it can be undone.
+  4. The creator is never told. The brand's export holds the lists and their lines; the creator's does not say which brands listed them, and whether it must is a legal.md Confirm item. Deleting an account erases a brand's lists, or every line about a creator (D-122).
+  5. Tables `creator_list` and `creator_list_entry`, migration `3c527a80ee4e`; its downgrade refuses while any list exists.

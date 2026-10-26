@@ -10,14 +10,13 @@ from app.core.clock import india_date
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
 from app.core.rate_limit import rate_limit
-from app.core.taxonomy import CURRENCY, Niche
+from app.core.taxonomy import Niche
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentBrand, get_now
 from app.modules.auth.exceptions import InvalidSearch
 from app.modules.auth.schemas import ChannelPlatform, PackageFormat
 from app.modules.matching import search_service as service
-from app.modules.matching.schemas import CreatorSearchResultRead, SearchChannelRead
-from app.modules.profiles import availability_service as availability
+from app.modules.matching.schemas import CreatorSearchResultRead
 
 READ_LIMIT = "60 per minute"
 # security.md section 5: search and matching are 30 a minute, and capped per
@@ -34,30 +33,6 @@ _ERRORS: ResponseDocs = {
     422: problem_doc("A filter is not valid, or the filters contradict each other"),
     429: problem_doc("Too many requests; see the Retry-After header"),
 }
-
-
-def _to_read(result: service.SearchResult, today: date) -> CreatorSearchResultRead:
-    creator = result.creator
-    return CreatorSearchResultRead(
-        creator_id=creator.id,
-        handle=creator.handle,
-        display_name=creator.display_name,
-        city=creator.city,
-        niches=creator.niches,
-        bio=creator.bio,
-        member_since=creator.created_at.strftime("%Y-%m"),
-        channels=[
-            SearchChannelRead(
-                platform=c.platform,
-                followers=c.followers,
-                figures_as_of=c.figures_as_of,
-            )
-            for c in result.channels
-        ],
-        from_price_paise=result.lowest_price_paise,
-        currency=CURRENCY,
-        booked_until=availability.booked_until_shown(creator.booked_until, today),
-    )
 
 
 @router.get(
@@ -132,5 +107,6 @@ def search_creators(
     )
     today = india_date(now)
     return Page(
-        items=[_to_read(r, today) for r in result.rows], next_cursor=result.next_cursor
+        items=[service.to_read(r, today) for r in result.rows],
+        next_cursor=result.next_cursor,
     )

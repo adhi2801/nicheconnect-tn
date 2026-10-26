@@ -29,7 +29,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import date
 
-from sqlalchemy import Select, and_, exists, func, select
+from sqlalchemy import ColumnElement, Select, and_, exists, func, select
 from sqlalchemy.orm import Session
 
 from app.core.pagination import Slice, build_slice, older_than_cursor
@@ -37,6 +37,7 @@ from app.core.taxonomy import CURRENCY
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.schemas import ChannelPlatform
 from app.modules.auth.suspension import account_is_active
+from app.modules.matching.schemas import CreatorSearchResultRead, SearchChannelRead
 from app.modules.profiles import availability_service as availability
 from app.modules.profiles.models import CreatorChannel, CreatorPackage
 from app.modules.safety.blocks import not_blocked
@@ -79,15 +80,25 @@ def _like(text: str) -> str:
     return f"%{escaped}%"
 
 
-def _filtered(search: CreatorSearch) -> Select[Creator]:
-    query = select(Creator).where(
+def visible(viewer_account_id: uuid.UUID | None) -> list[ColumnElement[bool]]:
+    """Who a brand may find: one rule for search and saved lists (D-129).
+
+    Published Passports only (D-036); a suspended or deleted creator is not
+    found (D-061, D-122), nor a withheld one (item 52), nor one either side
+    has blocked (item 59).
+    """
+    conditions = [
         Creator.passport_published_at.is_not(None),
-        # A suspended creator is not found (D-061), nor a withheld one (item 52).
         account_is_active(Creator.account_id),
         not_withheld("creator", Creator.id),
-    )
-    if search.viewer_account_id is not None:
-        query = query.where(not_blocked(search.viewer_account_id, Creator.account_id))
+    ]
+    if viewer_account_id is not None:
+        conditions.append(not_blocked(viewer_account_id, Creator.account_id))
+    return conditions
+
+
+def _filtered(search: CreatorSearch) -> Select[Creator]:
+    query = select(Creator).where(*visible(search.viewer_account_id))
 
     if search.available_on is not None:
         query = query.where(availability.free_on(search.available_on))
@@ -150,8 +161,18 @@ def search_creators(
         ).all()
     )
     page = build_slice(creators, limit, key=lambda c: (c.created_at, c.id))
-    ids = [c.id for c in page.rows]
+    return Slice(rows=results_for(db, page.rows, search), next_cursor=page.next_cursor)
 
+
+def results_for(
+    db: Session, creators: list[Creator], search: CreatorSearch | None = None
+) -> list[SearchResult]:
+    """Each creator's channels and lowest price, in two queries for any number.
+
+    `search` narrows "from ₹X" to the format and platform asked for.
+    """
+    search = search or CreatorSearch()
+    ids = [c.id for c in creators]
     channels: dict[uuid.UUID, list[ChannelFigure]] = {i: [] for i in ids}
     lowest: dict[uuid.UUID, int] = {}
     if ids:
@@ -187,12 +208,34 @@ def search_creators(
             price_query = price_query.where(CreatorPackage.platform == search.platform)
         lowest = {creator_id: price for creator_id, price in db.execute(price_query)}
 
-    return Slice(
-        rows=[
-            SearchResult(
-                creator=c, channels=channels[c.id], lowest_price_paise=lowest.get(c.id)
+    return [
+        SearchResult(
+            creator=c, channels=channels[c.id], lowest_price_paise=lowest.get(c.id)
+        )
+        for c in creators
+    ]
+
+
+def to_read(result: SearchResult, today: date) -> CreatorSearchResultRead:
+    """A result as the API returns it, for search and saved lists alike."""
+    creator = result.creator
+    return CreatorSearchResultRead(
+        creator_id=creator.id,
+        handle=creator.handle,
+        display_name=creator.display_name,
+        city=creator.city,
+        niches=creator.niches,
+        bio=creator.bio,
+        member_since=creator.created_at.strftime("%Y-%m"),
+        channels=[
+            SearchChannelRead(
+                platform=c.platform,
+                followers=c.followers,
+                figures_as_of=c.figures_as_of,
             )
-            for c in page.rows
+            for c in result.channels
         ],
-        next_cursor=page.next_cursor,
+        from_price_paise=result.lowest_price_paise,
+        currency=CURRENCY,
+        booked_until=availability.booked_until_shown(creator.booked_until, today),
     )

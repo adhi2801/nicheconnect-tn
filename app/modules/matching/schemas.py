@@ -1,7 +1,7 @@
 """What a match looks like on the wire (D-052, backlog D3)."""
 
 import uuid
-from datetime import date
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import (
@@ -12,6 +12,8 @@ from pydantic import (
 
 from app.modules.auth.schemas import ChannelPlatform, PublicCreatorSummary
 from app.modules.campaigns.schemas import CampaignRead
+from app.modules.deal_memo.schemas import CreatorDeliveryRead
+from app.modules.matching.creator_list_models import LIST_NAME_MAX_LENGTH
 from app.modules.payment_status.schemas import BrandReliabilityRead
 
 
@@ -166,4 +168,42 @@ class CreatorSearchResultRead(BaseModel):
     currency: str
     booked_until: date | None = Field(
         description="The last day the creator is not taking new work; null if taking work today"
+    )
+
+
+# --- saved creator lists (item 66, D-129) ---------------------------------------
+
+
+class CreatorListIn(BaseModel):
+    """A list's name, when making or renaming one."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    name: str = Field(
+        min_length=1, max_length=LIST_NAME_MAX_LENGTH, examples=["Diwali food creators"]
+    )
+
+
+class CreatorListRead(BaseModel):
+    """One of the brand's lists. Private: the creators on it are never told."""
+
+    id: uuid.UUID
+    name: str
+    creators: int = Field(
+        description=(
+            "How many creators on it you can find today; one who unpublished, "
+            "left or was withheld, or a block, takes them out of view"
+        )
+    )
+    created_at: datetime
+    updated_at: datetime
+
+
+class ListedCreatorRead(CreatorSearchResultRead):
+    """A creator on a list: search's facts, how they deliver, and when you saved them."""
+
+    saved_at: datetime
+    delivery: CreatorDeliveryRead = Field(
+        description="What happened on their deals, not reviews; null shares mean "
+        "not enough to say, never zero"
     )

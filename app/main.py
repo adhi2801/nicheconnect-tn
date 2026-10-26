@@ -48,6 +48,7 @@ from app.modules.deal_memo.router import router as deal_memos_router
 from app.modules.disputes.router import router as disputes_router
 from app.modules.insights.city_figures_router import router as city_figures_router
 from app.modules.insights.rate_guidance_router import router as rate_guidance_router
+from app.modules.matching.creator_list_router import router as creator_lists_router
 from app.modules.matching.router import router as matching_router
 from app.modules.matching.search_router import router as search_router
 from app.modules.me.account_deletion_router import router as account_deletion_router
@@ -172,6 +173,7 @@ app.include_router(brand_domain_router)
 app.include_router(block_router)
 app.include_router(takedown_router)
 app.include_router(search_router)
+app.include_router(creator_lists_router)
 app.include_router(report_router)
 app.include_router(admin_router)
 app.include_router(look_alike_router)
