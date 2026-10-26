@@ -13,7 +13,6 @@ import pytest
 from sqlalchemy import select
 
 from app.modules.auth.models.account import Account
-from app.modules.deal_memo import feedback_service
 from app.modules.deal_memo.feedback_router import WRITE_LIMIT
 from app.modules.deal_memo.record_models import DealRecordEntry
 from app.modules.me import export_service
@@ -194,9 +193,19 @@ def test_a_stranger_reaches_nothing(client, db, clock, brand, creator):
         assert client.get(url(memo_id), headers=stranger.headers).status_code == 404
 
 
-def test_giving_is_rate_limited(client, db, clock, brand):
+def test_giving_is_rate_limited_across_deals(client, db, clock, brand):
+    """The limit counts per route across every deal (D-137), so a brand cannot
+    escape it by answering on many deals."""
+    from app.core.rate_limit import limiter
+
     limit = int(WRITE_LIMIT.split()[0])
-    memos = [finished(client, brand, creator_user(db, clock)) for _ in range(limit + 1)]
+    limiter.enabled = False  # building the deals is not what is tested
+    try:
+        memos = [
+            finished(client, brand, creator_user(db, clock)) for _ in range(limit + 1)
+        ]
+    finally:
+        limiter.enabled = True
     for memo_id in memos[:limit]:
         assert give(client, brand, memo_id).status_code == 201
 
@@ -308,21 +317,22 @@ def test_the_other_sides_export_holds_an_answer_only_once_revealed(
 
 
 def test_each_answer_is_sealed_by_its_fingerprint(client, db, brand, creator):
-    memo_id = finished(client, brand, creator)
-    given(client, brand, memo_id, note="Sealed.")
+    """Worked out here from what was said, not by the function being tested."""
+    import json
 
-    (row,) = feedback_service._of(
-        db,
-        db.get_one(
-            __import__("app.modules.deal_memo.models", fromlist=["DealMemo"]).DealMemo,
-            memo_id,
-        ),
-    ).values()
+    from app.modules.deal_memo import record_service
+
+    memo_id = finished(client, brand, creator)
+    given(client, brand, memo_id, brief=3, reliability=4, easy=5, note="Sealed.")
+
     (entry,) = db.scalars(
         select(DealRecordEntry).where(
             DealRecordEntry.kind == "feedback_given",
             DealRecordEntry.deal_memo_id == memo_id,
         )
     ).all()
+    said = {"brief": 3, "easy": 5, "note": "Sealed.", "reliability": 4}
 
-    assert entry.facts["feedback_sha256"] == feedback_service.fingerprint(row)
+    assert entry.facts["feedback_sha256"] == record_service.fingerprint(
+        json.dumps(said, sort_keys=True, separators=(",", ":"))
+    )
