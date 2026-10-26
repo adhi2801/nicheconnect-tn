@@ -207,3 +207,37 @@ class ListedCreatorRead(CreatorSearchResultRead):
         description="What happened on their deals, not reviews; null shares mean "
         "not enough to say, never zero"
     )
+
+
+class SimilarAnchorRead(BaseModel):
+    """One of the creators who delivered for you, that this one is closest to."""
+
+    creator_id: uuid.UUID
+    handle: str
+
+
+class SimilarCreatorRead(CreatorSearchResultRead):
+    """A creator like those who delivered for you: why, and how they deliver."""
+
+    similarity: float = Field(
+        description="1 is the same; closeness of their public profile to your anchors'"
+    )
+    closest_to: SimilarAnchorRead = Field(
+        description="Which creator who delivered for you this one is most like"
+    )
+    delivery: CreatorDeliveryRead
+
+
+class SimilarPageRead(BaseModel):
+    """A page of creators like the ones who delivered for you."""
+
+    based_on: int = Field(
+        description=(
+            "How many creators who finished a deal with you this rests on; 0 means "
+            "none yet, and the list is empty"
+        )
+    )
+    items: list[SimilarCreatorRead]
+    next_cursor: str | None = Field(
+        default=None, description="Pass as ?cursor= to get the next page"
+    )
