@@ -1717,3 +1717,15 @@ Newest entries at the bottom.
   1. `PublicCreatorRead.connected_accounts`: platform, handle, `connected_since`; never a count. `MediaKitRead.connected_accounts` and each search channel's `verified_followers` and `verified_as_of` carry the count, beside `followers`, never instead.
   2. An expired connection shows nowhere. Item 29's daily job (`me.connection_jobs`) renews tokens, reads the counts, and expires a connection the platform refuses, telling its creator (`connection_expired`, migration `3e711c2efcc6`).
   3. Item 29 counts as built (`docs/BACKEND_COMPLETE.md` section 1): only Meta App Review, Google verification and the connect notice remain, and they only switch it on.
+
+## D-137: Rate limits count per route, so every ceiling holds per account
+- Date: 2026-10-26
+- Approved by: Adhi, in this session: "Count per route (Recommended)", to the decision raised when building item 77 found the gap. **Not reviewed by the other founder** (D-051).
+- Context: slowapi counts a limit per URL path by default (`key_style="url"`). A route with an id in its path, such as `/campaigns/{campaign_id}/invitations`, had a fresh counter for every campaign, so each daily ceiling held per object, not per account: a brand could send 100 invitations a day on each of many campaigns, against trust-and-safety.md rule 2. `tests/modules/test_daily_ceilings.py` checked that the ceilings were registered, never that they held across objects.
+- Options considered: A) count per route (`key_style="endpoint"`), every limit across every object; B) only the daily ceilings route-wide, the minute limits per path; C) leave it and correct the documents.
+- Chosen: A.
+- Reason: one counting rule, and every documented ceiling then means what it says.
+- Consequences / follow-ups:
+  1. `app/core/rate_limit.py` sets `key_style="endpoint"`. Per-minute limits are stricter too: 60 reads a minute of one route across all deals, not per deal.
+  2. `test_a_limit_holds_across_every_object_its_route_names` proves a route's limit holds across two deals, and was seen failing with the old setting.
+  3. Every ceiling in security.md section 5 and trust-and-safety.md section 3 now holds as written; no limit value changed.
