@@ -45,7 +45,8 @@ router = APIRouter(prefix="/api/v1/me", tags=["auth"], route_class=IdempotentRou
         "(this exact one), downloading one exact copy of your data, logging "
         "out everywhere, "
         "moving your account to a new phone number (this exact one), or "
-        "deleting your account (`delete_account`). "
+        "deleting your account (`delete_account`), or making a token for an "
+        "assistant with exactly these scopes (`create_agent_token`). "
         "Then make the change with the code in the `Step-Up-Code` header, "
         "within 5 minutes. A code works once, and only for the change it was "
         "asked for. Admins are sent nothing: they use their authenticator "
@@ -58,7 +59,8 @@ router = APIRouter(prefix="/api/v1/me", tags=["auth"], route_class=IdempotentRou
             "Only a creator may ask to set a UPI ID; an admin may not change "
             "their phone number here; or `login_too_recent`: changing the phone "
             "number, or replacing a UPI ID in effect, needs a login at least 7 "
-            "days old (see Retry-After); an admin account cannot be deleted here"
+            "days old (see Retry-After); an admin account cannot be deleted here, "
+            "nor make a token for an assistant"
         ),
         404: problem_doc(
             "`export_not_found`: no such export of yours; `passkey_not_found`; "

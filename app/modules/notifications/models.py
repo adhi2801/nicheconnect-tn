@@ -117,6 +117,9 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     # To the other side of a finished deal, when one side has given feedback:
     # never what it says (item 77, D-136).
     "feedback_received",
+    # To the owner, when a token was made for an assistant: its name, scopes
+    # and end, never its value (item 11, D-138).
+    "agent_token_created",
 )
 MAX_DETAILS_LENGTH = 2000
 

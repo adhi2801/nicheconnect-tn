@@ -57,6 +57,7 @@ from app.modules.matching.router import router as matching_router
 from app.modules.matching.search_router import router as search_router
 from app.modules.matching.similar_router import router as similar_router
 from app.modules.me.account_deletion_router import router as account_deletion_router
+from app.modules.me.agent_token_router import router as agent_token_router
 from app.modules.me.attention_router import router as attention_router
 from app.modules.me.export_router import download_router as export_download_router
 from app.modules.me.export_router import router as export_router
@@ -157,6 +158,7 @@ app.include_router(security_txt_router)
 app.include_router(auth_router)
 app.include_router(session_router)
 app.include_router(session_list_router)
+app.include_router(agent_token_router)
 app.include_router(step_up_router)
 app.include_router(phone_change_router)
 app.include_router(account_deletion_router)

@@ -70,6 +70,7 @@ NotificationType = Literal[
     "product_received",
     "connection_expired",
     "feedback_received",
+    "agent_token_created",
 ]
 
 ensure_same_values("NotificationType", NotificationType, NOTIFICATION_TYPES)

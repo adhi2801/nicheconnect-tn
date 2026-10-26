@@ -1,0 +1,15 @@
+# Gitleaks' own rules, plus the secrets only this service makes
+# (security.md section 6). CI and a local scan both read this file.
+
+[extend]
+useDefault = true
+
+# A token a person gave an assistant (item 11, D-138): `nct_` and 43
+# characters of URL-safe base64 (256 random bits). The entropy floor lets a
+# placeholder such as the API docs' `nct_xxx...` through, never a real one.
+[[rules]]
+id = "nicheconnect-agent-token"
+description = "A NicheConnect token for an assistant or agent"
+regex = '''nct_[A-Za-z0-9_-]{43}'''
+entropy = 3.5
+keywords = ["nct_"]

@@ -26,6 +26,7 @@ ERASED: frozenset[str] = frozenset(
     {
         # auth (auth.erasure)
         "auth_session",
+        "agent_token",
         "device_token",
         "passkey",
         "passkey_challenge",

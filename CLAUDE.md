@@ -145,19 +145,24 @@ Risk & rollback: <what could go wrong, how we undo it>
 → Approve A, B, or modify?
 ```
 
-**Every feature proposal also weighs ten dimensions** (D-098), one or two lines each, saying "none" where one does not apply rather than leaving it out:
+**Every feature proposal also weighs twelve dimensions** (D-098, D-139), one or two lines each, saying "none" where one does not apply rather than leaving it out. The same twelve are the audit applied to every feature built before them (D-139):
 
 ```
 Quality:        how it is proven (the tests testing.md requires, the rules broken on purpose)
 Novelty:        the strongest competitor's version, and how ours goes further
 Architecture:   which module it belongs in, what it touches, and whether ARCHITECTURE_SCALE.md changes
 Research:       the dated sources behind each non-obvious choice
-Security:       who may see or change what; what an attacker would try
+Security:       who may see or change what; a STRIDE threat model: spoofing, tampering,
+                repudiation, information disclosure, denial of service, elevation of privilege
 Privacy & law:  personal data held, its export, consent; legal.md sections touched
 Trust & safety: how one person could use it against another, and what stops them
-Performance:    queries per request, the budget, how it will be measured
+Performance:    queries per request, the budget, and the p95 measured with a tool, in the report
 Design:         what the screens need from it, in at most two calls
 Business:       what it does for brands, creators and the business, and what it costs us
+Reliability:    how it fails and recovers: timeouts, retries, a job stopping halfway, a
+                dependency down; what is watched and alerted on; backups and their restore
+Maintainability: how it changes safely: the contract the three apps rely on kept stable,
+                readable in five minutes, and how it is undone or extended later
 ```
 
 **Dependency request:** add `Package`, `Why`, `Alternatives (incl. no package)`, `Security/maintenance impact`.
@@ -179,7 +184,7 @@ One feature at a time, built whole, to these eight steps. Adhi chose this on 12 
 3. **Research:** the strongest version that exists, with dated sources, and how ours goes further (`docs/COMPETITIVE_LANDSCAPE.md`).
 4. **Proposal and approval** (section 5): what, tables, endpoints, dependencies, gates, rollback. Nothing is built before "yes".
 5. **Build** to the standards, one file one job, on its own branch.
-6. **Proof:** every test `docs/standards/testing.md` section 1 requires; every rule broken on purpose and seen to fail; properties for rules, concurrency tests for "only if" checks, query counts for lists; performance measured against the budgets.
+6. **Proof:** every test `docs/standards/testing.md` section 1 requires; every rule broken on purpose and seen to fail; properties for rules, concurrency tests for "only if" checks, query counts for lists; the p95 of every new route measured against the budgets and written in the report; the mutation floor held (D-139); and an **independent review**: a separate reviewer, told to find faults, reads the whole change, and each finding is fixed or answered in the report. It never counts as the other founder's review.
 7. **The whole job in one change** (section 7.0): code, tests, decision entry, OpenAPI snapshot, export, `docs/BACKEND_COMPLETE.md`, the affected docs.
 8. **Report honestly:** what was built and proven, what was not, any change from the proposal, and that CI and review are still owed until they happen.
 
@@ -264,7 +269,8 @@ If a standard conflicts with a founder's explicit instruction, point out the con
 
 ## 8. Definition of done
 
-- [ ] Proposed with all ten dimensions (section 5) and approved before it was built
+- [ ] Proposed with all twelve dimensions (section 5) and approved before it was built
+- [ ] Its p95 measured against the budgets, its mutation floor held, and an independent review's findings fixed or answered (D-139)
 - [ ] Follows sections 2, 3 and 6, and the relevant `docs/standards/` files, re-read for this work
 - [ ] Tests for success and failure cases, run in this session and passing
 - [ ] Public endpoints rate limited, with an access check on every object (owner, party, or public by design)

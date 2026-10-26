@@ -371,6 +371,20 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
         "/api/v1/me/campaign-alerts", json={"niche": "food"}, headers=creator.headers
     ).json()["id"]
 
+    # A token the creator made for an assistant (item 11).
+    from app.modules.auth import agent_tokens
+    from app.modules.auth.models.account import Account
+
+    agent_token, _ = agent_tokens.add(
+        db,
+        db.get_one(Account, creator.account_id),
+        "Claude",
+        ["deals:read"],
+        clock.now + timedelta(days=30),
+        clock.now,
+    )
+    token_id = agent_token.id
+
     # A second deal, approved but not yet paid, for the pay details.
     unpaid_creator = creator_user(db, clock)
     unpaid_memo_id = accepted_memo(client, brand, unpaid_creator)
@@ -409,6 +423,7 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
         "takedown_id": takedown_id,
         "list_id": list_id,
         "alert_id": alert_id,
+        "token_id": token_id,
         "confirmation_code": confirmation_code,
         "barter_memo_id": barter_memo_id,
         "account_id": brand.account_id,

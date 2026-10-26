@@ -6,15 +6,17 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import Depends, Header, Request
+from fastapi.routing import APIRoute
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.core.errors import DomainError
 from app.db.session import get_db
-from app.modules.auth import sessions
+from app.modules.auth import agent_scopes, agent_tokens, sessions
 from app.modules.auth.exceptions import (
     AccountSuspended,
     AdminNotFound,
+    AgentScopeMissing,
     InvalidToken,
     RoleNotAllowed,
 )
@@ -43,6 +45,10 @@ def idempotency_identity(request: Request) -> str | None:
     scheme, _, token = request.headers.get("authorization", "").partition(" ")
     if scheme.lower() != "bearer" or not token:
         return None
+    if agent_tokens.is_agent_token(token):
+        # An assistant's token (D-138): its keyed hash names it without a
+        # lookup, and only its holder can produce it.
+        return f"agent:{agent_tokens.hash_agent_token(token)}"
     account_id = account_id_for_scoping(token)
     return f"account:{account_id}" if account_id is not None else None
 
@@ -76,6 +82,8 @@ def _authenticate(
     """The account and the token's claims, for the checks that read both."""
     if credentials is None or not credentials.credentials:
         raise InvalidToken(headers=UNAUTHENTICATED_HEADERS)
+    if agent_tokens.is_agent_token(credentials.credentials):
+        return _authenticate_agent(request, credentials.credentials, db, now)
 
     claims = decode_access_token(credentials.credentials, now)
     account, session_live = sessions.account_for_token(
@@ -100,6 +108,42 @@ def _authenticate(
     request.state.authenticated_at = claims.authenticated_at
     # For telling this device's session from the others (D-114).
     request.state.session_id = claims.session_id
+    return account, claims
+
+
+def _authenticate_agent(
+    request: Request, token: str, db: Session, now: datetime
+) -> tuple[Account, AccessTokenClaims]:
+    """An assistant's token (item 11, D-138): its account, only on a route of its scopes.
+
+    Denied by default: the route that matched must be listed in
+    `agent_scopes` under one of the token's scopes, by its path template.
+    Deletion and suspension stop a token exactly as they stop a login.
+    """
+    try:
+        account, agent_token = agent_tokens.account_for(db, token, now)
+    except InvalidToken:
+        raise InvalidToken(headers=UNAUTHENTICATED_HEADERS) from None
+    if account.deleted_at is not None:
+        raise InvalidToken(headers=UNAUTHENTICATED_HEADERS)
+    if account.suspended_at is not None:
+        raise AccountSuspended.because(account.suspension_reason)
+    route = request.scope.get("route")
+    # HEAD is answered by a GET route, and reads the same.
+    method = "GET" if request.method == "HEAD" else request.method
+    if not isinstance(route, APIRoute) or not agent_scopes.allows(
+        agent_token.scopes, method, route.path
+    ):
+        raise AgentScopeMissing()
+    request.state.account_id = account.id
+    request.state.agent_token_id = agent_token.id
+    # No login stands behind a token: it counts as one made just now, so no
+    # check that wants an established login can pass with it.
+    request.state.authenticated_at = now
+    request.state.session_id = None
+    claims = AccessTokenClaims(
+        account_id=account.id, role=account.role, expires_at=agent_token.expires_at
+    )
     return account, claims
 
 

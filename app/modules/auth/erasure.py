@@ -5,7 +5,7 @@ and empties the account, brand and creator rows, which stay: deals and
 payment records point at them, and the other side keeps the facts of each
 deal, shown as "a creator (or brand) who left" (D-122, choice 3A).
 
-Gone: every session, push token, passkey and its challenges and reset, every
+Gone: every session, assistant's token, push token, passkey and its challenges and reset, every
 step-up and login code, a waiting phone change, an admin's authenticator,
 how the account arrived and its invite code (other people's sign-ups keep
 "came by invite", with the code's link emptied by its own foreign key), and
@@ -35,6 +35,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.account_phone_change import AccountPhoneChange
+from app.modules.auth.models.agent_token import AgentToken
 from app.modules.auth.models.attribution import AccountAttribution, InviteCode
 from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.brand import Brand
@@ -55,6 +56,7 @@ LEFT_HANDLE_PREFIX = "left."
 ERASED_TABLES = frozenset(
     {
         "auth_session",
+        "agent_token",
         "device_token",
         "passkey",
         "passkey_challenge",
@@ -90,6 +92,7 @@ def erase_for_account(db: Session, account: Account) -> None:
     account_id = account.id
     db.execute(delete(DeviceToken).where(DeviceToken.account_id == account_id))
     db.execute(delete(AuthSession).where(AuthSession.account_id == account_id))
+    db.execute(delete(AgentToken).where(AgentToken.account_id == account_id))
     db.execute(delete(PasskeyChallenge).where(PasskeyChallenge.account_id == account_id))
     db.execute(delete(PasskeyReset).where(PasskeyReset.account_id == account_id))
     db.execute(delete(Passkey).where(Passkey.account_id == account_id))

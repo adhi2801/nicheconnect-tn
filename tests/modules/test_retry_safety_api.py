@@ -46,8 +46,11 @@ NOT_COVERED_PREFIX = "/api/v1/auth/"
 #   store, and this answer is a person's whole data file, the copy D-111
 #   refuses to keep; a lost answer means asking for a new export instead;
 # - Meta's two callbacks (D-134): Meta calls them and sends no key, and a
-#   repeat is harmless, since a second deletion finds nothing left to remove.
+#   repeat is harmless, since a second deletion finds nothing left to remove;
+# - making an assistant's token (D-138): the answer carries the token, which
+#   must never be kept; a retry is refused, its code being spent.
 NEVER_REPLAYED = {
+    "POST /api/v1/me/agent-tokens",
     "POST /api/v1/me/exports/{export_id}/download",
     "POST /api/v1/platforms/meta/data-deletion",
     "POST /api/v1/platforms/meta/deauthorize",
