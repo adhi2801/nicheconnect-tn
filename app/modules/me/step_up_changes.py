@@ -2,8 +2,9 @@
 
 Each change a code or a passkey can prove has a value its proof is bound to:
 the UPI ID, the new number, the export's id, the passkey's id, "on" or
-"off". This works the value out from the request and refuses, before a
-message is sent or a passkey asked, a change that would be refused anyway.
+"off", an assistant token's scopes. This works the value out from the
+request and refuses, before a message is sent or a passkey asked, a change
+that would be refused anyway.
 Shared by asking for a code and by a passkey's answer, so the two can never
 bind a proof to different values.
 """
@@ -12,13 +13,15 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from app.modules.auth import login_age, sessions
+from app.modules.auth import agent_tokens, login_age, sessions
 from app.modules.auth.models.account import Account
 from app.modules.me import account_deletion_service as deletions
+from app.modules.me import agent_token_service as agent_token_changes
 from app.modules.me import data_export_service as data_exports
 from app.modules.me import passkey_service as passkey_changes
 from app.modules.me import phone_change_service as phone_changes
 from app.modules.me.step_up_schemas import (
+    StepUpForAgentToken,
     StepUpForExport,
     StepUpForPasskeyOnly,
     StepUpForPasskeyRemoval,
@@ -62,6 +65,9 @@ def value_of(
     if isinstance(change, StepUpForSession):
         sessions.ensure_live(db, account.id, change.session_id, now)
         return str(change.session_id)
+    if isinstance(change, StepUpForAgentToken):
+        agent_token_changes.ensure_may_have_tokens(account)
+        return agent_tokens.scopes_value(list(change.scopes))
     if isinstance(change, StepUpForPasskeyOnly):
         passkey_changes.ensure_may_have_passkeys(account)
         return "on" if change.enabled else "off"

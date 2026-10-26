@@ -45,6 +45,7 @@ from app.modules.deal_memo import service as deal_memos
 from app.modules.deal_memo import shipment_service as shipments
 from app.modules.disputes import service as disputes
 from app.modules.matching import creator_list_service as creator_lists
+from app.modules.me import agent_token_service as agent_token_changes
 from app.modules.me import passkey_service as passkey_changes
 from app.modules.me import phone_change_service as phone_changes
 from app.modules.me.export_models import DataExport
@@ -454,6 +455,7 @@ def collect_sections(
         *step_ups.export_for_account(db, account.id),
         *phone_changes.export_for_account(db, account.id),
         *passkey_changes.export_for_account(db, account.id),
+        *agent_token_changes.export_for_account(db, account.id),
         _exports_section(db, account),
     ]
 
@@ -533,6 +535,7 @@ def exported_tables() -> frozenset[str]:
         | step_ups.EXPORTED_TABLES
         | phone_changes.EXPORTED_TABLES
         | passkey_changes.EXPORTED_TABLES
+        | agent_token_changes.EXPORTED_TABLES
     )
 
 

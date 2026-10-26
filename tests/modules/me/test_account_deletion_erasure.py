@@ -29,6 +29,7 @@ from app.modules.auth.erasure import (
 )
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.account_phone_change import AccountPhoneChange
+from app.modules.auth.models.agent_token import AgentToken
 from app.modules.auth.models.attribution import AccountAttribution, InviteCode
 from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.brand import Brand
@@ -113,6 +114,15 @@ def fill(db: Session, who: Person, other: Person, clock: Clock) -> set[str]:
                 family_id=uuid.uuid4(),
                 token_hash=fake_token_hash(),
                 expires_at=now + timedelta(days=30),
+            ),
+            AgentToken(
+                account_id=account_id,
+                name="Claude",
+                token_hash=hex64(),
+                scopes=["deals:read"],
+                expires_at=now + timedelta(days=30),
+                created_at=now,
+                updated_at=now,
             ),
             DeviceToken(
                 account_id=account_id,
@@ -200,6 +210,7 @@ def fill(db: Session, who: Person, other: Person, clock: Clock) -> set[str]:
     )
     tables = {
         "auth_session",
+        "agent_token",
         "device_token",
         "passkey",
         "passkey_challenge",

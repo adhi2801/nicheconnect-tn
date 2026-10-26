@@ -87,6 +87,14 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md`. Rule
   - Meta's data deletion and deauthorize callbacks are public by design and act only on Meta's HMAC-SHA256 signature, checked in constant time;
   - a daily job renews Instagram's token once 30 days or fewer remain and Google's access token each run, never inside a transaction; a platform that refuses expires the connection and tells the creator once; the connection is re-read under its lock before writing, so a reconnect meanwhile is never overwritten;
   - **enforced by** `tests/modules/profiles/test_connections_api.py`, `test_connection_concurrency.py`, `test_connection_secrets.py`, `test_meta_signed_request.py` (with properties), `test_platform_clients.py`, `test_connection_model.py` and `test_connection_refresh.py`; the platform fixture refuses any real HTTP, so no test can reach Instagram or Google; each rule broken on purpose and seen caught. The real clients are tested against the platforms' published request shapes, not yet the live platforms.
+- **Tokens for assistants and agents** (item 11, D-138; GitHub's fine-grained tokens as the model):
+  - `POST /api/v1/me/agent-tokens` makes a named token with chosen scopes for 1 to 90 days; it needs a step-up code for `create_agent_token` bound to exactly those scopes, and the owner is told by a notification nobody can mute. Brands and creators only: no admin token exists;
+  - a token is `nct_` and 256 random bits, shown once; only an HMAC of it is kept, keyed by `OTP_HASH_KEY` under its own label; Gitleaks has a rule for the prefix (`.gitleaks.toml`);
+  - **denied by default**: a token reaches a route only when `app/modules/auth/agent_scopes.py` lists its method and path template under one of the token's scopes, read from the route that matched; anything else is 403 `agent_scope_missing`. No scope ever reaches money, identity, the account's control or an admin's work, and no token can make, list or revoke tokens or ask for a step-up code;
+  - checked on every request with the account's suspension and deletion; it counts as a login made just now, so no check that wants an established login passes with it; it shares the account's rate limits and daily ceilings;
+  - revoked one by one with no code, by logging out everywhere (and so by a phone change), and erased with the account;
+  - **it does not stop** a SIM swapper who asks for the code from making one; the owner is told, and logging out everywhere ends it;
+  - **enforced by** `tests/modules/me/test_agent_token_api.py`, `test_agent_token_concurrency.py`, `tests/modules/auth/test_agent_scopes.py` (every route of the API called with a token holding every scope), `test_agent_token_model.py` and `test_agent_token_properties.py`; each rule broken on purpose and seen caught.
 - **Where you are logged in** (item 81, D-114; ASVS 5.0 7.5.2):
   - `GET /api/v1/me/sessions` lists each live session: what its app said it is (a platform and a label, never checked), when and how it signed in, when it last renewed, and which is the one asking. No address or location is kept;
   - `DELETE /api/v1/me/sessions/{session_id}` ends one at once. The asking session's own needs nothing more; any other needs a step-up code for `end_session` bound to that exact session (or a passkey's approval), so a stolen session cannot throw the owner out, and the owner is told by a notification nobody can mute. Someone else's session, or one already ended, is 404 before any code is asked for;
@@ -104,7 +112,7 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md`. Rule
 
 - Roles: `brand`, `creator`, `admin`.
 - **Every** endpoint that reads or changes an object loads it through a check that the caller may (owner, party to the deal, or public by design). This is the defence against Broken Object Level Authorization, the top API risk. The checks live in `auth` and each module's dependencies; routers build no queries of their own (`tests/test_architecture.py`).
-- Every such endpoint refuses another user with 404 (preferred, so existence is not confirmed) or 403. **Enforced by** `tests/modules/test_stranger_routes.py` (item 100): it builds a real world through the API and calls every one of the 65 routes that name an object as an unrelated brand and an unrelated creator, with valid bodies, so a refusal is never a validation error; a 409 or 422 counts as a leak. Routes public by design are listed with who may read them and why, and must answer them. A new route fails the test until it is covered.
+- Every such endpoint refuses another user with 404 (preferred, so existence is not confirmed) or 403. **Enforced by** `tests/modules/test_stranger_routes.py` (item 100): it builds a real world through the API and calls every route that names an object (102 on 27 October 2026) as an unrelated brand and an unrelated creator, with valid bodies, so a refusal is never a validation error; a 409 or 422 counts as a leak. Routes public by design are listed with who may read them and why, and must answer them. A new route fails the test until it is covered.
 - Filters use the authenticated account from the token, never an owner id from the body or query. The person's own things live under `/me/...` with no id at all.
 - Status transitions check the actor: only the brand marks a payment as sent; only the creator confirms it arrived. **Enforced by** the payment tests, including properties over every state.
 - Admin endpoints answer 404 to anyone who is not an admin.
@@ -147,6 +155,7 @@ Examples:
 | Asking to delete the account (item 6) | 5 in 10 minutes, 10 a day | the account (and the phone's code caps) |
 | Refresh and logout | 30 a minute | the address |
 | Listing sessions; ending one (item 81) | 60 a minute; 30 a minute | the account (and, for another session, the phone's code caps) |
+| Assistants' tokens (item 11): making one; listing; revoking | 5 a minute and 10 a day; 60 a minute; 30 a minute | the account (and, to make one, the phone's code caps). A token's own requests count against its account's limits |
 | Writes | 30 a minute, most with a daily ceiling | the account |
 | Search and matching | 30 a minute | the account |
 | Public pages | 60 a minute | the address |
@@ -163,7 +172,7 @@ Examples:
 - Secrets live only in environment variables: `.env` locally (gitignored), AWS Secrets Manager in staging and production (`infra/`).
 - Never in code, tests, logs, commit messages, reports or screenshots. The app refuses to start on a placeholder value.
 - A leaked secret is rotated at once, even if the commit was deleted. Every secret has a rotation step in `docs/INCIDENT_RESPONSE.md`. **Enforced by** `tests/test_incident_response.py`.
-- **Secret scanning blocks a merge:** Gitleaks reads the whole git history on every CI run (D-082); findings that are not secrets are listed one by one, by exact fingerprint, in `.gitleaksignore`. GitHub push protection was switched on by Adhi on 10 October 2026.
+- **Secret scanning blocks a merge:** Gitleaks reads the whole git history on every CI run (D-082); findings that are not secrets are listed one by one, by exact fingerprint, in `.gitleaksignore`. `.gitleaks.toml` adds our own secrets to Gitleaks' rules: assistants' `nct_` tokens (D-138). GitHub push protection was switched on by Adhi on 10 October 2026.
 
 ## 7. Personal data and privacy (DPDP)
 

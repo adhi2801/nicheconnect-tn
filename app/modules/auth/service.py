@@ -14,9 +14,9 @@ from typing import Any, NoReturn, cast
 from sqlalchemy import CursorResult, func, select, text, union_all, update
 from sqlalchemy.orm import Session
 
+from app.modules.auth import agent_tokens, phone_changes, sides
 from app.modules.auth import attribution_service as attribution
 from app.modules.auth import device_service as devices
-from app.modules.auth import phone_changes, sides
 from app.modules.auth.attribution_service import Arrival
 from app.modules.auth.exceptions import (
     AccountSuspended,
@@ -597,4 +597,7 @@ def logout_all_sessions(db: Session, account_id: uuid.UUID, now: datetime) -> in
     ended = end_sessions(db, account_id, now)
     # Logged out everywhere means told nowhere: every phone's push stops.
     devices.forget_all(db, account_id)
+    # And every assistant's token ends with the sessions (D-138): whoever
+    # made one while holding the account loses it here too.
+    agent_tokens.revoke_all(db, account_id, now)
     return ended

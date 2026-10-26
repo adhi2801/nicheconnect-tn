@@ -10,6 +10,7 @@ from app.modules.auth.models.step_up_challenge import STEP_UP_ACTIONS
 from app.modules.auth.passkey_schemas import WebAuthnCredential
 from app.modules.auth.schemas import IndianMobile
 from app.modules.auth.step_up_service import StepUpAction, StepUpMethod
+from app.modules.me.agent_token_schemas import AgentScopes
 from app.modules.payment_status.upi_schemas import UPI_ID_FIELD, a_real_upi_id
 
 ensure_same_values("StepUpAction", StepUpAction, STEP_UP_ACTIONS)
@@ -82,6 +83,15 @@ class StepUpForSession(BaseModel):
     session_id: uuid.UUID
 
 
+class StepUpForAgentToken(BaseModel):
+    """A code to make an assistant's token with exactly these scopes (item 11, D-138)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    action: Literal["create_agent_token"]
+    scopes: AgentScopes
+
+
 StepUpIn = Annotated[
     StepUpForUpiId
     | StepUpForPhone
@@ -89,7 +99,8 @@ StepUpIn = Annotated[
     | StepUpForAccount
     | StepUpForPasskeyRemoval
     | StepUpForPasskeyOnly
-    | StepUpForSession,
+    | StepUpForSession
+    | StepUpForAgentToken,
     Field(discriminator="action"),
 ]
 

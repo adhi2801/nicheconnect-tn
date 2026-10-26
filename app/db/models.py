@@ -4,6 +4,7 @@ from app.modules.auth.models.account import Account  # noqa: F401
 from app.modules.auth.models.account_phone_change import (
     AccountPhoneChange,  # noqa: F401
 )
+from app.modules.auth.models.agent_token import AgentToken  # noqa: F401
 from app.modules.auth.models.attribution import (
     AccountAttribution,  # noqa: F401
     InviteCode,  # noqa: F401

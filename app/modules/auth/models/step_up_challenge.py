@@ -42,6 +42,9 @@ STEP_UP_ACTIONS: tuple[str, ...] = (
     "end_session",
     # Deleting the account (item 6, D-122).
     "delete_account",
+    # Making a token for an assistant (item 11, D-138): the value is its
+    # scopes, so a code for a read-only token cannot make one that writes.
+    "create_agent_token",
 )
 # How a step-up was proven (D-113): a code sent to the phone, or a passkey
 # answering a challenge for exactly this change. Once an account has a

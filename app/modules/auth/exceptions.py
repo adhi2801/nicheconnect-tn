@@ -286,3 +286,18 @@ class DeletionWaitingOnNumber(DomainError):
         super().__init__(
             "Cancel the deletion first, or let it finish, then move the number."
         )
+
+
+class AgentTokenNotFound(DomainError):
+    # Also another account's token, or one revoked or expired: 404, never 403.
+    status_code = HTTPStatus.NOT_FOUND
+    code = "agent_token_not_found"
+    title = "That assistant token is not one of yours, or it no longer works"
+
+
+class AgentScopeMissing(DomainError):
+    # Item 11, D-138: a route an assistant's token does not reach. Money,
+    # identity and the account's own control are never reachable by one.
+    status_code = HTTPStatus.FORBIDDEN
+    code = "agent_scope_missing"
+    title = "This assistant's token does not allow this. Do it in the app yourself"

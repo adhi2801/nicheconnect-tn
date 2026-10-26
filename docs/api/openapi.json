@@ -741,6 +741,196 @@
         "title": "AdminTakedownRead",
         "type": "object"
       },
+      "AgentTokenCreate": {
+        "additionalProperties": false,
+        "description": "A token for one assistant: what it is called, what it may do, how long it lasts.",
+        "properties": {
+          "expires_in_days": {
+            "description": "How many days it works for, at most 90",
+            "examples": [
+              30
+            ],
+            "maximum": 90.0,
+            "minimum": 1.0,
+            "title": "Expires In Days",
+            "type": "integer"
+          },
+          "name": {
+            "description": "The assistant it is for, as you will recognise it",
+            "examples": [
+              "Claude on my laptop"
+            ],
+            "maxLength": 60,
+            "minLength": 1,
+            "pattern": "^[^\\x00-\\x1f\\x7f-\\x9f\\u2028\\u2029]+$",
+            "title": "Name",
+            "type": "string"
+          },
+          "scopes": {
+            "description": "What the assistant may do. `deals:read`: your deals, their notes, proof, record and feedback, never a payment, UPI ID or address. `campaigns:read`: campaigns and applications as you see them. `applications:write`: applying and withdrawing, answering an invitation, and a brand's shortlisting or turning down; never accepting one. `notes:write`: adding a note to a deal. `alerts:write`: your campaign alerts. No scope reaches money, your phone, passkeys, sessions, exports or deletion",
+            "examples": [
+              [
+                "deals:read",
+                "campaigns:read"
+              ]
+            ],
+            "items": {
+              "enum": [
+                "deals:read",
+                "campaigns:read",
+                "applications:write",
+                "notes:write",
+                "alerts:write"
+              ],
+              "type": "string"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Scopes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "scopes",
+          "expires_in_days"
+        ],
+        "title": "AgentTokenCreate",
+        "type": "object"
+      },
+      "AgentTokenCreated": {
+        "description": "The new token, with its value: shown this once and never again.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "description": "Revoke it at DELETE /api/v1/me/agent-tokens/{id}",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it was last used, to within a minute; null if never",
+            "title": "Last Used At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "scopes": {
+            "items": {
+              "enum": [
+                "deals:read",
+                "campaigns:read",
+                "applications:write",
+                "notes:write",
+                "alerts:write"
+              ],
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          },
+          "token": {
+            "description": "Give it to the assistant as `Authorization: Bearer <token>`. It is shown only now; we keep no copy we could show you again",
+            "examples": [
+              "nct_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            ],
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "scopes",
+          "expires_at",
+          "last_used_at",
+          "created_at",
+          "token"
+        ],
+        "title": "AgentTokenCreated",
+        "type": "object"
+      },
+      "AgentTokenRead": {
+        "description": "One of your assistants' tokens, never its value.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "description": "Revoke it at DELETE /api/v1/me/agent-tokens/{id}",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it was last used, to within a minute; null if never",
+            "title": "Last Used At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "scopes": {
+            "items": {
+              "enum": [
+                "deals:read",
+                "campaigns:read",
+                "applications:write",
+                "notes:write",
+                "alerts:write"
+              ],
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "scopes",
+          "expires_at",
+          "last_used_at",
+          "created_at"
+        ],
+        "title": "AgentTokenRead",
+        "type": "object"
+      },
       "ApplicationCountsRead": {
         "description": "How many applications are in each status. Every status, zeros included.",
         "properties": {
@@ -7618,11 +7808,12 @@
                 "product_shipped",
                 "product_received",
                 "connection_expired",
-                "feedback_received"
+                "feedback_received",
+                "agent_token_created"
               ],
               "type": "string"
             },
-            "maxItems": 58,
+            "maxItems": 59,
             "title": "Muted Types",
             "type": "array"
           },
@@ -7732,7 +7923,8 @@
                 "product_shipped",
                 "product_received",
                 "connection_expired",
-                "feedback_received"
+                "feedback_received",
+                "agent_token_created"
               ],
               "type": "string"
             },
@@ -7816,7 +8008,8 @@
                 "product_shipped",
                 "product_received",
                 "connection_expired",
-                "feedback_received"
+                "feedback_received",
+                "agent_token_created"
               ],
               "type": "string"
             },
@@ -7974,7 +8167,8 @@
               "product_shipped",
               "product_received",
               "connection_expired",
-              "feedback_received"
+              "feedback_received",
+              "agent_token_created"
             ],
             "title": "Notification Type",
             "type": "string"
@@ -8621,6 +8815,34 @@
           "items"
         ],
         "title": "Page[AdminTakedownRead]",
+        "type": "object"
+      },
+      "Page_AgentTokenRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AgentTokenRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as ?cursor= to get the next page",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[AgentTokenRead]",
         "type": "object"
       },
       "Page_ApplicationRead_": {
@@ -12788,7 +13010,8 @@
               "remove_passkey",
               "passkey_only",
               "end_session",
-              "delete_account"
+              "delete_account",
+              "create_agent_token"
             ],
             "title": "Action",
             "type": "string"
@@ -12858,6 +13081,46 @@
           "action"
         ],
         "title": "StepUpForAccount",
+        "type": "object"
+      },
+      "StepUpForAgentToken": {
+        "additionalProperties": false,
+        "description": "A code to make an assistant's token with exactly these scopes (item 11, D-138).",
+        "properties": {
+          "action": {
+            "const": "create_agent_token",
+            "title": "Action",
+            "type": "string"
+          },
+          "scopes": {
+            "description": "What the assistant may do. `deals:read`: your deals, their notes, proof, record and feedback, never a payment, UPI ID or address. `campaigns:read`: campaigns and applications as you see them. `applications:write`: applying and withdrawing, answering an invitation, and a brand's shortlisting or turning down; never accepting one. `notes:write`: adding a note to a deal. `alerts:write`: your campaign alerts. No scope reaches money, your phone, passkeys, sessions, exports or deletion",
+            "examples": [
+              [
+                "deals:read",
+                "campaigns:read"
+              ]
+            ],
+            "items": {
+              "enum": [
+                "deals:read",
+                "campaigns:read",
+                "applications:write",
+                "notes:write",
+                "alerts:write"
+              ],
+              "type": "string"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Scopes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "action",
+          "scopes"
+        ],
+        "title": "StepUpForAgentToken",
         "type": "object"
       },
       "StepUpForExport": {
@@ -13012,7 +13275,8 @@
               "remove_passkey",
               "passkey_only",
               "end_session",
-              "delete_account"
+              "delete_account",
+              "create_agent_token"
             ],
             "title": "Action",
             "type": "string"
@@ -13050,6 +13314,7 @@
               "mapping": {
                 "add_passkey": "#/components/schemas/StepUpForAccount",
                 "change_phone": "#/components/schemas/StepUpForPhone",
+                "create_agent_token": "#/components/schemas/StepUpForAgentToken",
                 "delete_account": "#/components/schemas/StepUpForAccount",
                 "download_export": "#/components/schemas/StepUpForExport",
                 "end_session": "#/components/schemas/StepUpForSession",
@@ -13081,6 +13346,9 @@
               },
               {
                 "$ref": "#/components/schemas/StepUpForSession"
+              },
+              {
+                "$ref": "#/components/schemas/StepUpForAgentToken"
               }
             ],
             "title": "Change"
@@ -32180,6 +32448,361 @@
         ]
       }
     },
+    "/api/v1/me/agent-tokens": {
+      "get": {
+        "description": "Every token of yours that still works, newest first, with its scopes, its end and when it was last used (to within a minute), never its value. Paginated: `limit` (default 20, at most 100) and `cursor`. Limit: 60 requests per minute.",
+        "operationId": "list_agent_tokens_api_v1_me_agent_tokens_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "From a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "From a previous page",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_AgentTokenRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`agent_scope_missing`: an assistant's token cannot manage tokens; only you can"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`limit` is out of range, or `cursor` is not one of ours"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My assistants' tokens",
+        "tags": [
+          "auth"
+        ]
+      },
+      "post": {
+        "description": "Makes a token for one assistant or agent (Claude, ChatGPT, an MCP client) that may do only what its `scopes` allow, for at most 90 days, until you revoke it. No scope reaches money, your phone, passkeys, sessions, exports or deletion. Needs **a code** for exactly these scopes: ask at `POST /api/v1/me/step-up` with `create_agent_token` and the same `scopes`, then send it in the `Step-Up-Code` header. You are told in the app, in a notice that cannot be turned off. **The token is in this answer only**: we keep no copy we could show again. Logging out everywhere, moving to a new number or deleting your account ends every token. Brands and creators only. Limits: 5 a minute, 10 a day.",
+        "operationId": "create_agent_token_api_v1_me_agent_tokens_post",
+        "parameters": [
+          {
+            "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+            "in": "header",
+            "name": "Step-Up-Code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9]{6}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+              "title": "Step-Up-Code"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentTokenCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentTokenCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The code is wrong, expired, used, or for other scopes"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired; or `step_up_required`: no code was sent"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`role_not_allowed`: an admin cannot make one; or `agent_scope_missing`: an assistant's token cannot make another"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The name, a scope or the number of days is not usable, or the code is not 6 digits"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Make a token for an assistant",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/me/agent-tokens/{token_id}": {
+      "delete": {
+        "description": "The token stops working on its next request. No code is needed: revoking only takes access away. Limit: 30 requests per minute.",
+        "operationId": "revoke_agent_token_api_v1_me_agent_tokens__token_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Token Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The token is revoked"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`agent_scope_missing`: an assistant's token cannot manage tokens; only you can"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`agent_token_not_found`: no working token of yours has this id (another account's reads the same, as does one revoked or expired)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The id is not a UUID"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Revoke an assistant's token",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/me/attention": {
       "get": {
         "description": "Everything waiting on the signed-in brand or creator, the most urgent first: any `new_sign_in` (a session signed in during the last 7 days, other than this one: if it was not you, end it at `DELETE /api/v1/me/sessions/{session_id}`), then overdue, then soonest due, then anything without a date. For a brand: applications to review, memos to draft or revise, proof to review before it approves itself, creators to pay, and disputes to answer. For a creator: memos to answer, work to deliver or redo, payments to confirm, payments owed past their date, and disputes to answer. Worked out from the records each time, so an item disappears the moment it is done. Items carry a `kind` code and the facts; the wording belongs to the app. At most 50 items; `counts` and `total` always cover everything, except that at most 50 new sign-ins are counted.",
@@ -35570,7 +36193,7 @@
     },
     "/api/v1/me/step-up": {
       "post": {
-        "description": "Sends a 6-digit code to your phone for one change: setting a UPI ID (this exact one), downloading one exact copy of your data, logging out everywhere, moving your account to a new phone number (this exact one), or deleting your account (`delete_account`). Then make the change with the code in the `Step-Up-Code` header, within 5 minutes. A code works once, and only for the change it was asked for. Admins are sent nothing: they use their authenticator app's code. Limits: 3 per 10 minutes and 10 a day, counted with login codes for your phone.",
+        "description": "Sends a 6-digit code to your phone for one change: setting a UPI ID (this exact one), downloading one exact copy of your data, logging out everywhere, moving your account to a new phone number (this exact one), or deleting your account (`delete_account`), or making a token for an assistant with exactly these scopes (`create_agent_token`). Then make the change with the code in the `Step-Up-Code` header, within 5 minutes. A code works once, and only for the change it was asked for. Admins are sent nothing: they use their authenticator app's code. Limits: 3 per 10 minutes and 10 a day, counted with login codes for your phone.",
         "operationId": "ask_for_step_up_api_v1_me_step_up_post",
         "parameters": [
           {
@@ -35594,6 +36217,7 @@
                   "mapping": {
                     "add_passkey": "#/components/schemas/StepUpForAccount",
                     "change_phone": "#/components/schemas/StepUpForPhone",
+                    "create_agent_token": "#/components/schemas/StepUpForAgentToken",
                     "delete_account": "#/components/schemas/StepUpForAccount",
                     "download_export": "#/components/schemas/StepUpForExport",
                     "end_session": "#/components/schemas/StepUpForSession",
@@ -35625,6 +36249,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/StepUpForSession"
+                  },
+                  {
+                    "$ref": "#/components/schemas/StepUpForAgentToken"
                   }
                 ],
                 "title": "Body"
@@ -35674,7 +36301,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "Only a creator may ask to set a UPI ID; an admin may not change their phone number here; or `login_too_recent`: changing the phone number, or replacing a UPI ID in effect, needs a login at least 7 days old (see Retry-After); an admin account cannot be deleted here"
+            "description": "Only a creator may ask to set a UPI ID; an admin may not change their phone number here; or `login_too_recent`: changing the phone number, or replacing a UPI ID in effect, needs a login at least 7 days old (see Retry-After); an admin account cannot be deleted here, nor make a token for an assistant"
           },
           "404": {
             "content": {

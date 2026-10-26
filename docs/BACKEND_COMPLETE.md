@@ -2,7 +2,7 @@
 
 **For:** the founders, to see how far the backend is from complete, and `/assign-task`, which reads it. **Written 1 October 2026; section 2 last measured on 14 October 2026**, from the code and CI on `main`, not from memory.
 
-**Keeping count:** an item stays in its table when built, marked **Built** with its date and decision, so progress can be counted from this file alone. Items built before 14 October were taken out of the tables instead; section 2 names them.
+**Keeping count:** an item stays in its table when built, marked **Built** with its date and decision, so progress can be counted from this file alone. Items built before 14 October were taken out of the tables at first; on 27 October all 26 were put back, marked the same way, so every item ever listed is in a table.
 
 Frontend **code** starts only when the backend is complete (D-004, amended by D-053). Until today nothing defined "complete", so nobody could say how far away it was. This file is that definition, and the list of everything between here and it.
 
@@ -22,11 +22,13 @@ Three things it does **not** mean:
 
 **Measured on 14 October 2026:** 2,985 tests; coverage 98.55% counting branches when last measured that day, before its last three changes, with CI holding the floors on every run (`docs/standards/testing.md` section 7); CI green on `main` (`d6a86b8`, every job): the secret scan, the module layers, migration linting and round trip, the release step, the suite run as the app's own login and then the owner's tests, coverage, API fuzzing, the dependency and image scans, and the infrastructure check.
 
-**Open in section 3: 45 items** (68 on 14 October; item 51 built on 15 October, items 52 and 101 on 16 October, items 74, 82 and 80 on 17 October, item 79 on 18 October, items 81, 75 and 85 on 24 October, items 6, 44 and 8 on 25 October, items 26, 17, 66, 43, 68, 70, 65 and 77 on 26 October, item 29 built switched off the same day (section 1: its outside part only turns it on), and item 87 found built since 20 September). 22 wait on something outside the code or on Erode Harish: the name and domain (4, 10), the Meta app (30, 31, 67, 78), the validation pack (33, 39), the lawyer or CA (35, 50, 76), the MSG91 template (62), results data (83, 86), founders' decisions (7, 13, 38, 41, 46, 48, 61, 72). **23 need only an approval**. Section 4 holds the 8 that wait on someone outside, and item 29, built switched off.
+**All 102 items listed: 56 built, 46 open** (44 in section 3, items 12 and 20 in section 4), counted from the tables on 27 October.
+
+**Open in section 3: 44 items** (68 on 14 October; item 51 built on 15 October, items 52 and 101 on 16 October, items 74, 82 and 80 on 17 October, item 79 on 18 October, items 81, 75 and 85 on 24 October, items 6, 44 and 8 on 25 October, items 26, 17, 66, 43, 68, 70, 65 and 77 on 26 October, item 11 on 27 October, item 29 built switched off the same day (section 1: its outside part only turns it on), and item 87 found built since 20 September). 22 wait on something outside the code or on Erode Harish: the name and domain (4, 10), the Meta app (30, 31, 67, 78), the validation pack (33, 39), the lawyer or CA (35, 50, 76), the MSG91 template (62), results data (83, 86), founders' decisions (7, 13, 38, 41, 46, 48, 61, 72). **22 need only an approval**. Section 4 holds the 8 that wait on someone outside, and item 29, built switched off.
 
 **Built and tested on `main`:**
 - before 1 October: Phases A, B and D of the backlog, C1 to C4, E3 and E4 (`docs/PRODUCT_BACKLOG.md`), creator search, the admin side, results read from proof (D-070, switched off), the deal record with its daily outside timestamp, proof files, and AWS described as code;
-- 1 to 12 October, taken out of the tables: items 1 (Python 3.14 and uv, D-072), 2 (error tracking, D-074), 3 (tracing, D-094), 5 and 5a (the load test and overload shedding, D-092, D-093), 9 (phones registered for push, D-095), 18 and 21 (notification preferences, invite attribution, D-079, D-080), 19 and 22 (response times, city figures, D-077, D-078), 24, 25 and 28 (decline and reply dates, D-089), 32, 42 and 45, 47 (the campaign report, D-088), 53 to 60 and 63 (the legal and trust-and-safety items, D-086), the payments list, deal stages and campaign summaries (D-075, D-076), property, mutation and load testing (D-090 to D-092), and the module layers (D-099);
+- 1 to 12 October, marked in the tables since 27 October: items 1 (Python 3.14 and uv, D-072), 2 (error tracking, D-074), 3 (tracing, D-094), 5 and 5a (the load test and overload shedding, D-092, D-093), 9 (phones registered for push, D-095), 18 and 21 (notification preferences, invite attribution, D-079, D-080), 19 and 22 (response times, city figures, D-077, D-078), 24, 25 and 28 (decline and reply dates, D-089), 32, 42 and 45, 47 (the campaign report, D-088), 53 to 60 and 63 (the legal and trust-and-safety items, D-086), the payments list, deal stages and campaign summaries (D-075, D-076), property, mutation and load testing (D-090 to D-092), and the module layers (D-099);
 - 14 October, marked in the tables: items 97, 98, 99 and 102 (the app's own database login, every foreign key indexed, dispute events sealed, reporters told the outcome; D-100), 100 (every route refuses a stranger) and 69 (deal dates as a calendar file; D-102), and structured JSON logs (D-102).
 - 15 October, marked in the tables: item 51 (the IT Rules' clocks on the report queue; D-103).
 - 16 October, marked in the tables: item 52 (taking down one item within 3 hours of a legal order; D-104) and item 101 (a second factor for admins; D-105).
@@ -43,12 +45,17 @@ Each needs the approval its gate names (`CLAUDE.md` section 5) before it is buil
 
 | # | Item | Why it matters before the frontend | Gate |
 |---|---|---|---|
+| 1 | **Python 3.14 and uv** (D-047 locked them; we still run 3.12 and pip) | The baseline is "locked", but not true; every later upgrade starts from the wrong place | Infrastructure, CI (both commands change) · **Built 1 October (D-072)** |
+| 2 | **Error tracking: Sentry**, with personal data scrubbed (D-047; `docs/standards/backend.md` section 9) | No production error is seen today. A frontend's errors must trace back to the request behind them | Dependency · **Built 4 October (D-074)** |
+| 3 | **Tracing: OpenTelemetry** in the app (D-047); where traces go waits on hosting | Shows which endpoint is slow in production, against the p95 budgets | Dependency · **Built 12 October (D-094)** |
 | 4 | **The name: Colyv** (decided by Adhi on 23 September, never recorded or applied) | It changes `ERROR_TYPE_BASE`, a public contract every client reads, and the database name. Renaming after a frontend exists breaks it | A decision entry, and owning the domain |
 
 ### 3.2 Built for launch quality
 
 | # | Item | Why | Gate |
 |---|---|---|---|
+| 5 | **A repeatable load test** | p95 is measured with one user; launch has many (`docs/PLATFORM_AND_TECH_PLAN.md` 4.5) | Dependency · **Built 12 October (D-092)** |
+| 5a | **Shed overload fast, and never wedge** (found by the load test, item 5, built 12 October, D-092). At 400 people one process ran out of database connections: requests waited 30 s, failed with a 500, and the process stopped answering until restarted (`docs/PERFORMANCE.md`). Answer 503 with `Retry-After` within a second or two when busy, and recover on its own | A web or app user meets a hang and an error instead of "busy, try again", and one busy container takes itself out | Infrastructure, architecture · **Built 12 October (D-093)** |
 | 6 | **The validation pack's backend mechanisms, behind switches**: account deletion's machinery, retention as settings with no invented values | App stores reject apps without in-app deletion; building the mechanism now means the answers only fill it in (constraint 6: the values are never guessed) | Security, database · **Built 25 October (D-122)**: `POST /api/v1/me/deletion` with a step-up code for `delete_account`, refused while a deal is unfinished; it takes effect 30 days later, the owner told, first on the attention list, and able to cancel with no code (`DELETE`); then a job erases what no law asks us to keep and empties the account, brand and creator, the number let go and the other side keeping each deal with "someone who left". What is kept sits under seven `RETENTION_<KIND>_DAYS` settings, all unset; every table is placed by `app/modules/me/account_deletion_registry.py`. **Still owed:** deleting each kept kind when its period ends, a new item once the validation pack gives the periods |
 | 7 | **Results from proof: the test set run** (D-070 step 2) | Chooses the reading model by measurement | Founders' screenshots and an API key |
 
@@ -59,8 +66,9 @@ From `docs/PLATFORM_AND_TECH_PLAN.md` section 2.7 and the platform plan:
 | # | Item | Why | Gate |
 |---|---|---|---|
 | 8 | **One role per phone number, or both with a switch** | Decides the account tables before any client is built around them (D-046's open question) | Both founders; database; security · **Built 25 October (D-126)**: a number may hold a brand and a creator account of one person, each exactly as before; signing in as the other side makes it; the two never deal with each other; a phone change moves both |
+| 9 | **Device tokens for push**, recording each token's kind (Android, iPhone, Live Activity) | Push is how the app earns its install (A4); the frontend cannot register without it | Database · **Built 12 October (D-095)** |
 | 10 | **Login codes in the formats phones fill in by themselves** (Android SMS Retriever with the app's hash; the web one-time-code line) | Android 17 holds back ordinary code messages for three hours | The domain (item 4) and the login provider |
-| 11 | **Scoped tokens for assistants and agents** (App Intents, AppFunctions, WebMCP, MCP) | Every assistant calls our API; each needs its own token with limited permissions | Security |
+| 11 | **Scoped tokens for assistants and agents** (App Intents, AppFunctions, WebMCP, MCP) | Every assistant calls our API; each needs its own token with limited permissions | Security · **Built 27 October (D-138)**: `/api/v1/me/agent-tokens`, a named `nct_` token with chosen scopes (`deals:read`, `campaigns:read`, `applications:write`, `notes:write`, `alerts:write`) for 1 to 90 days, made with a step-up code for exactly its scopes, the owner told by a notice nobody can mute, shown once and kept only as an HMAC; every route closed to tokens unless listed in `auth/agent_scopes.py`, never money, identity, account control or an admin's; revoked one by one, by logging out everywhere or a phone change, erased with the account; the account's own rate limits. **Still owed:** item 41's MCP server, on OAuth 2.1 |
 | 13 | **Team seats for brands and agencies** (W11) | Real businesses have more than one person; changes the account model, so it belongs before the frontend | Both founders; database; security |
 
 ### 3.4 Backlog items still open
@@ -74,11 +82,17 @@ From `docs/PLATFORM_AND_TECH_PLAN.md` section 2.7 and the platform plan:
 
 ### 3.5 From psychology and trust (`docs/PSYCHOLOGY_AND_TRUST.md`)
 
-All built: notification preferences (18, D-079) and typical response times (19, D-077).
+| # | Item | Why | Gate |
+|---|---|---|---|
+| 18 | **Notification preferences** (approved, D-071): quiet hours, a daily digest, a choice per event | No nagging (one of the 13 banned dark patterns); urgent deal events still arrive at once | Database; a decision · **Built 8 October (D-079)** |
+| 19 | **Typical response times from real data** (approved, D-071; shown only from 5 examples) ("brands usually reply within N days") | Known waiting lowers anxiety; computed from existing timestamps, never invented | A decision on thresholds · **Built 8 October (D-077)** |
 
 ### 3.6 From go to market (`docs/GO_TO_MARKET.md`)
 
-All built: invite and source attribution (21, D-080) and city figures (22, D-078).
+| # | Item | Why | Gate |
+|---|---|---|---|
+| 21 | **Invite and source attribution** (approved, D-071): who invited whom, where a sign-up came from | Measures every channel and growth loop; rewards a creator who brings a brand | Database; privacy · **Built 8 October (D-080)** |
+| 22 | **City and niche aggregates for public pages** (approved, D-071: backend now, published once a city has the data): counts and medians only, behind thresholds | City pages and the quarterly rate summary, cited by search and AI search | A decision; privacy; D-036 consent and D-056 thresholds · **Built 8 October (D-078)** |
 
 ### 3.7 From the website wireframes (4 October, `docs/standards/ux.md` section 7)
 
@@ -87,8 +101,11 @@ Built already from the same list: deal stage and campaign summary (D-076), the p
 | # | Item | Why | Gate |
 |---|---|---|---|
 | 23 | **The pilot join list**: a waitlist endpoint for the landing page's Join form | The form has nowhere to send; consent wording is the validation pack's | Database; DPDP consent text |
+| 24 | **The date a memo was declined** | The deal pass shows when each step happened; a decline has no date today | Database (one column) · **Built 12 October (D-089)** |
+| 25 | **The creator's message with a change request** on a memo | The memo editor's banner shows what the creator asked for; it is not stored | Database (one column) · **Built 12 October (D-089)** |
 | 26 | **Deliverables as a list**, one row per deliverable, on campaigns and memos | The deal pass tracks each deliverable; also step 2 of fair-rate guidance (D-056) | A product decision; database · **Built 26 October (D-127)**: `deliverable_items` on campaigns and memos (platform, format, quantity, note; at most 10), the campaign's pre-filling the memo's, sealed with the terms from terms version 2 while every earlier seal stays version 1. **Still owed:** proof per deliverable, a proposal of its own |
 | 27 | **Draft first**: a creator sends a draft, the brand approves it, then it is posted | Proposed in the wireframes; changes the proof flow and its clock (D-025) | A product decision; database |
+| 28 | **When a brand first answered an application** | Needed to measure how fast brands reply (D-077 could not) | Database (one column) · **Built 12 October (D-089)** |
 
 ### 3.8 From the billion-dollar gap research (8 October, `docs/BILLION_DOLLAR_GAP.md`)
 
@@ -99,6 +116,7 @@ Built already from the same list: deal stage and campaign summary (D-076), the p
 | 29 | Connected Instagram and YouTube accounts: numbers from the platform | Security, database, dependency; Meta App Review and Google verification first · **Built 26 October (D-134, D-135), switched off**: connecting from the creator's own session (`state` once, PKCE for Google), tokens sealed under `PLATFORM_TOKEN_KEY`, one channel to one creator, disconnecting, Meta's deletion and deauthorize callbacks, the export and erasure; a daily job renewing tokens and reading the counts, expiring and telling the creator when a platform refuses; the platform's count beside the stated one in search and the media kit, and on the public Passport only that the creator controls the account. Waits only on Meta App Review, Google verification and the connect notice to switch on |
 | 30 | Results fetched from the platform at proof time | After 29 |
 | 31 | Audience authenticity signals from real data (replaces 16's plan) | After 29 |
+| 32 | A UPI pay link on every payment; the money never passes through us | A founder decision on storing UPI IDs · **Built 10 October (D-085)** |
 | 33 | The barter tax tracker against the ₹20,000 TDS line | Validation pack wording |
 | 35 | Aadhaar eSign on the deal memo, optional | Legal; dependency |
 | 36 | Verified business from GST | Dependency, security |
@@ -107,9 +125,12 @@ Built already from the same list: deal stage and campaign summary (D-076), the p
 | 39 | Content pre-check against the memo and ASCI rules, flags only | Validation pack (ASCI) |
 | 40 | A campaign brief from a few sentences | |
 | 41 | An MCP server for brands' and creators' own AI assistants | Security; after 11 |
+| 42 | Work together again in one tap | **Built 10 October (D-084)** |
 | 43 | Campaign alerts for creators | Database · **Built 26 October (D-130)**: `/api/v1/me/campaign-alerts`, at most 5 a creator, each any mix of a city, a niche, a type and a least budget; publishing queues the campaign in an outbox (`campaign_alert_send`) and a job every minute records a mutable `campaign_alert` notice for each creator whose alert fits, at most 20 a Tamil Nadu day, never across a block, from a suspended, deleted or withheld party, or to the brand's own other side. In the app only until push delivery exists (E1) |
 | 44 | Counter-offers on quotes | Database · **Built 25 October (D-123)**: either side of a waiting application names a figure at `POST /api/v1/applications/{id}/offers`; the other accepts, declines or counters; at most 3 each, one open at a time, none once agreed; the application cannot be accepted while one waits; an agreed figure pre-fills the memo's fee and is shown beside a different one |
+| 45 | Creator availability | Database · **Built 8 October (D-083)** |
 | 46 | An agency workspace | Founders, security, database |
+| 47 | A campaign report a brand can hand to its boss | **Built 12 October (D-088)** |
 | 48 | Readiness for ISO 27001 or SOC 2 | Founders |
 | 49 | A public status page and service levels | Infrastructure |
 
@@ -127,13 +148,22 @@ Built from 3.8:
 | 50 | A public page listing, in order, what ranks creators in search and matches. It changes with the ranking code (E-Commerce Rules 5(3)) | Copy; **Confirm** we are a marketplace entity |
 | 51 | The grievance clocks in the report queue: acknowledge within 24 hours, resolve within 7 days, unlawful content within 36 hours, intimate content and impersonation within 2 hours (IT Rules as amended 2026) | Security · **Built 15 October (D-103)**: deadlines on every report, the queue by deadline, `GET /api/v1/admin/reports/clocks`, admins warned every 5 minutes. Sentry's alert rule in production is a founder step (`infra/README.md` step 9) |
 | 52 | Taking down one item of content within 3 hours of an order, without suspending the account | Security, database · **Built 16 October (D-104)**: `POST /api/v1/admin/takedowns` withholds one creator, brand or campaign (451 to everyone else, out of every list, the owner told and still seeing it), measured against the 3-hour clock, its text preserved; `GET /api/v1/me/takedowns` for the owner. Who watches for orders at night, and the lawyer's Confirm items, are outside the code (`legal.md` section 3.3) |
+| 53 | Logs kept 180 days in India (CERT-In); today 30 | **Infrastructure decision** · **Built 10 October (D-086)** |
+| 54 | Adults only: a declared date of birth at sign-up (contract law, DPDP section 9) | **Founders decide**; database · **Built 10 October (D-086)** |
+| 55 | A CI check that fails on a dependency licence not approved (GPL, AGPL) | CI decision · **Built 10 October (D-086)** |
+| 56 | CI checks the OpenTofu files (`tofu fmt` and `tofu validate`); nothing checks them today | CI decision · **Built 10 October (D-086)** |
 
 ### 3.10 From the trust and safety standard (10 October, `docs/standards/trust-and-safety.md`)
 
 | # | Item | Gate |
 |---|---|---|
+| 57 | Proof and dispute-evidence links only from a published list of hosts; today any https address passes, so a "proof" link can be a phishing page | Security · **Built 10 October (D-086)** |
+| 58 | Daily ceilings per account on everything that reaches another person: invitations per brand, applications per creator, reports, disputes, search | Security · **Built 10 October (commit d9e898b; no decision entry of its own)** |
+| 59 | Block, both ways: a creator blocks a brand, a brand blocks a creator; no more contact, and out of each other's discovery | Security, database · **Built 10 October (commit e9e7ddd; no decision entry of its own)** |
+| 60 | Flags on free text: requests for money in text a creator reads, and contact details before a deal is agreed. Flagged, not hidden: there is no in-app chat yet to talk through instead (D-086) | Security · **Built 10 October (D-086)** |
 | 61 | Pairs of accounts sharing a device or network at sign-up, flagged to the admin. (The other half, counting different counterparties on records, was built 10 October.) Needs storing sign-up addresses, which is personal data | **Founders and lawyer first** (`legal.md` 3.1); security, database |
 | 62 | The login-code message says we never ask for it | MSG91 template, founders |
+| 63 | The founders' weekly numbers (`docs/SURVIVAL_PLAYBOOK.md` section 4) as an admin view: campaign fill rate, application success, time to first application, repeat rate, paid on time, active brands and creators | Security (admin only) · **Built 10 October (D-087)** |
 
 Item 34, payment confirmation from bank statements, was researched and set aside: Account Aggregator data goes only to regulated financial entities.
 

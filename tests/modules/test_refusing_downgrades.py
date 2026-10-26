@@ -1,7 +1,7 @@
 """Every downgrade that would destroy unrecoverable data refuses while it exists.
 
 database.md section 6: losing such data must be a deliberate act, never a
-side effect of a rollback. Thirty migrations refuse. Until 14 October 2026 each
+side effect of a rollback. Thirty-one migrations refuse. Until 14 October 2026 each
 refusal had been proven only by hand, in the session that wrote it
 (database.md gap 6, item 98); a later edit to one could have let a rollback
 drop a deal's record or a person's block without anyone noticing.
@@ -16,6 +16,7 @@ the transaction is rolled back regardless, so nothing is ever dropped.
 
 import importlib.util
 import uuid
+from datetime import timedelta
 from pathlib import Path
 from types import ModuleType
 
@@ -65,6 +66,7 @@ REFUSING = {
     "b7c240ab2d4b": "barter shipments, and their sealed record entries",
     "3734d5492968": "connected accounts, and the deletions Meta asked for",
     "a2a642dc46be": "feedback on finished deals, and their sealed record entries",
+    "2de4ccbd813c": "assistants' tokens, working or not",
 }
 
 
@@ -626,3 +628,17 @@ def test_deal_feedback(client, db, clock):
     assert given.status_code == 201, given.text
 
     assert f"{before + 1} deal feedback answers" in refusal(db, "a2a642dc46be")
+
+
+def test_agent_tokens(db, clock):
+    from app.modules.auth import agent_tokens
+    from app.modules.auth.models.account import Account
+
+    before = count(db, "SELECT count(*) FROM agent_token")
+    account = db.get_one(Account, creator_user(db, clock).account_id)
+    agent_tokens.add(
+        db, account, "Claude", ["deals:read"], clock.now + timedelta(days=30), clock.now
+    )
+    db.flush()
+
+    assert f"{before + 1} assistant tokens exist" in refusal(db, "2de4ccbd813c")
