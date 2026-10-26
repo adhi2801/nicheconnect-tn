@@ -27,6 +27,7 @@ from app.modules.admin.exceptions import (
 )
 from app.modules.admin.models.admin_action import AdminAction
 from app.modules.admin.models.report import Report
+from app.modules.auth import agent_tokens
 from app.modules.auth import service as login
 from app.modules.auth.exceptions import AdminNotFound
 from app.modules.auth.models.account import Account
@@ -191,7 +192,11 @@ def suspend(
     note: str,
     now: datetime,
 ) -> Account:
-    """Stop the account at once, and end every session it has."""
+    """Stop the account at once, and end every session and assistant's token it has.
+
+    Tokens are revoked, not only refused while suspended, so restoring an
+    account taken over never brings the intruder's tokens back (D-138).
+    """
     account = _target(db, admin, account_id)  # read with its row locked
     if account.suspended_at is not None:
         db.rollback()
@@ -199,6 +204,7 @@ def suspend(
     account.suspended_at = now
     account.suspension_reason = reason
     login.end_sessions(db, account.id, now)
+    agent_tokens.revoke_all(db, account.id, now)
     log_action(db, admin, "suspend", now, subject_account_id=account.id, note=note)
     db.commit()
     db.refresh(account)

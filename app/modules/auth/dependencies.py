@@ -135,15 +135,17 @@ def _authenticate_agent(
         agent_token.scopes, method, route.path
     ):
         raise AgentScopeMissing()
+    claims = AccessTokenClaims(
+        account_id=account.id, role=account.role, expires_at=agent_token.expires_at
+    )
     request.state.account_id = account.id
     request.state.agent_token_id = agent_token.id
     # No login stands behind a token: it counts as one made just now, so no
     # check that wants an established login can pass with it.
     request.state.authenticated_at = now
     request.state.session_id = None
-    claims = AccessTokenClaims(
-        account_id=account.id, role=account.role, expires_at=agent_token.expires_at
-    )
+    # Last of all, so only a request that passed every check is a use.
+    agent_tokens.mark_used(db, agent_token, now)
     return account, claims
 
 

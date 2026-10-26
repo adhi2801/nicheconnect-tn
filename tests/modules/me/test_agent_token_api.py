@@ -16,6 +16,7 @@ import pytest
 from sqlalchemy import func, select
 
 from app.main import app
+from app.modules.admin import admin_service
 from app.modules.auth import agent_tokens, erasure, step_up_service
 from app.modules.auth import service as login
 from app.modules.auth.exceptions import RoleNotAllowed
@@ -39,6 +40,8 @@ from tests.step_up import STEP_UP_URL
 
 TOKENS_URL = "/api/v1/me/agent-tokens"
 ME_URL = "/api/v1/auth/me"
+# A route `campaigns:read` reaches, for the tests of when a token works.
+DISCOVER_URL = f"{CAMPAIGNS_URL}/discover"
 PREFERENCES_URL = "/api/v1/me/notification-preferences"
 
 
@@ -221,13 +224,54 @@ def test_a_token_outside_the_limits_is_refused(client, creator, fields):
 # --- what a token reaches -------------------------------------------------------------
 
 
-def test_a_token_says_whose_it_is(client, db, sender, creator):
+def test_the_answer_carrying_a_token_is_never_cached(client, db, sender, creator):
+    scopes = ["deals:read"]
+    code = code_for(client, db, sender, creator, scopes)
+
+    response = create(client, creator, code, scopes)
+
+    assert response.status_code == 201, response.text
+    assert response.headers["cache-control"] == "no-store"
+
+
+def test_a_token_reaches_its_scope(client, db, sender, creator):
     made = make(client, db, sender, creator, ["campaigns:read"])
 
-    response = client.get(ME_URL, headers=bearer(made["token"]))
+    response = client.get(DISCOVER_URL, headers=bearer(made["token"]))
 
     assert response.status_code == 200, response.text
-    assert response.json()["id"] == str(creator.account_id)
+
+
+def test_a_token_never_reads_payment_records_the_phone_or_accepts(
+    client, db, sender, brand, creator
+):
+    """Found by the independent review of item 11 on 27 October 2026."""
+    every = [
+        "deals:read",
+        "campaigns:read",
+        "applications:write",
+        "notes:write",
+        "alerts:write",
+    ]
+    memo_id = accepted_memo(client, brand, creator)
+    # The brand's one campaign, made for the deal.
+    [campaign] = client.get(CAMPAIGNS_URL, headers=brand.headers).json()["items"]
+    campaign_id = campaign["id"]
+    for_brand = bearer(make(client, db, sender, brand, every)["token"])
+    for_creator = bearer(make(client, db, sender, creator, every)["token"])
+
+    refused = [
+        client.get(ME_URL, headers=for_creator),
+        client.get(f"{MEMOS_URL}/{memo_id}/record", headers=for_creator),
+        client.get(f"{CAMPAIGNS_URL}/{campaign_id}/report", headers=for_brand),
+        client.get(f"{CAMPAIGNS_URL}/{campaign_id}/report.csv", headers=for_brand),
+        client.post(
+            f"/api/v1/applications/{uuid.uuid4()}/accept-invitation", headers=for_creator
+        ),
+    ]
+
+    for response in refused:
+        assert_problem(response, 403, "agent_scope_missing")
 
 
 def test_a_token_reads_deals_only_with_deals_read(client, db, sender, brand, creator):
@@ -336,11 +380,11 @@ def test_a_token_stops_when_it_expires(client, db, sender, creator, clock):
     ]
     clock.advance(timedelta(days=1))
 
-    assert_problem(client.get(ME_URL, headers=bearer(token)), 401, "invalid_token")
+    assert_problem(client.get(DISCOVER_URL, headers=bearer(token)), 401, "invalid_token")
 
 
 def test_an_unknown_token_is_refused_like_an_expired_one(client):
-    response = client.get(ME_URL, headers=bearer(agent_tokens.new_agent_token()))
+    response = client.get(DISCOVER_URL, headers=bearer(agent_tokens.new_agent_token()))
 
     assert_problem(response, 401, "invalid_token")
     assert response.headers["www-authenticate"] == "Bearer"
@@ -353,7 +397,7 @@ def test_the_owner_revokes_a_token_and_it_stops(client, db, sender, creator):
 
     assert revoked.status_code == 204, revoked.text
     assert_problem(
-        client.get(ME_URL, headers=bearer(made["token"])), 401, "invalid_token"
+        client.get(DISCOVER_URL, headers=bearer(made["token"])), 401, "invalid_token"
     )
     assert client.get(TOKENS_URL, headers=creator.headers).json()["items"] == []
     assert_problem(
@@ -369,7 +413,7 @@ def test_nobody_revokes_another_persons_token(client, db, sender, creator, brand
     response = client.delete(f"{TOKENS_URL}/{made['id']}", headers=brand.headers)
 
     assert_problem(response, 404, "agent_token_not_found")
-    assert client.get(ME_URL, headers=bearer(made["token"])).status_code == 200
+    assert client.get(DISCOVER_URL, headers=bearer(made["token"])).status_code == 200
 
 
 def test_logging_out_everywhere_ends_every_token(client, db, sender, creator, clock):
@@ -378,7 +422,7 @@ def test_logging_out_everywhere_ends_every_token(client, db, sender, creator, cl
     login.logout_all_sessions(db, creator.account_id, clock.now)
     db.flush()
 
-    assert_problem(client.get(ME_URL, headers=bearer(token)), 401, "invalid_token")
+    assert_problem(client.get(DISCOVER_URL, headers=bearer(token)), 401, "invalid_token")
 
 
 def test_a_suspended_owners_token_stops(client, db, sender, creator, clock):
@@ -388,7 +432,29 @@ def test_a_suspended_owners_token_stops(client, db, sender, creator, clock):
     account.suspension_reason = "fake_profile"
     db.flush()
 
-    assert_problem(client.get(ME_URL, headers=bearer(token)), 403, "account_suspended")
+    assert_problem(
+        client.get(DISCOVER_URL, headers=bearer(token)), 403, "account_suspended"
+    )
+
+
+def test_suspending_revokes_every_token_so_restoring_brings_none_back(
+    client, db, sender, creator, clock
+):
+    """Found by the independent review of item 11 on 27 October 2026."""
+    token = make(client, db, sender, creator, ["campaigns:read"])["token"]
+    admin = create_account(db, "admin")
+
+    admin_service.suspend(
+        db,
+        admin,
+        creator.account_id,
+        reason="fake_profile",
+        note="Taken over",
+        now=clock.now,
+    )
+    admin_service.restore(db, admin, creator.account_id, note="Owner back", now=clock.now)
+
+    assert_problem(client.get(DISCOVER_URL, headers=bearer(token)), 401, "invalid_token")
 
 
 def test_a_deleted_owners_token_stops(client, db, sender, creator, clock):
@@ -460,25 +526,36 @@ def test_last_use_is_written_at_most_once_a_minute(client, db, sender, creator, 
     made = make(client, db, sender, creator, ["campaigns:read"])
     first = clock.now
 
-    client.get(ME_URL, headers=bearer(made["token"]))
+    client.get(DISCOVER_URL, headers=bearer(made["token"]))
     clock.advance(timedelta(seconds=30))
-    client.get(ME_URL, headers=bearer(made["token"]))
+    client.get(DISCOVER_URL, headers=bearer(made["token"]))
     row = db.get_one(AgentToken, uuid.UUID(made["id"]))
     db.refresh(row)
     assert row.last_used_at == first
 
     clock.advance(timedelta(seconds=30))
-    client.get(ME_URL, headers=bearer(made["token"]))
+    client.get(DISCOVER_URL, headers=bearer(made["token"]))
     db.refresh(row)
     assert row.last_used_at == first + timedelta(minutes=1)
 
 
+def test_a_refused_call_is_never_shown_as_a_use(client, db, sender, creator):
+    made = make(client, db, sender, creator, ["campaigns:read"])
+
+    refused = client.get("/api/v1/me/sessions", headers=bearer(made["token"]))
+
+    assert_problem(refused, 403, "agent_scope_missing")
+    row = db.get_one(AgentToken, uuid.UUID(made["id"]))
+    db.refresh(row)
+    assert row.last_used_at is None
+
+
 def test_a_token_shares_its_owners_rate_limit(client, db, sender, creator):
     token = make(client, db, sender, creator, ["campaigns:read"])["token"]
-    for _ in range(30):
-        assert client.get(ME_URL, headers=creator.headers).status_code == 200
+    for _ in range(60):
+        assert client.get(DISCOVER_URL, headers=creator.headers).status_code == 200
 
-    assert client.get(ME_URL, headers=bearer(token)).status_code == 429
+    assert client.get(DISCOVER_URL, headers=bearer(token)).status_code == 429
 
 
 def test_the_list_is_one_query_however_long(client, db, sender, creator, clock):

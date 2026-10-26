@@ -71,9 +71,8 @@ def account_for(db: Session, token: str, now: datetime) -> tuple[Account, AgentT
     """The token's account and its row, if it still works. One query.
 
     Raises InvalidToken for a token that is unknown, revoked or expired, all
-    alike, so nobody learns which. Writes `last_used_at` at most once per
-    LAST_USED_STEP, and commits that alone: it runs before the route's own
-    work, so nothing else is in the transaction.
+    alike, so nobody learns which. Writes nothing: `mark_used` does, once
+    the request has passed every check.
     """
     found = db.execute(
         select(Account, AgentToken)
@@ -87,15 +86,25 @@ def account_for(db: Session, token: str, now: datetime) -> tuple[Account, AgentT
     if found is None:
         raise InvalidToken()
     account, agent_token = found
-    last_used = agent_token.last_used_at
-    if last_used is None or now - last_used >= LAST_USED_STEP:
-        db.execute(
-            update(AgentToken)
-            .where(AgentToken.id == agent_token.id)
-            .values(last_used_at=now)
-        )
-        db.commit()
     return account, agent_token
+
+
+def mark_used(db: Session, agent_token: AgentToken, now: datetime) -> None:
+    """Write `last_used_at`, at most once per LAST_USED_STEP. Commits that alone.
+
+    Called once the request has passed every check, so a refused call is
+    never shown to the owner as a use. It runs before the route's own work,
+    so nothing else is in the transaction; the token's id is read first,
+    since the commit expires every loaded object.
+    """
+    last_used = agent_token.last_used_at
+    if last_used is not None and now - last_used < LAST_USED_STEP:
+        return
+    token_id = agent_token.id
+    db.execute(
+        update(AgentToken).where(AgentToken.id == token_id).values(last_used_at=now)
+    )
+    db.commit()
 
 
 def add(

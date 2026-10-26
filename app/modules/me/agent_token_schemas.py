@@ -29,14 +29,16 @@ AgentScopes = Annotated[
         min_length=1,
         max_length=len(AGENT_SCOPES),
         description=(
-            "What the assistant may do. `deals:read`: your deals, their notes, "
-            "proof, record and feedback, never a payment, UPI ID or address. "
-            "`campaigns:read`: campaigns and applications as you see them. "
-            "`applications:write`: applying and withdrawing, answering an "
+            "What the assistant may do. `deals:read`: your deals, their terms "
+            "and stage, notes, proof and feedback; never the deal record, a "
+            "payment's details, a dispute's content, a UPI ID or an address. `campaigns:read`: campaigns and "
+            "applications as you see them; never the campaign report. "
+            "`applications:write`: applying and withdrawing, declining an "
             "invitation, and a brand's shortlisting or turning down; never "
-            "accepting one. `notes:write`: adding a note to a deal. "
-            "`alerts:write`: your campaign alerts. No scope reaches money, your "
-            "phone, passkeys, sessions, exports or deletion"
+            "accepting an application or an invitation. `notes:write`: adding a "
+            "note to a deal. `alerts:write`: your campaign alerts. No scope "
+            "reaches payment records, your phone number, passkeys, sessions, "
+            "exports or deletion"
         ),
         examples=[["deals:read", "campaigns:read"]],
     ),
