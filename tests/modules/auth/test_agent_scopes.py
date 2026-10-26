@@ -54,13 +54,30 @@ NEVER = (
 # as the start of the path's last part, so `accept-invitation` is caught too
 # (missed by an `endswith` check; found by the independent review).
 BINDING = ("accept", "send", "publish", "mark-paid", "confirm")
-# Fields no listed route may answer: payment records, disputes' progress, UPI
-# IDs and the person's phone number (D-138). A deal's terms (its fee, its
-# budget, `has_open_dispute`) are part of the deal and may be read.
+# Fields no listed route may answer: a payment's details, a dispute's
+# content, a UPI ID or bank details, the person's phone number, and the deal
+# record's entries (D-138). A deal's terms and where it stands may be read.
 NEVER_ANSWERED = re.compile(
-    r"upi|phone|payment_state|marked_paid|payment_confirmed|confirmed_paise"
-    r"|payments_sent|pay_details|^record$|reference",
+    r"upi|vpa|ifsc|bank|account_number|phone|mobile|whatsapp|paid|pay_details"
+    r"|payment_(state|confirmed|reference)|confirmed_paise|payments_sent"
+    r"|reference|dispute|^entries$|^facts$",
     re.IGNORECASE,
+)
+# Matched by the pattern, and answered on purpose, each judged on its own:
+# that a dispute is open on the deal (never what it says), and a brand's
+# public record of paying, in counts and shares (D-038).
+ANSWERED_BY_DESIGN = {
+    "has_open_dispute",
+    "deals_paid",
+    "deals_unpaid",
+    "paid_on_time_share",
+}
+# Taken out of the scopes for what they answered (the independent review of
+# 27 October 2026), so the check below must flag each of them.
+TAKEN_OUT = (
+    ("GET", "/api/v1/deal-memos/{memo_id}/record"),
+    ("GET", "/api/v1/campaigns/{campaign_id}/report"),
+    ("GET", "/api/v1/auth/me"),
 )
 # Listed routes with no response model, read by hand: a calendar file of the
 # deal's dates, and a removal that answers nothing.
@@ -143,17 +160,42 @@ def test_no_listed_route_is_money_identity_or_control(entry):
     assert not path.rsplit("/", 1)[-1].startswith(BINDING), entry
 
 
-def fields_of(annotation: Any, seen: set[type]) -> Iterator[str]:
-    """Every field name in a response model, nested models included."""
+def untyped(annotation: Any) -> bool:
+    """A free-form value, whose contents no field name can vouch for."""
+    if annotation is Any:
+        return True
+    args = typing.get_args(annotation)
+    return typing.get_origin(annotation) is dict and bool(args) and args[-1] is Any
+
+
+def fields_of(annotation: Any, seen: set[type]) -> Iterator[tuple[str, Any]]:
+    """Every field of a response model, computed ones and nested models included."""
     for inner in typing.get_args(annotation):
         yield from fields_of(inner, seen)
     if isinstance(annotation, type) and issubclass(annotation, BaseModel):
         if annotation in seen:
             return
         seen.add(annotation)
-        for name, field in annotation.model_fields.items():
-            yield name
-            yield from fields_of(field.annotation, seen)
+        fields = {
+            name: field.annotation for name, field in annotation.model_fields.items()
+        }
+        fields |= {
+            name: info.return_type
+            for name, info in annotation.model_computed_fields.items()
+        }
+        for name, field_type in fields.items():
+            yield name, field_type
+            yield from fields_of(field_type, seen)
+
+
+def flagged(model: Any) -> set[str]:
+    """The fields of `model` no assistant may be answered, by name or as free form."""
+    return {
+        name
+        for name, field_type in fields_of(model, set())
+        if (NEVER_ANSWERED.search(name) and name not in ANSWERED_BY_DESIGN)
+        or untyped(field_type)
+    }
 
 
 @pytest.mark.parametrize(
@@ -167,9 +209,15 @@ def test_no_listed_route_answers_a_payment_record_or_the_phone(route):
         assert (method(route), route.path) in UNTYPED
         return
 
-    answered = set(fields_of(route.response_model, set()))
+    assert flagged(route.response_model) == set()
 
-    assert {name for name in answered if NEVER_ANSWERED.search(name)} == set()
+
+@pytest.mark.parametrize("entry", TAKEN_OUT)
+def test_the_check_flags_every_route_taken_out_for_what_it_answered(entry):
+    """Proves the check above is strong enough: each removed route would fail it."""
+    [route] = [r for r in every_route() if (method(r), r.path) == entry]
+
+    assert flagged(route.response_model) != set()
 
 
 def test_only_reads_are_in_read_scopes():

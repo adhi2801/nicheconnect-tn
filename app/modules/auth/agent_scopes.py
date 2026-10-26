@@ -6,10 +6,11 @@ closed to every token until a decision lists it. Each entry is a method and
 the route's path template, read from the route that matched, so no id in
 the path can make one route pass for another.
 
-A token reads a deal's and a campaign's terms (fees, budgets, dates), as
-its person sees them. Never listed, whatever the scope: payment records and
-disputes (the deal record, the campaign report, payments, pay details, UPI
-IDs), counter-offers on a fee, the person's identity and the account's own
+A token reads a deal's and a campaign's terms (fees, budgets, dates) and
+where a deal stands (its stage, whether a dispute is open), as its person
+sees them. Never listed, whatever the scope: a payment's details and a
+dispute's content (the deal record, the campaign report, payments, pay
+details, UPI IDs), counter-offers on a fee, the person's identity and the account's own
 control (their phone number, passkeys, sessions, step-up codes, exports,
 deletion, devices, blocks, notification settings), anything an admin does,
 and accepting or agreeing to anything that binds the person (an application

@@ -29,9 +29,9 @@ AgentScopes = Annotated[
         min_length=1,
         max_length=len(AGENT_SCOPES),
         description=(
-            "What the assistant may do. `deals:read`: your deals and their "
-            "terms, notes, proof and feedback; never the deal record, a payment, "
-            "a dispute, a UPI ID or an address. `campaigns:read`: campaigns and "
+            "What the assistant may do. `deals:read`: your deals, their terms "
+            "and stage, notes, proof and feedback; never the deal record, a "
+            "payment's details, a dispute's content, a UPI ID or an address. `campaigns:read`: campaigns and "
             "applications as you see them; never the campaign report. "
             "`applications:write`: applying and withdrawing, declining an "
             "invitation, and a brand's shortlisting or turning down; never "
