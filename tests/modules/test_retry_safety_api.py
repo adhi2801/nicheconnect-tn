@@ -41,11 +41,17 @@ REDIS_URL = "redis://localhost:6379/2"
 # Login has its own rules and is not covered by D-040: replaying a one-time
 # code or a refresh response is a security question, decided separately.
 NOT_COVERED_PREFIX = "/api/v1/auth/"
-# Writes deliberately never replayed, each with its reason. A replay keeps
-# the first answer in the idempotency store, and this answer is a person's
-# whole data file, the copy D-111 refuses to keep; a lost answer means
-# asking for a new export instead.
-NEVER_REPLAYED = {"POST /api/v1/me/exports/{export_id}/download"}
+# Writes deliberately never replayed, each with its reason:
+# - the export download: a replay keeps the first answer in the idempotency
+#   store, and this answer is a person's whole data file, the copy D-111
+#   refuses to keep; a lost answer means asking for a new export instead;
+# - Meta's two callbacks (D-134): Meta calls them and sends no key, and a
+#   repeat is harmless, since a second deletion finds nothing left to remove.
+NEVER_REPLAYED = {
+    "POST /api/v1/me/exports/{export_id}/download",
+    "POST /api/v1/platforms/meta/data-deletion",
+    "POST /api/v1/platforms/meta/deauthorize",
+}
 
 CAMPAIGN = {
     "title": "Pongal sweets launch",

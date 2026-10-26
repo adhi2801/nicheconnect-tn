@@ -207,6 +207,29 @@ class Settings(BaseSettings):
     # until the publish notice says search engines will show the Passport
     # (legal.md section 3.1, a Confirm item).
     passport_indexing: bool = False
+    # Connected Instagram and YouTube accounts (item 29, D-134): numbers read
+    # from the platform with the creator's consent. Off until Meta App Review
+    # and Google's verification approve the apps, and the connect notice's
+    # wording exists (legal.md section 3.1). On, every setting below must be
+    # set, checked at startup. The app ids are not secret; the app secrets and
+    # PLATFORM_TOKEN_KEY, which encrypts the tokens at rest, are.
+    platform_connections_enabled: bool = False
+    platform_redirect_base: str | None = Field(
+        default=None,
+        pattern=r"^https?://[A-Za-z0-9.-]+(:[0-9]{1,5})?(/[A-Za-z0-9._/-]*)?$",
+    )
+    meta_app_id: str | None = Field(default=None, pattern=r"^[0-9]{5,25}$")
+    meta_app_secret: SecretStr | None = None
+    google_client_id: str | None = Field(
+        default=None, pattern=r"^[A-Za-z0-9.-]{10,200}\.apps\.googleusercontent\.com$"
+    )
+    google_client_secret: SecretStr | None = None
+    platform_token_key: SecretStr | None = None
+    # The version of the notice a creator reads before connecting (legal.md
+    # rule 5). Its wording comes from the validation pack (constraint 6).
+    connect_notice_version: str | None = Field(
+        default=None, pattern=r"^[A-Za-z0-9._-]{1,40}$"
+    )
     # How long what a law may require us to keep is kept after its account
     # is deleted (item 6, D-122), in days, one setting a kind. Unset means
     # kept, as the law may require: the periods come from the validation
@@ -229,6 +252,10 @@ class Settings(BaseSettings):
         "upi_notice_version",
         "traces_endpoint",
         "passkey_rp_id",
+        "platform_redirect_base",
+        "meta_app_id",
+        "google_client_id",
+        "connect_notice_version",
         "retention_deal_record_days",
         "retention_payment_record_days",
         "retention_dispute_days",
@@ -243,7 +270,13 @@ class Settings(BaseSettings):
         # `SENTRY_DSN=` in .env means "off", not an address that is "".
         return None if value == "" else value
 
-    @field_validator("anthropic_api_key", mode="before")
+    @field_validator(
+        "anthropic_api_key",
+        "meta_app_secret",
+        "google_client_secret",
+        "platform_token_key",
+        mode="before",
+    )
     @classmethod
     def empty_key_is_no_key(cls, value: object) -> object:
         # `ANTHROPIC_API_KEY=` in .env means "none", not an empty key.
@@ -284,6 +317,45 @@ class Settings(BaseSettings):
         if not key or key.startswith(PLACEHOLDER_PREFIX):
             raise ValueError(
                 "proof_reading_enabled is on, so ANTHROPIC_API_KEY must be set"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def platform_connections_are_usable(self) -> Settings:
+        """Connections switched on with a setting missing fail at startup (D-134)."""
+        if not self.platform_connections_enabled:
+            return self
+        plain = {
+            "PLATFORM_REDIRECT_BASE": self.platform_redirect_base,
+            "META_APP_ID": self.meta_app_id,
+            "GOOGLE_CLIENT_ID": self.google_client_id,
+            "CONNECT_NOTICE_VERSION": self.connect_notice_version,
+        }
+        secret = {
+            "META_APP_SECRET": self.meta_app_secret,
+            "GOOGLE_CLIENT_SECRET": self.google_client_secret,
+            "PLATFORM_TOKEN_KEY": self.platform_token_key,
+        }
+        missing = [name for name, value in plain.items() if not value] + [
+            name
+            for name, value in secret.items()
+            if value is None or value.get_secret_value().startswith(PLACEHOLDER_PREFIX)
+        ]
+        if missing:
+            raise ValueError(
+                "platform_connections_enabled is on, so these must be set: "
+                + ", ".join(missing)
+            )
+        key = self.platform_token_key
+        if key is not None and len(key.get_secret_value()) < MIN_KEY_LENGTH:
+            raise ValueError(
+                f"PLATFORM_TOKEN_KEY must be at least {MIN_KEY_LENGTH} characters"
+            )
+        if self.environment not in PLAIN_HTTP_ENVIRONMENTS and not str(
+            self.platform_redirect_base
+        ).startswith("https://"):
+            raise ValueError(
+                "PLATFORM_REDIRECT_BASE must be https outside local and test"
             )
         return self
 

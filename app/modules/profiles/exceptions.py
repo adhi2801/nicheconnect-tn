@@ -123,3 +123,60 @@ class BrandNameNeedsDomain(DomainError):
             "Your name mixes Latin letters with look-alike letters from another "
             "alphabet. Rename the brand, or ask us to review it."
         )
+
+
+class ConnectionsOff(DomainError):
+    # Off until Meta App Review, Google's verification and the connect
+    # notice exist (D-134).
+    status_code = HTTPStatus.SERVICE_UNAVAILABLE
+    code = "connections_unavailable"
+    title = "Connecting Instagram and YouTube is not available yet"
+
+
+class ConnectionAttemptInvalid(DomainError):
+    # Unknown, expired, already used, another account's or another
+    # platform's: all one answer, so a guessed state learns nothing.
+    status_code = HTTPStatus.CONFLICT
+    code = "connection_attempt_invalid"
+    title = "That sign-in has expired or is not yours. Start connecting again"
+
+
+class PlatformRefusedConnection(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "platform_refused"
+    title = "The platform did not let us connect. Try again from the start"
+
+
+class PlatformDown(DomainError):
+    status_code = HTTPStatus.SERVICE_UNAVAILABLE
+    code = "platform_unavailable"
+    title = "The platform is not answering. Try again in a few minutes"
+
+    def __init__(self) -> None:
+        super().__init__(headers={"Retry-After": "60"})
+
+
+class ChannelAlreadyConnected(DomainError):
+    # One platform account for one creator (D-134): two people cannot both
+    # claim a channel. Which creator holds it is never said.
+    status_code = HTTPStatus.CONFLICT
+    code = "channel_already_connected"
+    title = "That account is already connected to another creator on NicheConnect"
+
+
+class ConnectionNotFound(DomainError):
+    status_code = HTTPStatus.NOT_FOUND
+    code = "connection_not_found"
+    title = "You have no account connected on that platform"
+
+
+class SignedRequestInvalid(DomainError):
+    status_code = HTTPStatus.BAD_REQUEST
+    code = "invalid_signed_request"
+    title = "That request was not signed by Meta"
+
+
+class DeletionRequestNotFound(DomainError):
+    status_code = HTTPStatus.NOT_FOUND
+    code = "deletion_request_not_found"
+    title = "No deletion request has that confirmation code"

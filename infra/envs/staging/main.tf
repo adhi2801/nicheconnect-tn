@@ -66,6 +66,31 @@ variable "upi_notice_version" {
   default = ""
 }
 
+variable "platform_connections_enabled" {
+  type    = bool
+  default = false
+}
+
+variable "platform_redirect_base" {
+  type    = string
+  default = ""
+}
+
+variable "meta_app_id" {
+  type    = string
+  default = ""
+}
+
+variable "google_client_id" {
+  type    = string
+  default = ""
+}
+
+variable "connect_notice_version" {
+  type    = string
+  default = ""
+}
+
 module "app" {
   source = "../../modules/app"
 
@@ -84,11 +109,16 @@ module "app" {
   api_memory        = 1024
   api_desired_count = 1
 
-  otp_sender            = var.otp_sender
-  msg91_whatsapp_number = var.msg91_whatsapp_number
-  proof_reading_enabled = var.proof_reading_enabled
-  sentry_dsn            = var.sentry_dsn
-  upi_notice_version    = var.upi_notice_version
+  otp_sender                   = var.otp_sender
+  msg91_whatsapp_number        = var.msg91_whatsapp_number
+  proof_reading_enabled        = var.proof_reading_enabled
+  sentry_dsn                   = var.sentry_dsn
+  upi_notice_version           = var.upi_notice_version
+  platform_connections_enabled = var.platform_connections_enabled
+  platform_redirect_base       = var.platform_redirect_base
+  meta_app_id                  = var.meta_app_id
+  google_client_id             = var.google_client_id
+  connect_notice_version       = var.connect_notice_version
 }
 
 output "app" {

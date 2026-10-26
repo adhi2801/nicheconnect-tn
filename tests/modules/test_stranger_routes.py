@@ -87,6 +87,10 @@ PUBLIC: dict[tuple[str, str], tuple[frozenset[str], str]] = {
         BRANDS,
         "how fast a creator answers (D-077), for brands",
     ),
+    ("GET", "/api/v1/platforms/meta/data-deletion/{confirmation_code}"): (
+        EVERYONE,
+        "the deletion status page Meta requires: a random code, naming no one (D-134)",
+    ),
     # Not a read, but open by design: any creator may apply to an open campaign.
     ("POST", "/api/v1/campaigns/{campaign_id}/applications"): (
         frozenset({"creator"}),
@@ -99,6 +103,9 @@ PUBLIC: dict[tuple[str, str], tuple[frozenset[str], str]] = {
 OWN_BY_CONSTRUCTION = {
     ("PUT", "/api/v1/creators/me/channels/{platform}"),
     ("DELETE", "/api/v1/creators/me/channels/{platform}"),
+    ("POST", "/api/v1/creators/me/connections/{platform}/start"),
+    ("POST", "/api/v1/creators/me/connections/{platform}/complete"),
+    ("DELETE", "/api/v1/creators/me/connections/{platform}"),
 }
 
 REASON = "The payment was marked sent on 8 September but nothing has reached my account."
@@ -335,6 +342,13 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
     barter_memo_id = barter_memo(client, brand, creator)
     shipped(client, brand, barter_memo_id)
 
+    # A deletion Meta asked for (item 29): its status page is public by design.
+    confirmation_code = one(
+        "INSERT INTO platform_deletion_request (platform, confirmation_code, removed,"
+        " received_at) VALUES ('instagram', :code, 0, now()) RETURNING confirmation_code",
+        code=f"code{uuid.uuid4().hex[:20]}",
+    )
+
     # A campaign alert of the creator's (item 43).
     alert_id = client.post(
         "/api/v1/me/campaign-alerts", json={"niche": "food"}, headers=creator.headers
@@ -378,6 +392,7 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
         "takedown_id": takedown_id,
         "list_id": list_id,
         "alert_id": alert_id,
+        "confirmation_code": confirmation_code,
         "barter_memo_id": barter_memo_id,
         "account_id": brand.account_id,
         "city": city,

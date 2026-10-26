@@ -57,6 +57,8 @@ resource "aws_iam_role_policy" "execution_secrets" {
         aws_secretsmanager_secret.app.arn,
         aws_secretsmanager_secret.msg91.arn,
         aws_secretsmanager_secret.anthropic.arn,
+        aws_secretsmanager_secret.meta_app.arn,
+        aws_secretsmanager_secret.google_client.arn,
       ]
     }]
   })
@@ -141,6 +143,13 @@ locals {
     # Adding a UPI ID (D-085): off while empty, until the validation pack's
     # notice exists.
     { name = "UPI_NOTICE_VERSION", value = var.upi_notice_version },
+    # Connected Instagram and YouTube accounts (D-134): off until Meta and
+    # Google approve the apps and the connect notice exists.
+    { name = "PLATFORM_CONNECTIONS_ENABLED", value = tostring(var.platform_connections_enabled) },
+    { name = "PLATFORM_REDIRECT_BASE", value = var.platform_redirect_base },
+    { name = "META_APP_ID", value = var.meta_app_id },
+    { name = "GOOGLE_CLIENT_ID", value = var.google_client_id },
+    { name = "CONNECT_NOTICE_VERSION", value = var.connect_notice_version },
     { name = "APP_RELEASE", value = var.image_tag },
     # The app's login may not create schemas; the release step makes DBOS's
     # as the owner (item 97, app/db/prepare.py).
@@ -151,11 +160,13 @@ locals {
 
   secrets = concat(
     [
-      for key in ["DATABASE_URL", "REDIS_URL", "RATE_LIMIT_STORAGE_URI", "SECRET_KEY", "OTP_HASH_KEY", "SECOND_FACTOR_KEY"] :
+      for key in ["DATABASE_URL", "REDIS_URL", "RATE_LIMIT_STORAGE_URI", "SECRET_KEY", "OTP_HASH_KEY", "SECOND_FACTOR_KEY", "PLATFORM_TOKEN_KEY"] :
       { name = key, valueFrom = "${aws_secretsmanager_secret.app.arn}:${key}::" }
     ],
     [{ name = "MSG91_AUTH_KEY", valueFrom = aws_secretsmanager_secret.msg91.arn }],
     [{ name = "ANTHROPIC_API_KEY", valueFrom = aws_secretsmanager_secret.anthropic.arn }],
+    [{ name = "META_APP_SECRET", valueFrom = aws_secretsmanager_secret.meta_app.arn }],
+    [{ name = "GOOGLE_CLIENT_SECRET", valueFrom = aws_secretsmanager_secret.google_client.arn }],
   )
 
   # The release step's: the same, but DATABASE_URL is the owner, and it also
