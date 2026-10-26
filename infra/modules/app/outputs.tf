@@ -50,3 +50,13 @@ output "anthropic_secret_name" {
   value       = aws_secretsmanager_secret.anthropic.name
   description = "Paste the Claude API key here, then set proof_reading_enabled = true (D-070)"
 }
+
+output "meta_app_secret_name" {
+  value       = aws_secretsmanager_secret.meta_app.name
+  description = "Paste the Meta app secret here once App Review approves it (D-134)"
+}
+
+output "google_client_secret_name" {
+  value       = aws_secretsmanager_secret.google_client.name
+  description = "Paste the Google OAuth client secret here once Google verifies the app (D-134)"
+}

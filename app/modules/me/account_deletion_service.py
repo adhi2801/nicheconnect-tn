@@ -69,6 +69,7 @@ from app.modules.notifications import service as notifications
 from app.modules.notifications.models import Notification
 from app.modules.payment_status import upi_service as upi
 from app.modules.profiles import brand_domain_service as brand_domains
+from app.modules.profiles import connection_service as connections
 from app.modules.profiles import rate_card_service as rate_cards
 from app.modules.safety import block_service as blocks
 
@@ -351,7 +352,9 @@ def erase(db: Session, account_id: uuid.UUID, now: datetime) -> Outcome | None:
         matching.erase_for_creator(db, profile.id)
         creator_lists.erase_for_creator(db, profile.id)
         campaign_alerts.erase_for_creator(db, profile.id)
+        connections.erase_for_creator(db, profile.id)
     notifications.erase_for_account(db, account.id)
+    connections.erase_attempts_for_account(db, account.id)
     blocks.erase_for_account(db, account.id)
     data_exports.erase_for_account(db, account.id)
     erasure.erase_for_account(db, account)

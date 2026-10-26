@@ -1,7 +1,7 @@
 """Every downgrade that would destroy unrecoverable data refuses while it exists.
 
 database.md section 6: losing such data must be a deliberate act, never a
-side effect of a rollback. Twenty-eight migrations refuse. Until 14 October 2026 each
+side effect of a rollback. Twenty-nine migrations refuse. Until 14 October 2026 each
 refusal had been proven only by hand, in the session that wrote it
 (database.md gap 6, item 98); a later edit to one could have let a rollback
 drop a deal's record or a person's block without anyone noticing.
@@ -63,6 +63,7 @@ REFUSING = {
     "3c527a80ee4e": "brands' saved lists of creators",
     "d78ed34127dd": "creators' campaign alerts",
     "b7c240ab2d4b": "barter shipments, and their sealed record entries",
+    "3734d5492968": "connected accounts, and the deletions Meta asked for",
 }
 
 
@@ -594,3 +595,16 @@ def test_barter_shipments(client, db, clock):
     shipped(client, brand, barter_memo(client, brand, creator))
 
     assert f"{before + 1} barter shipments" in refusal(db, "b7c240ab2d4b")
+
+
+def test_connected_accounts(db):
+    before = count(db, "SELECT count(*) FROM platform_deletion_request")
+    db.execute(
+        text(
+            "INSERT INTO platform_deletion_request (platform, confirmation_code, removed,"
+            " received_at) VALUES ('instagram', :code, 0, now())"
+        ),
+        {"code": f"code{uuid.uuid4().hex[:20]}"},
+    )
+
+    assert f"{before + 1} platform deletion requests" in refusal(db, "3734d5492968")

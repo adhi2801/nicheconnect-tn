@@ -109,6 +109,21 @@ validation pack supplies the notice creators read before giving their UPI ID.
 Then apply again with `-var "upi_notice_version=<its version>"`. Withdrawing
 a UPI ID works whatever this is set to.
 
+**Later, not part of going live: connected Instagram and YouTube accounts
+(D-134).** Off until Meta App Review and Google's verification approve the
+apps, and the validation pack supplies the notice creators read before
+connecting. Meta's review needs the domain, the live website, a privacy policy
+URL and Meta Business Verification first. Then register the website's
+`<base>/instagram` and `<base>/youtube` as the apps' redirect URIs, and Meta's
+callbacks as `https://<api>/api/v1/platforms/meta/data-deletion` and
+`.../deauthorize`; paste the two secrets into the ones named in
+`meta_app_secret_name` and `google_client_secret_name`; and apply again with
+`-var "platform_connections_enabled=true" -var "platform_redirect_base=<base>"
+-var "meta_app_id=<id>" -var "google_client_id=<id>"
+-var "connect_notice_version=<its version>"`. Switched on with anything
+missing or a secret still a placeholder, the app refuses to start and ECS
+rolls the deploy back. Disconnecting works whatever this is set to.
+
 ## Rules
 
 - **State holds every generated password.** It lives only in the encrypted

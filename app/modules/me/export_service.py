@@ -52,6 +52,7 @@ from app.modules.notifications import service as notifications
 from app.modules.payment_status import service as payments
 from app.modules.payment_status import upi_service as upi
 from app.modules.profiles import brand_domain_service as brand_domains
+from app.modules.profiles import connection_service as connections
 from app.modules.profiles.models import CreatorChannel, CreatorPackage
 from app.modules.safety import block_service as blocks
 from app.modules.safety import takedown_service as takedowns
@@ -85,6 +86,16 @@ EXPORTED_TABLES = frozenset(
 # Things we hold that are deliberately left out, and why. Printed in the file
 # itself: a person is entitled to know what exists, not only what we hand over.
 NOT_EXPORTED: dict[str, str] = {
+    "connection_attempt": (
+        "A sign-in to Instagram or YouTube in flight: a hash of a random value "
+        "and a sealed one-time key, working once for 10 minutes. Random numbers, "
+        "holding nothing about you; the accounts you connected are in this file."
+    ),
+    "platform_deletion_request": (
+        "Each time Meta asked us to delete what we held about one of its users: "
+        "a confirmation code, when, and how many connections it removed. It does "
+        "not say who."
+    ),
     "campaign_alert_send": (
         "Whether a published campaign's alerts have been sent yet, and to how "
         "many. It is about the campaign, not you; any alert you were sent is in "
@@ -422,6 +433,7 @@ def collect_sections(db: Session, account: Account) -> list[ExportedSection]:
         *blocks.export_for_account(db, account.id),
         *takedowns.export_for_account(db, account.id),
         *brand_domains.export_for_account(db, account.id),
+        *connections.export_for_account(db, account.id),
         *campaigns.export_for_account(db, account.id),
         *quote_offers.export_for_account(db, account.id),
         *campaign_alerts.export_for_account(db, account.id),
@@ -499,6 +511,7 @@ def exported_tables() -> frozenset[str]:
         | blocks.EXPORTED_TABLES
         | takedowns.EXPORTED_TABLES
         | brand_domains.EXPORTED_TABLES
+        | connections.EXPORTED_TABLES
         | campaigns.EXPORTED_TABLES
         | quote_offers.EXPORTED_TABLES
         | campaign_alerts.EXPORTED_TABLES

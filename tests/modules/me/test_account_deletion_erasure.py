@@ -54,6 +54,7 @@ from app.modules.notifications.preference_models import (
 from app.modules.payment_status.upi_change_models import CreatorUpiChange
 from app.modules.payment_status.upi_models import CreatorUpi
 from app.modules.profiles.brand_domain_models import BrandDomain
+from app.modules.profiles.connection_models import ConnectedAccount, ConnectionAttempt
 from app.modules.profiles.models import CreatorChannel, CreatorPackage
 from app.modules.safety.models import AccountBlock
 from tests.deal_flow import (
@@ -176,6 +177,13 @@ def fill(db: Session, who: Person, other: Person, clock: Clock) -> set[str]:
             AccountBlock(
                 blocker_account_id=account_id, blocked_account_id=other.account_id
             ),
+            ConnectionAttempt(
+                account_id=account_id,
+                platform="youtube",
+                state_sha256=hex64(),
+                created_at=now,
+                expires_at=now + timedelta(minutes=10),
+            ),
             DataExport(
                 account_id=account_id,
                 requested_at=now - timedelta(days=2),
@@ -206,6 +214,7 @@ def fill(db: Session, who: Person, other: Person, clock: Clock) -> set[str]:
         "notification_preference",
         "account_block",
         "data_export",
+        "connection_attempt",
     }
     if who.user.role == "creator":
         channel = CreatorChannel(
@@ -255,6 +264,17 @@ def fill(db: Session, who: Person, other: Person, clock: Clock) -> set[str]:
         db.flush()
         db.add(CreatorListEntry(list_id=kept.id, creator_id=who.profile_id))
         db.add(CampaignAlert(creator_id=who.profile_id, niche="food"))
+        db.add(
+            ConnectedAccount(
+                creator_id=who.profile_id,
+                platform="instagram",
+                platform_user_id=str(uuid.uuid4().int)[:16],
+                handle="leaving.creator",
+                access_token_sealed=b"sealed",
+                notice_version="v1",
+                connected_at=now,
+            )
+        )
         tables |= {
             "creator_channel",
             "creator_package",
@@ -263,6 +283,7 @@ def fill(db: Session, who: Person, other: Person, clock: Clock) -> set[str]:
             "creator_embedding",
             "creator_list_entry",
             "campaign_alert",
+            "connected_account",
         }
     else:
         db.add(

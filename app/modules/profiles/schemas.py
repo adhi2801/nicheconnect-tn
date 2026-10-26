@@ -34,6 +34,7 @@ from app.modules.profiles.brand_domain_models import (
 )
 from app.modules.profiles.brand_domains import record_name, record_value
 from app.modules.profiles.brand_names import NameFlag
+from app.modules.profiles.connection_models import CONNECTION_STATUSES, PLATFORMS
 
 
 class BrandProfileCreate(BaseModel):
@@ -376,3 +377,70 @@ def to_brand_name_flag_read(flag: NameFlag) -> BrandNameFlagRead:
 
 # BrandProfileRead names BrandNameFlagRead before it is defined.
 BrandProfileRead.model_rebuild()
+
+
+# --- connected Instagram and YouTube accounts (item 29, D-134) -------------------
+
+ConnectedPlatform = Literal["instagram", "youtube"]
+ConnectionStatus = Literal["active", "expired"]
+
+ensure_same_values("ConnectedPlatform", ConnectedPlatform, PLATFORMS)
+ensure_same_values("ConnectionStatus", ConnectionStatus, CONNECTION_STATUSES)
+
+
+class ConnectionStartRead(BaseModel):
+    """Where to send the creator to sign in to the platform."""
+
+    authorize_url: str = Field(
+        description=(
+            "Open it in the browser or the platform's app. It comes back to our "
+            "website or app with `code` and `state`, to post to `.../complete`"
+        )
+    )
+    expires_at: datetime
+
+
+class ConnectionComplete(BaseModel):
+    """What the platform sent back."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    code: str = Field(min_length=1, max_length=2048)
+    state: str = Field(min_length=1, max_length=200)
+
+
+class ConnectionRead(BaseModel):
+    """One connected account, as its creator sees it. Never its tokens."""
+
+    platform: ConnectedPlatform
+    handle: str
+    status: ConnectionStatus = Field(
+        description="`expired` when the platform stopped answering for it: reconnect"
+    )
+    connected_at: datetime
+    verified_followers: int | None = Field(
+        description=(
+            "The count the platform itself reported; null if it hides it. Shown "
+            "beside, never instead of, the figure the creator gave"
+        )
+    )
+    verified_as_of: datetime | None
+
+
+class MetaDeletionRead(BaseModel):
+    """Meta's required answer: where the status is, and our confirmation code."""
+
+    url: str
+    confirmation_code: str
+
+
+class DeletionStatusRead(BaseModel):
+    """What happened to a deletion Meta asked for."""
+
+    confirmation_code: str
+    platform: ConnectedPlatform
+    received_at: datetime
+    status: Literal["done"] = Field(
+        description="Done when it was received: every connection named was deleted then"
+    )
+    removed: int = Field(description="How many connections it deleted; 0 if we held none")

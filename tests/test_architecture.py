@@ -83,7 +83,9 @@ def request_bodies() -> dict[type, str]:
     for route in _leaf_routes(app.routes):
         if isinstance(route, APIRoute) and route.body_field is not None:
             model = route.body_field.field_info.annotation
-            if isinstance(model, type):
+            # Raw bodies are parsed by hand, not mapped onto fields: Meta's
+            # form callbacks (D-134), whose one field is read and verified.
+            if isinstance(model, type) and model is not bytes:
                 found[model] = f"{sorted(route.methods)[0]} {route.path}"
     return found
 

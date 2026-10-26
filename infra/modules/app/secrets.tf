@@ -18,6 +18,13 @@ resource "random_password" "second_factor_key" {
   special = false
 }
 
+# Encrypts the platforms' tokens of connected Instagram and YouTube accounts
+# at rest (item 29, D-134).
+resource "random_password" "platform_token_key" {
+  length  = 64
+  special = false
+}
+
 # The app's own database login, nicheconnect_app (item 97, D-100): it may
 # read and write rows and nothing more. Letters and digits only, so it can sit
 # in a URL and SCRAM computes the same verifier on both sides (app/db/roles.py).
@@ -49,6 +56,7 @@ resource "aws_secretsmanager_secret_version" "app" {
     SECRET_KEY             = random_password.secret_key.result
     OTP_HASH_KEY           = random_password.otp_hash_key.result
     SECOND_FACTOR_KEY      = random_password.second_factor_key.result
+    PLATFORM_TOKEN_KEY     = random_password.platform_token_key.result
   })
 }
 
@@ -86,6 +94,39 @@ resource "aws_secretsmanager_secret_version" "anthropic" {
   # proof_reading_enabled on before the real key is pasted stops the app at
   # startup, and ECS rolls the deploy back, instead of every reading failing.
   secret_string = "change-me-paste-the-anthropic-api-key"
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
+
+# The Meta app's secret and the Google OAuth client's secret for connected
+# accounts (item 29, D-134), pasted in by a founder once Meta App Review and
+# Google's verification approve the apps, and never overwritten by OpenTofu.
+resource "aws_secretsmanager_secret" "meta_app" {
+  name                    = "${local.name}/meta-app-secret"
+  description             = "Meta app secret for connected Instagram accounts, pasted in by a founder (D-134)"
+  recovery_window_in_days = 7
+}
+
+resource "aws_secretsmanager_secret_version" "meta_app" {
+  secret_id = aws_secretsmanager_secret.meta_app.id
+  # Starts with "change-me", which the app refuses: switching connections on
+  # before the real secret is pasted stops the app at startup.
+  secret_string = "change-me-paste-the-meta-app-secret"
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
+
+resource "aws_secretsmanager_secret" "google_client" {
+  name                    = "${local.name}/google-client-secret"
+  description             = "Google OAuth client secret for connected YouTube channels, pasted in by a founder (D-134)"
+  recovery_window_in_days = 7
+}
+
+resource "aws_secretsmanager_secret_version" "google_client" {
+  secret_id     = aws_secretsmanager_secret.google_client.id
+  secret_string = "change-me-paste-the-google-client-secret"
   lifecycle {
     ignore_changes = [secret_string]
   }

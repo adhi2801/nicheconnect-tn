@@ -62,6 +62,15 @@ PUBLIC = {
     ),
     ("GET", "/api/v1/cities"): "cities with public figures (D-078)",
     ("GET", "/api/v1/cities/{city}/figures"): "a city's public figures (D-078)",
+    ("POST", "/api/v1/platforms/meta/data-deletion"): (
+        "Meta's data deletion callback: Meta's signature is the credential (D-134)"
+    ),
+    ("POST", "/api/v1/platforms/meta/deauthorize"): (
+        "Meta's deauthorize callback: Meta's signature is the credential (D-134)"
+    ),
+    ("GET", "/api/v1/platforms/meta/data-deletion/{confirmation_code}"): (
+        "the status page Meta requires: a random code, naming no one (D-134)"
+    ),
 }
 
 # The admin API answers anyone who is not an admin, a caller without a token

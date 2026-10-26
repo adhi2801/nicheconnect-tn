@@ -78,6 +78,8 @@ from app.modules.payment_status.router import router as payment_router
 from app.modules.payment_status.upi_router import router as upi_router
 from app.modules.profiles.availability_router import router as availability_router
 from app.modules.profiles.brand_domain_router import router as brand_domain_router
+from app.modules.profiles.connection_router import meta_router as meta_callbacks_router
+from app.modules.profiles.connection_router import router as connections_router
 from app.modules.profiles.profile_router import brand_router, creator_router
 from app.modules.profiles.rate_card_router import router as rate_card_router
 from app.modules.safety.block_router import router as block_router
@@ -182,6 +184,8 @@ app.include_router(creator_lists_router)
 app.include_router(campaign_alerts_router)
 app.include_router(shipment_router)
 app.include_router(content_library_router)
+app.include_router(connections_router)
+app.include_router(meta_callbacks_router)
 app.include_router(report_router)
 app.include_router(admin_router)
 app.include_router(look_alike_router)

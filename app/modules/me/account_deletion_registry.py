@@ -48,6 +48,8 @@ ERASED: frozenset[str] = frozenset(
         "creator_channel",
         "creator_package",
         "brand_domain",
+        "connected_account",
+        "connection_attempt",
         # campaigns
         "campaign_alert",
         # matching
@@ -156,6 +158,7 @@ KEPT: tuple[KeptKind, ...] = (
 HELD: frozenset[str] = frozenset().union(*(kind.tables for kind in KEPT))
 
 NOT_PERSONAL: dict[str, str] = {
+    "platform_deletion_request": "A deletion Meta asked for: its code, when, and a count",
     "campaign_alert_send": "Whether a campaign's alerts were sent, and to how many",
     "campaign_embedding": "Numbers worked out from a campaign's brief, not a person",
     "deal_record_checkpoint": "One fingerprint a day over every deal, and a count",

@@ -96,7 +96,7 @@ Built already from the same list: deal stage and campaign summary (D-076), the p
 
 | # | Item | Gate |
 |---|---|---|
-| 29 | Connected Instagram and YouTube accounts: numbers from the platform | Security, database, dependency; Meta App Review and Google verification first |
+| 29 | Connected Instagram and YouTube accounts: numbers from the platform | Security, database, dependency; Meta App Review and Google verification first · **Piece 1 built 26 October (D-134), switched off**: connecting from the creator's own session (`state` once, PKCE for Google), tokens sealed under `PLATFORM_TOKEN_KEY`, one channel to one creator, disconnecting, Meta's deletion and deauthorize callbacks, the export and erasure; the secrets in OpenTofu. Piece 2 (the daily refresh job and the verified figure on the Passport and search) remains, then the outside approvals |
 | 30 | Results fetched from the platform at proof time | After 29 |
 | 31 | Audience authenticity signals from real data (replaces 16's plan) | After 29 |
 | 33 | The barter tax tracker against the ₹20,000 TDS line | Validation pack wording |

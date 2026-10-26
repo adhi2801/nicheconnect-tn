@@ -3482,6 +3482,116 @@
         "title": "CityFiguresRead",
         "type": "object"
       },
+      "ConnectionComplete": {
+        "additionalProperties": false,
+        "description": "What the platform sent back.",
+        "properties": {
+          "code": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "state": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "state"
+        ],
+        "title": "ConnectionComplete",
+        "type": "object"
+      },
+      "ConnectionRead": {
+        "description": "One connected account, as its creator sees it. Never its tokens.",
+        "properties": {
+          "connected_at": {
+            "format": "date-time",
+            "title": "Connected At",
+            "type": "string"
+          },
+          "handle": {
+            "title": "Handle",
+            "type": "string"
+          },
+          "platform": {
+            "enum": [
+              "instagram",
+              "youtube"
+            ],
+            "title": "Platform",
+            "type": "string"
+          },
+          "status": {
+            "description": "`expired` when the platform stopped answering for it: reconnect",
+            "enum": [
+              "active",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "verified_as_of": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified As Of"
+          },
+          "verified_followers": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The count the platform itself reported; null if it hides it. Shown beside, never instead of, the figure the creator gave",
+            "title": "Verified Followers"
+          }
+        },
+        "required": [
+          "platform",
+          "handle",
+          "status",
+          "connected_at",
+          "verified_followers",
+          "verified_as_of"
+        ],
+        "title": "ConnectionRead",
+        "type": "object"
+      },
+      "ConnectionStartRead": {
+        "description": "Where to send the creator to sign in to the platform.",
+        "properties": {
+          "authorize_url": {
+            "description": "Open it in the browser or the platform's app. It comes back to our website or app with `code` and `state`, to post to `.../complete`",
+            "title": "Authorize Url",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "authorize_url",
+          "expires_at"
+        ],
+        "title": "ConnectionStartRead",
+        "type": "object"
+      },
       "ContentItemRead": {
         "description": "One approved post, with the usage window its accepted memo sealed.",
         "properties": {
@@ -4639,6 +4749,48 @@
           "cancelled"
         ],
         "title": "DealStageCountsRead",
+        "type": "object"
+      },
+      "DeletionStatusRead": {
+        "description": "What happened to a deletion Meta asked for.",
+        "properties": {
+          "confirmation_code": {
+            "title": "Confirmation Code",
+            "type": "string"
+          },
+          "platform": {
+            "enum": [
+              "instagram",
+              "youtube"
+            ],
+            "title": "Platform",
+            "type": "string"
+          },
+          "received_at": {
+            "format": "date-time",
+            "title": "Received At",
+            "type": "string"
+          },
+          "removed": {
+            "description": "How many connections it deleted; 0 if we held none",
+            "title": "Removed",
+            "type": "integer"
+          },
+          "status": {
+            "const": "done",
+            "description": "Done when it was received: every connection named was deleted then",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "confirmation_code",
+          "platform",
+          "received_at",
+          "status",
+          "removed"
+        ],
+        "title": "DeletionStatusRead",
         "type": "object"
       },
       "DeliverableIn": {
@@ -6852,6 +7004,25 @@
           "text_flags"
         ],
         "title": "MemoWithStageRead",
+        "type": "object"
+      },
+      "MetaDeletionRead": {
+        "description": "Meta's required answer: where the status is, and our confirmation code.",
+        "properties": {
+          "confirmation_code": {
+            "title": "Confirmation Code",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "confirmation_code"
+        ],
+        "title": "MetaDeletionRead",
         "type": "object"
       },
       "MisreadMark": {
@@ -24026,6 +24197,494 @@
         ]
       }
     },
+    "/api/v1/creators/me/connections": {
+      "get": {
+        "description": "The Instagram and YouTube accounts you connected, with the counts the platform itself reported. At most one a platform.",
+        "operationId": "my_connections_api_v1_creators_me_connections_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConnectionRead"
+                  },
+                  "title": "Response My Connections Api V1 Creators Me Connections Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only creators connect accounts"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "You have not created a creator profile yet"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My connected accounts",
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/creators/me/connections/{platform}": {
+      "delete": {
+        "description": "Deletes the connection and the keys the platform gave us, then asks the platform to revoke them where it offers that. Always allowed.",
+        "operationId": "disconnect_api_v1_creators_me_connections__platform__delete",
+        "parameters": [
+          {
+            "description": "instagram or youtube",
+            "in": "path",
+            "name": "platform",
+            "required": true,
+            "schema": {
+              "description": "instagram or youtube",
+              "enum": [
+                "instagram",
+                "youtube"
+              ],
+              "title": "Platform",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only creators connect accounts"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No account connected on that platform"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Disconnect an account",
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/creators/me/connections/{platform}/complete": {
+      "post": {
+        "description": "With the `code` and `state` the platform sent back. The account it reaches is connected to you, and its count read. Connecting again replaces your earlier connection on that platform.",
+        "operationId": "complete_connecting_api_v1_creators_me_connections__platform__complete_post",
+        "parameters": [
+          {
+            "description": "instagram or youtube",
+            "in": "path",
+            "name": "platform",
+            "required": true,
+            "schema": {
+              "description": "instagram or youtube",
+              "enum": [
+                "instagram",
+                "youtube"
+              ],
+              "title": "Platform",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionComplete"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only creators connect accounts"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "You have not created a creator profile yet"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`connection_attempt_invalid`: expired, used or not yours; `platform_refused`: the platform said no; `channel_already_connected`: another creator holds that account. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The code or state is missing or too long. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`connections_unavailable`: not switched on yet. Or: Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Finish connecting an account",
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/creators/me/connections/{platform}/start": {
+      "post": {
+        "description": "Returns the platform's sign-in link, good for 10 minutes and once. The platform sends you back to our website or app with `code` and `state`; post them to `.../complete` while signed in as you.",
+        "operationId": "start_connecting_api_v1_creators_me_connections__platform__start_post",
+        "parameters": [
+          {
+            "description": "instagram or youtube",
+            "in": "path",
+            "name": "platform",
+            "required": true,
+            "schema": {
+              "description": "instagram or youtube",
+              "enum": [
+                "instagram",
+                "youtube"
+              ],
+              "title": "Platform",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionStartRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only creators connect accounts"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "You have not created a creator profile yet"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`connections_unavailable`: not switched on yet. Or: Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start connecting an account",
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
     "/api/v1/creators/me/packages": {
       "get": {
         "description": "Everything you offer, in the order you set. Prices are whole paise, so 800000 is Rs 8,000.",
@@ -34801,6 +35460,240 @@
         "summary": "Totals of my payments",
         "tags": [
           "payment"
+        ]
+      }
+    },
+    "/api/v1/platforms/meta/data-deletion": {
+      "post": {
+        "description": "Meta's data deletion callback, public by design: verified by Meta's signature. Deletes the person's connection and answers with a status link and a confirmation code.",
+        "operationId": "meta_data_deletion_api_v1_platforms_meta_data_deletion_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "contentMediaType": "application/octet-stream",
+                "description": "Meta's form: `signed_request=<signature>.<payload>`",
+                "title": "Raw",
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetaDeletionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`invalid_signed_request`: not signed by Meta with our app secret"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`connections_unavailable`: no Meta app is set up yet"
+          }
+        },
+        "summary": "Meta: delete what we hold about one of its users",
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/platforms/meta/data-deletion/{confirmation_code}": {
+      "get": {
+        "description": "Public by design, as Meta requires: the code alone, 24 random characters, says nothing about the person.",
+        "operationId": "meta_deletion_status_api_v1_platforms_meta_data_deletion__confirmation_code__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "confirmation_code",
+            "required": true,
+            "schema": {
+              "maxLength": 24,
+              "minLength": 1,
+              "title": "Confirmation Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletionStatusRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`deletion_request_not_found`: no request has that code"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Meta: what happened to a deletion request",
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/platforms/meta/deauthorize": {
+      "post": {
+        "description": "Meta's deauthorize callback, public by design: verified by Meta's signature. The person's connection is deleted.",
+        "operationId": "meta_deauthorize_api_v1_platforms_meta_deauthorize_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "contentMediaType": "application/octet-stream",
+                "description": "Meta's form: `signed_request=<signature>.<payload>`",
+                "title": "Raw",
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`invalid_signed_request`: not signed by Meta with our app secret"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`connections_unavailable`: no Meta app is set up yet"
+          }
+        },
+        "summary": "Meta: one of its users removed our app",
+        "tags": [
+          "profiles"
         ]
       }
     },

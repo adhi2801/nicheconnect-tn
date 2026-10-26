@@ -476,3 +476,80 @@ def test_a_retention_period_of_no_days_is_refused(field):
 def test_a_takedown_is_kept_at_least_the_180_days_the_it_rules_ask():
     assert_rejected("retention_takedown_days", retention_takedown_days=179)
     assert load(retention_takedown_days=180).retention_takedown_days == 180
+
+
+# --- connected accounts (item 29, D-134) -------------------------------------------
+
+CONNECTIONS_ON: dict[str, Any] = {
+    "platform_connections_enabled": True,
+    "platform_redirect_base": "https://app.nicheconnect.test/connect",
+    "meta_app_id": "123456789",
+    "meta_app_secret": "meta-app-secret-for-a-test",
+    "google_client_id": "test-client.apps.googleusercontent.com",
+    "google_client_secret": "google-client-secret-for-a-test",
+    "platform_token_key": "p" * 40,
+    "connect_notice_version": "connect-v1",
+}
+
+
+def test_connections_are_off_by_default_and_need_nothing():
+    settings = load()
+
+    assert settings.platform_connections_enabled is False
+    assert settings.platform_token_key is None
+
+
+def test_connections_on_with_everything_set_load():
+    settings = load(environment="production", **CONNECTIONS_ON)
+
+    assert settings.platform_connections_enabled is True
+
+
+@pytest.mark.parametrize(
+    ("name", "variable"),
+    [
+        ("platform_redirect_base", "PLATFORM_REDIRECT_BASE"),
+        ("meta_app_id", "META_APP_ID"),
+        ("meta_app_secret", "META_APP_SECRET"),
+        ("google_client_id", "GOOGLE_CLIENT_ID"),
+        ("google_client_secret", "GOOGLE_CLIENT_SECRET"),
+        ("platform_token_key", "PLATFORM_TOKEN_KEY"),
+        ("connect_notice_version", "CONNECT_NOTICE_VERSION"),
+    ],
+)
+def test_connections_on_with_a_setting_missing_stop_the_app(name, variable):
+    assert_startup_refused(variable, **(CONNECTIONS_ON | {name: None}))
+
+
+@pytest.mark.parametrize(
+    "name", ["meta_app_secret", "google_client_secret", "platform_token_key"]
+)
+def test_a_placeholder_secret_stops_the_app(name):
+    assert_startup_refused(
+        name.upper(), **(CONNECTIONS_ON | {name: "change-me-" + "x" * 40})
+    )
+
+
+def test_a_short_token_key_stops_the_app():
+    assert_startup_refused(
+        "PLATFORM_TOKEN_KEY", **(CONNECTIONS_ON | {"platform_token_key": "short"})
+    )
+
+
+def test_a_plain_http_return_outside_local_stops_the_app():
+    assert_startup_refused(
+        "https",
+        environment="production",
+        **(
+            CONNECTIONS_ON
+            | {"platform_redirect_base": "http://app.nicheconnect.test/connect"}
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [("meta_app_id", "abc"), ("google_client_id", "client.example.com")],
+)
+def test_malformed_app_ids_are_refused(name, value):
+    assert_rejected(name, **{name: value})

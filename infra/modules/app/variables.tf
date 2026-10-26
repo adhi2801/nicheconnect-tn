@@ -187,3 +187,49 @@ variable "upi_notice_version" {
     error_message = "upi_notice_version must be empty, or 1 to 40 letters, digits, dots, dashes or underscores."
   }
 }
+
+variable "platform_connections_enabled" {
+  type        = bool
+  default     = false
+  description = "Connected Instagram and YouTube accounts (D-134). Leave false until Meta App Review and Google verification approve the apps, the secrets are pasted in, and the connect notice exists."
+}
+
+variable "platform_redirect_base" {
+  type        = string
+  default     = ""
+  description = "Where the platforms send a creator back: the website's connect page, such as https://app.example.in/connect. Each platform's own path is added."
+  validation {
+    condition     = var.platform_redirect_base == "" || can(regex("^https://[A-Za-z0-9.-]+(/[A-Za-z0-9._/-]*)?$", var.platform_redirect_base))
+    error_message = "platform_redirect_base must be empty or an https URL."
+  }
+}
+
+variable "meta_app_id" {
+  type        = string
+  default     = ""
+  description = "The Meta app's id (not secret), once Meta App Review approves it."
+  validation {
+    condition     = var.meta_app_id == "" || can(regex("^[0-9]{5,25}$", var.meta_app_id))
+    error_message = "meta_app_id must be empty or digits."
+  }
+}
+
+variable "google_client_id" {
+  type        = string
+  default     = ""
+  description = "The Google OAuth client's id (not secret), ending .apps.googleusercontent.com."
+  validation {
+    condition     = var.google_client_id == "" || endswith(var.google_client_id, ".apps.googleusercontent.com")
+    error_message = "google_client_id must be empty or end with .apps.googleusercontent.com."
+  }
+}
+
+variable "connect_notice_version" {
+  type        = string
+  default     = ""
+  description = "The version of the notice a creator reads before connecting an account (D-134), from the validation pack."
+  validation {
+    condition     = var.connect_notice_version == "" || can(regex("^[A-Za-z0-9._-]{1,40}$", var.connect_notice_version))
+    error_message = "connect_notice_version must be empty, or 1 to 40 letters, digits, dots, dashes or underscores."
+  }
+}
