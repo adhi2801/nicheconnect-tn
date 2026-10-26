@@ -79,6 +79,7 @@ _COMMON: ResponseDocs = {
 @rate_limit(CREATE_LIMIT)
 def create_agent_token(
     request: Request,
+    response: Response,
     body: AgentTokenCreate,
     account: CurrentAccount,
     db: Annotated[Session, Depends(get_db)],
@@ -94,6 +95,9 @@ def create_agent_token(
         step_up_code,
         now,
     )
+    # It carries a bearer secret: never kept by a browser or a proxy, as
+    # every login answer is not.
+    response.headers["Cache-Control"] = "no-store"
     return AgentTokenCreated(
         **AgentTokenRead.model_validate(agent_token).model_dump(), token=value
     )

@@ -7,6 +7,8 @@ tomorrow is closed to tokens until a decision opens it. And no entry may
 ever be money, identity, the account's control or an admin's.
 """
 
+import re
+import typing
 import uuid
 from collections.abc import Callable, Iterator
 from datetime import timedelta
@@ -14,6 +16,7 @@ from typing import Any
 
 import pytest
 from fastapi.routing import APIRoute
+from pydantic import BaseModel
 
 from app.core.errors import _leaf_routes
 from app.main import app
@@ -47,8 +50,24 @@ NEVER = (
     "/auth/refresh",
     "/auth/otp",
 )
-# Agreeing to something that binds the person: never for an assistant.
-BINDING_ENDS = ("/accept", "/send", "/publish", "/mark-paid", "/confirm")
+# Agreeing to something that binds the person: never for an assistant. Read
+# as the start of the path's last part, so `accept-invitation` is caught too
+# (missed by an `endswith` check; found by the independent review).
+BINDING = ("accept", "send", "publish", "mark-paid", "confirm")
+# Fields no listed route may answer: payment records, disputes' progress, UPI
+# IDs and the person's phone number (D-138). A deal's terms (its fee, its
+# budget, `has_open_dispute`) are part of the deal and may be read.
+NEVER_ANSWERED = re.compile(
+    r"upi|phone|payment_state|marked_paid|payment_confirmed|confirmed_paise"
+    r"|payments_sent|pay_details|^record$|reference",
+    re.IGNORECASE,
+)
+# Listed routes with no response model, read by hand: a calendar file of the
+# deal's dates, and a removal that answers nothing.
+UNTYPED = {
+    ("GET", "/api/v1/deal-memos/{memo_id}/calendar.ics"),
+    ("DELETE", "/api/v1/me/campaign-alerts/{alert_id}"),
+}
 
 
 def every_route() -> list[APIRoute]:
@@ -121,7 +140,36 @@ def test_no_listed_route_is_money_identity_or_control(entry):
     _, path = entry
 
     assert not any(word in path for word in NEVER), entry
-    assert not path.endswith(BINDING_ENDS), entry
+    assert not path.rsplit("/", 1)[-1].startswith(BINDING), entry
+
+
+def fields_of(annotation: Any, seen: set[type]) -> Iterator[str]:
+    """Every field name in a response model, nested models included."""
+    for inner in typing.get_args(annotation):
+        yield from fields_of(inner, seen)
+    if isinstance(annotation, type) and issubclass(annotation, BaseModel):
+        if annotation in seen:
+            return
+        seen.add(annotation)
+        for name, field in annotation.model_fields.items():
+            yield name
+            yield from fields_of(field.annotation, seen)
+
+
+@pytest.mark.parametrize(
+    "route",
+    [r for r in every_route() if (method(r), r.path) in listed()],
+    ids=lambda r: f"{method(r)} {r.path}",
+)
+def test_no_listed_route_answers_a_payment_record_or_the_phone(route):
+    """A route's path cannot say what it answers; its response model can."""
+    if route.response_model is None:
+        assert (method(route), route.path) in UNTYPED
+        return
+
+    answered = set(fields_of(route.response_model, set()))
+
+    assert {name for name in answered if NEVER_ANSWERED.search(name)} == set()
 
 
 def test_only_reads_are_in_read_scopes():
@@ -134,7 +182,8 @@ def test_allows_reads_the_template_not_the_path():
     assert allows(["deals:read"], "GET", "/api/v1/deal-memos/{memo_id}")
     assert not allows(["deals:read"], "GET", f"/api/v1/deal-memos/{uuid.uuid4()}")
     assert not allows([], "GET", "/api/v1/deal-memos/{memo_id}")
-    assert allows([], "GET", "/api/v1/auth/me")
+    # No route is open to every token: /auth/me answers the phone number.
+    assert not allows(list(AGENT_SCOPES), "GET", "/api/v1/auth/me")
 
 
 # --- every route, called with a token --------------------------------------------------
