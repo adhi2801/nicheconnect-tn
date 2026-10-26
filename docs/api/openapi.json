@@ -4438,6 +4438,58 @@
         "title": "DataExportRead",
         "type": "object"
       },
+      "DealFeedbackRead": {
+        "description": "A deal's feedback, as one side may see it now.",
+        "properties": {
+          "mine": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeedbackRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "open": {
+            "description": "Whether you may still answer",
+            "title": "Open",
+            "type": "boolean"
+          },
+          "theirs": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeedbackRead"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The other side's, only once you have both answered or the window has closed"
+          },
+          "window_ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When answers may no longer be given, and are all shown; null until the deal finishes",
+            "title": "Window Ends At"
+          }
+        },
+        "required": [
+          "window_ends_at",
+          "open",
+          "mine",
+          "theirs"
+        ],
+        "title": "DealFeedbackRead",
+        "type": "object"
+      },
       "DealRecordEntryRead": {
         "description": "One sealed step. `facts` holds figures and fingerprints, never typed text.",
         "properties": {
@@ -5415,6 +5467,224 @@
           "reason"
         ],
         "title": "ExportNotIncluded",
+        "type": "object"
+      },
+      "FeedbackFiguresRead": {
+        "description": "What the other sides of someone's finished deals said, once revealed.",
+        "properties": {
+          "answers": {
+            "description": "How many revealed answers these rest on",
+            "title": "Answers",
+            "type": "integer"
+          },
+          "brief": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Average, 1 to 5. Null below three answers: not enough to say, never zero",
+            "title": "Brief"
+          },
+          "counterparties": {
+            "description": "How many different brands or creators gave them: twelve from one say less than twelve from nine",
+            "title": "Counterparties",
+            "type": "integer"
+          },
+          "easy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Easy"
+          },
+          "reliability": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reliability"
+          }
+        },
+        "required": [
+          "answers",
+          "counterparties",
+          "brief",
+          "reliability",
+          "easy"
+        ],
+        "title": "FeedbackFiguresRead",
+        "type": "object"
+      },
+      "FeedbackIn": {
+        "additionalProperties": false,
+        "description": "One side's answer about the other, once, never changed.",
+        "properties": {
+          "brief": {
+            "description": "Followed the brief (about a creator), or gave a clear one (about a brand)",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Brief",
+            "type": "integer"
+          },
+          "easy": {
+            "description": "Easy to work with",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Easy",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "reliability": {
+            "description": "Delivered on time (about a creator), or paid as agreed (about a brand)",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Reliability",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "brief",
+          "reliability",
+          "easy"
+        ],
+        "title": "FeedbackIn",
+        "type": "object"
+      },
+      "FeedbackNoteRead": {
+        "description": "A revealed note about someone, and their own words on the same deal.",
+        "properties": {
+          "author_side": {
+            "enum": [
+              "brand",
+              "creator"
+            ],
+            "title": "Author Side",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "reply": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the person it is about said on that deal",
+            "title": "Reply"
+          },
+          "text_flags": {
+            "description": "Warnings worked out on read: a brand's request for money",
+            "items": {
+              "$ref": "#/components/schemas/FieldFlag"
+            },
+            "readOnly": true,
+            "title": "Text Flags",
+            "type": "array"
+          }
+        },
+        "required": [
+          "note",
+          "reply",
+          "author_side",
+          "created_at",
+          "text_flags"
+        ],
+        "title": "FeedbackNoteRead",
+        "type": "object"
+      },
+      "FeedbackRead": {
+        "description": "One answer, as its writer, or the other side once revealed, reads it.",
+        "properties": {
+          "author_side": {
+            "enum": [
+              "brand",
+              "creator"
+            ],
+            "title": "Author Side",
+            "type": "string"
+          },
+          "brief": {
+            "title": "Brief",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "easy": {
+            "title": "Easy",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "reliability": {
+            "title": "Reliability",
+            "type": "integer"
+          },
+          "text_flags": {
+            "description": "Warnings worked out on read: a brand's request for money. Show beside the note",
+            "items": {
+              "$ref": "#/components/schemas/FieldFlag"
+            },
+            "readOnly": true,
+            "title": "Text Flags",
+            "type": "array"
+          }
+        },
+        "required": [
+          "author_side",
+          "brief",
+          "reliability",
+          "easy",
+          "note",
+          "created_at",
+          "text_flags"
+        ],
+        "title": "FeedbackRead",
         "type": "object"
       },
       "FieldError": {
@@ -7347,11 +7617,12 @@
                 "campaign_alert",
                 "product_shipped",
                 "product_received",
-                "connection_expired"
+                "connection_expired",
+                "feedback_received"
               ],
               "type": "string"
             },
-            "maxItems": 57,
+            "maxItems": 58,
             "title": "Muted Types",
             "type": "array"
           },
@@ -7460,7 +7731,8 @@
                 "campaign_alert",
                 "product_shipped",
                 "product_received",
-                "connection_expired"
+                "connection_expired",
+                "feedback_received"
               ],
               "type": "string"
             },
@@ -7543,7 +7815,8 @@
                 "campaign_alert",
                 "product_shipped",
                 "product_received",
-                "connection_expired"
+                "connection_expired",
+                "feedback_received"
               ],
               "type": "string"
             },
@@ -7700,7 +7973,8 @@
               "campaign_alert",
               "product_shipped",
               "product_received",
-              "connection_expired"
+              "connection_expired",
+              "feedback_received"
             ],
             "title": "Notification Type",
             "type": "string"
@@ -8487,6 +8761,34 @@
           "items"
         ],
         "title": "Page[CreatorSearchResultRead]",
+        "type": "object"
+      },
+      "Page_FeedbackNoteRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackNoteRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as ?cursor= to get the next page",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[FeedbackNoteRead]",
         "type": "object"
       },
       "Page_IndexablePassportRead_": {
@@ -19288,6 +19590,243 @@
         ]
       }
     },
+    "/api/v1/brands/{brand_id}/feedback": {
+      "get": {
+        "description": "Averages of the revealed answers creators gave after finished deals, with how many and from how many creators. Null below three answers. Show beside the payment record, never instead. Any signed-in account.",
+        "operationId": "brand_feedback_api_v1_brands__brand_id__feedback_get",
+        "parameters": [
+          {
+            "description": "The brand's id",
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "description": "The brand's id",
+              "format": "uuid",
+              "title": "Brand Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackFiguresRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such brand"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "What creators said about a brand",
+        "tags": [
+          "deal memos"
+        ]
+      }
+    },
+    "/api/v1/brands/{brand_id}/feedback/notes": {
+      "get": {
+        "description": "Revealed notes, newest first, each beside the brand's own words on that deal.",
+        "operationId": "brand_feedback_notes_api_v1_brands__brand_id__feedback_notes_get",
+        "parameters": [
+          {
+            "description": "The brand's id",
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "description": "The brand's id",
+              "format": "uuid",
+              "title": "Brand Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Notes per page",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Notes per page",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "From a previous page's next_cursor",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "From a previous page's next_cursor",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_FeedbackNoteRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such brand"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A query parameter or the cursor is invalid"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Creators' notes about a brand",
+        "tags": [
+          "deal memos"
+        ]
+      }
+    },
     "/api/v1/brands/{brand_id}/reliability": {
       "get": {
         "description": "A brand's payment record, built from what happened rather than from reviews. The figures are withheld until three deals have completed, because two out of two is not evidence of anything; `null` there means **not enough to say**, and must not be shown as zero. `currently_overdue` is always reported, including for a brand with no completed deals, so a new account can never hide a creator who is still waiting to be paid.",
@@ -26289,6 +26828,265 @@
         ]
       }
     },
+    "/api/v1/creators/{creator_id}/feedback": {
+      "get": {
+        "description": "Averages of the revealed answers brands gave after finished deals, with how many and from how many brands. Null below three answers. Show beside the delivery record, never instead. Any brand, or the creator themself.",
+        "operationId": "creator_feedback_api_v1_creators__creator_id__feedback_get",
+        "parameters": [
+          {
+            "description": "The creator's id",
+            "in": "path",
+            "name": "creator_id",
+            "required": true,
+            "schema": {
+              "description": "The creator's id",
+              "format": "uuid",
+              "title": "Creator Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackFiguresRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Another creator"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such creator"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "What brands said about a creator",
+        "tags": [
+          "deal memos"
+        ]
+      }
+    },
+    "/api/v1/creators/{creator_id}/feedback/notes": {
+      "get": {
+        "description": "Revealed notes, newest first, each beside the creator's own words on that deal.",
+        "operationId": "creator_feedback_notes_api_v1_creators__creator_id__feedback_notes_get",
+        "parameters": [
+          {
+            "description": "The creator's id",
+            "in": "path",
+            "name": "creator_id",
+            "required": true,
+            "schema": {
+              "description": "The creator's id",
+              "format": "uuid",
+              "title": "Creator Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Notes per page",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Notes per page",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "From a previous page's next_cursor",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "From a previous page's next_cursor",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_FeedbackNoteRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Another creator"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such creator"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A query parameter or the cursor is invalid"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Brands' notes about a creator",
+        "tags": [
+          "deal memos"
+        ]
+      }
+    },
     "/api/v1/creators/{creator_id}/media-kit": {
       "get": {
         "description": "Everything a brand needs to weigh a creator, on one screen: the profile, each channel with its follower count and average views, every package with its price, and the delivery record. Channel numbers are the creator's own claim, dated by `figures_as_of`, and must be shown as self-reported. Prices appear here whether or not the creator published them on their public page. Readable by any brand and by the creator themself, never by another creator.",
@@ -27591,6 +28389,245 @@
           }
         ],
         "summary": "Decline the memo",
+        "tags": [
+          "deal memos"
+        ]
+      }
+    },
+    "/api/v1/deal-memos/{memo_id}/feedback": {
+      "get": {
+        "description": "Your own answer, and the other side's once you have both answered or the 14 days have passed. The brand and the creator of this deal only.",
+        "operationId": "read_feedback_api_v1_deal_memos__memo_id__feedback_get",
+        "parameters": [
+          {
+            "description": "The memo's id",
+            "in": "path",
+            "name": "memo_id",
+            "required": true,
+            "schema": {
+              "description": "The memo's id",
+              "format": "uuid",
+              "title": "Memo Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealFeedbackRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such deal, or it is not yours"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "A finished deal's feedback",
+        "tags": [
+          "deal memos"
+        ]
+      },
+      "post": {
+        "description": "Three scores, 1 to 5, and an optional note, once, within 14 days of the deal finishing (paid and confirmed, or its barter work approved). It can never be changed. Neither side sees the other's until both have answered or the 14 days pass, so nobody answers to retaliate. The other side is told an answer exists, never what it says.",
+        "operationId": "give_feedback_api_v1_deal_memos__memo_id__feedback_post",
+        "parameters": [
+          {
+            "description": "The memo's id",
+            "in": "path",
+            "name": "memo_id",
+            "required": true,
+            "schema": {
+              "description": "The memo's id",
+              "format": "uuid",
+              "title": "Memo Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealFeedbackRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such deal, or it is not yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`feedback_closed`: not finished, already given, or the 14 days passed. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A score outside 1 to 5, or a note too long. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Give feedback on a finished deal",
         "tags": [
           "deal memos"
         ]

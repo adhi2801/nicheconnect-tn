@@ -21,6 +21,7 @@ REACH = (
     "app.modules.deal_memo.note_router.write_note",
     "app.modules.deal_memo.shipment_router.record_shipment",
     "app.modules.deal_memo.shipment_router.receive_shipment",
+    "app.modules.deal_memo.feedback_router.give_feedback",
     "app.modules.campaigns.router.create_campaign",
     "app.modules.admin.report_router.file_report",
     "app.modules.disputes.router.open_dispute",

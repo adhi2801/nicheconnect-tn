@@ -114,6 +114,9 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     # To a creator, when a connected Instagram or YouTube account stopped
     # answering for them and needs connecting again (item 29, D-134).
     "connection_expired",
+    # To the other side of a finished deal, when one side has given feedback:
+    # never what it says (item 77, D-136).
+    "feedback_received",
 )
 MAX_DETAILS_LENGTH = 2000
 

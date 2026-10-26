@@ -47,6 +47,7 @@ OWNER_KEYED_TABLES = {"campaign_embedding", "creator_embedding"}
 # Append-only, sealed by triggers (D-057): never updated, so no updated_at.
 APPEND_ONLY_TABLES = {
     "admin_action",
+    "deal_feedback",
     "deal_note",
     "deal_record_checkpoint",
     "deal_record_entry",

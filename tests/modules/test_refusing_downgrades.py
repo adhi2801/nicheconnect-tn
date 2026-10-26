@@ -1,7 +1,7 @@
 """Every downgrade that would destroy unrecoverable data refuses while it exists.
 
 database.md section 6: losing such data must be a deliberate act, never a
-side effect of a rollback. Twenty-nine migrations refuse. Until 14 October 2026 each
+side effect of a rollback. Thirty migrations refuse. Until 14 October 2026 each
 refusal had been proven only by hand, in the session that wrote it
 (database.md gap 6, item 98); a later edit to one could have let a rollback
 drop a deal's record or a person's block without anyone noticing.
@@ -64,6 +64,7 @@ REFUSING = {
     "d78ed34127dd": "creators' campaign alerts",
     "b7c240ab2d4b": "barter shipments, and their sealed record entries",
     "3734d5492968": "connected accounts, and the deletions Meta asked for",
+    "a2a642dc46be": "feedback on finished deals, and their sealed record entries",
 }
 
 
@@ -608,3 +609,20 @@ def test_connected_accounts(db):
     )
 
     assert f"{before + 1} platform deletion requests" in refusal(db, "3734d5492968")
+
+
+def test_deal_feedback(client, db, clock):
+    from tests.deal_flow import accepted_memo, finish_deal
+
+    before = count(db, "SELECT count(*) FROM deal_feedback")
+    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    memo_id = accepted_memo(client, brand, creator)
+    finish_deal(client, brand, creator, memo_id)
+    given = client.post(
+        f"/api/v1/deal-memos/{memo_id}/feedback",
+        json={"brief": 5, "reliability": 5, "easy": 5},
+        headers=brand.headers,
+    )
+    assert given.status_code == 201, given.text
+
+    assert f"{before + 1} deal feedback answers" in refusal(db, "a2a642dc46be")

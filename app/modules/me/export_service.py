@@ -39,6 +39,7 @@ from app.modules.auth.models.totp_factor import TotpFactor
 from app.modules.campaigns import alert_service as campaign_alerts
 from app.modules.campaigns import offer_service as quote_offers
 from app.modules.campaigns import service as campaigns
+from app.modules.deal_memo import feedback_service as deal_feedback
 from app.modules.deal_memo import note_service as deal_notes
 from app.modules.deal_memo import service as deal_memos
 from app.modules.deal_memo import shipment_service as shipments
@@ -425,7 +426,9 @@ def _account_sections(db: Session, account: Account) -> list[ExportedSection]:
     return sections
 
 
-def collect_sections(db: Session, account: Account) -> list[ExportedSection]:
+def collect_sections(
+    db: Session, account: Account, now: datetime
+) -> list[ExportedSection]:
     """Every section of this account's export, in reading order."""
     return [
         *_account_sections(db, account),
@@ -440,6 +443,7 @@ def collect_sections(db: Session, account: Account) -> list[ExportedSection]:
         *deal_notes.export_for_account(db, account.id),
         *deal_memos.export_for_account(db, account.id),
         *shipments.export_for_account(db, account.id),
+        *deal_feedback.export_for_account(db, account.id, now),
         *payments.export_for_account(db, account.id),
         *upi.export_for_account(db, account.id),
         *disputes.export_for_account(db, account.id),
@@ -479,7 +483,7 @@ def _exports_section(db: Session, account: Account) -> ExportedSection:
 
 def build_export(db: Session, account: Account, now: datetime) -> dict[str, Any]:
     """The whole file: the data, a manifest, and what was left out."""
-    sections = collect_sections(db, account)
+    sections = collect_sections(db, account, now)
     return {
         "schema_version": SCHEMA_VERSION,
         "generated_at": to_json_value(now),
@@ -518,6 +522,7 @@ def exported_tables() -> frozenset[str]:
         | deal_notes.EXPORTED_TABLES
         | deal_memos.EXPORTED_TABLES
         | shipments.EXPORTED_TABLES
+        | deal_feedback.EXPORTED_TABLES
         | notifications.EXPORTED_TABLES
         | notification_preferences.EXPORTED_TABLES
         | devices.EXPORTED_TABLES
