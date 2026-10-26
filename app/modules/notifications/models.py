@@ -107,6 +107,10 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     # To a creator, when a published campaign fits one of their alerts
     # (item 43, D-130).
     "campaign_alert",
+    # A barter deal's goods: to the creator when sent, to the brand when the
+    # creator says they arrived (item 68, D-131).
+    "product_shipped",
+    "product_received",
 )
 MAX_DETAILS_LENGTH = 2000
 

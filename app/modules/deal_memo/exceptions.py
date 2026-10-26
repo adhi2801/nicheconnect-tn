@@ -164,3 +164,23 @@ class NotesClosed(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "notes_closed"
     title = "Notes can be written once the memo is sent, until the deal ends"
+
+
+class ShipmentClosed(DomainError):
+    # Goods are sent on an agreed barter deal only (D-131).
+    status_code = HTTPStatus.CONFLICT
+    code = "shipment_closed"
+    title = "A shipment is recorded on an agreed barter deal only"
+
+
+class ShipmentAlreadyReceived(DomainError):
+    # Once the creator says it arrived, neither side changes the shipment.
+    status_code = HTTPStatus.CONFLICT
+    code = "shipment_already_received"
+    title = "The creator has already said this shipment arrived"
+
+
+class ShipmentNotFound(DomainError):
+    status_code = HTTPStatus.NOT_FOUND
+    code = "shipment_not_found"
+    title = "No shipment has been recorded on this deal yet"

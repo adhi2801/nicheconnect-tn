@@ -46,6 +46,7 @@ from app.modules.deal_memo.record_router import router as deal_record_router
 from app.modules.deal_memo.repeat_router import router as repeat_router
 from app.modules.deal_memo.response_times_router import router as response_times_router
 from app.modules.deal_memo.router import router as deal_memos_router
+from app.modules.deal_memo.shipment_router import router as shipment_router
 from app.modules.disputes.router import router as disputes_router
 from app.modules.insights.city_figures_router import router as city_figures_router
 from app.modules.insights.rate_guidance_router import router as rate_guidance_router
@@ -176,6 +177,7 @@ app.include_router(takedown_router)
 app.include_router(search_router)
 app.include_router(creator_lists_router)
 app.include_router(campaign_alerts_router)
+app.include_router(shipment_router)
 app.include_router(report_router)
 app.include_router(admin_router)
 app.include_router(look_alike_router)

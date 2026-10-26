@@ -86,7 +86,7 @@ Researched 10 October 2026, sources in section 8.
 | A channel link on the rate card | Only the platform's own hosts (`app/modules/profiles/rate_card_service.py`) | Built: the rate card tests |
 | **Bought audiences** | Results read from proof (D-070); connected accounts with platform numbers (items 29–31) | Partly built; **Owed** (29–31) |
 | **A channel that is not theirs** | Proof readings check the handle on the screenshot matches the channel; real ownership needs connected accounts (item 29) | Partly built |
-| Take the goods and vanish | The delivery record counts it (D-038); cancellation kinds (D-026) | Built: `tests/modules/deal_memo/test_delivery_record.py` |
+| Take the goods and vanish | The delivery record counts it (D-038); cancellation kinds (D-026). The goods themselves are on the record (item 68, D-131): the brand records the courier and tracking number, only the creator says they arrived, both sealed, so "I never got it" is answered by the creator's own dated word. A correction before arrival is sealed too; after it nothing changes. 100 a day per account; the number is shown as text, never fetched or linked | Built: `tests/modules/deal_memo/test_delivery_record.py`, `test_barter_shipment_api.py`, `test_barter_shipment_model.py`, `test_barter_shipment_concurrency.py`, the daily-ceiling test |
 | Repeated contact after a no | Block, both ways (above) | Built |
 
 ### 3.3 Anyone → the records (and so → everyone who reads them)
