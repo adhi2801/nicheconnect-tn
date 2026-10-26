@@ -154,6 +154,9 @@ def test_a_result_carries_exactly_the_agreed_fields(client, db, brand):
             "followers": 24_000,
             "figures_as_of": FIXED_NOW.date().isoformat(),
             "self_reported": True,
+            # Not connected (D-134): no platform figure, never a zero.
+            "verified_followers": None,
+            "verified_as_of": None,
         }
     ]
     assert item["from_price_paise"] == 800_000

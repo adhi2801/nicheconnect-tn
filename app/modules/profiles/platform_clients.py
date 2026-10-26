@@ -90,6 +90,8 @@ class PlatformClient(Protocol):
 
     def profile(self, tokens: Tokens) -> PlatformProfile: ...
 
+    def refresh(self, tokens: Tokens, now: datetime) -> Tokens: ...
+
     def revoke(self, tokens: Tokens) -> None: ...
 
 
@@ -237,6 +239,19 @@ class InstagramClient:
             else None,
         )
 
+    def refresh(self, tokens: Tokens, now: datetime) -> Tokens:
+        """A new 60-day token for one at least a day old and not yet expired."""
+        body = self._http.get(
+            f"{INSTAGRAM_GRAPH}/refresh_access_token",
+            params={"grant_type": "ig_refresh_token"},
+            headers={"Authorization": f"Bearer {tokens.access_token}"},
+        )
+        return Tokens(
+            access_token=_text(body, "access_token"),
+            refresh_token=None,
+            expires_at=_expires(now, body),
+        )
+
     def revoke(self, tokens: Tokens) -> None:
         # Instagram Login offers no revoke call; removing our tokens, and the
         # creator removing the app in Instagram, is what ends access.
@@ -320,6 +335,30 @@ class YouTubeClient:
             followers=followers,
         )
 
+    def refresh(self, tokens: Tokens, now: datetime) -> Tokens:
+        """A new access token from the refresh token, which stays the same."""
+        if tokens.refresh_token is None:
+            raise PlatformRefused("no refresh token")
+        secret = (
+            settings.google_client_secret.get_secret_value()
+            if settings.google_client_secret
+            else ""
+        )
+        body = self._http.post_once(
+            GOOGLE_TOKEN,
+            {
+                "client_id": settings.google_client_id or "",
+                "client_secret": secret,
+                "grant_type": "refresh_token",
+                "refresh_token": tokens.refresh_token,
+            },
+        )
+        return Tokens(
+            access_token=_text(body, "access_token"),
+            refresh_token=tokens.refresh_token,
+            expires_at=_expires(now, body),
+        )
+
     def revoke(self, tokens: Tokens) -> None:
         token = tokens.refresh_token or tokens.access_token
         try:
@@ -339,7 +378,10 @@ class FakePlatformClient:
     profiles: dict[str, PlatformProfile] = field(default_factory=dict)
     exchanged: list[tuple[str, str | None]] = field(default_factory=list)
     revoked: list[str] = field(default_factory=list)
+    refreshed: list[str] = field(default_factory=list)
     unavailable: bool = False
+    # Access the creator removed at the platform: refreshing and reading refuse.
+    refused: bool = False
 
     def authorize_url(
         self, *, redirect_uri: str, state: str, code_challenge: str | None
@@ -364,8 +406,24 @@ class FakePlatformClient:
         )
 
     def profile(self, tokens: Tokens) -> PlatformProfile:
+        if self.unavailable:
+            raise PlatformUnavailable("fake")
+        if self.refused:
+            raise PlatformRefused("access removed")
         code = tokens.access_token.removeprefix("access-for-")
         return self.profiles[code]
+
+    def refresh(self, tokens: Tokens, now: datetime) -> Tokens:
+        if self.unavailable:
+            raise PlatformUnavailable("fake")
+        if self.refused:
+            raise PlatformRefused("access removed")
+        self.refreshed.append(tokens.access_token)
+        return Tokens(
+            access_token=tokens.access_token,
+            refresh_token=tokens.refresh_token,
+            expires_at=now + timedelta(days=60),
+        )
 
     def revoke(self, tokens: Tokens) -> None:
         self.revoked.append(tokens.access_token)

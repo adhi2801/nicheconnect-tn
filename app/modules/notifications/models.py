@@ -111,6 +111,9 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     # creator says they arrived (item 68, D-131).
     "product_shipped",
     "product_received",
+    # To a creator, when a connected Instagram or YouTube account stopped
+    # answering for them and needs connecting again (item 29, D-134).
+    "connection_expired",
 )
 MAX_DETAILS_LENGTH = 2000
 

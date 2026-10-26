@@ -28,6 +28,8 @@ from app.modules.auth.models.account import Account
 from app.modules.auth.models.creator import Creator
 from app.modules.deal_memo import delivery_record
 from app.modules.deal_memo.delivery_record import DeliveryRecord
+from app.modules.profiles import connection_service as connections
+from app.modules.profiles.connection_models import ConnectedAccount
 from app.modules.profiles.models import CreatorChannel, CreatorPackage
 from app.modules.profiles.rate_card_service import list_channels, list_packages
 from app.modules.safety.takedowns import refuse_withheld_creator
@@ -39,6 +41,8 @@ class MediaKit:
     channels: list[CreatorChannel]
     packages: list[CreatorPackage]
     delivery: DeliveryRecord
+    # Connected accounts, with what the platform itself reported (D-134).
+    connections: list[ConnectedAccount]
 
 
 def may_read(db: Session, account: Account, creator_id: uuid.UUID) -> bool:
@@ -64,7 +68,7 @@ def refuse_if_withheld(db: Session, account: Account, creator: Creator) -> None:
 def for_creator(db: Session, creator_id: uuid.UUID, now: datetime) -> MediaKit | None:
     """The media kit as of `now`, or None if there is no such creator.
 
-    Five queries, however many channels, packages or deals there are.
+    Six queries, however many channels, packages, connections or deals there are.
     """
     creator = db.get(Creator, creator_id)
     if creator is None:
@@ -74,4 +78,5 @@ def for_creator(db: Session, creator_id: uuid.UUID, now: datetime) -> MediaKit |
         channels=list_channels(db, creator),
         packages=list_packages(db, creator),
         delivery=delivery_record.for_creator(db, creator_id, now),
+        connections=connections.active_for(db, creator_id),
     )

@@ -29,6 +29,7 @@ from app.modules.deal_memo.anchor_models import DealRecordCheckpoint, DealRecord
 from app.modules.deal_memo.timestamp_authority import Stamp
 from app.modules.me import (
     account_deletion_jobs,
+    connection_jobs,
     data_export_jobs,
     passkey_jobs,
     phone_change_jobs,
@@ -398,3 +399,29 @@ def test_the_alert_workflow_runs_through_dbos(launched, monkeypatch):
     alert_jobs.send_campaign_alerts(SCHEDULED, None)
 
     assert runs == [SCHEDULED]
+
+
+def test_connections_are_refreshed_each_morning_with_no_backfill(launched):
+    """D-134: 02:30 UTC, 08:00 in Tamil Nadu; a missed day needs no replay."""
+    schedule = DBOS.get_schedule(connection_jobs.SCHEDULE_NAME)
+
+    assert schedule is not None
+    assert schedule["schedule"] == connection_jobs.DAILY_CRON == "30 2 * * *"
+    assert schedule["automatic_backfill"] is False
+
+
+def test_the_refresh_workflow_runs_through_dbos(launched, monkeypatch):
+    runs = []
+    monkeypatch.setattr(
+        connection_jobs, "run_refresh", lambda scheduled_at: runs.append(scheduled_at)
+    )
+
+    connection_jobs.refresh_connections(SCHEDULED, None)
+
+    assert runs == [SCHEDULED]
+
+
+def test_a_refresh_run_while_switched_off_reads_nothing(launched):
+    run = connection_jobs.run_refresh(SCHEDULED)
+
+    assert run.read == run.expired == run.unavailable == 0

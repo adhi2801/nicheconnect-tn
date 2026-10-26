@@ -39,9 +39,12 @@ from app.modules.passport import passport_service, structured_data
 from app.modules.passport.schemas import (
     IndexablePassportRead,
     PublicChannelRead,
+    PublicConnectionRead,
     PublicCreatorRead,
     PublicPackageRead,
 )
+from app.modules.profiles import connection_service as connections
+from app.modules.profiles.connection_models import ConnectedAccount
 from app.modules.profiles.models import CreatorChannel, CreatorPackage
 from app.modules.profiles.rate_card_service import list_channels, list_packages
 
@@ -101,6 +104,7 @@ def _to_public(
     creator: Creator,
     channels: list[CreatorChannel],
     packages: list[CreatorPackage],
+    connections: list[ConnectedAccount],
 ) -> PublicCreatorRead:
     """Build the response field by field: never a blanket dump of the row."""
     return PublicCreatorRead(
@@ -117,6 +121,15 @@ def _to_public(
             for c in channels
         ],
         packages=[PublicPackageRead.model_validate(p) for p in packages],
+        # Proof of control only, never a count (D-135, keeping D-042).
+        connected_accounts=[
+            PublicConnectionRead(
+                platform=c.platform,
+                handle=c.handle,
+                connected_since=c.connected_at.date(),
+            )
+            for c in connections
+        ],
         structured_data=_structured_data(creator, channels, packages),
     )
 
@@ -161,13 +174,13 @@ def read_public_profile(
 
     creator = passport_service.public_creator(db, normalised)
 
-    # Three queries at most, however many channels or packages there are.
+    # Four queries at most, however many channels, packages or connections.
     # Unpublished prices are not even read.
     channels = list_channels(db, creator)
     packages = (
         list_packages(db, creator) if passport_service.prices_are_public(creator) else []
     )
-    page = _to_public(creator, channels, packages)
+    page = _to_public(creator, channels, packages, connections.active_for(db, creator.id))
 
     etag = _etag(page)
     cache_headers = {"Cache-Control": f"public, max-age={CACHE_SECONDS}", "ETag": etag}
