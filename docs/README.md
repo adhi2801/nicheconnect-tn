@@ -2,14 +2,15 @@
 
 Every file here has one job. If two files start doing the same job, one of them goes. `CLAUDE.md` (at the root) is the only file read at the start of every session; it points here.
 
-## 0. The bar every document meets (D-098)
+## 0. The bar every document meets (D-098, raised by D-139)
 
 Adhi, 12 October 2026: every md file at the level of the best. A document meets the bar when:
 
 1. **Its first lines** say what it is for, who reads it, and when it was last checked against the code.
 2. **It is true today:** no stale number, claim or name.
 3. **It is sourced:** every non-obvious rule or number cites the published practice or the measurement behind it, with a date.
-4. **It weighs the ten dimensions** (`CLAUDE.md` section 5) that apply to it, and says which do not.
+4. **It weighs the twelve dimensions** (`CLAUDE.md` section 5) that apply to it, and says which do not.
+9. **It is at the level of the best published practice, not above our measurements:** each standard names the strongest outside benchmark for its area (for example OWASP ASVS and MASVS, WCAG 2.2, ISO/IEC 25010, Google's SRE practice, AWS Well-Architected), says where we meet it, beat it or fall short, and raises a number only once a tool has shown it can be held (D-139).
 5. **It names its own gaps:** what is weak, unmeasured, unreviewed or waiting.
 6. **It is actionable:** it points to the items in `BACKEND_COMPLETE.md` and the decisions that act on it.
 7. **Each fact lives in one place:** others link to it rather than copy it, so nothing drifts.
@@ -17,7 +18,9 @@ Adhi, 12 October 2026: every md file at the level of the best. A document meets 
 
 Dated reports, the decision log and the papers in `decided/` are records: they keep what was true when written, and get only a status line saying what became of them.
 
-**Progress**, updated as each file is raised. Raised on 12 October: `CLAUDE.md` and this index. On 14 October: `standards/backend.md`, `standards/database.md`, `standards/security.md`, `standards/testing.md`, `standards/trust-and-safety.md`, `standards/ux.md` and `standards/frontend.md`; and in the map, `BACKEND_COMPLETE.md` section 2, `ARCHITECTURE_SCALE.md` and `PERFORMANCE.md` brought up to date. Next, in this order:
+**Progress on the D-139 pass** (27 October): every md file raised again to twelve dimensions and point 9, one file at a time, each coming back to Adhi before it binds. Order: the standards (security, backend, database, testing, trust and safety, legal, frontend, ux), then the map, strategy and operations as below. None raised yet.
+
+**Progress on the D-098 pass**, kept as the record. Raised on 12 October: `CLAUDE.md` and this index. On 14 October: `standards/backend.md`, `standards/database.md`, `standards/security.md`, `standards/testing.md`, `standards/trust-and-safety.md`, `standards/ux.md` and `standards/frontend.md`; and in the map, `BACKEND_COMPLETE.md` section 2, `ARCHITECTURE_SCALE.md` and `PERFORMANCE.md` brought up to date. Next, in this order:
 1. The last standard: legal.
 2. The map: `BACKEND_COMPLETE.md`, `ARCHITECTURE_SCALE.md`, `PLATFORM_AND_TECH_PLAN.md`, `PERFORMANCE.md`.
 3. Strategy: the competitive landscape, the billion-dollar gap, trust, go to market, revenue, survival, the backlog.
