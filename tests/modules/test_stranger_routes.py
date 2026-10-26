@@ -328,6 +328,11 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
         c=creator_id,
     )
 
+    # A campaign alert of the creator's (item 43).
+    alert_id = client.post(
+        "/api/v1/me/campaign-alerts", json={"niche": "food"}, headers=creator.headers
+    ).json()["id"]
+
     # A second deal, approved but not yet paid, for the pay details.
     unpaid_creator = creator_user(db, clock)
     unpaid_memo_id = accepted_memo(client, brand, unpaid_creator)
@@ -365,6 +370,7 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
         "session_id": session_id,
         "takedown_id": takedown_id,
         "list_id": list_id,
+        "alert_id": alert_id,
         "account_id": brand.account_id,
         "city": city,
         "unpaid_memo_id": unpaid_memo_id,

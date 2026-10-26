@@ -32,6 +32,7 @@ from app.modules.auth.dependencies import idempotency_identity
 from app.modules.auth.device_router import router as devices_router
 from app.modules.auth.passkey_router import router as passkey_login_router
 from app.modules.auth.router import router as auth_router
+from app.modules.campaigns.alert_router import router as campaign_alerts_router
 from app.modules.campaigns.application_router import router as applications_router
 from app.modules.campaigns.invitation_router import router as invitations_router
 from app.modules.campaigns.offer_router import router as offers_router
@@ -174,6 +175,7 @@ app.include_router(block_router)
 app.include_router(takedown_router)
 app.include_router(search_router)
 app.include_router(creator_lists_router)
+app.include_router(campaign_alerts_router)
 app.include_router(report_router)
 app.include_router(admin_router)
 app.include_router(look_alike_router)

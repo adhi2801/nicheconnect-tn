@@ -148,3 +148,22 @@ class OfferAnswered(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "offer_already_answered"
     title = "That offer has already been answered or taken back"
+
+
+class CampaignAlertNotFound(DomainError):
+    # Also another creator's alert: 404, never 403 (security.md section 2).
+    status_code = HTTPStatus.NOT_FOUND
+    code = "campaign_alert_not_found"
+    title = "That alert is not one of yours"
+
+
+class CampaignAlertsFull(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "campaign_alerts_full"
+    title = "You have as many alerts as you can keep; remove one first"
+
+
+class CampaignAlertExists(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "campaign_alert_exists"
+    title = "You already have an alert with these terms"

@@ -462,3 +462,25 @@ def test_no_counter_offer_across_a_block(client, db, brand, creator, blocker):
 
     assert accepted.status_code == 404
     assert declined.status_code == 200, declined.text
+
+
+def test_no_campaign_alert_across_a_block(client, db, clock, brand, creator, blocked):
+    """Item 43: a fitting alert tells nobody across a block, either way."""
+    from tests.modules.campaigns.test_campaign_alert_sending import (
+        alerts_to,
+        clear_other_sends,
+        publish,
+        run,
+        with_alert,
+    )
+
+    clear_other_sends(db)
+    unblocked = creator_user(db, clock)
+    for user in (creator, unblocked):
+        with_alert(db, user, niche="food")
+    publish(client, brand)
+
+    run(db, clock)
+
+    assert alerts_to(db, creator) == []
+    assert len(alerts_to(db, unblocked)) == 1

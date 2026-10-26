@@ -57,6 +57,7 @@ from app.modules.auth.exceptions import RoleNotAllowed
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
+from app.modules.campaigns import alert_service as campaign_alerts
 from app.modules.campaigns import departure_service as departures
 from app.modules.deal_memo.unfinished import unfinished_deals
 from app.modules.matching import creator_list_service as creator_lists
@@ -349,6 +350,7 @@ def erase(db: Session, account_id: uuid.UUID, now: datetime) -> Outcome | None:
         rate_cards.erase_for_creator(db, profile.id)
         matching.erase_for_creator(db, profile.id)
         creator_lists.erase_for_creator(db, profile.id)
+        campaign_alerts.erase_for_creator(db, profile.id)
     notifications.erase_for_account(db, account.id)
     blocks.erase_for_account(db, account.id)
     data_exports.erase_for_account(db, account.id)

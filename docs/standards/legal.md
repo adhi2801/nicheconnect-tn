@@ -116,7 +116,7 @@ Notified 30 November 2023. The Consumer Protection Authority's advisory of June 
 | Bait and switch | The terms shown are the terms applied; a memo once accepted does not change, and the deal record proves it (D-057). A figure agreed through a counter-offer is shown beside a different memo fee, so the creator sees any change before accepting (D-123) |
 | Drip pricing | Every charge is shown before commitment, in full, never revealed at the last step |
 | Disguised advertisement | Anything paid for is labelled; creators' content carries its ad disclosure (section 3.7) |
-| **Nagging** | Notifications obey each person's preferences and quiet hours (D-079). A reminder repeats only on a real change or a real deadline |
+| **Nagging** | Notifications obey each person's preferences and quiet hours (D-079). A reminder repeats only on a real change or a real deadline. A campaign alert (D-130) comes only from an alert the creator saved, once per campaign, at most 20 a day, and is muted in one tap |
 | Trick question | Consent and settings questions are worded so that "yes" means yes |
 | SaaS billing | No silent renewals or charges after a free period without a clear, timely notice |
 | Rogue malware | Never: no hidden code, no misleading download |
