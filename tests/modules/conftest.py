@@ -60,6 +60,22 @@ def client(db: Session, clock: Clock) -> Iterator[TestClient]:
 # cannot use the rolled-back `db` session. These build their own rows and
 # remove them afterwards.
 
+
+@pytest.fixture
+def unlimited() -> Iterator[None]:
+    """Rate limits off, for a test that builds many deals for one account.
+
+    Limits count per route across every object since D-137, so setting up
+    eight deals for one brand inside a minute would be refused: right for a
+    person, wrong for a test of something else. Never for a test of a limit.
+    """
+    limiter.enabled = False
+    try:
+        yield
+    finally:
+        limiter.enabled = True
+
+
 CONCURRENCY_NOW = datetime(2026, 9, 21, 9, 0, tzinfo=UTC)
 
 

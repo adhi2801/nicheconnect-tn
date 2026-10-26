@@ -1731,3 +1731,15 @@ Newest entries at the bottom.
   3. `deal_feedback` is sealed like deal notes: triggers refuse UPDATE, DELETE and TRUNCATE, and the app's role may only read and add; each answer is also sealed onto the deal record (`feedback_given`, with its fingerprint). The other side is told an answer exists (`feedback_received`), never what it says.
   4. `GET /api/v1/creators/{creator_id}/feedback` (brands, or the creator) and `GET /api/v1/brands/{brand_id}/feedback` (anyone signed in): averages of revealed answers, null below three, with the number of answers and of different partners; `.../feedback/notes` pages the revealed notes, each beside the subject's own words on that deal.
   5. Kept as a deal record on deletion (D-122); in both exports, the other side's once revealed. Migration `a2a642dc46be`; its downgrade refuses while any feedback or feedback entry exists. Whether a note may be removed, and on what grounds, is a legal.md Confirm item.
+
+## D-137: Rate limits count per route, so every ceiling holds per account
+- Date: 2026-10-26
+- Approved by: Adhi, in this session: "Count per route (Recommended)", to the decision raised when building item 77 found the gap. **Not reviewed by the other founder** (D-051).
+- Context: slowapi counts a limit per URL path by default (`key_style="url"`). A route with an id in its path, such as `/campaigns/{campaign_id}/invitations`, had a fresh counter for every campaign, so each daily ceiling held per object, not per account: a brand could send 100 invitations a day on each of many campaigns, against trust-and-safety.md rule 2. `tests/modules/test_daily_ceilings.py` checked that the ceilings were registered, never that they held across objects.
+- Options considered: A) count per route (`key_style="endpoint"`), every limit across every object; B) only the daily ceilings route-wide, the minute limits per path; C) leave it and correct the documents.
+- Chosen: A.
+- Reason: one counting rule, and every documented ceiling then means what it says.
+- Consequences / follow-ups:
+  1. `app/core/rate_limit.py` sets `key_style="endpoint"`. Per-minute limits are stricter too: 60 reads a minute of one route across all deals, not per deal.
+  2. `test_a_limit_holds_across_every_object_its_route_names` proves a route's limit holds across two deals, and was seen failing with the old setting.
+  3. Every ceiling in security.md section 5 and trust-and-safety.md section 3 now holds as written; no limit value changed.

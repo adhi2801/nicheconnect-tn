@@ -151,6 +151,7 @@ Examples:
 | Search and matching | 30 a minute | the account |
 | Public pages | 60 a minute | the address |
 
+- **A limit counts per route and per account**, across every object the route names (D-137): sixty reads a minute of one route mean sixty across all deals, and a daily ceiling on inviting is per brand, not per campaign. **Enforced by** `tests/modules/test_daily_ceilings.py::test_a_limit_holds_across_every_object_its_route_names`. Until 26 October 2026 limits counted per URL path, so each held per object.
 - **Every route is limited**: the limiter's middleware gives any route without its own limit the default. **Enforced by** `tests/test_api_contract.py` (every operation documents its 429) and `tests/test_rate_limit.py` (routers use the typed decorator).
 - Anything that reaches another person also has a daily ceiling (`trust-and-safety.md` rule 2).
 - Counters live in Valkey (D-003, D-048), shared by every process.

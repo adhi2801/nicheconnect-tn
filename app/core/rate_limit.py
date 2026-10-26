@@ -17,10 +17,16 @@ from app.core.config import settings
 # Counters live where RATE_LIMIT_STORAGE_URI says. In memory they are per
 # process, so two processes would each allow the full limit; Redis shares one
 # count across every process (D-003).
+# key_style="endpoint": a limit counts per route, across every object it
+# names. slowapi's default, "url", counted per path, so a route with an id
+# in it (/campaigns/{id}/invitations) had a fresh counter per campaign, and
+# every daily ceiling held per object, not per account as trust-and-safety.md
+# rule 2 promises. Found 26 October 2026 (D-137).
 limiter = Limiter(
     key_func=lambda request: per_account(request),
     default_limits=["60/minute"],
     storage_uri=settings.rate_limit_storage_uri,
+    key_style="endpoint",
 )
 
 

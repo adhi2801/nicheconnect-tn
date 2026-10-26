@@ -92,3 +92,31 @@ def test_a_brand_sees_the_same_ceiling_from_any_route_twice(client, db, clock):
 
     assert answers[:30] == [200] * 30
     assert answers[30] == 429
+
+
+def test_a_limit_holds_across_every_object_its_route_names(client, db, clock):
+    """D-137: a limit counts per route, not per path. Until 26 October each
+    deal, campaign or memo in a path had its own counter, so a ceiling held
+    per object: a brand could invite 100 a day on each of many campaigns."""
+    from app.modules.deal_memo.note_router import READ_LIMIT
+    from tests.deal_flow import MEMOS_URL, accepted_memo
+
+    brand = brand_user(db, clock)
+    first = accepted_memo(client, brand, creator_user(db, clock))
+    second = accepted_memo(client, brand, creator_user(db, clock))
+    per_minute = int(READ_LIMIT.split()[0])
+    half = per_minute // 2
+    answers = [
+        client.get(f"{MEMOS_URL}/{memo}/notes", headers=brand.headers).status_code
+        for memo in [first] * half + [second] * (per_minute - half)
+    ]
+
+    assert answers == [200] * per_minute
+    # The next on either deal is over the route's limit, not a fresh one's.
+    assert (
+        client.get(f"{MEMOS_URL}/{second}/notes", headers=brand.headers).status_code
+        == 429
+    )
+    assert (
+        client.get(f"{MEMOS_URL}/{first}/notes", headers=brand.headers).status_code == 429
+    )
