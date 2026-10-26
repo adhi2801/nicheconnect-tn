@@ -27,6 +27,7 @@ REACH = (
     "app.modules.disputes.router.add_entry",
     "app.modules.matching.search_router.search_creators",
     "app.modules.matching.creator_list_router.creators_on_a_list",
+    "app.modules.matching.similar_router.like_my_best",
     "app.modules.matching.router.list_matches_for_campaign",
     "app.modules.matching.router.list_campaigns_for_me",
     "app.modules.payment_status.upi_router.read_pay_details",
