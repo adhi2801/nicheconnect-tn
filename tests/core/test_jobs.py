@@ -18,6 +18,7 @@ from app.core.config import settings
 from app.db.session import SessionLocal
 from app.main import app
 from app.modules.admin import report_clock_jobs
+from app.modules.campaigns import alert_jobs
 from app.modules.deal_memo import (
     anchor_jobs,
     anchor_service,
@@ -377,3 +378,23 @@ def test_a_deletion_run_with_nothing_due_erases_nothing(launched):
     run = account_deletion_jobs.run_deletions(SCHEDULED)
 
     assert run.due == run.erased == run.held == run.waiting_for_export == 0
+
+
+def test_campaign_alerts_are_sent_every_minute_with_no_backfill(launched):
+    """D-130: a creator hears of a fitting campaign within about a minute."""
+    schedule = DBOS.get_schedule(alert_jobs.SCHEDULE_NAME)
+
+    assert schedule is not None
+    assert schedule["schedule"] == alert_jobs.EVERY_MINUTE_CRON == "* * * * *"
+    assert schedule["automatic_backfill"] is False
+
+
+def test_the_alert_workflow_runs_through_dbos(launched, monkeypatch):
+    runs = []
+    monkeypatch.setattr(
+        alert_jobs, "run_sending", lambda scheduled_at: runs.append(scheduled_at)
+    )
+
+    alert_jobs.send_campaign_alerts(SCHEDULED, None)
+
+    assert runs == [SCHEDULED]

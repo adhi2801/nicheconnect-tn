@@ -569,3 +569,49 @@ class CampaignSummaryRead(BaseModel):
     deals_finished: int
     deals_waiting_on_brand: int
     complete: bool
+
+
+# --- campaign alerts (item 43, D-130) ---------------------------------------
+
+
+class CampaignAlertIn(BaseModel):
+    """An alert's terms. Each one named must fit; one left out fits anything."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    city: City | None = None
+    niche: Niche | None = None
+    campaign_type: CampaignType | None = None
+    min_budget_paise: Paise | None = Field(
+        default=None,
+        description="Fits a campaign whose budget reaches this, in whole paise",
+    )
+
+    @model_validator(mode="after")
+    def names_a_term(self) -> CampaignAlertIn:
+        if (
+            self.city is None
+            and self.niche is None
+            and self.campaign_type is None
+            and self.min_budget_paise is None
+        ):
+            raise PydanticCustomError(
+                "alert_empty", "Name at least one of a city, a niche, a type or a budget"
+            )
+        if self.campaign_type == "barter" and self.min_budget_paise is not None:
+            raise PydanticCustomError(
+                "budget_on_barter", "A barter campaign pays in goods, so it has no budget"
+            )
+        return self
+
+
+class CampaignAlertRead(BaseModel):
+    """One of the creator's alerts. `null` in a term means any."""
+
+    id: uuid.UUID
+    city: str | None
+    niche: Niche | None
+    campaign_type: CampaignType | None
+    min_budget_paise: int | None
+    currency: Literal["INR"]
+    created_at: datetime

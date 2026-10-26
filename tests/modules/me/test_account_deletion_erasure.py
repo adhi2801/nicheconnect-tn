@@ -39,6 +39,7 @@ from app.modules.auth.models.passkey import Passkey, PasskeyChallenge, PasskeyRe
 from app.modules.auth.models.step_up_challenge import StepUpChallenge
 from app.modules.auth.models.totp_factor import TotpFactor
 from app.modules.auth.sender import FakeOtpSender, get_otp_sender
+from app.modules.campaigns.alert_models import CampaignAlert
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.matching.creator_list_models import CreatorList, CreatorListEntry
 from app.modules.matching.models import EMBEDDING_DIMENSIONS, CreatorEmbedding
@@ -253,6 +254,7 @@ def fill(db: Session, who: Person, other: Person, clock: Clock) -> set[str]:
         db.add(kept)
         db.flush()
         db.add(CreatorListEntry(list_id=kept.id, creator_id=who.profile_id))
+        db.add(CampaignAlert(creator_id=who.profile_id, niche="food"))
         tables |= {
             "creator_channel",
             "creator_package",
@@ -260,6 +262,7 @@ def fill(db: Session, who: Person, other: Person, clock: Clock) -> set[str]:
             "creator_upi_change",
             "creator_embedding",
             "creator_list_entry",
+            "campaign_alert",
         }
     else:
         db.add(

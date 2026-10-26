@@ -1635,3 +1635,18 @@ Newest entries at the bottom.
   3. Reading a list's creators has search's ceiling, 30 a minute and 600 a day per account, so a list is never a way round it. The proposal said no ceiling was needed, since nothing reaches the creator; this is stricter, and is said here so it can be undone.
   4. The creator is never told. The brand's export holds the lists and their lines; the creator's does not say which brands listed them, and whether it must is a legal.md Confirm item. Deleting an account erases a brand's lists, or every line about a creator (D-122).
   5. Tables `creator_list` and `creator_list_entry`, migration `3c527a80ee4e`; its downgrade refuses while any list exists.
+
+## D-130: Campaign alerts for creators, sent from an outbox at publish (item 43)
+- Date: 2026-10-26
+- Approved by: Adhi, in this session: "all as recommended i mean the best", to the batch proposal of items 17, 66 and 43 (option A, notify at publish); and, asked again when building showed the campaign table records no publish time, "Outbox table (Recommended)". **Not reviewed by the other founder** (D-051).
+- Context: a creator learnt of a new campaign only by opening discovery, so the first to apply were whoever happened to look. Collabstr distributes a live campaign to the creators it matches (read 26 October 2026, `docs/COMPETITIVE_LANDSCAPE.md` section 4); ours go by the terms the creator chose.
+- Options considered: (a) when: A) at publish; B) a daily digest only. (b) how the job learns of a publish: A) an outbox table written in the publishing transaction; B) `published_at` and `alerts_sent_at` columns on `campaign`.
+- Chosen: aA and bA.
+- Reason: a digest is already a preference anyone may choose (D-079), so publish-time loses nothing (aA). The outbox leaves the campaign table untouched, needs no backfill, and keeps job state out of a domain row (bA).
+- Consequences / follow-ups:
+  1. `GET` and `POST /api/v1/me/campaign-alerts`, `DELETE /{alert_id}`. Creators only; another creator's alert answers 404 `campaign_alert_not_found`. An alert is any mix of a city (any case), a niche, a campaign type and a least budget, naming at least one; no budget on barter. At most 5 (`campaign_alerts_full`), counted under the creator's lock; the same terms once (`campaign_alert_exists`).
+  2. What fits is one pure rule, `alert_rules.matches`, with property tests; `alert_service.fits` asks it in SQL, and a test holds the two to each other over every shape of alert.
+  3. Publishing writes a `campaign_alert_send` row in its own transaction. Every minute, a DBOS job sends the oldest due, 500 creators a transaction, each under one advisory lock, and records a mutable `campaign_alert` notification once per creator per campaign, so a run cut short or run twice tells nobody twice. At most 20 a Tamil Nadu day per creator.
+  4. Nobody is told across a block either way, by a suspended, deleted or withheld brand, of a campaign withheld or closed before its turn, or as a suspended, deleted or withheld creator; never the brand's own other side (D-126). Campaigns already open when this shipped are not alerted.
+  5. The creator's export holds their alerts; deleting the account erases them (D-122). Delivery outside the app, and so quiet hours, wait on push (E1).
+  6. Tables `campaign_alert` and `campaign_alert_send`, migration `d78ed34127dd`, which also widens the notification and mutable types; its downgrade refuses while any alert exists.

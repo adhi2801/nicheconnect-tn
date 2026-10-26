@@ -20,6 +20,10 @@ from app.modules.auth.models.passkey import (
 )
 from app.modules.auth.models.step_up_challenge import StepUpChallenge  # noqa: F401
 from app.modules.auth.models.totp_factor import TotpFactor  # noqa: F401
+from app.modules.campaigns.alert_models import (  # noqa: F401
+    CampaignAlert,
+    CampaignAlertSend,
+)
 from app.modules.campaigns.deliverable_models import CampaignDeliverable  # noqa: F401
 from app.modules.campaigns.models import (
     Application,  # noqa: F401

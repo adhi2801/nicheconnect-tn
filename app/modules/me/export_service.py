@@ -36,6 +36,7 @@ from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.models.totp_factor import TotpFactor
+from app.modules.campaigns import alert_service as campaign_alerts
 from app.modules.campaigns import offer_service as quote_offers
 from app.modules.campaigns import service as campaigns
 from app.modules.deal_memo import note_service as deal_notes
@@ -83,6 +84,11 @@ EXPORTED_TABLES = frozenset(
 # Things we hold that are deliberately left out, and why. Printed in the file
 # itself: a person is entitled to know what exists, not only what we hand over.
 NOT_EXPORTED: dict[str, str] = {
+    "campaign_alert_send": (
+        "Whether a published campaign's alerts have been sent yet, and to how "
+        "many. It is about the campaign, not you; any alert you were sent is in "
+        "your notifications."
+    ),
     "passkey_challenge": (
         "The one-time challenges we sent your passkeys to sign, each working "
         "once for 5 minutes and deleted a day after. Random numbers, holding "
@@ -417,6 +423,7 @@ def collect_sections(db: Session, account: Account) -> list[ExportedSection]:
         *brand_domains.export_for_account(db, account.id),
         *campaigns.export_for_account(db, account.id),
         *quote_offers.export_for_account(db, account.id),
+        *campaign_alerts.export_for_account(db, account.id),
         *deal_notes.export_for_account(db, account.id),
         *deal_memos.export_for_account(db, account.id),
         *payments.export_for_account(db, account.id),
@@ -492,6 +499,7 @@ def exported_tables() -> frozenset[str]:
         | brand_domains.EXPORTED_TABLES
         | campaigns.EXPORTED_TABLES
         | quote_offers.EXPORTED_TABLES
+        | campaign_alerts.EXPORTED_TABLES
         | deal_notes.EXPORTED_TABLES
         | deal_memos.EXPORTED_TABLES
         | notifications.EXPORTED_TABLES

@@ -1,0 +1,216 @@
+"""campaign alerts (item 43, D-130)
+
+Approved by Adhi on 26 October 2026 (D-130: alerts at publish, at most 5 a
+creator and 20 a day; an outbox table for the job, chosen in this session
+over columns on `campaign`). This migration:
+
+- creates `campaign_alert`, new and empty, so its checks and its unique
+  index are made whole. ON DELETE CASCADE on the creator: an alert is the
+  creator's own thing. The unique index `(creator_id, lower(city), niche,
+  campaign_type, min_budget_paise)`, NULLS NOT DISTINCT, holds each set of
+  terms once per creator and is the foreign key's index;
+- creates `campaign_alert_send`, new and empty: one row per published
+  campaign, written in the publishing transaction, that the job sends.
+  ON DELETE CASCADE on the campaign: it is only the campaign's job state.
+  Its unique `campaign_id` is the foreign key's index; a partial index on
+  `queued_at` is the job's queue;
+- widens the notification types, and the types a person may mute, with
+  `campaign_alert`, each check swapped NOT VALID and validated after the
+  transaction.
+
+Data impact: none on existing rows. Campaigns already open get no send
+row, so publishing this tells nobody about them.
+
+Downgrade: refuses while any alert exists, since dropping the table would
+destroy what creators asked for; otherwise it removes `campaign_alert`
+notifications and mutes, and reverses each step.
+
+Revision ID: d78ed34127dd
+Revises: 3c527a80ee4e
+Create Date: 2026-10-26 14:18:41.225788
+
+"""
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+
+
+# revision identifiers, used by Alembic.
+revision: str = 'd78ed34127dd'
+down_revision: Union[str, None] = '3c527a80ee4e'
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+ADDED = "campaign_alert"
+
+# Frozen here, rather than read from the models, so this migration means the
+# same thing forever.
+OLD_TYPES = (
+    "application_received",
+    "application_withdrawn",
+    "memo_accepted",
+    "memo_declined",
+    "memo_change_requested",
+    "proof_submitted",
+    "invitation_accepted",
+    "invitation_declined",
+    "application_shortlisted",
+    "application_accepted",
+    "application_rejected",
+    "memo_sent",
+    "proof_approved",
+    "proof_auto_approved",
+    "proof_revision_requested",
+    "payment_marked_paid",
+    "invitation_received",
+    "invitation_withdrawn",
+    "memo_cancelled",
+    "payment_confirmed",
+    "report_resolved",
+    "report_received",
+    "report_due_soon",
+    "report_overdue",
+    "content_withheld",
+    "content_restored",
+    "admin_signed_in",
+    "admin_second_factor_refused",
+    "admin_second_factor_changed",
+    "upi_change_pending",
+    "upi_change_cancelled",
+    "data_exported",
+    "logged_out_everywhere",
+    "phone_change_requested",
+    "phone_change_cancelled",
+    "phone_changed",
+    "phone_change_failed",
+    "data_export_ready",
+    "data_export_failed",
+    "passkey_added",
+    "passkey_removed",
+    "passkey_reset_requested",
+    "passkey_reset_cancelled",
+    "passkey_only_changed",
+    "session_ended",
+    "deletion_requested",
+    "deletion_cancelled",
+    "deletion_held_by_deals",
+    "offer_received",
+    "offer_accepted",
+    "offer_declined",
+    "offer_withdrawn",
+    "note_added",
+)
+
+OLD_MUTABLE = (
+    "application_received",
+    "application_withdrawn",
+    "memo_accepted",
+    "memo_declined",
+    "memo_change_requested",
+    "invitation_accepted",
+    "invitation_declined",
+    "application_shortlisted",
+    "application_accepted",
+    "application_rejected",
+    "proof_approved",
+    "proof_auto_approved",
+    "invitation_received",
+    "invitation_withdrawn",
+    "memo_cancelled",
+    "payment_confirmed",
+    "report_resolved",
+    "report_received",
+    "content_restored",
+    "offer_received",
+    "offer_accepted",
+    "offer_declined",
+    "offer_withdrawn",
+    "note_added",
+)
+
+
+def _array(values: tuple[str, ...]) -> str:
+    return "ARRAY[" + ", ".join(f"'{value}'" for value in values) + "]::varchar[]"
+
+
+def _swap_lists(types: tuple[str, ...], mutable: tuple[str, ...]) -> None:
+    """Replace both lists' checks, NOT VALID, then validate after the transaction."""
+    checks = (
+        ("notification", "ck_notification_type_allowed", f"notification_type IN {types}"),
+        (
+            "notification_preference",
+            "ck_notification_preference_muted_types_allowed",
+            f"muted_types <@ {_array(mutable)}",
+        ),
+    )
+    for table, name, condition in checks:
+        op.execute(f"ALTER TABLE {table} DROP CONSTRAINT {name}")
+        op.execute(f"ALTER TABLE {table} ADD CONSTRAINT {name} CHECK ({condition}) NOT VALID")
+    with op.get_context().autocommit_block():
+        for table, name, _ in checks:
+            op.execute(f"ALTER TABLE {table} VALIDATE CONSTRAINT {name}")
+
+
+def upgrade() -> None:
+    # ### commands auto generated by Alembic - please adjust! ###
+    op.create_table('campaign_alert',
+    sa.Column('id', sa.UUID(), server_default=sa.text('uuidv7()'), nullable=False),
+    sa.Column('creator_id', sa.UUID(), nullable=False),
+    sa.Column('city', sa.String(length=60), nullable=True),
+    sa.Column('niche', sa.String(length=20), nullable=True),
+    sa.Column('campaign_type', sa.String(length=20), nullable=True),
+    sa.Column('min_budget_paise', sa.BigInteger(), nullable=True),
+    sa.Column('currency', sa.String(length=3), server_default=sa.text("'INR'"), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.CheckConstraint("campaign_type IS DISTINCT FROM 'barter' OR min_budget_paise IS NULL", name=op.f('ck_campaign_alert_no_budget_on_barter')),
+    sa.CheckConstraint("campaign_type IS NULL OR campaign_type IN ('paid', 'barter', 'commission', 'local_business')", name=op.f('ck_campaign_alert_type_allowed')),
+    sa.CheckConstraint("currency = 'INR'", name=op.f('ck_campaign_alert_currency_allowed')),
+    sa.CheckConstraint("niche IS NULL OR niche IN ('food', 'fashion', 'beauty', 'tech', 'travel', 'fitness', 'education', 'entertainment', 'finance', 'lifestyle')", name=op.f('ck_campaign_alert_niche_allowed')),
+    sa.CheckConstraint('city IS NULL OR char_length(btrim(city)) BETWEEN 2 AND 60', name=op.f('ck_campaign_alert_city_length')),
+    sa.CheckConstraint('min_budget_paise IS NULL OR min_budget_paise > 0', name=op.f('ck_campaign_alert_budget_positive')),
+    sa.CheckConstraint('num_nonnulls(city, niche, campaign_type, min_budget_paise) >= 1', name=op.f('ck_campaign_alert_names_a_term')),
+    sa.ForeignKeyConstraint(['creator_id'], ['creator.id'], name=op.f('fk_campaign_alert_creator_id_creator'), ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_campaign_alert'))
+    )
+    op.create_index('uq_campaign_alert_terms', 'campaign_alert', ['creator_id', sa.literal_column('lower(city)'), 'niche', 'campaign_type', 'min_budget_paise'], unique=True, postgresql_nulls_not_distinct=True)
+    op.create_table('campaign_alert_send',
+    sa.Column('id', sa.UUID(), server_default=sa.text('uuidv7()'), nullable=False),
+    sa.Column('campaign_id', sa.UUID(), nullable=False),
+    sa.Column('queued_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('sent_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('recipients', sa.Integer(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.CheckConstraint('(sent_at IS NULL) = (recipients IS NULL)', name=op.f('ck_campaign_alert_send_sent_with_recipients')),
+    sa.CheckConstraint('recipients IS NULL OR recipients >= 0', name=op.f('ck_campaign_alert_send_recipients_counted')),
+    sa.ForeignKeyConstraint(['campaign_id'], ['campaign.id'], name=op.f('fk_campaign_alert_send_campaign_id_campaign'), ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_campaign_alert_send')),
+    sa.UniqueConstraint('campaign_id', name=op.f('uq_campaign_alert_send_campaign_id'))
+    )
+    op.create_index('ix_campaign_alert_send_due', 'campaign_alert_send', ['queued_at'], unique=False, postgresql_where=sa.text('sent_at IS NULL'))
+    # ### end Alembic commands ###
+    _swap_lists(OLD_TYPES + (ADDED,), OLD_MUTABLE + (ADDED,))
+
+
+def downgrade() -> None:
+    alerts = op.get_bind().execute(sa.text("SELECT count(*) FROM campaign_alert")).scalar_one()
+    if alerts:
+        raise RuntimeError(
+            f"{alerts} campaign alerts exist. They are what creators asked to hear "
+            "about; remove them deliberately, as the owner, if that is really intended."
+        )
+    op.execute(f"DELETE FROM notification WHERE notification_type = '{ADDED}'")
+    op.execute(
+        "UPDATE notification_preference"
+        f" SET muted_types = array_remove(muted_types, '{ADDED}')"
+        f" WHERE '{ADDED}' = ANY (muted_types)"
+    )
+    _swap_lists(OLD_TYPES, OLD_MUTABLE)
+    # ### commands auto generated by Alembic - please adjust! ###
+    op.drop_index('ix_campaign_alert_send_due', table_name='campaign_alert_send', postgresql_where=sa.text('sent_at IS NULL'))
+    op.drop_table('campaign_alert_send')
+    op.drop_index('uq_campaign_alert_terms', table_name='campaign_alert', postgresql_nulls_not_distinct=True)
+    op.drop_table('campaign_alert')
+    # ### end Alembic commands ###

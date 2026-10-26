@@ -1,7 +1,7 @@
 """Every downgrade that would destroy unrecoverable data refuses while it exists.
 
 database.md section 6: losing such data must be a deliberate act, never a
-side effect of a rollback. Twenty-six migrations refuse. Until 14 October 2026 each
+side effect of a rollback. Twenty-seven migrations refuse. Until 14 October 2026 each
 refusal had been proven only by hand, in the session that wrote it
 (database.md gap 6, item 98); a later edit to one could have let a rollback
 drop a deal's record or a person's block without anyone noticing.
@@ -61,6 +61,7 @@ REFUSING = {
     "413468ae18cf": "memos sealed with their deliverables, and the deliverables themselves",
     "a9188046bec4": "deal notes, and their sealed record entries",
     "3c527a80ee4e": "brands' saved lists of creators",
+    "d78ed34127dd": "creators' campaign alerts",
 }
 
 
@@ -571,3 +572,14 @@ def test_saved_creator_lists(client, db, clock):
     assert made.status_code == 201, made.text
 
     assert f"{before + 1} creator lists exist" in refusal(db, "3c527a80ee4e")
+
+
+def test_campaign_alerts(client, db, clock):
+    before = count(db, "SELECT count(*) FROM campaign_alert")
+    creator = creator_user(db, clock)
+    made = client.post(
+        "/api/v1/me/campaign-alerts", json={"niche": "food"}, headers=creator.headers
+    )
+    assert made.status_code == 201, made.text
+
+    assert f"{before + 1} campaign alerts exist" in refusal(db, "d78ed34127dd")

@@ -29,6 +29,7 @@ from app.modules.auth import sides
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import brand_is_active, brand_is_unavailable
+from app.modules.campaigns import alert_service
 from app.modules.campaigns import offer_service as offers
 from app.modules.campaigns.deliverable_models import CampaignDeliverable
 from app.modules.campaigns.exceptions import (
@@ -272,6 +273,8 @@ def change_status(
         # A name that looks like a protected brand's publishes nothing until
         # the brand verifies that brand's domain (item 75, option B).
         brand_name_service.ensure_may_publish(db, campaign.brand_id)
+        # Its alerts are due, in this same transaction (item 43, D-130).
+        alert_service.queue(db, campaign, now)
     campaign.status = new_status
     campaign.updated_at = now
     db.commit()

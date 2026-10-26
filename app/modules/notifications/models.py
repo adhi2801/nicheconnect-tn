@@ -104,6 +104,9 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     "offer_withdrawn",
     # To the other side of a deal, when a note is written on it (item 17, D-128).
     "note_added",
+    # To a creator, when a published campaign fits one of their alerts
+    # (item 43, D-130).
+    "campaign_alert",
 )
 MAX_DETAILS_LENGTH = 2000
 
