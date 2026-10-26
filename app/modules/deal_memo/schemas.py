@@ -12,6 +12,7 @@ from app.core.literals import ensure_same_values
 from app.core.taxonomy import CURRENCY
 from app.core.text_flags import FieldFlag, field_flags
 from app.modules.campaigns.schemas import DeliverableItems, DeliverableRead
+from app.modules.deal_memo.content_rights import RIGHTS_STATES
 from app.modules.deal_memo.delivery_record import (
     HAS_HISTORY,
     NO_HISTORY_YET,
@@ -606,4 +607,49 @@ class ShipmentRead(BaseModel):
     shipped_at: datetime
     received_at: datetime | None = Field(
         description="When the creator said it arrived; null until they do"
+    )
+
+
+# --- a brand's content library (item 70, D-132) ----------------------------------
+
+RightsState = Literal["active", "lapsing", "lapsed", "not_agreed"]
+
+ensure_same_values("RightsState", RightsState, RIGHTS_STATES)
+
+
+class ContentItemRead(BaseModel):
+    """One approved post, with the usage window its accepted memo sealed."""
+
+    proof_id: uuid.UUID
+    deal_memo_id: uuid.UUID = Field(
+        description="Its deal; the deal's record proves the terms and the approval"
+    )
+    campaign_id: uuid.UUID
+    campaign_title: str
+    creator_id: uuid.UUID
+    creator_handle: str
+    format: str
+    content_url: str | None = Field(
+        description="Shown as text and opened by the person, never fetched for them"
+    )
+    approved_at: datetime
+    auto_approved: bool = Field(description="Approved by the clock, not by the brand")
+    content_removed_on: date | None = Field(
+        description="When the post was found taken down, if it was"
+    )
+    usage_rights_days: int | None = Field(
+        description="The days of use the accepted memo states; null if it states none"
+    )
+    rights_until: date | None = Field(
+        description=(
+            "The day those days end, counted from the Tamil Nadu day the work was "
+            "approved; null if the memo states none. The memo's terms, not a "
+            "ruling on what the law allows"
+        )
+    )
+    rights_state: RightsState = Field(
+        description=(
+            "`active`; `lapsing` within 30 days; `lapsed`; or `not_agreed` when the "
+            "memo states no days"
+        )
     )

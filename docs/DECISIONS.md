@@ -1664,3 +1664,16 @@ Newest entries at the bottom.
   3. Each step runs under the deal's lock with its record entry, so a correction racing "it arrived" never lands after it. `GET .../record` gains `shipment_unchanged`, which catches a row rewritten behind the app's back.
   4. Both parties' exports hold the shipment; the deletion registry keeps it as a deal record (D-122). An agreed deal carries on across a block (item 59), and so does its shipment.
   5. Table `barter_shipment` (ON DELETE RESTRICT on the memo), migration `b7c240ab2d4b`, which widens the record kinds and the notification and mutable types; its downgrade refuses while any shipment or shipment entry exists. Courier status fetched from the courier is not built: it needs an outside service and a founder decision.
+
+## D-132: A brand's content library, worked out from the sealed memo (item 70)
+- Date: 2026-10-26
+- Approved by: Adhi, in this session: "carry on i need the best the standards limit should be sky", to the proposal of items 68, 70 and 65 with their dimensions. **Not reviewed by the other founder** (D-051).
+- Context: a brand loses track of which approved posts it may still use. impact.com and The Cirqle track rights expiry from dates typed into their dashboards (read 26 October 2026, `docs/COMPETITIVE_LANDSCAPE.md` section 4); the accepted memo here already seals `usage_rights_days`.
+- Options considered: A) worked out on read from the memo and the approved proofs; B) a library table copying each approval and its expiry.
+- Chosen: A.
+- Reason: a stored copy of a derived fact drifts (backend.md section 2), and the memo is already the sealed source both sides accepted.
+- Consequences / follow-ups:
+  1. `GET /api/v1/brands/me/content`: the brand's approved posts, latest approved first, in keyset pages, each with its deal, campaign, creator, link, the memo's days, `rights_until` and `rights_state` (`active`, `lapsing` within 30 days, `lapsed`, `not_agreed`), filterable by state. Brands only.
+  2. The days count from the Tamil Nadu day the work was approved (`content_rights`, a pure rule with property tests; the SQL filter is held to it at every edge). Which day the memo's wording should name is a legal.md section 3.11 Confirm item; the library says what it counts from beside every date.
+  3. Submissions past their review window are settled before a page is read (`proof_service.settle_if_overdue`), so approval by the clock counts without anyone opening the deal.
+  4. No new table, migration or export. Item 37's partnership-ad permissions, and reminders before a window ends (C5, waiting on delivery, E1), remain.

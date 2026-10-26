@@ -190,6 +190,7 @@ The Bureau of Indian Standards' standard for online consumer reviews has applied
 |---|---|---|
 | Copyright Act, 1957, sections 19 and 30: a licence must be in writing, signed by the owner; with no stated duration it is **deemed five years**, and with no stated territory, **India** | Our memo states usage rights in days, explicitly. **Whether a click-accepted memo counts as "signed"**, or needs an electronic signature (item 35, eSign), is the question | **Confirm** |
 | The creator owns their content; a brand gets only what the memo licenses | Never described as a transfer of ownership | Built (memo wording) |
+| From which day a memo's usage days run (item 70, D-132) | The brand's content library counts them from the Tamil Nadu day the work was approved, and says so beside every date; it states the memo's terms, never a right. **Confirm** the day the memo's wording should name (approval, posting, or the memo's acceptance), and change the count with it | Built; **Confirm** |
 | Trademarks and logos a brand uploads are theirs to use | The terms of use say so | **Confirm** |
 
 ### 3.12 What we say about people and businesses: defamation

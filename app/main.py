@@ -39,6 +39,7 @@ from app.modules.campaigns.offer_router import router as offers_router
 from app.modules.campaigns.report_router import router as campaign_report_router
 from app.modules.campaigns.router import router as campaigns_router
 from app.modules.deal_memo.calendar_router import router as deal_calendar_router
+from app.modules.deal_memo.content_library_router import router as content_library_router
 from app.modules.deal_memo.delivery_router import router as delivery_router
 from app.modules.deal_memo.note_router import router as notes_router
 from app.modules.deal_memo.proof_router import router as proof_router
@@ -178,6 +179,7 @@ app.include_router(search_router)
 app.include_router(creator_lists_router)
 app.include_router(campaign_alerts_router)
 app.include_router(shipment_router)
+app.include_router(content_library_router)
 app.include_router(report_router)
 app.include_router(admin_router)
 app.include_router(look_alike_router)
