@@ -27,7 +27,7 @@ creators.
 
 import uuid
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy import ColumnElement, Select, and_, exists, func, select
 from sqlalchemy.orm import Session
@@ -39,6 +39,7 @@ from app.modules.auth.schemas import ChannelPlatform
 from app.modules.auth.suspension import account_is_active
 from app.modules.matching.schemas import CreatorSearchResultRead, SearchChannelRead
 from app.modules.profiles import availability_service as availability
+from app.modules.profiles.connection_models import ConnectedAccount
 from app.modules.profiles.models import CreatorChannel, CreatorPackage
 from app.modules.safety.blocks import not_blocked
 from app.modules.safety.takedowns import not_withheld
@@ -65,6 +66,10 @@ class ChannelFigure:
     platform: ChannelPlatform
     followers: int
     figures_as_of: date
+    # What the platform itself reported, from a connected account (D-134);
+    # None when not connected, or the platform hides the count.
+    verified_followers: int | None = None
+    verified_as_of: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -169,6 +174,9 @@ def results_for(
 ) -> list[SearchResult]:
     """Each creator's channels and lowest price, in two queries for any number.
 
+    A channel the creator connected (D-134) carries the platform's own count
+    beside theirs, from the same query.
+
     `search` narrows "from ₹X" to the format and platform asked for.
     """
     search = search or CreatorSearch()
@@ -182,13 +190,29 @@ def results_for(
                 CreatorChannel.platform,
                 CreatorChannel.followers,
                 CreatorChannel.figures_as_of,
+                ConnectedAccount.verified_followers,
+                ConnectedAccount.verified_as_of,
+            )
+            .outerjoin(
+                ConnectedAccount,
+                and_(
+                    ConnectedAccount.creator_id == CreatorChannel.creator_id,
+                    ConnectedAccount.platform == CreatorChannel.platform,
+                    ConnectedAccount.status == "active",
+                ),
             )
             .where(CreatorChannel.creator_id.in_(ids))
             .order_by(CreatorChannel.creator_id, CreatorChannel.platform)
         ):
             channels[row.creator_id].append(
                 # The CHECK on creator_channel.platform guarantees the value.
-                ChannelFigure(row.platform, row.followers, row.figures_as_of)
+                ChannelFigure(
+                    row.platform,
+                    row.followers,
+                    row.figures_as_of,
+                    row.verified_followers,
+                    row.verified_as_of,
+                )
             )
         price_query = (
             select(CreatorPackage.creator_id, func.min(CreatorPackage.price_paise))
@@ -232,6 +256,8 @@ def to_read(result: SearchResult, today: date) -> CreatorSearchResultRead:
                 platform=c.platform,
                 followers=c.followers,
                 figures_as_of=c.figures_as_of,
+                verified_followers=c.verified_followers,
+                verified_as_of=c.verified_as_of,
             )
             for c in result.channels
         ],

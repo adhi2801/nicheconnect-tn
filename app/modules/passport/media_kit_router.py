@@ -19,7 +19,7 @@ from app.modules.auth.schemas import ChannelRead, PackageRead
 from app.modules.deal_memo.schemas import to_delivery_read
 from app.modules.passport import media_kit_service
 from app.modules.passport.media_kit_service import MediaKit
-from app.modules.passport.schemas import MediaKitRead
+from app.modules.passport.schemas import MediaKitRead, VerifiedConnectionRead
 
 READ_LIMIT = "60 per minute"
 
@@ -52,6 +52,16 @@ def _to_read(kit: MediaKit) -> MediaKitRead:
         channels=[ChannelRead.model_validate(c) for c in kit.channels],
         packages=[PackageRead.model_validate(p) for p in kit.packages],
         delivery_record=to_delivery_read(kit.delivery),
+        connected_accounts=[
+            VerifiedConnectionRead(
+                platform=c.platform,
+                handle=c.handle,
+                connected_since=c.connected_at.date(),
+                verified_followers=c.verified_followers,
+                verified_as_of=c.verified_as_of,
+            )
+            for c in kit.connections
+        ],
     )
 
 

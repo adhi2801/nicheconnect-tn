@@ -14,13 +14,17 @@ import pytest
 from pydantic import SecretStr
 
 from app.core.config import settings
-from app.modules.profiles import connection_service
+from app.modules.profiles import platform_clients
 from app.modules.profiles.platform_clients import FakePlatformClient, PlatformProfile
 
 REDIRECT_BASE = "https://app.nicheconnect.test/connect"
 META_SECRET = "test-meta-app-secret-for-signatures"
 TOKEN_KEY = "test-platform-token-key-not-a-secret"
 NOTICE = "connect-v1"
+
+
+def _refuse_real_http(*args: object, **kwargs: object) -> None:
+    raise AssertionError("a test tried to reach a real platform")
 
 
 @pytest.fixture
@@ -39,7 +43,9 @@ def platforms(monkeypatch) -> Iterator[dict[str, FakePlatformClient]]:
     monkeypatch.setattr(settings, "google_client_secret", SecretStr("test-google-secret"))
     monkeypatch.setattr(settings, "platform_token_key", SecretStr(TOKEN_KEY))
     monkeypatch.setattr(settings, "connect_notice_version", NOTICE)
-    monkeypatch.setattr(connection_service, "get_platform_client", lambda p: fakes[p])
+    monkeypatch.setattr(platform_clients, "get_platform_client", lambda p: fakes[p])
+    # A real client made by mistake must never reach Instagram or Google.
+    monkeypatch.setattr(platform_clients._Http, "__init__", _refuse_real_http)
     yield fakes
 
 

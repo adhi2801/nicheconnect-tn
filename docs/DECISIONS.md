@@ -1705,3 +1705,15 @@ Newest entries at the bottom.
   4. Tables `connected_account`, `connection_attempt` and `platform_deletion_request`, migration `3734d5492968`; its downgrade refuses while any connection or deletion request exists. The export holds connections, never tokens; deleting the account erases them.
   5. The real clients follow Meta's and Google's references, read 26 October 2026, and are tested against those request shapes; they have **not** run against the live platforms. Meta's `signed_request` user id is assumed to be the Instagram user id the token exchange returns, to be checked when the app exists.
   6. Piece 2 remains: the daily DBOS job (refresh Instagram tokens once 30 days old, Google tokens as needed, read the counts, mark a connection expired and tell the creator), and the verified figure beside the stated one on the Passport and in search.
+
+## D-135: The public Passport shows a connected account as control, never a count
+- Date: 2026-10-26
+- Approved by: Adhi, in this session: "A", to the decision raised while building item 29's second piece. **Not reviewed by the other founder** (D-051).
+- Context: D-042 keeps follower counts off the public Passport, since they are the easiest number to fake and repeating ours lends it our name. Item 29's proposal said the Passport would show the verified count. A count read from the platform is real, but bought followers still inflate it, so D-042's reason still partly holds.
+- Options considered: A) the public Passport shows only "connected", the platform, the handle and since when; signed-in brands see the platform's count beside the stated one (search, saved lists, "like my best", the media kit). B) the public Passport also shows the count, dated.
+- Chosen: A.
+- Reason: proving control of the channel is what the public needs; the count stays for signed-in brands, who also see the delivery record a bought audience cannot fake. D-042 stands.
+- Consequences / follow-ups:
+  1. `PublicCreatorRead.connected_accounts`: platform, handle, `connected_since`; never a count. `MediaKitRead.connected_accounts` and each search channel's `verified_followers` and `verified_as_of` carry the count, beside `followers`, never instead.
+  2. An expired connection shows nowhere. Item 29's daily job (`me.connection_jobs`) renews tokens, reads the counts, and expires a connection the platform refuses, telling its creator (`connection_expired`, migration `3e711c2efcc6`).
+  3. Item 29 counts as built (`docs/BACKEND_COMPLETE.md` section 1): only Meta App Review, Google verification and the connect notice remain, and they only switch it on.

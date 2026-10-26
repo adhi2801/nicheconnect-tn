@@ -35,6 +35,7 @@ PUBLIC_FIELDS = {
     # Search engines' reading of the same published fields (item 85, D-121);
     # null while indexing is off.
     "structured_data",
+    "connected_accounts",
 }
 # A channel on the open internet is its link and nothing else (D-042).
 PUBLIC_CHANNEL_FIELDS = {"platform", "profile_url"}

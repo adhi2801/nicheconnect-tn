@@ -41,7 +41,7 @@ from app.core.config import settings
 from app.core.export import ExportedSection, allow, build_section
 from app.modules.auth.models.creator import Creator
 from app.modules.profiles import connection_secrets as vault
-from app.modules.profiles import meta_signed_request
+from app.modules.profiles import meta_signed_request, platform_clients
 from app.modules.profiles.connection_models import (
     CONFIRMATION_CODE_LENGTH,
     ConnectedAccount,
@@ -63,7 +63,6 @@ from app.modules.profiles.platform_clients import (
     PlatformRefused,
     PlatformUnavailable,
     Tokens,
-    get_platform_client,
 )
 
 logger = logging.getLogger(__name__)
@@ -112,14 +111,14 @@ def _attempt_context(account_id: uuid.UUID, platform: str, state_sha256: str) ->
     return b"attempt:" + account_id.bytes + platform.encode() + state_sha256.encode()
 
 
-def _token_context(creator_id: uuid.UUID, platform: str, kind: bytes) -> bytes:
+def token_context(creator_id: uuid.UUID, platform: str, kind: bytes) -> bytes:
     return kind + creator_id.bytes + platform.encode()
 
 
 def start(db: Session, account_id: uuid.UUID, platform: str, now: datetime) -> Started:
     """Begin connecting: the platform's sign-in link, good for 10 minutes. Commits."""
     _ensure_on()
-    client = get_platform_client(platform)
+    client = platform_clients.get_platform_client(platform)
     state = secrets.token_urlsafe(32)
     state_sha256 = _sha256(state)
     verifier = secrets.token_urlsafe(64) if client.uses_pkce else None
@@ -196,7 +195,7 @@ def complete(
     )
     db.commit()
 
-    client = get_platform_client(platform)
+    client = platform_clients.get_platform_client(platform)
     try:
         tokens = client.exchange(
             code=code,
@@ -233,12 +232,10 @@ def _save(
     connection.platform_user_id = profile.platform_user_id
     connection.handle = profile.handle
     connection.access_token_sealed = vault.seal(
-        tokens.access_token, _token_context(creator.id, platform, b"access:")
+        tokens.access_token, token_context(creator.id, platform, b"access:")
     )
     connection.refresh_token_sealed = (
-        vault.seal(
-            tokens.refresh_token, _token_context(creator.id, platform, b"refresh:")
-        )
+        vault.seal(tokens.refresh_token, token_context(creator.id, platform, b"refresh:"))
         if tokens.refresh_token is not None
         else None
     )
@@ -256,7 +253,7 @@ def _save(
         if "uq_connected_account_platform_user" not in str(error):
             raise
         # Never kept: the tokens this creator got for someone else's channel.
-        get_platform_client(platform).revoke(tokens)
+        platform_clients.get_platform_client(platform).revoke(tokens)
         raise ChannelAlreadyConnected() from None
     db.commit()
     db.refresh(connection)
@@ -270,6 +267,20 @@ def connections_of(db: Session, creator: Creator) -> list[ConnectedAccount]:
         db.scalars(
             select(ConnectedAccount)
             .where(ConnectedAccount.creator_id == creator.id)
+            .order_by(ConnectedAccount.platform)
+        ).all()
+    )
+
+
+def active_for(db: Session, creator_id: uuid.UUID) -> list[ConnectedAccount]:
+    """A creator's working connections, by platform: for their media kit and Passport."""
+    return list(
+        db.scalars(
+            select(ConnectedAccount)
+            .where(
+                ConnectedAccount.creator_id == creator_id,
+                ConnectedAccount.status == "active",
+            )
             .order_by(ConnectedAccount.platform)
         ).all()
     )
@@ -289,19 +300,19 @@ def disconnect(db: Session, creator: Creator, platform: str) -> None:
     ).first()
     if connection is None:
         raise ConnectionNotFound()
-    tokens = _tokens_of(connection)
+    tokens = tokens_of(connection)
     db.delete(connection)
     db.commit()
     logger.info("connection.removed creator_id=%s platform=%s", creator.id, platform)
     if tokens is not None and settings.platform_connections_enabled:
-        get_platform_client(platform).revoke(tokens)
+        platform_clients.get_platform_client(platform).revoke(tokens)
 
 
-def _tokens_of(connection: ConnectedAccount) -> Tokens | None:
+def tokens_of(connection: ConnectedAccount) -> Tokens | None:
     access = (
         vault.unseal(
             connection.access_token_sealed,
-            _token_context(connection.creator_id, connection.platform, b"access:"),
+            token_context(connection.creator_id, connection.platform, b"access:"),
         )
         if settings.platform_token_key is not None
         else None
@@ -311,7 +322,7 @@ def _tokens_of(connection: ConnectedAccount) -> Tokens | None:
     refresh = (
         vault.unseal(
             connection.refresh_token_sealed,
-            _token_context(connection.creator_id, connection.platform, b"refresh:"),
+            token_context(connection.creator_id, connection.platform, b"refresh:"),
         )
         if connection.refresh_token_sealed is not None
         else None

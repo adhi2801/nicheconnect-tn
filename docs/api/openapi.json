@@ -6133,6 +6133,14 @@
             "title": "City",
             "type": "string"
           },
+          "connected_accounts": {
+            "description": "Accounts the creator connected (D-134), with the count the platform itself reported. Show it beside the channel's stated count, never instead: bought followers inflate both",
+            "items": {
+              "$ref": "#/components/schemas/VerifiedConnectionRead"
+            },
+            "title": "Connected Accounts",
+            "type": "array"
+          },
           "creator_id": {
             "format": "uuid",
             "title": "Creator Id",
@@ -7338,11 +7346,12 @@
                 "note_added",
                 "campaign_alert",
                 "product_shipped",
-                "product_received"
+                "product_received",
+                "connection_expired"
               ],
               "type": "string"
             },
-            "maxItems": 56,
+            "maxItems": 57,
             "title": "Muted Types",
             "type": "array"
           },
@@ -7450,7 +7459,8 @@
                 "note_added",
                 "campaign_alert",
                 "product_shipped",
-                "product_received"
+                "product_received",
+                "connection_expired"
               ],
               "type": "string"
             },
@@ -7532,7 +7542,8 @@
                 "note_added",
                 "campaign_alert",
                 "product_shipped",
-                "product_received"
+                "product_received",
+                "connection_expired"
               ],
               "type": "string"
             },
@@ -7688,7 +7699,8 @@
               "note_added",
               "campaign_alert",
               "product_shipped",
-              "product_received"
+              "product_received",
+              "connection_expired"
             ],
             "title": "Notification Type",
             "type": "string"
@@ -10493,6 +10505,35 @@
         "title": "PublicChannelRead",
         "type": "object"
       },
+      "PublicConnectionRead": {
+        "description": "A connected account on the open internet: proof of control, no count (D-135).",
+        "properties": {
+          "connected_since": {
+            "format": "date",
+            "title": "Connected Since",
+            "type": "string"
+          },
+          "handle": {
+            "title": "Handle",
+            "type": "string"
+          },
+          "platform": {
+            "enum": [
+              "instagram",
+              "youtube"
+            ],
+            "title": "Platform",
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform",
+          "handle",
+          "connected_since"
+        ],
+        "title": "PublicConnectionRead",
+        "type": "object"
+      },
       "PublicCreatorRead": {
         "description": "The public Creator Passport: the profile, links, and published prices.",
         "properties": {
@@ -10518,6 +10559,14 @@
           "city": {
             "title": "City",
             "type": "string"
+          },
+          "connected_accounts": {
+            "description": "The accounts the creator proved they control by signing in to them (D-134): the platform, the handle and since when. Never a count (D-135, keeping D-042)",
+            "items": {
+              "$ref": "#/components/schemas/PublicConnectionRead"
+            },
+            "title": "Connected Accounts",
+            "type": "array"
           },
           "display_name": {
             "title": "Display Name",
@@ -11898,9 +11947,34 @@
           "self_reported": {
             "const": true,
             "default": true,
-            "description": "Always true. The creator's number, never verified by us",
+            "description": "Always true: `followers` is the creator's number, as they gave it",
             "title": "Self Reported",
             "type": "boolean"
+          },
+          "verified_as_of": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the platform reported it",
+            "title": "Verified As Of"
+          },
+          "verified_followers": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The count the platform itself reported, if the creator connected the account (D-134); null when not connected or the platform hides it. Show it beside `followers`, never instead: bought followers inflate both",
+            "title": "Verified Followers"
           }
         },
         "required": [
@@ -13142,6 +13216,61 @@
           "usable_at"
         ],
         "title": "UpiWaitingRead",
+        "type": "object"
+      },
+      "VerifiedConnectionRead": {
+        "description": "A connected account as brands see it: what the platform itself reported.",
+        "properties": {
+          "connected_since": {
+            "format": "date",
+            "title": "Connected Since",
+            "type": "string"
+          },
+          "handle": {
+            "title": "Handle",
+            "type": "string"
+          },
+          "platform": {
+            "enum": [
+              "instagram",
+              "youtube"
+            ],
+            "title": "Platform",
+            "type": "string"
+          },
+          "verified_as_of": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified As Of"
+          },
+          "verified_followers": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when the platform hides it; never shown as zero",
+            "title": "Verified Followers"
+          }
+        },
+        "required": [
+          "platform",
+          "handle",
+          "connected_since",
+          "verified_followers",
+          "verified_as_of"
+        ],
+        "title": "VerifiedConnectionRead",
         "type": "object"
       },
       "VerifiedDomainRead": {

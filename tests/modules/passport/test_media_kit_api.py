@@ -33,6 +33,7 @@ MEDIA_KIT_FIELDS = {
     "channels",
     "packages",
     "delivery_record",
+    "connected_accounts",
 }
 
 

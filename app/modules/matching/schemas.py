@@ -144,7 +144,18 @@ class SearchChannelRead(BaseModel):
     figures_as_of: date
     self_reported: Literal[True] = Field(
         default=True,
-        description="Always true. The creator's number, never verified by us",
+        description="Always true: `followers` is the creator's number, as they gave it",
+    )
+    verified_followers: int | None = Field(
+        default=None,
+        description=(
+            "The count the platform itself reported, if the creator connected the "
+            "account (D-134); null when not connected or the platform hides it. "
+            "Show it beside `followers`, never instead: bought followers inflate both"
+        ),
+    )
+    verified_as_of: datetime | None = Field(
+        default=None, description="When the platform reported it"
     )
 
 

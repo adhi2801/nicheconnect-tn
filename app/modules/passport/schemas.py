@@ -1,7 +1,7 @@
 """Request and response shapes for the public Creator Passport and the media kit (D-099)."""
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from pydantic import (
@@ -18,6 +18,7 @@ from app.modules.auth.schemas import (
     PublicCreatorSummary,
 )
 from app.modules.deal_memo.schemas import CreatorDeliveryRead
+from app.modules.profiles.schemas import ConnectedPlatform
 
 
 class PublicCreatorRead(PublicCreatorSummary):
@@ -31,6 +32,14 @@ class PublicCreatorRead(PublicCreatorSummary):
             "Prices, only when the creator has chosen to publish them (D-055). "
             "Empty otherwise, which looks the same as having none"
         )
+    )
+    connected_accounts: list[PublicConnectionRead] = Field(
+        default_factory=list,
+        description=(
+            "The accounts the creator proved they control by signing in to them "
+            "(D-134): the platform, the handle and since when. Never a count "
+            "(D-135, keeping D-042)"
+        ),
     )
     structured_data: dict[str, Any] | None = Field(
         default=None,
@@ -110,7 +119,36 @@ class MediaKitRead(BaseModel):
     )
     packages: list[PackageRead] = Field(description="In the creator's order")
     delivery_record: CreatorDeliveryRead
+    connected_accounts: list[VerifiedConnectionRead] = Field(
+        default_factory=list,
+        description=(
+            "Accounts the creator connected (D-134), with the count the platform "
+            "itself reported. Show it beside the channel's stated count, never "
+            "instead: bought followers inflate both"
+        ),
+    )
 
 
-# PublicCreatorRead is defined above the channel and package shapes it lists.
+class PublicConnectionRead(BaseModel):
+    """A connected account on the open internet: proof of control, no count (D-135)."""
+
+    platform: ConnectedPlatform
+    handle: str
+    connected_since: date
+
+
+class VerifiedConnectionRead(BaseModel):
+    """A connected account as brands see it: what the platform itself reported."""
+
+    platform: ConnectedPlatform
+    handle: str
+    connected_since: date
+    verified_followers: int | None = Field(
+        description="Null when the platform hides it; never shown as zero"
+    )
+    verified_as_of: datetime | None
+
+
+# PublicCreatorRead and MediaKitRead are defined above the shapes they list.
 PublicCreatorRead.model_rebuild()
+MediaKitRead.model_rebuild()

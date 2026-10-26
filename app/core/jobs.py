@@ -22,6 +22,7 @@ from app.modules.campaigns import alert_jobs
 from app.modules.deal_memo import anchor_jobs, proof_cleaning_jobs, proof_reading_jobs
 from app.modules.me import (
     account_deletion_jobs,
+    connection_jobs,
     data_export_jobs,
     passkey_jobs,
     phone_change_jobs,
@@ -57,6 +58,7 @@ def start(*, schema: str = DBOS_SCHEMA) -> None:
         + passkey_jobs.schedules()
         + account_deletion_jobs.schedules()
         + alert_jobs.schedules()
+        + connection_jobs.schedules()
     )
 
 
