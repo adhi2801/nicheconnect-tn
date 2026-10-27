@@ -5634,7 +5634,7 @@
                 "type": "null"
               }
             ],
-            "description": "While it waits: the last day the brand has to answer, in Tamil Nadu; after it, the draft approves itself. Null once answered",
+            "description": "While it waits: the last day the brand has to answer, in Tamil Nadu; after it, the draft approves itself. Null once answered, and once the deal has ended",
             "title": "Answer By"
           },
           "answered_at": {
@@ -7695,6 +7695,19 @@
             "description": "The side whose move it is; null once the deal has ended",
             "title": "Waiting On"
           },
+          "work_due_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The date the work is due by: `content_due_on`, moved a day for every whole day a draft waited for the brand's answer (D-140). Show this as the due date; it equals `content_due_on` on a deal without a draft review. Null when no date was agreed",
+            "title": "Work Due On"
+          },
           "work_started_at": {
             "anyOf": [
               {
@@ -7737,6 +7750,7 @@
           "stage",
           "waiting_on",
           "has_open_dispute",
+          "work_due_on",
           "text_flags"
         ],
         "title": "MemoWithStageRead",
@@ -12020,6 +12034,7 @@
                 "type": "null"
               }
             ],
+            "description": "The date agreed in the memo",
             "title": "Content Due On"
           },
           "content_url": {
@@ -12211,6 +12226,19 @@
               }
             ],
             "title": "Waiting On"
+          },
+          "work_due_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The date the work is due by: the agreed date, moved a day for every whole day a draft waited for the brand (D-140). On-time is judged against this",
+            "title": "Work Due On"
           }
         },
         "required": [
@@ -12221,6 +12249,7 @@
           "has_open_dispute",
           "deliverables",
           "content_due_on",
+          "work_due_on",
           "fee_amount_paise",
           "accepted_on",
           "first_submitted_on",
@@ -28586,7 +28615,7 @@
     },
     "/api/v1/deal-memos/{memo_id}/calendar.ics": {
       "get": {
-        "description": "An iCalendar file (RFC 5545) to add to any phone or desktop calendar: the content due date, the moment submitted work approves itself while it waits, and the payment due date while unconfirmed, each with a reminder a day before. Only an accepted deal has dates; any other gives an empty calendar. Adding it again updates the same events. The brand and the creator of this deal only.",
+        "description": "An iCalendar file (RFC 5545) to add to any phone or desktop calendar: the content due date (moved by any days a draft waited for the brand), the moment a waiting draft or submitted work approves itself, and the payment due date while unconfirmed, each with a reminder a day before. Only an accepted deal has dates; any other gives an empty calendar. Adding it again updates the same events. The brand and the creator of this deal only.",
         "operationId": "deal_calendar_api_v1_deal_memos__memo_id__calendar_ics_get",
         "parameters": [
           {

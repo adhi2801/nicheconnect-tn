@@ -105,6 +105,7 @@ class MemoCreate(BaseModel):
 # Memo fields that always hold a value: a change may set them, never empty them.
 _ALWAYS_SET: tuple[str, ...] = (
     "deliverables",
+    "deliverable_items",
     "cancellation_fee_paise",
     "approval_window_days",
     "payment_due_days",
@@ -286,6 +287,14 @@ class MemoWithStageRead(MemoRead):
         description="The side whose move it is; null once the deal has ended"
     )
     has_open_dispute: bool
+    work_due_on: date | None = Field(
+        description=(
+            "The date the work is due by: `content_due_on`, moved a day for every "
+            "whole day a draft waited for the brand's answer (D-140). Show this "
+            "as the due date; it equals `content_due_on` on a deal without a "
+            "draft review. Null when no date was agreed"
+        )
+    )
 
 
 def with_stage(
@@ -296,6 +305,7 @@ def with_stage(
         stage=found.stage,
         waiting_on=found.waiting_on,
         has_open_dispute=found.has_open_dispute,
+        work_due_on=found.work_due_on,
     )
 
 

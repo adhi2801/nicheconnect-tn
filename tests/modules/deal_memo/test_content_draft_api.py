@@ -8,7 +8,9 @@ test_content_draft_model.py, races in test_content_draft_concurrency.py.
 """
 
 import hashlib
-from datetime import timedelta
+from csv import DictReader
+from datetime import UTC, date, datetime, timedelta
+from io import StringIO
 
 import pytest
 from sqlalchemy import select
@@ -529,7 +531,18 @@ def test_a_memo_made_before_version_three_cannot_take_the_term(
     assert_problem(response, 409, "draft_review_needs_new_terms")
 
 
-@pytest.mark.parametrize("field", ["draft_review", "disclosure_required"])
+@pytest.mark.parametrize(
+    "field",
+    [
+        "deliverables",
+        "deliverable_items",
+        "cancellation_fee_paise",
+        "approval_window_days",
+        "payment_due_days",
+        "disclosure_required",
+        "draft_review",
+    ],
+)
 def test_a_term_that_always_has_a_value_cannot_be_emptied(client, brand, creator, field):
     from tests.modules.deal_memo.test_memo_deliverables_api import (
         accepted_application,
@@ -630,3 +643,189 @@ def test_work_delivered_inside_the_moved_date_is_on_time(
     )
     assert _on_time(memo, proofs, drafts_of(db, memo)) is True
     assert _on_time(memo, proofs) is False  # judged on the agreed date alone, it was late
+
+
+# --- the second independent review (27 October 2026) -----------------------------------
+
+
+def deadline_of(db, memo_id: str, draft_id: str):
+    from app.modules.deal_memo.draft_models import ContentDraft
+    from app.modules.deal_memo.draft_rules import answer_deadline
+    from app.modules.deal_memo.draft_service import drafts_of
+
+    memo = db.get_one(DealMemo, memo_id)
+    return answer_deadline(memo, db.get_one(ContentDraft, draft_id), drafts_of(db, memo))
+
+
+def test_a_second_before_the_deadline_the_brand_answers(
+    client, db, brand, creator, memo_id, clock
+):
+    draft = shown(client, creator, memo_id)
+    clock.now = deadline_of(db, memo_id, draft["id"]) - timedelta(seconds=1)
+
+    response = approve(client, brand, memo_id, draft["id"])
+
+    assert response.status_code == 200, response.text
+    assert response.json()["auto_approved"] is False
+
+
+def test_at_the_deadline_the_clock_has_answered(
+    client, db, brand, creator, memo_id, clock
+):
+    draft = shown(client, creator, memo_id)
+    deadline = deadline_of(db, memo_id, draft["id"])
+    clock.now = deadline
+
+    assert_problem(
+        ask_changes(client, brand, memo_id, draft["id"]), 409, "draft_already_decided"
+    )
+    [listed] = client.get(drafts_url(memo_id), headers=creator.headers).json()
+    assert listed["auto_approved"] is True
+    assert listed["approved_at"] == listed["answered_at"]
+    assert datetime.fromisoformat(listed["answered_at"]) == deadline
+
+
+def test_the_moved_date_is_the_due_date_everywhere(client, db, brand, creator, clock):
+    """Found by the second review: the deal, the creator's list, the calendar and the report."""
+    memo_id = accepted_memo(
+        client, brand, creator, draft_review=True, content_due_on="2026-09-25"
+    )
+    draft = shown(client, creator, memo_id)
+    clock.advance(timedelta(days=5, hours=1))  # five whole days waiting
+    assert approve(client, brand, memo_id, draft["id"]).status_code == 200
+
+    assert memo_read(client, creator, memo_id)["work_due_on"] == "2026-09-30"
+    [item] = [
+        i
+        for i in client.get("/api/v1/me/attention", headers=creator.headers).json()[
+            "items"
+        ]
+        if i["kind"] == "deliver_work"
+    ]
+    assert item["due_on"] == "2026-09-30"
+    ics = client.get(f"{MEMOS_URL}/{memo_id}/calendar.ics", headers=creator.headers).text
+    assert "DTSTART;VALUE=DATE:20260930" in ics
+    assert "moved 5 days while a draft waited for the brand" in ics.replace("\r\n ", "")
+    [campaign] = client.get("/api/v1/campaigns", headers=brand.headers).json()["items"]
+    [deal] = client.get(
+        f"/api/v1/campaigns/{campaign['id']}/report", headers=brand.headers
+    ).json()["deals"]
+    assert (deal["content_due_on"], deal["work_due_on"]) == ("2026-09-25", "2026-09-30")
+    csv = client.get(
+        f"/api/v1/campaigns/{campaign['id']}/report.csv", headers=brand.headers
+    ).text
+    [row] = list(DictReader(StringIO(csv)))
+    assert (row["content_due_on"], row["work_due_on"]) == ("2026-09-25", "2026-09-30")
+
+
+def test_a_deal_without_the_term_is_due_on_its_agreed_date(client, brand, creator):
+    memo_id = accepted_memo(client, brand, creator, content_due_on="2026-09-25")
+
+    assert memo_read(client, creator, memo_id)["work_due_on"] == "2026-09-25"
+
+
+def test_crossing_midnight_is_not_a_day(client, db, brand, creator, clock):
+    """Found by the second review: 23:55 to 00:05 moved the date a day."""
+    from app.core.clock import IST
+
+    memo_id = accepted_memo(
+        client, brand, creator, draft_review=True, content_due_on="2026-09-25"
+    )
+    clock.now = clock.now.astimezone(IST).replace(hour=23, minute=55)
+    draft = shown(client, creator, memo_id)
+    clock.advance(timedelta(minutes=10))
+    approve(client, brand, memo_id, draft["id"])
+
+    assert memo_read(client, creator, memo_id)["work_due_on"] == "2026-09-25"
+
+
+def test_silence_through_the_window_moves_the_date_by_the_window(
+    client, db, brand, creator, clock
+):
+    """Found by the second review: a 7-day window moved the date by 8."""
+    memo_id = accepted_memo(
+        client, brand, creator, draft_review=True, content_due_on="2026-09-25"
+    )
+    draft = shown(client, creator, memo_id)
+    window = db.get_one(DealMemo, memo_id).approval_window_days
+    clock.now = deadline_of(db, memo_id, draft["id"]) + timedelta(days=1)
+
+    expected = (date(2026, 9, 25) + timedelta(days=window)).isoformat()
+    assert memo_read(client, creator, memo_id)["work_due_on"] == expected
+
+
+def test_every_round_the_brand_takes_is_added(client, brand, creator, clock):
+    memo_id = accepted_memo(
+        client, brand, creator, draft_review=True, content_due_on="2026-09-25"
+    )
+    first = shown(client, creator, memo_id)
+    clock.advance(timedelta(days=2, hours=3))
+    ask_changes(client, brand, memo_id, first["id"])
+    clock.advance(timedelta(days=4))  # the creator's own time: not added
+    second = shown(client, creator, memo_id)
+    clock.advance(timedelta(days=3, hours=20))
+    approve(client, brand, memo_id, second["id"])
+
+    assert memo_read(client, creator, memo_id)["work_due_on"] == "2026-09-30"  # 2 + 3
+
+
+def test_a_deadline_passed_before_a_cancellation_is_recorded(
+    client, db, brand, creator, memo_id, clock
+):
+    """Found by the second review: the clock's approval went unrecorded once the deal ended."""
+    draft = shown(client, creator, memo_id)
+    deadline = deadline_of(db, memo_id, draft["id"])
+    memo = db.get_one(DealMemo, memo_id)
+    memo.status = "cancelled"
+    memo.cancellation_kind = "cancelled_by_brand"
+    memo.cancelled_at = deadline + timedelta(hours=2)
+    db.commit()
+    clock.now = deadline + timedelta(days=1)
+
+    [listed] = client.get(drafts_url(memo_id), headers=creator.headers).json()
+
+    assert (listed["status"], listed["auto_approved"]) == ("approved", True)
+    assert listed["answer_by"] is None
+    assert "draft_auto_approved" in [e["kind"] for e in entries(client, brand, memo_id)]
+    assert told(db, creator, "draft_auto_approved") == []  # nothing to act on now
+
+
+def test_a_cancelled_deals_waiting_draft_shows_no_answer_date(
+    client, db, brand, creator, memo_id
+):
+    shown(client, creator, memo_id)
+    memo = db.get_one(DealMemo, memo_id)
+    memo.status = "cancelled"
+    memo.cancellation_kind = "cancelled_by_brand"
+    db.commit()
+
+    [listed] = client.get(drafts_url(memo_id), headers=creator.headers).json()
+
+    assert (listed["status"], listed["answer_by"]) == ("submitted", None)
+
+
+def test_an_approval_after_the_proof_is_refused(
+    client, db, brand, creator, memo_id, clock
+):
+    draft = shown(client, creator, memo_id)
+    clock.now = deadline_of(db, memo_id, draft["id"]) + timedelta(minutes=1)
+    proof = client.post(
+        f"{MEMOS_URL}/{memo_id}/proof", json=PROOF, headers=creator.headers
+    )
+    assert proof.status_code == 201, proof.text
+
+    assert_problem(
+        approve(client, brand, memo_id, draft["id"]), 409, "draft_already_decided"
+    )
+
+
+def test_the_calendar_shows_when_a_waiting_draft_approves_itself(
+    client, db, brand, creator, memo_id
+):
+    draft = shown(client, creator, memo_id)
+    deadline = deadline_of(db, memo_id, draft["id"])
+
+    ics = client.get(f"{MEMOS_URL}/{memo_id}/calendar.ics", headers=brand.headers).text
+
+    assert "Draft approves itself" in ics
+    assert deadline.astimezone(UTC).strftime("%Y%m%dT%H%M%SZ") in ics

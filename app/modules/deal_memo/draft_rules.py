@@ -11,9 +11,12 @@ Two rules on top of proof's clock (D-025, `review_clock`), Adhi's choices of
   holds, so asking again buys the brand no more time; but a draft shown
   long after the clock restarted is not approved the moment it arrives, so
   nothing is approved that the brand had no chance to see.
-- **The brand's waiting is the brand's.** Every whole day a draft waited
-  for the brand's answer moves the creator's due date by a day before "on
-  time" is judged, so a slow brand cannot make a creator look late.
+- **The brand's waiting is the brand's.** Every whole day (24 hours) a
+  draft waited for the brand's answer moves the creator's due date by a day
+  before "on time" is judged, so a slow brand cannot make a creator look
+  late. Whole days, not midnights crossed: a draft shown at 23:55 and
+  answered at 00:05 moved nothing, and silence through a 7-day window moves
+  the date by 7 days, never 8.
 """
 
 from collections.abc import Sequence
@@ -76,11 +79,15 @@ def answered_at(
 def days_waiting_on_brand(
     memo: DealMemo, drafts: Sequence[ContentDraft], now: datetime
 ) -> int:
-    """Whole Tamil Nadu days the memo's drafts waited for the brand, up to `now`."""
+    """Whole days (24 hours each) the memo's drafts waited for the brand, up to `now`.
+
+    Each draft's wait is counted on its own and rounded down, so rounds that
+    each waited a few hours never add up to a day the brand did not take.
+    """
     total = 0
     for draft in drafts:
         end = answered_at(memo, draft, drafts, now) or now
-        total += max(0, (india_date(end) - india_date(draft.created_at)).days)
+        total += max(0, (end - draft.created_at) // timedelta(days=1))
     return total
 
 

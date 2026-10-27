@@ -25,8 +25,9 @@ router = APIRouter(prefix="/api/v1/deal-memos", tags=["deal memos"])
     summary="The deal's agreed dates, as a calendar file",
     description=(
         "An iCalendar file (RFC 5545) to add to any phone or desktop calendar: "
-        "the content due date, the moment submitted work approves itself while "
-        "it waits, and the payment due date while unconfirmed, each with a "
+        "the content due date (moved by any days a draft waited for the brand), "
+        "the moment a waiting draft or submitted work approves itself, and the "
+        "payment due date while unconfirmed, each with a "
         "reminder a day before. Only an accepted deal has dates; any other "
         "gives an empty calendar. Adding it again updates the same events. "
         "The brand and the creator of this deal only."
@@ -52,7 +53,7 @@ def deal_calendar(
 ) -> Response:
     """Either party. Anyone else gets 404, so ids cannot be walked."""
     memo = visible_memo_for_account(db, memo_id, account.id, account.role)
-    name, events = calendar_service.deal_dates(db, memo)
+    name, events = calendar_service.deal_dates(db, memo, now)
     return Response(
         content=calendar_ics.calendar(name, events, stamp=now),
         media_type="text/calendar; charset=utf-8",

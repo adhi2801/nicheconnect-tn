@@ -128,15 +128,31 @@ def settle_if_overdue(
 
     Called whenever a draft is read or acted on, so the outcome never waits
     for a scheduled job. It took effect at the deadline and is recorded now,
-    when it was noticed; the record shows both. Only on a deal still agreed:
-    a draft left waiting when the deal was cancelled is never approved.
+    when it was noticed; the record shows both. Only if the deal was still
+    agreed at the deadline: a draft left waiting when the deal was cancelled
+    is never approved, but one whose deadline passed before a later
+    cancellation was approved then, and the record says so.
+
+    The memo is locked and both rows read again before anything is written,
+    in the same order as an answer takes them, so an answer or a
+    cancellation that landed meanwhile is never overwritten.
     """
-    if draft.status != "submitted" or memo.status != "accepted":
+    if draft.status != "submitted" or memo.status not in ("accepted", "cancelled"):
         return draft
     deadline = answer_deadline(
         memo, draft, history if history is not None else drafts_of(db, memo)
     )
-    if now < deadline:
+    if now < deadline or not _agreed_at(memo, deadline):
+        return draft
+    db.scalars(
+        select(DealMemo)
+        .where(DealMemo.id == memo.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).one()
+    db.refresh(draft, with_for_update=True)
+    if draft.status != "submitted" or not _agreed_at(memo, deadline):
+        db.rollback()  # answered or cancelled meanwhile: theirs stands
         return draft
     draft.status = "approved"
     draft.approved_at = deadline
@@ -152,12 +168,22 @@ def settle_if_overdue(
         occurred_at=deadline,
         facts={"draft_id": str(draft.id)},
     )
-    _notify_other_side(
-        db, memo, to="creator", notification_type="draft_auto_approved", now=now
-    )
+    if memo.status == "accepted":  # nothing to act on once the deal has ended
+        _notify_other_side(
+            db, memo, to="creator", notification_type="draft_auto_approved", now=now
+        )
     db.commit()
     db.refresh(draft)
     return draft
+
+
+def _agreed_at(memo: DealMemo, moment: datetime) -> bool:
+    """Whether the deal was still agreed at `moment`."""
+    if memo.status == "accepted":
+        return True
+    return memo.status == "cancelled" and (
+        memo.cancelled_at is not None and memo.cancelled_at >= moment
+    )
 
 
 def approve_draft(

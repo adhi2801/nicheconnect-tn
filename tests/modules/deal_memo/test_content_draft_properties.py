@@ -8,13 +8,20 @@ is approved, while a deal without one never notices drafts at all.
 """
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from hypothesis import given
 from hypothesis import strategies as st
 
 from app.modules.deal_memo.draft_models import DRAFT_STATUSES, ContentDraft
-from app.modules.deal_memo.draft_rules import approved_among, is_approved
+from app.modules.deal_memo.draft_rules import (
+    MIN_ANSWER_DAYS,
+    answer_deadline,
+    approved_among,
+    days_waiting_on_brand,
+    delivery_due_on,
+    is_approved,
+)
 from app.modules.deal_memo.models import MAX_WINDOW_DAYS, DealMemo
 from app.modules.deal_memo.review_clock import approval_deadline
 from app.modules.deal_memo.stage import DRAFT_REVIEW, IN_PROGRESS, stage_of
@@ -26,6 +33,7 @@ windows = st.integers(min_value=1, max_value=MAX_WINDOW_DAYS)
 
 def memo(window: int, draft_review: bool = True) -> DealMemo:
     return DealMemo(
+        content_due_on=date(2026, 12, 31),
         id=uuid.uuid4(),
         status="accepted",
         approval_window_days=window,
@@ -63,7 +71,7 @@ def build(steps) -> list[ContentDraft]:
 def test_approval_by_the_clock_never_comes_undone(at, window, later):
     d = draft(START + timedelta(minutes=at))
     m = memo(window)
-    deadline = approval_deadline(m, d, [d])
+    deadline = answer_deadline(m, d, [d])
 
     assert is_approved(m, d, [d], deadline)
     assert is_approved(m, d, [d], deadline + timedelta(minutes=later))
@@ -98,3 +106,45 @@ def test_a_deal_without_a_draft_review_never_notices_drafts(steps, window, now):
     when = START + timedelta(minutes=now)
 
     assert stage_of(m, [], None, when, drafts=build(steps)) == stage_of(m, [], None, when)
+
+
+@given(at=minutes, window=windows)
+def test_every_draft_gets_its_window_and_at_least_two_whole_days(at, window):
+    d = draft(START + timedelta(minutes=at))
+    m = memo(window)
+
+    deadline = answer_deadline(m, d, [d])
+
+    assert deadline >= approval_deadline(m, d, [d])
+    assert deadline - d.created_at >= timedelta(days=MIN_ANSWER_DAYS)
+
+
+@given(at=minutes, wait=st.integers(min_value=0, max_value=30 * 24 * 60), window=windows)
+def test_the_wait_counts_whole_days_only(at, wait, window):
+    """Each draft's answer moves the date by its whole days waited, never by midnights crossed."""
+    d = draft(START + timedelta(minutes=at), "approved")
+    d.answered_at = d.created_at + timedelta(minutes=wait)
+
+    assert days_waiting_on_brand(memo(window), [d], d.answered_at) == wait // (24 * 60)
+
+
+@given(steps=histories, window=windows, now=minutes, later=minutes)
+def test_the_due_date_never_moves_earlier(steps, window, now, later):
+    m = memo(window)
+    drafts = build(steps)
+    when = START + timedelta(minutes=now)
+
+    first = delivery_due_on(m, drafts, when)
+
+    assert first is not None and first >= m.content_due_on
+    assert delivery_due_on(m, drafts, when + timedelta(minutes=later)) >= first
+
+
+@given(steps=histories, window=windows, now=minutes)
+def test_without_the_term_the_agreed_date_holds(steps, window, now):
+    m = memo(window, draft_review=False)
+
+    assert (
+        delivery_due_on(m, build(steps), START + timedelta(minutes=now))
+        == m.content_due_on
+    )

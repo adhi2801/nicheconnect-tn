@@ -23,6 +23,7 @@ from app.modules.deal_memo.draft_rules import (
     answer_deadline,
     answer_last_day,
     approved_among,
+    delivery_due_on,
 )
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof
@@ -255,7 +256,8 @@ def for_creator(db: Session, creator_id: uuid.UUID, now: datetime) -> list[Atten
         items.append(
             AttentionItem(
                 kind=kind,
-                due_on=memo.content_due_on,
+                # Moved by the brand's waiting on drafts (D-140).
+                due_on=delivery_due_on(memo, drafts[memo.id], now),
                 campaign_id=campaign_id,
                 campaign_title=title,
                 counterparty=brand_name,

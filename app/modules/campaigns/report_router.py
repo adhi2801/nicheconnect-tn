@@ -134,6 +134,7 @@ def _deal(line: DealLine) -> ReportDealRead:
         has_open_dispute=line.stage.has_open_dispute,
         deliverables=memo.deliverables,
         content_due_on=memo.content_due_on,
+        work_due_on=line.stage.work_due_on,
         fee_amount_paise=memo.fee_amount_paise,
         accepted_on=india_date(memo.accepted_at) if memo.accepted_at else None,
         first_submitted_on=line.first_submitted_on,

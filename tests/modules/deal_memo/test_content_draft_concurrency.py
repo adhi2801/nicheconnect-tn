@@ -184,3 +184,62 @@ def test_a_proof_and_a_request_for_changes_at_the_deadline_never_both_land(
             session.delete(proof)
         session.commit()
     assert not (proofs and status == "changes_requested"), (len(proofs), status)
+
+
+def _stale_then(reviewed_deal, act):
+    """Load the draft in one session, let `act` change it in another, then settle the stale copy."""
+    from datetime import timedelta
+
+    from app.modules.deal_memo.draft_rules import answer_deadline
+
+    with SessionLocal() as session:
+        memo = session.get_one(DealMemo, reviewed_deal)
+        draft = draft_service.submit_draft(session, memo, {"body": "The caption."}, NOW)
+        deadline = answer_deadline(memo, draft, [draft])
+        draft_id = draft.id
+
+    with SessionLocal() as stale:
+        memo = stale.get_one(DealMemo, reviewed_deal)
+        draft = stale.get_one(ContentDraft, draft_id)
+        assert draft.status == "submitted"  # read before the other side acted
+        with SessionLocal() as other:
+            act(other, draft_id, deadline - timedelta(seconds=1))
+        draft_service.settle_if_overdue(
+            stale, memo, draft, deadline + timedelta(seconds=1), history=[draft]
+        )
+    with SessionLocal() as session:
+        kinds = [e.kind for e in record_service.entries_for(session, reviewed_deal)]
+        return session.get_one(ContentDraft, draft_id).status, kinds
+
+
+def test_the_clock_never_overwrites_an_answer_given_meanwhile(reviewed_deal):
+    """Found by the second independent review: settling read the draft without a lock."""
+
+    def ask(session, draft_id, at):
+        memo = session.get_one(DealMemo, reviewed_deal)
+        draft_service.request_changes(
+            session,
+            memo,
+            session.get_one(ContentDraft, draft_id),
+            "Add the ad label.",
+            at,
+        )
+
+    status, kinds = _stale_then(reviewed_deal, ask)
+
+    assert status == "changes_requested"
+    assert "draft_auto_approved" not in kinds
+
+
+def test_the_clock_never_approves_a_draft_on_a_deal_cancelled_meanwhile(reviewed_deal):
+    def cancel(session, draft_id, at):
+        memo = session.get_one(DealMemo, reviewed_deal)
+        memo.status = "cancelled"
+        memo.cancellation_kind = "cancelled_by_brand"
+        memo.cancelled_at = at
+        session.commit()
+
+    status, kinds = _stale_then(reviewed_deal, cancel)
+
+    assert status == "submitted"
+    assert "draft_auto_approved" not in kinds

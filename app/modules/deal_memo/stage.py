@@ -26,8 +26,8 @@ started, and the other two ended without finishing.
 import uuid
 from collections import defaultdict
 from collections.abc import Sequence
-from dataclasses import dataclass
-from datetime import datetime
+from dataclasses import dataclass, field
+from datetime import date, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -35,7 +35,7 @@ from sqlalchemy.orm import Session
 from app.core.clock import india_date
 from app.modules.deal_memo.delivery_record import is_approved
 from app.modules.deal_memo.draft_models import ContentDraft
-from app.modules.deal_memo.draft_rules import approved_among
+from app.modules.deal_memo.draft_rules import approved_among, delivery_due_on
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof
 from app.modules.disputes import service as disputes
@@ -85,6 +85,9 @@ class DealStage:
     # The side whose move it is, or None when nobody owes the deal anything.
     waiting_on: str | None
     has_open_dispute: bool
+    # The date the work is due by: the agreed one, moved a day for every
+    # whole day a draft waited for the brand (D-140). Shown, never compared.
+    work_due_on: date | None = field(default=None, compare=False)
 
 
 def _latest(proofs: list[DeliverableProof]) -> DeliverableProof | None:
@@ -106,8 +109,10 @@ def stage_of(
     caller may leave them out.
     """
 
+    due_on = delivery_due_on(memo, drafts, now)
+
     def at(stage: str, waiting_on: str | None) -> DealStage:
-        return DealStage(stage, waiting_on, has_open_dispute)
+        return DealStage(stage, waiting_on, has_open_dispute, due_on)
 
     if memo.status == "draft":
         return at(DRAFT, BRAND)

@@ -115,7 +115,8 @@ class DraftRead(BaseModel):
         default=None,
         description=(
             "While it waits: the last day the brand has to answer, in Tamil "
-            "Nadu; after it, the draft approves itself. Null once answered"
+            "Nadu; after it, the draft approves itself. Null once answered, "
+            "and once the deal has ended"
         ),
     )
     created_at: datetime
@@ -133,9 +134,8 @@ class DraftRead(BaseModel):
 
 
 def _read(memo: DealMemo, draft: ContentDraft, history: list[ContentDraft]) -> DraftRead:
-    answer_by = (
-        answer_last_day(memo, draft, history) if draft.status == "submitted" else None
-    )
+    waiting = draft.status == "submitted" and memo.status == "accepted"
+    answer_by = answer_last_day(memo, draft, history) if waiting else None
     return DraftRead.model_validate(draft).model_copy(update={"answer_by": answer_by})
 
 
