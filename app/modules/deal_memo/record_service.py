@@ -109,7 +109,8 @@ def terms_fingerprint(memo: DealMemo) -> str:
 
     Version 1 (every memo before 25 October 2026) is TERMS_FIELDS alone, and
     stays exactly that forever, so no seal made before then changes. Version
-    2 adds the list of deliverables, in order (D-127).
+    2 adds the list of deliverables, in order (D-127). Version 3 adds
+    `draft_review`, whether a draft is shown before posting (item 27, D-140).
     """
     terms: dict[str, Any] = {}
     for field in TERMS_FIELDS:
@@ -124,6 +125,8 @@ def terms_fingerprint(memo: DealMemo) -> str:
             {field: getattr(item, field) for field in DELIVERABLE_FIELDS}
             for item in memo.deliverable_items
         ]
+    if memo.terms_version >= 3:
+        terms["draft_review"] = memo.draft_review
     return hashlib.sha256(canonical(terms)).hexdigest()
 
 

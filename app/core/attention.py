@@ -35,6 +35,8 @@ BRAND_KINDS: tuple[str, ...] = (
     "respond_to_dispute",
     "pay_creator",
     "review_proof",
+    # A draft shown before posting, waiting for the brand (item 27).
+    "review_draft",
     "revise_memo",
     "draft_memo",
     "review_applications",
@@ -56,6 +58,9 @@ CREATOR_KINDS: tuple[str, ...] = (
     "payment_overdue",
     "resubmit_work",
     "deliver_work",
+    # A deal agreed with a draft review: show one, or change it (item 27).
+    "show_draft",
+    "revise_draft",
     "answer_memo",
     "answer_invitation",
     # A new UPI ID set and waiting its 24 hours (item 82, D-107): due the
@@ -87,8 +92,11 @@ _PRIORITY = {
             "confirm_payment",
             "payment_overdue",
             "review_proof",
+            "review_draft",
             "resubmit_work",
+            "revise_draft",
             "deliver_work",
+            "show_draft",
             "answer_memo",
             "answer_invitation",
             "revise_memo",
@@ -123,6 +131,7 @@ class AttentionItem:
     application_id: uuid.UUID | None = None
     memo_id: uuid.UUID | None = None
     proof_id: uuid.UUID | None = None
+    draft_id: uuid.UUID | None = None
     amount_paise: int | None = None
     # For an item that stands for several things at once.
     count: int | None = None
@@ -161,6 +170,7 @@ def by_urgency(items: Iterable[AttentionItem]) -> list[AttentionItem]:
     def key(item: AttentionItem) -> tuple[bool, bool, date, int, str]:
         tie = (
             item.proof_id
+            or item.draft_id
             or item.memo_id
             or item.application_id
             or item.campaign_id

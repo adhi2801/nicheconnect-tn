@@ -18,6 +18,7 @@ from collections.abc import Iterable
 
 from sqlalchemy import delete, select, text
 
+from app.modules.deal_memo.draft_models import ContentDraft
 from app.modules.deal_memo.feedback_models import DealFeedback
 from app.modules.deal_memo.note_models import DealNote
 from app.modules.deal_memo.record_models import DealRecordEntry
@@ -50,6 +51,10 @@ def remove_deal_records(memo_ids: Iterable[uuid.UUID]) -> None:
         # Feedback is sealed the same way (D-136).
         connection.execute(
             delete(DealFeedback).where(DealFeedback.deal_memo_id.in_(memos))
+        )
+        # A draft holds its memo by RESTRICT too (item 27, D-140).
+        connection.execute(
+            delete(ContentDraft).where(ContentDraft.deal_memo_id.in_(memos))
         )
         # A barter shipment holds its memo by RESTRICT too (D-131).
         connection.execute(

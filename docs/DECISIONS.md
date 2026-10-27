@@ -1774,3 +1774,18 @@ Newest entries at the bottom.
   2. `CLAUDE.md` section 6 step 6 and section 8: the measured p95, the mutation floor and an independent review in every change. The review is a separate reviewer told to find faults, and never counts as the other founder's.
   3. **Still to build, each in its own change:** the mutation gate in CI (an infrastructure change, approved here; its floor per module is set from a measured baseline, never guessed); the restore drill (locally now, on AWS once the account exists, in `docs/INCIDENT_RESPONSE.md`).
   4. `docs/README.md` section 0 gains point 9: each standard names the strongest outside benchmark for its area, says where we meet, beat or fall short of it, and raises a number only once a tool shows it can be held. Every md file is raised again, one at a time, each coming back to Adhi before it binds.
+
+## D-140: Draft first: a draft shown and approved before posting (item 27)
+- Date: 2026-10-27
+- Approved by: Adhi, in this session: "all as recommended", to the proposal of items 77, 27 and 11 with their dimensions and choices. **Not reviewed by the other founder** (D-051).
+- Context: brands with brand-safety rules want to see content before it goes live; without it, work is posted, then rejected, and the fight is about money already spent. Later, Upfluence and Tid.al offer draft approval (read 26 October 2026, `docs/COMPETITIVE_LANDSCAPE.md`); none seals what was approved, and none protects the creator from a brand that goes silent.
+- Options considered: (a) A) silence approves by the clock, as proof does (D-025); B) a draft waits forever. (b) A) the brand turns it on per memo, as an agreed term; B) a campaign-level default.
+- Chosen: A and A.
+- Reason: a deadline that protects only one side is not fair process; the term belongs in what both sides agree, so it is sealed with them.
+- Consequences / follow-ups:
+  1. `draft_review` is a memo term (default off), set while the brand drafts the memo and sealed with the terms from **terms version 3**; every earlier memo keeps its version and its seal (the D-127 pattern). A repeat deal carries it over.
+  2. `POST /api/v1/deal-memos/{memo_id}/drafts` (the creator: the caption or script, an optional link and note); `GET` (both sides, newest first); `.../drafts/{draft_id}/approve` and `.../request-changes` (the brand). One draft waits at a time, one is approved per memo, each attempt numbered. The brand has the memo's approval window, on proof's own clock (`deal_memo/review_clock.py`, shared since this item): only the first request restarts it, and silence approves (`draft_auto_approved`, by the system). Showing a draft counts as work started (D-026).
+  3. Proof waits for an approved draft (`draft_not_approved`), the clock's approval included, read under the memo's lock; its record entry names the draft and its body's fingerprint, so what was approved can be held up against what was posted.
+  4. Each draft and answer is sealed onto the deal record by fingerprints (`draft_submitted`, `draft_approved`, `draft_auto_approved`, `draft_changes_requested`); a brand's note is flagged for fee requests. The stage gains `draft_review` between `agreed` and `in_progress`; the attention list gains `review_draft` for the brand, `show_draft` and `revise_draft` for the creator. A draft waiting and a request for changes are urgent notices.
+  5. `content_draft` is kept as a deal record on deletion (D-122) and exported to both sides. Migration `bbddb2e7bb0d`; its downgrade refuses while any version 3 memo, draft or draft entry exists.
+  6. **Built in two pieces**: this is piece 1. Piece 2, files on a draft through the cleaned-upload pipeline (D-065), follows as its own change; the proposal approved both.

@@ -71,6 +71,10 @@ NotificationType = Literal[
     "connection_expired",
     "feedback_received",
     "agent_token_created",
+    "draft_submitted",
+    "draft_approved",
+    "draft_auto_approved",
+    "draft_changes_requested",
 ]
 
 ensure_same_values("NotificationType", NotificationType, NOTIFICATION_TYPES)

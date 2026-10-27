@@ -202,3 +202,29 @@ class FeedbackClosed(DomainError):
     @classmethod
     def because(cls, reason: str) -> FeedbackClosed:
         return cls(cls.REASONS[reason])
+
+
+# Drafts shown before posting (item 27, D-140).
+class DraftNotFound(DomainError):
+    status_code = HTTPStatus.NOT_FOUND
+    code = "draft_not_found"
+    title = "That draft does not exist"
+
+
+class DraftAlreadyDecided(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "draft_already_decided"
+    title = "This draft has already been answered"
+
+
+class DraftReviewNotAgreed(DomainError):
+    # The memo's agreed terms decide it; it cannot be switched on mid-deal.
+    status_code = HTTPStatus.CONFLICT
+    code = "draft_review_not_agreed"
+    title = "This deal's terms do not include a draft review"
+
+
+class DraftNotApproved(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "draft_not_approved"
+    title = "Show the brand a draft and have it approved before submitting proof"

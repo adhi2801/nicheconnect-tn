@@ -37,6 +37,8 @@ TERMS = {
     "payment_due_days": 10,
     "cancellation_fee_paise": 100_000,
     "disclosure_required": True,
+    # Not its default, so carrying it over is seen (item 27).
+    "draft_review": True,
     "extra_terms": "Raw footage shared on request.",
 }
 

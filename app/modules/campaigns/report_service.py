@@ -40,11 +40,12 @@ from app.modules.campaigns.summary import AGREED_STAGES
 from app.modules.deal_memo import proof_reading_service, record_service
 from app.modules.deal_memo.anchor_models import DealRecordCheckpoint, DealRecordTimestamp
 from app.modules.deal_memo.delivery_record import is_approved
+from app.modules.deal_memo.draft_models import ContentDraft
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof, ProofFile
 from app.modules.deal_memo.proof_reading_models import READING_METRICS, ProofFileReading
-from app.modules.deal_memo.proof_service import approval_deadline
 from app.modules.deal_memo.record_models import DealRecordEntry
+from app.modules.deal_memo.review_clock import approval_deadline
 from app.modules.deal_memo.stage import FINISHED, DealStage, stage_of
 from app.modules.disputes import service as disputes
 from app.modules.payment_status import service as payments
@@ -139,6 +140,7 @@ def build_report(db: Session, campaign: Campaign, now: datetime) -> CampaignRepo
     ids = [memo.id for memo in memos]
 
     proofs = _proofs_by_memo(db, ids)
+    drafts = _drafts_by_memo(db, memos)
     payment_by_memo = _payments_by_memo(db, ids)
     today = india_date(now)
     disputed = disputes.open_payment_ids(
@@ -161,6 +163,7 @@ def build_report(db: Session, campaign: Campaign, now: datetime) -> CampaignRepo
             payment,
             now,
             has_open_dispute=payment is not None and payment.id in disputed,
+            drafts=drafts[memo.id],
         )
         lines.append(
             _line(
@@ -196,6 +199,20 @@ def _proofs_by_memo(
             select(DeliverableProof).where(DeliverableProof.deal_memo_id.in_(ids))
         ):
             found[proof.deal_memo_id].append(proof)
+    return found
+
+
+def _drafts_by_memo(
+    db: Session, memos: list[DealMemo]
+) -> dict[uuid.UUID, list[ContentDraft]]:
+    """Drafts of the memos agreed with a draft review (item 27); no query otherwise."""
+    found: dict[uuid.UUID, list[ContentDraft]] = defaultdict(list)
+    reviewed = [memo.id for memo in memos if memo.draft_review]
+    if reviewed:
+        for draft in db.scalars(
+            select(ContentDraft).where(ContentDraft.deal_memo_id.in_(reviewed))
+        ):
+            found[draft.deal_memo_id].append(draft)
     return found
 
 

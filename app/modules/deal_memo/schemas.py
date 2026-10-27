@@ -91,6 +91,14 @@ class MemoCreate(BaseModel):
     usage_rights_days: UsageRightsDays | None = None
     content_due_on: date | None = None
     disclosure_required: bool = True
+    draft_review: bool = Field(
+        default=False,
+        description=(
+            "The creator shows a draft (`POST .../drafts`) before posting, and "
+            "proof waits for it to be approved; the brand has the approval "
+            "window to answer, and silence approves (item 27)"
+        ),
+    )
     extra_terms: ExtraTerms | None = None
 
 
@@ -108,6 +116,7 @@ class MemoUpdate(BaseModel):
     usage_rights_days: UsageRightsDays | None = None
     content_due_on: date | None = None
     disclosure_required: bool | None = None
+    draft_review: bool | None = None
     extra_terms: ExtraTerms | None = None
 
     @model_validator(mode="after")
@@ -154,6 +163,12 @@ class MemoFields(BaseModel):
     usage_rights_days: int | None
     content_due_on: date | None
     disclosure_required: bool
+    draft_review: bool = Field(
+        description=(
+            "A draft is shown and approved before proof (item 27); sealed with "
+            "the terms from 27 October 2026, false on every memo before"
+        )
+    )
     extra_terms: str | None
     status: MemoStatus
     revision_count: int
@@ -224,6 +239,7 @@ DealStageName = Literal[
     "draft",
     "memo_sent",
     "agreed",
+    "draft_review",
     "in_progress",
     "payment",
     "finished",
@@ -241,7 +257,8 @@ class MemoWithStageRead(MemoRead):
 
     Worked out from the memo, its proof and its payment as of the request,
     never stored. The five stages a deal passes through are `memo_sent`,
-    `agreed`, `in_progress`, `payment`, `finished`; `draft`, `declined` and
+    `agreed`, `in_progress`, `payment`, `finished`, with `draft_review`
+    between `agreed` and `in_progress` on a deal agreed with one (item 27); `draft`, `declined` and
     `cancelled` sit outside them. A barter deal is `finished` once its work
     is approved; a paid one only when the creator confirms the money arrived.
     """

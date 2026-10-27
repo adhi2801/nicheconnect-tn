@@ -7,18 +7,19 @@ day-3 reminder later, but the outcome never waits for one.
 
 import uuid
 from collections.abc import Sequence
-from datetime import date, datetime, time, timedelta
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.clock import IST, india_date
 from app.core.errors import DomainError
 from app.core.storage import FileStore
-from app.modules.deal_memo import proof_file_service
+from app.modules.deal_memo import draft_rules, proof_file_service
+from app.modules.deal_memo import draft_service as drafts
 from app.modules.deal_memo import record_service as record
 from app.modules.deal_memo.exceptions import (
+    DraftNotApproved,
     MemoStatusConflict,
     ProofAlreadyDecided,
     ProofNeedsEvidence,
@@ -26,6 +27,7 @@ from app.modules.deal_memo.exceptions import (
 )
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof
+from app.modules.deal_memo.review_clock import approval_deadline
 from app.modules.deal_memo.service import _notify_other_side
 from app.modules.payment_status import service as payments
 
@@ -46,8 +48,9 @@ def submit_proof(
     attached in the same transaction as the proof, so a proof never exists
     with half its files.
 
-    Raises MemoStatusConflict unless the memo is accepted, and
-    ProofAlreadyDecided while another submission waits for review.
+    Raises MemoStatusConflict unless the memo is accepted,
+    ProofAlreadyDecided while another submission waits for review, and
+    DraftNotApproved on a deal with a draft review and no approved draft.
 
     The memo's row is locked and read again first: two submissions at once
     would otherwise both find nothing waiting, and the database's rule of one
@@ -73,6 +76,16 @@ def submit_proof(
     if open_submission is not None:
         db.rollback()
         raise ProofAlreadyDecided("This memo already has proof waiting for review.")
+
+    # A deal agreed with a draft review posts only what the brand approved
+    # (item 27, D-140): proof waits for an approved draft, the clock's
+    # approval included, read here under the memo's lock without writing.
+    approved_draft = None
+    if memo.draft_review:
+        approved_draft = draft_rules.approved_among(memo, drafts.drafts_of(db, memo), now)
+        if approved_draft is None:
+            db.rollback()
+            raise DraftNotApproved()
 
     if not fields.get("content_url") and not file_ids:
         db.rollback()
@@ -116,6 +129,16 @@ def submit_proof(
             # Each file as declared and as S3 enforced it on upload (D-065).
             # Only when there are files, so a link-only entry reads as before.
             **({"files": proof_file_service.record_facts(files)} if files else {}),
+            # The draft this work follows, so what was approved can be held
+            # up against what was posted (item 27). Only on such deals.
+            **(
+                {
+                    "draft_id": str(approved_draft.id),
+                    "draft_body_sha256": record.fingerprint(approved_draft.body),
+                }
+                if approved_draft is not None
+                else {}
+            ),
         },
     )
     # The line between a cancellation that counts and one that does not (D-026).
@@ -126,52 +149,6 @@ def submit_proof(
     db.commit()
     db.refresh(proof)
     return proof
-
-
-def review_clock_start(
-    proof: DeliverableProof, history: Sequence[DeliverableProof]
-) -> datetime:
-    """When this submission's review clock started (D-025).
-
-    The first submission starts a clock, and so does the one that follows
-    the brand's first request for changes. Any later resubmission runs on
-    the clock that first request restarted: asking again does not buy the
-    brand more time. `history` is every submission on the memo, in any order.
-    """
-    key = (proof.created_at, proof.id)
-    earlier = sorted(
-        (p for p in history if (p.created_at, p.id) < key),
-        key=lambda p: (p.created_at, p.id),
-    )
-    if len(earlier) <= 1:
-        return proof.created_at
-    return earlier[1].created_at
-
-
-def approval_deadline(
-    memo: DealMemo, proof: DeliverableProof, history: Sequence[DeliverableProof]
-) -> datetime:
-    """When an unreviewed submission approves itself (D-025).
-
-    Counted in whole Tamil Nadu calendar days, as D-025 says: the window
-    ends at midnight IST after its last full day, so proof sent at 23:00
-    loses nothing to proof sent at 00:30 the same day. `history` is required
-    on purpose: without it a resubmission cannot be told from a first one.
-    """
-    last_day = approval_last_day(memo, proof, history)
-    return datetime.combine(last_day + timedelta(days=1), time.min, tzinfo=IST)
-
-
-def approval_last_day(
-    memo: DealMemo, proof: DeliverableProof, history: Sequence[DeliverableProof]
-) -> date:
-    """The last whole day the brand has to decide, in Tamil Nadu (D-025).
-
-    What a person is told ("decide by 24 Sep"): the deadline itself is the
-    midnight that ends this day, which would read as the day after.
-    """
-    first_day = india_date(review_clock_start(proof, history))
-    return first_day + timedelta(days=memo.approval_window_days)
 
 
 def _history(db: Session, memo: DealMemo) -> list[DeliverableProof]:

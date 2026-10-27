@@ -83,6 +83,7 @@ MEMO_EXPORT_FIELDS = allow(
     "usage_rights_days",
     "content_due_on",
     "disclosure_required",
+    "draft_review",
     "extra_terms",
     # Which terms the record's fingerprint covers (D-127).
     "terms_version",
@@ -328,6 +329,7 @@ REPEATED_TERMS: tuple[str, ...] = (
     "payment_due_days",
     "usage_rights_days",
     "disclosure_required",
+    "draft_review",
     "extra_terms",
 )
 NOT_REPEATED: dict[str, str] = {

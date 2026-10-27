@@ -23,7 +23,7 @@ from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.calendar_ics import Event
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof
-from app.modules.deal_memo.proof_service import approval_deadline
+from app.modules.deal_memo.review_clock import approval_deadline
 from app.modules.payment_status.models import PaymentStatus
 
 REMIND = timedelta(hours=24)

@@ -143,8 +143,16 @@ def test_an_open_dispute_is_carried_through():
 # --- the set of stages ---------------------------------------------------------------------
 
 
-def test_the_five_main_stages_are_in_order_and_all_known():
-    assert MAIN_STAGES == ("memo_sent", "agreed", "in_progress", "payment", "finished")
+def test_the_main_stages_are_in_order_and_all_known():
+    # Draft review only on a deal agreed with one (item 27).
+    assert MAIN_STAGES == (
+        "memo_sent",
+        "agreed",
+        "draft_review",
+        "in_progress",
+        "payment",
+        "finished",
+    )
     assert set(MAIN_STAGES) <= set(DEAL_STAGES)
 
 

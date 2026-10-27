@@ -73,6 +73,12 @@ RECORD_KINDS: tuple[str, ...] = (
     "product_received",
     # One side's feedback on a finished deal (item 77, D-136): its fingerprint.
     "feedback_given",
+    # A draft shown before posting, and the brand's answer (item 27, D-140):
+    # the draft's fingerprints, and the reason's when changes are asked.
+    "draft_submitted",
+    "draft_approved",
+    "draft_auto_approved",
+    "draft_changes_requested",
 )
 # "system" is us acting on the deal's own rules, such as approving work at the
 # end of the review window (D-025) or opening the payment record it causes.

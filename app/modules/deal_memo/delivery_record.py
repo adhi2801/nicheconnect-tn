@@ -37,7 +37,7 @@ from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof
-from app.modules.deal_memo.proof_service import approval_deadline
+from app.modules.deal_memo.review_clock import approval_deadline
 
 # Below this, the figures are withheld (the same floor as D-027).
 MIN_DEALS_FOR_HISTORY = 3
