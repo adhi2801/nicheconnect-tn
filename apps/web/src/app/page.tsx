@@ -9,8 +9,8 @@ export default function Home() {
         <p className="text-sm text-muted">Token check</p>
         <div className="mt-3 flex gap-3">
           <span className="rounded-lg bg-accent px-4 py-2 text-on-accent">Accent</span>
-          <span className="rounded-lg px-4 py-2 text-ink" style={{ background: "linear-gradient(135deg, var(--c-glance-lime-from), var(--c-glance-lime-to))" }}>Lime</span>
-          <span className="rounded-lg px-4 py-2 text-ink" style={{ background: "linear-gradient(135deg, var(--c-glance-coral-from), var(--c-glance-coral-to))" }}>Coral</span>
+          <span className="rounded-lg px-4 py-2 text-ink" style={{ background: "linear-gradient(135deg, var(--c-glance-gold-from), var(--c-glance-gold-to))" }}>Gold</span>
+          <span className="rounded-lg px-4 py-2 text-ink" style={{ background: "linear-gradient(135deg, var(--c-glance-clay-from), var(--c-glance-clay-to))" }}>Clay</span>
         </div>
       </div>
     </main>

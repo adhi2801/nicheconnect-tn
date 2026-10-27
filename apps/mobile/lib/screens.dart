@@ -22,7 +22,7 @@ class Avatar extends StatelessWidget {
         decoration: BoxDecoration(
           shape: square ? BoxShape.rectangle : BoxShape.circle,
           borderRadius: square ? BorderRadius.circular(18) : null,
-          gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: square ? const [ColyvTokens.cGlanceSandFrom, ColyvTokens.cGlanceSandTo] : const [ColyvTokens.cGlanceBerryFrom, ColyvTokens.cGlanceTerracottaTo]),
+          gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: square ? const [ColyvTokens.cGlanceSandFrom, ColyvTokens.cGlanceSandTo] : const [ColyvTokens.cGlanceClayFrom, ColyvTokens.cGlanceTerracottaTo]),
           border: Border.all(color: ColyvTokens.cSurface, width: 3),
           boxShadow: const [BoxShadow(color: Color(0x1F101012), blurRadius: 14, offset: Offset(0, 6), spreadRadius: -6)],
         ),
@@ -88,14 +88,14 @@ class _CreatorProfileState extends State<CreatorProfile> {
         Glance(colors: GlanceColors.terracotta, label: 'Views', value: CountNum(value: d.views, format: _k, style: Txt.big), spark: Spark(data: d.s2)),
       ),
       _Two(
-        Glance(colors: GlanceColors.berry, label: 'Engagement', value: CountNum(value: d.eng, format: (v) => '${v.toStringAsFixed(1)}%', style: Txt.big), foot: 'interactions ÷ reach'),
+        Glance(colors: GlanceColors.clay, label: 'Engagement', value: CountNum(value: d.eng, format: (v) => '${v.toStringAsFixed(1)}%', style: Txt.big), foot: 'interactions ÷ reach'),
         Glance(colors: GlanceColors.sand, label: 'Followers', value: const CountNum(value: 12400, format: _k, style: Txt.big), foot: d.chg),
       ),
       Panel(title: 'Recent posts', children: [
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(children: [
-            for (final t in const [('Reel · 22K', ColyvTokens.cGlanceGoldFrom, ColyvTokens.cGlanceGoldTo), ('Post · 6K', ColyvTokens.cGlanceBerryFrom, ColyvTokens.cGlanceBerryTo), ('Reel · 32K', ColyvTokens.cGlanceSandFrom, ColyvTokens.cGlanceSandTo)])
+            for (final t in const [('Reel · 22K', ColyvTokens.cGlanceGoldFrom, ColyvTokens.cGlanceGoldTo), ('Post · 6K', ColyvTokens.cGlanceClayFrom, ColyvTokens.cGlanceClayTo), ('Reel · 32K', ColyvTokens.cGlanceSandFrom, ColyvTokens.cGlanceSandTo)])
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.only(right: 8),

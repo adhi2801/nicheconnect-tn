@@ -10,6 +10,9 @@
   --color-muted: var(--c-ink-muted);
   --color-line: var(--c-line);
   --color-accent: var(--c-accent);
+  --color-highlight: var(--c-highlight);
+  --color-highlight-soft: var(--c-highlight-soft);
+  --color-on-highlight: var(--c-on-highlight);
   --color-on-accent: var(--c-on-accent);
   --color-ok: var(--c-ok);
   --color-warn: var(--c-warn);

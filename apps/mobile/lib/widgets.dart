@@ -64,7 +64,7 @@ class GlanceColors {
   final Color from, to;
   static const gold = GlanceColors(ColyvTokens.cGlanceGoldFrom, ColyvTokens.cGlanceGoldTo);
   static const terracotta = GlanceColors(ColyvTokens.cGlanceTerracottaFrom, ColyvTokens.cGlanceTerracottaTo);
-  static const berry = GlanceColors(ColyvTokens.cGlanceBerryFrom, ColyvTokens.cGlanceBerryTo);
+  static const clay = GlanceColors(ColyvTokens.cGlanceClayFrom, ColyvTokens.cGlanceClayTo);
   static const sand = GlanceColors(ColyvTokens.cGlanceSandFrom, ColyvTokens.cGlanceSandTo);
 }
 
