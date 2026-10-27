@@ -33,6 +33,7 @@ from app.modules.deal_memo.exceptions import (
     ApplicationNotAccepted,
     BarterMemoHasNoFee,
     CreatorLeft,
+    DraftReviewNeedsNewTerms,
     DueDateHasPassed,
     MemoAlreadyExists,
     MemoNeedsDueDate,
@@ -439,6 +440,11 @@ def update_memo(
             _campaign_of(db, application), changes["fee_amount_paise"]
         )
 
+    # A memo made before terms version 3 would never seal the draft review,
+    # so it cannot take one (item 27); it is drafted again instead.
+    if changes.get("draft_review") and memo.terms_version < 3:
+        db.rollback()
+        raise DraftReviewNeedsNewTerms()
     items = changes.pop("deliverable_items", None)
     for field, value in changes.items():
         setattr(memo, field, value)

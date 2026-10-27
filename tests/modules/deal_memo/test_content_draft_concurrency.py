@@ -126,3 +126,61 @@ def test_an_approval_racing_a_request_for_changes_leaves_one_answer(
             if e.kind in ("draft_approved", "draft_changes_requested")
         ]
         assert len(answers) == 1
+
+
+def test_a_proof_and_a_request_for_changes_at_the_deadline_never_both_land(
+    reviewed_deal, slow_writes
+):
+    """Found by the independent review: the brand asks at 23:59:59, the proof comes at 00:00:01.
+
+    Each takes the memo's lock first, so one lands and the other sees it: a
+    proof never names a draft the brand sent back.
+    """
+    from datetime import timedelta
+
+    from app.modules.deal_memo import proof_service
+    from app.modules.deal_memo.draft_rules import answer_deadline
+    from app.modules.deal_memo.exceptions import DraftNotApproved
+    from app.modules.deal_memo.proof_models import DeliverableProof
+
+    with SessionLocal() as session:
+        memo = session.get_one(DealMemo, reviewed_deal)
+        draft = draft_service.submit_draft(session, memo, {"body": "The caption."}, NOW)
+        deadline = answer_deadline(memo, draft, [draft])
+        draft_id = draft.id
+
+    def ask(session):
+        memo = session.get_one(DealMemo, reviewed_deal)
+        draft = session.get_one(ContentDraft, draft_id)
+        return draft_service.request_changes(
+            session, memo, draft, "Add the ad label.", deadline - timedelta(seconds=1)
+        )
+
+    def prove(session):
+        memo = session.get_one(DealMemo, reviewed_deal)
+        fields = {
+            "content_url": "https://www.instagram.com/reel/abc123/",
+            "format": "reel",
+            "disclosure_confirmed": True,
+        }
+        return proof_service.submit_proof(
+            session, memo, fields, deadline + timedelta(seconds=1)
+        )
+
+    results = run_together([ask, prove])
+
+    assert all(
+        isinstance(
+            r, ContentDraft | DeliverableProof | DraftAlreadyDecided | DraftNotApproved
+        )
+        for r in results
+    ), results
+    with SessionLocal() as session:
+        proofs = session.scalars(
+            select(DeliverableProof).where(DeliverableProof.deal_memo_id == reviewed_deal)
+        ).all()
+        status = session.get_one(ContentDraft, draft_id).status
+        for proof in proofs:
+            session.delete(proof)
+        session.commit()
+    assert not (proofs and status == "changes_requested"), (len(proofs), status)

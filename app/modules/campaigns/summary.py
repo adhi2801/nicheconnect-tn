@@ -24,6 +24,7 @@ from app.modules.deal_memo.stage import (
     AGREED,
     DEAL_STAGES,
     DRAFT,
+    DRAFT_REVIEW,
     FINISHED,
     IN_PROGRESS,
     MEMO_SENT,
@@ -32,7 +33,7 @@ from app.modules.deal_memo.stage import (
 )
 
 # Agreed and not cancelled: the deals "n of m finished" counts.
-AGREED_STAGES = frozenset({AGREED, IN_PROGRESS, PAYMENT, FINISHED})
+AGREED_STAGES = frozenset({AGREED, DRAFT_REVIEW, IN_PROGRESS, PAYMENT, FINISHED})
 # A memo nobody has finished answering keeps a campaign from being complete.
 UNANSWERED_STAGES = frozenset({DRAFT, MEMO_SENT})
 

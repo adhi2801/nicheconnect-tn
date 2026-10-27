@@ -29,8 +29,8 @@ from app.modules.deal_memo.draft_models import (
     URL_MAX_LENGTH,
     ContentDraft,
 )
+from app.modules.deal_memo.draft_rules import answer_last_day
 from app.modules.deal_memo.models import DealMemo
-from app.modules.deal_memo.review_clock import approval_last_day
 
 READ_LIMIT = "60 per minute"
 # Each draft and each answer reaches the other side, so each has a daily
@@ -105,6 +105,9 @@ class DraftRead(BaseModel):
     status: DraftStatus
     changes_note: str | None = Field(description="What the brand asked to change")
     approved_at: datetime | None
+    answered_at: datetime | None = Field(
+        description="When the brand answered, or the clock did; null while it waits"
+    )
     auto_approved: bool = Field(
         description="Approved because the brand did not answer in time (D-025)"
     )
@@ -131,7 +134,7 @@ class DraftRead(BaseModel):
 
 def _read(memo: DealMemo, draft: ContentDraft, history: list[ContentDraft]) -> DraftRead:
     answer_by = (
-        approval_last_day(memo, draft, history) if draft.status == "submitted" else None
+        answer_last_day(memo, draft, history) if draft.status == "submitted" else None
     )
     return DraftRead.model_validate(draft).model_copy(update={"answer_by": answer_by})
 
@@ -144,7 +147,9 @@ def _read(memo: DealMemo, draft: ContentDraft, history: list[ContentDraft]) -> D
     description=(
         "Only on a memo whose agreed terms include `draft_review`. The brand "
         "has the memo's approval window to approve it or ask for changes; if "
-        "it does not answer, the draft approves itself (D-025). Proof can be "
+        "it does not answer, the draft approves itself (D-025), never sooner "
+        "than 2 whole days after it is shown. Every day it waits for the brand "
+        "is added to the date the work is due. Proof can be "
         "submitted once a draft is approved. One draft waits at a time; each "
         "is sealed onto the deal record by its fingerprints. Showing a draft "
         "counts as work started. Limits: 30 a minute, 200 a day."
@@ -179,8 +184,9 @@ def submit_draft(
     summary="The drafts shown on a deal",
     description=(
         "Both sides see the same drafts, newest first. A draft whose window "
-        "has passed is settled as approved by the clock when read. Limit: 60 "
-        "requests per minute."
+        "has passed is settled as approved by the clock when read. Every draft "
+        "gives the brand at least 2 whole days, however late it is shown. "
+        "Limit: 60 requests per minute."
     ),
     responses=_COMMON,
 )

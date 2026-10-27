@@ -102,6 +102,17 @@ class MemoCreate(BaseModel):
     extra_terms: ExtraTerms | None = None
 
 
+# Memo fields that always hold a value: a change may set them, never empty them.
+_ALWAYS_SET: tuple[str, ...] = (
+    "deliverables",
+    "cancellation_fee_paise",
+    "approval_window_days",
+    "payment_due_days",
+    "disclosure_required",
+    "draft_review",
+)
+
+
 class MemoUpdate(BaseModel):
     """Changes to a memo the brand still holds."""
 
@@ -123,6 +134,13 @@ class MemoUpdate(BaseModel):
     def at_least_one_field(self) -> MemoUpdate:
         if not self.model_fields_set:
             raise PydanticCustomError("empty_update", "Send at least one field to change")
+        # These always have a value; null would reach the database as one
+        # (found by the independent review of item 27, 27 October 2026).
+        for name in _ALWAYS_SET:
+            if name in self.model_fields_set and getattr(self, name) is None:
+                raise PydanticCustomError(
+                    "value_required", "{field} cannot be null", {"field": name}
+                )
         return self
 
 

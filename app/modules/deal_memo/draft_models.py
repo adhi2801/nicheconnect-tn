@@ -66,6 +66,12 @@ class ContentDraft(Base):
             "(status = 'approved') = (approved_at IS NOT NULL)",
             name="approved_at_matches_status",
         ),
+        # Answered exactly when it no longer waits: by the brand, or by the
+        # clock at its deadline. What the brand's waiting is measured by.
+        CheckConstraint(
+            "(status = 'submitted') = (answered_at IS NULL)",
+            name="answered_at_matches_status",
+        ),
         # Approval by the clock is a kind of approval, never anything else.
         CheckConstraint(
             "NOT auto_approved OR status = 'approved'", name="auto_approved_is_approved"
@@ -111,6 +117,10 @@ class ContentDraft(Base):
     # What the brand asked to change.
     changes_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # When the brand answered, or the clock did (its deadline).
+    answered_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     # True when the window ran out rather than the brand approving.

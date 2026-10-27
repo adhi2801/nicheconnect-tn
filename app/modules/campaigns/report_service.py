@@ -41,6 +41,7 @@ from app.modules.deal_memo import proof_reading_service, record_service
 from app.modules.deal_memo.anchor_models import DealRecordCheckpoint, DealRecordTimestamp
 from app.modules.deal_memo.delivery_record import is_approved
 from app.modules.deal_memo.draft_models import ContentDraft
+from app.modules.deal_memo.draft_rules import delivery_due_on
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof, ProofFile
 from app.modules.deal_memo.proof_reading_models import READING_METRICS, ProofFileReading
@@ -172,6 +173,7 @@ def build_report(db: Session, campaign: Campaign, now: datetime) -> CampaignRepo
                 handle,
                 stage,
                 proofs[memo.id],
+                drafts[memo.id],
                 approved.get(memo.id),
                 payment,
                 today,
@@ -329,19 +331,24 @@ def _line(
     handle: str,
     stage: DealStage,
     proofs: list[DeliverableProof],
+    drafts: list[ContentDraft],
     approved: DeliverableProof | None,
     payment: PaymentStatus | None,
     today: date,
     readings: dict[uuid.UUID, list[ProofFileReading]],
     seal: Seal,
 ) -> DealLine:
-    first_submitted_on = (
-        india_date(min(proof.created_at for proof in proofs)) if proofs else None
+    first_submitted = min(proof.created_at for proof in proofs) if proofs else None
+    # The brand's waiting on drafts moves the due date (item 27).
+    due_on = (
+        delivery_due_on(memo, drafts, first_submitted)
+        if first_submitted is not None
+        else None
     )
     on_time = (
         None
-        if first_submitted_on is None or memo.content_due_on is None
-        else first_submitted_on <= memo.content_due_on
+        if first_submitted is None or due_on is None
+        else india_date(first_submitted) <= due_on
     )
     approved_on = _approved_on(memo, approved, proofs)
     if payment is None and approved_on is not None:
@@ -356,7 +363,9 @@ def _line(
         creator_display_name=display_name,
         creator_handle=handle,
         stage=stage,
-        first_submitted_on=first_submitted_on,
+        first_submitted_on=(
+            india_date(first_submitted) if first_submitted is not None else None
+        ),
         delivered_on_time=on_time,
         approved_on=approved_on,
         approved_by_clock=approved is not None

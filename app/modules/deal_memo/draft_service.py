@@ -19,13 +19,13 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
 
 from app.core.export import MAX_ROWS_PER_SECTION, ExportedSection, allow, build_section
 from app.modules.deal_memo import record_service as record
 from app.modules.deal_memo.draft_models import ContentDraft
-from app.modules.deal_memo.draft_rules import approved_among
+from app.modules.deal_memo.draft_rules import answer_deadline, approved_among
 from app.modules.deal_memo.exceptions import (
     DraftAlreadyDecided,
     DraftNotFound,
@@ -33,7 +33,7 @@ from app.modules.deal_memo.exceptions import (
     MemoStatusConflict,
 )
 from app.modules.deal_memo.models import DealMemo
-from app.modules.deal_memo.review_clock import approval_deadline
+from app.modules.deal_memo.proof_models import DeliverableProof
 from app.modules.deal_memo.service import _notify_other_side, memos_for_account
 
 EXPORTED_TABLES = frozenset({"content_draft"})
@@ -128,17 +128,19 @@ def settle_if_overdue(
 
     Called whenever a draft is read or acted on, so the outcome never waits
     for a scheduled job. It took effect at the deadline and is recorded now,
-    when it was noticed; the record shows both.
+    when it was noticed; the record shows both. Only on a deal still agreed:
+    a draft left waiting when the deal was cancelled is never approved.
     """
-    if draft.status != "submitted":
+    if draft.status != "submitted" or memo.status != "accepted":
         return draft
-    deadline = approval_deadline(
+    deadline = answer_deadline(
         memo, draft, history if history is not None else drafts_of(db, memo)
     )
     if now < deadline:
         return draft
     draft.status = "approved"
     draft.approved_at = deadline
+    draft.answered_at = deadline
     draft.auto_approved = True
     draft.updated_at = now
     record.append(
@@ -161,16 +163,19 @@ def settle_if_overdue(
 def approve_draft(
     db: Session, memo: DealMemo, draft: ContentDraft, now: datetime
 ) -> ContentDraft:
-    """The brand approves the draft. Commits. Raises DraftAlreadyDecided."""
-    # Locked and read again before the check, so an approval and a request
-    # for changes at once cannot both pass it.
-    db.refresh(draft, attribute_names=["status"], with_for_update=True)
+    """The brand approves the draft. Commits.
+
+    Raises MemoStatusConflict once the deal is no longer agreed, and
+    DraftAlreadyDecided once the draft is answered.
+    """
+    _lock_for_answer(db, memo, draft)
     settle_if_overdue(db, memo, draft, now)
     if draft.status != "submitted":
         db.rollback()
         raise DraftAlreadyDecided()
     draft.status = "approved"
     draft.approved_at = now
+    draft.answered_at = now
     draft.updated_at = now
     record.append(
         db,
@@ -193,16 +198,18 @@ def request_changes(
 ) -> ContentDraft:
     """The brand asks for changes, so the creator shows a new draft. Commits.
 
-    Raises DraftAlreadyDecided once the draft is answered, by the brand or
-    by the clock.
+    Raises MemoStatusConflict once the deal is no longer agreed, and
+    DraftAlreadyDecided once the draft is answered, by the brand or by the
+    clock.
     """
-    db.refresh(draft, attribute_names=["status"], with_for_update=True)
+    _lock_for_answer(db, memo, draft)
     settle_if_overdue(db, memo, draft, now)
     if draft.status != "submitted":
         db.rollback()
         raise DraftAlreadyDecided()
     draft.status = "changes_requested"
     draft.changes_note = note
+    draft.answered_at = now
     draft.updated_at = now
     record.append(
         db,
@@ -218,6 +225,31 @@ def request_changes(
     db.commit()
     db.refresh(draft)
     return draft
+
+
+def _lock_for_answer(db: Session, memo: DealMemo, draft: ContentDraft) -> None:
+    """Lock the memo, then the draft, and check the deal is still agreed.
+
+    The memo first, as showing a draft and submitting proof take it, so an
+    answer and a proof at the same moment run one after the other: a proof
+    never names a draft the brand sent back in the same instant. Raises
+    MemoStatusConflict.
+    """
+    db.scalars(
+        select(DealMemo)
+        .where(DealMemo.id == memo.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).one()
+    if memo.status != "accepted":
+        db.rollback()
+        raise MemoStatusConflict("Only a draft on an agreed deal can be answered.")
+    # Proof exists only once a draft is approved. An answer that waited for
+    # the lock behind a proof read its clock before the proof: it is too late.
+    if db.scalar(select(exists().where(DeliverableProof.deal_memo_id == memo.id))):
+        db.rollback()
+        raise DraftAlreadyDecided("Proof already follows the approved draft.")
+    db.refresh(draft, attribute_names=["status"], with_for_update=True)
 
 
 def list_for_memo(db: Session, memo: DealMemo, now: datetime) -> list[ContentDraft]:
@@ -254,6 +286,7 @@ EXPORT_FIELDS = allow(
     "status",
     "changes_note",
     "approved_at",
+    "answered_at",
     "auto_approved",
     "created_at",
     "updated_at",

@@ -19,7 +19,11 @@ from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.delivery_record import is_approved
 from app.modules.deal_memo.draft_models import ContentDraft
-from app.modules.deal_memo.draft_rules import approved_among
+from app.modules.deal_memo.draft_rules import (
+    answer_deadline,
+    answer_last_day,
+    approved_among,
+)
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof
 from app.modules.deal_memo.review_clock import approval_deadline, approval_last_day
@@ -167,12 +171,12 @@ def _drafts_to_review(
         history[earlier.deal_memo_id].append(earlier)
     items = []
     for draft, memo, campaign_id, title, handle in waiting:
-        if now >= approval_deadline(memo, draft, history[memo.id]):
+        if now >= answer_deadline(memo, draft, history[memo.id]):
             continue  # approved by the clock; nothing left to decide
         items.append(
             AttentionItem(
                 kind="review_draft",
-                due_on=approval_last_day(memo, draft, history[memo.id]),
+                due_on=answer_last_day(memo, draft, history[memo.id]),
                 campaign_id=campaign_id,
                 campaign_title=title,
                 counterparty=handle,

@@ -224,6 +224,13 @@ class DraftReviewNotAgreed(DomainError):
     title = "This deal's terms do not include a draft review"
 
 
+class DraftReviewNeedsNewTerms(DomainError):
+    # A memo sealed with terms version 1 or 2 never covers the draft review.
+    status_code = HTTPStatus.CONFLICT
+    code = "draft_review_needs_new_terms"
+    title = "This memo was made before draft reviews; draft a new memo to add one"
+
+
 class DraftNotApproved(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "draft_not_approved"

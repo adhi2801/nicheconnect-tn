@@ -431,3 +431,202 @@ def test_both_sides_export_the_drafts(client, db, brand, creator, memo_id, clock
         ]
         assert [record["id"] for record in section.records] == [draft["id"]]
         assert section.records[0]["body"] == BODY
+
+
+# --- found by the independent review (27 October 2026) ---------------------------------
+
+
+def creator_id_of(db, user: User) -> str:
+    from app.modules.auth.models.creator import Creator
+
+    return str(
+        db.scalars(select(Creator.id).where(Creator.account_id == user.account_id)).one()
+    )
+
+
+def test_the_brands_waiting_moves_the_creators_due_date(
+    client, db, brand, creator, clock
+):
+    """Adhi's choice: every day a draft waits for the brand is added to the due date."""
+    memo_id = accepted_memo(
+        client, brand, creator, draft_review=True, content_due_on="2026-09-20"
+    )
+    shown(client, creator, memo_id)
+    clock.advance(
+        timedelta(days=6)
+    )  # the agreed date is 3 days past; the brand is silent
+
+    record = client.get(
+        f"/api/v1/creators/{creator_id_of(db, creator)}/delivery-record",
+        headers=brand.headers,
+    ).json()
+
+    assert record["currently_overdue"] == 0
+
+
+def test_once_answered_the_moved_date_holds(client, db, brand, creator, clock):
+    memo_id = accepted_memo(
+        client, brand, creator, draft_review=True, content_due_on="2026-09-20"
+    )
+    draft = shown(client, creator, memo_id)
+    clock.advance(timedelta(days=5))
+    approve(client, brand, memo_id, draft["id"])
+    clock.advance(timedelta(days=4))  # due 20 Sep + 5 days waited = 25 Sep; now 26 Sep
+
+    record = client.get(
+        f"/api/v1/creators/{creator_id_of(db, creator)}/delivery-record",
+        headers=brand.headers,
+    ).json()
+
+    assert record["currently_overdue"] == 1
+
+
+def test_every_draft_gets_two_whole_days(client, brand, creator, memo_id, clock):
+    """Adhi's choice: a draft shown long after the clock restarted is not approved at once."""
+    first = shown(client, creator, memo_id)
+    ask_changes(client, brand, memo_id, first["id"])
+    second = shown(client, creator, memo_id)
+    ask_changes(client, brand, memo_id, second["id"])
+    clock.advance(timedelta(days=20))  # far past round 2's clock
+
+    third = shown(client, creator, memo_id)
+
+    assert third["status"] == "submitted"
+    assert third["answer_by"] == (clock.now.date() + timedelta(days=2)).isoformat()
+    assert approve(client, brand, memo_id, third["id"]).status_code == 200
+
+
+def test_a_deal_in_draft_review_is_agreed_and_keeps_a_campaign_open(
+    client, db, brand, creator, memo_id
+):
+    shown(client, creator, memo_id)
+    [campaign] = client.get("/api/v1/campaigns", headers=brand.headers).json()["items"]
+
+    summary = client.get(
+        f"/api/v1/campaigns/{campaign['id']}/summary", headers=brand.headers
+    ).json()
+
+    assert summary["deals_agreed"] == 1
+    assert summary["complete"] is False
+
+
+def test_a_memo_made_before_version_three_cannot_take_the_term(
+    client, db, brand, creator
+):
+    from tests.modules.deal_memo.test_memo_deliverables_api import (
+        accepted_application,
+        draft,
+    )
+
+    memo = draft(client, brand, accepted_application(client, brand, creator))
+    db.get_one(DealMemo, memo["id"]).terms_version = 2
+    db.flush()
+
+    response = client.patch(
+        f"{MEMOS_URL}/{memo['id']}", json={"draft_review": True}, headers=brand.headers
+    )
+
+    assert_problem(response, 409, "draft_review_needs_new_terms")
+
+
+@pytest.mark.parametrize("field", ["draft_review", "disclosure_required"])
+def test_a_term_that_always_has_a_value_cannot_be_emptied(client, brand, creator, field):
+    from tests.modules.deal_memo.test_memo_deliverables_api import (
+        accepted_application,
+        draft,
+    )
+
+    memo = draft(client, brand, accepted_application(client, brand, creator))
+
+    response = client.patch(
+        f"{MEMOS_URL}/{memo['id']}", json={field: None}, headers=brand.headers
+    )
+
+    assert response.status_code == 422, response.text
+
+
+def test_a_cancelled_deals_draft_is_never_answered(
+    client, db, brand, creator, memo_id, clock
+):
+    draft = shown(client, creator, memo_id)
+    memo = db.get_one(DealMemo, memo_id)
+    memo.status = "cancelled"
+    memo.cancellation_kind = "cancelled_by_brand"
+    # Committed, so the app's rollback on refusing cannot undo it.
+    db.commit()
+    clock.advance(timedelta(days=8))
+
+    assert_problem(
+        approve(client, brand, memo_id, draft["id"]), 409, "memo_status_conflict"
+    )
+    [listed] = client.get(drafts_url(memo_id), headers=creator.headers).json()
+    assert listed["status"] == "submitted"  # never approved by the clock
+    assert told(db, creator, "draft_auto_approved") == []
+
+
+def test_an_answer_that_read_its_clock_before_the_proof_is_refused(
+    client, db, brand, creator, memo_id, clock
+):
+    """The brand asked at 23:59:59 and waited for the lock behind a proof at 00:00:01.
+
+    Its moment is before the deadline, so the clock alone would let it
+    through; the proof already following the draft is what refuses it.
+    """
+    from app.modules.deal_memo import draft_service
+    from app.modules.deal_memo.draft_models import ContentDraft
+    from app.modules.deal_memo.draft_rules import answer_deadline
+    from app.modules.deal_memo.exceptions import DraftAlreadyDecided
+
+    draft = shown(client, creator, memo_id)
+    row = db.get_one(ContentDraft, draft["id"])
+    deadline = answer_deadline(db.get_one(DealMemo, memo_id), row, [row])
+    clock.now = deadline + timedelta(seconds=1)
+    proof = client.post(
+        f"{MEMOS_URL}/{memo_id}/proof", json=PROOF, headers=creator.headers
+    )
+    assert proof.status_code == 201, proof.text
+
+    with pytest.raises(DraftAlreadyDecided):
+        draft_service.request_changes(
+            db,
+            db.get_one(DealMemo, memo_id),
+            db.get_one(ContentDraft, draft["id"]),
+            "Add the ad label.",
+            deadline - timedelta(seconds=1),
+        )
+
+
+def test_work_delivered_inside_the_moved_date_is_on_time(
+    client, db, brand, creator, clock
+):
+    """The campaign report and the creator's record judge on-time the same way."""
+    from app.modules.deal_memo.delivery_record import _on_time
+    from app.modules.deal_memo.draft_service import drafts_of
+    from app.modules.deal_memo.proof_models import DeliverableProof
+
+    memo_id = accepted_memo(
+        client, brand, creator, draft_review=True, content_due_on="2026-09-20"
+    )
+    draft = shown(client, creator, memo_id)
+    clock.advance(timedelta(days=6))  # the brand answers on 23 Sep: due moves to 26 Sep
+    approve(client, brand, memo_id, draft["id"])
+    clock.advance(timedelta(days=1))  # the work goes in on 24 Sep, after the agreed date
+    proof = client.post(
+        f"{MEMOS_URL}/{memo_id}/proof", json=PROOF, headers=creator.headers
+    )
+    assert proof.status_code == 201, proof.text
+
+    [campaign] = client.get("/api/v1/campaigns", headers=brand.headers).json()["items"]
+    report = client.get(
+        f"/api/v1/campaigns/{campaign['id']}/report", headers=brand.headers
+    )
+
+    assert report.json()["deals"][0]["delivered_on_time"] is True
+    memo = db.get_one(DealMemo, memo_id)
+    proofs = list(
+        db.scalars(
+            select(DeliverableProof).where(DeliverableProof.deal_memo_id == memo.id)
+        )
+    )
+    assert _on_time(memo, proofs, drafts_of(db, memo)) is True
+    assert _on_time(memo, proofs) is False  # judged on the agreed date alone, it was late

@@ -5637,6 +5637,19 @@
             "description": "While it waits: the last day the brand has to answer, in Tamil Nadu; after it, the draft approves itself. Null once answered",
             "title": "Answer By"
           },
+          "answered_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the brand answered, or the clock did; null while it waits",
+            "title": "Answered At"
+          },
           "approved_at": {
             "anyOf": [
               {
@@ -5746,6 +5759,7 @@
           "status",
           "changes_note",
           "approved_at",
+          "answered_at",
           "auto_approved",
           "created_at",
           "updated_at",
@@ -28935,7 +28949,7 @@
     },
     "/api/v1/deal-memos/{memo_id}/drafts": {
       "get": {
-        "description": "Both sides see the same drafts, newest first. A draft whose window has passed is settled as approved by the clock when read. Limit: 60 requests per minute.",
+        "description": "Both sides see the same drafts, newest first. A draft whose window has passed is settled as approved by the clock when read. Every draft gives the brand at least 2 whole days, however late it is shown. Limit: 60 requests per minute.",
         "operationId": "list_drafts_api_v1_deal_memos__memo_id__drafts_get",
         "parameters": [
           {
@@ -29050,7 +29064,7 @@
         ]
       },
       "post": {
-        "description": "Only on a memo whose agreed terms include `draft_review`. The brand has the memo's approval window to approve it or ask for changes; if it does not answer, the draft approves itself (D-025). Proof can be submitted once a draft is approved. One draft waits at a time; each is sealed onto the deal record by its fingerprints. Showing a draft counts as work started. Limits: 30 a minute, 200 a day.",
+        "description": "Only on a memo whose agreed terms include `draft_review`. The brand has the memo's approval window to approve it or ask for changes; if it does not answer, the draft approves itself (D-025), never sooner than 2 whole days after it is shown. Every day it waits for the brand is added to the date the work is due. Proof can be submitted once a draft is approved. One draft waits at a time; each is sealed onto the deal record by its fingerprints. Showing a draft counts as work started. Limits: 30 a minute, 200 a day.",
         "operationId": "submit_draft_api_v1_deal_memos__memo_id__drafts_post",
         "parameters": [
           {
