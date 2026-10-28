@@ -1101,3 +1101,44 @@ def test_rounds_on_one_day_move_the_date_once(client, brand, creator, clock):
     approve(client, brand, memo_id, last["id"])
 
     assert memo_read(client, creator, memo_id)["work_due_on"] == "2026-09-26"
+
+
+def test_a_brand_sitting_on_a_late_draft_never_makes_it_not_delivered(
+    client, db, brand, creator, clock
+):
+    """Found by the sixth review; Adhi's choice: late stays late, never 'not delivered'."""
+    from app.core.clock import IST
+
+    memo_id = accepted_memo(
+        client,
+        brand,
+        creator,
+        draft_review=True,
+        content_due_on="2026-09-20",
+        approval_window_days=30,
+    )
+    clock.now = datetime(2026, 9, 21, 10, 0, tzinfo=IST)  # a day late
+    shown(client, creator, memo_id)
+    url = f"/api/v1/creators/{creator_id_of(db, creator)}/delivery-record"
+    clock.now = datetime(
+        2026, 10, 10, 10, 0, tzinfo=IST
+    )  # 20 days past due, brand silent
+
+    record = client.get(url, headers=brand.headers).json()
+
+    assert (record["currently_overdue"], record["deals_not_delivered"]) == (1, 0)
+    assert memo_read(client, creator, memo_id)["work_due_on"] == "2026-09-20"
+
+
+def test_a_late_waiting_draft_promises_no_moving_date(client, brand, creator, clock):
+    from app.core.clock import IST
+
+    memo_id = accepted_memo(
+        client, brand, creator, draft_review=True, content_due_on="2026-09-20"
+    )
+    clock.now = datetime(2026, 9, 21, 10, 0, tzinfo=IST)
+    shown(client, creator, memo_id)
+
+    ics = client.get(f"{MEMOS_URL}/{memo_id}/calendar.ics", headers=brand.headers).text
+
+    assert "add this file again" not in ics.replace("\r\n ", "")

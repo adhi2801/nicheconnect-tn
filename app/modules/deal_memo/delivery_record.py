@@ -37,7 +37,7 @@ from app.core.clock import india_date
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.draft_models import ContentDraft
-from app.modules.deal_memo.draft_rules import delivery_due_on
+from app.modules.deal_memo.draft_rules import days_held_late, delivery_due_on
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof
 from app.modules.deal_memo.review_clock import approval_deadline
@@ -137,7 +137,10 @@ def classify(
     due_on = delivery_due_on(memo, drafts, now)
     if due_on is None or today <= due_on:
         return Outcome.IN_PROGRESS
-    if today >= due_on + timedelta(days=NOT_DELIVERED_AFTER_DUE_DAYS):
+    # The brand's days on a late draft wait for proof too: they extend the
+    # limit, never the date (Adhi's choice, the sixth review of item 27).
+    limit = NOT_DELIVERED_AFTER_DUE_DAYS + days_held_late(memo, drafts, now)
+    if today >= due_on + timedelta(days=limit):
         return Outcome.NOT_DELIVERED
     return Outcome.OVERDUE
 

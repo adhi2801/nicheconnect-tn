@@ -17,13 +17,17 @@ Two rules on top of proof's clock (D-025, `review_clock`), Adhi's choices of
   judged. Each date counts once however many rounds it held, and a draft
   shown after the due date (as moved so far) moves nothing, so a creator
   can neither stack rounds into extra days nor wash out lateness (Adhi's
-  choices after the fifth review). Calendar days, because a due date is a date and lateness is
+  choices after the fifth review). The brand's days on a late draft still
+  count, but only toward the "not delivered" limit, never toward on time:
+  the creator stays late, and is never made "not delivered" by a brand
+  sitting on a draft that proof has to wait for (sixth review). Calendar days, because a due date is a date and lateness is
   judged by date; the answer day too, so the creator always has the whole
   day after an answer (Adhi's choices of 28 October 2026, after the third
   and fourth reviews). So asking for changes again and again can never
   push a creator late (each round moves the date at least a day), an
-  approval at 23:59 leaves the creator the next day, and a draft still
-  waiting counts as if answered today, so it never shows the deal overdue.
+  approval at 23:59 leaves the creator the next day, and a draft shown in
+  time that still waits counts as if answered today, so it never shows the
+  deal overdue.
   The clock answers at the midnight that ends the brand's last day, so that
   last day is its answer day. The creator's own rework time stays theirs.
 - **A deal cancelled before a deadline never reaches it.** A draft still
@@ -109,21 +113,42 @@ def answered_at(
 def days_waiting_on_brand(
     memo: DealMemo, drafts: Sequence[ContentDraft], now: datetime
 ) -> int:
-    """Distinct Tamil Nadu dates the brand held a draft shown in time, up to `now`.
+    """Distinct Tamil Nadu dates the brand held a draft shown in time, up to `now`."""
+    in_time, _late, _ids = _held(memo, drafts, now)
+    return len(in_time)
 
-    Drafts are taken in the order shown. One counts only if shown on or
-    before the due date as the drafts before it moved it: a late draft moves
-    nothing. Its dates run from the day it was shown to the day it was
+
+def days_held_late(memo: DealMemo, drafts: Sequence[ContentDraft], now: datetime) -> int:
+    """Distinct dates the brand held only late drafts: added to the "not delivered" limit."""
+    if not memo.draft_review:
+        return 0
+    in_time, late, _ids = _held(memo, drafts, now)
+    return len(late - in_time)
+
+
+def shown_in_time(
+    memo: DealMemo, drafts: Sequence[ContentDraft], draft: ContentDraft, now: datetime
+) -> bool:
+    """Whether this draft was shown by the due date as the drafts before it moved it."""
+    return draft.id in _held(memo, drafts, now)[2]
+
+
+def _held(
+    memo: DealMemo, drafts: Sequence[ContentDraft], now: datetime
+) -> tuple[set[date], set[date], set[object]]:
+    """The dates the brand held drafts shown in time, those it held late ones, and the in-time ids.
+
+    Drafts are taken in the order shown, whatever order they were read in.
+    One is in time if shown on or before the due date as the drafts before it
+    moved it. Its dates run from the day it was shown to the day it was
     answered, both included (today while it waits), never past the day of a
-    cancellation, and each date counts once however many rounds it held.
+    cancellation; each date counts once however many rounds it held.
     """
-    held: set[date] = set()
+    in_time: set[date] = set()
+    late: set[date] = set()
+    ids: set[object] = set()
     for draft in sorted(drafts, key=lambda d: (d.created_at, d.id)):
         shown = india_date(draft.created_at)
-        if memo.content_due_on is not None and shown > memo.content_due_on + timedelta(
-            days=len(held)
-        ):
-            continue  # shown late: the brand's time on it cannot wash that out
         end = answered_at(memo, draft, drafts, now)
         if end is None:
             answer_day = india_date(now)  # still waiting: as if answered today
@@ -134,11 +159,18 @@ def days_waiting_on_brand(
             answer_day = india_date(end)
         if memo.cancelled_at is not None:
             answer_day = min(answer_day, india_date(memo.cancelled_at))
-        held.update(
+        days = {
             shown + timedelta(days=offset)
             for offset in range(max(0, (answer_day - shown).days) + 1)
-        )
-    return len(held)
+        }
+        if memo.content_due_on is not None and shown > memo.content_due_on + timedelta(
+            days=len(in_time)
+        ):
+            late |= days  # shown late: the brand's time cannot wash that out
+        else:
+            in_time |= days
+            ids.add(draft.id)
+    return in_time, late, ids
 
 
 def delivery_due_on(

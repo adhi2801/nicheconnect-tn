@@ -20,9 +20,11 @@ from app.modules.deal_memo.draft_rules import (
     answer_deadline,
     answered_at,
     approved_among,
+    days_held_late,
     days_waiting_on_brand,
     delivery_due_on,
     is_approved,
+    shown_in_time,
 )
 from app.modules.deal_memo.models import MAX_WINDOW_DAYS, DealMemo
 from app.modules.deal_memo.review_clock import approval_deadline
@@ -275,3 +277,65 @@ def test_the_date_never_moves_more_than_the_days_since_the_first_draft(
     )
 
     assert (moved - m.content_due_on).days <= (last - first).days + 1
+
+
+dues = st.integers(min_value=0, max_value=130)
+
+
+def due_memo(window: int, due_in: int) -> DealMemo:
+    """A memo due near the drafts, so histories reach drafts shown late too."""
+    m = memo(window)
+    m.content_due_on = START.date() + timedelta(days=due_in)
+    return m
+
+
+@given(steps=histories, window=windows, due_in=dues, now=minutes, seed=st.randoms())
+def test_the_order_drafts_are_read_in_never_matters(steps, window, due_in, now, seed):
+    """Found by the sixth review: the late check depends on order, and readers do not sort."""
+    m = due_memo(window, due_in)
+    drafts = build(steps)
+    shuffled = list(drafts)
+    seed.shuffle(shuffled)
+    when = START + timedelta(minutes=now)
+
+    assert delivery_due_on(m, shuffled, when) == delivery_due_on(m, drafts, when)
+    assert days_held_late(m, shuffled, when) == days_held_late(m, drafts, when)
+
+
+@given(steps=histories, window=windows, due_in=dues, now=minutes)
+def test_a_late_draft_adds_nothing_to_the_date(steps, window, due_in, now):
+    m = due_memo(window, due_in)
+    drafts = build(steps)
+    when = START + timedelta(minutes=now)
+    if not drafts:
+        return
+    *earlier, last = drafts
+    before = delivery_due_on(m, earlier, when)
+
+    if india_date(last.created_at) > before:
+        assert delivery_due_on(m, drafts, when) == before
+    else:
+        assert delivery_due_on(m, drafts, when) >= before
+
+
+rounds = st.lists(
+    st.tuples(st.integers(0, 6 * 24 * 60), st.integers(0, 6 * 24 * 60)),
+    min_size=1,
+    max_size=5,
+)
+
+
+@given(plan=rounds, window=windows, due_in=dues)
+def test_an_answer_to_a_draft_in_time_always_leaves_the_next_day(plan, window, due_in):
+    """Real rounds, one after another: whatever the creator's gaps and the brand's holds."""
+    m = due_memo(window, due_in)
+    drafts: list[ContentDraft] = []
+    at = START
+    for i, (gap, hold) in enumerate(plan):
+        at += timedelta(minutes=gap)
+        d = draft(at, "changes_requested", i + 1)
+        d.answered_at = at + timedelta(minutes=hold)
+        drafts.append(d)
+        at = d.answered_at
+        if shown_in_time(m, drafts, d, at):
+            assert delivery_due_on(m, drafts, at) > india_date(at)

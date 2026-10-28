@@ -86,8 +86,8 @@ class ReportDealRead(BaseModel):
     content_due_on: date | None = Field(description="The date agreed in the memo")
     work_due_on: date | None = Field(
         description="The date the work is due by, as of the report: the agreed date, "
-        "moved a day for every calendar day the brand held a draft, its answer day "
-        "included (D-140). "
+        "moved a day for every distinct calendar day the brand held a draft shown "
+        "in time, its answer day included (D-140). "
         "Delivered work is judged on time against it as it stood when the work "
         "was first sent"
     )

@@ -24,7 +24,11 @@ from sqlalchemy.orm import Session, noload
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.calendar_ics import Event
 from app.modules.deal_memo.draft_models import ContentDraft
-from app.modules.deal_memo.draft_rules import answer_deadline, delivery_due_on
+from app.modules.deal_memo.draft_rules import (
+    answer_deadline,
+    delivery_due_on,
+    shown_in_time,
+)
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof
 from app.modules.deal_memo.review_clock import approval_deadline
@@ -68,7 +72,7 @@ def deal_dates(db: Session, memo: DealMemo, now: datetime) -> tuple[str, list[Ev
         said = "The date agreed in the deal memo"
         if moved:
             said += f", moved {moved} day{'s' if moved > 1 else ''} for the days the brand held a draft"
-        if waiting_draft is not None:
+        if waiting_draft is not None and shown_in_time(memo, drafts, waiting_draft, now):
             said += (
                 ". A draft is waiting for the brand, so this date moves a day for "
                 "each day it waits: add this file again once it is answered"
