@@ -11,10 +11,13 @@ Two rules on top of proof's clock (D-025, `review_clock`), Adhi's choices of
   holds, so asking again buys the brand no more time; but a draft shown
   long after the clock restarted is not approved the moment it arrives, so
   nothing is approved that the brand had no chance to see.
-- **The brand's waiting is the brand's.** Each draft moves the creator's
-  due date by every Tamil Nadu calendar day the brand held it, from the day
-  it was shown to the day it was answered, both included, before "on time"
-  is judged. Calendar days, because a due date is a date and lateness is
+- **The brand's waiting is the brand's.** The creator's due date moves by
+  every Tamil Nadu calendar day the brand held a draft, from the day it was
+  shown to the day it was answered, both included, before "on time" is
+  judged. Each date counts once however many rounds it held, and a draft
+  shown after the due date (as moved so far) moves nothing, so a creator
+  can neither stack rounds into extra days nor wash out lateness (Adhi's
+  choices after the fifth review). Calendar days, because a due date is a date and lateness is
   judged by date; the answer day too, so the creator always has the whole
   day after an answer (Adhi's choices of 28 October 2026, after the third
   and fourth reviews). So asking for changes again and again can never
@@ -22,8 +25,7 @@ Two rules on top of proof's clock (D-025, `review_clock`), Adhi's choices of
   approval at 23:59 leaves the creator the next day, and a draft still
   waiting counts as if answered today, so it never shows the deal overdue.
   The clock answers at the midnight that ends the brand's last day, so that
-  last day is its answer day. The creator's own rework time stays theirs,
-  and a draft shown after the due date is late however long it waits.
+  last day is its answer day. The creator's own rework time stays theirs.
 - **A deal cancelled before a deadline never reaches it.** A draft still
   waiting when the deal was cancelled is never approved by the clock, and
   its waiting stops at the cancellation.
@@ -107,14 +109,21 @@ def answered_at(
 def days_waiting_on_brand(
     memo: DealMemo, drafts: Sequence[ContentDraft], now: datetime
 ) -> int:
-    """Calendar days, in Tamil Nadu, the brand held the memo's drafts, up to `now`.
+    """Distinct Tamil Nadu dates the brand held a draft shown in time, up to `now`.
 
-    For each draft: the days from the one it was shown to the one it was
-    answered, both included; today while it still waits; never past the
-    day of a cancellation.
+    Drafts are taken in the order shown. One counts only if shown on or
+    before the due date as the drafts before it moved it: a late draft moves
+    nothing. Its dates run from the day it was shown to the day it was
+    answered, both included (today while it waits), never past the day of a
+    cancellation, and each date counts once however many rounds it held.
     """
-    total = 0
-    for draft in drafts:
+    held: set[date] = set()
+    for draft in sorted(drafts, key=lambda d: (d.created_at, d.id)):
+        shown = india_date(draft.created_at)
+        if memo.content_due_on is not None and shown > memo.content_due_on + timedelta(
+            days=len(held)
+        ):
+            continue  # shown late: the brand's time on it cannot wash that out
         end = answered_at(memo, draft, drafts, now)
         if end is None:
             answer_day = india_date(now)  # still waiting: as if answered today
@@ -125,8 +134,11 @@ def days_waiting_on_brand(
             answer_day = india_date(end)
         if memo.cancelled_at is not None:
             answer_day = min(answer_day, india_date(memo.cancelled_at))
-        total += max(0, (answer_day - india_date(draft.created_at)).days) + 1
-    return total
+        held.update(
+            shown + timedelta(days=offset)
+            for offset in range(max(0, (answer_day - shown).days) + 1)
+        )
+    return len(held)
 
 
 def delivery_due_on(

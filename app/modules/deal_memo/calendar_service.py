@@ -67,7 +67,7 @@ def deal_dates(db: Session, memo: DealMemo, now: datetime) -> tuple[str, list[Ev
         moved = (due_on - memo.content_due_on).days
         said = "The date agreed in the deal memo"
         if moved:
-            said += f", moved {moved} day{'s' if moved > 1 else ''} while a draft waited for the brand"
+            said += f", moved {moved} day{'s' if moved > 1 else ''} for the days the brand held a draft"
         if waiting_draft is not None:
             said += (
                 ". A draft is waiting for the brand, so this date moves a day for "

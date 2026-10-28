@@ -238,3 +238,40 @@ def test_a_waiting_draft_shown_in_time_never_shows_the_deal_overdue(
 
     # Answered today at the latest, the creator still has the whole of tomorrow.
     assert moved is not None and moved > india_date(when)
+
+
+@given(at=minutes, window=windows, later=minutes)
+def test_settling_the_clocks_answer_never_moves_the_date(at, window, later):
+    """Found by the fifth review: the settled branch was never exercised."""
+    m = memo(window)
+    d = draft(START + timedelta(minutes=at))
+    deadline = answer_deadline(m, d, [d])
+    when = deadline + timedelta(minutes=later)
+    before = delivery_due_on(m, [d], when)
+
+    d.status, d.auto_approved = "approved", True
+    d.approved_at = d.answered_at = deadline
+
+    assert delivery_due_on(m, [d], when) == before
+
+
+@given(steps=histories, window=windows, now=minutes)
+def test_the_date_never_moves_more_than_the_days_since_the_first_draft(
+    steps, window, now
+):
+    """Distinct days: however many rounds, at most one day per calendar date."""
+    m = memo(window)
+    drafts = build(steps)
+    when = START + timedelta(minutes=now)
+    moved = delivery_due_on(m, drafts, when)
+    if not drafts:
+        assert moved == m.content_due_on
+        return
+    first = min(india_date(d.created_at) for d in drafts)
+    last = max(
+        india_date(when),
+        *(india_date(d.created_at) for d in drafts),
+        *(india_date(d.answered_at) for d in drafts if d.answered_at is not None),
+    )
+
+    assert (moved - m.content_due_on).days <= (last - first).days + 1

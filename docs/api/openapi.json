@@ -28615,7 +28615,7 @@
     },
     "/api/v1/deal-memos/{memo_id}/calendar.ics": {
       "get": {
-        "description": "An iCalendar file (RFC 5545) to add to any phone or desktop calendar: the content due date (moved by any days a draft waited for the brand), the moment a waiting draft or submitted work approves itself, and the payment due date while unconfirmed, each with a reminder a day before. Only an accepted deal has dates; any other gives an empty calendar. Adding it again updates the same events. The brand and the creator of this deal only.",
+        "description": "An iCalendar file (RFC 5545) to add to any phone or desktop calendar: the content due date (moved by the days the brand held a draft), the moment a waiting draft or submitted work approves itself, and the payment due date while unconfirmed, each with a reminder a day before. Only an accepted deal has dates; any other gives an empty calendar. Adding it again updates the same events. The brand and the creator of this deal only.",
         "operationId": "deal_calendar_api_v1_deal_memos__memo_id__calendar_ics_get",
         "parameters": [
           {

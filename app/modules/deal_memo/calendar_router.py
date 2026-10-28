@@ -25,7 +25,7 @@ router = APIRouter(prefix="/api/v1/deal-memos", tags=["deal memos"])
     summary="The deal's agreed dates, as a calendar file",
     description=(
         "An iCalendar file (RFC 5545) to add to any phone or desktop calendar: "
-        "the content due date (moved by any days a draft waited for the brand), "
+        "the content due date (moved by the days the brand held a draft), "
         "the moment a waiting draft or submitted work approves itself, and the "
         "payment due date while unconfirmed, each with a "
         "reminder a day before. Only an accepted deal has dates; any other "

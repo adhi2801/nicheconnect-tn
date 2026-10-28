@@ -118,8 +118,9 @@ def classify(
 ) -> Outcome:
     """Where this accepted deal stands for the creator, as of `now`.
 
-    On a deal with a draft review, the due date moves by every calendar day a
-    draft waited for the brand (`draft_rules.delivery_due_on`, item 27).
+    On a deal with a draft review, the due date moves by every calendar day
+    the brand held a draft shown in time, its answer day included
+    (`draft_rules.delivery_due_on`, item 27).
     """
     if memo.status == "cancelled":
         if memo.cancellation_kind == "cancelled_by_creator":
@@ -149,8 +150,8 @@ def _on_time(
     """Delivered by the agreed date, judged by when the creator first submitted.
 
     The brand's review time is the brand's, not the creator's: its proof
-    review and, on a deal with a draft review, every day a draft waited for
-    it. A deal with no agreed date cannot have been late. Only called for
+    review and, on a deal with a draft review, every day it held a draft
+    shown in time (`draft_rules.delivery_due_on`). A deal with no agreed date cannot have been late. Only called for
     delivered deals, which always have at least one submission.
     """
     first_submitted = min(proof.created_at for proof in proofs)
