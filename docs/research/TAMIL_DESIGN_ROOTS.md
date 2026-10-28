@@ -10,6 +10,7 @@ The cultural and historical roots Colyv's look is built from, each with its sour
 
 ## 1. The rules that come first
 
+0. **A SaaS product first, with a Tamil soul (Adhi, 28 October 2026).** The most aesthetic site ever made, but it must read at once as a premium SaaS product, in the family of Stripe, Linear, Vercel and Mercury: their structure (a clear headline and one call to action, real product screens, how it works, proof, pricing, questions), their precision of type and spacing, and their speed. The Tamil roots in this file enter through three layers only: **material** (bronze, raised gold, silk borders, granite), **light** (temple dusk, courtyard light) and a few **signature moments** (the gateway hero, the nodding doll, the kolam seal). Never a theme park; if a page stops looking like a SaaS product, the heritage on it is cut back.
 1. **Colyv is for everyone in Tamil Nadu.** No deity, no religious icon and no sacred mark is used as decoration. Temples and crafts are shown as architecture, craft and light, never as worship.
 2. **The grammar, not the picture.** A pattern's logic (a kolam's single line, a temple's enclosures, a silk border's contrast) travels further and dates slower than a picture of the thing.
 3. **Fact before feeling.** Where sources disagree (dates, meanings), the design never states the disputed fact as true.
