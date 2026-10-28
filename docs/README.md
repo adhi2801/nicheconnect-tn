@@ -64,7 +64,7 @@ Dated reports, the decision log and the papers in `decided/` are records: they k
 | `BILLION_DOLLAR_GAP.md` | What the best platforms have that we do not, as proposed backend items (8 October) |
 | `COMPETITIVE_LANDSCAPE.md` | Every competitor, in India and worldwide, and what we have that they do not |
 | `ARCHITECTURE_SCALE.md` | Scaling later: each proposal with the measured trigger that would justify it, cheapest step first |
-| `research/` | The Mom Test template for interviews with real brands and creators. **No interview notes yet**: every novelty so far comes from desk research, not from users |
+| `research/` | The Mom Test template for interviews with real brands and creators. **No interview notes yet**: every novelty so far comes from desk research, not from users. `research/TAMIL_DESIGN_ROOTS.md`: the Tamil cultural and historical roots every visual choice must trace to, with sources (desk research, version 1) |
 | `SURVIVAL_PLAYBOOK.md` | How startups like ours die and the rules that keep us alive: default alive, the numbers to watch weekly, money without selling the company, and founder pay growing step by step (10 October) |
 | `GO_TO_MARKET.md` | Coimbatore first: how the pilot finds its first brands and creators |
 | `PSYCHOLOGY_AND_TRUST.md` | What makes people trust a marketplace with their money and work |

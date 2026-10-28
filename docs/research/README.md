@@ -1,5 +1,7 @@
 # Research notes
 
+Design research lives here too: `TAMIL_DESIGN_ROOTS.md`, the Tamil roots of Colyv's look, each with its source and proposed use.
+
 Where conversations with real brands and creators are written up, as `docs/standards/ux.md` section 2 requires: at least five per side before a flow is designed. One file per conversation, named `YYYY-MM-DD-brand-<short name>.md` or `YYYY-MM-DD-creator-<short name>.md`. **No phone numbers, emails or other contact details in these files**: a first name or a description is enough (`docs/standards/legal.md` section 3.1).
 
 ## How to interview: the Mom Test
