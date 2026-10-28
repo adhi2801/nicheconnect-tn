@@ -4,7 +4,7 @@
   --c-surface: #FFFCF3;
   --c-surface-sunk: #ECEAE2;
   --c-ink: #111111;
-  --c-ink-muted: #5E5A4D;
+  --c-ink-muted: #4F4B3F;
   --c-line: #E4DDC6;
   --c-accent: #111111;
   --c-accent-hover: #2A2A2A;
@@ -13,9 +13,9 @@
   --c-highlight-deep: #E9A91B;
   --c-highlight-soft: #FBE9B8;
   --c-on-highlight: #111111;
-  --c-ok: #1F7A4D;
-  --c-warn: #7A4B00;
-  --c-bad: #B3261E;
+  --c-ok: #145A36;
+  --c-warn: #6B4100;
+  --c-bad: #8C1D18;
   --c-glance-gold-from: #FBE9B8;
   --c-glance-gold-to: #F5C242;
   --c-glance-terracotta-from: #F6D79A;
@@ -24,6 +24,10 @@
   --c-glance-clay-to: #D9A07E;
   --c-glance-sand-from: #EDE3C4;
   --c-glance-sand-to: #C4B27A;
+  --c-line-strong: #8A8576;
+  --c-ok-soft: #E3F2E6;
+  --c-warn-soft: #FBE9B8;
+  --c-bad-soft: #FBE6E4;
   --s-1: 4px;
   --s-2: 8px;
   --s-3: 12px;
@@ -44,5 +48,6 @@
   --m-slow: 600ms;
   --m-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --f-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --f-display: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --f-numeric: ui-monospace, SFMono-Regular, Menlo, monospace;
 }

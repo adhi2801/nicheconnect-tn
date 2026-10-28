@@ -9,24 +9,58 @@
   --color-ink: var(--c-ink);
   --color-muted: var(--c-ink-muted);
   --color-line: var(--c-line);
+  --color-line-strong: var(--c-line-strong);
   --color-accent: var(--c-accent);
+  --color-accent-hover: var(--c-accent-hover);
+  --color-on-accent: var(--c-on-accent);
   --color-highlight: var(--c-highlight);
+  --color-highlight-deep: var(--c-highlight-deep);
   --color-highlight-soft: var(--c-highlight-soft);
   --color-on-highlight: var(--c-on-highlight);
-  --color-on-accent: var(--c-on-accent);
   --color-ok: var(--c-ok);
+  --color-ok-soft: var(--c-ok-soft);
   --color-warn: var(--c-warn);
+  --color-warn-soft: var(--c-warn-soft);
   --color-bad: var(--c-bad);
+  --color-bad-soft: var(--c-bad-soft);
+  --radius-sm: var(--r-sm);
   --radius-md: var(--r-md);
   --radius-lg: var(--r-lg);
   --radius-xl: var(--r-xl);
-  --font-sans: var(--font-geist-sans), var(--f-sans);
-  --font-mono: var(--font-geist-mono), var(--f-numeric);
+  --font-sans: var(--font-inter), var(--f-sans);
+  --font-display: var(--font-jakarta), var(--f-display);
+  --font-mono: var(--font-jetbrains), var(--f-numeric);
 }
 
 body {
   background: var(--c-ground);
   color: var(--c-ink);
+  font-family: var(--font-inter), var(--f-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* One easing, one set of durations (tokens/tokens.json "motion"). Components use this class. */
+.t-base {
+  transition-property: background-color, color, border-color, box-shadow, transform, opacity;
+  transition-duration: var(--m-base);
+  transition-timing-function: var(--m-ease);
+}
+
+.shadow-card {
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.9) inset, 0 24px 48px -30px rgb(122 86 10 / 0.35), 0 2px 6px -2px rgb(122 86 10 / 0.08);
+}
+
+/* The warm glow in the corner that every screen sits on (from the approved dashboard). */
+.ground-glow {
+  background:
+    radial-gradient(70% 60% at 100% 100%, rgb(245 194 66 / 0.5), transparent 70%),
+    radial-gradient(60% 50% at 0% 0%, rgb(255 255 255 / 0.9), transparent 70%),
+    var(--c-ground);
+}
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--c-ink);
+  outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {

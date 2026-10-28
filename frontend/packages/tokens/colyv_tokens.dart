@@ -6,7 +6,7 @@ class ColyvTokens {
   static const cSurface = Color(0xFFFFFCF3);
   static const cSurfaceSunk = Color(0xFFECEAE2);
   static const cInk = Color(0xFF111111);
-  static const cInkMuted = Color(0xFF5E5A4D);
+  static const cInkMuted = Color(0xFF4F4B3F);
   static const cLine = Color(0xFFE4DDC6);
   static const cAccent = Color(0xFF111111);
   static const cAccentHover = Color(0xFF2A2A2A);
@@ -15,9 +15,9 @@ class ColyvTokens {
   static const cHighlightDeep = Color(0xFFE9A91B);
   static const cHighlightSoft = Color(0xFFFBE9B8);
   static const cOnHighlight = Color(0xFF111111);
-  static const cOk = Color(0xFF1F7A4D);
-  static const cWarn = Color(0xFF7A4B00);
-  static const cBad = Color(0xFFB3261E);
+  static const cOk = Color(0xFF145A36);
+  static const cWarn = Color(0xFF6B4100);
+  static const cBad = Color(0xFF8C1D18);
   static const cGlanceGoldFrom = Color(0xFFFBE9B8);
   static const cGlanceGoldTo = Color(0xFFF5C242);
   static const cGlanceTerracottaFrom = Color(0xFFF6D79A);
@@ -26,6 +26,10 @@ class ColyvTokens {
   static const cGlanceClayTo = Color(0xFFD9A07E);
   static const cGlanceSandFrom = Color(0xFFEDE3C4);
   static const cGlanceSandTo = Color(0xFFC4B27A);
+  static const cLineStrong = Color(0xFF8A8576);
+  static const cOkSoft = Color(0xFFE3F2E6);
+  static const cWarnSoft = Color(0xFFFBE9B8);
+  static const cBadSoft = Color(0xFFFBE6E4);
   static const double s1 = 4;
   static const double s2 = 8;
   static const double s3 = 12;

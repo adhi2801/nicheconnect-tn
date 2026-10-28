@@ -27,21 +27,24 @@ From `docs/BACKEND_COMPLETE.md` (counted on 27 October) and the API contract on 
 
 Working split: **Harish decides the design and approves each screen. Claude builds each screen in real code, in the same pass as the design, so no throwaway mock-ups exist.** Adhi owns the backend and every approval it needs.
 
-## 3. Dated plan
+## 3. Dated plan: website first, then the apps
 
-43 days from 28 October to 10 December, then testing and launch readiness.
+Decided by Harish on 28 October: **launch the website and the apps, website first.** The website is Next.js whichever framework the apps use, so it can start now. **The apps' framework is decided by 15 November**, after Harish has felt Expo on his own phone (a test build of the creator Today screen, viewed through Expo Go with no Xcode or Android SDK). The website's logic goes in framework-neutral modules (formatting, phone and money rules, stage labels, the message catalogue, the typed client), so an Expo app can reuse it directly.
 
 | Phase | Dates | What | API it uses (state) | Done when |
 |---|---|---|---|---|
-| **0 Decide** | 28 to 31 Oct | Stack decision. Repo decision (PR #78). Scope. Send the request list to Adhi. Install the phone toolchains for the chosen stack. | none | Both founders have answered the decisions in section 6 |
-| **1 Foundations** | 1 to 10 Nov | Design system in code with all states. Sign-in, code entry, onboarding, Today and Inbox for both roles. | auth, creators and brands `me`, `/me/attention`, notifications (built) | A person can sign in on a phone and see Today |
-| **2 Creator core** | 11 to 24 Nov | Discover, campaign, apply with offers, my applications, invitations, deals, the pass, memo, send work, payment, dispute, deal record. | campaigns, applications, offers, deal memos, proof, payments (built; R1 needs a fallback) | A creator follows a deal from apply to the record on real data |
-| **3 Brand core** | 25 Nov to 3 Dec | Four-step campaign, applicants, creator profile, invite, memo editor, review work, pay, record. | same set (R2 needs a fallback) | A brand posts, chooses, sends a memo, marks paid |
-| **4 Safety and finish** | 4 to 10 Dec | Report, block, delete account, step-up, sessions, export, notification preferences, Passport screens, public Passport page. All five states on every screen. Accessibility pass. Homepage restyle if time allows. | trust, me, passport (built) | Build frozen; the six core journeys run end to end |
-| **5 Test and fix** | 11 to 20 Dec | Usability tests with 5 creators and 5 brands. Fix list. Performance measured on a budget phone. Store submission. | none | Task completion at least 90% on the core journeys, no critical confusion point (`ux.md` section 2) |
+| **0 Start the website** | 28 to 31 Oct | Design system v1 in code (colour, type, eight components with all states, a component catalogue). Sign-in and code entry. Send the request list to Adhi. | auth (built) | **Done on 28 Oct**: sign-in works end to end against a mock of the login API; see section 8 |
+| **1 Web foundations** | 1 to 10 Nov | Onboarding, Today and Inbox for both roles, the app shell and navigation. The refresh-token design (a security decision) approved first. | creators and brands `me`, `/me/attention`, notifications (built) | A person signs in on the real backend and sees Today |
+| **2 Web creator core** | 11 to 20 Nov | Discover, campaign, apply with offers, applications, invitations, deals, the pass, memo, send work, payment, dispute, record. | campaigns, applications, offers, deal memos, proof, payments (built; R1 needs a fallback) | A creator follows a deal from apply to the record |
+| **Framework decision** | **by 15 Nov** | Phone test of Expo, then both founders decide and Adhi is shown the finished decision. | none | One recorded answer |
+| **3 Web brand core, and app foundations** | 21 Nov to 3 Dec | Four-step campaign, applicants, creator profile, invite, memo editor, review work, pay, record on the web. The chosen framework's app shell, sign-in and Today. | same set (R2 needs a fallback) | A brand completes a deal on the web; the app signs in and shows Today |
+| **4 Apps and safety** | 4 to 10 Dec | The Must screens in the apps for both roles. Report, block, delete account, step-up, sessions, export, preferences. All five states everywhere. Accessibility pass. | trust, me, passport (built) | Build frozen; the six core journeys run on the website and the apps |
+| **5 Test and fix** | 11 to 20 Dec | Usability tests with 5 creators and 5 brands. Fix list. Performance measured on a budget phone. Store submission. | none | Task completion at least 90%, no critical confusion point (`ux.md` section 2) |
 | **6 Launch readiness** | 21 to 31 Dec | Store approvals. Real devices. Go or no-go on 28 December. | live backend and real login codes (outside) | Launch on 1 January |
 
-**If 10 December is not confirmed:** phases 5 and 6 shrink first, which is the wrong end to squeeze. The cut line is the Should and Later lists in `screen-plan.md`, never testing, the five states or accessibility.
+**The risk of website first, plainly:** the apps get about 17 days (21 November to 10 December) for the Must screens of two roles. That works only if the shared logic is written once and the app screens are thin. If the framework decision slips past 15 November, the apps shrink first. The cut line is the Should and Later lists in `screen-plan.md`, never testing, the five states or accessibility.
+
+**If 10 December is not confirmed:** phases 5 and 6 shrink first, which is the wrong end to squeeze.
 
 ## 4. What each person does this week
 
@@ -62,7 +65,7 @@ Working split: **Harish decides the design and approves each screen. Claude buil
 
 ## 6. Decisions needed, in order
 
-1. **The apps' framework** (by 30 October). Adhi's locked baseline (D-047) is Expo (React Native) with a shared TypeScript core; Harish chose Flutter on 7 October and it was never recorded. Everything after phase 0 depends on this. Detail and a recommendation: `docs/PROPOSAL_FRONTEND_HOME_AND_STACK.md`.
+1. **The apps' framework** (by 15 November, decided by Harish first and shown to Adhi once decided). Adhi's locked baseline (D-047) is Expo (React Native) with a shared TypeScript core; Harish chose Flutter on 7 October and it was never recorded. The website does not wait for it. Detail and a recommendation: `docs/PROPOSAL_FRONTEND_HOME_AND_STACK.md`.
 2. **Where the frontend lives** (PR #78). The standards say a repository of its own. Harish asked for this one. This repository is **public**, so the designs and prototypes would be public too.
 3. **Scope.** Accept the Must list in `screen-plan.md` sections 5 and 6b for launch.
 4. **The admin console.** Adhi's admin API exists and the law gives the report queue clocks (acknowledge in 24 hours, unlawful content in 36 hours). Does a founder work that queue through a screen, and is that screen part of launch? If so it is a Must and is not planned yet.
@@ -71,7 +74,16 @@ Working split: **Harish decides the design and approves each screen. Claude buil
 
 ## 7. Risks, plainly
 
-- **The stack decision is on the critical path.** Every day without it is a day with no code to write that survives either answer, apart from design and tokens.
+- **The framework decision is on the critical path for the apps, not the website.** Each week it slips shortens the apps' build.
 - **126 operations in four weeks is the pace to match.** Without the weekly watch the designs go stale; the plan I first wrote was stale on the day I wrote it.
 - **The outside launch dependencies are not ours.** The frontend can be finished on 10 December and still not launch on 1 January.
 - **Two apps and a website in 43 days is tight.** The first things to drop are the Should list and website polish. Never the five states, accessibility or the usability tests.
+
+## 8. Built so far (28 October 2026)
+
+In `frontend/apps/web`, on this branch. Checked in a real browser against a **mock** of the login API that follows `docs/api/openapi.json`; the real backend has not been run.
+
+- **Design system v1:** colour, type (Plus Jakarta Sans, Inter, JetBrains Mono) and motion tokens in `tokens/tokens.json`; eight components (button, pill, card, text field, code field, choice group, notice, skeleton) in `src/components/ui`; a catalogue at `/design` (development only). Text colours were measured and darkened where the dashboard's values fell below the 7:1 rule in `frontend.md` section 6.
+- **Sign-in (screens S1 and S2):** role choice, phone, six-box code, resend timer, and every failure the contract names (wrong code, rate limit with the wait, busy, suspended, role conflict, offline). The token is held in memory only.
+- **Tests:** 3 unit tests on the phone rules, run with Node's built-in runner (no new dependency). Eight browser checks of the sign-in journey, run by hand through a script that is not yet in the repository.
+- **Not yet:** a refresh token (a security decision for Adhi), the app shell and Today, a test runner and browser test tool in CI (dependencies to approve), and the idempotency key on writes that take one.

@@ -1,0 +1,51 @@
+{
+  "common": {
+    "retry": "Try again",
+    "back": "Back",
+    "loading": "Loading",
+    "somethingWrong": "Something went wrong on our side. Nothing was changed. Try again in a moment.",
+    "offline": "You look to be offline. Check your connection and try again.",
+    "busy": "Colyv is busy right now. Nothing was changed. Try again in a few seconds.",
+    "reference": "Reference {id}"
+  },
+  "signIn": {
+    "title": "Sign in to Colyv",
+    "subtitle": "Every brand and creator deal, on the record.",
+    "roleLabel": "I am a",
+    "creator": "Creator",
+    "creatorHint": "Find campaigns, do the work, confirm you were paid.",
+    "brand": "Brand",
+    "brandHint": "Post campaigns, choose creators, keep every deal on record.",
+    "phoneLabel": "Mobile number",
+    "phoneHint": "We send a 6-digit code to this number. We never share it.",
+    "phoneInvalid": "Enter a 10-digit Indian mobile number. It starts with 6, 7, 8 or 9.",
+    "send": "Send code",
+    "sending": "Sending code",
+    "safety": "Colyv never asks you to share your login code.",
+    "roleMissing": "Choose whether you are a creator or a brand. It decides which account you open.",
+    "roleNote": "A new number opens a new account for the role you choose."
+  },
+  "code": {
+    "title": "Enter your code",
+    "sentTo": "We sent a 6-digit code to {phone}.",
+    "label": "6-digit code",
+    "confirm": "Confirm",
+    "confirming": "Checking code",
+    "resend": "Send a new code",
+    "resendIn": "Send a new code in {seconds} s",
+    "change": "Use a different number",
+    "invalid": "That code is wrong, has expired or was already used. Check it, or send a new code.",
+    "tooShort": "Enter all 6 digits.",
+    "rateLimited": "Too many tries. Wait {seconds} s, then try again.",
+    "rateLimitedNoWait": "Too many tries. Wait a little, then try again.",
+    "suspended": "This account is suspended. If you think that is a mistake, contact support and quote the reference below.",
+    "roleConflict": "This number cannot sign in as a {role} right now. Check the number, or try the other role.",
+    "phoneChangeWaiting": "An account is waiting to move onto this number. Sign in with that account's current number until the change is made.",
+    "safety": "Colyv never asks you to share this code with anyone."
+  },
+  "home": {
+    "signedInAs": "Signed in as a {role}.",
+    "soon": "Your Today screen is the next thing we build.",
+    "signOut": "Sign out"
+  }
+}
