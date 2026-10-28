@@ -1,2 +1,0 @@
-Contract copied from the backend repository at commit 040c6e3 on 2026-10-07.
-The backend repo is the source of truth; never edit contract/openapi.json here.

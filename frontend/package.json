@@ -3,7 +3,6 @@
   "private": true,
   "packageManager": "pnpm@12.9.1",
   "scripts": {
-    "contract:sync": "sh scripts/sync-contract.sh",
     "api:types": "pnpm --filter @colyv/api generate",
     "tokens": "node scripts/build-tokens.mjs",
     "web": "pnpm --filter web dev",

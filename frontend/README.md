@@ -1,19 +1,18 @@
 # Colyv frontend
 
-Separate from the backend repository (`nicheconnect-tn`). The two meet only at the API contract.
+Lives in the same repository as the backend (`nicheconnect-tn`), under `frontend/`. The two meet at the API contract, `docs/api/openapi.json` at the repository root.
 
 | Part | What | Status |
 |---|---|---|
 | `apps/web` | The website (Next.js, TypeScript, Tailwind). One site; a creator and a brand each see their own screens after login. | Foundation builds |
 | `apps/mobile` | The app (Flutter). One app, same role split. | Not created: Flutter is not installed on this machine yet |
-| `contract/openapi.json` | Copy of the backend's committed API contract. Never edit it here; run `pnpm contract:sync`. `contract/SOURCE.txt` says which backend commit it came from. | Synced from `040c6e3` |
-| `packages/api` | Typed client generated from the contract (`pnpm api:types`). | Generated |
+| `../docs/api/openapi.json` | The backend's committed API contract. The frontend reads it directly; never edit it from here. | Source of truth |
+| `packages/api` | Typed client generated from `../docs/api/openapi.json` (`pnpm api:types`). | Generated |
 | `tokens/tokens.json` | The one source of colour, spacing, radius, motion and type. `pnpm tokens` writes CSS for the site and Dart for the app. Values are placeholders until the designer's brandbook arrives. | Placeholder values |
 
 ## Commands
 
     pnpm install
-    pnpm contract:sync       # BACKEND=/path/to/nicheconnect-tn if it is not in your home folder
     pnpm api:types
     pnpm tokens
     pnpm web                 # http://localhost:3000
