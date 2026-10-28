@@ -135,6 +135,9 @@ your export shows for each memo (D-127):
   deliverables in its agreed order, each line an object of exactly
   `platform`, `format`, `quantity` and `note` (`null` when there is none). An
   empty list is `[]`.
+- **Version 3** (from 27 October 2026, D-140): version 2's fields, plus
+  `draft_review`, `true` or `false`: whether a draft is shown and approved
+  before the work is posted.
 
 `actor_account_sha256` is the fingerprint of the acting account's id. Hash
 your own account id the same way to find the entries you made. The other

@@ -1,7 +1,7 @@
 """Every downgrade that would destroy unrecoverable data refuses while it exists.
 
 database.md section 6: losing such data must be a deliberate act, never a
-side effect of a rollback. Thirty-one migrations refuse. Until 14 October 2026 each
+side effect of a rollback. Thirty-two migrations refuse. Until 14 October 2026 each
 refusal had been proven only by hand, in the session that wrote it
 (database.md gap 6, item 98); a later edit to one could have let a rollback
 drop a deal's record or a person's block without anyone noticing.
@@ -67,6 +67,7 @@ REFUSING = {
     "3734d5492968": "connected accounts, and the deletions Meta asked for",
     "a2a642dc46be": "feedback on finished deals, and their sealed record entries",
     "2de4ccbd813c": "assistants' tokens, working or not",
+    "bbddb2e7bb0d": "memos sealed with terms version 3, drafts, and their sealed entries",
 }
 
 
@@ -552,7 +553,11 @@ def test_memos_sealed_with_their_deliverables(client, db, clock):
 
     before = count(db, "SELECT count(*) FROM deal_memo WHERE terms_version = 2")
     brand, creator = brand_user(db, clock), creator_user(db, clock)
-    draft(client, brand, accepted_application(client, brand, creator))
+    memo = draft(client, brand, accepted_application(client, brand, creator))
+    # New memos are version 3 since item 27; this migration guards version 2.
+    db.execute(
+        text("UPDATE deal_memo SET terms_version = 2 WHERE id = :m"), {"m": memo["id"]}
+    )
 
     assert f"{before + 1} memos carry terms version 2" in refusal(db, "413468ae18cf")
 
@@ -642,3 +647,18 @@ def test_agent_tokens(db, clock):
     db.flush()
 
     assert f"{before + 1} assistant tokens exist" in refusal(db, "2de4ccbd813c")
+
+
+def test_drafts_and_terms_version_three(client, db, clock):
+    from tests.modules.deal_memo.test_memo_deliverables_api import (
+        accepted_application,
+        draft,
+    )
+
+    before = count(db, "SELECT count(*) FROM deal_memo WHERE terms_version = 3")
+    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    draft(client, brand, accepted_application(client, brand, creator))
+
+    assert f"{before + 1} memos sealed with terms version 3" in refusal(
+        db, "bbddb2e7bb0d"
+    )

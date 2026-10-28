@@ -2,7 +2,8 @@
 
 The website's deal pass and campaign board show every deal as one of five
 stages, Memo sent, Agreed, In progress, Payment, Finished, with the side
-whose move it is. Without this the screen would read the memo, its proof
+whose move it is; a deal agreed with a draft review passes a sixth, Draft
+review, between Agreed and In progress (item 27, D-140). Without this the screen would read the memo, its proof
 and its payment and work the stage out itself, once per card, and the web
 and both apps would each be free to work it out differently.
 
@@ -14,7 +15,9 @@ payment as of `now`, with the same rules the rest of the backend uses:
 - a barter deal has no payment, so it is Finished once its work is approved
   (D-026);
 - a paid deal is Finished only when the creator confirms the money arrived,
-  never when the brand says it sent it (D-027).
+  never when the brand says it sent it (D-027);
+- a deal with a draft review is in Draft review from its first draft until
+  one is approved, by the brand or by the clock (`draft_rules`).
 
 `draft`, `declined` and `cancelled` sit outside the five: a draft has not
 started, and the other two ended without finishing.
@@ -22,14 +25,17 @@ started, and the other two ended without finishing.
 
 import uuid
 from collections import defaultdict
-from dataclasses import dataclass
-from datetime import datetime
+from collections.abc import Sequence
+from dataclasses import dataclass, field
+from datetime import date, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.clock import india_date
 from app.modules.deal_memo.delivery_record import is_approved
+from app.modules.deal_memo.draft_models import ContentDraft
+from app.modules.deal_memo.draft_rules import approved_among, delivery_due_on
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof
 from app.modules.disputes import service as disputes
@@ -38,6 +44,7 @@ from app.modules.payment_status.models import PaymentStatus
 DRAFT = "draft"
 MEMO_SENT = "memo_sent"
 AGREED = "agreed"
+DRAFT_REVIEW = "draft_review"
 IN_PROGRESS = "in_progress"
 PAYMENT = "payment"
 FINISHED = "finished"
@@ -47,14 +54,23 @@ DEAL_STAGES: tuple[str, ...] = (
     DRAFT,
     MEMO_SENT,
     AGREED,
+    DRAFT_REVIEW,
     IN_PROGRESS,
     PAYMENT,
     FINISHED,
     DECLINED,
     CANCELLED,
 )
-# The five a deal passes through on the way to done, in order.
-MAIN_STAGES: tuple[str, ...] = (MEMO_SENT, AGREED, IN_PROGRESS, PAYMENT, FINISHED)
+# The stages a deal passes through on the way to done, in order; Draft
+# review only on a deal agreed with one.
+MAIN_STAGES: tuple[str, ...] = (
+    MEMO_SENT,
+    AGREED,
+    DRAFT_REVIEW,
+    IN_PROGRESS,
+    PAYMENT,
+    FINISHED,
+)
 # Nothing more will happen to a deal at one of these.
 ENDED: frozenset[str] = frozenset({FINISHED, DECLINED, CANCELLED})
 
@@ -69,6 +85,10 @@ class DealStage:
     # The side whose move it is, or None when nobody owes the deal anything.
     waiting_on: str | None
     has_open_dispute: bool
+    # The date the work is due by: the agreed one, moved a day for every
+    # calendar day the brand held a draft (D-140). Left out of equality
+    # so a stage compares as a stage; tests assert it on its own.
+    work_due_on: date | None = field(default=None, compare=False)
 
 
 def _latest(proofs: list[DeliverableProof]) -> DeliverableProof | None:
@@ -82,11 +102,18 @@ def stage_of(
     now: datetime,
     *,
     has_open_dispute: bool = False,
+    drafts: Sequence[ContentDraft] = (),
 ) -> DealStage:
-    """The stage of one deal as of `now`. Pure: everything is passed in."""
+    """The stage of one deal as of `now`. Pure: everything is passed in.
+
+    `drafts` matter only on a deal agreed with a draft review; every other
+    caller may leave them out.
+    """
+
+    due_on = delivery_due_on(memo, drafts, now)
 
     def at(stage: str, waiting_on: str | None) -> DealStage:
-        return DealStage(stage, waiting_on, has_open_dispute)
+        return DealStage(stage, waiting_on, has_open_dispute, due_on)
 
     if memo.status == "draft":
         return at(DRAFT, BRAND)
@@ -109,6 +136,14 @@ def stage_of(
             return at(PAYMENT, CREATOR)  # said to be sent; is it there?
         return at(PAYMENT, BRAND)
 
+    if memo.draft_review and approved_among(memo, drafts, now) is None:
+        last_draft = max(drafts, key=lambda d: (d.created_at, d.id), default=None)
+        if last_draft is None:
+            return at(AGREED, CREATOR)
+        if last_draft.status == "submitted":
+            return at(DRAFT_REVIEW, BRAND)  # inside its answer window
+        return at(DRAFT_REVIEW, CREATOR)  # making the changes asked
+
     latest = _latest(proofs)
     if latest is not None and latest.status == "submitted":
         return at(IN_PROGRESS, BRAND)  # inside the review window
@@ -120,7 +155,10 @@ def stage_of(
 def stages_for(
     db: Session, memos: list[DealMemo], now: datetime
 ) -> dict[uuid.UUID, DealStage]:
-    """The stage of every memo given, in three queries whatever their number."""
+    """The stage of every memo given, in three queries whatever their number.
+
+    A fourth reads drafts, only when a memo given has a draft review.
+    """
     ids = [memo.id for memo in memos]
     if not ids:
         return {}
@@ -138,6 +176,13 @@ def stages_for(
     disputed = disputes.open_payment_ids(
         db, {payment.id for payment in payments.values()}, india_date(now)
     )
+    drafts: dict[uuid.UUID, list[ContentDraft]] = defaultdict(list)
+    reviewed = [memo.id for memo in memos if memo.draft_review]
+    if reviewed:
+        for draft in db.scalars(
+            select(ContentDraft).where(ContentDraft.deal_memo_id.in_(reviewed))
+        ):
+            drafts[draft.deal_memo_id].append(draft)
     return {
         memo.id: stage_of(
             memo,
@@ -145,6 +190,7 @@ def stages_for(
             payments.get(memo.id),
             now,
             has_open_dispute=(memo.id in payments and payments[memo.id].id in disputed),
+            drafts=drafts[memo.id],
         )
         for memo in memos
     }

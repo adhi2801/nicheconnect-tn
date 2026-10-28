@@ -59,6 +59,8 @@ COLUMNS: tuple[str, ...] = (
     "latest_seal",
     "seal_stamped_on",
     "deal_memo_id",
+    # Added by item 27 (D-140), last, so no existing column moves.
+    "work_due_on",
 )
 
 
@@ -118,6 +120,7 @@ def _row(line: DealLine) -> list[str]:
         line.seal.latest_seal,
         line.seal.stamped_on,
         memo.id,
+        line.stage.work_due_on,
     ]
     return [_cell(value) for value in values]
 

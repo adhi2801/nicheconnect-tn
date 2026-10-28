@@ -1637,6 +1637,19 @@
             "description": "The brand's domain, for fix_domain_record, domain_lapsed and domain_claim_expired",
             "title": "Domain"
           },
+          "draft_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For review_draft: the draft waiting (item 27)",
+            "title": "Draft Id"
+          },
           "due_on": {
             "anyOf": [
               {
@@ -1655,6 +1668,7 @@
               "respond_to_dispute",
               "pay_creator",
               "review_proof",
+              "review_draft",
               "revise_memo",
               "draft_memo",
               "review_applications",
@@ -1665,6 +1679,8 @@
               "payment_overdue",
               "resubmit_work",
               "deliver_work",
+              "show_draft",
+              "revise_draft",
               "answer_memo",
               "answer_invitation",
               "upi_change_pending",
@@ -1779,6 +1795,7 @@
                 "respond_to_dispute",
                 "pay_creator",
                 "review_proof",
+                "review_draft",
                 "revise_memo",
                 "draft_memo",
                 "review_applications",
@@ -1789,6 +1806,8 @@
                 "payment_overdue",
                 "resubmit_work",
                 "deliver_work",
+                "show_draft",
+                "revise_draft",
                 "answer_memo",
                 "answer_invitation",
                 "upi_change_pending",
@@ -3459,6 +3478,26 @@
         "title": "ChangeRequest",
         "type": "object"
       },
+      "ChangesRequest": {
+        "additionalProperties": false,
+        "description": "What the brand wants changed, so the creator can show a new draft.",
+        "properties": {
+          "note": {
+            "examples": [
+              "Please say the box is for 6 people, and add the ad label."
+            ],
+            "maxLength": 1000,
+            "minLength": 5,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "title": "ChangesRequest",
+        "type": "object"
+      },
       "ChannelRead": {
         "description": "A channel as its owner and signed-in brands see it.\n\n`followers` and `average_views` are the creator's own claim. We have never\nchecked them, the word \"verified\" is never used, and `figures_as_of` says\nwhen they were stated — a follower count without a date is not a fact.",
         "properties": {
@@ -3926,7 +3965,7 @@
             "type": "string"
           },
           "currently_overdue": {
-            "description": "Deals past their agreed date with nothing delivered yet",
+            "description": "Deals past the date their work was due by (the agreed date, moved by the brand's time on drafts shown in time, D-140) with nothing delivered yet",
             "title": "Currently Overdue",
             "type": "integer"
           },
@@ -3940,7 +3979,7 @@
             "type": "integer"
           },
           "deals_not_delivered": {
-            "description": "Cancelled by the creator after work had started, or nothing delivered 14 days after the agreed date",
+            "description": "Cancelled by the creator after work had started, or nothing delivered 14 days after the date it was due by (the agreed date, moved by the brand's time on drafts shown in time; the 14 days grow by its time on late drafts, D-140)",
             "title": "Deals Not Delivered",
             "type": "integer"
           },
@@ -3953,7 +3992,7 @@
                 "type": "null"
               }
             ],
-            "description": "Share of completed deals delivered by the agreed date, judged by the first submission. Null below three completed deals",
+            "description": "Share of completed deals delivered by the date their work was due by (the agreed date, moved by the brand's time on drafts shown in time, D-140), judged by the first submission. Null below three completed deals",
             "title": "Delivered On Time Share"
           },
           "disclosure_confirmed_share": {
@@ -4963,6 +5002,11 @@
             "title": "Draft",
             "type": "integer"
           },
+          "draft_review": {
+            "description": "Deals whose draft is waiting or being changed (item 27)",
+            "title": "Draft Review",
+            "type": "integer"
+          },
           "finished": {
             "title": "Finished",
             "type": "integer"
@@ -4984,6 +5028,7 @@
           "draft",
           "memo_sent",
           "agreed",
+          "draft_review",
           "in_progress",
           "payment",
           "finished",
@@ -5528,6 +5573,199 @@
           "timeline"
         ],
         "title": "DisputeRead",
+        "type": "object"
+      },
+      "DraftCreate": {
+        "additionalProperties": false,
+        "description": "What the creator shows the brand before posting.",
+        "properties": {
+          "body": {
+            "description": "The caption or the script, as it will be posted",
+            "examples": [
+              "Pongal at home, the Madurai way. Our new sweet box, ad. #pongal"
+            ],
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          },
+          "content_url": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A link to the draft itself, such as a video to watch",
+            "title": "Content Url"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "title": "DraftCreate",
+        "type": "object"
+      },
+      "DraftRead": {
+        "description": "A draft, as both sides see it.",
+        "properties": {
+          "answer_by": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "While it waits: the last day the brand has to answer, in Tamil Nadu; after it, the draft approves itself. Null once answered, and once the deal has ended",
+            "title": "Answer By"
+          },
+          "answered_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the brand answered, or the clock did; null while it waits",
+            "title": "Answered At"
+          },
+          "approved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "auto_approved": {
+            "description": "Approved because the brand did not answer in time (D-025)",
+            "title": "Auto Approved",
+            "type": "boolean"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "changes_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the brand asked to change",
+            "title": "Changes Note"
+          },
+          "content_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Url"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "deal_memo_id": {
+            "format": "uuid",
+            "title": "Deal Memo Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "round": {
+            "description": "Which attempt this is, from 1",
+            "title": "Round",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "submitted",
+              "approved",
+              "changes_requested"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "text_flags": {
+            "description": "Warnings on the brand's note, worked out on every read: a request for money (item 60). Show each beside its field; never hide the text",
+            "items": {
+              "$ref": "#/components/schemas/FieldFlag"
+            },
+            "readOnly": true,
+            "title": "Text Flags",
+            "type": "array"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "deal_memo_id",
+          "round",
+          "body",
+          "content_url",
+          "note",
+          "status",
+          "changes_note",
+          "approved_at",
+          "answered_at",
+          "auto_approved",
+          "created_at",
+          "updated_at",
+          "text_flags"
+        ],
+        "title": "DraftRead",
         "type": "object"
       },
       "ExportFile": {
@@ -6725,6 +6963,12 @@
             "title": "Disclosure Required",
             "type": "boolean"
           },
+          "draft_review": {
+            "default": false,
+            "description": "The creator shows a draft (`POST .../drafts`) before posting, and proof waits for it to be approved; the brand has the approval window to answer, and silence approves (item 27)",
+            "title": "Draft Review",
+            "type": "boolean"
+          },
           "extra_terms": {
             "anyOf": [
               {
@@ -6910,6 +7154,11 @@
             "title": "Disclosure Required",
             "type": "boolean"
           },
+          "draft_review": {
+            "description": "A draft is shown and approved before proof (item 27); sealed with the terms from 27 October 2026, false on every memo before",
+            "title": "Draft Review",
+            "type": "boolean"
+          },
           "extra_terms": {
             "anyOf": [
               {
@@ -7019,6 +7268,7 @@
           "usage_rights_days",
           "content_due_on",
           "disclosure_required",
+          "draft_review",
           "extra_terms",
           "status",
           "revision_count",
@@ -7122,6 +7372,17 @@
             ],
             "title": "Disclosure Required"
           },
+          "draft_review": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draft Review"
+          },
           "extra_terms": {
             "anyOf": [
               {
@@ -7179,7 +7440,7 @@
         "type": "object"
       },
       "MemoWithStageRead": {
-        "description": "A memo, with where the deal stands and whose move it is (D-076).\n\nWorked out from the memo, its proof and its payment as of the request,\nnever stored. The five stages a deal passes through are `memo_sent`,\n`agreed`, `in_progress`, `payment`, `finished`; `draft`, `declined` and\n`cancelled` sit outside them. A barter deal is `finished` once its work\nis approved; a paid one only when the creator confirms the money arrived.",
+        "description": "A memo, with where the deal stands and whose move it is (D-076).\n\nWorked out from the memo, its proof and its payment as of the request,\nnever stored. The five stages a deal passes through are `memo_sent`,\n`agreed`, `in_progress`, `payment`, `finished`, with `draft_review`\nbetween `agreed` and `in_progress` on a deal agreed with one (item 27); `draft`, `declined` and\n`cancelled` sit outside them. A barter deal is `finished` once its work\nis approved; a paid one only when the creator confirms the money arrived.",
         "properties": {
           "accepted_at": {
             "anyOf": [
@@ -7310,6 +7571,11 @@
             "title": "Disclosure Required",
             "type": "boolean"
           },
+          "draft_review": {
+            "description": "A draft is shown and approved before proof (item 27); sealed with the terms from 27 October 2026, false on every memo before",
+            "title": "Draft Review",
+            "type": "boolean"
+          },
           "extra_terms": {
             "anyOf": [
               {
@@ -7366,6 +7632,7 @@
               "draft",
               "memo_sent",
               "agreed",
+              "draft_review",
               "in_progress",
               "payment",
               "finished",
@@ -7428,6 +7695,19 @@
             "description": "The side whose move it is; null once the deal has ended",
             "title": "Waiting On"
           },
+          "work_due_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The date the work is due by: `content_due_on`, moved a day for every distinct calendar day, in Tamil Nadu, the brand held a draft shown in time, from the day it was shown to the day it answered, both included (D-140), never past a cancellation; a draft shown after the date moves nothing. Show this as the due date; it equals `content_due_on` on a deal without a draft review. Null when no date was agreed",
+            "title": "Work Due On"
+          },
           "work_started_at": {
             "anyOf": [
               {
@@ -7453,6 +7733,7 @@
           "usage_rights_days",
           "content_due_on",
           "disclosure_required",
+          "draft_review",
           "extra_terms",
           "status",
           "revision_count",
@@ -7469,6 +7750,7 @@
           "stage",
           "waiting_on",
           "has_open_dispute",
+          "work_due_on",
           "text_flags"
         ],
         "title": "MemoWithStageRead",
@@ -7809,11 +8091,15 @@
                 "product_received",
                 "connection_expired",
                 "feedback_received",
-                "agent_token_created"
+                "agent_token_created",
+                "draft_submitted",
+                "draft_approved",
+                "draft_auto_approved",
+                "draft_changes_requested"
               ],
               "type": "string"
             },
-            "maxItems": 59,
+            "maxItems": 63,
             "title": "Muted Types",
             "type": "array"
           },
@@ -7924,7 +8210,11 @@
                 "product_received",
                 "connection_expired",
                 "feedback_received",
-                "agent_token_created"
+                "agent_token_created",
+                "draft_submitted",
+                "draft_approved",
+                "draft_auto_approved",
+                "draft_changes_requested"
               ],
               "type": "string"
             },
@@ -8009,7 +8299,11 @@
                 "product_received",
                 "connection_expired",
                 "feedback_received",
-                "agent_token_created"
+                "agent_token_created",
+                "draft_submitted",
+                "draft_approved",
+                "draft_auto_approved",
+                "draft_changes_requested"
               ],
               "type": "string"
             },
@@ -8168,7 +8462,11 @@
               "product_received",
               "connection_expired",
               "feedback_received",
-              "agent_token_created"
+              "agent_token_created",
+              "draft_submitted",
+              "draft_approved",
+              "draft_auto_approved",
+              "draft_changes_requested"
             ],
             "title": "Notification Type",
             "type": "string"
@@ -11736,6 +12034,7 @@
                 "type": "null"
               }
             ],
+            "description": "The date agreed in the memo",
             "title": "Content Due On"
           },
           "content_url": {
@@ -11777,7 +12076,7 @@
                 "type": "null"
               }
             ],
-            "description": "First sent on or before the agreed date. Null with no work sent yet, or no date agreed",
+            "description": "First sent on or before the date the work was due by: the agreed date, moved by the brand's time on drafts (D-140). Null with no work sent yet, or no date agreed",
             "title": "Delivered On Time"
           },
           "disclosure_confirmed": {
@@ -11903,6 +12202,7 @@
               "draft",
               "memo_sent",
               "agreed",
+              "draft_review",
               "in_progress",
               "payment",
               "finished",
@@ -11926,6 +12226,19 @@
               }
             ],
             "title": "Waiting On"
+          },
+          "work_due_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The date the work is due by, as of the report: the agreed date, moved a day for every distinct calendar day the brand held a draft shown in time, its answer day included (D-140). Delivered work is judged on time against it as it stood when the work was first sent",
+            "title": "Work Due On"
           }
         },
         "required": [
@@ -11936,6 +12249,7 @@
           "has_open_dispute",
           "deliverables",
           "content_due_on",
+          "work_due_on",
           "fee_amount_paise",
           "accepted_on",
           "first_submitted_on",
@@ -28301,7 +28615,7 @@
     },
     "/api/v1/deal-memos/{memo_id}/calendar.ics": {
       "get": {
-        "description": "An iCalendar file (RFC 5545) to add to any phone or desktop calendar: the content due date, the moment submitted work approves itself while it waits, and the payment due date while unconfirmed, each with a reminder a day before. Only an accepted deal has dates; any other gives an empty calendar. Adding it again updates the same events. The brand and the creator of this deal only.",
+        "description": "An iCalendar file (RFC 5545) to add to any phone or desktop calendar: the content due date (moved by the days the brand held a draft), the moment a waiting draft or submitted work approves itself, and the payment due date while unconfirmed, each with a reminder a day before. Only an accepted deal has dates; any other gives an empty calendar. Adding it again updates the same events. The brand and the creator of this deal only.",
         "operationId": "deal_calendar_api_v1_deal_memos__memo_id__calendar_ics_get",
         "parameters": [
           {
@@ -28659,6 +28973,575 @@
         "summary": "Decline the memo",
         "tags": [
           "deal memos"
+        ]
+      }
+    },
+    "/api/v1/deal-memos/{memo_id}/drafts": {
+      "get": {
+        "description": "Both sides see the same drafts, newest first. A draft whose window has passed is settled as approved by the clock when read. Every draft gives the brand at least 2 whole days, however late it is shown. Limit: 60 requests per minute.",
+        "operationId": "list_drafts_api_v1_deal_memos__memo_id__drafts_get",
+        "parameters": [
+          {
+            "description": "The memo's id",
+            "in": "path",
+            "name": "memo_id",
+            "required": true,
+            "schema": {
+              "description": "The memo's id",
+              "format": "uuid",
+              "title": "Memo Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DraftRead"
+                  },
+                  "title": "Response List Drafts Api V1 Deal Memos  Memo Id  Drafts Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "This account type cannot use this endpoint"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such memo or draft, or it is not yours"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The drafts shown on a deal",
+        "tags": [
+          "drafts"
+        ]
+      },
+      "post": {
+        "description": "Only on a memo whose agreed terms include `draft_review`. The brand has the memo's approval window to approve it or ask for changes; if it does not answer, the draft approves itself (D-025), never sooner than 2 whole days after it is shown. If it is shown by the date the work is due, every calendar day the brand holds it, the day it answers included, is added to that date once (`work_due_on` on the deal); a draft shown late moves nothing. Proof can be submitted once a draft is approved. One draft waits at a time; each is sealed onto the deal record by its fingerprints. Showing a draft counts as work started. Limits: 30 a minute, 200 a day.",
+        "operationId": "submit_draft_api_v1_deal_memos__memo_id__drafts_post",
+        "parameters": [
+          {
+            "description": "The memo's id",
+            "in": "path",
+            "name": "memo_id",
+            "required": true,
+            "schema": {
+              "description": "The memo's id",
+              "format": "uuid",
+              "title": "Memo Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "This account type cannot use this endpoint"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such memo or draft, or it is not yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The memo is not accepted; `draft_review_not_agreed`: its terms have no draft review; or `draft_already_decided`: a draft waits or is already approved. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The draft is empty, too long, or its link is not usable. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Show the brand a draft before posting",
+        "tags": [
+          "drafts"
+        ]
+      }
+    },
+    "/api/v1/deal-memos/{memo_id}/drafts/{draft_id}/approve": {
+      "post": {
+        "description": "The brand approves what will be posted, and the creator may post and submit proof. Limits: 30 a minute, 200 a day.",
+        "operationId": "approve_draft_api_v1_deal_memos__memo_id__drafts__draft_id__approve_post",
+        "parameters": [
+          {
+            "description": "The draft's id",
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "description": "The draft's id",
+              "format": "uuid",
+              "title": "Draft Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The memo's id",
+            "in": "path",
+            "name": "memo_id",
+            "required": true,
+            "schema": {
+              "description": "The memo's id",
+              "format": "uuid",
+              "title": "Memo Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "This account type cannot use this endpoint"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such memo or draft, or it is not yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "This draft has already been answered. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Approve the draft",
+        "tags": [
+          "drafts"
+        ]
+      }
+    },
+    "/api/v1/deal-memos/{memo_id}/drafts/{draft_id}/request-changes": {
+      "post": {
+        "description": "Sends it back with a reason, so the creator can show a new draft. Only the first request restarts the approval window (D-025). Limits: 30 a minute, 200 a day.",
+        "operationId": "request_changes_api_v1_deal_memos__memo_id__drafts__draft_id__request_changes_post",
+        "parameters": [
+          {
+            "description": "The draft's id",
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "description": "The draft's id",
+              "format": "uuid",
+              "title": "Draft Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The memo's id",
+            "in": "path",
+            "name": "memo_id",
+            "required": true,
+            "schema": {
+              "description": "The memo's id",
+              "format": "uuid",
+              "title": "Memo Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "This account type cannot use this endpoint"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such memo or draft, or it is not yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "This draft has already been answered. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The note is missing or too short. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ask for changes to the draft",
+        "tags": [
+          "drafts"
         ]
       }
     },

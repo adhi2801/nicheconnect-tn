@@ -80,6 +80,9 @@ class AttentionItemRead(BaseModel):
     application_id: uuid.UUID | None
     memo_id: uuid.UUID | None
     proof_id: uuid.UUID | None
+    draft_id: uuid.UUID | None = Field(
+        default=None, description="For review_draft: the draft waiting (item 27)"
+    )
     amount_paise: int | None
     currency: Literal["INR"] | None
     count: int | None = Field(
@@ -146,6 +149,7 @@ def to_attention_read(result: AttentionList) -> AttentionRead:
                 application_id=item.application_id,
                 memo_id=item.memo_id,
                 proof_id=item.proof_id,
+                draft_id=item.draft_id,
                 amount_paise=item.amount_paise,
                 currency=None if item.amount_paise is None else CURRENCY,
                 count=item.count,

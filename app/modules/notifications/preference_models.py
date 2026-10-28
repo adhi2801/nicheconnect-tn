@@ -74,6 +74,11 @@ URGENT_TYPES: tuple[str, ...] = (
     # A token made for an assistant (item 11, D-138): someone holding the
     # account could make one to keep access, so its owner is always told.
     "agent_token_created",
+    # A draft waiting for the brand runs against its approval window, and a
+    # request for changes holds the creator's work up (item 27, D-140), as
+    # proof's do.
+    "draft_submitted",
+    "draft_changes_requested",
 )
 MUTABLE_TYPES: tuple[str, ...] = tuple(
     kind for kind in NOTIFICATION_TYPES if kind not in URGENT_TYPES

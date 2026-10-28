@@ -96,6 +96,8 @@ KEPT: tuple[KeptKind, ...] = (
                 "barter_shipment",
                 # Each side's feedback on a finished deal (item 77), sealed.
                 "deal_feedback",
+                # Drafts shown before posting, and each answer (item 27).
+                "content_draft",
                 "application",
                 # Counter-offers on a quote (item 44): the negotiation both
                 # sides keep a record of.

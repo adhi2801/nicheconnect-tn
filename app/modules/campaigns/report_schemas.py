@@ -83,7 +83,14 @@ class ReportDealRead(BaseModel):
     waiting_on: DealSide | None
     has_open_dispute: bool
     deliverables: str
-    content_due_on: date | None
+    content_due_on: date | None = Field(description="The date agreed in the memo")
+    work_due_on: date | None = Field(
+        description="The date the work is due by, as of the report: the agreed date, "
+        "moved a day for every distinct calendar day the brand held a draft shown "
+        "in time, its answer day included (D-140). "
+        "Delivered work is judged on time against it as it stood when the work "
+        "was first sent"
+    )
     fee_amount_paise: int | None = Field(description="Null for a barter deal")
     currency: Literal["INR"] = CURRENCY
     accepted_on: date | None
@@ -91,7 +98,8 @@ class ReportDealRead(BaseModel):
         description="When the creator first sent work, in Tamil Nadu"
     )
     delivered_on_time: bool | None = Field(
-        description="First sent on or before the agreed date. Null with no work "
+        description="First sent on or before the date the work was due by: the "
+        "agreed date, moved by the brand's time on drafts (D-140). Null with no work "
         "sent yet, or no date agreed"
     )
     approved_on: date | None = Field(

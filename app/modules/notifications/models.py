@@ -120,6 +120,11 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     # To the owner, when a token was made for an assistant: its name, scopes
     # and end, never its value (item 11, D-138).
     "agent_token_created",
+    # A draft shown before posting, and the brand's answer (item 27, D-140).
+    "draft_submitted",
+    "draft_approved",
+    "draft_auto_approved",
+    "draft_changes_requested",
 )
 MAX_DETAILS_LENGTH = 2000
 

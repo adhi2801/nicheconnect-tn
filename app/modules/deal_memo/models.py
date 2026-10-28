@@ -68,7 +68,7 @@ class DealMemo(Base):
     __tablename__ = "deal_memo"
     __table_args__ = (
         CheckConstraint(f"status IN {tuple(MEMO_STATUSES)}", name="status_allowed"),
-        CheckConstraint("terms_version IN (1, 2)", name="terms_version_known"),
+        CheckConstraint("terms_version IN (1, 2, 3)", name="terms_version_known"),
         CheckConstraint(
             f"cancellation_kind IS NULL OR cancellation_kind IN {tuple(CANCELLATION_KINDS)}",
             name="cancellation_kind_allowed",
@@ -149,9 +149,10 @@ class DealMemo(Base):
     )
     # Which terms the deal record's fingerprint covers (D-127): 1 is every
     # memo before 25 October 2026, fingerprinted as it always was, forever;
-    # 2 adds the list of deliverables. Never changes once set.
+    # 2 adds the list of deliverables; 3 adds `draft_review` (item 27,
+    # D-140). Never changes once set.
     terms_version: Mapped[int] = mapped_column(
-        SmallInteger, nullable=False, server_default=text("2")
+        SmallInteger, nullable=False, server_default=text("3")
     )
     # Paise (D-015). Empty for barter, where the payment is goods.
     fee_amount_paise: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
@@ -177,6 +178,12 @@ class DealMemo(Base):
     # wording is compliant is an ASCI question for the validation pack.
     disclosure_required: Mapped[bool] = mapped_column(
         nullable=False, server_default=text("true")
+    )
+    # The creator shows the brand a draft before posting, and proof waits
+    # for it to be approved (item 27, D-140). An agreed term, sealed from
+    # terms version 3; false on every memo before it.
+    draft_review: Mapped[bool] = mapped_column(
+        nullable=False, server_default=text("false")
     )
     extra_terms: Mapped[str | None] = mapped_column(Text, nullable=True)
 

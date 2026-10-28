@@ -18,13 +18,23 @@ from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.delivery_record import is_approved
+from app.modules.deal_memo.draft_models import ContentDraft
+from app.modules.deal_memo.draft_rules import (
+    answer_deadline,
+    answer_last_day,
+    approved_among,
+    delivery_due_on,
+)
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof
-from app.modules.deal_memo.proof_service import approval_deadline, approval_last_day
+from app.modules.deal_memo.review_clock import approval_deadline, approval_last_day
 
 
 def for_brand(db: Session, brand_id: uuid.UUID, now: datetime) -> list[AttentionItem]:
-    """Memos to draft or revise, and proof to review, in three queries."""
+    """Memos to draft or revise, and drafts and proof to review.
+
+    Three queries, and two more only while a draft waits (item 27).
+    """
     items: list[AttentionItem] = []
 
     # Accepted, and the memo is not written yet, or written and never sent:
@@ -125,11 +135,65 @@ def for_brand(db: Session, brand_id: uuid.UUID, now: datetime) -> list[Attention
                 proof_id=proof.id,
             )
         )
+    items.extend(_drafts_to_review(db, brand_id, now))
+    return items
+
+
+def _drafts_to_review(
+    db: Session, brand_id: uuid.UUID, now: datetime
+) -> list[AttentionItem]:
+    """Drafts waiting for the brand, until they approve themselves (item 27)."""
+    waiting = list(
+        db.execute(
+            select(ContentDraft, DealMemo, Campaign.id, Campaign.title, Creator.handle)
+            .join(DealMemo, DealMemo.id == ContentDraft.deal_memo_id)
+            .join(Application, Application.id == DealMemo.application_id)
+            .join(Campaign, Campaign.id == Application.campaign_id)
+            .join(Creator, Creator.id == Application.creator_id)
+            .where(
+                Campaign.brand_id == brand_id,
+                DealMemo.status == "accepted",
+                ContentDraft.status == "submitted",
+            )
+        )
+        .tuples()
+        .all()
+    )
+    if not waiting:
+        return []
+    # Each deadline depends on the memo's earlier drafts (D-025): all of them
+    # in one more query, never one per memo.
+    history: dict[uuid.UUID, list[ContentDraft]] = defaultdict(list)
+    for earlier in db.scalars(
+        select(ContentDraft).where(
+            ContentDraft.deal_memo_id.in_({memo.id for _, memo, *_ in waiting})
+        )
+    ):
+        history[earlier.deal_memo_id].append(earlier)
+    items = []
+    for draft, memo, campaign_id, title, handle in waiting:
+        if now >= answer_deadline(memo, draft, history[memo.id]):
+            continue  # approved by the clock; nothing left to decide
+        items.append(
+            AttentionItem(
+                kind="review_draft",
+                due_on=answer_last_day(memo, draft, history[memo.id]),
+                campaign_id=campaign_id,
+                campaign_title=title,
+                counterparty=handle,
+                application_id=memo.application_id,
+                memo_id=memo.id,
+                draft_id=draft.id,
+            )
+        )
     return items
 
 
 def for_creator(db: Session, creator_id: uuid.UUID, now: datetime) -> list[AttentionItem]:
-    """Memos to answer, and work to deliver or redo, in three queries."""
+    """Memos to answer, and drafts and work to deliver or redo.
+
+    Three queries, and one more only when a deal has a draft review (item 27).
+    """
     items: list[AttentionItem] = []
 
     for memo_id, due_on, application_id, campaign_id, title, brand_name in db.execute(
@@ -175,15 +239,25 @@ def for_creator(db: Session, creator_id: uuid.UUID, now: datetime) -> list[Atten
             .order_by(DeliverableProof.created_at, DeliverableProof.id)
         ):
             proofs[proof.deal_memo_id].append(proof)
+    drafts: dict[uuid.UUID, list[ContentDraft]] = defaultdict(list)
+    reviewed = [memo.id for memo, *_ in accepted if memo.draft_review]
+    if reviewed:
+        for draft in db.scalars(
+            select(ContentDraft)
+            .where(ContentDraft.deal_memo_id.in_(reviewed))
+            .order_by(ContentDraft.deal_memo_id, ContentDraft.round)
+        ):
+            drafts[draft.deal_memo_id].append(draft)
 
     for memo, campaign_id, title, brand_name in accepted:
-        kind = _work_waiting(memo, proofs[memo.id], now)
+        kind = _work_waiting(memo, proofs[memo.id], drafts[memo.id], now)
         if kind is None:
             continue
         items.append(
             AttentionItem(
                 kind=kind,
-                due_on=memo.content_due_on,
+                # Moved by the brand's waiting on drafts (D-140).
+                due_on=delivery_due_on(memo, drafts[memo.id], now),
                 campaign_id=campaign_id,
                 campaign_title=title,
                 counterparty=brand_name,
@@ -195,11 +269,18 @@ def for_creator(db: Session, creator_id: uuid.UUID, now: datetime) -> list[Atten
 
 
 def _work_waiting(
-    memo: DealMemo, proofs: list[DeliverableProof], now: datetime
+    memo: DealMemo,
+    proofs: list[DeliverableProof],
+    drafts: list[ContentDraft],
+    now: datetime,
 ) -> str | None:
     """What an accepted deal still needs from the creator, if anything."""
     if any(is_approved(memo, proof, proofs, now) for proof in proofs):
         return None  # delivered
+    if memo.draft_review and approved_among(memo, drafts, now) is None:
+        if any(draft.status == "submitted" for draft in drafts):
+            return None  # the draft waits on the brand
+        return "revise_draft" if drafts else "show_draft"
     if any(proof.status == "submitted" for proof in proofs):
         return None  # waiting on the brand, not the creator
     if proofs and proofs[-1].status == "revision_requested":

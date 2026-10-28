@@ -91,7 +91,27 @@ class MemoCreate(BaseModel):
     usage_rights_days: UsageRightsDays | None = None
     content_due_on: date | None = None
     disclosure_required: bool = True
+    draft_review: bool = Field(
+        default=False,
+        description=(
+            "The creator shows a draft (`POST .../drafts`) before posting, and "
+            "proof waits for it to be approved; the brand has the approval "
+            "window to answer, and silence approves (item 27)"
+        ),
+    )
     extra_terms: ExtraTerms | None = None
+
+
+# Memo fields that always hold a value: a change may set them, never empty them.
+_ALWAYS_SET: tuple[str, ...] = (
+    "deliverables",
+    "deliverable_items",
+    "cancellation_fee_paise",
+    "approval_window_days",
+    "payment_due_days",
+    "disclosure_required",
+    "draft_review",
+)
 
 
 class MemoUpdate(BaseModel):
@@ -108,12 +128,20 @@ class MemoUpdate(BaseModel):
     usage_rights_days: UsageRightsDays | None = None
     content_due_on: date | None = None
     disclosure_required: bool | None = None
+    draft_review: bool | None = None
     extra_terms: ExtraTerms | None = None
 
     @model_validator(mode="after")
     def at_least_one_field(self) -> MemoUpdate:
         if not self.model_fields_set:
             raise PydanticCustomError("empty_update", "Send at least one field to change")
+        # These always have a value; null would reach the database as one
+        # (found by the independent review of item 27, 27 October 2026).
+        for name in _ALWAYS_SET:
+            if name in self.model_fields_set and getattr(self, name) is None:
+                raise PydanticCustomError(
+                    "value_required", "{field} cannot be null", {"field": name}
+                )
         return self
 
 
@@ -154,6 +182,12 @@ class MemoFields(BaseModel):
     usage_rights_days: int | None
     content_due_on: date | None
     disclosure_required: bool
+    draft_review: bool = Field(
+        description=(
+            "A draft is shown and approved before proof (item 27); sealed with "
+            "the terms from 27 October 2026, false on every memo before"
+        )
+    )
     extra_terms: str | None
     status: MemoStatus
     revision_count: int
@@ -224,6 +258,7 @@ DealStageName = Literal[
     "draft",
     "memo_sent",
     "agreed",
+    "draft_review",
     "in_progress",
     "payment",
     "finished",
@@ -241,7 +276,8 @@ class MemoWithStageRead(MemoRead):
 
     Worked out from the memo, its proof and its payment as of the request,
     never stored. The five stages a deal passes through are `memo_sent`,
-    `agreed`, `in_progress`, `payment`, `finished`; `draft`, `declined` and
+    `agreed`, `in_progress`, `payment`, `finished`, with `draft_review`
+    between `agreed` and `in_progress` on a deal agreed with one (item 27); `draft`, `declined` and
     `cancelled` sit outside them. A barter deal is `finished` once its work
     is approved; a paid one only when the creator confirms the money arrived.
     """
@@ -251,6 +287,17 @@ class MemoWithStageRead(MemoRead):
         description="The side whose move it is; null once the deal has ended"
     )
     has_open_dispute: bool
+    work_due_on: date | None = Field(
+        description=(
+            "The date the work is due by: `content_due_on`, moved a day for every "
+            "distinct calendar day, in Tamil Nadu, the brand held a draft shown in "
+            "time, from the day it was shown to the day it answered, both included "
+            "(D-140), never past a cancellation; a draft shown after the date moves "
+            "nothing. Show this "
+            "as the due date; it equals `content_due_on` on a deal without a "
+            "draft review. Null when no date was agreed"
+        )
+    )
 
 
 def with_stage(
@@ -261,6 +308,7 @@ def with_stage(
         stage=found.stage,
         waiting_on=found.waiting_on,
         has_open_dispute=found.has_open_dispute,
+        work_due_on=found.work_due_on,
     )
 
 
@@ -290,16 +338,22 @@ class CreatorDeliveryRead(BaseModel):
     deals_not_delivered: int = Field(
         description=(
             "Cancelled by the creator after work had started, or nothing "
-            "delivered 14 days after the agreed date"
+            "delivered 14 days after the date it was due by (the agreed date, "
+            "moved by the brand's time on drafts shown in time; the 14 days grow "
+            "by its time on late drafts, D-140)"
         )
     )
     currently_overdue: int = Field(
-        description="Deals past their agreed date with nothing delivered yet"
+        description="Deals past the date their work was due by (the agreed date, "
+        "moved by the brand's time on drafts shown in time, D-140) with nothing "
+        "delivered yet"
     )
     delivered_on_time_share: float | None = Field(
         description=(
-            "Share of completed deals delivered by the agreed date, judged by "
-            "the first submission. Null below three completed deals"
+            "Share of completed deals delivered by the date their work was due "
+            "by (the agreed date, moved by the brand's time on drafts shown in "
+            "time, D-140), judged by the first submission. Null below three "
+            "completed deals"
         )
     )
     disclosure_confirmed_share: float | None = Field(

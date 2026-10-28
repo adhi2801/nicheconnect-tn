@@ -14,7 +14,7 @@ from hypothesis import strategies as st
 from app.core.clock import IST, india_date
 from app.modules.deal_memo.models import MAX_WINDOW_DAYS, MEMO_STATUSES, DealMemo
 from app.modules.deal_memo.proof_models import PROOF_STATUSES, DeliverableProof
-from app.modules.deal_memo.proof_service import approval_deadline
+from app.modules.deal_memo.review_clock import approval_deadline
 from app.modules.deal_memo.stage import DEAL_STAGES, ENDED, FINISHED, PAYMENT, stage_of
 from app.modules.payment_status.models import PaymentStatus
 

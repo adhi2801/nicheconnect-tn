@@ -105,7 +105,7 @@ def test_a_memo_with_a_list_cannot_be_deleted(db, parents):
         )
 
 
-@pytest.mark.parametrize("version", ["0", "3"])
+@pytest.mark.parametrize("version", ["0", "4"])
 def test_a_terms_version_the_record_cannot_read_is_refused(db, parents, version):
     with pytest.raises(IntegrityError, match="ck_deal_memo_terms_version_known"):
         db.execute(
@@ -114,10 +114,11 @@ def test_a_terms_version_the_record_cannot_read_is_refused(db, parents, version)
         )
 
 
-def test_a_new_memo_is_terms_version_2(db, parents):
+def test_a_new_memo_is_terms_version_3(db, parents):
+    """Version 3 adds the draft review to the seal (item 27, D-140)."""
     version = db.execute(
         text("SELECT terms_version FROM deal_memo WHERE id = :m"),
         {"m": parents["memo_deliverable"]},
     ).scalar_one()
 
-    assert version == 2
+    assert version == 3

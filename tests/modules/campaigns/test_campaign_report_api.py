@@ -19,8 +19,8 @@ from app.modules.deal_memo.anchor_service import covers_until
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof, ProofFile
 from app.modules.deal_memo.proof_reading_models import ProofFileReading
-from app.modules.deal_memo.proof_service import approval_deadline
 from app.modules.deal_memo.record_service import Verification
+from app.modules.deal_memo.review_clock import approval_deadline
 from app.modules.payment_status.models import PaymentStatus
 from tests.deal_flow import (
     AGREED_DUE_ON,

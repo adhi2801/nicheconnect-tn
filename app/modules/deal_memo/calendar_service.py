@@ -3,7 +3,9 @@
 Only an accepted deal has agreed dates; any other gets an empty calendar,
 which is a valid file. The events, each with a reminder a day before:
 
-- the content due date in the memo, all day;
+- the content due date, all day: the memo's, moved a day for every
+  calendar day the brand held a draft, its answer day included (D-140);
+- while a draft waits for the brand, the moment it approves itself (D-140);
 - while proof waits for the brand, the moment it approves itself (D-025);
 - while the payment is unconfirmed, its due date, all day.
 
@@ -14,16 +16,22 @@ trust-and-safety.md section 5, never a promise about money (constraint 1).
 A fixed number of queries whatever the deal's history.
 """
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, noload
 
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.calendar_ics import Event
+from app.modules.deal_memo.draft_models import ContentDraft
+from app.modules.deal_memo.draft_rules import (
+    answer_deadline,
+    delivery_due_on,
+    shown_in_time,
+)
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof
-from app.modules.deal_memo.proof_service import approval_deadline
+from app.modules.deal_memo.review_clock import approval_deadline
 from app.modules.payment_status.models import PaymentStatus
 
 REMIND = timedelta(hours=24)
@@ -34,8 +42,8 @@ def uid(memo: DealMemo, kind: str) -> str:
     return f"deal-{memo.id}-{kind}@nicheconnect-tn"
 
 
-def deal_dates(db: Session, memo: DealMemo) -> tuple[str, list[Event]]:
-    """The calendar's name and its events, for either party."""
+def deal_dates(db: Session, memo: DealMemo, now: datetime) -> tuple[str, list[Event]]:
+    """The calendar's name and its events, for either party, as of `now`."""
     title = db.scalar(
         select(Campaign.title)
         .join(Application, Application.campaign_id == Campaign.id)
@@ -46,13 +54,48 @@ def deal_dates(db: Session, memo: DealMemo) -> tuple[str, list[Event]]:
         return name, []
 
     events: list[Event] = []
-    if memo.content_due_on is not None:
+    drafts: list[ContentDraft] = []
+    if memo.draft_review:
+        drafts = list(
+            db.scalars(
+                select(ContentDraft)
+                .where(ContentDraft.deal_memo_id == memo.id)
+                .order_by(ContentDraft.round)
+            ).all()
+        )
+    due_on = delivery_due_on(memo, drafts, now)
+    waiting_draft = drafts[-1] if drafts and drafts[-1].status == "submitted" else None
+    if waiting_draft is not None and now >= answer_deadline(memo, waiting_draft, drafts):
+        waiting_draft = None  # already approved by the clock, even if not yet recorded
+    if due_on is not None and memo.content_due_on is not None:
+        moved = (due_on - memo.content_due_on).days
+        said = "The date agreed in the deal memo"
+        if moved:
+            said += f", moved {moved} day{'s' if moved > 1 else ''} for the days the brand held a draft"
+        if waiting_draft is not None and shown_in_time(memo, drafts, waiting_draft, now):
+            said += (
+                ". A draft is waiting for the brand, so this date moves a day for "
+                "each day it waits: add this file again once it is answered"
+            )
         events.append(
             Event(
                 uid=uid(memo, "content-due"),
                 summary=f"Content due: {title}",
-                description=f"The date agreed in the deal memo. {SAFETY}",
-                start=memo.content_due_on,
+                description=f"{said}. {SAFETY}",
+                start=due_on,
+                remind_before=REMIND,
+            )
+        )
+    if waiting_draft is not None:
+        events.append(
+            Event(
+                uid=uid(memo, "draft-approval"),
+                summary=f"Draft approves itself: {title}",
+                description=(
+                    "Unless the brand approves it or asks for changes first, the "
+                    f"draft is approved at this moment. {SAFETY}"
+                ),
+                start=answer_deadline(memo, waiting_draft, drafts),
                 remind_before=REMIND,
             )
         )

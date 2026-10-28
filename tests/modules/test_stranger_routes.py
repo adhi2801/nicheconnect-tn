@@ -163,6 +163,8 @@ BODIES: dict[str, dict[str, Any]] = {
     "CreatorListIn": {"name": "Diwali food creators"},
     "ShipmentIn": {"carrier": "india_post", "tracking_number": "EE123456789IN"},
     "FeedbackIn": {"brief": 5, "reliability": 5, "easy": 5},
+    "DraftCreate": {"body": "Pongal at home, the Madurai way. Ad."},
+    "ChangesRequest": {"note": "Please add the ad label."},
 }
 
 
@@ -385,6 +387,15 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
     )
     token_id = agent_token.id
 
+    # A deal agreed with a draft review, and its draft (item 27).
+    reviewing_creator = creator_user(db, clock)
+    review_memo_id = accepted_memo(client, brand, reviewing_creator, draft_review=True)
+    draft_id = client.post(
+        f"{MEMOS_URL}/{review_memo_id}/drafts",
+        json=BODIES["DraftCreate"],
+        headers=reviewing_creator.headers,
+    ).json()["id"]
+
     # A second deal, approved but not yet paid, for the pay details.
     unpaid_creator = creator_user(db, clock)
     unpaid_memo_id = accepted_memo(client, brand, unpaid_creator)
@@ -424,6 +435,7 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
         "list_id": list_id,
         "alert_id": alert_id,
         "token_id": token_id,
+        "draft_id": draft_id,
         "confirmation_code": confirmation_code,
         "barter_memo_id": barter_memo_id,
         "account_id": brand.account_id,

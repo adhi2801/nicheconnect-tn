@@ -5,9 +5,13 @@ rules, for the same reasons (D-038):
 
 1. **Silence must not launder a bad record.** A creator who accepts a deal
    and then simply never delivers is the least likely person to report it,
-   and a brand that was let down usually just leaves. So once the agreed
-   date is 14 days past with nothing delivered, the deal counts as not
-   delivered whether or not anybody complained: the calendar reports it.
+   and a brand that was let down usually just leaves. So once the date the
+   work was due by is 14 days past with nothing delivered, the deal counts
+   as not delivered whether or not anybody complained: the calendar reports
+   it. On a deal with a draft review that date is the agreed one moved by
+   the brand's time on drafts shown in time, and the 14 days grow by the
+   brand's time on late ones, since proof waits for the brand's answer
+   (`draft_rules`, item 27).
 2. **"New" must not be a hiding place.** `currently_overdue` is reported
    always, below the three-deal floor as well as above it.
 3. **Nothing is smoothed.** The counts travel with the figures, and below
@@ -25,6 +29,7 @@ Every date is read on Tamil Nadu's calendar (D-030 point 1).
 
 import uuid
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
@@ -35,9 +40,11 @@ from sqlalchemy.orm import Session
 from app.core.clock import india_date
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.models import Application, Campaign
+from app.modules.deal_memo.draft_models import ContentDraft
+from app.modules.deal_memo.draft_rules import delivery_due_on, due_and_late_days
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof
-from app.modules.deal_memo.proof_service import approval_deadline
+from app.modules.deal_memo.review_clock import approval_deadline
 
 # Below this, the figures are withheld (the same floor as D-027).
 MIN_DEALS_FOR_HISTORY = 3
@@ -107,8 +114,18 @@ def is_approved(
     return proof.status == "submitted" and now >= approval_deadline(memo, proof, history)
 
 
-def classify(memo: DealMemo, proofs: list[DeliverableProof], now: datetime) -> Outcome:
-    """Where this accepted deal stands for the creator, as of `now`."""
+def classify(
+    memo: DealMemo,
+    proofs: list[DeliverableProof],
+    now: datetime,
+    drafts: Sequence[ContentDraft] = (),
+) -> Outcome:
+    """Where this accepted deal stands for the creator, as of `now`.
+
+    On a deal with a draft review, the due date moves by every calendar day
+    the brand held a draft shown in time, its answer day included
+    (`draft_rules.delivery_due_on`, item 27).
+    """
     if memo.status == "cancelled":
         if memo.cancellation_kind == "cancelled_by_creator":
             return Outcome.NOT_DELIVERED
@@ -121,25 +138,35 @@ def classify(memo: DealMemo, proofs: list[DeliverableProof], now: datetime) -> O
         return Outcome.IN_PROGRESS
 
     today = india_date(now)
-    due_on = memo.content_due_on
+    due_on, held_late = due_and_late_days(memo, drafts, now)
     if due_on is None or today <= due_on:
         return Outcome.IN_PROGRESS
-    if today >= due_on + timedelta(days=NOT_DELIVERED_AFTER_DUE_DAYS):
+    # The brand's days on a late draft wait for proof too: they extend the
+    # limit, never the date (Adhi's choice, the sixth review of item 27).
+    limit = NOT_DELIVERED_AFTER_DUE_DAYS + held_late
+    if today >= due_on + timedelta(days=limit):
         return Outcome.NOT_DELIVERED
     return Outcome.OVERDUE
 
 
-def _on_time(memo: DealMemo, proofs: list[DeliverableProof]) -> bool:
+def _on_time(
+    memo: DealMemo,
+    proofs: list[DeliverableProof],
+    drafts: Sequence[ContentDraft] = (),
+) -> bool:
     """Delivered by the agreed date, judged by when the creator first submitted.
 
-    The brand's review time is the brand's, not the creator's. A deal with
-    no agreed date cannot have been late. Only called for delivered deals,
-    which always have at least one submission.
+    The brand's review time is the brand's, not the creator's: its proof
+    review and, on a deal with a draft review, every day it held a draft
+    shown in time (`draft_rules.delivery_due_on`). A deal with no agreed
+    date cannot have been late. Only called for delivered deals, which always
+    have at least one submission.
     """
-    if memo.content_due_on is None:
+    first_submitted = min(proof.created_at for proof in proofs)
+    due_on = delivery_due_on(memo, drafts, first_submitted)
+    if due_on is None:
         return True
-    first_submitted_on = india_date(min(proof.created_at for proof in proofs))
-    return first_submitted_on <= memo.content_due_on
+    return india_date(first_submitted) <= due_on
 
 
 def _disclosure_confirmed(
@@ -155,6 +182,7 @@ def build_record(
     creator_id: uuid.UUID,
     now: datetime,
     brand_of: dict[uuid.UUID, uuid.UUID],
+    drafts_by_memo: dict[uuid.UUID, list[ContentDraft]] | None = None,
 ) -> DeliveryRecord:
     """Work the record out from rows. Pure, so it is easy to trust.
 
@@ -167,9 +195,10 @@ def build_record(
     barter_delivered = 0
     barter_not_delivered = 0
     completed_with: set[uuid.UUID | None] = set()
+    drafts_of = drafts_by_memo or {}
     for memo, campaign_type in deals:
         proofs = proofs_by_memo.get(memo.id, [])
-        outcome = classify(memo, proofs, now)
+        outcome = classify(memo, proofs, now, drafts_of.get(memo.id, ()))
         if campaign_type == "barter":
             if outcome is Outcome.DELIVERED:
                 barter_delivered += 1
@@ -197,7 +226,11 @@ def build_record(
         # who delivered none of three reads 0.0, not "no figure".
         on_time_share = (
             sum(
-                1 for memo in delivered if _on_time(memo, proofs_by_memo.get(memo.id, []))
+                1
+                for memo in delivered
+                if _on_time(
+                    memo, proofs_by_memo.get(memo.id, []), drafts_of.get(memo.id, ())
+                )
             )
             / completed
         )
@@ -243,6 +276,7 @@ def for_creators(
     """Each creator's delivery record as of `now`, in two queries however many.
 
     For a page of creators (a saved list, D-129): never a query per creator.
+    A third reads drafts, only when a deal has a draft review (item 27).
     """
     rows = (
         list(
@@ -279,9 +313,21 @@ def for_creators(
             .order_by(DeliverableProof.created_at, DeliverableProof.id)
         ):
             proofs_by_memo[proof.deal_memo_id].append(proof)
+    drafts_by_memo: dict[uuid.UUID, list[ContentDraft]] = defaultdict(list)
+    reviewed = [memo.id for memo, *_ in rows if memo.draft_review]
+    if reviewed:
+        for draft in db.scalars(
+            select(ContentDraft).where(ContentDraft.deal_memo_id.in_(reviewed))
+        ):
+            drafts_by_memo[draft.deal_memo_id].append(draft)
     return {
         creator_id: build_record(
-            deals_of.get(creator_id, []), proofs_by_memo, creator_id, now, brand_of
+            deals_of.get(creator_id, []),
+            proofs_by_memo,
+            creator_id,
+            now,
+            brand_of,
+            drafts_by_memo,
         )
         for creator_id in creator_ids
     }

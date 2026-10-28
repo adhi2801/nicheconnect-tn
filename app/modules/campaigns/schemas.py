@@ -545,6 +545,9 @@ class DealStageCountsRead(BaseModel):
     draft: int
     memo_sent: int
     agreed: int
+    draft_review: int = Field(
+        description="Deals whose draft is waiting or being changed (item 27)"
+    )
     in_progress: int
     payment: int
     finished: int
