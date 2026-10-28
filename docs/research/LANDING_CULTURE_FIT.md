@@ -26,6 +26,7 @@ Read with `TAMIL_DESIGN_ROOTS.md` (the roots and their sources) and `FRONTEND_RE
   - temple bells, chants and any sacred sound;
   - theistic verses;
   - one faith's festivals as the main theme;
+  - **anything that reads as the BJP's**: no lotus, no saffron or orange (`TAMIL_DESIGN_ROOTS.md` rule 6, Adhi, 29 October 2026); a sunrise appears only as natural light, never as an emblem;
   - caste and community emblems;
   - political symbols.
 
@@ -39,7 +40,7 @@ Read with `TAMIL_DESIGN_ROOTS.md` (the roots and their sources) and `FRONTEND_RE
 - **The first judgement comes in a fraction of a second, and it lasts.**
   - Lindgaard and others (2006): visual appeal is judged in about 50 ms.
   - A replication found ratings after 500 ms closely match ratings after 10 s ([summary](https://uxpsychology.substack.com/p/5-second-tests-measuring-first-impressions)).
-  - **For Colyv:** the first screen, the temple at sunrise and the headline, carries most of the first impression. That is why it gets the most effort.
+  - **For Colyv:** the first screen, the temple in morning light and the headline, carries most of the first impression. That is why it gets the most effort.
 - **Interfaces adapted to a culture earn more trust.**
   - Cyr's cross-cultural studies (571 people in Canada, Germany and China; later eight countries and 1,156 people) found that design drives trust and loyalty differently by culture. In China, visual design and navigation mattered most for trust.
   - Colour appeal affected trust and satisfaction, with cultural differences. She concluded that localised interfaces raise trust, satisfaction and loyalty ([JMIS 2008](https://jmis-web.org/articles/247); [SFU](https://beedie.sfu.ca/blog/?p=6383)).

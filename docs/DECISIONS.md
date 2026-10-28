@@ -1828,3 +1828,17 @@ Newest entries at the bottom.
     - the colour direction (burgundy and gold, or Harish's green), for both founders;
     - where the doll's 3D reference comes from (a doll we buy, or the prototype's own picture if Adhi made it);
     - a primary architectural source for the vimana's proportions.
+
+## D-143: Nothing on Colyv reads as the BJP's: no lotus, no saffron or orange
+- Date: 2026-10-29
+- Approved by: Adhi, in this session: "no lotus and safron and orange no bjp", then "rsing sun can be there if needed", then "only bjp and stuff is reject not dmk". **Not reviewed by the other founder** (D-051).
+- Context: the temple study used carved lotus medallions, lotus-petal bands and a saffron-orange sunrise sky. The lotus is the BJP's election symbol and saffron its colour.
+- Options considered:
+  - A) keep old Tamil motifs whatever their present political reading;
+  - B) drop any motif or colour of any party;
+  - C) drop what reads as the BJP's (the lotus, saffron and orange) and judge other motifs on their own.
+- Chosen: C.
+- Reason: Adhi's direction. Claude advised that avoiding one party's marks while showing another's can read as partisan. So a sunrise appears only as natural light in a scene, never as an emblem.
+- Consequences / follow-ups:
+  - `docs/research/TAMIL_DESIGN_ROOTS.md` gains rule 6 and withdraws "kaavi red" (kaavi is also the word for saffron); `docs/standards/frontend.md` 8a and `docs/research/LANDING_CULTURE_FIT.md` follow.
+  - The temple study loses its lotus carvings (replaced with geometric kolam panels and bead bands) and its orange sky.
