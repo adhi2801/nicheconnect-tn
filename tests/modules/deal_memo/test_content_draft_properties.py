@@ -339,3 +339,40 @@ def test_an_answer_to_a_draft_in_time_always_leaves_the_next_day(plan, window, d
         at = d.answered_at
         if shown_in_time(m, drafts, d, at):
             assert delivery_due_on(m, drafts, at) > india_date(at)
+
+
+@given(steps=histories, window=windows, due_in=dues, now=minutes, later=minutes)
+def test_a_deal_never_returns_from_not_delivered(steps, window, due_in, now, later):
+    """Found by the seventh review: the limit grows at most a day a day, so the gap never shrinks."""
+    from app.modules.deal_memo.delivery_record import Outcome, classify
+
+    m = due_memo(window, due_in)
+    drafts = build(steps)
+    when = START + timedelta(minutes=now)
+
+    if classify(m, [], when, drafts) == Outcome.NOT_DELIVERED:
+        assert (
+            classify(m, [], when + timedelta(minutes=later), drafts)
+            == Outcome.NOT_DELIVERED
+        )
+
+
+@given(at=minutes, window=windows, due_in=dues, later=minutes)
+def test_a_late_draft_waiting_on_the_brand_is_never_not_delivered(
+    at, window, due_in, later
+):
+    from app.modules.deal_memo.delivery_record import Outcome, classify
+
+    m = due_memo(window, due_in)
+    d = draft(START + timedelta(minutes=at))
+    when = min(
+        d.created_at + timedelta(minutes=later),
+        answer_deadline(m, d, [d]) - timedelta(microseconds=1),
+    )
+
+    # Late, still waiting, and shown before the deal was already past its limit.
+    shown_before_the_limit = india_date(d.created_at) < m.content_due_on + timedelta(
+        days=14
+    )
+    if not shown_in_time(m, [d], d, when) and shown_before_the_limit:
+        assert classify(m, [], when, [d]) != Outcome.NOT_DELIVERED

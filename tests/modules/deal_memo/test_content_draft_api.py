@@ -1142,3 +1142,47 @@ def test_a_late_waiting_draft_promises_no_moving_date(client, brand, creator, cl
     ics = client.get(f"{MEMOS_URL}/{memo_id}/calendar.ics", headers=brand.headers).text
 
     assert "add this file again" not in ics.replace("\r\n ", "")
+
+
+def test_change_requests_on_a_late_draft_never_make_it_not_delivered(
+    client, db, brand, creator, clock
+):
+    """Found by the seventh review: only the brand's silence was tested."""
+    from app.core.clock import IST
+
+    memo_id = accepted_memo(
+        client, brand, creator, draft_review=True, content_due_on="2026-09-20"
+    )
+    day = datetime(2026, 9, 21, 10, 0, tzinfo=IST)  # a day late
+    for _ in range(10):  # a round every two days: shown, then sent back the next day
+        clock.now = day
+        draft = shown(client, creator, memo_id)
+        clock.now = day + timedelta(days=1)
+        ask_changes(client, brand, memo_id, draft["id"])
+        day += timedelta(days=2)
+    clock.now = day  # 11 Oct: 21 days past due, the creator's turn
+
+    record = client.get(
+        f"/api/v1/creators/{creator_id_of(db, creator)}/delivery-record",
+        headers=brand.headers,
+    ).json()
+
+    assert (record["currently_overdue"], record["deals_not_delivered"]) == (1, 0)
+
+
+def test_not_delivered_begins_on_the_extended_day(client, db, brand, creator, clock):
+    from app.core.clock import IST
+
+    memo_id = accepted_memo(
+        client, brand, creator, draft_review=True, content_due_on="2026-09-20"
+    )
+    clock.now = datetime(2026, 9, 21, 10, 0, tzinfo=IST)  # late
+    draft = shown(client, creator, memo_id)
+    clock.now = datetime(2026, 9, 21, 12, 0, tzinfo=IST)  # sent back the same day: 1 held
+    ask_changes(client, brand, memo_id, draft["id"])
+    url = f"/api/v1/creators/{creator_id_of(db, creator)}/delivery-record"
+
+    clock.now = datetime(2026, 10, 4, 10, 0, tzinfo=IST)  # 20 Sep + 14 + 1 - 1
+    assert client.get(url, headers=brand.headers).json()["deals_not_delivered"] == 0
+    clock.now = datetime(2026, 10, 5, 10, 0, tzinfo=IST)  # 20 Sep + 14 + 1
+    assert client.get(url, headers=brand.headers).json()["deals_not_delivered"] == 1

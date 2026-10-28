@@ -338,16 +338,22 @@ class CreatorDeliveryRead(BaseModel):
     deals_not_delivered: int = Field(
         description=(
             "Cancelled by the creator after work had started, or nothing "
-            "delivered 14 days after the agreed date"
+            "delivered 14 days after the date it was due by (the agreed date, "
+            "moved by the brand's time on drafts shown in time; the 14 days grow "
+            "by its time on late drafts, D-140)"
         )
     )
     currently_overdue: int = Field(
-        description="Deals past their agreed date with nothing delivered yet"
+        description="Deals past the date their work was due by (the agreed date, "
+        "moved by the brand's time on drafts shown in time, D-140) with nothing "
+        "delivered yet"
     )
     delivered_on_time_share: float | None = Field(
         description=(
-            "Share of completed deals delivered by the agreed date, judged by "
-            "the first submission. Null below three completed deals"
+            "Share of completed deals delivered by the date their work was due "
+            "by (the agreed date, moved by the brand's time on drafts shown in "
+            "time, D-140), judged by the first submission. Null below three "
+            "completed deals"
         )
     )
     disclosure_confirmed_share: float | None = Field(

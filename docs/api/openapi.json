@@ -3965,7 +3965,7 @@
             "type": "string"
           },
           "currently_overdue": {
-            "description": "Deals past their agreed date with nothing delivered yet",
+            "description": "Deals past the date their work was due by (the agreed date, moved by the brand's time on drafts shown in time, D-140) with nothing delivered yet",
             "title": "Currently Overdue",
             "type": "integer"
           },
@@ -3979,7 +3979,7 @@
             "type": "integer"
           },
           "deals_not_delivered": {
-            "description": "Cancelled by the creator after work had started, or nothing delivered 14 days after the agreed date",
+            "description": "Cancelled by the creator after work had started, or nothing delivered 14 days after the date it was due by (the agreed date, moved by the brand's time on drafts shown in time; the 14 days grow by its time on late drafts, D-140)",
             "title": "Deals Not Delivered",
             "type": "integer"
           },
@@ -3992,7 +3992,7 @@
                 "type": "null"
               }
             ],
-            "description": "Share of completed deals delivered by the agreed date, judged by the first submission. Null below three completed deals",
+            "description": "Share of completed deals delivered by the date their work was due by (the agreed date, moved by the brand's time on drafts shown in time, D-140), judged by the first submission. Null below three completed deals",
             "title": "Delivered On Time Share"
           },
           "disclosure_confirmed_share": {

@@ -5,9 +5,13 @@ rules, for the same reasons (D-038):
 
 1. **Silence must not launder a bad record.** A creator who accepts a deal
    and then simply never delivers is the least likely person to report it,
-   and a brand that was let down usually just leaves. So once the agreed
-   date is 14 days past with nothing delivered, the deal counts as not
-   delivered whether or not anybody complained: the calendar reports it.
+   and a brand that was let down usually just leaves. So once the date the
+   work was due by is 14 days past with nothing delivered, the deal counts
+   as not delivered whether or not anybody complained: the calendar reports
+   it. On a deal with a draft review that date is the agreed one moved by
+   the brand's time on drafts shown in time, and the 14 days grow by the
+   brand's time on late ones, since proof waits for the brand's answer
+   (`draft_rules`, item 27).
 2. **"New" must not be a hiding place.** `currently_overdue` is reported
    always, below the three-deal floor as well as above it.
 3. **Nothing is smoothed.** The counts travel with the figures, and below
@@ -37,7 +41,7 @@ from app.core.clock import india_date
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.draft_models import ContentDraft
-from app.modules.deal_memo.draft_rules import days_held_late, delivery_due_on
+from app.modules.deal_memo.draft_rules import delivery_due_on, due_and_late_days
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof
 from app.modules.deal_memo.review_clock import approval_deadline
@@ -134,12 +138,12 @@ def classify(
         return Outcome.IN_PROGRESS
 
     today = india_date(now)
-    due_on = delivery_due_on(memo, drafts, now)
+    due_on, held_late = due_and_late_days(memo, drafts, now)
     if due_on is None or today <= due_on:
         return Outcome.IN_PROGRESS
     # The brand's days on a late draft wait for proof too: they extend the
     # limit, never the date (Adhi's choice, the sixth review of item 27).
-    limit = NOT_DELIVERED_AFTER_DUE_DAYS + days_held_late(memo, drafts, now)
+    limit = NOT_DELIVERED_AFTER_DUE_DAYS + held_late
     if today >= due_on + timedelta(days=limit):
         return Outcome.NOT_DELIVERED
     return Outcome.OVERDUE
@@ -154,8 +158,9 @@ def _on_time(
 
     The brand's review time is the brand's, not the creator's: its proof
     review and, on a deal with a draft review, every day it held a draft
-    shown in time (`draft_rules.delivery_due_on`). A deal with no agreed date cannot have been late. Only called for
-    delivered deals, which always have at least one submission.
+    shown in time (`draft_rules.delivery_due_on`). A deal with no agreed
+    date cannot have been late. Only called for delivered deals, which always
+    have at least one submission.
     """
     first_submitted = min(proof.created_at for proof in proofs)
     due_on = delivery_due_on(memo, drafts, first_submitted)

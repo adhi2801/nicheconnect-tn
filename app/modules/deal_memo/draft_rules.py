@@ -12,22 +12,21 @@ Two rules on top of proof's clock (D-025, `review_clock`), Adhi's choices of
   long after the clock restarted is not approved the moment it arrives, so
   nothing is approved that the brand had no chance to see.
 - **The brand's waiting is the brand's.** The creator's due date moves by
-  every Tamil Nadu calendar day the brand held a draft, from the day it was
-  shown to the day it was answered, both included, before "on time" is
-  judged. Each date counts once however many rounds it held, and a draft
-  shown after the due date (as moved so far) moves nothing, so a creator
-  can neither stack rounds into extra days nor wash out lateness (Adhi's
-  choices after the fifth review). The brand's days on a late draft still
-  count, but only toward the "not delivered" limit, never toward on time:
-  the creator stays late, and is never made "not delivered" by a brand
-  sitting on a draft that proof has to wait for (sixth review). Calendar days, because a due date is a date and lateness is
-  judged by date; the answer day too, so the creator always has the whole
-  day after an answer (Adhi's choices of 28 October 2026, after the third
-  and fourth reviews). So asking for changes again and again can never
-  push a creator late (each round moves the date at least a day), an
-  approval at 23:59 leaves the creator the next day, and a draft shown in
-  time that still waits counts as if answered today, so it never shows the
-  deal overdue.
+  every Tamil Nadu calendar day the brand held a draft shown in time, from
+  the day it was shown to the day it was answered, both included, before
+  "on time" is judged. Adhi's choices of 28 October 2026, after the third
+  to sixth independent reviews:
+  - calendar days, because a due date is a date and lateness is judged by
+    date; the answer day too, so the creator always has the whole day after
+    an answer: asking for changes again and again can never push a creator
+    late, an approval at 23:59 leaves the creator the next day, and a draft
+    shown in time that still waits counts as answered today, so it never
+    shows the deal overdue;
+  - each date once however many rounds it held, so rounds cannot be
+    stacked into extra days;
+  - a draft shown after the due date (as moved so far) moves nothing, so
+    lateness cannot be washed out; the brand's days on it extend only the
+    "not delivered" limit, because proof has to wait for its answer.
   The clock answers at the midnight that ends the brand's last day, so that
   last day is its answer day. The creator's own rework time stays theirs.
 - **A deal cancelled before a deadline never reaches it.** A draft still
@@ -119,11 +118,23 @@ def days_waiting_on_brand(
 
 
 def days_held_late(memo: DealMemo, drafts: Sequence[ContentDraft], now: datetime) -> int:
-    """Distinct dates the brand held only late drafts: added to the "not delivered" limit."""
-    if not memo.draft_review:
-        return 0
+    """Distinct dates the brand held late drafts: added to the "not delivered" limit."""
+    return due_and_late_days(memo, drafts, now)[1]
+
+
+def due_and_late_days(
+    memo: DealMemo, drafts: Sequence[ContentDraft], now: datetime
+) -> tuple[date | None, int]:
+    """The moved due date and the days the brand held late drafts, in one pass.
+
+    A late draft never shares a date with one shown in time: after any answer
+    to a draft in time the due date is past that day, so a later draft shown
+    late starts after it, and every later draft is late too.
+    """
+    if memo.content_due_on is None or not memo.draft_review:
+        return memo.content_due_on, 0
     in_time, late, _ids = _held(memo, drafts, now)
-    return len(late - in_time)
+    return memo.content_due_on + timedelta(days=len(in_time)), len(late)
 
 
 def shown_in_time(
@@ -176,7 +187,5 @@ def _held(
 def delivery_due_on(
     memo: DealMemo, drafts: Sequence[ContentDraft], now: datetime
 ) -> date | None:
-    """The date the work is due by, with every day the brand held a draft added."""
-    if memo.content_due_on is None or not memo.draft_review:
-        return memo.content_due_on
-    return memo.content_due_on + timedelta(days=days_waiting_on_brand(memo, drafts, now))
+    """The date the work is due by, with every day the brand held a draft in time added."""
+    return due_and_late_days(memo, drafts, now)[0]
