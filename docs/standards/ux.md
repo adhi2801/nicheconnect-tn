@@ -4,7 +4,7 @@ Applies to research, flows, the design system, copy and accessibility, and to **
 
 **Timing (D-053, amending D-004):** research, flows and the design system may be worked on now. No frontend code starts until the backend is complete. Designs are checked against `docs/api/openapi.json`: a screen that needs a field the API does not answer is a backend request, not a frontend decision.
 
-**For:** whoever researches, designs or writes copy, and every backend change that shapes what a person sees, read in full before the first flow or field (`CLAUDE.md` section 6). **Last checked on 14 October 2026**, against the API contract and the research notes. Two claims had stopped being true and are corrected (section 8).
+**For:** whoever researches, designs or writes copy, and every backend change that shapes what a person sees, read in full before the first flow or field (`CLAUDE.md` section 6). **Last checked on 28 October 2026**, when the frontend began (D-141). Earlier, on 14 October, two claims had stopped being true and were corrected (section 8).
 
 **The ten dimensions** (`CLAUDE.md` section 5), and where this standard serves each:
 
@@ -32,7 +32,7 @@ Applies to research, flows, the design system, copy and accessibility, and to **
 7. **Honest about money.** Payment status says what each side reported, never implying the platform moved or holds money (constraint 1).
 8. **Safe by design.** Nobody can be scammed through what we built: money requests and contact details are flagged where they appear, links show where they go, and anyone can block anyone (`docs/standards/trust-and-safety.md` section 5).
 
-The design direction (Modern Tamil, `docs/DESIGN_DIRECTION.md`, on `main` since 10 October) is Adhi's and awaits Erode Harish.
+**The direction is set (D-141): a SaaS product first, with a Tamil soul.** Every visual choice traces to a root in `docs/research/TAMIL_DESIGN_ROOTS.md` or `docs/PSYCHOLOGY_AND_TRUST.md`, and the look is chosen from a coded prototype. The older brief, `docs/DESIGN_DIRECTION.md`, is read through that rule.
 
 ## 2. Research and validation
 
@@ -106,10 +106,11 @@ The design direction (Modern Tamil, `docs/DESIGN_DIRECTION.md`, on `main` since 
 
 | # | Gap | Risk | Acting on it |
 |---|---|---|---|
-| 1 | **No user conversation is recorded.** `docs/research/` holds only its README, so section 2's rule has guarded nothing so far | Flows designed from our assumptions; the most expensive mistake a product makes | Erode Harish (design) runs the first 10, five brands and five creators in Tamil Nadu, with the template in `docs/research/README.md`, before the flows are drawn |
+| 1 | **No user conversation is recorded.** `docs/research/` holds the interview template and desk research, but no interview notes, so section 2's rule has guarded nothing so far | Flows designed from our assumptions; the most expensive mistake a product makes | Erode Harish (design) runs the first 10, five brands and five creators in Tamil Nadu, with the template in `docs/research/README.md`, before the flows are drawn |
 | 2 | **No usability test or five-second test has run** | The same | After gap 1, on the first wireframes |
-| 3 | **The design direction awaits Erode Harish** | Design work on an unconfirmed direction | His confirmation, relayed by Adhi |
+| 3 | **The look is not chosen yet** (the brand book, the dashboard prototype or the green of pull request #78) | Screens built twice | Chosen from a coded prototype of the landing page and one product screen (D-141) |
 | 4 | **"At most two calls" is checked by reading**, not a test | A screen that needs five calls is found by the frontend | When the frontend exists, its API client can count calls per screen in CI |
+| 5 | **Colour and product psychology is researched only at the brand book's depth** | Colours chosen by taste where evidence exists | A research file with dated studies, beside `docs/research/TAMIL_DESIGN_ROOTS.md`, before the tokens are final |
 
 ## 9. Sources
 
