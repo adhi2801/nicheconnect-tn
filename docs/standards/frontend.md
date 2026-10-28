@@ -1,12 +1,12 @@
 # Frontend Standard
 
-**Status: for later, and binding from the first line of frontend code.** Design may run now; frontend **code** starts only when the backend is complete (D-004, amended by D-053), in a repository of its own, never this one. This file exists so the backend is built to serve an excellent frontend, and so frontend work starts with a bar already agreed.
+**Status: binding now.** The frontend is built now, by Claude with Adhi (D-141, reversing D-053's wait); the first code is in `frontend/` (pull request #78). Where it lives for good, and the apps' framework, are open decisions for both founders (`docs/PROPOSAL_FRONTEND_HOME_AND_STACK.md`); the website is built first.
 
 **The bar is excellent, not acceptable.** Every rule here is either measured by a tool and gated in CI, or checked at a named release step. A rule nobody can check is not in this file. Where a published threshold exists (Google's Core Web Vitals, Google Play's Android vitals), our target is stricter than it: staying under a platform's "bad behaviour" line only avoids a penalty.
 
 Rules marked **(decision)** are open and are decided, with a `docs/DECISIONS.md` entry, when frontend work begins. Everything else is settled.
 
-**For:** whoever designs or builds the website or the apps, read in full before the first screen or line of frontend code (`CLAUDE.md` section 6). **Last checked on 14 October 2026**: every link resolved that day; the stack's versions are re-checked when frontend work starts, as section 2 says.
+**For:** whoever designs or builds the website or the apps, read in full before the first screen or line of frontend code (`CLAUDE.md` section 6). **Last checked on 28 October 2026**, when sections 8a to 8d were added; the stack's versions are re-checked as section 2 says.
 
 **The ten dimensions** (`CLAUDE.md` section 5), and where this standard serves each:
 
@@ -14,7 +14,7 @@ Rules marked **(decision)** are open and are decided, with a `docs/DECISIONS.md`
 |---|---|
 | Quality | Every rule measured by a tool or checked at a named release step (sections 11, 12, 14) |
 | Performance | Budgets on a budget Android phone, stricter than Google's thresholds (sections 3, 4) |
-| Design | The design system and its tokens (section 8); flows and copy are `ux.md` |
+| Design | The design system (section 8), the aesthetic bar (8a), 3D (8b), motion (8c); flows and copy are `ux.md` |
 | Security, privacy | The client's duties (section 10); the rules are `security.md` and `legal.md` |
 | Trust and safety | Flags shown beside text, links never made from people's words, report and block one tap away (sections 10, 14; `trust-and-safety.md` section 5) |
 | Architecture | One frontend repository, three apps, one core, a client generated from the contract (section 2) |
@@ -137,6 +137,36 @@ Measured, never estimated (`CLAUDE.md` section 7). **Field data** (real users) i
 - **Every component is documented with every state** (default, pressed, focused, disabled, loading, error) in a component catalogue, and **visual regression tests** catch an unintended change to any of them.
 - No one-off styles in screens. A missing component is added to the system first (`docs/standards/ux.md` section 4).
 
+## 8a. The aesthetic bar (D-141)
+
+- **A SaaS product first, with a Tamil soul.** The structure and precision of the best SaaS sites (Stripe, Linear, Vercel, Mercury): a clear headline with one call to action, real product screens, how it works, proof, pricing, questions; exact type and spacing; speed. The Tamil roots enter through three layers only: **material** (bronze, raised gold, silk borders, granite), **light** (temple dusk, courtyard light) and a few **signature moments** (`docs/research/TAMIL_DESIGN_ROOTS.md`, rule 0). A page that stops looking like a SaaS product has its heritage cut back.
+- **Every visual choice traces to a root**: a source in `docs/research/TAMIL_DESIGN_ROOTS.md` or `docs/PSYCHOLOGY_AND_TRUST.md`, written in the screen's design notes. A choice with no reason is decoration, and decoration is cut.
+- **Benchmarked, not admired.** Each landing-page section and each core screen is put side by side with its strongest reference (named in its notes) and with the prototypes in `frontend/prototypes/`; it ships only when a founder judges it better. Adhi's Interview Coach AI site is far below this bar (28 October 2026), not the bar.
+- **Real content only**: the product's own screens, never illustrations of them; every sample figure labelled as sample.
+- **Images and 3D assets only with written rights**: captured by us, commissioned, or licensed for the web; never stock, never an unknown source.
+- **Raised gold appears only on what cannot change** (the sealed record, the seal, a confirmed payment), and kaavi red only at thresholds (`docs/research/TAMIL_DESIGN_ROOTS.md` sections 5 and 7).
+
+## 8b. 3D (D-141)
+
+- **Where**: the landing page, at full grandeur, and a few signature moments (a deal agreed, a deal sealed, the Passport). Never on working product screens, where it would cost the speed budgets in section 4.
+- **Realism comes from capture**, not hand modelling: Gaussian splats or photogrammetry of objects and places we own or have written permission to capture, with physically based materials (granite, bronze, gold) and baked lighting (`docs/research/TAMIL_DESIGN_ROOTS.md` section 9).
+- **Stack**: React Three Fiber on Three.js's WebGPU renderer with its WebGL 2 fallback; textures in KTX2, geometry compressed with meshopt, splats in a compressed format through a viewer built for phones **(decision: the viewer, after the benchmark below)**.
+- **Budgets**: no 3D starts until the page is readable and its largest content has painted (section 4); each scene's first load stays within a byte budget **(decision: the number, set from a benchmark on the budget Android reference phone before the first scene is built)**; 60 fps on the mid-range reference phone, otherwise a still poster rendered from the same scene; paused when off screen or when the tab is hidden.
+- **Never the only way to know something**: everything a scene says is also in text; reduce motion shows the still; a screen reader hears the text, not the scene.
+- **Measured**: asset sizes checked in CI; frame time measured in a browser test on the reference profile.
+
+## 8c. Motion
+
+- **Motion explains cause and effect.** One orchestrated moment per page; nothing loops except a loading state; nothing moves just to be seen.
+- **Timing, as tokens**: about 120 to 200 ms for a press, 180 to 260 ms for a state change, 220 to 320 ms for a popover or a toast, 400 to 800 ms for a section entering; springs for anything a finger drags, eased curves for everything else, linear only for progress. These start from published practice (community guidance on Stripe, Linear and Apple; Apple's guidance on springs) and are tuned by testing, not taste alone.
+- **Reduce motion**: every animation has a calm version; browser tests run with motion on and off.
+- **Nothing waits on motion to be read**: every page is complete at rest and readable without JavaScript; scroll-driven effects never hide content.
+
+## 8d. Being found and shared
+
+- **Every public page** (the landing page, Passports, city pages, help) is rendered on the server with its own title, description and share image, and structured data where it applies.
+- **A CI test fetches each public page without JavaScript** and fails if its headline and main text are missing. Interview Coach AI's page source was empty to search engines and link previews on 28 October 2026; ours never is.
+
 ## 9. Data and state
 
 - **Server data lives in one query cache** (TanStack Query, through the generated client), never copied into a hand-rolled global store. Local UI state stays local.
@@ -173,7 +203,7 @@ Coverage floor: **90% of the shared core**, measured, never estimated; a high nu
 
 ## 12. CI gates and release
 
-**A pull request merges only when all of these pass**: format, lint and type check; unit, component, contract and end-to-end tests; bundle and download-size budgets; Lighthouse budgets; automated accessibility; the pseudo-locale check; the banned-words check; the dependency audit.
+**A pull request merges only when all of these pass**: format, lint and type check; unit, component, contract and end-to-end tests; bundle and download-size budgets; the 3D asset budget (section 8b); Lighthouse budgets; the render-without-JavaScript check (section 8d); visual regression at phone and desktop widths, light and dark; automated accessibility, with motion on and off; the pseudo-locale check; the banned-words check; the dependency audit.
 
 **Releases:**
 
@@ -192,6 +222,7 @@ Coverage floor: **90% of the shared core**, measured, never estimated; a high nu
 ## 14. Definition of done, for a screen
 
 - [ ] Designed in all five states (section 5), at 360 px and at desktop width, light and dark
+- [ ] Every visual choice traced to a root, and judged better than its named reference and the prototypes (section 8a); any 3D within its budget (section 8b)
 - [ ] Every string in the catalogue; pseudo-locale and banned-words checks pass
 - [ ] Accessibility: automated checks pass, keyboard and screen reader work, 200% text works
 - [ ] Performance budgets met on the reference device and network
@@ -215,7 +246,8 @@ Each is in `docs/api/openapi.json`; the screens should use them rather than work
 
 | Gap | Acting on it |
 |---|---|
-| No frontend code exists, by decision (D-053), so every rule here is unproven against a real build | The first screens prove the CI gates in section 12 before features pile up |
+| The first code in `frontend/` (pull request #78) was written before this bar was raised and meets few of its gates: no measured budgets, no visual regression, a placeholder home page | Rebuilt screen by screen to this file; the CI gates in section 12 come first, before features pile up |
+| The 3D byte budget and the splat viewer are not chosen yet | A benchmark on the budget Android reference phone, before the first scene |
 | Four choices are still open: the API client generator, the lint tool, the login provider, the deep-link provider | Decided with a decision entry when frontend work starts (section 2) |
 | The platform plan (D-046: both roles on all three clients) awaits Erode Harish | His confirmation, relayed by Adhi |
 | The design direction (`docs/DESIGN_DIRECTION.md`) awaits Erode Harish | The same |

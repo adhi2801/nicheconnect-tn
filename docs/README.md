@@ -74,7 +74,7 @@ Dated reports, the decision log and the papers in `decided/` are records: they k
 | `API_CONTRACT_FINDINGS.md` | What fuzzing the API against its contract found |
 | `FRONTEND_BLUEPRINT_MAPPING.md` | The original blueprint's screens, mapped to the API |
 | `DEAL_RECORD_VERIFY.md` | How anyone can check a deal record's seals themselves (public-facing) |
-| `DESIGN_DIRECTION.md` | The design brief, on branch `docs/design-direction`. Written before English only (D-054), so its "Modern Tamil" direction needs revisiting with Erode Harish before it guides any screen |
+| `DESIGN_DIRECTION.md` | The first design brief ("Modern Tamil"), written before English only (D-054). Read through D-141's rule, a SaaS product first with a Tamil soul; the roots are `research/TAMIL_DESIGN_ROOTS.md` |
 
 ## 5. Reference
 

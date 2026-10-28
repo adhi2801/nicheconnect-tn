@@ -1,6 +1,6 @@
 # CLAUDE.md — NicheConnect TN Backend
 
-This file is the operating manual for Claude Code in this repository. It is loaded at the start of every session. **Last checked against the code: 12 October 2026.** Rules here override any conflicting instruction except an explicit, in-the-moment instruction from a founder that does not break a **Non-negotiable constraint**.
+This file is the operating manual for Claude Code in this repository. It is loaded at the start of every session. **Last checked against the code: 28 October 2026.** Rules here override any conflicting instruction except an explicit, in-the-moment instruction from a founder that does not break a **Non-negotiable constraint**.
 
 ---
 
@@ -11,7 +11,7 @@ Updated 2026-09-23 by Adhi.
 | Founder | Building |
 |---|---|
 | **Adhi** | **The whole backend**, both tracks, in this repository |
-| **Erode Harish** | **Frontend research and design**, outside this repository |
+| **Erode Harish** | **Frontend research and design**; his first frontend code is in `frontend/` (pull request #78) |
 
 Erode Harish reviewed the outstanding backend work and confirmed the open points from the 21 and 22 September notice, so that notice is closed; his confirmation was **relayed by Adhi**, not given in a session here, and the points it carried are kept as a record of what was settled (below).
 
@@ -19,7 +19,7 @@ What this changes, until a founder says otherwise:
 
 - **Adhi approves and owns every backend area**, the Data track included: `app/db/`, `app/modules/*/models*`, `alembic/`, seed scripts and query performance, as well as the API areas in section 1.
 - **The overlap rules in section 1 are dormant, not deleted.** They describe how two people share backend files. They wake up only if Erode Harish returns to backend work. One still binds whoever is working: only one new Alembic migration in flight at a time, so the revision chain cannot fork.
-- **Design runs in parallel; frontend code still waits (D-053, amending D-004).** Research, flows and a design system may be worked on now. No frontend code starts until the backend is complete, and this repository still holds none. Designs are checked against `docs/api/openapi.json`, which is the committed contract — a screen that needs a field the API does not answer is a backend request, not a frontend decision.
+- **The frontend is built now, by Claude with Adhi (D-141, reversing D-053's wait).** It is a SaaS product first, with a Tamil soul: the roots every visual choice traces to are `docs/research/TAMIL_DESIGN_ROOTS.md`, and the bar is `docs/standards/frontend.md`. Screens are checked against `docs/api/openapi.json`, the committed contract: a screen that needs a field the API does not answer is a backend request, not a frontend decision. Where the frontend lives for good, and Flutter or Expo for the apps, are still both founders' decisions.
 - **One owner is not no process.** The approval gates in section 5, the decision log in section 10, and the definition of done in section 8 all apply unchanged.
 - **Reviews.** Section 6 says every merge to `main` goes through a pull request the other founder reviews. While one person is building, say plainly in each pull request and each report that the work has not had a second pair of eyes, rather than letting "reviewed" be assumed.
 
@@ -33,9 +33,9 @@ The closed notice of 21 to 23 September is kept as a record in `docs/reports/202
 
 NicheConnect TN is a Tamil Nadu-focused brand↔creator marketplace. This repo is the **backend only** (FastAPI).
 
-**Build order (approved):** backend first, to completion. UI/UX design and all frontend work (a website, an Android app and an iOS app, each serving brands and creators: D-046, Adhi's direction, awaiting Erode Harish) start only after the backend is complete.
+**Build order (approved):** the backend and the frontend are built side by side since 28 October 2026 (D-141); the website comes first, then an Android app and an iOS app, each serving brands and creators (D-046, Adhi's direction, awaiting Erode Harish).
 
-- This repo contains **no frontend code**. Don't create UI, screens, or frontend scaffolding here.
+- Frontend code lives in `frontend/` (since pull request #78, 28 October 2026). Backend code never imports from it, and it reaches the backend only through the API contract.
 - Design the API around the product's domain (brands, creators, campaigns, applications, deal memos, payment status), not around assumed screens.
 - There is no finished dashboard. Any earlier Figma sketches are reference only, not a contract.
 
@@ -247,7 +247,7 @@ Which doc is for what, and when each is read: `docs/README.md`.
 | Anything that lets one person reach, pay, judge or be judged by another; anything someone could use to cheat | `docs/standards/trust-and-safety.md` |
 | Anything touching the law: personal data and consent, what we say about people, ranking, payments, tax, content rights, messages, who may sign up | `docs/standards/legal.md` |
 | Any test, CI, or coverage question | `docs/standards/testing.md` |
-| Web dashboard or mobile app (after backend is complete) | `docs/standards/frontend.md` |
+| Website or apps, including their look, 3D and motion | `docs/standards/frontend.md` and `docs/research/TAMIL_DESIGN_ROOTS.md` |
 | Research, flows, design system, copy, accessibility | `docs/standards/ux.md` |
 | Where code belongs, a new module, or anything that changes how the system scales | `docs/standards/backend.md` section 1 and `docs/ARCHITECTURE_SCALE.md` |
 | Any choice that rests on how others do it, or on a number | `docs/research/README.md`, and the dated sources in the plan it changes |
