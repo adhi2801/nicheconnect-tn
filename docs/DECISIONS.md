@@ -1828,3 +1828,15 @@ Newest entries at the bottom.
     - the colour direction (burgundy and gold, or Harish's green), for both founders;
     - where the doll's 3D reference comes from (a doll we buy, or the prototype's own picture if Adhi made it);
     - a primary architectural source for the vimana's proportions.
+
+## D-143: Colyv is politically neutral: no lotus, no saffron or orange, no rising sun, no party symbol or flag colours
+- Date: 2026-10-29
+- Approved by: Adhi, in this session: "no lotus and safron and orange no bjp". **Not reviewed by the other founder** (D-051).
+- Context: the temple study used carved lotus medallions and lotus-petal bands, and a saffron-orange sunrise sky that Adhi had asked for earlier. The lotus is the BJP's election symbol and saffron its colour. A rising sun is the DMK's symbol, and Tamil Nadu's other parties have their own symbols and flag colours.
+- Options considered: A) keep old Tamil motifs whatever their present political reading; B) drop any motif or colour that a party has made its own.
+- Chosen: B.
+- Reason: Colyv serves brands and creators of every party and none. A visual that reads as a party's mark tells part of Tamil Nadu that the product is not theirs, and drags a business product into politics.
+- Consequences / follow-ups:
+  - `docs/research/TAMIL_DESIGN_ROOTS.md` gains rule 6 and withdraws "kaavi red" (kaavi is also the word for saffron); `docs/standards/frontend.md` 8a and `docs/research/LANDING_CULTURE_FIT.md` follow.
+  - The temple study loses its lotus carvings (replaced with geometric kolam medallions and bead bands) and its orange sky (morning light on stone, with no sun on the horizon).
+  - **Still to check:** the brand's deep red with gold or yellow against every Tamil Nadu party flag before the palette is final.

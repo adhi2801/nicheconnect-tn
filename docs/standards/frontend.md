@@ -149,7 +149,7 @@ Measured, never estimated (`CLAUDE.md` section 7). **Field data** (real users) i
   - every one detailed, sculpted and lit to look real.
 - **Photographs are private references** for the people making the visuals, kept out of the repository's served files and never shown on a page.
 - **Every made asset has written rights:** made by us, commissioned with the rights assigned to us, or modelled from an object we own. Never stock, never traced from someone else's photo or drawing, never an unknown source.
-- **Raised gold appears only on what cannot change** (the sealed record, the seal, a confirmed payment), and kaavi red only at thresholds (`docs/research/TAMIL_DESIGN_ROOTS.md` sections 5 and 7).
+- **Raised gold appears only on what cannot change** (the sealed record, the seal, a confirmed payment), and the brand's deep red only at thresholds (`docs/research/TAMIL_DESIGN_ROOTS.md` sections 5 and 7). **Nothing echoes a political party** (no lotus, no saffron or orange, no rising sun on a horizon, no party symbol or flag colours): `TAMIL_DESIGN_ROOTS.md` rule 6.
 
 ## 8b. 3D (D-141)
 

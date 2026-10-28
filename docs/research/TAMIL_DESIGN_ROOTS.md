@@ -16,6 +16,15 @@ The cultural and historical roots Colyv's look is built from, each with its sour
 3. **Fact before feeling.** Where sources disagree (dates, meanings), the design never states the disputed fact as true.
 4. **Tested with Tamil people before it ships.** Anything cultural is shown to Tamil brand owners and creators (`docs/research/README.md`) before launch. A use that feels wrong to them is dropped.
 
+**Rule 6. Politically neutral, always (Adhi, 29 October 2026: "no lotus and saffron and orange no bjp").** Colyv takes no side in politics. Nothing on any screen may echo a party's symbol or flag:
+- **No lotus** in any form: medallion, petal band, icon or illustration. It is the BJP's symbol.
+- **No saffron or orange** as a brand colour, a sky or a large field of colour.
+- **No sun disc rising over a horizon.** The rising sun is the DMK's symbol, so morning light is shown as light on stone, never as the sun itself on the horizon.
+- **No two leaves** (AIADMK), **no open hand** (Congress), **no whistle** (TVK, 2026) ([DT Next](https://www.dtnext.in/news/tamilnadu/tvk-gets-state-party-status-eci-confirms-whistle-symbol)), and no other party's symbol.
+- **No colour pair that copies a party flag.** AIADMK has gone to court over flag colours that were too close to its own ([The News Minute](https://www.thenewsminute.com/article/ammk-flag-too-similar-ours-aiadmk-moves-madras-hc-78105)).
+- **To check before the palette is final:** the brand's deep red with gold or yellow against every Tamil Nadu party flag, starting with TVK's.
+- Every visual and every palette is checked against this list before it ships. Where a Tamil root has become a party symbol, the root is dropped, however old it is.
+
 ---
 
 ## 2. The temple: how the pages are arranged
@@ -85,7 +94,7 @@ The cultural and historical roots Colyv's look is built from, each with its sour
 
 **How it may be used.**
 - The brand book's palette stands (manjal, kumkum, temple gold, cream, ink) and gains **names from daily life**, as silk does, so the system is Tamil in its words as well as its colours.
-- **Kaavi red on white marks thresholds only**: the landing page's gateway, the moment a deal is sealed. Never on errors.
+- ~~Kaavi red on white marks thresholds only~~ **Withdrawn 29 October 2026 (rule 6).** *Kaavi* is also the word for saffron, and the red and white stripes are temple-wall marks. The brand's own deep red (kumkum and kemp) marks thresholds instead: the landing page's gateway, the moment a deal is sealed. Never on errors.
 - **Plain white is avoided as a large ground**, given its mourning meaning; the warm cream stays.
 - **To research next:** measured colour values from real objects (silk swatches, Athangudi tiles, bronze, granite, turmeric, kumkum), photographed under daylight with a colour checker, not picked from the internet.
 
@@ -281,7 +290,7 @@ Added after Adhi asked for deeper Tamil culture and ancient history, and set a n
   - **The Thanjavur art plate:** copper, silver and brass together in raised relief.
   - Both are GI crafts (the years differ by source).
   - Sources disagree on Tamil Nadu's GI count (56 or 74), to be checked at the GI registry.
-- **Use:** the palette of status. Kemp red for a threshold (section 7, kaavi red only at thresholds) and kemp green for "done", set in gold only when sealed. The art plate's three metals are the three tiers of a material system: copper for drafts, silver for agreed, gold for sealed.
+- **Use:** the palette of status. Kemp red for a threshold (section 7; deep red only at thresholds) and kemp green for "done", set in gold only when sealed. The art plate's three metals are the three tiers of a material system: copper for drafts, silver for agreed, gold for sealed.
 
 ### 12.15 Athangudi floors and Chettinad houses
 
