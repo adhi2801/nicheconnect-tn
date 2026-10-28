@@ -30,3 +30,22 @@ Lives in the same repository as the backend (`nicheconnect-tn`), under `frontend
 - The access token lives in memory, never in localStorage.
 - The backend must list the site's address in `CORS_ALLOWED_ORIGINS` for the browser to call it.
 - Standards: `docs/standards/frontend.md` and `ux.md` in the backend repository.
+
+## Sign-in and the session (website)
+
+- The **access token** (15 minutes) lives in the page's memory only. The **refresh token** (30 days) lives in an `httpOnly`, `SameSite=Strict` cookie, set and read only by the three routes under `apps/web/src/app/api/session` (`verify`, `refresh`, `logout`). The page's scripts can never read it, so a stolen script cannot steal a long-lived login. This is what `docs/standards/frontend.md` section 10 asks for.
+- A reload asks `/api/session/refresh` for a new access token. Renewals take turns across tabs (a Web Lock), because the backend ends every login when a refresh token is presented twice.
+- Signing out in one tab signs out every tab.
+
+**What this needs from the backend side** (not changes to the API itself):
+1. The website's server runs as a server, not as static files, because the session routes run on it.
+2. `TRUSTED_PROXIES` must include the website's server, so the backend's per-address limits (3 login codes per 10 minutes per address) count the person and not the website. The routes pass `X-Forwarded-For` on.
+3. `CORS_ALLOWED_ORIGINS` must list the website's address for the calls the browser makes directly.
+
+## Checks
+
+    pnpm test        # unit tests (Node's built-in runner)
+    pnpm e2e         # browser tests: builds the site, starts a stand-in for the login endpoints, drives Chrome
+    pnpm lint
+    pnpm build
+

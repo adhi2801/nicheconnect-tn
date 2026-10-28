@@ -1,7 +1,5 @@
 import { createApi } from "@colyv/api";
+import { getAccessToken, renewSession } from "./session";
 
-// The access token lives in memory only (docs/standards/frontend.md section 7): never localStorage.
-let accessToken: string | null = null;
-export const setAccessToken = (t: string | null) => { accessToken = t; };
-
-export const api = createApi(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000", () => accessToken);
+// Every call carries the in-memory access token. A refusal as signed-out renews it once and sends the call again.
+export const api = createApi(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000", getAccessToken, async () => ((await renewSession()) ? getAccessToken() : null));

@@ -8,6 +8,8 @@
     "web": "pnpm --filter web dev",
     "build": "pnpm --filter web build",
     "lint": "pnpm --filter web lint",
-    "api:changes": "node scripts/api-changes.mjs"
+    "api:changes": "node scripts/api-changes.mjs",
+    "e2e": "pnpm --filter web e2e",
+    "test": "pnpm --filter web test"
   }
 }

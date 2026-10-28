@@ -39,12 +39,15 @@ export async function requestCode(phone: string): Promise<{ ok: true; expiresInS
   }
 }
 
+// The code is checked through the website's own session route, so the refresh token goes into an httpOnly cookie and never
+// reaches this page (app/api/session/verify).
 export async function verifyCode(input: { phone: string; code: string; role: Role }): Promise<{ ok: true; role: Role; isNew: boolean } | Failure> {
   try {
-    const { data, error, response } = await api.POST("/api/v1/auth/otp/verify", { body: input });
-    if (!data) return failureFrom(response, error, "verify");
-    startSession({ role: input.role, isNew: data.account.is_new, accountId: data.account.id, refreshToken: data.refresh_token }, data.access_token);
-    return { ok: true, role: input.role, isNew: data.account.is_new };
+    const response = await fetch("/api/session/verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input), cache: "no-store" });
+    if (!response.ok) return failureFrom(response, await response.json().catch(() => undefined), "verify");
+    const grant = (await response.json()) as { access_token: string; expires_in: number; account: { id: string; role: string; is_new: boolean } };
+    startSession(grant);
+    return { ok: true, role: input.role, isNew: grant.account.is_new };
   } catch {
     return offline;
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,7 +11,7 @@ import { TextField } from "@/components/ui/text-field";
 import { requestCode, verifyCode, type Failure } from "@/lib/auth";
 import { t, type MessageKey } from "@/lib/messages";
 import { maskIndianMobile, normalizeIndianMobile } from "@/lib/phone";
-import type { Role } from "@/lib/session";
+import { restoreSession, subscribeToSession, getSessionState, getServerSessionState, type Role } from "@/lib/session";
 
 const RESEND_AFTER_SECONDS = 30;
 
@@ -46,6 +46,11 @@ export function SignInFlow() {
   const [busy, setBusy] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const heading = useRef<HTMLHeadingElement>(null);
+  const session = useSyncExternalStore(subscribeToSession, getSessionState, getServerSessionState);
+
+  // Someone who is still signed in (the cookie is valid) goes straight on; the form is visible while that is checked.
+  useEffect(() => { void restoreSession(); }, []);
+  useEffect(() => { if (session.status === "signedIn") router.replace("/app"); }, [session.status, router]);
 
   // Move focus to the new screen's heading so a screen reader announces where the person is.
   useEffect(() => { heading.current?.focus(); }, [step]);
