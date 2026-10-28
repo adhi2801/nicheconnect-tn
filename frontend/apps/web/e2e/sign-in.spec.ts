@@ -21,6 +21,12 @@ async function signIn(page: Page, role: "Creator" | "Brand" = "Creator") {
   await expect(page).toHaveURL(/\/app$/);
 }
 
+const signedIn = (page: Page) => expect(page.getByRole("link", { name: "Your account" })).toBeVisible();
+const signOutFrom = async (page: Page) => {
+  await page.getByRole("link", { name: "Your account" }).click();
+  await page.getByRole("button", { name: "Sign out" }).click();
+};
+
 const refreshCookie = async (context: BrowserContext) => (await context.cookies()).find((c) => c.name === "colyv_rt");
 
 test("asks which role before sending a code", async ({ page }) => {
@@ -48,7 +54,8 @@ test("a wrong code says so and clears the boxes, then the right code signs in", 
   await expect(page.getByLabel("6-digit code")).toHaveValue("");
   await page.getByLabel("6-digit code").fill("123456");
   await expect(page).toHaveURL(/\/app$/);
-  await expect(page.getByRole("heading", { name: "Signed in as a brand." })).toBeVisible();
+  await signedIn(page);
+  await expect(page.getByRole("link", { name: "Campaigns" }).first()).toBeVisible(); // a brand's navigation
 });
 
 test("a rate limit shows the wait and a reference to quote", async ({ page }) => {
@@ -74,7 +81,7 @@ test("the refresh token is in an httpOnly cookie and nowhere a script can read",
 test("a reload keeps the person signed in", async ({ page }) => {
   await signIn(page);
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Signed in as a creator." })).toBeVisible();
+  await signedIn(page);
   expect((await state()).reuseDetected).toBe(false);
 });
 
@@ -83,8 +90,8 @@ test("two tabs opening together never present the same refresh token twice", asy
   await fetch(`${MOCK}/__slow-refresh`, { method: "POST", body: JSON.stringify({ ms: 400 }) });
   const other = await context.newPage();
   await Promise.all([page.reload(), other.goto("/app")]);
-  await expect(page.getByRole("heading", { name: "Signed in as a creator." })).toBeVisible();
-  await expect(other.getByRole("heading", { name: "Signed in as a creator." })).toBeVisible();
+  await signedIn(page);
+  await signedIn(other);
   expect((await state()).reuseDetected).toBe(false);
 });
 
@@ -92,8 +99,8 @@ test("signing out in one tab signs out the other, and a reload stays signed out"
   await signIn(page);
   const other = await context.newPage();
   await other.goto("/app");
-  await expect(other.getByRole("heading", { name: "Signed in as a creator." })).toBeVisible();
-  await page.getByRole("button", { name: "Sign out" }).click();
+  await signedIn(other);
+  await signOutFrom(page);
   await expect(page).toHaveURL(/\/sign-in$/);
   await expect(other).toHaveURL(/\/sign-in$/);
   expect(await refreshCookie(context)).toBeUndefined();

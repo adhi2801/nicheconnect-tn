@@ -63,6 +63,11 @@ body {
   outline-offset: 2px;
 }
 
+/* On the dark card the focus ring has to be light to be seen. */
+.on-dark :where(a, button, input, [tabindex]):focus-visible {
+  outline-color: var(--c-highlight);
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }

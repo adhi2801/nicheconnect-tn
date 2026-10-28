@@ -6,7 +6,8 @@
     "somethingWrong": "Something went wrong on our side. Nothing was changed. Try again in a moment.",
     "offline": "You look to be offline. Check your connection and try again.",
     "busy": "Colyv is busy right now. Nothing was changed. Try again in a few seconds.",
-    "reference": "Reference {id}"
+    "reference": "Reference {id}",
+    "close": "Close"
   },
   "signIn": {
     "title": "Sign in to Colyv",
@@ -43,9 +44,200 @@
     "phoneChangeWaiting": "An account is waiting to move onto this number. Sign in with that account's current number until the change is made.",
     "safety": "Colyv never asks you to share this code with anyone."
   },
-  "home": {
+  "nav": {
+    "label": "Main",
+    "today": "Today",
+    "discover": "Discover",
+    "campaigns": "Campaigns",
+    "deals": "Deals",
+    "inbox": "Inbox",
+    "me": "Me",
+    "skip": "Skip to content",
+    "unread": "{count} unread notifications",
+    "notifications": "Notifications",
+    "yourAccount": "Your account"
+  },
+  "today": {
+    "greeting": {
+      "morning": "Good morning, {name}",
+      "afternoon": "Good afternoon, {name}",
+      "evening": "Good evening, {name}",
+      "welcome": "Welcome to Colyv"
+    },
+    "summary": {
+      "none": "You are all caught up.",
+      "one": "One thing needs you.",
+      "other": "{count} things need you."
+    },
+    "needsYou": "Needs you",
+    "showAll": "Show all {count}",
+    "showFewer": "Show fewer",
+    "truncated": "Showing the first {shown} of {total}. Finish some to see the rest.",
+    "allClear": {
+      "title": "Nothing needs you right now",
+      "body": {
+        "creator": "When a brand answers, a payment is marked or a deadline comes close, it appears here. Meanwhile, see who is hiring.",
+        "brand": "When a creator applies, sends work or a payment is due, it appears here. Meanwhile, start a campaign."
+      },
+      "ctaCreator": "Browse campaigns",
+      "ctaBrand": "See your campaigns"
+    },
+    "firstRun": {
+      "title": "Finish setting up your profile",
+      "body": {
+        "creator": "Two short steps, and brands can find you and you can apply.",
+        "brand": "Two short steps, and creators can find your campaigns."
+      },
+      "cta": "Set up my profile"
+    },
+    "errorTitle": "We could not load Today",
+    "retrying": "Trying again",
+    "money": {
+      "title": "Payments",
+      "finished": "Confirmed so far",
+      "late": "{amount} is late",
+      "none": "Nothing yet",
+      "count": {
+        "one": "1 payment",
+        "other": "{count} payments"
+      },
+      "creator": {
+        "awaiting": "Waiting for you to confirm",
+        "toPay": "Not yet marked as paid"
+      },
+      "brand": {
+        "awaiting": "Waiting for creators to confirm",
+        "toPay": "To mark as paid"
+      }
+    },
+    "moneyError": "Payments could not be loaded. The rest of this page is fine."
+  },
+  "attention": {
+    "view": "Open",
+    "due": {
+      "late": {
+        "one": "1 day late",
+        "other": "{days} days late"
+      },
+      "today": "Due today",
+      "tomorrow": "Due tomorrow",
+      "soon": "{days} days left",
+      "date": "Due {date}"
+    },
+    "approves": {
+      "today": "Approves itself today",
+      "tomorrow": "Approves itself tomorrow",
+      "soon": "Approves itself in {days} days",
+      "date": "Approves itself {date}"
+    },
+    "effective": {
+      "today": "Takes effect today",
+      "tomorrow": "Takes effect tomorrow",
+      "soon": "Takes effect in {days} days",
+      "date": "Takes effect {date}"
+    },
+    "device": {
+      "android": "an Android device",
+      "ios": "an iPhone or iPad",
+      "web": "a web browser",
+      "unknown": "another device"
+    },
+    "security": "Security",
+    "kind": {
+      "answer_memo": {
+        "title": "Answer the deal memo",
+        "cta": "Open memo"
+      },
+      "deliver_work": {
+        "title": "Send your work",
+        "cta": "Send work"
+      },
+      "resubmit_work": {
+        "title": "Fix your work and send it again",
+        "cta": "Resubmit work"
+      },
+      "confirm_payment": {
+        "title": "Confirm you received the payment",
+        "cta": "Check payment"
+      },
+      "payment_overdue": {
+        "title": "A payment is past its date",
+        "cta": "Open payment"
+      },
+      "respond_to_dispute": {
+        "title": "Add to the dispute record",
+        "cta": "Add to the record"
+      },
+      "answer_invitation": {
+        "title": "A brand invited you to a campaign",
+        "cta": "See invitation"
+      },
+      "review_applications": {
+        "title": {
+          "one": "1 new application to review",
+          "other": "{count} new applications to review"
+        },
+        "cta": "Review"
+      },
+      "draft_memo": {
+        "title": "Write the deal memo",
+        "cta": "Write memo"
+      },
+      "revise_memo": {
+        "title": "The creator asked for changes to the memo",
+        "cta": "Revise memo"
+      },
+      "review_proof": {
+        "title": "Review the submitted work",
+        "cta": "Review work"
+      },
+      "pay_creator": {
+        "title": "Mark the payment as sent",
+        "cta": "Mark as paid"
+      },
+      "fix_domain_record": {
+        "title": "Finish verifying {domain}",
+        "cta": "Fix it"
+      },
+      "domain_lapsed": {
+        "title": "{domain} is no longer verified",
+        "cta": "Fix it"
+      },
+      "domain_claim_expired": {
+        "title": "Your claim on {domain} ran out",
+        "cta": "Start again"
+      },
+      "upi_change_pending": {
+        "title": "Your new UPI ID is waiting",
+        "context": "Brands see it after 24 hours. You can cancel until then.",
+        "cta": "Review"
+      },
+      "phone_change_pending": {
+        "title": "Your phone number is changing",
+        "context": "Your old number keeps working until then. You can cancel.",
+        "cta": "Review"
+      },
+      "deletion_pending": {
+        "title": "Your account is set to be deleted",
+        "context": "You can cancel until then.",
+        "cta": "Review"
+      },
+      "new_sign_in": {
+        "title": "New sign-in on {device}",
+        "context": "If this was not you, end it now.",
+        "cta": "Check sign-ins"
+      }
+    }
+  },
+  "next": {
+    "title": "This screen is being built",
+    "body": "It is next on the list. Your Today screen already shows what needs you.",
+    "back": "Back to Today"
+  },
+  "me": {
+    "title": "Your account",
     "signedInAs": "Signed in as a {role}.",
-    "soon": "Your Today screen is the next thing we build.",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "signingOut": "Signing out"
   }
 }

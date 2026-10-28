@@ -1,32 +1,71 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Notice } from "@/components/ui/notice";
+import { Reveal } from "@/components/ui/reveal";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AllClear } from "@/components/today/all-clear";
+import { FirstRun } from "@/components/today/first-run";
+import { Money } from "@/components/today/money";
+import { NeedsYou } from "@/components/today/needs-you";
+import { ApiError } from "@/lib/errors";
+import { formatLongDate, partOfDay } from "@/lib/format";
 import { t } from "@/lib/messages";
-import { getServerSessionState, getSessionState, restoreSession, signOut, subscribeToSession } from "@/lib/session";
+import { useAttention, useProfile } from "@/lib/queries";
+import { useSession } from "@/lib/use-session";
 
-// Where sign-in lands for now. The Today screen replaces this (frontend/design/screen-plan.md C1 and B1).
-export default function SignedInPage() {
-  const router = useRouter();
-  const state = useSyncExternalStore(subscribeToSession, getSessionState, getServerSessionState);
+// Today (frontend/design/screen-plan.md C1 and B1): what needs the person, before anything else.
+function errorWords(error: unknown): string {
+  if (error instanceof ApiError) return error.kind === "network" ? t("common.offline") : error.kind === "busy" ? t("common.busy") : t("common.somethingWrong");
+  return t("common.somethingWrong");
+}
 
-  useEffect(() => { void restoreSession(); }, []);
-  useEffect(() => { if (state.status === "signedOut") router.replace("/sign-in"); }, [state.status, router]);
+export default function TodayPage() {
+  const state = useSession();
+  const role = state.status === "signedIn" ? state.session.role : "creator";
+  const profile = useProfile(role);
+  const attention = useAttention();
+  const name = profile.data?.found ? profile.data.name : null;
+  const noProfile = profile.data?.found === false;
+  const data = attention.data;
+  const count = data?.total ?? 0;
+  const hasItems = !!data && data.items.length > 0;
 
   return (
-    <main className="mx-auto flex w-full max-w-[480px] flex-1 flex-col justify-center gap-6 px-5 py-12">
-      {state.status !== "signedIn" ? (
-        <Card className="grid gap-3" aria-busy="true" aria-label={t("common.loading")}><Skeleton className="h-6 w-2/3" /><Skeleton className="h-4 w-full" /></Card>
-      ) : (
-        <Card className="grid gap-4">
-          <h1 className="font-display text-2xl font-semibold tracking-tight">{t("home.signedInAs", { role: state.session.role })}</h1>
-          <p className="text-[15px] leading-6 text-muted">{t("home.soon")}</p>
-          <Button variant="secondary" onClick={() => void signOut()}>{t("home.signOut")}</Button>
-        </Card>
+    <div className="grid gap-8">
+      <Reveal>
+        <header className="grid gap-2">
+          <p className="text-sm font-medium text-muted">{data ? formatLongDate(data.as_of) : <Skeleton className="h-5 w-40" />}</p>
+          <h1 className="font-display text-[2rem] font-semibold leading-[1.1] tracking-tight sm:text-5xl">
+            {name ? t(`today.greeting.${partOfDay()}`, { name }) : noProfile ? t("today.greeting.welcome") : <Skeleton className="h-10 w-3/4 max-w-md" />}
+          </h1>
+          {!noProfile && <p className="text-[17px] text-muted">{data ? t(count === 0 ? "today.summary.none" : count === 1 ? "today.summary.one" : "today.summary.other", { count }) : ""}</p>}
+        </header>
+      </Reveal>
+
+      {noProfile && <Reveal index={1}><FirstRun role={role} /></Reveal>}
+
+      {/* Before a profile exists there are no payments and nothing is "all clear", so only a waiting item (a sign-in to check) shows. */}
+      {!(noProfile && !hasItems) && (
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+          <Reveal index={2}>
+            {attention.isPending ? (
+              <div aria-busy="true" className="grid gap-3 rounded-3xl bg-ink p-6"><Skeleton className="h-8 w-1/3 bg-white/10" /><Skeleton className="h-24 bg-white/10" /><Skeleton className="h-24 bg-white/10" /></div>
+            ) : attention.isError ? (
+              <Notice tone="error" action={<Button variant="secondary" className="min-h-10 px-4 text-sm" onClick={() => void attention.refetch()}>{t("common.retry")}</Button>}>
+                <p className="font-semibold">{t("today.errorTitle")}</p>
+                <p>{errorWords(attention.error)}</p>
+                {attention.error instanceof ApiError && attention.error.requestId && <p className="mt-1 font-mono text-xs">{t("common.reference", { id: attention.error.requestId })}</p>}
+              </Notice>
+            ) : data && hasItems ? (
+              <NeedsYou items={data.items} total={data.total} truncated={data.truncated} role={role} />
+            ) : (
+              <AllClear role={role} />
+            )}
+          </Reveal>
+          {!noProfile && <Reveal index={3} className="lg:sticky lg:top-6"><Money role={role} /></Reveal>}
+        </div>
       )}
-    </main>
+    </div>
   );
 }
