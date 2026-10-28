@@ -1,0 +1,382 @@
+{
+  "common": {
+    "retry": "Try again",
+    "back": "Back",
+    "loading": "Loading",
+    "somethingWrong": "Something went wrong on our side. Nothing was changed. Try again in a moment.",
+    "offline": "You look to be offline. Check your connection and try again.",
+    "busy": "Colyv is busy right now. Nothing was changed. Try again in a few seconds.",
+    "reference": "Reference {id}",
+    "close": "Close"
+  },
+  "signIn": {
+    "title": "Sign in to Colyv",
+    "subtitle": "Every brand and creator deal, on the record.",
+    "roleLabel": "I am a",
+    "creator": "Creator",
+    "creatorHint": "Find campaigns, do the work, confirm you were paid.",
+    "brand": "Brand",
+    "brandHint": "Post campaigns, choose creators, keep every deal on record.",
+    "phoneLabel": "Mobile number",
+    "phoneHint": "We send a 6-digit code to this number. We never share it.",
+    "phoneInvalid": "Enter a 10-digit Indian mobile number. It starts with 6, 7, 8 or 9.",
+    "send": "Send code",
+    "sending": "Sending code",
+    "safety": "Colyv never asks you to share your login code.",
+    "roleMissing": "Choose whether you are a creator or a brand. It decides which account you open.",
+    "roleNote": "A new number opens a new account for the role you choose."
+  },
+  "code": {
+    "title": "Enter your code",
+    "sentTo": "We sent a 6-digit code to {phone}.",
+    "label": "6-digit code",
+    "confirm": "Confirm",
+    "confirming": "Checking code",
+    "resend": "Send a new code",
+    "resendIn": "Send a new code in {seconds} s",
+    "change": "Use a different number",
+    "invalid": "That code is wrong, has expired or was already used. Check it, or send a new code.",
+    "tooShort": "Enter all 6 digits.",
+    "rateLimited": "Too many tries. Wait {seconds} s, then try again.",
+    "rateLimitedNoWait": "Too many tries. Wait a little, then try again.",
+    "suspended": "This account is suspended. If you think that is a mistake, contact support and quote the reference below.",
+    "roleConflict": "This number cannot sign in as a {role} right now. Check the number, or try the other role.",
+    "phoneChangeWaiting": "An account is waiting to move onto this number. Sign in with that account's current number until the change is made.",
+    "safety": "Colyv never asks you to share this code with anyone."
+  },
+  "nav": {
+    "label": "Main",
+    "today": "Today",
+    "discover": "Discover",
+    "campaigns": "Campaigns",
+    "deals": "Deals",
+    "inbox": "Inbox",
+    "me": "Me",
+    "skip": "Skip to content",
+    "unread": "{count} unread notifications",
+    "notifications": "Notifications",
+    "yourAccount": "Your account",
+    "menu": "Menu",
+    "general": "General",
+    "account": "Account",
+    "signOut": "Sign out",
+    "role": {
+      "creator": "Creator",
+      "brand": "Brand"
+    }
+  },
+  "today": {
+    "greeting": {
+      "morning": "Good morning, {name}",
+      "afternoon": "Good afternoon, {name}",
+      "evening": "Good evening, {name}",
+      "welcome": "Welcome to Colyv"
+    },
+    "summary": {
+      "none": "You are all caught up.",
+      "one": "One thing needs you.",
+      "other": "{count} things need you."
+    },
+    "needsYou": "Needs you",
+    "showAll": "Show all {count}",
+    "showFewer": "Show fewer",
+    "truncated": "Showing the first {shown} of {total}. Finish some to see the rest.",
+    "allClear": {
+      "title": "Nothing needs you right now",
+      "body": {
+        "creator": "When a brand answers, a payment is marked or a deadline comes close, it appears here. Meanwhile, see who is hiring.",
+        "brand": "When a creator applies, sends work or a payment is due, it appears here. Meanwhile, start a campaign."
+      },
+      "ctaCreator": "Browse campaigns",
+      "ctaBrand": "See your campaigns"
+    },
+    "firstRun": {
+      "title": "Finish setting up your profile",
+      "body": {
+        "creator": "Two short steps, and brands can find you and you can apply.",
+        "brand": "Two short steps, and creators can find your campaigns."
+      },
+      "cta": "Set up my profile"
+    },
+    "errorTitle": "We could not load Today",
+    "retrying": "Trying again",
+    "money": {
+      "title": "Payments",
+      "finished": "Confirmed so far",
+      "late": "{amount} is late",
+      "none": "Nothing yet",
+      "count": {
+        "one": "1 payment",
+        "other": "{count} payments"
+      },
+      "creator": {
+        "awaiting": "Waiting for you to confirm",
+        "toPay": "Not yet marked as paid"
+      },
+      "brand": {
+        "awaiting": "Waiting for creators to confirm",
+        "toPay": "To mark as paid"
+      }
+    },
+    "moneyError": "Payments could not be loaded. The rest of this page is fine.",
+    "actions": {
+      "browse": "Browse campaigns",
+      "deals": "See my deals",
+      "newCampaign": "New campaign",
+      "dealsBrand": "See your deals"
+    },
+    "stats": {
+      "needsYou": "Needs you",
+      "mostUrgent": "Most urgent",
+      "allClearFoot": "All caught up",
+      "confirmed": "Confirmed so far",
+      "open": "Open {label}"
+    },
+    "gauge": {
+      "title": "Payments",
+      "centre": "confirmed",
+      "legendConfirmed": "Confirmed",
+      "legendWaiting": "Waiting to confirm",
+      "legendNotMarked": "Not yet marked as paid",
+      "empty": "No payments yet",
+      "emptyHint": {
+        "creator": "Once a brand marks a payment, it shows here.",
+        "brand": "Once you mark a payment, it shows here."
+      }
+    },
+    "next": {
+      "title": "Next deadline",
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "days": "{days} days",
+      "open": "Open"
+    }
+  },
+  "attention": {
+    "view": "Open",
+    "due": {
+      "late": {
+        "one": "1 day late",
+        "other": "{days} days late"
+      },
+      "today": "Due today",
+      "tomorrow": "Due tomorrow",
+      "soon": "{days} days left",
+      "date": "Due {date}"
+    },
+    "approves": {
+      "today": "Approves itself today",
+      "tomorrow": "Approves itself tomorrow",
+      "soon": "Approves itself in {days} days",
+      "date": "Approves itself {date}"
+    },
+    "effective": {
+      "today": "Takes effect today",
+      "tomorrow": "Takes effect tomorrow",
+      "soon": "Takes effect in {days} days",
+      "date": "Takes effect {date}"
+    },
+    "device": {
+      "android": "an Android device",
+      "ios": "an iPhone or iPad",
+      "web": "a web browser",
+      "unknown": "another device"
+    },
+    "security": "Security",
+    "kind": {
+      "answer_memo": {
+        "title": "Answer the deal memo",
+        "cta": "Open memo"
+      },
+      "deliver_work": {
+        "title": "Send your work",
+        "cta": "Send work"
+      },
+      "resubmit_work": {
+        "title": "Fix your work and send it again",
+        "cta": "Resubmit work"
+      },
+      "confirm_payment": {
+        "title": "Confirm you received the payment",
+        "cta": "Check payment"
+      },
+      "payment_overdue": {
+        "title": "A payment is past its date",
+        "cta": "Open payment"
+      },
+      "respond_to_dispute": {
+        "title": "Add to the dispute record",
+        "cta": "Add to the record"
+      },
+      "answer_invitation": {
+        "title": "A brand invited you to a campaign",
+        "cta": "See invitation"
+      },
+      "review_applications": {
+        "title": {
+          "one": "1 new application to review",
+          "other": "{count} new applications to review"
+        },
+        "cta": "Review"
+      },
+      "draft_memo": {
+        "title": "Write the deal memo",
+        "cta": "Write memo"
+      },
+      "revise_memo": {
+        "title": "The creator asked for changes to the memo",
+        "cta": "Revise memo"
+      },
+      "review_proof": {
+        "title": "Review the submitted work",
+        "cta": "Review work"
+      },
+      "pay_creator": {
+        "title": "Mark the payment as sent",
+        "cta": "Mark as paid"
+      },
+      "fix_domain_record": {
+        "title": "Finish verifying {domain}",
+        "cta": "Fix it"
+      },
+      "domain_lapsed": {
+        "title": "{domain} is no longer verified",
+        "cta": "Fix it"
+      },
+      "domain_claim_expired": {
+        "title": "Your claim on {domain} ran out",
+        "cta": "Start again"
+      },
+      "upi_change_pending": {
+        "title": "Your new UPI ID is waiting",
+        "context": "Brands see it after 24 hours. You can cancel until then.",
+        "cta": "Review"
+      },
+      "phone_change_pending": {
+        "title": "Your phone number is changing",
+        "context": "Your old number keeps working until then. You can cancel.",
+        "cta": "Review"
+      },
+      "deletion_pending": {
+        "title": "Your account is set to be deleted",
+        "context": "You can cancel until then.",
+        "cta": "Review"
+      },
+      "new_sign_in": {
+        "title": "New sign-in on {device}",
+        "context": "If this was not you, end it now.",
+        "cta": "Check sign-ins"
+      }
+    }
+  },
+  "next": {
+    "title": "This screen is being built",
+    "body": "It is next on the list. Your Today screen already shows what needs you.",
+    "back": "Back to Today"
+  },
+  "me": {
+    "title": "Your account",
+    "signedInAs": "Signed in as a {role}.",
+    "signOut": "Sign out",
+    "signingOut": "Signing out"
+  },
+  "deals": {
+    "title": "Deals",
+    "subtitle": "Every deal, from the memo to the record. Where it is your move, the card is dark.",
+    "filter": {
+      "label": "Show",
+      "all": "All",
+      "mine": "Needs you",
+      "theirs": "Waiting on others"
+    },
+    "stage": {
+      "draft": {
+        "label": "Draft",
+        "hint": "Not sent yet"
+      },
+      "memo_sent": {
+        "label": "Memo sent",
+        "hint": "Waiting for an answer"
+      },
+      "agreed": {
+        "label": "Agreed",
+        "hint": "Terms accepted"
+      },
+      "in_progress": {
+        "label": "In progress",
+        "hint": "The work is being done"
+      },
+      "payment": {
+        "label": "Payment",
+        "hint": "Being paid and confirmed"
+      },
+      "finished": {
+        "label": "Finished",
+        "hint": "Done and on the record"
+      }
+    },
+    "count": {
+      "one": "1 deal",
+      "other": "{count} deals"
+    },
+    "columnEmpty": "Nothing here",
+    "yourMove": "Your move",
+    "waitingOn": {
+      "brand": "Waiting on the brand",
+      "creator": "Waiting on the creator"
+    },
+    "ended": "Ended",
+    "dispute": "Dispute open",
+    "card": {
+      "untitled": "Deal memo",
+      "someone": "Awaiting details",
+      "due": "Due {date}",
+      "open": "Open this deal"
+    },
+    "closed": {
+      "label": "Closed deals",
+      "declined": "{count} declined",
+      "cancelled": "{count} cancelled"
+    },
+    "empty": {
+      "title": "No deals yet",
+      "body": {
+        "creator": "A deal starts when a brand sends you a memo. Apply to a campaign and it will appear here.",
+        "brand": "A deal starts when you send a creator a memo. Choose a creator on a campaign and it will appear here."
+      },
+      "ctaCreator": "Browse campaigns",
+      "ctaBrand": "See your campaigns"
+    },
+    "errorTitle": "We could not load your deals",
+    "payments": {
+      "title": "Payments",
+      "none": "No payments yet. They start once work is approved.",
+      "deal": "Deal",
+      "amount": "Amount",
+      "status": "Status",
+      "with": {
+        "creator": "Brand",
+        "brand": "Creator"
+      },
+      "state": {
+        "due": "Due {date}",
+        "late": {
+          "one": "1 day late",
+          "other": "{days} days late"
+        },
+        "unpaid": "Not paid, {days} days past due",
+        "paid": "Marked paid",
+        "unconfirmed": "Marked paid, not confirmed",
+        "confirmed": "Confirmed received"
+      }
+    },
+    "summary": {
+      "needYou": "{count} need you",
+      "none": "None need you right now"
+    },
+    "scroll": {
+      "previous": "Earlier stages",
+      "next": "Later stages"
+    }
+  }
+}

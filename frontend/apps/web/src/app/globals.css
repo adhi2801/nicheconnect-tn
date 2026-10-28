@@ -1,0 +1,86 @@
+@import "tailwindcss";
+@import "../../../../packages/tokens/tokens.css";
+
+/* Tailwind reads the shared tokens, so a colour or radius is changed in tokens/tokens.json only. */
+@theme inline {
+  --color-ground: var(--c-ground);
+  --color-surface: var(--c-surface);
+  --color-sunk: var(--c-surface-sunk);
+  --color-ink: var(--c-ink);
+  --color-muted: var(--c-ink-muted);
+  --color-line: var(--c-line);
+  --color-line-strong: var(--c-line-strong);
+  --color-accent: var(--c-accent);
+  --color-accent-hover: var(--c-accent-hover);
+  --color-on-accent: var(--c-on-accent);
+  --color-highlight: var(--c-highlight);
+  --color-highlight-deep: var(--c-highlight-deep);
+  --color-highlight-soft: var(--c-highlight-soft);
+  --color-on-highlight: var(--c-on-highlight);
+  --color-hero-from: var(--c-hero-from);
+  --color-hero-to: var(--c-hero-to);
+  --color-gauge-deep: var(--c-gauge-deep);
+  --color-gauge-mid: var(--c-gauge-mid);
+  --color-ok: var(--c-ok);
+  --color-ok-soft: var(--c-ok-soft);
+  --color-warn: var(--c-warn);
+  --color-warn-soft: var(--c-warn-soft);
+  --color-bad: var(--c-bad);
+  --color-bad-soft: var(--c-bad-soft);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+  --shadow-soft: 0 1px 2px rgb(15 27 21 / 0.04), 0 14px 34px -18px rgb(15 27 21 / 0.16);
+  --font-sans: var(--font-inter), var(--f-sans);
+  --font-display: var(--font-jakarta), var(--f-display);
+  --font-mono: var(--font-jetbrains), var(--f-numeric);
+}
+
+body {
+  background: var(--c-ground);
+  color: var(--c-ink);
+  font-family: var(--font-inter), var(--f-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* One easing, one set of durations (tokens/tokens.json "motion"). Components use this class. */
+.t-base {
+  transition-property: background-color, color, border-color, box-shadow, transform, opacity;
+  transition-duration: var(--m-base);
+  transition-timing-function: var(--m-ease);
+}
+
+/* Cards sit softly on the ground: a hairline and a long, quiet shadow. */
+.shadow-card {
+  box-shadow: 0 0 0 1px var(--c-line), 0 1px 2px rgb(15 27 21 / 0.04), 0 14px 34px -18px rgb(15 27 21 / 0.16);
+}
+
+/* The one dark card on a screen: deep green, a soft light from the corner and faint rings, like the reference. */
+.hero {
+  color: var(--c-on-accent);
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgb(255 255 255 / 0.16), transparent 55%),
+    repeating-radial-gradient(circle at 100% 100%, transparent 0 15px, rgb(255 255 255 / 0.035) 15px 16px),
+    linear-gradient(150deg, var(--c-hero-from), var(--c-hero-to));
+}
+
+/* Diagonal stripes mean "not yet": money not yet marked as paid. Always beside words, never alone. */
+.hatch {
+  background-image: repeating-linear-gradient(135deg, var(--c-gauge-mid) 0 1.5px, transparent 1.5px 5px);
+  background-color: var(--c-highlight-soft);
+}
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--c-ink);
+  outline-offset: 2px;
+}
+
+/* On the dark card the focus ring has to be light to be seen. */
+.on-dark :where(a, button, input, [tabindex]):focus-visible {
+  outline-color: var(--c-highlight);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}

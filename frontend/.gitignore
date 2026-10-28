@@ -1,0 +1,13 @@
+node_modules
+.next
+.env
+.env.*
+!.env.example
+.DS_Store
+build
+.dart_tool
+
+# Test output and the separate build the browser tests use
+playwright-report
+test-results
+.next-e2e
