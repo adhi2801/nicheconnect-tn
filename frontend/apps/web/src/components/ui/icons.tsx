@@ -18,3 +18,6 @@ export const UserIcon = (p: SVGProps<SVGSVGElement>) => (<svg {...base} {...p}><
 export const RupeeIcon = (p: SVGProps<SVGSVGElement>) => (<svg {...base} {...p}><path d="M7 5h10M7 9h10M7 5c5 0 7 1.5 7 4s-2 4-7 4l7 6" /></svg>);
 export const FileIcon = (p: SVGProps<SVGSVGElement>) => (<svg {...base} {...p}><path d="M7 3h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" /><path d="M14 3v4h4M9 12h6M9 16h6" /></svg>);
 export const ShieldIcon = (p: SVGProps<SVGSVGElement>) => (<svg {...base} {...p}><path d="M12 3 5 6v5.5c0 4.2 2.8 7.4 7 9.5 4.2-2.1 7-5.3 7-9.5V6l-7-3Z" /><path d="m9 12 2.2 2.2L15 10.5" /></svg>);
+export const ArrowUpRightIcon = (p: SVGProps<SVGSVGElement>) => (<svg {...base} {...p}><path d="M7 17 17 7M8 7h9v9" /></svg>);
+export const LogoutIcon = (p: SVGProps<SVGSVGElement>) => (<svg {...base} {...p}><path d="M10 5H6a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h4M15 8l4 4-4 4M19 12H9" /></svg>);
+export const PlusIcon = (p: SVGProps<SVGSVGElement>) => (<svg {...base} {...p}><path d="M12 5v14M5 12h14" /></svg>);

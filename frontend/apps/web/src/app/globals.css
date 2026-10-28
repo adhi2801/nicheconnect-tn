@@ -17,6 +17,10 @@
   --color-highlight-deep: var(--c-highlight-deep);
   --color-highlight-soft: var(--c-highlight-soft);
   --color-on-highlight: var(--c-on-highlight);
+  --color-hero-from: var(--c-hero-from);
+  --color-hero-to: var(--c-hero-to);
+  --color-gauge-deep: var(--c-gauge-deep);
+  --color-gauge-mid: var(--c-gauge-mid);
   --color-ok: var(--c-ok);
   --color-ok-soft: var(--c-ok-soft);
   --color-warn: var(--c-warn);
@@ -27,6 +31,7 @@
   --radius-md: var(--r-md);
   --radius-lg: var(--r-lg);
   --radius-xl: var(--r-xl);
+  --shadow-soft: 0 1px 2px rgb(15 27 21 / 0.04), 0 14px 34px -18px rgb(15 27 21 / 0.16);
   --font-sans: var(--font-inter), var(--f-sans);
   --font-display: var(--font-jakarta), var(--f-display);
   --font-mono: var(--font-jetbrains), var(--f-numeric);
@@ -46,16 +51,24 @@ body {
   transition-timing-function: var(--m-ease);
 }
 
+/* Cards sit softly on the ground: a hairline and a long, quiet shadow. */
 .shadow-card {
-  box-shadow: 0 1px 0 rgb(255 255 255 / 0.9) inset, 0 24px 48px -30px rgb(122 86 10 / 0.35), 0 2px 6px -2px rgb(122 86 10 / 0.08);
+  box-shadow: 0 0 0 1px var(--c-line), 0 1px 2px rgb(15 27 21 / 0.04), 0 14px 34px -18px rgb(15 27 21 / 0.16);
 }
 
-/* The warm glow in the corner that every screen sits on (from the approved dashboard). */
-.ground-glow {
+/* The one dark card on a screen: deep green, a soft light from the corner and faint rings, like the reference. */
+.hero {
+  color: var(--c-on-accent);
   background:
-    radial-gradient(70% 60% at 100% 100%, rgb(245 194 66 / 0.5), transparent 70%),
-    radial-gradient(60% 50% at 0% 0%, rgb(255 255 255 / 0.9), transparent 70%),
-    var(--c-ground);
+    radial-gradient(120% 90% at 100% 0%, rgb(255 255 255 / 0.16), transparent 55%),
+    repeating-radial-gradient(circle at 100% 100%, transparent 0 15px, rgb(255 255 255 / 0.035) 15px 16px),
+    linear-gradient(150deg, var(--c-hero-from), var(--c-hero-to));
+}
+
+/* Diagonal stripes mean "not yet": money not yet marked as paid. Always beside words, never alone. */
+.hatch {
+  background-image: repeating-linear-gradient(135deg, var(--c-gauge-mid) 0 1.5px, transparent 1.5px 5px);
+  background-color: var(--c-highlight-soft);
 }
 
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {

@@ -12,12 +12,12 @@ export const metadata: Metadata = {
   description: "Every brand and creator deal, on the record.",
 };
 
-export const viewport: Viewport = { themeColor: "#F7F2E1" };
+export const viewport: Viewport = { themeColor: "#E8ECE9" };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${inter.variable} ${jakarta.variable} ${jetbrains.variable} h-full`}>
-      <body className="ground-glow min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
 }

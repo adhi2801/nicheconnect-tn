@@ -7,7 +7,7 @@ const tones: Record<Tone, { cls: string; icon: ReactNode }> = {
   ok: { cls: "bg-ok-soft text-ok", icon: <CheckIcon width={14} height={14} /> },
   warn: { cls: "bg-warn-soft text-warn", icon: <ClockIcon width={14} height={14} /> },
   bad: { cls: "bg-bad-soft text-bad", icon: <AlertIcon width={14} height={14} /> },
-  neutral: { cls: "bg-sunk text-muted", icon: <DotIcon width={14} height={14} /> },
+  neutral: { cls: "bg-surface text-muted ring-1 ring-line", icon: <DotIcon width={14} height={14} /> },
   dark: { cls: "bg-ink text-on-accent", icon: <DotIcon width={14} height={14} className="text-highlight" /> },
 };
 

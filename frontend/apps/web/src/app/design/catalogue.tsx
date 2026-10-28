@@ -10,7 +10,7 @@ import { Pill } from "@/components/ui/pill";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TextField } from "@/components/ui/text-field";
 
-const swatches = ["ground", "surface", "surface-sunk", "ink", "ink-muted", "line-strong", "accent", "highlight", "highlight-soft", "ok", "ok-soft", "warn", "warn-soft", "bad", "bad-soft"];
+const swatches = ["ground", "surface", "surface-sunk", "ink", "ink-muted", "line-strong", "accent", "hero-from", "hero-to", "highlight", "highlight-deep", "highlight-soft", "gauge-deep", "gauge-mid", "ok", "ok-soft", "warn", "warn-soft", "bad", "bad-soft"];
 
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -48,7 +48,7 @@ export function Catalogue() {
 
       <Block title="Button">
         <div className="flex flex-wrap items-center gap-3">
-          <Button>Primary</Button><Button variant="secondary">Secondary</Button><Button variant="quiet">Quiet</Button>
+          <Button>Primary</Button><Button variant="secondary">Secondary</Button><Button variant="quiet">Quiet</Button><span className="hero on-dark rounded-3xl p-3"><Button variant="highlight">On the green card</Button></span>
           <Button disabled>Disabled</Button><Button loading>Sending code</Button>
         </div>
       </Block>
@@ -84,7 +84,7 @@ export function Catalogue() {
       <Block title="Card and skeleton">
         <div className="grid items-start gap-4 sm:grid-cols-3">
           <Card className="grid gap-2"><p className="text-sm text-muted">Light card</p><p className="font-display text-3xl font-semibold tracking-tight">₹7,000</p></Card>
-          <Card tone="dark" className="grid gap-2"><p className="text-sm opacity-80">Dark card, one per screen</p><p className="font-display text-3xl font-semibold tracking-tight">3 need you</p></Card>
+          <Card tone="dark" className="grid gap-2"><p className="text-sm opacity-80">The deep-green card, one per screen</p><p className="font-display text-3xl font-semibold tracking-tight">3 need you</p></Card>
           <Card className="grid gap-3" aria-busy="true"><Skeleton className="h-5 w-1/2" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4" /></Card>
         </div>
       </Block>

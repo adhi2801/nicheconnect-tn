@@ -20,7 +20,7 @@ test("a creator's Today greets by name and lists what needs them, most urgent fi
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^Good (morning|afternoon|evening), Lakshmi Loves$/);
   await expect(page.getByText("Wednesday 28 October")).toBeVisible();
   await expect(page.getByText("7 things need you.")).toBeVisible();
-  const rows = page.locator("main ul > li");
+  const rows = page.locator("#needs-you ul > li");
   await expect(rows).toHaveCount(5);
   await expect(rows.first()).toContainText("New sign-in on Chrome on Windows");
   await expect(rows.first()).toContainText("Security");
@@ -34,7 +34,7 @@ test("a creator's Today greets by name and lists what needs them, most urgent fi
 
 test("the rest of the list opens on request, and closes again", async ({ page }) => {
   await signIn(page);
-  const rows = page.locator("main ul > li");
+  const rows = page.locator("#needs-you ul > li");
   await page.getByRole("button", { name: "Show all 7" }).click();
   await expect(rows).toHaveCount(7);
   await page.getByRole("button", { name: "Show fewer" }).click();
@@ -44,8 +44,9 @@ test("the rest of the list opens on request, and closes again", async ({ page })
 test("a brand sees its own navigation and handles as @handle", async ({ page }) => {
   await signIn(page, "Brand");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Chennai Bakes$/);
-  await expect(page.getByText("3 new applications to review")).toBeVisible();
-  await expect(page.getByText("@priya · Diwali sweets reel")).toBeVisible();
+  await expect(page.locator("#needs-you").getByText("3 new applications to review")).toBeVisible();
+  await expect(page.getByText("3 new applications to review").first()).toBeVisible(); // and the hero card names the most urgent one
+  await expect(page.locator("#needs-you").getByText("@priya · Diwali sweets reel")).toBeVisible();
   await expect(page.getByRole("link", { name: "Campaigns" }).first()).toBeVisible();
   await expect(page.getByRole("link", { name: "Discover" })).toHaveCount(0);
 });
@@ -54,7 +55,7 @@ test("payments show what each role acts on first, with late money called out", a
   await signIn(page);
   await expect(page.getByText("Waiting for you to confirm")).toBeVisible();
   await expect(page.getByText("₹6,500 is late")).toBeVisible();
-  await expect(page.getByText("₹1,25,000")).toBeVisible(); // confirmed so far, Indian grouping
+  await expect(page.getByText("₹1,25,000").first()).toBeVisible(); // confirmed so far, Indian grouping
 });
 
 test("when nothing needs the person, Today says so calmly and points forward", async ({ page }) => {
@@ -62,7 +63,7 @@ test("when nothing needs the person, Today says so calmly and points forward", a
   await signIn(page);
   await expect(page.getByText("You are all caught up.")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Nothing needs you right now" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Browse campaigns" })).toHaveAttribute("href", "/app/discover");
+  await expect(page.getByRole("link", { name: "Browse campaigns" }).first()).toHaveAttribute("href", "/app/discover");
   await expect(page.getByText("Nothing yet").first()).toBeVisible();
 });
 
@@ -118,7 +119,7 @@ test("the navigation marks where you are, and a screen not built yet answers kin
   await expect(page).toHaveURL(/\/app$/);
 });
 
-test("on a laptop the navigation is a pill at the top, on a phone a bar at the bottom", async ({ page }) => {
+test("on a laptop the navigation is a sidebar, on a phone a bar at the bottom", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await signIn(page);
   // Both bars are in the page; CSS shows one. (Role queries skip hidden elements, so these use the label.)

@@ -6,6 +6,6 @@ type Props = HTMLAttributes<HTMLDivElement> & {
 };
 
 export function Card({ tone = "light", className = "", ...rest }: Props) {
-  const look = tone === "dark" ? "on-dark bg-ink text-on-accent" : "bg-surface text-ink shadow-card";
-  return <div className={`rounded-3xl p-6 ${look} ${className}`} {...rest} />;
+  const look = tone === "dark" ? "hero on-dark" : "bg-surface text-ink shadow-card";
+  return <div className={`rounded-[1.75rem] p-6 ${look} ${className}`} {...rest} />;
 }

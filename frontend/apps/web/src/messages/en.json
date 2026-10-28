@@ -55,7 +55,15 @@
     "skip": "Skip to content",
     "unread": "{count} unread notifications",
     "notifications": "Notifications",
-    "yourAccount": "Your account"
+    "yourAccount": "Your account",
+    "menu": "Menu",
+    "general": "General",
+    "account": "Account",
+    "signOut": "Sign out",
+    "role": {
+      "creator": "Creator",
+      "brand": "Brand"
+    }
   },
   "today": {
     "greeting": {
@@ -110,7 +118,39 @@
         "toPay": "To mark as paid"
       }
     },
-    "moneyError": "Payments could not be loaded. The rest of this page is fine."
+    "moneyError": "Payments could not be loaded. The rest of this page is fine.",
+    "actions": {
+      "browse": "Browse campaigns",
+      "deals": "See my deals",
+      "newCampaign": "New campaign",
+      "dealsBrand": "See your deals"
+    },
+    "stats": {
+      "needsYou": "Needs you",
+      "mostUrgent": "Most urgent",
+      "allClearFoot": "All caught up",
+      "confirmed": "Confirmed so far",
+      "open": "Open {label}"
+    },
+    "gauge": {
+      "title": "Payments",
+      "centre": "confirmed",
+      "legendConfirmed": "Confirmed",
+      "legendWaiting": "Waiting to confirm",
+      "legendNotMarked": "Not yet marked as paid",
+      "empty": "No payments yet",
+      "emptyHint": {
+        "creator": "Once a brand marks a payment, it shows here.",
+        "brand": "Once you mark a payment, it shows here."
+      }
+    },
+    "next": {
+      "title": "Next deadline",
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "days": "{days} days",
+      "open": "Open"
+    }
   },
   "attention": {
     "view": "Open",

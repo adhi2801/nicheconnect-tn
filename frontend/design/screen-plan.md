@@ -2,6 +2,8 @@
 
 **Status: Proposed.** Written 28 October 2026 for Erode Harish and re-measured the same day against Adhi's current API (203 operations on `main` at `0b2ea3d`). Nothing here is approved or built. **Launch: 1 January 2027.** The build deadline of 10 December is not yet confirmed. The dated plan is in `execution-plan.md`.
 
+**Visual direction (Harish, 28 October 2026).** Two Dribbble references set the look: a green task dashboard (a sidebar, a soft ground with white cards nested inside a white frame, one deep-green gradient card, pill buttons, circular arrow buttons, a half-circle gauge with striped "not yet" segments) and a soft CRM (circular icon buttons, soft shadows, a dark pill for the current page). They are style references, not assets: the content, the marks and every pattern are Colyv's own. The palette is deep green, placeholder values in `tokens/tokens.json` until the designer's brandbook arrives. This replaces the earlier black and butter-yellow look, so the homepage, the dashboard prototype and the Flutter app are out of step with it until they are brought across.
+
 ## 1. How to read this
 
 This plan decides, for every screen, what the person needs to know, in what order, and what the one thing is that they can do. It is built from three inputs:
