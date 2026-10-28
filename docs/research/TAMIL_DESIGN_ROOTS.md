@@ -19,7 +19,7 @@ The cultural and historical roots Colyv's look is built from, each with its sour
 **Rule 6. Politically neutral, always (Adhi, 29 October 2026: "no lotus and saffron and orange no bjp").** Colyv takes no side in politics. Nothing on any screen may echo a party's symbol or flag:
 - **No lotus** in any form: medallion, petal band, icon or illustration. It is the BJP's symbol.
 - **No saffron or orange** as a brand colour, a sky or a large field of colour.
-- **No sun disc rising over a horizon.** The rising sun is the DMK's symbol, so morning light is shown as light on stone, never as the sun itself on the horizon.
+- **A rising sun may be shown where the scene needs it** (Adhi, 29 October 2026: "rising sun can be there if needed"). It is the DMK's symbol, so it is never drawn as an emblem: no stylised rays, no sun-and-horizon mark, and never alone as a logo or icon. It appears only as natural light in a scene.
 - **No two leaves** (AIADMK), **no open hand** (Congress), **no whistle** (TVK, 2026) ([DT Next](https://www.dtnext.in/news/tamilnadu/tvk-gets-state-party-status-eci-confirms-whistle-symbol)), and no other party's symbol.
 - **No colour pair that copies a party flag.** AIADMK has gone to court over flag colours that were too close to its own ([The News Minute](https://www.thenewsminute.com/article/ammk-flag-too-similar-ours-aiadmk-moves-madras-hc-78105)).
 - **To check before the palette is final:** the brand's deep red with gold or yellow against every Tamil Nadu party flag, starting with TVK's.
