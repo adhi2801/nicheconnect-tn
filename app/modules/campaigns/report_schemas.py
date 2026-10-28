@@ -85,9 +85,10 @@ class ReportDealRead(BaseModel):
     deliverables: str
     content_due_on: date | None = Field(description="The date agreed in the memo")
     work_due_on: date | None = Field(
-        description="The date the work is due by: the agreed date, moved a day for "
-        "every whole day a draft waited for the brand (D-140). On-time is judged "
-        "against this"
+        description="The date the work is due by, as of the report: the agreed date, "
+        "moved a day for every calendar day a draft waited for the brand (D-140). "
+        "Delivered work is judged on time against it as it stood when the work "
+        "was first sent"
     )
     fee_amount_paise: int | None = Field(description="Null for a barter deal")
     currency: Literal["INR"] = CURRENCY

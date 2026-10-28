@@ -11,12 +11,18 @@ Two rules on top of proof's clock (D-025, `review_clock`), Adhi's choices of
   holds, so asking again buys the brand no more time; but a draft shown
   long after the clock restarted is not approved the moment it arrives, so
   nothing is approved that the brand had no chance to see.
-- **The brand's waiting is the brand's.** Every whole day (24 hours) a
-  draft waited for the brand's answer moves the creator's due date by a day
-  before "on time" is judged, so a slow brand cannot make a creator look
-  late. Whole days, not midnights crossed: a draft shown at 23:55 and
-  answered at 00:05 moved nothing, and silence through a 7-day window moves
-  the date by 7 days, never 8.
+- **The brand's waiting is the brand's.** Every Tamil Nadu calendar day a
+  draft spent waiting for the brand, past the day it was shown, moves the
+  creator's due date by a day before "on time" is judged. Calendar days,
+  because a due date is a date and lateness is judged by date (Adhi's
+  choice, 27 October 2026, after the third review): a draft shown on the
+  due day and answered the next morning moves the date to that morning's
+  day, so a waiting brand can never make a creator late. In the creator's
+  favour at the edges: 23:55 to 00:05 moves a day, and silence through a
+  7-day window moves eight, the day it was shown included.
+- **A deal cancelled before a deadline never reaches it.** A draft still
+  waiting when the deal was cancelled is never approved by the clock, and
+  its waiting stops at the cancellation.
 """
 
 from collections.abc import Sequence
@@ -48,13 +54,27 @@ def answer_deadline(
     return datetime.combine(last_day + timedelta(days=1), time.min, tzinfo=IST)
 
 
+def agreed_at(memo: DealMemo, moment: datetime) -> bool:
+    """Whether the deal was still agreed at `moment`: accepted, or cancelled only later."""
+    if memo.status == "accepted":
+        return True
+    return (
+        memo.status == "cancelled"
+        and memo.cancelled_at is not None
+        and memo.cancelled_at >= moment
+    )
+
+
 def is_approved(
     memo: DealMemo, draft: ContentDraft, history: Sequence[ContentDraft], now: datetime
 ) -> bool:
     """Approved, by the brand or by the clock, as of `now`."""
     if draft.status == "approved":
         return True
-    return draft.status == "submitted" and now >= answer_deadline(memo, draft, history)
+    if draft.status != "submitted":
+        return False
+    deadline = answer_deadline(memo, draft, history)
+    return now >= deadline and agreed_at(memo, deadline)
 
 
 def approved_among(
@@ -72,22 +92,29 @@ def answered_at(
         return draft.answered_at
     if draft.status == "submitted":
         deadline = answer_deadline(memo, draft, history)
-        return deadline if now >= deadline else None
+        return deadline if now >= deadline and agreed_at(memo, deadline) else None
     return None
 
 
 def days_waiting_on_brand(
     memo: DealMemo, drafts: Sequence[ContentDraft], now: datetime
 ) -> int:
-    """Whole days (24 hours each) the memo's drafts waited for the brand, up to `now`.
+    """Calendar days, in Tamil Nadu, the memo's drafts waited for the brand, up to `now`.
 
-    Each draft's wait is counted on its own and rounded down, so rounds that
-    each waited a few hours never add up to a day the brand did not take.
+    For each draft: the days from the one it was shown to the one it was
+    answered (or to today while it waits), never past a cancellation. A draft
+    answered without a recorded moment claims no wait.
     """
     total = 0
     for draft in drafts:
-        end = answered_at(memo, draft, drafts, now) or now
-        total += max(0, (end - draft.created_at) // timedelta(days=1))
+        end = answered_at(memo, draft, drafts, now)
+        if end is None:
+            if draft.status != "submitted":
+                continue
+            end = now
+        if memo.cancelled_at is not None:
+            end = min(end, memo.cancelled_at)
+        total += max(0, (india_date(end) - india_date(draft.created_at)).days)
     return total
 
 

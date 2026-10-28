@@ -290,7 +290,8 @@ class MemoWithStageRead(MemoRead):
     work_due_on: date | None = Field(
         description=(
             "The date the work is due by: `content_due_on`, moved a day for every "
-            "whole day a draft waited for the brand's answer (D-140). Show this "
+            "calendar day, in Tamil Nadu, a draft waited for the brand's answer "
+            "(D-140), never past a cancellation. Show this "
             "as the due date; it equals `content_due_on` on a deal without a "
             "draft review. Null when no date was agreed"
         )

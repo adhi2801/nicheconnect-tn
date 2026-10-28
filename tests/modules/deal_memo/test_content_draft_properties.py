@@ -13,10 +13,12 @@ from datetime import UTC, date, datetime, timedelta
 from hypothesis import given
 from hypothesis import strategies as st
 
+from app.core.clock import india_date
 from app.modules.deal_memo.draft_models import DRAFT_STATUSES, ContentDraft
 from app.modules.deal_memo.draft_rules import (
     MIN_ANSWER_DAYS,
     answer_deadline,
+    answered_at,
     approved_among,
     days_waiting_on_brand,
     delivery_due_on,
@@ -105,7 +107,11 @@ def test_a_deal_without_a_draft_review_never_notices_drafts(steps, window, now):
     m = memo(window, draft_review=False)
     when = START + timedelta(minutes=now)
 
-    assert stage_of(m, [], None, when, drafts=build(steps)) == stage_of(m, [], None, when)
+    with_drafts = stage_of(m, [], None, when, drafts=build(steps))
+    without = stage_of(m, [], None, when)
+
+    assert with_drafts == without
+    assert with_drafts.work_due_on == without.work_due_on == m.content_due_on
 
 
 @given(at=minutes, window=windows)
@@ -119,13 +125,44 @@ def test_every_draft_gets_its_window_and_at_least_two_whole_days(at, window):
     assert deadline - d.created_at >= timedelta(days=MIN_ANSWER_DAYS)
 
 
-@given(at=minutes, wait=st.integers(min_value=0, max_value=30 * 24 * 60), window=windows)
-def test_the_wait_counts_whole_days_only(at, wait, window):
-    """Each draft's answer moves the date by its whole days waited, never by midnights crossed."""
+waits = st.integers(min_value=0, max_value=30 * 24 * 60)
+
+
+@given(at=minutes, wait=waits, window=windows, due_in=st.integers(0, 60))
+def test_a_draft_shown_in_time_never_leaves_the_creator_late(at, wait, window, due_in):
+    """Shown on or before the due date: the moved date is never before the answer's day."""
+    m = memo(window)
+    d = draft(START + timedelta(minutes=at), "approved")
+    d.answered_at = d.created_at + timedelta(minutes=wait)
+    m.content_due_on = india_date(d.created_at) + timedelta(days=due_in)
+
+    moved = delivery_due_on(m, [d], d.answered_at)
+
+    assert moved is not None and moved >= india_date(d.answered_at)
+
+
+@given(at=minutes, wait=waits, window=windows)
+def test_the_wait_is_its_whole_days_or_one_more(at, wait, window):
+    """Calendar days: a day per midnight crossed, so the whole days waited, or one more."""
     d = draft(START + timedelta(minutes=at), "approved")
     d.answered_at = d.created_at + timedelta(minutes=wait)
 
-    assert days_waiting_on_brand(memo(window), [d], d.answered_at) == wait // (24 * 60)
+    days = days_waiting_on_brand(memo(window), [d], d.answered_at)
+
+    assert wait // (24 * 60) <= days <= wait // (24 * 60) + 1
+    if india_date(d.answered_at) == india_date(d.created_at):
+        assert days == 0
+
+
+@given(steps=histories, window=windows, now=minutes)
+def test_the_stage_carries_the_moved_date(steps, window, now):
+    m = memo(window)
+    drafts = build(steps)
+    when = START + timedelta(minutes=now)
+
+    assert stage_of(m, [], None, when, drafts=drafts).work_due_on == delivery_due_on(
+        m, drafts, when
+    )
 
 
 @given(steps=histories, window=windows, now=minutes, later=minutes)
@@ -148,3 +185,32 @@ def test_without_the_term_the_agreed_date_holds(steps, window, now):
         delivery_due_on(m, build(steps), START + timedelta(minutes=now))
         == m.content_due_on
     )
+
+
+@given(steps=histories, window=windows, now=minutes, later=minutes)
+def test_answered_drafts_claim_no_more_waiting(steps, window, now, later):
+    """With nothing waiting on the brand, the moved date stays put as time passes."""
+    m = memo(window)
+    drafts = [d for d in build(steps) if d.status != "submitted"]
+    when = START + timedelta(minutes=now)
+
+    assert delivery_due_on(m, drafts, when) == delivery_due_on(
+        m, drafts, when + timedelta(minutes=later)
+    )
+
+
+@given(at=minutes, window=windows, cut=minutes, later=minutes)
+def test_a_deal_cancelled_before_the_deadline_never_reaches_it(at, window, cut, later):
+    d = draft(START + timedelta(minutes=at))
+    m = memo(window)
+    deadline = answer_deadline(m, d, [d])
+    m.status = "cancelled"
+    m.cancelled_at = min(
+        d.created_at + timedelta(minutes=cut), deadline - timedelta(seconds=1)
+    )
+
+    when = deadline + timedelta(minutes=later)
+
+    assert not is_approved(m, d, [d], when)
+    assert approved_among(m, [d], when) is None
+    assert answered_at(m, d, [d], when) is None  # the clock never answered it

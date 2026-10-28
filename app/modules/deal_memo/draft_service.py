@@ -19,13 +19,13 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import exists, select
+from sqlalchemy import exists, inspect, select
 from sqlalchemy.orm import Session
 
 from app.core.export import MAX_ROWS_PER_SECTION, ExportedSection, allow, build_section
 from app.modules.deal_memo import record_service as record
 from app.modules.deal_memo.draft_models import ContentDraft
-from app.modules.deal_memo.draft_rules import answer_deadline, approved_among
+from app.modules.deal_memo.draft_rules import agreed_at, answer_deadline, approved_among
 from app.modules.deal_memo.exceptions import (
     DraftAlreadyDecided,
     DraftNotFound,
@@ -142,7 +142,7 @@ def settle_if_overdue(
     deadline = answer_deadline(
         memo, draft, history if history is not None else drafts_of(db, memo)
     )
-    if now < deadline or not _agreed_at(memo, deadline):
+    if now < deadline or not agreed_at(memo, deadline):
         return draft
     db.scalars(
         select(DealMemo)
@@ -151,7 +151,7 @@ def settle_if_overdue(
         .execution_options(populate_existing=True)
     ).one()
     db.refresh(draft, with_for_update=True)
-    if draft.status != "submitted" or not _agreed_at(memo, deadline):
+    if draft.status != "submitted" or not agreed_at(memo, deadline):
         db.rollback()  # answered or cancelled meanwhile: theirs stands
         return draft
     draft.status = "approved"
@@ -175,15 +175,6 @@ def settle_if_overdue(
     db.commit()
     db.refresh(draft)
     return draft
-
-
-def _agreed_at(memo: DealMemo, moment: datetime) -> bool:
-    """Whether the deal was still agreed at `moment`."""
-    if memo.status == "accepted":
-        return True
-    return memo.status == "cancelled" and (
-        memo.cancelled_at is not None and memo.cancelled_at >= moment
-    )
 
 
 def approve_draft(
@@ -279,10 +270,17 @@ def _lock_for_answer(db: Session, memo: DealMemo, draft: ContentDraft) -> None:
 
 
 def list_for_memo(db: Session, memo: DealMemo, now: datetime) -> list[ContentDraft]:
-    """Every draft on the memo, newest first, settled if overdue. Two queries."""
+    """Every draft on the memo, newest first, settled if overdue.
+
+    One query, and a fixed few more only when a draft is settled: settling
+    commits or rolls back, which expires every row loaded, so they are read
+    again in one query rather than one at a time.
+    """
     drafts = drafts_of(db, memo)
-    for draft in drafts:
+    for draft in [d for d in drafts if d.status == "submitted"]:
         settle_if_overdue(db, memo, draft, now, history=drafts)
+    if inspect(memo).expired:
+        drafts = drafts_of(db, memo)
     return sorted(drafts, key=lambda d: (d.created_at, d.id), reverse=True)
 
 

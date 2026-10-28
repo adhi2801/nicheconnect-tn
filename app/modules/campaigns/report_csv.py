@@ -37,7 +37,6 @@ COLUMNS: tuple[str, ...] = (
     "open_dispute",
     "deliverables",
     "content_due_on",
-    "work_due_on",
     "fee_inr",
     "accepted_on",
     "first_submitted_on",
@@ -60,6 +59,8 @@ COLUMNS: tuple[str, ...] = (
     "latest_seal",
     "seal_stamped_on",
     "deal_memo_id",
+    # Added by item 27 (D-140), last, so no existing column moves.
+    "work_due_on",
 )
 
 
@@ -95,7 +96,6 @@ def _row(line: DealLine) -> list[str]:
         line.stage.has_open_dispute,
         memo.deliverables,
         memo.content_due_on,
-        line.stage.work_due_on,
         rupees(memo.fee_amount_paise),
         india_date(memo.accepted_at) if memo.accepted_at else None,
         line.first_submitted_on,
@@ -120,6 +120,7 @@ def _row(line: DealLine) -> list[str]:
         line.seal.latest_seal,
         line.seal.stamped_on,
         memo.id,
+        line.stage.work_due_on,
     ]
     return [_cell(value) for value in values]
 

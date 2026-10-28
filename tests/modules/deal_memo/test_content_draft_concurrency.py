@@ -187,7 +187,12 @@ def test_a_proof_and_a_request_for_changes_at_the_deadline_never_both_land(
 
 
 def _stale_then(reviewed_deal, act):
-    """Load the draft in one session, let `act` change it in another, then settle the stale copy."""
+    """Load the draft in one session, let `act` change it in another, then settle the stale copy.
+
+    Run one after the other, not at once: this proves settling reads again
+    under the lock before writing, not that a second writer waits on it
+    (the races above prove the waiting).
+    """
     from datetime import timedelta
 
     from app.modules.deal_memo.draft_rules import answer_deadline
