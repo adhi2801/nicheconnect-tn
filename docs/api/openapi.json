@@ -38147,10 +38147,16 @@
           "content": {
             "application/x-www-form-urlencoded": {
               "schema": {
-                "contentMediaType": "application/octet-stream",
-                "description": "Meta's form: `signed_request=<signature>.<payload>`",
-                "title": "Raw",
-                "type": "string"
+                "properties": {
+                  "signed_request": {
+                    "description": "`<signature>.<payload>`, signed by Meta",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "signed_request"
+                ],
+                "type": "object"
               }
             }
           },
@@ -38177,16 +38183,6 @@
               "application/problem+json": {}
             },
             "description": "`invalid_signed_request`: not signed by Meta with our app secret"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "The request is not valid; `errors` names each field and why"
           },
           "429": {
             "content": {
@@ -38310,10 +38306,16 @@
           "content": {
             "application/x-www-form-urlencoded": {
               "schema": {
-                "contentMediaType": "application/octet-stream",
-                "description": "Meta's form: `signed_request=<signature>.<payload>`",
-                "title": "Raw",
-                "type": "string"
+                "properties": {
+                  "signed_request": {
+                    "description": "`<signature>.<payload>`, signed by Meta",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "signed_request"
+                ],
+                "type": "object"
               }
             }
           },
@@ -38333,16 +38335,6 @@
               "application/problem+json": {}
             },
             "description": "`invalid_signed_request`: not signed by Meta with our app secret"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "The request is not valid; `errors` names each field and why"
           },
           "429": {
             "content": {

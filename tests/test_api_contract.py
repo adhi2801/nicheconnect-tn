@@ -179,11 +179,21 @@ def test_every_operation_behind_a_login_documents_401():
     assert missing == [], missing
 
 
+# Read as raw bytes, because Meta's signature covers them exactly; no field
+# is validated, so these can never answer 422. A bad body is 400
+# `invalid_signed_request`, proved in test_connections_api.py.
+READ_RAW = {
+    ("POST", "/api/v1/platforms/meta/data-deletion"),
+    ("POST", "/api/v1/platforms/meta/deauthorize"),
+}
+
+
 def test_every_operation_that_takes_input_documents_422():
     missing = [
         label(method, path)
         for method, path, op in operations()
         if (op.get("parameters") or op.get("requestBody"))
+        and (method.upper(), path) not in READ_RAW
         and "422" not in op["responses"]
     ]
 

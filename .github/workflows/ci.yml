@@ -253,11 +253,15 @@ jobs:
       # Passkeys (D-113) are switched on here, for a domain only tests use,
       # so the fuzzer attacks their real checks instead of the 503 they
       # answer while off. Production stays off until the domain exists.
+      # Meta's two callbacks (D-134) the same way: with a test-only app
+      # secret the fuzzer reaches the signature check, which refuses its
+      # forms with a 400, instead of the 503 they answer with no Meta app.
       - name: Fuzz the API against its own contract
         env:
           DATABASE_URL: ${{ env.APP_LOGIN_DATABASE_URL }}
           PASSKEY_RP_ID: nicheconnect.test
           PASSKEY_ORIGINS: https://app.nicheconnect.test
+          META_APP_SECRET: ci-test-only-meta-app-secret-not-a-secret-0005
         run: |
           uvicorn app.main:app --port 8099 --log-level warning &
           for _ in $(seq 1 30); do
