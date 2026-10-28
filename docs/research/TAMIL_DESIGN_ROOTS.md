@@ -1,6 +1,6 @@
 # Tamil design roots
 
-The cultural and historical roots Colyv's look is built from, each with its source and the design job it may do. **Version 1, 28 October 2026. Desk research only; nothing here is approved, and every design use below is a proposal.** Adhi's ideas behind it: the temple, Tamil culture and the Thanjavur thalaiyatti bommai on the landing page.
+The cultural and historical roots Colyv's look is built from, each with its source and the design job it may do. **Version 2, 28 October 2026 (section 12 added the same day). Desk research only; nothing here is approved, and every design use below is a proposal.** Adhi's ideas behind it: the temple, Tamil culture and the Thanjavur thalaiyatti bommai on the landing page.
 
 **Why this file exists.** Adhi asked (28 October 2026) for Colyv to look like a premium, billion-dollar product, rooted in Tamil culture and history, with every visual choice researched and given a reason and a purpose. A choice that cannot point to a root here, or to `docs/PSYCHOLOGY_AND_TRUST.md`, is decoration, and decoration is cut.
 
@@ -131,7 +131,175 @@ English only today (D-054). Free, OFL-licensed Tamil faces exist: Noto Sans Tami
 
 ---
 
-## 12. What is still missing (honest list)
+## 12. More roots (version 2, 28 October 2026)
+
+Added after Adhi asked for deeper Tamil culture and ancient history, and set a new rule (rule 5 below). Each root keeps the same shape: what it is, why it fits, how it may be used, and confidence.
+
+**Rule 5. Nothing is a photograph (Adhi, 28 October 2026).** Every visual on Colyv is **made**: the temple in 3D, the doll in 3D, ornaments drawn as vectors or in code, detailed, sculpted and lit so it looks real. Photographs are private references for the makers, never shown on a page. The prototype's pilot-list section is the standard for neatness: the thoranam along the edge, the doll in an arched niche, a clean form and honest consent wording.
+
+### 12.1 The merchants who wrote deals in stone
+
+- **What:** The Ainnurruvar ("the five hundred") were the most prominent merchant guild of the Chola era.
+  - Their inscriptions, from the 9th to the 14th century, record their endowments and trade, and reach as far as Sumatra (a Tamil inscription of 1088 CE).
+  - Guild members met, decided, and **engraved their decisions as inscriptions in public places** ([Wikipedia](https://en.wikipedia.org/wiki/Ainnurruvar); [Live History India](https://livehistoryindia.com/story/eras/the-indian-lords-of-trade)).
+  - Confidence: medium. The sources are secondary, and a scholarly epigraphy source is owed.
+- **Why it fits:** It is the oldest Tamil precedent for Colyv's whole idea: commerce agreed in public and kept on a record no one can quietly change.
+- **Use:**
+  - the story under "the record" (the about page, the sealed-record moment);
+  - an inscription-like band of Tamil-Brahmi-inspired strokes (not real text) carved into the 3D seal's rim.
+- **Avoid:** claiming continuity between the guild and Colyv. It is a precedent, not a lineage.
+
+### 12.2 Keezhadi and the age of Tamil writing
+
+- **What:** Excavations at Keezhadi (Keeladi), near Madurai, show an urban settlement of the Sangam age, with potsherds bearing Tamil-Brahmi script.
+  - The Tamil Nadu Archaeology Department's report dates one charcoal sample to **580 BCE**.
+  - The ASI has asked for better stratigraphic proof, and suggests pre-300 BCE.
+  - The 11th phase began on 18 March 2026 and exposed continuous brick structures ([Open](https://openthemagazine.com/feature/the-keezhadi-connection); [The Wire](https://science.thewire.in/the-sciences/keezhadi-excavation-tamil-nadu-sangam-era-asi-tamil-brahmi); [Civilsdaily](https://www.civilsdaily.com/news/rewriting-the-keezhadi-keeladi-excavations-report/)).
+  - Confidence: the dating is **disputed**.
+- **Why it fits:** writing used for everyday life, not only for kings. Records are old in Tamil country.
+- **Use:**
+  - the potsherd's scratched-letter texture, as a material for the record's surface;
+  - the brick-and-terracotta palette of the excavated walls, as a warm ground colour.
+- **Avoid:** stating any date as settled (rule 3), and taking sides in the dispute.
+
+### 12.3 Palm-leaf records (olai chuvadi)
+
+- **What:** Tamil texts were incised on palm leaves with an iron stylus (*eluttani*, earlier *uci*), blackened with lamp soot to be read, and tied through holes with a cord into a bundle (*cuvadi*). Few leaves survive past 100 to 200 years, so most existing manuscripts are 19th or 20th century copies ([Hamburg CSMC](https://www.csmc.uni-hamburg.de/publications/conference-contributions/files/francis-abstr.pdf); [Indology list](https://list.indology.info/pipermail/indology/1998-March/011327.html)).
+- **Why it fits:** a record written by pressing into a surface, bound in order, page after page, which is exactly the deal history.
+- **Use:**
+  - **The deal timeline drawn as a palm-leaf bundle**: each event a leaf, the cord through them is the hash chain, and the seal knots the cord.
+  - In 3D: thin leaves with incised strokes, lit from the side so the incisions catch light.
+- **Avoid:** fake ancient-looking type for real data. Real data stays in the product's fonts.
+
+### 12.4 The thalaiyatti bommai, made properly
+
+- **What:** The doll was encouraged under Serfoji II (early 19th century); some accounts reach back to the Nayaks. It carries a Geographical Indication (2008 to 2009; sources differ).
+  - Two kinds exist. The roly-poly has a heavy round base that rocks and returns upright. The bobble kind has its head on a wire, so it nods.
+  - It is made of terracotta or papier-mâché (paper, glue, tapioca flour), pressed in two-part moulds, sanded and hand-painted ([Vajiram](https://vajiramandravi.com/current-affairs/thanjavur-doll/); [Shankar IAS, January 2024](https://www.shankariasparliament.com/current-affairs/prelim-bits-05-01-2024-upsc-daily-current-affairs)).
+- **Why it fits:** already in section 4: it is knocked and comes back upright.
+- **How to make it, under rule 5:** a 3D model that copies the craft's real construction, not a photo.
+  - **Geometry:** two mould halves meeting at a visible seam; a weighted round base; a head on a hidden pivot.
+  - **Surface:** the slight lumps of hand-pressed papier-mâché, under-glaze brush strokes, gold paint that has worn on the raised edges.
+  - **Motion:** physics, not keyframes. The base is a damped pendulum and the head a second pendulum.
+  - **The source to model from:** **a pair we buy and measure ourselves** (section 9, "first act"). An AI image-to-3D tool may give a first draft from our own photos of that doll (Part B5 of `FRONTEND_RESEARCH_2026.md`), finished by hand.
+- **Avoid:** copying any one maker's design. Ours is a generic form, painted in Colyv's palette.
+
+### 12.5 Thanjavur painting, as a material recipe
+
+- **What:**
+  - The panel is cloth on a jackfruit or teak plank (hence *palagai padam*).
+  - A relief paste of limestone or chalk with gum is raised where gold will sit.
+  - Gold foil is pressed over the relief, sometimes set with glass stones, rarely real gems.
+  - Then the rest is painted, in strong flat colours.
+  - It is rooted in the Nayak period (about 1600) and flourished under the Thanjavur Marathas, especially Serfoji II ([Exotic India](https://www.exoticindiaart.com/article/world-of-tanjore-paintings/); [Artisera](https://artisera.com/blogs/expressions/tanjore-painting); [AstaGuru](https://www.astaguru.com/blogs/thanjavur-paintings-from-16th-century-temples-to-maratha-glory-986)).
+  - Confidence: who introduced gesso and gold is contested.
+- **Use:** the recipe for "raised gold" (section 5) in 3D. A height map lifts the gilded parts; the gold has a slightly hammered roughness; the edges catch light. It goes only on what is sealed.
+
+### 12.6 Swamimalai bronze, the casting
+
+- **What:**
+  - The lost-wax method. The model is made of beeswax, kungiliyam resin and groundnut oil (4:4:1).
+  - It is invested in three layers of clay, the first of fine Kaveri silt.
+  - The wax is melted out, panchaloha alloy is poured in, and the mould is broken. Each icon is unique.
+  - Proportions follow the Shilpa Shastras ([Wikipedia](https://en.wikipedia.org/wiki/Swamimalai_Bronze_Icons); [Exotic India](https://www.exoticindiaart.com/article/icons-of-swamimalai)).
+  - The exact proportional units (*talamana*) were not found. They are owed.
+- **Use:**
+  - The bronze material for 3D objects: dark recesses and bright worn high points.
+  - "Each one cast once" as the idea behind the seal: one seal per sealed deal, never re-made.
+- **Avoid:** any deity's form (rule 1).
+
+### 12.7 Dance in stone: the 81 karanas
+
+- **What:**
+  - The Brihadeeswarar carries sculptures of **81 of the 108 karanas** (the dance units of the Natyashastra).
+  - They are in a chamber of the vimana's first tier, with blank stones where the other 27 would be.
+  - They were found in 1956 while vegetation was being cleared.
+  - Dr Padma Subrahmanyam called them "frozen moments" of movement ([Narthaki](https://narthaki.com/info/snippets/snpmar16.html); [Madras Musings](https://madrasmusings.com/Vol%2020%20No%2012/speaking-of-the-big-temple.html)).
+- **Use:** the grammar of motion, not the figures. Each karana is a still pose between two movements, which is how Colyv's motion should feel: clear end poses, no wandering. The figures themselves are sacred dance of a deity and are not shown (rule 1).
+
+### 12.8 The paintings under the paintings
+
+- **What:**
+  - In 1931 (some sources say 1930) S. K. Govindaswami saw Nayak-period paint flaking in the Brihadeeswarar's inner passage.
+  - He found Chola frescoes, about a thousand years old, underneath. The later layer had shielded them from soot ([Sahapedia](https://www.sahapedia.org/chola-murals-0); [Sreenivasarao](https://sreenivasaraos.com/tag/chola-murals/)).
+- **Why it fits:** layers of record, the newer over the older, with the older still there. That is how memo versions work on Colyv (D-127: the old version stays on the record).
+- **Use:** the "earlier version" reveal. Peeling back a memo version shows the one beneath, with a soft fresco texture on the older layer.
+
+### 12.9 Mamallapuram: carving from the living rock
+
+- **What:**
+  - Pallava monuments of the 7th and 8th centuries: rock-cut caves, monolithic rathas, and the Shore Temple of Narasimhavarman II.
+  - Arjuna's Penance is a granite relief that uses a natural cleft so that rainwater ran over it ([MAP Academy](https://mapacademy.io/?p=3050); [ANU archive](https://openresearch-repository.anu.edu.au/entities/anuarchivesitem/40d98b95-eb3a-4337-acf9-61ad5d1ac6ef)).
+  - Dates and patrons are disputed.
+- **Use:**
+  - granite as a material, with a fine grain and soft weathering, for the product's "stone" surfaces;
+  - the idea of carving into one block: interface panels feel cut from one surface, not stuck on.
+
+### 12.10 Darasuram: the chariot hall
+
+- **What:**
+  - The Airavatesvara temple (12th century, Rajaraja II) is one of the Great Living Chola Temples (UNESCO).
+  - Its front hall is built as a chariot, with stone wheels and horses, and it is known for miniature sculpture.
+  - The "musical steps" are anecdotal ([Wikipedia](https://en.wikipedia.org/wiki/Darasuram); [Google Arts and Culture](https://artsandculture.google.com/story/airavatesvara-temple-darasuram-tamil-nadu-friends-of-heritage-sites/vwXBHb9bgAnxZQ?hl=en)).
+- **Use:** a deal "moving forward" drawn as a stone wheel turning one notch per stage, a quiet progress mark.
+- **Avoid:** the musical-steps claim in any copy (rule 3).
+
+### 12.11 Kanchipuram silk: korvai and the temple border
+
+- **What:**
+  - *Korvai* means harmony. Two weavers interlock a separately woven body and border into one cloth.
+  - The temple border (*thazhampoo reku*) is a stepped triangle after the gopuram, and it sits on the very join.
+  - The peacock (*mayil*) and its eye (*mayilkan*) are among the oldest motifs.
+  - Gold *zari* is metal thread ([Weaver Story](https://weaverstory.com/blogs/news/traditional-motifs-of-kanjivaram-sarees-and-the-connection-with-history); [RMKV](https://rmkv.com/blogs/posts/sacred-symbols-decoding-the-motifs-of-kanchipuram-bridal-silk-sarees)).
+  - Confidence: the meanings come mostly from retailers; korvai and the temple border are the best supported.
+- **Why it fits:** *korvai* is two parties woven into one cloth, at a seam you can see. A deal memo is exactly that.
+- **Use:** the memo card's border is a woven temple border where the two parties' halves meet, with zari only once both have agreed.
+
+### 12.12 The kolam, as mathematics
+
+- **What:**
+  - Gift Siromoney and colleagues (from 1974) described kolams with array grammars, a two-dimensional cousin of formal languages.
+  - Recent work classifies and counts square-tile sikku kolams by symmetry ([CMI](https://www.cmi.ac.in/gift/Kolam/kola_pattern.htm); [arXiv 2304.14134](https://arxiv.org/pdf/2304.14134); [arXiv 1503.02130](https://arxiv.org/pdf/1503.02130)).
+  - A one-line kolam behaves like an Eulerian path (one weak source).
+- **Use:** kolams on Colyv are **generated by these rules in code**, never traced from someone's drawing:
+  - each deal can carry its own kolam, drawn from its record (a visual fingerprint);
+  - the courtyard kolam in the 3D scene draws itself along a real single-line path.
+- **Avoid:** pretending a generated pattern is traditional. It is "drawn by kolam rules".
+
+### 12.13 Light: the Nachiarkoil lamp
+
+- **What:**
+  - A standing brass lamp (*kuthuvilakku*), cast by the Kammalar metalsmiths of Nachiarkoil near Kumbakonam.
+  - It is built from many separately cast parts, often topped with a swan (*annam*).
+  - It has a Geographical Indication: applied in 2010, certificate in 2013 ([Wikipedia](https://en.wikipedia.org/wiki/Nachiarkoil_lamp); [GI registry, application 196](https://search.ipindia.gov.in/GIRPublic/Application/Details/196)).
+- **Use:** the light sources in the 3D courtyard. Real lamps with flickering flames are what light the scene at dusk. A lamp is lit when a deal completes.
+
+### 12.14 Temple jewellery of Nagercoil, and the Thanjavur art plate
+
+- **What:**
+  - **Nagercoil (Vadasery):** silver forms overlaid with gold sheet, set with red and green kemp stones (*kuchu kal*) in lac ([GJEPC](https://gjepc.org/solitaire/nagercoils-temple-jewellery-a-divine-craft/); [Wikipedia](https://en.wikipedia.org/wiki/Temple_Jewellery_of_Nagercoil)).
+  - **The Thanjavur art plate:** copper, silver and brass together in raised relief.
+  - Both are GI crafts (the years differ by source).
+  - Sources disagree on Tamil Nadu's GI count (56 or 74), to be checked at the GI registry.
+- **Use:** the palette of status. Kemp red for a threshold (section 7, kaavi red only at thresholds) and kemp green for "done", set in gold only when sealed. The art plate's three metals are the three tiers of a material system: copper for drafts, silver for agreed, gold for sealed.
+
+### 12.15 Athangudi floors and Chettinad houses
+
+- **What:**
+  - Athangudi tiles are made by hand, without firing: cement and oxide on glass, set in place, cured, and once polished with egg white.
+  - Chettinad mansions (about 1850 to 1940) combine Burma teak, courtyards and colonnades with imported marble, glass and Gothic fronts. Accounts of the egg-white wall plaster disagree ([Memeraki](https://www.memeraki.com/blogs/posts/the-indigenous-craft-of-athangudi-tiles); [Wikipedia](https://en.wikipedia.org/wiki/Chettinad_mansions); [Google Arts and Culture](https://artsandculture.google.com/exhibit/chettiar-crafts-athangudi-tiles/vAKSMoHx4BQNJg)).
+- **Why it fits:** the Chettiars were merchants and bankers with famous account-keeping (section 8). Their houses are commerce made beautiful.
+- **Use:**
+  - the courtyard floor in the 3D scene is Athangudi tile, with a soft polished sheen, the geometric pattern made in code;
+  - the product's dashboard background uses the same quiet tile grid at low contrast.
+
+### 12.16 The thoranam
+
+- **What:** the festoon of mango leaves, and of flowers on festive days, hung across a doorway. It is already used along the prototype's pilot-list card.
+- **Use:** the edge ornament for thresholds only: the join form, a newly agreed memo. It follows section 7's rule that the strongest marks live at thresholds.
+- **Owed:** a sourced account of the thoranam's meaning and its leaves, to be added before launch.
+
+## 13. What is still missing (honest list)
 
 1. The full tinai table from a primary or scholarly source.
 2. Meenakshi temple's gopurams (the colourful Nayak-era towers) and the Brihadeeswarar's granite, from better sources.
@@ -140,3 +308,8 @@ English only today (D-054). Free, OFL-licensed Tamil faces exist: Noto Sans Tami
 5. Tamil display typefaces, from a specialist source.
 6. Conversations with Tamil brand owners and creators about what feels authentic and what feels like a costume (`docs/research/README.md`); none held yet.
 7. A real-phone benchmark of a splat and a compressed mesh on the budget Android reference phone.
+8. A primary architectural source for the Brihadeeswarar vimana (storey count, measured proportions), before the 3D model's proportions are fixed (`FRONTEND_RESEARCH_2026.md` B5).
+9. The Shilpa Shastra proportional units (talamana), from a scholarly source.
+10. A scholarly epigraphy source for the Ainnurruvar inscriptions (section 12.1).
+11. The script's history from Tamil-Brahmi to Vatteluttu to modern Tamil, from a scholarly source.
+12. The meaning of the thoranam and its leaves, sourced (section 12.16).
