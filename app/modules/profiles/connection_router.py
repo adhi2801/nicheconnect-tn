@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Annotated
 from urllib.parse import parse_qs
 
-from fastapi import APIRouter, Body, Depends, Path, Request, Response, status
+from fastapi import APIRouter, Depends, Path, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -47,13 +47,37 @@ router = APIRouter(
 meta_router = APIRouter(prefix="/api/v1/platforms/meta", tags=["profiles"])
 
 Platform = Annotated[ConnectedPlatform, Path(description="instagram or youtube")]
-FormBody = Annotated[
-    bytes,
-    Body(
-        media_type="application/x-www-form-urlencoded",
-        description="Meta's form: `signed_request=<signature>.<payload>`",
-    ),
-]
+
+
+async def _meta_form(request: Request) -> bytes:
+    """Meta's form exactly as sent: the signature is checked over these bytes."""
+    return await request.body()
+
+
+# Read raw (above), so the contract is written here: a form with one field.
+# Declared as a raw string before, which no form can be, so the fuzzer threw
+# most of its examples away and failed its health check at random (seen on
+# CI's fuzz step, 28 October 2026).
+FormBody = Annotated[bytes, Depends(_meta_form)]
+META_FORM_DOC: dict[str, object] = {
+    "requestBody": {
+        "required": True,
+        "content": {
+            "application/x-www-form-urlencoded": {
+                "schema": {
+                    "type": "object",
+                    "required": ["signed_request"],
+                    "properties": {
+                        "signed_request": {
+                            "type": "string",
+                            "description": "`<signature>.<payload>`, signed by Meta",
+                        }
+                    },
+                }
+            }
+        },
+    }
+}
 
 _COMMON: ResponseDocs = {
     401: problem_doc("No access token, or it is invalid or expired"),
@@ -201,6 +225,7 @@ _META: ResponseDocs = {
         "link and a confirmation code."
     ),
     responses=_META,
+    openapi_extra=META_FORM_DOC,
 )
 @rate_limit(CALLBACK_LIMIT)
 def meta_data_deletion(
@@ -226,6 +251,7 @@ def meta_data_deletion(
         "signature. The person's connection is deleted."
     ),
     responses=_META,
+    openapi_extra=META_FORM_DOC,
 )
 @rate_limit(CALLBACK_LIMIT)
 def meta_deauthorize(

@@ -436,3 +436,32 @@ def test_deleting_the_account_erases_its_connection(
 
     assert db.scalars(select(ConnectedAccount)).first() is None
     assert db.scalars(select(PlatformDeletionRequest)).first() is None
+
+
+@pytest.mark.parametrize(
+    "path", ["/api/v1/platforms/meta/data-deletion", "/api/v1/platforms/meta/deauthorize"]
+)
+def test_the_contract_says_meta_sends_a_form_with_signed_request(path):
+    """A raw string is no form, so the fuzzer could not build one and failed at random."""
+    from app.main import app
+
+    body = app.openapi()["paths"][path]["post"]["requestBody"]
+    schema = body["content"]["application/x-www-form-urlencoded"]["schema"]
+
+    assert body["required"] is True
+    assert schema["type"] == "object"
+    assert schema["required"] == ["signed_request"]
+    assert schema["properties"]["signed_request"]["type"] == "string"
+
+
+@pytest.mark.parametrize("path", ["/data-deletion", "/deauthorize"])
+@pytest.mark.parametrize("body", [b"", b"not=a&form", b"\xff\xfe", b"signed_request="])
+def test_a_meta_callback_never_answers_422(client, platforms, path, body):
+    """The contract leaves 422 out for these: a bad body is always a refused signature."""
+    response = client.post(
+        f"{META}{path}",
+        content=body,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+
+    assert_problem(response, 400, "invalid_signed_request")
