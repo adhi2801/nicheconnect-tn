@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.modules.auth.tokens import create_access_token
+from app.modules.auth.tokens import PHONE_CODE_ONLY, TWO_FACTORS, create_access_token
 from tests.factories import build_brand, build_creator
 
 CAMPAIGNS_URL = "/api/v1/campaigns"
@@ -33,17 +33,38 @@ class Clock:
         self.now += delta
 
 
+# How long ago a test user logged in, unless a test says otherwise: well
+# past the week that changing a phone number or a UPI ID asks for (D-109).
+LONG_AGO = timedelta(days=60)
+
+
 class User:
-    """A signed-in account whose token is minted at the clock's current time."""
+    """A signed-in account whose token is minted at the clock's current time.
+
+    Its login is LONG_AGO by default; set `logged_in_at` to test a newer one.
+    """
 
     def __init__(self, account_id: uuid.UUID, role: str, clock: Clock) -> None:
         self.account_id = account_id
         self.role = role
         self.clock = clock
+        self.logged_in_at: datetime | None = None
 
     @property
     def headers(self) -> dict[str, str]:
-        token, _ = create_access_token(self.account_id, self.role, self.clock.now)
+        # An admin's token is only ever made by the two-factor login (D-105),
+        # so a test admin holds one that says so.
+        token, _ = create_access_token(
+            self.account_id,
+            self.role,
+            self.clock.now,
+            methods=TWO_FACTORS if self.role == "admin" else PHONE_CODE_ONLY,
+            authenticated_at=(
+                self.clock.now - LONG_AGO
+                if self.logged_in_at is None
+                else self.logged_in_at
+            ),
+        )
         return {"Authorization": f"Bearer {token}"}
 
 
@@ -101,3 +122,29 @@ def accepted_memo(
     accepted = client.post(f"{MEMOS_URL}/{memo_id}/accept", headers=creator.headers)
     assert accepted.status_code == 200, accepted.text
     return str(memo_id)
+
+
+# A 12-digit UPI reference, as a brand marking a payment sends.
+PAYMENT_REFERENCE = "412345678901"
+
+
+def finish_deal(client: TestClient, brand: User, creator: User, memo_id: str) -> None:
+    """Work sent and approved, money sent and confirmed: a finished deal."""
+    proof = client.post(
+        f"{MEMOS_URL}/{memo_id}/proof",
+        json={"content_url": LINK, "format": "reel", "disclosure_confirmed": True},
+        headers=creator.headers,
+    )
+    assert proof.status_code == 201, proof.text
+    client.post(
+        f"{MEMOS_URL}/{memo_id}/proof/{proof.json()['id']}/approve", headers=brand.headers
+    )
+    client.post(
+        f"{MEMOS_URL}/{memo_id}/payment/mark-paid",
+        json={"method": "upi", "reference": PAYMENT_REFERENCE},
+        headers=brand.headers,
+    )
+    confirmed = client.post(
+        f"{MEMOS_URL}/{memo_id}/payment/confirm", headers=creator.headers
+    )
+    assert confirmed.status_code == 200, confirmed.text

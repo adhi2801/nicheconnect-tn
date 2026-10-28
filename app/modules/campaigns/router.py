@@ -6,7 +6,6 @@ from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, Request, Response, status
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.errors import problem_doc
@@ -16,21 +15,26 @@ from app.core.rate_limit import rate_limit
 from app.core.taxonomy import Niche
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
-from app.modules.auth.models.brand import Brand
 from app.modules.campaigns import service
 from app.modules.campaigns.dependencies import CurrentBrandProfile, OwnedCampaign
-from app.modules.campaigns.exceptions import CampaignNotFound
 from app.modules.campaigns.models import Campaign
 from app.modules.campaigns.schemas import (
+    ApplicationCountsRead,
     CampaignCreate,
     CampaignRead,
     CampaignStatus,
+    CampaignSummaryRead,
     CampaignType,
     CampaignUpdate,
+    DealStageCountsRead,
 )
+from app.modules.campaigns.summary import summarise
 
 WRITE_LIMIT = "30 per minute"
 READ_LIMIT = "60 per minute"
+# A ceiling per day as well as per minute (trust-and-safety.md rule 2, item 58):
+# a per-minute limit stops a script, not a person spamming by hand all day.
+CREATE_LIMIT = "30 per minute;20 per day"
 
 router = APIRouter(
     prefix="/api/v1/campaigns", tags=["campaigns"], route_class=IdempotentRoute
@@ -40,10 +44,32 @@ Limit = Annotated[int, Query(ge=1, le=MAX_LIMIT, description="Rows per page")]
 Cursor = Annotated[str | None, Query(description="From a previous page's next_cursor")]
 
 
-def _page(result: Slice[Campaign]) -> Page[CampaignRead]:
+def _reads(db: Session, campaigns: list[Campaign]) -> list[CampaignRead]:
+    """Each campaign with its brand's verified domain and any look-alike name warning.
+
+    Two queries for the page, however long: the domains (item 74), then the
+    brands' names beside every verified brand's (item 75).
+    """
+    domains = service.verified_domains_for(db, campaigns)
+    name_flags = service.brand_name_flags_for(db, campaigns)
+    return [
+        CampaignRead.model_validate(campaign).model_copy(
+            update={
+                "verified_domain": domains.get(campaign.brand_id),
+                "brand_name_flag": name_flags.get(campaign.brand_id),
+            }
+        )
+        for campaign in campaigns
+    ]
+
+
+def _read(db: Session, campaign: Campaign) -> CampaignRead:
+    return _reads(db, [campaign])[0]
+
+
+def _page(db: Session, result: Slice[Campaign]) -> Page[CampaignRead]:
     return Page[CampaignRead](
-        items=[CampaignRead.model_validate(row) for row in result.rows],
-        next_cursor=result.next_cursor,
+        items=_reads(db, list(result.rows)), next_cursor=result.next_cursor
     )
 
 
@@ -64,7 +90,7 @@ def _page(result: Slice[Campaign]) -> Page[CampaignRead]:
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
-@rate_limit(WRITE_LIMIT)
+@rate_limit(CREATE_LIMIT)
 def create_campaign(
     request: Request,
     response: Response,
@@ -75,7 +101,7 @@ def create_campaign(
 ) -> CampaignRead:
     campaign = service.create_campaign(db, brand, body.model_dump(), now)
     response.headers["Location"] = f"/api/v1/campaigns/{campaign.id}"
-    return CampaignRead.model_validate(campaign)
+    return _read(db, campaign)
 
 
 @router.get(
@@ -101,9 +127,10 @@ def list_my_campaigns(
     db: Session = Depends(get_db),
 ) -> Page[CampaignRead]:
     return _page(
+        db,
         service.list_brand_campaigns(
             db, brand, limit=limit, cursor=cursor, status=campaign_status
-        )
+        ),
     )
 
 
@@ -134,6 +161,7 @@ def discover_campaigns(
     db: Session = Depends(get_db),
 ) -> Page[CampaignRead]:
     return _page(
+        db,
         service.discover_campaigns(
             db,
             limit=limit,
@@ -142,7 +170,8 @@ def discover_campaigns(
             niche=niche,
             campaign_type=campaign_type,
             min_budget_paise=min_budget_paise,
-        )
+            viewer_account_id=account.id,
+        ),
     )
 
 
@@ -152,12 +181,15 @@ def discover_campaigns(
     summary="Read one campaign",
     description=(
         "The owning brand sees its campaign in any status. Everyone else sees "
-        "it only while it is open; otherwise the answer is 404, so drafts stay private."
+        "it only while it is open; otherwise the answer is 404, so drafts stay "
+        "private. An open campaign withheld for legal reasons, or whose brand "
+        "is, answers 451 to everyone but its brand (item 52)."
     ),
     responses={
         401: problem_doc("No access token, or it is invalid or expired"),
         404: problem_doc("No such campaign, or it is not visible to you"),
         429: problem_doc("Too many requests; see the Retry-After header"),
+        451: problem_doc("Withheld for legal reasons (item 52)"),
     },
 )
 @rate_limit(READ_LIMIT)
@@ -167,17 +199,8 @@ def read_campaign(
     account: CurrentAccount,
     db: Session = Depends(get_db),
 ) -> CampaignRead:
-    campaign = db.get(Campaign, campaign_id)
-    if campaign is None:
-        raise CampaignNotFound()
-    # A campaign that is not open is visible to its owner only.
-    if campaign.status != "open":
-        owner_account_id = db.scalar(
-            select(Brand.account_id).where(Brand.id == campaign.brand_id)
-        )
-        if owner_account_id != account.id:
-            raise CampaignNotFound()
-    return CampaignRead.model_validate(campaign)
+    campaign = service.get_visible_campaign(db, campaign_id, account.id)
+    return _read(db, campaign)
 
 
 @router.patch(
@@ -207,8 +230,43 @@ def update_campaign(
     now: datetime = Depends(get_now),
 ) -> CampaignRead:
     changes = body.model_dump(exclude_unset=True)
-    return CampaignRead.model_validate(
-        service.update_campaign(db, campaign, changes, now)
+    return _read(db, service.update_campaign(db, campaign, changes, now))
+
+
+@router.get(
+    "/{campaign_id}/summary",
+    response_model=CampaignSummaryRead,
+    summary="A campaign at a glance",
+    description=(
+        "For the owning brand: applications by status, deals by stage, how many "
+        "deals are agreed and finished, how many wait on the brand, and whether "
+        "the campaign is complete. Worked out as of now, never stored."
+    ),
+    responses={
+        401: problem_doc("No access token, or it is invalid or expired"),
+        403: problem_doc("Only brand accounts can do this"),
+        404: problem_doc("No such campaign, or it is not yours"),
+        409: problem_doc("The brand profile has not been created yet"),
+        429: problem_doc("Too many requests; see the Retry-After header"),
+    },
+)
+@rate_limit(READ_LIMIT)
+def campaign_summary(
+    request: Request,
+    campaign: OwnedCampaign,
+    db: Session = Depends(get_db),
+    now: datetime = Depends(get_now),
+) -> CampaignSummaryRead:
+    found = summarise(db, campaign, now)
+    return CampaignSummaryRead(
+        campaign_id=found.campaign_id,
+        status=found.status,
+        applications=ApplicationCountsRead(**found.applications),
+        deals_by_stage=DealStageCountsRead(**found.deals_by_stage),
+        deals_agreed=found.deals_agreed,
+        deals_finished=found.deals_finished,
+        deals_waiting_on_brand=found.deals_waiting_on_brand,
+        complete=found.complete,
     )
 
 
@@ -236,9 +294,7 @@ def _status_endpoint(
         db: Session = Depends(get_db),
         now: datetime = Depends(get_now),
     ) -> CampaignRead:
-        return CampaignRead.model_validate(
-            service.change_status(db, campaign, new_status, now)
-        )
+        return _read(db, service.change_status(db, campaign, new_status, now))
 
     return endpoint
 
@@ -247,7 +303,11 @@ publish_campaign = _status_endpoint(
     "publish",
     "open",
     "Publish a campaign",
-    "Moves a draft to open, so creators can see and apply to it.",
+    "Moves a draft to open, so creators can see and apply to it. A brand whose "
+    "name looks like a protected brand's is refused, 409 "
+    "`brand_name_needs_domain`, until it verifies that brand's domain at `POST "
+    "/api/v1/brands/me/domain` (item 75); the detail names the brand and the "
+    "domain.",
 )
 close_campaign = _status_endpoint(
     "close",

@@ -55,6 +55,9 @@ def test_a_checkpoint_and_its_stamps_get_time_ordered_ids(db):
 # --- nothing can be rewritten ------------------------------------------------------
 
 
+# The owner: the app's own login is refused by permission before the trigger
+# this shows is reached (item 97, tests/owner.py).
+@pytest.mark.owner
 @pytest.mark.parametrize("model", [DealRecordCheckpoint, DealRecordTimestamp])
 def test_neither_table_can_be_updated_or_deleted(db, model):
     row = checkpoint(db)
@@ -73,6 +76,9 @@ def test_neither_table_can_be_updated_or_deleted(db, model):
     assert removed.message_primary == f"{table} is append-only: DELETE refused"
 
 
+# The owner: the app's own login is refused by permission before the trigger
+# this shows is reached (item 97, tests/owner.py).
+@pytest.mark.owner
 @pytest.mark.parametrize("table", ["deal_record_checkpoint", "deal_record_timestamp"])
 def test_neither_table_can_be_truncated(db, table):
     checkpoint(db)

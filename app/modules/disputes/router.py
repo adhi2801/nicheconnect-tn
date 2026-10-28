@@ -43,6 +43,10 @@ from app.modules.payment_status.models import PaymentStatus
 
 WRITE_LIMIT = "30 per minute"
 READ_LIMIT = "60 per minute"
+# A ceiling per day as well as per minute (trust-and-safety.md rule 2, item 58):
+# a per-minute limit stops a script, not a person spamming by hand all day.
+OPEN_LIMIT = "30 per minute;10 per day"
+ENTRY_LIMIT = "30 per minute;50 per day"
 
 # Raising a dispute is a POST that must not fire twice from one tap.
 router = APIRouter(
@@ -99,7 +103,7 @@ def _rendered(db: Session, dispute: Dispute, today: date) -> DisputeRead:
         422: problem_doc("The reason is missing or too short"),
     },
 )
-@rate_limit(WRITE_LIMIT)
+@rate_limit(OPEN_LIMIT)
 def open_dispute(
     request: Request,
     memo_id: MemoId,
@@ -160,7 +164,7 @@ def read_dispute(
         422: problem_doc("An entry must carry a note, a link, or both"),
     },
 )
-@rate_limit(WRITE_LIMIT)
+@rate_limit(ENTRY_LIMIT)
 def add_entry(
     request: Request,
     memo_id: MemoId,

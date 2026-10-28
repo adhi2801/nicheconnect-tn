@@ -17,7 +17,7 @@ from sqlalchemy import event
 
 from app.core.attention import BRAND_KINDS, CREATOR_KINDS
 from app.db.session import engine
-from app.modules.auth.attention_router import READ_LIMIT
+from app.modules.me.attention_router import READ_LIMIT
 from tests.deal_flow import (
     AGREED_DUE_ON,
     CAMPAIGNS_URL,
@@ -194,11 +194,21 @@ def test_an_accepted_creator_without_a_memo_is_a_memo_to_draft(client, db, clock
     assert item["application_id"] == application_id
     assert item["counterparty"].startswith("proof")  # the creator's handle
 
-    client.post(
+    memo_id = client.post(
         f"{MEMOS_URL}/for-application/{application_id}",
-        json={"deliverables": "2 reels", "fee_amount_paise": 600_000},
+        json={
+            "deliverables": "2 reels",
+            "fee_amount_paise": 600_000,
+            "content_due_on": AGREED_DUE_ON,
+        },
         headers=brand.headers,
-    )
+    ).json()["id"]
+    # Written but never sent, the creator is still waiting on the brand
+    # (D-084: a repeat deal's memo arrives drafted like this).
+    [item] = items_of(client, brand, "draft_memo")
+    assert item["memo_id"] == memo_id
+
+    client.post(f"{MEMOS_URL}/{memo_id}/send", headers=brand.headers)
     assert items_of(client, brand, "draft_memo") == []
 
 
@@ -230,9 +240,10 @@ def test_proof_to_review_is_due_the_day_it_would_approve_itself(client, db, cloc
         7,
     )
 
-    # The window runs out: the proof approves itself, and nothing is left
-    # for the brand to decide. The clock settles it, not a scheduled job.
-    clock.advance(timedelta(days=7))
+    # The window runs out at midnight IST that ends 24 Sep: the proof
+    # approves itself, and nothing is left for the brand to decide. The
+    # clock settles it, not a scheduled job.
+    clock.advance(timedelta(days=7, hours=6, minutes=30))
     assert items_of(client, brand, "review_proof") == []
 
 

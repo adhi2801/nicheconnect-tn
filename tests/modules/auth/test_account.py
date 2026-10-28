@@ -24,11 +24,19 @@ def test_valid_account_is_saved_with_generated_fields(db, role):
     assert fetched.updated_at is not None
 
 
-def test_duplicate_phone_is_rejected(db):
+def test_a_second_account_of_one_role_on_a_number_is_rejected(db):
     phone = fake_phone()
     create_account(db, "brand", phone=phone)
 
-    assert_rejected_by(db, Account(phone=phone, role="creator"), "uq_account_phone")
+    assert_rejected_by(db, Account(phone=phone, role="brand"), "uq_account_phone_role")
+
+
+def test_a_brand_and_a_creator_may_share_a_number(db):
+    """One person's two sides (item 8, D-126)."""
+    phone = fake_phone()
+    create_account(db, "brand", phone=phone)
+
+    create_account(db, "creator", phone=phone)
 
 
 @pytest.mark.parametrize(
@@ -49,7 +57,8 @@ def test_badly_formatted_phone_is_rejected(db, phone):
     )
 
 
-@pytest.mark.parametrize("role", ["admin", "Brand", ""])
+# "admin" became a real role in D-061; "superuser" never exists.
+@pytest.mark.parametrize("role", ["superuser", "Brand", ""])
 def test_unknown_role_is_rejected(db, role):
     assert_rejected_by(
         db, Account(phone=fake_phone(), role=role), "ck_account_role_allowed"

@@ -1,0 +1,78 @@
+# Updates arrive as pull requests, each through the same CI as any change
+# (security.md section 9, D-082). Every one still needs a founder's approval
+# before it merges (CLAUDE.md section 5): Dependabot proposes, never decides.
+#
+# A 7-day cooldown on every ecosystem: a new release waits a week before it is
+# proposed, because hijacked releases (tj-actions in March 2025, Trivy in
+# March 2026) were caught and pulled within days. Security fixes ignore the
+# cooldown and arrive at once, as D-047's upgrade rule asks.
+#
+# Weekly, Monday morning in Tamil Nadu, and minor and patch updates grouped
+# per ecosystem, so a week is a handful of pull requests rather than dozens.
+version: 2
+
+updates:
+  # Python, from uv.lock (D-072).
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: Asia/Kolkata
+    cooldown:
+      default-days: 7
+    groups:
+      python-minor-and-patch:
+        update-types: [minor, patch]
+    open-pull-requests-limit: 5
+    labels: [dependencies]
+
+  # The actions CI runs, which stay pinned to commit SHAs: Dependabot moves
+  # the SHA and the version comment together.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: Asia/Kolkata
+    cooldown:
+      default-days: 7
+    labels: [dependencies]
+
+  # The base images in the Dockerfile, pinned by digest.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: Asia/Kolkata
+    cooldown:
+      default-days: 7
+    labels: [dependencies]
+
+  # Postgres and Valkey for local development.
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: Asia/Kolkata
+    cooldown:
+      default-days: 7
+    labels: [dependencies]
+
+  # AWS described as code (D-062).
+  - package-ecosystem: opentofu
+    directories: [/infra/bootstrap, /infra/envs/*, /infra/modules/*]
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: Asia/Kolkata
+    cooldown:
+      default-days: 7
+    labels: [dependencies]

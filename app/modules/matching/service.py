@@ -16,17 +16,24 @@ one. Callers run it after a write, or over a batch.
 import uuid
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from datetime import date
 from typing import Any, Protocol
 
-from sqlalchemy import desc, func, null, nulls_last, select
+from sqlalchemy import delete, desc, exists, func, null, nulls_last, or_, select
 from sqlalchemy.orm import Session
 
 from app.modules.auth.models.creator import Creator
+from app.modules.auth.suspension import account_is_active, brand_is_active
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.models import DealMemo
 from app.modules.matching import embedder
 from app.modules.matching.embedding_input import campaign_text, creator_text
 from app.modules.matching.models import CampaignEmbedding, CreatorEmbedding
+from app.modules.payment_status import reliability
+from app.modules.payment_status.reliability import ReliabilityRecord
+from app.modules.profiles import availability_service as availability
+from app.modules.safety.blocks import not_blocked_with_brand
+from app.modules.safety.takedowns import campaign_not_withheld, not_withheld
 
 
 class Rebuilt:
@@ -121,7 +128,10 @@ def refresh_creators(
     """
     query = select(Creator)
     if discoverable_only:
-        query = query.where(Creator.passport_published_at.is_not(None))
+        query = query.where(
+            Creator.passport_published_at.is_not(None),
+            account_is_active(Creator.account_id),
+        )
     if creator_ids is not None:
         query = query.where(Creator.id.in_(creator_ids))
     return _refresh(
@@ -151,6 +161,16 @@ def refresh_campaigns(
     )
 
 
+def erase_for_creator(db: Session, creator_id: uuid.UUID) -> None:
+    """On deleting the account (D-122): the creator's embedding. Never commits.
+
+    `refresh_creators` never makes it again: a creator who left has no
+    published Passport and no active account. Campaign embeddings stay, as
+    the campaigns do: they describe a campaign, not a person.
+    """
+    db.execute(delete(CreatorEmbedding).where(CreatorEmbedding.creator_id == creator_id))
+
+
 # --- finding creators for a campaign (D2 and D3) --------------------------
 
 
@@ -168,6 +188,8 @@ class MatchReasons:
     city: str
     accepted_deals: int
     similarity: float | None
+    # None when the creator is taking work today (D-083).
+    booked_until: date | None = None
 
 
 @dataclass(frozen=True)
@@ -177,7 +199,7 @@ class CreatorMatch:
 
 
 def find_creators_for_campaign(
-    db: Session, campaign: Campaign, *, limit: int
+    db: Session, campaign: Campaign, *, limit: int, today: date
 ) -> list[CreatorMatch]:
     """Creators worth showing a brand for this campaign, best first.
 
@@ -198,6 +220,10 @@ def find_creators_for_campaign(
     `similarity` null. Embedding inside a request is not an option: the model
     takes 23 seconds to load and a single vector over 200 ms, both beyond the
     budget (see embedder.py).
+
+    **Free before booked.** Creators taking work `today` come first; a booked
+    creator still appears, after them, with the date (D-083), because a
+    campaign may run after the booking ends.
     """
     accepted_deals = (
         select(func.count(DealMemo.id))
@@ -207,14 +233,21 @@ def find_creators_for_campaign(
         .scalar_subquery()
     )
 
-    campaign_vector = db.scalar(
-        select(CampaignEmbedding.embedding).where(
-            CampaignEmbedding.campaign_id == campaign.id
-        )
+    # The vector is read inside the query, never fetched and sent back: as a
+    # parameter its 1,024 numbers cost about 50 ms a call, read in SQL about
+    # 1 ms (measured 30 September). Only whether it exists is asked first,
+    # since that decides the order.
+    has_vector = bool(
+        db.scalar(select(exists().where(CampaignEmbedding.campaign_id == campaign.id)))
+    )
+    campaign_vector = (
+        select(CampaignEmbedding.embedding)
+        .where(CampaignEmbedding.campaign_id == campaign.id)
+        .scalar_subquery()
     )
     distance = (
         CreatorEmbedding.embedding.cosine_distance(campaign_vector)
-        if campaign_vector is not None
+        if has_vector
         else null()
     )
 
@@ -223,6 +256,12 @@ def find_creators_for_campaign(
         .outerjoin(CreatorEmbedding, CreatorEmbedding.creator_id == Creator.id)
         .where(
             Creator.passport_published_at.is_not(None),
+            # A suspended creator is never suggested (D-061).
+            account_is_active(Creator.account_id),
+            # Nor one either side has blocked (item 59).
+            not_blocked_with_brand(Creator.account_id, campaign.brand_id),
+            # Nor one withheld by a takedown (item 52).
+            not_withheld("creator", Creator.id),
             Creator.city.in_(campaign.cities),
             Creator.niches.overlap(campaign.niches),
         )
@@ -231,8 +270,9 @@ def find_creators_for_campaign(
     # no embedding sorts last rather than disappearing. The clause is built as
     # a list rather than passed conditionally, because `order_by(None, ...)`
     # emits a literal `ORDER BY NULL`, which Postgres refuses.
-    order: list[Any] = []
-    if campaign_vector is not None:
+    booked = availability.free_on(today).is_(False)
+    order: list[Any] = [booked]
+    if has_vector:
         order.append(nulls_last(distance.asc()))
     order += [desc("accepted_deals"), Creator.id]
     query = query.order_by(*order).limit(limit)
@@ -249,7 +289,121 @@ def find_creators_for_campaign(
                     accepted_deals=deals,
                     # Cosine distance on normalised vectors: 0 is identical.
                     similarity=None if d is None else round(1.0 - float(d), 4),
+                    booked_until=availability.booked_until_shown(
+                        creator.booked_until, today
+                    ),
                 ),
             )
         )
     return matches
+
+
+# --- the creator's side: campaigns that suit me --------------------------------
+
+
+@dataclass(frozen=True)
+class CampaignMatchReasons:
+    """Why this campaign was suggested to a creator, in facts they can check.
+
+    `brand_payments` is the one a creator weighs most: before spending a week
+    on someone's brief, whether that brand pays. It is the same record the
+    brand's own reliability page shows (D-027), never a separate opinion.
+    """
+
+    shared_niches: list[str]
+    city: str
+    similarity: float | None
+    brand_payments: ReliabilityRecord
+
+
+@dataclass(frozen=True)
+class CampaignMatch:
+    campaign: Campaign
+    reasons: CampaignMatchReasons
+
+
+def find_campaigns_for_creator(
+    db: Session, creator: Creator, *, today: date, record_day: date, limit: int
+) -> list[CampaignMatch]:
+    """Open campaigns worth this creator's time, best first.
+
+    The mirror of `find_creators_for_campaign`, with the same rules in the
+    same order: **the structural filter decides who is in, similarity only
+    ranks inside it.** A campaign must name the creator's city and share a
+    niche with them; a vector never overrides either.
+
+    Left out: campaigns that are not open, a suspended brand's (D-061), those
+    whose applications closed before `today` (the same test applying uses, so
+    nothing is suggested that would then be refused), and any the creator
+    has already applied to, whatever became of it.
+
+    Unlike the brand's side, the creator need not have published their
+    Passport: this is their own view, and nothing about them is shown to
+    anyone. An unpublished creator has no embedding (D-052 embeds published
+    ones), so their list is ordered newest first and `similarity` is null.
+
+    `record_day` is the Tamil Nadu date the payment records are read as of,
+    as on the brand's reliability page; `today` is the date applying checks.
+    """
+    # The vector is read inside the query, never fetched and sent back: as a
+    # parameter its 1,024 numbers cost about 50 ms a call, read in SQL about
+    # 1 ms (measured 30 September). Only whether it exists is asked first,
+    # since that decides the order.
+    has_vector = bool(
+        db.scalar(select(exists().where(CreatorEmbedding.creator_id == creator.id)))
+    )
+    creator_vector = (
+        select(CreatorEmbedding.embedding)
+        .where(CreatorEmbedding.creator_id == creator.id)
+        .scalar_subquery()
+    )
+    distance = (
+        CampaignEmbedding.embedding.cosine_distance(creator_vector)
+        if has_vector
+        else null()
+    )
+    already_applied = exists().where(
+        Application.campaign_id == Campaign.id, Application.creator_id == creator.id
+    )
+    query = (
+        select(Campaign, distance.label("d"))
+        .outerjoin(CampaignEmbedding, CampaignEmbedding.campaign_id == Campaign.id)
+        .where(
+            Campaign.status == "open",
+            brand_is_active(Campaign.brand_id),
+            not_blocked_with_brand(creator.account_id, Campaign.brand_id),
+            campaign_not_withheld(Campaign.id, Campaign.brand_id),
+            or_(
+                Campaign.applications_close_on.is_(None),
+                Campaign.applications_close_on >= today,
+            ),
+            Campaign.cities.any_() == creator.city,
+            Campaign.niches.overlap(creator.niches),
+            ~already_applied,
+        )
+    )
+    # Closest first when there is a vector; a campaign not yet embedded sorts
+    # last rather than disappearing. Newest first breaks ties, and orders the
+    # whole list when the creator has no vector at all.
+    order: list[Any] = []
+    if has_vector:
+        order.append(nulls_last(distance.asc()))
+    order += [Campaign.created_at.desc(), Campaign.id]
+    rows = db.execute(query.order_by(*order).limit(limit)).all()
+
+    records = reliability.for_brands(
+        db, {campaign.brand_id for campaign, _ in rows}, record_day
+    )
+    offered = set(creator.niches)
+    return [
+        CampaignMatch(
+            campaign=campaign,
+            reasons=CampaignMatchReasons(
+                shared_niches=sorted(offered & set(campaign.niches)),
+                city=creator.city,
+                similarity=None if d is None else round(1.0 - float(d), 4),
+                brand_payments=records[campaign.brand_id],
+            ),
+        )
+        for campaign, d in rows
+    ]

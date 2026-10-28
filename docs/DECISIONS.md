@@ -513,6 +513,24 @@ Newest entries at the bottom.
 - Reason: Step 1 stands on its own and step 2 builds on it without changing it; waiting would tie it to the undecided job runner.
 - Consequences / follow-ups: (1) Table `deal_record_entry`: UUIDv7 ids, UNIQUE (deal, sequence), CHECKs on kind, actor, hash lengths, the genesis rule and `facts` being an object; `ON DELETE RESTRICT` from `deal_memo`; no FK on the actor's account. (2) **Two named departures from `database.md`:** no `updated_at`, and the schema's first trigger, refusing UPDATE, DELETE and TRUNCATE. (3) **Fingerprint v1 is frozen**: SHA-256 over `deal-record/v1\n`, the previous hash and RFC 8785-compatible canonical JSON, pinned by a hand-worked test vector; no new dependency. `recorded_at` is inside the seal, so the app sets it. The actor is sealed as `actor_account_sha256`, the SHA-256 of the account id, not the id: the first draft sealed the raw id, which the other side is never shown, so nobody outside could have checked the seals. Caught by a test that verifies from the JSON alone, and changed before v1 left this machine. (4) **Nothing typed goes in**: terms, links, notes and references are fingerprints only. (5) Existing deals get `record_started` on their first new entry rather than from the migration, so the algorithm exists once. (6) **Every transition writes one entry in its own transaction**: memo sent, change requested, accepted, declined, cancelled; proof submitted, approved, auto-approved (with both times) and sent back; payment opened, marked paid (single and bulk share the code) and confirmed; dispute opened, added to and closed. A draft cancelled before sending writes nothing. (7) `GET /api/v1/deal-memos/{id}/record` for the two parties only (404 otherwise), with `intact`, the first broken entry, whether the accepted terms still match, and `latest_seal`. Times are returned in the seal's exact spelling, as they are in the export's `deal_record` section, so both can be checked with the script in `docs/DEAL_RECORD_VERIFY.md`; a test runs that script from the markdown itself. (8) **Tests that really commit** (the payment concurrency tests) remove their entries through `tests/record_cleanup.py`, which uses `session_replication_role = replica` for one transaction. That needs a superuser, which local and CI have and the service must never be given; it is the same bypass the proposal names as step 1's limit. (9) Verified in this session: migration round trip, `alembic check` and Squawk clean; 16 model, 23 service and 22 API tests; 1375 passed overall. Measured with 30 deals rolled back: every write with its entry p95 ≤ 31 ms (budget 500), the verified record read p95 12.1 ms (budget 300). (10) Step 2 (signed receipts, daily RFC 3161 anchoring) and the three validation-pack questions in the proposal stay open.
 
+## D-058: Login codes by WhatsApp through MSG91, with SMS on the same account later
+- Date: 2026-09-26
+- Approved by: Adhi, in this session ("i need the best so carry on"), in reply to the recommendation for MSG91, WhatsApp first. **Not reviewed by the other founder** (D-051).
+- Context: No provider was chosen, so nobody could log in outside a developer's laptop (backlog E1). `docs/DECISION_NOTIFICATION_PROVIDER.md` recommended WhatsApp first through one provider carrying both WhatsApp and SMS; prices were checked again on 26 September.
+- Options considered: A) MSG91 for both channels, WhatsApp first · B) Meta's WhatsApp Cloud API directly, and a separate SMS provider later · C) a global provider (Twilio and similar)
+- Chosen: A.
+- Reason: MSG91 passes Meta's WhatsApp authentication rate through at cost (about ₹0.12–0.14 a code) for ₹500 a month; SMS codes cost about ₹0.15 on the same account, so the fallback is a setting rather than a second integration; billing is in rupees with GST invoices, and it helps with DLT registration. B saves ₹500 a month but means two integrations, two bills and DLT alone. C adds a per-message fee that can double the cost.
+- Consequences / follow-ups: (1) **Built:** `Msg91WhatsAppSender` behind the existing `OtpSender` interface, chosen by `OTP_SENDER=msg91`; our code in the template body and copy-code button; 3 s connect and 10 s read timeouts, at most 3 attempts with backoff and jitter, retrying only network failures, 429 and 5xx; no phone, code or provider reply text in any log or error. A half-configured provider stops the app at startup. Tested against a fake MSG91 only. (2) **Before the first real send**, `build_payload` must be checked against the request MSG91's dashboard generates for the approved template: the public documentation confirms the endpoint, header, number field and where the code goes, not the whole body. (3) **Only Adhi can do:** open the MSG91 account and Meta business verification in the company's name; get the authentication template approved; **start DLT registration the same day**, since it takes weeks; put the key in `.env`, never in chat or a commit. (4) **Still open:** whether the company is registered in India with GST (the cheap WhatsApp rate depends on it), and whether pilot creators all use WhatsApp on the number they sign up with (if not, SMS is needed at launch). (5) Not built yet: SMS fallback, and delivery of the other notifications, which needs the job runner.
+
+## D-059: Local login is a command that prints a token
+- Date: 2026-09-26
+- Approved by: Adhi, in this session ("yes", to option A of `docs/DECISION_LOCAL_LOGIN.md`). **Not reviewed by the other founder** (D-051).
+- Context: Locally, login codes are kept in the server's memory and never logged, so nobody could call the API as a signed-in user on a laptop; design and frontend work (D-053) would stop on it.
+- Options considered: A) a local-only command that prints a token · B) a fixed code accepted when ENVIRONMENT=local · C) a local-only endpoint returning the last code · D) logging the code locally
+- Chosen: A.
+- Reason: It adds nothing to the running app, so a misconfigured server cannot expose a login bypass. B and C put one inside the app; D breaks the rule that codes are never logged.
+- Consequences / follow-ups: (1) `scripts/dev_login.py <phone>` mints a token with the same `create_access_token` the login endpoint uses; only the token goes to stdout, so a shell can capture it. (2) It refuses unless ENVIRONMENT=local, and refuses a number outside the seed script's fake range unless `--any-phone` is given. (3) Verified in this session: 9 tests, including that the printed token is accepted by `GET /api/v1/auth/me`; run for real against the seeded local database, a brand's token answered 200 and a real-looking number was refused. (4) If the frontend later needs the real login screens end to end, option C comes back as its own decision.
+
 ## D-060: DBOS as the job runner, and a daily outside timestamp on the deal record
 - Date: 2026-09-26
 - Approved by: Adhi, in this session ("yes", to all five recommendations in `docs/PROPOSAL_RECORD_ANCHORING.md`). **Not reviewed by the other founder** (D-051).
@@ -521,3 +539,1238 @@ Newest entries at the bottom.
 - Chosen: dbos 3.1.0; its own `dbos` schema, managed by DBOS; rfc3161-client 1.0.9 (with cryptography pinned); the two tables; DigiCert and Sectigo.
 - Reason: 3.x costs no migration when starting with no workflows, and the first job's failure only delays a checkpoint. DBOS's internal tables are a library's versioned state, like `alembic_version`; copying them into our chain would mean maintaining another project's schema. Signature checks are not a place to improvise parsing. Two authorities from different companies mean no single outage or compromise matters.
 - Consequences / follow-ups: (1) **Constraint 3 is read as covering our schema, not a library's own state tables**; Alembic does not look outside the default schema, so `alembic check` stays clean. Revisit if that reading is ever challenged. (2) `deal_record_checkpoint` and `deal_record_timestamp` are append-only by trigger, through one general `append_only_refuse_change()` that names the table it guards. (3) Leaves are not stored: the record is append-only, so each deal's latest seal at a cut-off can always be recomputed. (4) A checkpoint without timestamps is a visible gap, retried on the next run. (5) No PII may be passed into a DBOS workflow: its inputs are stored in Postgres. Only ids and times. (6) pip-audit clean on the new pins (26 September).
+
+## D-061: The admin side: an admin role, suspension, reports and an admin log
+- Date: 2026-09-27
+- Approved by: Adhi, in this session: "yes" to option A, then "yes" to the full design in `docs/PROPOSAL_ADMIN.md` after seeing it. **Not reviewed by the other founder** (D-051).
+- Context: A pilot cannot be run without finding an account, suspending a fake or abusive one, and handling users' reports; today each would mean hand-editing the database, which constraint 3 forbids.
+- Options considered: A) an admin role with endpoints, suspension, reports and an append-only log · B) no admin API, act in the database
+- Chosen: A, exactly as designed in the proposal.
+- Reason: B breaks constraint 3 the first time someone must be suspended, and leaves no record of who did what.
+- Consequences / follow-ups: (1) `account.role` admits `admin`; admins are created only by `scripts/make_admin.py`, never by login; login with role admin never creates an account and answers exactly as a wrong code when none exists. (2) `account.suspended_at` and `suspension_reason`, checked on every request; a suspended creator leaves search, matching and the public page, a suspended brand's campaigns leave discovery, and existing deals stay usable by the other party. (3) `report` with one open report per reporter per subject, and `admin_action`, append-only by trigger, logging every admin action and every view of an account's details. (4) The downgrade refuses while any admin exists. (5) Exports: suspension status and the reports a person made are exported; the admin log is not, with the reason printed in every export. (6) **Open for the validation pack:** how long reports and the admin log are kept, whether a suspended person must be offered an appeal, and whether a person may see admin log entries about them.
+
+## D-062: Hosting on AWS Mumbai, with files in S3
+- Date: 2026-09-27
+- Approved by: Adhi, in this session ("a", to option A of `docs/DECISION_HOSTING.md`). **Not reviewed by the other founder** (D-051).
+- Context: Nothing was deployed, so no user could reach the backend, and the MSG91 sender and the daily checkpoint (D-060) had nowhere to run.
+- Options considered: A) AWS Mumbai · B) DigitalOcean Bangalore · (Google Cloud Mumbai set aside: its pgvector was last reported inside CVE-2026-3172's range)
+- Chosen: A.
+- Reason: Every need is met by a managed service in one Indian region: RDS PostgreSQL 18 with pgvector 0.8.2, the release that fixes CVE-2026-3172; ElastiCache Valkey 9.1, matching D-048; ECS Fargate containers with room for DBOS and the embedding model; private S3 with signed uploads; Secrets Manager. It grows without a move. B's pgvector version could not be confirmed.
+- Consequences / follow-ups: (1) Staging and production as separate environments; staging can be switched off. (2) Estimated at about $175 a month for both before GST and credits; **an estimate from published prices, to be confirmed in AWS's calculator before anything is opened**. (3) **Only Adhi can:** open the account in the company's name, secure the root user with MFA and never use it, apply for AWS Activate credits, and decide who gets access. (4) **Still separate decisions:** OpenTofu as the infrastructure-as-code tool (a new dependency); where traces go (plan 4.5). (5) A restore from backup is tested before the first real user. (6) Whether DPDP ever requires Indian storage stays a validation-pack question; this choice does not depend on the answer.
+
+## D-063: How the app is packaged and deployed: OpenTofu, split requirements, one image
+- Date: 2026-09-27
+- Approved by: Adhi, in this session ("all 3", then "yes" to pinning certifi, each after seeing the proposal). **Not reviewed by the other founder** (D-051).
+- Context: Hosting is chosen (D-062); the app now needs an image to run and infrastructure to run it on.
+- Options considered: (1) OpenTofu, Terraform, AWS CDK, or the console · (2) keep one requirements file, or split runtime from developer tools · (3) the image: a small Debian-based Python 3.12 image pinned by digest, multi-stage, non-root, CPU torch, built and vulnerability-scanned in CI
+- Chosen: all three as recommended, and `certifi` pinned.
+- Reason: (1) Every AWS resource written in the repository and reviewed as a diff; open source. (2) Production should not carry, or need patching for, tools it never runs. (3) The smallest image that runs the app as it is tested, with nothing that builds code reaching production.
+- Consequences / follow-ups: (1) `requirements.txt` is what the app runs; `requirements-dev.txt` includes it and adds the tools. Laptops and CI install the developer list; pip-audit reads it, so both are audited. (2) **The split found a real bug**: the timestamp checks import `certifi`, which only a developer tool had been installing, so a runtime-only install could not start. It is now pinned (2026.7.22), and a runtime-only install was proven to start with no developer tool present. (3) Python 3.14 (D-047) stays a separate upgrade. (4) Nothing is applied to AWS until the account exists and the OpenTofu code has been reviewed.
+
+## D-064: The images are scanned by Grype in CI, and the embedding model is pinned in code
+- Date: 2026-09-30
+- Approved by: Adhi, in this session ("carry on A" to the scanner, then "carry on with A" to both follow-ups, each after seeing the proposal). **Not reviewed by the other founder** (D-051).
+- Context: D-063 requires the images to be built and scanned in CI; nothing did either. Building and running the images for the first time found two things. (1) The embeddings image could not load its own model: the app asked for "the newest" version, and offline (as the image runs) that cannot be looked up, so the daily refresh would have failed on its first run in production. (2) Grype finds 10 vulnerabilities in CPython 3.12.14 itself, the newest 3.12, fixed only in 3.13 and later, so the approved rule (fail on anything with a fix) would be red from the first run.
+- Options considered: Scanner: A) Grype, pinned by version and checksum · B) Trivy, whose distribution was hijacked on 19 March 2026 · C) only the AWS registry scan after push. Model: A) the app asks for an exact revision · B) only the image records the revision as "newest". CPython findings: A) accept the 10 by ID in `.grype.yaml` until the Python 3.14 upgrade · B) move to Python 3.14 now · C) do not gate on the interpreter.
+- Chosen: A, A, A.
+- Reason: Grype has no compromise history and a checksum-pinned binary cannot be swapped quietly. Pinning the model revision is the same rule as every other dependency, and makes laptops, CI and AWS run the same weights. Moving to 3.14 would still leave 4 of the 10, and our code uses none of the affected modules except base64 in the page cursor, which parses strictly after decoding (read, not tested).
+- Consequences / follow-ups: (1) CI's new `image` job builds the API image and fails on any fixable vulnerability of any severity; for pull requests to main it also builds the embeddings image and reports without failing (D-052). (2) `MODEL_REVISION` in `embedder.py` must equal the Dockerfile's `ARG MODEL_REVISION`; a test enforces it. (3) The 10 accepted CPython entries name version 3.12.14, so any Python change brings them back for review; remove them at the Python 3.14 upgrade (D-047), keeping any it does not fix. (4) A new advisory can turn CI red with no code change; the fix is a newer base digest, or a reasoned entry in `.grype.yaml`.
+
+## D-065: Proof of delivery as files: signed uploads to S3, every image cleaned on the server
+- Date: 2026-09-30
+- Approved by: Adhi, in this session ("approve A", to the recommendation in `docs/PROPOSAL_PROOF_FILES.md`, after seeing it: option A for both decisions, the three packages, the table and the infrastructure). **Not reviewed by the other founder** (D-051).
+- Context: Proof is a pasted link, which disappears when a post is deleted, and brands ask for screenshots of reach that have no link (backlog E3). D-062 already settled that files go straight from the phone to S3 through signed uploads.
+- Options considered: (1) images as uploaded, apps strip location, or the server re-encodes every image · (2) tests against an in-memory stand-in plus moto, or SeaweedFS/Garage in docker-compose now (MinIO stopped publishing free images in October 2025)
+- Chosen: (1) the server re-encodes every image; (2) the stand-in plus moto, SeaweedFS later when frontend work needs a local S3.
+- Reason: (1) the only option where a mistake in an app or a web upload cannot leak a creator's home location; re-encoding also defuses files disguised as images. (2) nothing unmaintained, no new service before anyone needs it.
+- Consequences / follow-ups: (1) New packages: boto3 and Pillow (runtime), moto (development). Pillow's frequent security releases must be taken promptly; pip-audit fails CI until they are. (2) One new table, `proof_file`; a proof's link becomes optional. (3) Images only in the pilot: JPEG, PNG, WebP, 10 MB each, 10 per proof; video stays a link. (4) Infrastructure: the bucket's CORS, the task role limited to the uploads prefix, a one-day expiry for abandoned uploads; not applied until AWS exists. (5) How long proof files are kept is a validation pack question; the deal record keeps only fingerprints, so files can be deleted without breaking it.
+
+## D-066: The deal record seals the clean copy of every proof file
+- Date: 2026-10-01
+- Approved by: Adhi, in this session ("yes", to the recommendation after seeing it). **Not reviewed by the other founder** (D-051).
+- Context: D-065 cleans every proof image of location and hidden data, keeps only the clean copy and deletes the original. The fingerprint sealed at submission is the original's, so on its own the record would point at a file that no longer exists, and nothing would prove which file a brand actually saw.
+- Options considered: A) a new record entry kind, `proof_file_cleaned`, sealing the clean copy's fingerprint beside the original's · B) record only the original's fingerprint
+- Chosen: A.
+- Reason: every file a brand sees stays provable, from the record alone, without trusting us.
+- Consequences / follow-ups: (1) Migration `f276d2c6ce1e` widens the record's kind check, added NOT VALID and validated after commit; its downgrade refuses while any such entry exists, since the record is append-only. (2) Entries are made by `system`, one per cleaned file, after the proof's own entry. (3) A file refused by the cleaner is not recorded; the creator sees it as rejected on the proof. Recording refusals would need another kind and another decision.
+
+## D-067: A proof shows its files in the order the creator chose, the order the record seals
+- Date: 2026-10-01
+- Approved by: Adhi, in this session ("A", to the decision and schema request after seeing them). **Not reviewed by the other founder** (D-051).
+- Context: Submitting proof promised files "in the order to show them", and the deal record sealed them in that order, but they were shown in upload order. Uploaded A then B and submitted as B, A, the record said B, A and the brand saw A, B: evidence that reads differently on screen and in the record.
+- Options considered: A) a `position` column on `proof_file`, set when a file joins a proof, and one order everywhere · B) no schema change: drop the promise, show and seal in upload order
+- Chosen: A.
+- Reason: the record and the screen must always agree, and keeping the creator's order costs one small column.
+- Consequences / follow-ups: (1) Migration `608541cc4a4e`: `position` smallint, empty exactly while pending, 0 to 9 otherwise, unique per proof; checks NOT VALID then validated after commit, the unique index built CONCURRENTLY. (2) It fills existing attached files with their upload order inside the same migration. database.md section 6 puts backfills in their own migration; the approved plan did not, since `proof_file` has never been deployed or merged and holds no real data. (3) The proof's files, the view links (step 5) and the data export carry this order; the export lists `position`. (4) The downgrade drops the column; files fall back to upload order.
+
+## D-068: Patch OpenSSL and PCRE2 in the API image until the base image catches up
+- Date: 2026-10-01
+- Approved by: Adhi, in this session ("A", to the decision after seeing it). **Not reviewed by the other founder** (D-051).
+- Context: CI's image scan (D-064) started failing on `main` with no change of ours: Debian published fixes for OpenSSL 3.5.7 (9 CVEs, one High) and PCRE2 10.46 (one High) after our pinned base, `python:3.12-slim-trixie` of 19 September, was built. Docker had not rebuilt that image yet, so moving the pin could not help.
+- Options considered: A) install the fixed versions, exactly, in the Dockerfile's api stage · B) wait for Docker's rebuild, then move the pin · C) accept the risk in `.grype.yaml`
+- Chosen: A.
+- Reason: D-047's rule is that security fixes are taken at once. OpenSSL carries our outgoing TLS (S3, MSG91, the timestamp authorities), so it is not a risk to accept, and waiting leaves `main` red and the image flawed for days.
+- Consequences / follow-ups: (1) One `apt-get install --only-upgrade` step with exact versions (`openssl`, `libssl3t64`, `openssl-provider-legacy` 3.5.7-1~deb13u3; `libpcre2-8-0` 10.46-1~deb13u3), apt's lists removed after. The embeddings image inherits it. (2) **Remove the step** when the base digest moves to an image that already carries these versions or newer. (3) The `build` stage is not patched: it is thrown away and never ships.
+
+## D-069: Erode Harish's review and approval of D-055 to D-068, relayed by Adhi
+- Date: 2026-10-01
+- Approved by: Erode Harish, **relayed by Adhi** in this session ("for everything till now whatever you have asked erode as reviewed and approved", then, asked whether Harish had actually seen and approved them, "yes he approved everything"). Harish did not confirm in a session here, the same footing as D-047 and D-051.
+- Context: Since D-051 Adhi has built the backend alone, and every entry from D-055 to D-068 says it was not reviewed by the other founder. Those entries stay as written; the log is append-only, and this entry is what changes their standing.
+- Options considered: A) record the relayed approval of all fourteen · B) leave them marked unreviewed
+- Chosen: A.
+- Reason: Adhi relayed Harish's approval of everything raised so far, after being told the record would say "relayed".
+- Consequences / follow-ups: (1) D-055 to D-068 count as approved by both founders, by relay: the rate card schema, fair-rate guidance, the deal record and its daily outside timestamp, WhatsApp login through MSG91, local developer login, DBOS, the admin side, hosting on AWS Mumbai, packaging and deployment with OpenTofu, image scanning with Grype, proof files and their cleaning, the clean copy sealed in the record, proof file order, and the image's OpenSSL and PCRE2 fix. (2) PRs #32, #33 and #34, already merged, are covered by this entry; their descriptions said unreviewed and are not edited. (3) Work after this entry is unreviewed again until a founder says otherwise, and reports and PRs keep saying so (CLAUDE.md section 0).
+
+## D-070: Results a brand can trust, read from the proof: build layers 1 to 3
+- Date: 2026-10-01
+- Approved by: Adhi, in this session ("Approve A", to the recommendation in `docs/PROPOSAL_PROOF_RESULTS.md` after seeing it: decision 1 option A, the model rule of decision 2, the dependency, the schema and the infrastructure). **Not reviewed by the other founder.**
+- Context: Brands pay for reach and receive screenshots that can be edited ("the Screenshot Portfolio Scam"); the platforms' own numbers need each creator's login to an app Meta has reviewed. Proof files and their sealed fingerprints exist since D-065 and D-066. Competitive item #4: nobody holds deal, delivery, payment and result in one record.
+- Options considered: (1) A) read, check and seal every proof screenshot now · B) wait for platform connections only · C) brands type numbers in themselves; (2) the model: Opus 5.5, Sonnet 5.5 or Haiku 4.5
+- Chosen: (1) A, with platform-verified numbers as a later layer; (2) Opus 5.5 until a test set of real screenshots, with their true numbers written down, shows which model reads every number right at what cost.
+- Reason: results for every deal and any size of brand, checked against facts we hold and sealed, which no competitor has; the model chosen by measurement, not by price or guess.
+- Consequences / follow-ups: (1) New runtime package `anthropic` 1.11.0 (needs httpx2 2.x, which D-047 pins). (2) Off by a setting (`PROOF_READING_ENABLED`) in every real environment until the validation pack says whether a creator's insights may go to a processor (constraint 6); on, the app refuses to start without `ANTHROPIC_API_KEY`. (3) A screenshot reading is never called verified: Anthropic's vision documentation says Claude cannot tell a real image from a fake one. (4) One table, `proof_file_reading`, and one record kind, `proof_results_read`, come with step 3; the key goes in Secrets Manager with step 6. (5) Only the clean copy is ever sent; Anthropic states it does not train on uploaded images and does not keep them beyond the request. (6) Automatic fallback to another model on a refusal is not enabled: a refusal is recorded as a failed reading, never a guess.
+
+## D-071: Coimbatore first; what the backend builds before launch; the AI interface
+- Date: 2026-10-01
+- Approved by: Adhi, in this session: the public receipt check declined in his own words ("no need because it is between creator and brand"); the remaining recommendations approved with "do all", after seeing each with its reasons and sources. **Not reviewed by the other founder.**
+- Context: The day's research (`docs/PSYCHOLOGY_AND_TRUST.md`, `docs/GO_TO_MARKET.md`, `docs/COMPETITIVE_LANDSCAPE.md` version 3) left decisions open that the finish line and the pilot depend on.
+- Options considered: the pilot city, Coimbatore or Madurai; for each new backend item, build before launch, after launch, or not at all; for AI features, Pydantic AI (D-047) or our own thin interface.
+- Chosen: (1) **Coimbatore**, with three niches: food and cafés, fashion and textiles, beauty and salons. (2) **Built before launch**: notification preferences (quiet hours, digest, a choice per event); typical response times from real data, shown only from 5 examples; invite and source attribution; city and niche aggregates for public pages (backend now, published once a city has the data). (3) **After launch**: milestones; camera signatures (C2PA). (4) **Declined**: the public deal receipt check. (5) **English only stands** (D-054); the brand interviews ask whether Tamil would change anything, and the pilot decides whether to revisit it. (6) **AI features use our own thin interface**, as results from proof does (D-070); Pydantic AI is adopted when a second provider or agent features arrive. D-047's baseline row is amended to match.
+- Reason: (1) about twice Madurai's population and spending, a café boom, the state's second quick-commerce market, CODISSIA's 7,000+ businesses, Tiruppur's clothing brands next door, and a founder can be there. (2) More than six notifications a week makes users 3.4 times as likely to uninstall within 30 days; attribution not recorded from day one can never be recovered; the frontend needs these shapes. (3) Milestones need real deals; Pixel holds about 4% of India's ultra-premium phones, so almost no proof would carry a camera signature. (4) A deal is private between its parties; each can already check its own record. (5) Data from the pilot, not a guess. (6) One provider today; a dependency for no gain until there are two.
+- Consequences / follow-ups: `docs/BACKEND_COMPLETE.md` holds 20 items, with section 5 listing what was declined or deferred; the receipt-sharing loop leaves `docs/GO_TO_MARKET.md`; the Tamil question joins the interview in `docs/REVENUE_RESEARCH.md`; novelties 2 and 3 in `docs/COMPETITIVE_LANDSCAPE.md` are marked waiting and declined; the AI row of `docs/PLATFORM_AND_TECH_PLAN.md` section 4.0 is amended.
+
+## D-072: Python 3.14 and uv, built: one locked dependency list for every machine
+- Date: 2026-10-01
+- Approved by: Adhi, in this session ("do all especially this Python 3.14 + uv"), building the item D-047 locked on 22 September (Erode Harish's approval relayed then, and of D-055 to D-068 in D-069). **This build is not reviewed by the other founder.**
+- Context: D-047 locked Python 3.14 and uv; nothing was built, so laptops, CI and the images still ran 3.12 with pip and three requirements files. The audit for `docs/BACKEND_COMPLETE.md` found it (item 1).
+- Options considered: (1) keep the requirements files and use uv only as a faster pip · (2) make the project a uv project: one list in `pyproject.toml`, a committed `uv.lock` with hashes for every package, uv in CI and the images
+- Chosen: 2, with Python 3.14.7 (the newest 3.14, on laptops through uv and in the images through `python:3.14-slim-trixie`, pinned by digest) and uv 0.12.21 (pinned in CI, and copied into the build stage from Astral's image, pinned by digest).
+- Reason: one source of truth, so a dependency cannot be added in one file and missed in another; every machine installs the same bytes; a tampered download fails its hash; `--locked` stops a change reaching main without its lock.
+- Consequences / follow-ups: (1) `requirements.txt`, `requirements-dev.txt` and `requirements-ml.txt` are gone; their packages, pins and reasons are in `pyproject.toml` (the app, a `dev` group, an `ml` group), and torch still comes only from PyTorch's CPU index. (2) Commands change: `uv sync`, `uv run …` (`CLAUDE.md` section 4, README, the scripts). Laptops use `.venv`; the old `venv` can be deleted once a founder has run `uv sync`. (3) CI installs with `setup-uv` pinned to a commit (v10.2.0); zizmor and pip-audit run through `uvx`, still outside the app's dependencies; pip-audit checks the lock exported in full, with no re-resolution. (4) On 3.14, ruff removed 16 quoted type hints that lazy annotations (PEP 649) make unnecessary; the full suite proved Pydantic reads them correctly. (5) The images: the app environment has no pip at all, and uv is not shipped. (6) `.grype.yaml`: the upgrade fixed 6 of the 10 CPython flaws accepted for 3.12.14; the 4 that 3.14.7 still has (stringprep, poplib, zipfile, urllib's password managers) are accepted for exactly 3.14.7, re-checked against the code. (7) The OpenSSL and PCRE2 step from D-068 stays: the 3.14 image has the same base as the 3.12 one.
+
+## D-073: D-004 was approved by Adhi
+- Date: 2026-10-04
+- Approved by: Adhi, in this session ("approved by me"), answering who approved D-004, whose entry still read `Approved by: <founder name>`.
+- Context: A review finding (PR #6, P2) noted that D-004 had no named approver while standards treated it as settled. The log is append-only, so the old line stays as written and this entry completes it.
+- Options considered: A) record Adhi as D-004's approver · B) mark D-004 as never approved
+- Chosen: A.
+- Reason: Adhi stated that he approved it. Its rule also stands through D-053, which amended it with a recorded approval.
+- Consequences / follow-ups: D-004 (backend first, frontend code after the backend is complete, as amended by D-053) is a decided rule with a named approver. Review finding #3 in `docs/REVIEW_FINDINGS.md` is resolved.
+
+## D-074: Error tracking with Sentry, scrubbed of personal data; Python 3.14.8 for the image gate
+- Date: 2026-10-04
+- Approved by: Adhi, in this session ("i have approved", 4 October, after the proposal to add `sentry-sdk` 2.71.0 and move to Python 3.14.8).
+- Context: (1) An unexpected error was only a CloudWatch log line nobody would read until a user complained (`docs/BACKEND_COMPLETE.md`, observability). (2) CI's image gate failed on `62a1000` and after: three new CPython advisories on 3.14.7, one fixed in 3.14.8 (released with uv 0.12.23 on 3 October).
+- Options considered: Error tracking: A) Sentry (free plan, 5,000 errors a month, the de facto standard; the SDK is MIT licensed) · B) CloudWatch alarms on error log lines only (no grouping, no stack traces in the alert, no release tagging) · C) self-hosted GlitchTip (a new service to run, against CLAUDE.md section 3). Image gate: A) move to 3.14.8 and accept, for exactly 3.14.8, the three flaws fixed only in 3.15 · B) accept all of them on 3.14.7.
+- Chosen: A for both.
+- Reason: Sentry gives an alert with the stack trace, grouped by bug and tagged with the release, at no cost at pilot scale. Moving to 3.14.8 fixes five flaws outright (D-047: security fixes at once) rather than accepting them.
+- Consequences / follow-ups: (1) `app/core/error_tracking.py`, started in `app/main.py`, off unless `SENTRY_DSN` is set. Error log lines become events (the 500 handler, a failed login-code send, a failed anchor); 4xx and deliberate 5xx answers do not. (2) Never sent: request bodies, cookies, query strings, the account, the IP address, local variables; phone numbers, emails, UPI IDs and long numbers anywhere in an event are replaced before it leaves the process. 26 tests read exactly what would be sent. No performance tracing. (3) New settings `SENTRY_DSN` and `APP_RELEASE`; infra passes the DSN as a plain setting (a DSN can only send errors in, so Sentry treats it as public) and the release as the image's git commit. (4) To do by a founder: create the Sentry organisation (the data region, US or EU, is chosen then and cannot change; the validation pack should say which DPDP prefers) and set `sentry_dsn` for staging and production. (5) Python 3.14.8 in `.python-version` and the image (pinned by digest), uv 0.12.23 in CI and the image; `.grype.yaml` now accepts only CVE-2026-87910 (tarfile), CVE-2025-15367 (poplib) and CVE-2026-12345 (tempfile), for exactly 3.14.8, none used by our code; the local gate passes.
+
+## D-075: One list of my payments, and their totals
+- Date: 2026-10-04
+- Approved by: Adhi, in this session ("i have approved", then "carry on"), after the plan naming "one list of payments across all deals" as the third piece of work.
+- Context: The website wireframes (4 October) need a Payments screen: who is owed, who is paid, what is overdue. The API only answered one deal's payment at a time, so the screen would make a call per row, which `docs/standards/ux.md` section 7 treats as a backend request.
+- Options considered: A) `GET /api/v1/payments/mine` (newest first, filtered by view, each row with its campaign, creator and brand) plus `GET /api/v1/payments/mine/totals` · B) add payment fields to the memo list · C) leave it to the frontend
+- Chosen: A.
+- Reason: two calls answer the whole screen; B would load payment data for every memo, paid or not; C is the per-row pattern the standard forbids.
+- Consequences / follow-ups: (1) Read-only: no table, column or migration; states are worked out exactly as for a single payment. (2) Views: `to_pay`, `awaiting_confirmation`, `finished`; every payment is in exactly one. Totals: count and amount in each, plus `overdue`, always returned, zero included. (3) Brands and creators see only their own deals; an admin gets 403, a missing profile 409. (4) Disputes are read for the whole page in one query; a test proves a page of three costs the same queries as a page of one, and fails when a per-row query is added. 26 tests. Rate limited at 60 a minute.
+
+## D-076: Each deal's stage and whose move it is; a campaign at a glance
+- Date: 2026-10-04
+- Approved by: Adhi, in this session ("make sure we are above top tier in everything as well carry on"), continuing the wireframes' backend requests after D-075.
+- Context: The website wireframes (4 October) show each deal as one of five stages (Memo sent, Agreed, In progress, Payment, Finished) with who acts next, and head each campaign with "n of m deals finished" and Complete. Without the backend saying so, each screen would read every memo, proof and payment and work it out, once per card, and the website and both apps could each work it out differently.
+- Options considered: A) work the stage out in the backend from the memo, its proof and its payment, never stored; and a per-campaign summary · B) store a stage column and keep it in step on every change · C) leave it to each client
+- Chosen: A.
+- Reason: one definition, consistent with the rules already built: approval counts the clock (D-025, through `is_approved`), a barter deal finishes when its work is approved (D-026), a paid deal finishes only when the creator confirms the money arrived (D-027). B would be a second copy of facts already stored, free to drift; C is three copies.
+- Consequences / follow-ups: (1) `app/modules/deal_memo/stage.py`: `stage` is one of `draft`, `memo_sent`, `agreed`, `in_progress`, `payment`, `finished`, `declined`, `cancelled`; `waiting_on` is `brand`, `creator` or null once ended; `has_open_dispute`. (2) `GET /deal-memos/mine` and `GET /deal-memos/{id}` now carry them (fields added, nothing removed); `/mine` takes `campaign_id`, for a campaign's board. Writes still answer the plain memo. (3) `GET /campaigns/{id}/summary`, owning brand only: applications by status, deals by stage (every status and stage, zeros included), `deals_agreed`, `deals_finished`, `deals_waiting_on_brand`, `complete` (closed, at least one deal agreed, every agreed deal finished, no memo unanswered). (4) No table, column or migration. Stages for a whole page or campaign take a fixed number of queries; tests prove it and fail when a per-row lookup is added. 37 tests: every rule without a database, one deal walked through all five stages, and Complete in each case.
+
+## D-077: Typical response times, measured from the deal record
+- Date: 2026-10-08
+- Approved by: Adhi: item approved in D-071 ("typical response times from real data, shown only from 5 examples"); built on 8 October on his instruction to carry on with the next items.
+- Context: Known waiting lowers anxiety (`docs/PSYCHOLOGY_AND_TRUST.md`); each side should know how long the other usually takes, without anything invented.
+- Options considered: A) measure from the deal record's dated, sealed entries · B) from notification timestamps · C) from status-change columns
+- Chosen: A.
+- Reason: the deal record is the one complete, ordered history of who did what when; notifications are a delivery log, and status columns keep only the latest change.
+- Consequences / follow-ups: (1) `GET /api/v1/brands/{id}/response-times` (any signed-in account, as the payment record): work submitted to approved or sent back, an approval by the clock counting at the window's end. `GET /api/v1/creators/{id}/response-times` (brands or the creator, as the delivery record): memo sent to answered, and payment marked sent to confirmed. (2) Median in hours to a tenth; null below 5 examples; `examples` always returned. Requests still waiting are not counted; a memo withdrawn before an answer is left out. (3) **Not measured: how fast a brand answers an application**: only the latest status change is stored, so a figure would be a guess. Measuring it needs a first-decision timestamp, a schema change for a later decision. (4) No table, no migration. 22 tests.
+
+## D-078: City figures for public pages: counts and medians, five or nothing
+- Date: 2026-10-08
+- Approved by: Adhi: item approved in D-071 ("city and niche aggregates for public pages, backend now, published once a city has the data"); built on 8 October on his instruction to carry on.
+- Context: City pages are how search and AI answer engines find a local marketplace (`docs/GO_TO_MARKET.md`); the frontend needs the figures' shape now.
+- Options considered: what counts: A) published Passports, published rate cards and open campaigns only · B) also figures from deals
+- Chosen: A.
+- Reason: published creators chose to be seen (D-036), published prices chose to be shown (D-056), open campaigns are public by design. Deals are private between their parties (D-071 declined even a public receipt), so no public figure is built from one.
+- Consequences / follow-ups: (1) `GET /api/v1/cities` (cities with at least 5 published creators, largest first) and `GET /api/v1/cities/{city}/figures` (published creators, by niche, open campaigns, median asking price by platform and format): public, no login, 60 a minute, cached an hour with an ETag. (2) Five or nothing: any figure on fewer than 5 is null, never zero; medians only, never a minimum or maximum; each creator counts once in a price. (3) Suspended accounts and their brands' campaigns never count (D-061). Cities match without regard to case or spaces and show the spelling most creators used. (4) No table, no migration. 15 tests. (5) Publishing city pages is a frontend and SEO step; the figures stay null until a city has the data.
+
+## D-079: Notification preferences, with urgent events never held
+- Date: 2026-10-08
+- Approved by: Adhi, in this session ("approve all", after `docs/PROPOSAL_NOTIFICATION_PREFERENCES_AND_ATTRIBUTION.md` section 1 with its schema and the defaults decision). Item approved in principle by D-071.
+- Context: More than six notifications a week makes users 3.4 times as likely to uninstall within 30 days (D-071). Push and WhatsApp delivery are not built; the preferences decide how they will be.
+- Options considered: defaults: A) quiet hours 22:00 to 08:00 Tamil Nadu time on for everyone, digest off · B) no quiet hours until set
+- Chosen: A.
+- Reason: only non-urgent notifications are ever held, and those can wait until morning.
+- Consequences / follow-ups: (1) Table `notification_preference` (migration `636f06a7e2dc`), one row per account, written only on save; no row means the defaults. (2) `GET` and `PUT /api/v1/me/notification-preferences`; PUT replaces the whole set in one insert-or-update, so a retry or two saves at once are safe. (3) Urgent types (`memo_sent`, `proof_submitted`, `proof_revision_requested`, `payment_marked_paid`) cannot be muted: the API answers 422 and the database's own check refuses it. (4) `preference_service.decide` is the rule the future sender must call: urgent now, muted in the app only, daily digest at its hour, otherwise held through quiet hours; tested before any sender exists. (5) Preferences govern delivery outside the app only; the in-app list keeps everything. (6) In the data export; the export now writes times of day as `HH:MM`. 32 tests.
+
+## D-080: Invite and source attribution, written once at sign-up; inviters see counts only
+- Date: 2026-10-08
+- Approved by: Adhi, in this session ("approve all", after `docs/PROPOSAL_NOTIFICATION_PREFERENCES_AND_ATTRIBUTION.md` section 2 with its schema, the sign-up change, and the decision on what an inviter sees). Item approved in principle by D-071.
+- Context: Attribution not recorded at sign-up can never be recovered (D-071); the pilot's question is which channel brings brands and creators.
+- Options considered: what an inviter sees: A) counts only · B) names of who joined
+- Chosen: A.
+- Reason: B tells one person that another joined, a DPDP question for the validation pack; A loses nothing a reward would need. Widening later is one endpoint; narrowing after names were shown is impossible.
+- Consequences / follow-ups: (1) Tables `invite_code` and `account_attribution` (migration `8c960d1db341`), new and empty; existing accounts have no row. (2) `POST /auth/otp/verify` takes an optional `arrival` (invite code, source, campaign tag), **read only by the login that creates the account**, in that login's own transaction; a returning login cannot rewrite it. An unknown code is ignored, never refused. A valid code makes the source `invite`; `invite` and `not_given` cannot be claimed. (3) `GET /api/v1/me/invite-code` (eight characters with no 0, O, 1 or I; made on first request, the same after, safe against two first requests at once), `GET /api/v1/me/invites` (brands and creators joined, counts only), `GET /api/v1/admin/signups` (per week from Monday, Tamil Nadu time, source and role; counts only, so no admin log entry). (4) The database refuses a misreadable code and a code without an invitation. (5) The downgrade refuses while any attribution exists. (6) In the export, without the inviter's code. (7) **Rewards are not built**: what they are, and their tax treatment, is for the founders and the validation pack. 32 tests.
+
+## D-081: The world-class bar written down once; the docs given one index; the standards raised
+- Date: 2026-10-08
+- Approved by: Adhi, in this session ("make the md files to the level of the best billion dollar ... i am fed of repeating the standards"; "i mean all md files ... are you using all the md files").
+- Context: Adhi had to restate his quality bar session after session; 39 markdown files had no index; 13 decided proposals sat beside live plans; four lists of work overlapped; several standards still marked as open decisions that were settled weeks ago; and testing.md listed a banned-term CI gate that did not exist.
+- Options considered: A) write the bar into `CLAUDE.md`, index the docs, archive what is decided, raise each standard against named best practice, and build the missing gate · B) leave the files and restate the bar in each session
+- Chosen: A.
+- Reason: `CLAUDE.md` is read at the start of every session, so a bar written there never needs repeating; an index tells anyone which file is binding and which is history.
+- Consequences / follow-ups: (1) `CLAUDE.md` section 7.0, "The bar: world-class by default". (2) `docs/README.md` indexes every doc by job: rules, record, plan, research, reference. (3) The 10 `PROPOSAL_*` and 3 `DECISION_*` papers already built moved to `docs/decided/`, with a map; references updated outside this append-only log. (4) `backend.md`, `database.md`, `security.md`, `testing.md` and `ux.md` rewritten: settled decisions recorded as settled; added the API evolution rules (additive only in v1; `Deprecation` and `Sunset` headers), the lock-then-check rule, the query-count rule, the destructive-downgrade rule, operations and restore drills, ASVS 5.0 Level 2 as the security target with a control map and threat modelling, the "prove a test can fail" rule, and the real list of 11 CI gates. Owed items are marked "not yet built" rather than claimed: secret scanning in CI, Dependabot, an SBOM, signed images, `SECURITY.md` and `security.txt`, an incident plan, a restore drill, a penetration test. (5) `tests/test_banned_terms.py` enforces the money-words rule across every tracked file, shown to catch a breach.
+
+## D-082: The security items owed before launch, built: secret scanning, an SBOM, Dependabot, SECURITY.md, security.txt, the incident plan
+- Date: 2026-10-08
+- Approved by: Adhi, in this session ("approve all, build them all in the best order", answering the question whether to build secret scanning, Dependabot and `SECURITY.md` now, which changes CI).
+- Context: D-081's rewrite of `docs/standards/security.md` marked these as owed and not built. Each is small, and each is expected of any service businesses trust.
+- Options considered: secret scanner: A) Gitleaks, installed from the release binary pinned by version and checksum · B) TruffleHog, which tests a found key by calling the service it belongs to. SBOM: A) Syft, Anchore's, like Grype · B) none until releases exist. Updates: A) Dependabot with a 7-day cooldown · B) Renovate, a third-party app with write access.
+- Chosen: A in each.
+- Reason: Gitleaks never sends a found key anywhere; a pinned checksum cannot be moved the way a tag can (the reason for D-064). Syft matches Grype's install and vendor. Dependabot is GitHub's own, needs no extra app with write access, and its cooldown keeps hijacked releases (tj-actions March 2025, Trivy March 2026) out while security fixes still arrive at once.
+- Consequences / follow-ups: (1) CI scans the whole git history with Gitleaks 8.30.1 before installing anything; the three findings on the existing history were example idempotency keys in tests, listed by exact fingerprint in `.gitleaksignore`; shown to catch a planted key. (2) The image job writes the API image's CycloneDX SBOM with Syft 1.54.0 and keeps it 90 days (`actions/upload-artifact` v7.0.1, pinned to its SHA; v7.0.2 was a day old). (3) `.github/dependabot.yml`: uv, GitHub Actions, Docker, Compose and OpenTofu, weekly, 7-day cooldown, minor and patch grouped for Python; every update still needs founder approval to merge. (4) `SECURITY.md`: private reports through GitHub, response targets, scope, safe harbour, no bounty yet. (5) `GET /.well-known/security.txt` (RFC 9116): public, 60 a minute, cached a day; `Expires` 30 April 2027, and a test fails 30 days before it lapses as the renewal reminder. (6) `docs/INCIDENT_RESPONSE.md`: roles, the first hour, rotating each secret, taking the API down, DPDP notice (the clock from the validation pack), the write-up; **not yet rehearsed**. (7) Founder steps in the repository settings: switch on push protection and private vulnerability reporting. (8) Signing images waits for a registry (D-063). zizmor finds nothing in the workflow.
+
+## D-083: Creator availability, "booked until": shown to brands, informs and never blocks
+- Date: 2026-10-08
+- Approved by: Adhi, in this session ("approve all, build them all in the best order"), for item 45 of `docs/BILLION_DOLLAR_GAP.md` with its gate (database).
+- Context: Brands invite and shortlist creators who cannot take the work, and creators get applications nobody can act on; both find out only in a WhatsApp reply. A creator's own "booked until" date answers it before anyone asks.
+- Options considered: A) one date, "booked until", that informs search and matching and blocks nothing · B) a calendar of bookable slots, as Passionfroot sells to newsletter and B2B creators · C) a yes/no switch
+- Chosen: A.
+- Reason: a single date is what an Instagram or YouTube creator in Tamil Nadu actually knows, and it is enough to rank and filter. B is richer and fits ad slots in newsletters, not reels; it can grow from A if pilot creators ask. C cannot say when they are free again. Passionfroot's slot calendar remains stronger for slot-sold media; ours is stronger in that it feeds straight into who a brand sees first.
+- Consequences / follow-ups: (1) Column `creator.booked_until` (migration `f74cbe0d42c9`), nullable, no default, no index (only ever a filter on rows other conditions pick); the downgrade drops it, a preference the creator can set again. (2) `GET` and `PUT /api/v1/creators/me/availability`: from today to a year ahead, in Tamil Nadu days; null clears it. A passed date reads as taking work, worked out on every read, never cleared by a job. (3) Creator search returns each result's `booked_until` and takes `available_on` to keep only creators free that day. (4) A campaign's suggested creators put those taking work today first, booked ones after with the date. (5) **Not on the public Passport**: creators published it before this existed. (6) Nothing blocks: a booked creator can apply and be contacted. (7) In the creator's data export. 23 new tests; the four rules each shown to fail when broken.
+
+## D-084: Brands invite creators, and "work together again" is a repeat invitation
+- Date: 2026-10-10
+- Approved by: Adhi, in this session, choosing option A for item 42 of `docs/BILLION_DOLLAR_GAP.md` ("A"), with its gate (database).
+- Context: Every deal began with a creator applying. A brand that found the right creator in search, or wanted last month's creator again, could only hope they applied. Item 42 had been written up as "nothing new stored"; that was wrong, because a memo needs an accepted application and a brand had no way to create one.
+- Options considered: A) a brand invites a creator to an open campaign, as an `application` row with origin 'invited'; "work together again" is an invitation naming the earlier deal, and accepting it drafts the memo from that deal's terms · B) a rebook button that only copies the old campaign as a new draft, leaving the creator to find it and apply.
+- Chosen: A.
+- Reason: B still waits on the creator to notice and apply; A puts the offer in front of them, and it also serves invitations from search, which impact.com and Skeepers both offer (their help pages, read 10 October 2026). As on impact.com's marketplace, accepting an invitation needs nothing more from the creator: the brand already chose them (help.impact.com, read 10 October 2026). Ours goes further for repeats: the memo arrives drafted with the agreed terms, and the brand sees the creator's delivery record (D-038) before choosing to repeat.
+- Consequences / follow-ups:
+  1. Migration `2c3bf71783d2` changes `application`:
+     - adds `origin`, `invitation_note`, `decline_reason` and `repeat_of_application_id` (FK to `application`, RESTRICT, partial index);
+     - makes `pitch` nullable, tied to the origin by a check;
+     - adds the statuses 'invited' and 'declined';
+     - adds the four invitation notification types, which a person may mute.
+     
+     Every check is added NOT VALID and validated after the transaction, and the index is built concurrently. The downgrade refuses while any invitation exists.
+  2. `POST /campaigns/{id}/invitations` (brand), `POST /applications/{id}/accept-invitation`, `/decline-invitation` with a reason code (creator), `/withdraw-invitation` (brand), and `POST /deal-memos/{id}/repeat` (brand; an agreed, uncancelled deal whose fee suits the new campaign's type).
+  3. Moves now depend on who makes them, so a creator declines an invitation and never withdraws the brand's offer.
+  4. Policy: at most 25 unanswered invitations per campaign, held by a lock on the campaign row. There is no expiry: an invitation lasts while its campaign is open, and accepting needs it open and its brand not suspended.
+  5. What changes for other features:
+     - the creator's to-do list gains `answer_invitation`;
+     - the brand's `draft_memo` item now also covers a memo written but never sent, which had been a gap;
+     - creator feedback leaves invitations out;
+     - the campaign summary counts `invited` and `declined`;
+     - both sides' exports carry the new fields.
+  6. A new test compares every CHECK in the models with the migrated database, which `alembic check` does not do.
+  7. Tests: 83 new API tests and 2 concurrency tests. Sixteen rules were each shown to fail when broken.
+
+## D-085: The UPI pay link, with the creator's UPI ID stored by consent
+- Date: 2026-10-10
+- Approved by: Adhi. Item 32 of `docs/BILLION_DOLLAR_GAP.md` was approved on 8 October ("approve all"), with its gate named as a founder decision on storing UPI IDs. After the plan to store them was put to him on 10 October, he confirmed it ("carry on working next").
+- Context: A brand pays a creator by copying an amount and a UPI ID by hand, the most error-prone step in a deal. `docs/standards/database.md` section 4 forbade storing UPI identifiers without a founder decision.
+- Options considered: A) store the creator's UPI ID with consent, and give the brand on the deal NPCI's `upi://pay` link while the payment is open · B) no stored ID: the creator types it into each deal · C) leave payment details off the platform.
+- Chosen: A.
+- Reason: It removes the step where money goes to the wrong place, and the money still moves only between the two banks (constraint 1). The design, its choices and its threat model are in `docs/decided/PROPOSAL_UPI_PAY_LINK.md`.
+- Consequences / follow-ups:
+  1. Table `creator_upi` (migration `e39beab4e841`), separate from `creator`, one row per creator. Its checks refuse a malformed ID and a phone-number ID. The downgrade refuses while any row exists, since each row is a consent record.
+  2. `GET`, `PUT` and `DELETE /api/v1/creators/me/upi`, and `GET /api/v1/deal-memos/{id}/payment/pay-details` for the deal's brand while the payment is open (20 a minute).
+  3. Rules:
+     - no link above UPI's ₹1 lakh limit between people;
+     - person-to-person fields only;
+     - a UPI ID set in the last 24 hours is flagged to the brand.
+  4. Off until the validation pack's notice exists: setting `UPI_NOTICE_VERSION` (`.env.example`, `infra/`) switches it on. Withdrawing always works.
+  5. In the creator's data export.
+  6. Tests: 51, and 13 rules shown to fail when broken.
+  7. Owed: the notice wording, and trying the link on real phones with the main UPI apps before launch.
+  8. `database.md` section 4 now names this decision.
+
+## D-086: Adults only; contact details flagged, not hidden; 180-day logs; four CI checks
+- Date: 2026-10-10
+- Approved by: Adhi, in this session ("approve all"), on the four decisions put to him after the legal and trust-and-safety standards.
+- Context: The legal research (`docs/standards/legal.md`) and the trust-and-safety review (`docs/standards/trust-and-safety.md`) found decisions only a founder could make, and CI gaps.
+- Options considered and chosen:
+  1. **Adults only** (chosen), over allowing minors with parental consent. A contract with a minor is void in India, and DPDP requires verified parental consent for their data. Creating a profile takes a date of birth, checked against today in Tamil Nadu. Only `account.adult_confirmed_at` is kept (migration `5cf8639be443`), never the date: the least the rule needs.
+  2. **Contact details flagged, not hidden**, until there is an in-app chat to talk through instead (item 60).
+  3. **Logs kept 180 days** (chosen), over 30, as CERT-In requires. OpenTofu refuses less.
+  4. **CI** (all chosen):
+     - every job on `ubuntu-24.04`, never `ubuntu-latest`;
+     - a new `infrastructure` job running `tofu fmt -check` and `tofu validate` on every environment, OpenTofu 1.12.6 pinned by checksum;
+     - a licence allow-list (pip-licenses 5.5.5) that fails on anything not approved;
+     - proof and evidence links from a published host list (item 57).
+- Reason: each closes a gap the research found, with the smallest change that does.
+- Consequences / follow-ups:
+  - Creating a profile now requires `date_of_birth`. No client exists yet (D-053), so tightening the contract costs nothing today.
+  - Lawyer question 2 in `legal.md` section 4 asks whether a declared date is enough.
+  - The persuasion levers we use, and the line each must not cross, are written into `legal.md` section 3.5.
+
+## D-087: The founders' weekly numbers, as an admin view
+- Date: 2026-10-10
+- Approved by: Adhi, in this session ("carry on with the remaining docs then item 63"), for item 63, which the survival playbook proposed the same day.
+- Context: `docs/SURVIVAL_PLAYBOOK.md` section 4 names the numbers that say each week whether the first city is dense enough and the business alive. They could only be counted by hand.
+- Options considered: A) one admin endpoint, worked out from the records on every read · B) a stored daily snapshot table · C) counting by hand from the export.
+- Chosen: A.
+- Reason: "worked out, never stored" (`backend.md` section 2) keeps the numbers from drifting from the records, and it costs a fixed number of queries whatever the size. B would add a job and a second truth; C does not survive a busy week.
+- Consequences / follow-ups:
+  1. `GET /api/v1/admin/numbers`: admins only (404 for anyone else), 20 a minute. Any 1 to 90 Tamil Nadu days ending on `ending_on`, beside the same length before, optionally for one city.
+  2. What it reports:
+     - new and active brands and creators;
+     - campaigns posted, and the fill rate (an agreed deal within 14 days);
+     - median hours to a first application;
+     - applications sent and accepted so far, and invitations;
+     - deals agreed, their value, and the repeat share;
+     - payments confirmed, and the share paid on time.
+  3. Policy written into the code:
+     - every rate is null below five examples;
+     - a campaign counts towards the fill rate only once it is 14 days old;
+     - a campaign still in draft is not counted;
+     - a repeat is any deal between a pair that agreed one before.
+  4. Totals only, naming no one, so reading it writes no admin log entry (D-061).
+  5. A campaign's publishing time is not stored, so `created_at` stands in for it. A campaign kept long in draft looks slower to fill than it was.
+  6. Tests: 19; ten rules each shown to fail when broken. Mutation testing found that nothing checked the period's last day at Tamil Nadu midnight, and a test now does.
+
+## D-088: A campaign report to hand on, as JSON and a spreadsheet; PDF left to the clients
+- Date: 2026-10-12
+- Approved by: Adhi. Item 47 was approved on 8 October with the rest of `docs/BILLION_DOLLAR_GAP.md` ("approve all, build them all in the best order"), and its gate list in `docs/BACKEND_COMPLETE.md` was empty. It was built on 12 October on his instruction to carry on ("proceed to progres as per all md files"). It adds no table, column, package or setting.
+- Context: A brand's marketing lead has to show someone above them what a campaign bought. Without this, they would rebuild it by hand from several screens: deals, proof, payments and records.
+- Options considered: A) one report worked out from the records on every read, as JSON and as CSV · B) a stored report, regenerated by a job · C) A, plus a PDF made on the server.
+- Chosen: A. The PDF is left to the clients for now.
+- Reason:
+  - "Worked out, never stored" (`backend.md` section 2) keeps the report from drifting from the records. B would be a second truth.
+  - A server-made PDF needs a new package (WeasyPrint or ReportLab) and a layout that belongs to the design. The website can print the JSON to PDF, and the phones can share it. A server PDF stays a separate dependency request if pilot brands ask for one.
+- Consequences / follow-ups:
+  1. `GET /api/v1/campaigns/{id}/report` (JSON) and `GET /api/v1/campaigns/{id}/report.csv`: the owning brand only (404 for anyone else), 20 a minute, `Cache-Control: no-store`.
+  2. What each deal carries:
+     - the creator, by name and handle only;
+     - stage and whose move it is (D-076);
+     - terms, fee and the agreed date, and whether work was first sent on time;
+     - when it was approved, and whether by the clock (D-025);
+     - the approved post's link and the creator's disclosure confirmation;
+     - payment state, due date, when marked sent, when confirmed, and whether sent on time;
+     - results, and the deal record's check, latest seal and stamp date.
+  3. Totals: applications by status; deals sent, agreed and finished; agreed value; money said to be sent beside money confirmed; deliveries and payments on time; summed results; whether every record checks.
+  4. Policy written into the code:
+     - a draft memo is not a deal and is left out;
+     - a cancelled deal is not agreed value;
+     - "on time" is null with nothing to judge, never counted as a yes;
+     - results come only from the approved work's screenshots. They are labelled as read from screenshots and never verified, a reading the creator marked as wrong is counted apart, and an abbreviated figure (12.5K) is flagged;
+     - a clock approval nobody has opened yet shows the payment exactly as `open_on_approval` will write it, without writing anything;
+     - `stamped_on` is the first daily checkpoint signed by an outside timestamp authority after the latest entry. The existing proof endpoint is what checks it.
+  5. The spreadsheet: UTF-8 with a byte-order mark, CRLF lines (RFC 4180), rupees from whole paise without floats, no totals row. Any cell a spreadsheet would run as a formula gets a leading apostrophe (OWASP, CSV injection). Names, deliverables and links are typed by people.
+  6. The same fixed number of queries whatever the campaign's size. Not paginated: it is one document, like the data export. If a campaign ever passes about 500 deals, stream it.
+  7. Tests: 56. Thirteen rules were each broken on purpose and seen to fail. That exercise found a missing case, work sent back and never approved, and a test now covers it.
+
+## D-089: A decline's date, the creator's change request, and the brand's first answer, kept
+- Date: 2026-10-12
+- Approved by: Adhi, in this session ("A", to the proposal for items 24, 25 and 28 as one migration).
+- Context: The website wireframes asked for three things that were not stored (`docs/BACKEND_COMPLETE.md` section 3.7):
+  - the deal pass dates every step, and a decline had no date;
+  - the memo editor shows what the creator asked to change, and those words reached the brand only as a notification;
+  - D-077 could not measure how fast brands reply, because the first answer was overwritten by every later move.
+- Options considered: A) one migration, three nullable columns · B) three migrations, one at a time.
+- Chosen: A.
+- Reason: one small, additive change; only one migration in flight; nothing invented for older rows.
+- Consequences / follow-ups:
+  1. `deal_memo.declined_at`, set when the creator declines. The database allows it only on a declined memo.
+  2. `deal_memo.change_request_message`: the creator's latest request, trimmed, 5 to 1,000 characters.
+     - A second request replaces the first, and the request is kept after the memo is sent again.
+     - The database allows it only on a memo that was sent back.
+     - A repeat deal does not copy it, nor the decline date.
+     - It goes creator to brand after they were matched, so neither text flag applies, and a test shows a price and a phone number raise none.
+  3. `application.first_answered_at`: the brand's first shortlist, accept or reject of an application someone applied for.
+     - Set once, under the application's lock, and never moved by a later answer.
+     - Never set by a creator's move, and never on an invitation.
+     - The database refuses it on an invitation, and on an application still waiting.
+  4. `MemoRead` and `ApplicationRead` carry the new fields (added, nothing removed). All three are in the data export.
+  5. Rows from before 12 October keep NULL: a date or a message that was never recorded is not made up. The downgrade refuses while any of the three holds a value.
+  6. Not built: using `first_answered_at` to show brands' typical reply time beside D-077's. That is the next proposal.
+  7. Tests: 37. Five rules were each broken on purpose and seen to fail. Each CHECK is refused by the database when a test writes the row with raw SQL.
+
+## D-090: Property-based tests with Hypothesis, and the contact-detail flag widened by what they found
+- Date: 2026-10-12
+- Approved by: Adhi, in this session ("all 3 in a-b-c"), to the proposal to make testing stronger rather than only bigger: A) Hypothesis, then B) mutmut, then C) a load test.
+- Context: Adhi asked how many tests billion-dollar companies run, and said ours "should progress drastically". Our 2,637 tests each check a case someone thought of. Property tests state a rule and let a tool generate the cases.
+- Options considered: A) Hypothesis · B) more hand-written examples · C) nothing new.
+- Chosen: A.
+- Reason:
+  - Hypothesis is the standard for Python property-based testing.
+  - It was already installed through Schemathesis, and its MPL-2.0 licence is on the approved list.
+  - Version 6.169.0 (11 October 2026) supports Python 3.14.
+  - More hand-written examples would only find what someone already imagined.
+- Consequences / follow-ups:
+  1. `hypothesis==6.169.0` is pinned in the dev group, never in an image.
+  2. Profiles in `tests/conftest.py`: 200 cases per test locally, and 1,000 on CI (`HYPOTHESIS_PROFILE=ci`, which prints how to replay a failure). No deadline in either, so a busy machine is never a failure.
+  3. 33 property tests. That is 6,600 generated cases a run locally and 33,000 on CI. They cover:
+     - cursors, phone numbers and payment references;
+     - the record's fingerprint and the Merkle proofs;
+     - payment state over 60 days;
+     - the approval clock and deal stage;
+     - the spreadsheet's money and formula escape;
+     - the contact-detail flags.
+  4. **Found on the first run:** a mobile number written `987 654 3210`, `9876 543 210`, `09876543210`, `98-76-54-32-10` or `98765.43210` went unflagged (item 60). Only 5+5 and unbroken digits were caught.
+     - The pattern now allows one space, dash or dot in any gap, and a leading 0.
+     - All five shapes are fixed examples that fail on the old pattern.
+     - New must-not-flag cases (ranges, dates, rates) bound it.
+  5. Each property was shown to fail when its rule was broken: the dispute rule, late going back to due, a window a day short, barter waiting on a payment, finished on "marked paid", unsorted keys.
+     - One break survived: swapping the Merkle hash order. Root and proof stay consistent, which is all a property can check. The RFC 6962 vectors in `test_merkle.py` catch it.
+     - So `testing.md` now says to keep both kinds.
+  6. `docs/standards/testing.md` sections 1, 3 and 6 are updated.
+
+## D-091: Mutation testing with mutmut, nightly, with every accepted survivor named
+- Date: 2026-10-12
+- Approved by: Adhi, in this session ("all 3 in a-b-c"), as B of the three.
+- Context: Each feature's tests were proven by breaking the code by hand, about a dozen breaks per feature (`testing.md` section 2). A tool can make hundreds of breaks every night.
+- Options considered: A) mutmut, nightly · B) mutmut on every push · C) keep doing it by hand only.
+- Chosen: A.
+- Reason:
+  - mutmut 3.8.0 (12 September 2026) is the maintained mutation tester for Python. It supports Python 3.14 and is BSD-3-Clause, which is on the approved list.
+  - A full run takes about ten minutes, too slow for every push and right for a night.
+  - It needs Linux (it forks). Locally it runs in a container, against a throwaway database with CI's test-only credentials, never the developer's own.
+- Consequences / follow-ups:
+  1. `mutmut==3.8.0` is in its own `mutation` group, installed only by `.github/workflows/mutation.yml`. That workflow runs at 02:00 Tamil Nadu time and on demand, with read-only permissions and pinned actions; zizmor finds nothing.
+  2. Scope (`[tool.mutmut]`):
+     - deal stage, payment state and its dates, the approval clock, the record's fingerprint and Merkle proofs, the text flags, cursors, the report spreadsheet;
+     - only lines the chosen fast tests reach;
+     - never the wording of an error, since clients branch on codes.
+  3. The machine's clock is set to Tamil Nadu time in the run. A mutant that read the machine's zone instead of UTC survived under a UTC clock and is caught under IST.
+  4. **First run: 598 mutants, 82 survived.** Each was read:
+     - about 30 changed only an error's wording, and are now excluded;
+     - the rest showed real gaps, now closed by tests:
+       - the record's exact fields, built from a real entry;
+       - the terms fingerprint spelling a date;
+       - a link in the chain changed alone;
+       - another deal's record presented as this one's;
+       - a record read in the order it was written, with index scans off so the planner cannot hide a missing ORDER BY;
+       - which account each side's entries name;
+       - the payment days (unpaid on exactly day 14, unconfirmed on exactly day 7, no dispute assumed by default);
+       - a payment reference at and one past each length limit, and characters outside the allowed set;
+       - a Merkle proof asked for one past the last leaf.
+  5. **Last run: 572 mutants. 545 caught, 4 timed out, 1 reached by no fast test, 21 survived.** The nightly check accepts exactly 21:
+     - equivalent, so no test can tell them apart:
+       - the cursor's padding arithmetic, and stripping an "X" a cursor can never end in (3);
+       - the text substituted for an email before the UPI check (1);
+       - an unreachable Merkle loop bound (1);
+       - `<` against `<=` in the review clock, where the proof itself changes nothing (1);
+       - `ensure_ascii=None`, and "UTF-8" spelled in capitals (3);
+       - join conditions SQLAlchemy infers by itself (6);
+       - `.limit(1)` against `.limit(2)` before `.first()` (2);
+     - out of reach of the fast tests: the lock inside `append` (3). Every caller already locks the deal's row first, so only a concurrency test aimed at `append` alone could see it;
+     - one error message split across lines, which the exclusion cannot match (1).
+  6. Widening the run to the record's API tests made 1,126 mutants with 186 survivors. Those tests reach many lines without checking what each line does. That is the backlog to work down, area by area, raising scope only when its survivors are closed.
+  7. `docs/standards/testing.md` sections 2 and 9 are updated.
+
+## D-092: The load test, with Locust; one container holds about 200 people, and overload wedges it
+- Date: 2026-10-12
+- Approved by: Adhi, in this session ("all 3 in a-b-c"), as C of the three, which is item 5 of `docs/BACKEND_COMPLETE.md`.
+- Context: Every p95 in `docs/PERFORMANCE.md` was measured with one person. Launch is many.
+- Options considered: A) Locust · B) k6 · C) a hand-written script.
+- Chosen: A.
+- Reason:
+  - Locust 2.46.7 (4 October 2026) is Python, so the test signs people in with the app's own token code.
+  - It supports Python 3.14 and is MIT-licensed. k6 is AGPL-3.0, which is not on the approved list.
+- Consequences / follow-ups:
+  1. `locust==2.46.7` is in its own `load` group, never in an image.
+  2. `scripts/load_test.py` runs 16 endpoints across brand and creator journeys.
+     - Each simulated person uses a different seeded sample account.
+     - The one write puts a creator's availability back unchanged; nothing touches the deal record.
+     - It fails on any failed request or any p95 over budget.
+     - It refuses to run outside `ENVIRONMENT=local`, against anything but this machine, or without seeded accounts.
+  3. **Measured on one process, the way a production container runs:**
+     - 200 people for 3 minutes: 12,194 requests, none failed, 68 a second, every p95 between 130 and 220 ms. Inside every budget.
+     - 400 people: 14% failed with a 500 after waiting up to 90 seconds, and the process stopped answering even `/healthz` until restarted.
+     - The cause: one process has 15 database connections and 40 worker threads, and each side waits on the other until a 30-second timeout fires.
+  4. **The fix is proposed, not built (item 5a):** answer 503 with `Retry-After` within a second or two when busy, and never wedge. It changes error behaviour and settings, so it needs its own approval.
+  5. Two first-run artefacts were fixed in the script:
+     - on Windows, `localhost` adds two seconds to every new connection, so the test uses `127.0.0.1`;
+     - an unpublished Passport correctly answers 404, so only published ones are visited.
+  6. The measurement is from a laptop, with the load generator on the same machine. A staging run is owed once AWS is up.
+  7. **The seed data exposed three tests that passed only on an empty database.** CI starts empty every run, so none had ever failed there.
+     - Suggested creators across a block read a key a match never had. With no matches the check never ran, so it proved nothing. It now compares handles, and removing the block filter makes it fail.
+     - Discovery across a block lost its campaigns to newer sample campaigns on page one. It now uses a city of its own.
+     - The adults-only test read the first creator in the database. It now finds its own by handle.
+
+## D-093: Overload answered with a quick 503 "busy", never a freeze
+- Date: 2026-10-12
+- Approved by: Adhi, in this session ("A", to item 5a's proposal: shed overload fast with 503 and Retry-After, and never freeze).
+- Context: The load test (D-092) froze a process at 400 people. It had 15 database connections and 40 worker threads. Requests held connections while waiting for threads, and threads waited for connections, until 30-second timeouts answered 500. The process stayed stuck after the load stopped.
+- Options considered: A) cap requests in flight below the connections, answer 503 with Retry-After past a short queue, and time out a connection wait in 2 s · B) only raise the pool size.
+- Chosen: A.
+- Reason:
+  - A removes the freeze's cause: an admitted request can always get a connection.
+  - B moves the limit without removing it.
+  - Load shedding with Retry-After is how large services stay up past capacity, and our apps already retry writes safely with an Idempotency-Key (D-040).
+- Consequences / follow-ups:
+  1. `app/core/load_shedding.py`, between the error and rate-limit layers, so the 503 carries the request ID, CORS and security headers (D-045). It admits up to `MAX_IN_FLIGHT_REQUESTS` (12) at once. A request may wait `BUSY_QUEUE_MS` (1,000) for a place, then gets 503 `service_busy` with `Retry-After: 2`. `/healthz` and `/readyz` are never held back.
+  2. Second guard: `DB_POOL_TIMEOUT_SECONDS` (2) gives the same 503 when a connection does not come free in time, as can happen when background jobs share the pool.
+  3. The app refuses to start if the cap could use every connection (it must be below `DB_POOL_SIZE + DB_MAX_OVERFLOW`). The three settings are in `.env.example`. Infra passes none of the pool settings, so production uses these defaults.
+  4. Every operation documents the 503 in the contract: 67 gained it, and nothing else changed. `frontend.md`: wait `Retry-After` with jitter, retry the same request up to three times, then a calm "busy" with a button. A 429 is never retried automatically.
+  5. Measured on one process (`docs/PERFORMANCE.md`):
+     - 200 people: aggregate p95 190 → 62 ms, no errors, none turned away. Capping concurrency eased contention.
+     - 400 people: from frozen with 14% 500s to 23,691 requests, none failed, 2 turned away.
+     - 800 people: 48% turned away within about a second, no other error, and `/readyz` answering 25 ms after.
+  6. `scripts/load_test.py --overload` checks exactly that: past capacity, no error but 503, and recovery.
+  7. Tests: 12 new. The middleware is driven at its limits with requests held open, each scenario bounded to 5 s. Then the real app's 503, its headers, the startup check and the contract.
+     - Six breaks each failed a test: no limit, a place never returned, health checks held back, no queue wait, a pool timeout left as a 500, a cap allowed to use every connection.
+     - The first version of these tests hung, rather than failed, when the limit was removed. Each scenario is now bounded.
+  8. Follow-up, an infrastructure decision: infra runs a fixed number of API containers (one by default) with no autoscaling. Capacity per container is about 130 requests a second inside budget.
+
+## D-094: Tracing with OpenTelemetry's stable SDK and our own instrumentation; off until hosting picks a destination
+- Date: 2026-10-12
+- Approved by: Adhi, in this session. Offered autoscaling (1) or tracing (2), he answered "do research and you know the standard you tell me". Tracing was chosen because it is on `docs/BACKEND_COMPLETE.md` (item 3, locked by D-047), and autoscaling belongs to going live.
+- Context: Every p95 is measured on a laptop. In production nothing would say which endpoint, or which query, is slow.
+- Options considered: A) OpenTelemetry's stable API, SDK and OTLP exporter, with our own request and query spans · B) the same plus the ready-made FastAPI and SQLAlchemy instrumentation · C) Sentry's tracing.
+- Chosen: A.
+- Reason (researched 12 October 2026):
+  - The OpenTelemetry API, SDK and OTLP exporter 1.45.1 (6 October 2026) are Production/Stable, support Python 3.14, and are Apache-2.0.
+  - The ready-made instrumentation is 0.66b1 and marked Beta, which D-047's upgrade rule refuses. Owning about a hundred lines also decides exactly what a span may say.
+  - Sentry's OpenTelemetry-based SDK 3.0 is still a pre-release, its data sits in the US or EU, and tracing would cost Sentry quota.
+  - AWS put the X-Ray SDKs in maintenance mode on 25 February 2026 and recommends OpenTelemetry. X-Ray takes OTLP in Mumbai, so the destination can stay in India and with our host.
+- Consequences / follow-ups:
+  1. Dependencies (`opentelemetry-api`, `-sdk` and `-exporter-otlp-proto-http`, all 1.45.1):
+     - They bring `protobuf` (BSD-3-Clause) and Google's common protos (Apache-2.0).
+     - They also bring three helper packages the project versions as beta (semantic conventions and two exporter helpers). The stable SDK depends on them; our code imports only stable APIs.
+     - pip-audit finds nothing.
+     - protobuf spells its licence "3-Clause BSD License", which is added to CI's allow-list as a spelling of the approved BSD-3-Clause.
+  2. `app/core/tracing.py`:
+     - one SERVER span per request, named by the route template and outermost of every layer, so a 503 or 500 is inside it;
+     - a CLIENT span per query run inside a request;
+     - an incoming W3C `traceparent` is continued;
+     - batches go out on a background thread with a 3-second export timeout;
+     - health probes are not traced.
+  3. A span may carry:
+     - the method, route template, status code and request ID;
+     - the error's type;
+     - SQL with placeholders.
+     It never carries:
+     - a real path, a query string, a header or a body;
+     - an account or an address;
+     - an exception's message.
+  4. Settings: `TRACES_ENDPOINT` (unset means off; it must be https outside local and test) and `TRACES_SAMPLE_RATIO` (0.1). A `traceparent` the app already sampled is followed whatever the ratio.
+  5. Tested: 18 tests read the spans exactly as they would be sent.
+     - Six breaks each failed a test: a message recorded, the real path naming the span, queries traced outside requests, values in the SQL, the app's trace not continued, a 5xx not marked.
+     - End to end, a local Jaeger received the traces: a Passport lookup as a request span with its three queries, a trace started by the client kept its ID, and the real handle appeared nowhere in Jaeger's data.
+  6. Overhead measured (`docs/PERFORMANCE.md`): at 200 people, p95 200 ms with tracing off, 230 ms at 10%, and 220 ms with every request traced. That is within noise, and inside every budget.
+  7. **Where traces go is still open (hosting).** X-Ray's OTLP endpoint needs signed requests, so production needs an OpenTelemetry collector beside the app (an infrastructure decision) or another backend. Until then nothing is sent.
+
+## D-095: Phones registered for push, one owner per token, gone at logout
+- Date: 2026-10-12
+- Approved by: Adhi, in this session ("A and push"), to the proposal for item 9.
+- Context: Push is how the apps earn their place on a phone (A4). The apps cannot ask for it until the backend stores each install's token.
+- Options considered: A) a `device_token` table and endpoints now · B) wait for item 8 to settle the account shape.
+- Chosen: A.
+- Reason: a token belongs to an account whichever way item 8 goes, and building it now unblocks the apps' design.
+- Consequences / follow-ups:
+  1. `device_token`, a new table:
+     - the account (ON DELETE CASCADE) and the platform (`android`, `ios`, `ios_live_activity`);
+     - the token: unique, 32 to 1,024 characters of a safe set;
+     - the app version, last seen, created and updated;
+     - an index on (account, last seen) that also covers the foreign key.
+     - The database refuses each bad row, and tests write those rows with raw SQL.
+  2. `PUT /api/v1/me/devices` registers or refreshes a phone (body: token, platform, app version) and returns its `id`, never the token. `DELETE /api/v1/me/devices/{id}` unregisters one; someone else's device is a 404. Limit: 20 a minute and 200 a day.
+  3. **Changed from the proposal, each for a stated rule:**
+     - **The token travels in the body, never the URL.** A URL reaches access logs, and `security.md` never logs tokens. So deletion is by the `id` registering returned.
+     - **Web push is left out.** A browser subscription is an endpoint plus keys, not a token, and item 9 named only the phones.
+  4. Rules:
+     - one token, one owner: a token registered by a second account moves to it, so a phone handed on stops showing the last person's notifications;
+     - each account keeps its 10 most recently seen phones, with the account's row locked first so registrations at once cannot pass the cap;
+     - logout, given the phone's optional `device_token`, removes it, but only if it is the same account's;
+     - logout-all removes every phone.
+  5. Personal data: the export lists each phone's platform, version and dates, never the token. `app/core/export.py` refuses the name.
+  6. Tests: 41.
+     - Six breaks each failed a test: no lock, no cap, a token not moved, logout removing another account's token, logout-all keeping phones, deleting another account's device.
+     - The concurrency test holds four registrations open between insert and trim, on an account one phone short of its cap. It ends with exactly ten.
+  7. Squawk finds nothing. The migration ran up, down and up, and the models match.
+  8. Still to build with E1: the sender. It will drop a token Firebase or Apple reports as gone, and use `decide` (D-079) for quiet hours.
+
+## D-096: One feature at a time, to eight steps, in place of one file at a time
+- Date: 2026-10-12
+- Approved by: Adhi, in this session, choosing "Feature at a time" over strict one-file-at-a-time and a hybrid, after an audit showed the sessions had been building whole features while `CLAUDE.md` section 6 said one file at a time.
+- Context: The written rule and the practice had parted. Adhi wants pace and the best quality together ("in the best way possible, not for the sake of being there").
+- Options considered: A) feature at a time, to a stated checklist · B) strictly one file at a time, waiting after each · C) a hybrid, one file at a time for migrations, security, payments and auth.
+- Chosen: A.
+- Reason: B is about five to ten times slower for the same result. A keeps every gate and makes the quality steps explicit, where before they were only habit.
+- Consequences / follow-ups:
+  1. `CLAUDE.md` section 6 now gives the eight steps:
+     - the constraints first;
+     - the area's standards re-read in full, and named in the report;
+     - research with dated sources;
+     - a proposal and approval, with any change from it approved before it is built;
+     - build;
+     - proof;
+     - the whole job in one change;
+     - an honest report.
+  2. Section 5's "how to ask" matches.
+  3. The learning format stays, for whenever a founder asks to learn a file.
+  4. `.claude/commands/handoff.md` points at the new section.
+  5. The audit's other findings stand as obligations:
+     - CI must be seen green before "done";
+     - a second reader is still owed on everything since 21 September;
+     - standards are re-read rather than remembered.
+
+## D-097: Thirty-two more items, 64 to 95, from what the best platforms ship in 2026
+- Date: 2026-10-12
+- Approved by: Adhi, in this session ("Yes, record all 32"), after seeing each with who has it, how ours goes further, and its gate.
+- Context: Adhi asked for more than the 63, built "in the best way possible". The research covered TikTok One (May 2026), Meta's Creator Marketplace, YouTube Creator Partnerships (2026), Upwork's Uma, CreatorIQ, GRIN, Aspire, Traackr, Statusphere, Insense, Beacons and Stan, and India's platforms. Sources are in the session report.
+- Options considered: A) record all 32 · B) only some · C) keep them as proposals.
+- Chosen: A.
+- Reason: each closes a gap with the strongest platforms, or makes one of our own novelties real, without breaking a constraint.
+- Consequences / follow-ups:
+  1. `docs/BACKEND_COMPLETE.md` section 3.11 holds them, in five groups:
+     - discovery: 64 to 67;
+     - workflow: 68 to 73;
+     - trust: 74 to 78;
+     - accounts and security: 79 to 82;
+     - growth and data: 83 to 87.
+     Plus running it: 88 to 95.
+  2. **Recording is not approval to build.** Each item gets its own research, proposal and "yes" under D-096 before any code, and "built" means all eight steps.
+  3. Some cannot be done properly yet, and wait rather than ship thin: 67 and 78 need Meta's review (item 29); 76 needs the lawyer; 83 and 86 need real results data.
+  4. Deliberately excluded:
+     - paying creators directly (constraint 1; item 87 is our answer to TikTok's One Pay);
+     - a database of every creator on the internet;
+     - bought fake-follower scores.
+  5. Novelties 1, 4 and 7 of `docs/COMPETITIVE_LANDSCAPE.md` are now items 83, 84 and 77.
+  6. Recommended first, for the account model must be right before any app: 74, 79, 80 and 81. Then the competitor gaps 17, 44, 43 and E5.
+
+## D-098: Every proposal weighs ten dimensions, and every md file meets one bar
+- Date: 2026-10-12
+- Approved by: Adhi, in this session. Shown option A (a ten-dimension proposal template) and an audit of every dimension, he answered "this is why i need every md file in that level", and then "both" to A and B. B is the architecture and structure review: it runs now, and its exact module moves come back as their own proposal before any file moves (D-096 step 4).
+- Context: Adhi is building alone and taking every decision himself. Progress had been measured in features and tests, while quality, novelty, architecture, research and the rest were left to habit. The documents had been written to different shapes at different times. Some held stale figures, and four standards claimed published practice without citing it.
+- Options considered: A) a ten-dimension section in every feature proposal, plus one bar for every document, raised file by file in order of how much each steers the work · B) leave the documents as they are and only template new proposals.
+- Chosen: A.
+- Reason: the documents are what every session reads before acting. One that is stale or unsourced steers the work wrong without anyone noticing.
+- Consequences / follow-ups:
+  1. `CLAUDE.md`:
+     - section 5 asks every feature proposal to weigh quality, novelty, architecture, research, security, privacy and law, trust and safety, performance, design and business, saying "none" where one does not apply;
+     - section 7.0's table adds architecture and research;
+     - section 8's done list adds the ten dimensions, standards re-read for the work, documents kept at the bar, and CI *seen* green;
+     - the file states when it was last checked against the code.
+  2. The closed notice of 21 to 23 September moves, unchanged, to `docs/reports/2026-09-23-closed-notice.md`. It was settled, but it loaded into every session.
+  3. `docs/README.md` section 0 states the eight-point bar every document meets, and tracks progress. Done: `CLAUDE.md` and the index. Next: the eight standards, then the map, strategy and operations; then a status line on each paper in `decided/`. Records (reports, the decision log, `decided/`) keep what was true when written.
+  4. Honest notes made in the index: `research/` holds no interview notes yet, and the design brief predates English only (D-054).
+
+## D-099: The modules in layers, enforced by import-linter (phase 1 of the structure review)
+- Date: 2026-10-12
+- Approved by: Adhi, in this session.
+  - He approved phase 1 with "every dimension need to perfect".
+  - Shown the corrections the file-level map forced, he answered "do a research and do what you think is the best", leaving the choice to Claude.
+- Context: The architecture review (D-098 B) measured three problems:
+  - `auth` had grown to 51 files, 8,000 lines and 16 routers, of which only login and accounts belonged there. Its schemas file alone ran to 1,118 lines.
+  - 11 pairs of modules imported each other.
+  - Three routers queried the database directly, against `backend.md` section 1.
+  - Nothing enforced any boundary.
+- Options considered: A) layers, with the moves the file-level map allows, enforced by import-linter 2.15 · B) the same with our own test · C) leave it.
+- Chosen: A.
+- Reason:
+  - The approach large monoliths use to stay healthy: Shopify enforces boundaries with Packwerk, and GitLab's handbook describes the same.
+  - import-linter is Production/Stable, supports Python 3.14, and is BSD-licensed. Tach is still beta (D-047).
+  - Each file's home was decided by what it imports, so every import points down.
+- Consequences / follow-ups:
+  1. **The layers** (`backend.md` section 1, `CLAUDE.md` section 3, `app/modules/__init__.py`), top to bottom:
+
+     | Layer | Modules |
+     |---|---|
+     | 7 | `me` |
+     | 6 | `admin` |
+     | 5 | `matching` \| `insights` \| `passport` |
+     | 4 | `campaigns` : `deal_memo` : `payment_status` : `disputes` |
+     | 3 | `profiles` \| `safety` \| `notifications` |
+     | 2 | `auth` |
+     | 1 | `app/core`, `app/db` |
+
+     `lint-imports` runs in CI after mypy. 198 files and 907 internal dependencies; both contracts kept. It is shown failing on an upward import and on a module placed in no layer.
+  2. **Changed from the first proposal**, each forced by the map:
+     - the brand and creator tables stay in `auth` as identity, since suspension reads them and about 100 files import them;
+     - the Passport and media kit form `passport` above the deal domain, since they show delivery records;
+     - user reports and the founders' numbers go to `admin`;
+     - device tokens move to `auth`, beside sessions, since logout removes them (this supersedes D-095's placement);
+     - the admin check moves down to `auth/dependencies.py`;
+     - the module named `account` in the proposal is `me`, matching its `/me/...` URLs and avoiding the `Account` table;
+     - `me` sits above `admin`, because the export includes the reports a person filed.
+  3. **Fixed on the way:**
+     - the three routers' queries and the Passport's visibility rules moved into services;
+     - `app/modules` had no `__init__.py`, which made it invisible to the layer check;
+     - `tests/test_architecture.py` now fails when any router builds a query, any service imports FastAPI, or any module is not a package. It was shown failing on the old campaigns router.
+  4. **Unchanged:**
+     - every URL and table, and the API contract, whose fingerprint was compared identical after every move;
+     - behaviour: the full suite passes;
+     - the registries `app/db/models.py` and `app/core/jobs.py` are named in `pyproject.toml` as the only lower files that may list every module.
+  5. **Measured afterwards, by the same count as before:** `auth` is 23 files and 2,876 lines, down from 51 and 8,000. The commit moving `me` said "15 files", which counted no `models/` folder, so 23 is the like-for-like figure. Mutually importing module pairs fell from 11 to 6, all inside the deal domain.
+  6. **Phase 2 (item 96):** untangle the deal domain's 6 pairs by moving cross-cutting views (deal stage, the campaign summary and report, payment attention) into a reporting layer. It is its own proposal.
+  7. The moves were made by a one-off refactoring helper. It was not committed: it was scaffolding, and git keeps each file's history through `git mv`.
+
+## D-100: The four findings of the standards pass fixed: the app's own database login, the missing indexes, sealed dispute events, and reporters told the outcome
+- Date: 2026-10-14
+- Approved by: Adhi, in this session, after seeing the findings and the DECISION NEEDED for item 97: "make all these perfect and go with A". **Not reviewed by the other founder** (D-051).
+- Context: Raising `database.md`, `security.md` and `trust-and-safety.md` to the bar (D-098) found four things the standards claimed and the code did not do: the app connects to the database as the table owner, which can switch off the deal record's seals (item 97); foreign keys without a usable index (item 98); dispute events not sealed by the database (item 99); a reporter never told what became of a report (item 102).
+- Options considered for item 97: A) a separate app login with only row rights, its password in Secrets Manager, set by the migration task; B) the same, logging in with AWS IAM tokens. Items 98, 99 and 102 had one way each, as proposed in `docs/BACKEND_COMPLETE.md` section 3.12.
+- Chosen: A, and all four built.
+- Reason: The strongest protection for the least new code: the deal record is protected twice, by permissions and by triggers, and CI proves the app works with only the rights it is given.
+- Consequences / follow-ups: (1) Item 98: four indexes built `CONCURRENTLY` (`notification.campaign_id` and `application_id`, partial on NOT NULL; `admin_action.admin_account_id`; `report (reporter_account_id, created_at)`, the fourth found when the schema test stopped counting a partial index that leaves out more than NULLs). The nine refusing downgrades gained a standing test (`tests/modules/test_refusing_downgrades.py`). (2) Items 99, 102 and 97 are recorded in their own commits under this decision. (3) Items 100 (a stranger test for every object route) and 101 (a second factor for admins) stay proposed.
+
+## D-101: Claude merges finished work to main itself, while Adhi builds alone
+- Date: 2026-10-14
+- Approved by: Adhi, in this session: "you yourself merge it dont ask me to do it you do it". **Not reviewed by the other founder** (D-051).
+- Context: `CLAUDE.md` section 6 said founders merge on GitHub, through a pull request the other founder reviews. With one founder building (D-051) and the `gh` CLI not installed, finished work waited on branches: 27 commits from D-088 onward were not on `main`, and a false positive in the secret scan had stopped every CI run there since 12 October, unseen.
+- Options considered: A) keep founders merging; B) Claude merges, under conditions that keep the gates.
+- Chosen: B.
+- Reason: Adhi's direction; the conditions keep what the review step protected, except a second reader, which the report names every time.
+- Consequences / follow-ups: (1) Claude merges only when every local gate has passed and CI is seen green on GitHub for the exact commit, read through GitHub's public API; with a merge commit (`--no-ff`); never a force-push, a rebase of a shared branch, or a rewritten history. (2) Every report says no second person reviewed the work. (3) `main` has no branch protection (checked 14 October), so nothing on GitHub enforces green CI; turning it on, requiring the four CI jobs, is a founder's setting and is recommended. (4) `CLAUDE.md` sections 6 and 8 say this.
+
+## D-102: Three to build next: every route refuses a stranger, deal dates as a calendar file, structured logs
+- Date: 2026-10-14
+- Approved by: Adhi, in this session ("yes go on", after the three proposals with their ten dimensions). **Not reviewed by the other founder** (D-051).
+- Context: Adhi asked for real progress in code beside the documents. Of about 70 open items, these three need nothing from outside and strengthen everything after them.
+- Options considered: the ranked list of buildable items given in the session (100, 69, structured logs, 51 and 52, 81, 82 and 80, 101, 75, 44, 87, 43).
+- Chosen: A) item 100, one test that every route naming an object refuses a stranger; B) item 69, a deal's agreed dates as a calendar file (RFC 5545), parties only; C) structured JSON logs from the standard library, personal data filtered out, on when `LOG_FORMAT=json`.
+- Reason: A closes the top API risk for every route at once and guards every future one; B is user-visible and needs no new table or package; C is needed before any production incident can be investigated.
+- Consequences / follow-ups: built in that order, each with its tests and deliberate breaks, merged under D-101 when CI is green. Item 100 found no route that lets a stranger in.
+
+## D-103: The IT Rules' clocks on the report queue (item 51)
+- Date: 2026-10-15
+- Approved by: Adhi, in this session: "A also i no need anything weak so yeah", after the DECISION NEEDED with its ten dimensions; and, when the code showed the founders' numbers were the wrong home, "Own endpoint (Recommended)". **Not reviewed by the other founder** (D-051).
+- Context: Since 20 February 2026 the Intermediary Rules (amended 10 February) require a complaint to be acknowledged within 24 hours, prohibited content acted on within 36 hours, intimate images and **impersonation** within 2 hours (rule 3(2)(b)), and every other grievance resolved within 7 days. Missing them loses safe harbour (rule 7). The report queue had no deadlines, and `legal.md` had left impersonation out of the 2-hour clock. Sources: Khaitan & Co, 16 February 2026; Outlook and ThePrint on the 2-hour rule; Rajya Sabha unstarred question 262, 8 December 2023, on rule 3(2)(b).
+- Options considered: A) a clock per category, the shorter one wherever a category could fall under two; B) one flat 36-hour clock.
+- Chosen: A.
+- Reason: B misses the 2-hour rule outright and buries urgent reports among spam.
+- Consequences / follow-ups:
+  1. **Two new categories**, `impersonation` and `intimate_content` (2 hours). `abuse`, `fake_profile`, `spam` and `other` get 36 hours; `non_payment` 7 days. **A change from the proposal, stated here:** the proposal put `fake_profile` and `spam` at 7 days. Reading rule 3(1)(b) again while building, either can be prohibited content (impersonating another person; misleading information), so option A's own rule, the shorter clock when unclear, puts them at 36 hours. The lawyer may relax them; the mapping is one table (`app/modules/admin/report_clocks.py`) and is marked **Confirm** in `legal.md` section 3.3.
+  2. Each report stores `due_at` when filed; the database refuses a deadline not after filing or more than 7 days after it. Acknowledgement is instant: the answer carries `due_at`, and a `report_received` notification is written in the same transaction.
+  3. The admin queue is nearest deadline first, with `late` on each report. `GET /api/v1/admin/reports/clocks` gives open, late, the next deadline and the share answered in time (null below five), in its own endpoint rather than the founders' numbers, whose city filter reports do not have.
+  4. A DBOS job every 5 minutes warns every active admin 30 minutes before a deadline and once it passes: an unmutable in-app notification, and an error-level log line that reaches the founders through Sentry. Once per stage per report, proven by a four-run concurrency test; a run takes at most 20 batches of 50, so it always ends. The start-up guards (every category has a clock, none past 7 days) are one function, `check_clocks`, each branch tested.
+  5. **Still owed, outside the code:** Sentry's DSN and an alert rule in production (`infra/README.md` step 9), without which the warnings reach only the in-app list and the logs; a named grievance officer (founders, `legal.md` section 3.3); and a 2-hour clock at night is a staffing question for the founders. Item 52 (taking one item of content down within 3 hours) is next, and will carry the decision whether a 2-hour report may hide the item until an admin looks.
+
+## D-104: Taking down one item within 3 hours of a legal order (item 52)
+- Date: 2026-10-16
+- Approved by: Adhi, in this session: "yes and if changes needed for better do research and do it", after the proposal with its ten dimensions and the DECISION NEEDED on automatic hiding, recommended option A. **Not reviewed by the other founder** (D-051).
+- Context: Since 20 February 2026 (G.S.R. 120(E), notified 10 February) a court order, or a reasoned notice from an authorised officer (Joint Secretary or DIG rank and above since G.S.R. 775(E), in force 15 November 2025), must be acted on within **3 hours**, cut from 36 (rule 3(1)(d)). Removed content and its records are kept 180 days (rule 3(1)(g)). The only tool was suspending a whole account, which costs an owner everything for one item. Sources, read 16 October 2026: iPleaders and LawSikho on the 2026 rules; Scroll, CyberPeace and Mondaq on the 2025 amendment; JSA on preservation; Bar & Bench on the Sahyog litigation; GitHub's government takedown policy and its 451 answer; X's country-withheld content; YouTube's legal removals.
+- Options considered (automatic hiding on a 2-hour report): A) never automatic; an admin withholds in one call, with basis `report`; B) automatic once two different accounts make a 2-hour report about the same item.
+- Chosen: A.
+- Reason: nothing public on the platform is an image, so a 2-hour report here is about text, mostly impersonation by a name or a bio. Under B anyone with two phone numbers takes a rival's campaign or Passport offline until morning. B can come later, if real reports show the need.
+- Consequences / follow-ups:
+  1. **`takedown`** (module `safety`, layer 3, so campaigns, matching and the Passport can filter on it) withholds one creator profile, brand or campaign: on a `court_order`, a `government_notice` or a `report`. Withholding a brand withholds every campaign it posts, later ones included. Everyone but the owner stops seeing it: out of discovery, search, matches, suggestions and the invitation list, and **451 Unavailable For Legal Reasons** (RFC 7725) when opened directly, as GitHub answers. Nothing new starts from it or reaches it: no application, invitation, accepting one, shortlisting or accepting an application, or repeat (`own_content_withheld`, 409, for the owner's own attempts); saying no (rejecting, declining, withdrawing) stays open to both sides. The owner keeps the account and sees the item; deals already agreed carry on. A draft, or an unpublished Passport, still reads as not found: 451 only for what was public.
+  2. **The clock cannot be bent.** `due_at` is 3 hours after `received_at` (the database holds it); `withheld_at` is the server's clock; `received_at` must be in the last 30 days and not in the future (422, and the database refuses it too). `late` is shown on each takedown. A takedown on a report keeps the report's own deadline (D-103).
+  3. **Preserved, and kept.** The item's visible text is copied into the takedown when it is withheld (never a brand's email), so a later edit cannot destroy the evidence rule 3(1)(g) keeps. The app's own database login may add and lift takedowns but **never delete one** (`REVOKE DELETE`), proven in `tests/modules/test_app_role.py`.
+  4. **The owner is told** in the same transaction (`content_withheld`, which cannot be muted; `content_restored` on a lift) and lists their own at `GET /api/v1/me/takedowns`, also in their export with the preserved text. Who issued the order, its number and its law are shown unless the admin marks the order sealed. The admins' notes go to the sealed admin log (`withhold`, `lift_withhold`), never to the owner.
+  5. One active takedown per item, held by a partial unique index; two admins at once make one, proven by a four-thread concurrency test, as are four lifts at once under the row lock. The downgrade refuses while any takedown or log entry about one exists (eleven refusing migrations).
+  6. **Changes from the proposal, stated here:** the admins' notes live only in the sealed admin log, not on the takedown (no `lift_note` column), since the log is append-only and the row is not; a withheld creator, not only a withheld campaign, is kept from new applications, invitations, a brand's shortlist or acceptance, and repeats; the owner's own attempts get 409 rather than 451; and the app's login cannot delete a takedown, which the proposal did not include. City figures and fair-rate guidance still count a withheld item in their anonymous totals: they show no one's content.
+  7. **Still owed, outside the code:** who watches the inbox and the Sahyog portal, at night included, since the clock starts when an order arrives, not when it is recorded; whether to register on Sahyog; the lawyer to **Confirm** that text withheld this way is "disabling access", that the preserved copy meets rule 3(1)(g), and how long it is kept after 180 days (with E8). Private deal content (pitches, proof files, dispute entries) is not covered: an order naming one still means a suspension, and would be its own item.
+
+## D-105: A second factor for admins: an authenticator app's codes now, passkeys with item 79 (item 101)
+- Date: 2026-10-16
+- Approved by: Adhi, in this session: "A", after the proposal with its ten dimensions, the dependency, schema and infrastructure requests, and the DECISION NEEDED between an authenticator app (A) and hardware security keys (B). **Not reviewed by the other founder** (D-051).
+- Context: Admins logged in with one factor, the code sent to their phone: a SIM swap, a stolen WhatsApp or a phished code was an admin session, and since item 52 an admin can withhold anyone's content. Each admin refresh also renewed for a full day, so a session never had to be proven again. NIST SP 800-63B-4 section 2.2 (AAL2: re-authenticate within 24 hours, and after 1 hour idle; offer a phishing-resistant option) and OWASP ASVS 5.0 (6.3.3 more than one factor, 6.4.3 and 6.4.4 no reset that bypasses it, 6.5.1 each code once, 6.5.8 the server's clock, 7.3.1 and 7.3.2 idle and absolute limits). Incidents read 16 October 2026: Cloudflare 2022 (hardware keys stopped the phishing that beat TOTP at Twilio), Twitter 2020 and M&S 2025 (staff and help desks talked into handing over access or resetting MFA), Retool 2023 (authenticator codes synced to a cloud account taken over); SIM-swap cases in India in 2025 and 2026.
+- Options considered: A) an authenticator app's codes (TOTP, RFC 6238) now, passkeys with item 79; B) hardware security keys now, through a command-line client (python-fido2 and py_webauthn 3.0.1), about ₹12,000 to ₹16,000 for four keys.
+- Chosen: A.
+- Reason: the live threats today are SIM swap and stolen sessions, and A stops both, free, from any HTTP client. A passkey is bound to a domain, and the name and domain (item 4) are not decided, with no admin web page yet to run one on; B would mean everyone enrolling again after the rename.
+- Consequences / follow-ups:
+  1. **One request, both factors**: `POST /api/v1/auth/admin/login` takes the phone code and the authenticator code; either wrong, or a number that is not an admin's, is answered exactly as a wrong phone code. `/auth/otp/verify` answers `admin` as a wrong code for everyone, so the single-factor route is gone. Admin routes refuse any token whose `amr` (RFC 8176) lacks `mfa`: one made from the phone code alone, or signed before this, is a plain 404.
+  2. **The authenticator** (`totp_factor`, module `auth`): a 160-bit secret, encrypted at rest with AES-256-GCM under `SECOND_FACTOR_KEY` (derived by HKDF, the account's id bound in, so a secret copied to another row does not open); codes of the current 30-second step or the one before, each step once (`last_used_step`, read under the row's lock); ten refused codes in a row lock it. A refused code also uses an attempt on the phone code.
+  3. **Setup only through a founder**: `scripts/make_admin.py <phone> --second-factor` prints a one-time ticket (192 bits, kept only as its SHA-256, 15 minutes), which the admin redeems with a phone code at `POST /api/v1/auth/admin/second-factor` for the secret, shown once. Issuing a ticket clears the old secret and any lock and ends the admin's sessions. No API route changes an admin's authenticator, and there are no recovery codes or SMS fallback: a lost authenticator is a new ticket.
+  4. **Sessions**: an admin's refresh token lasts 1 hour from each use and never past 12 hours from the login (`auth_session.second_factor_at`, carried through rotation); the last access token is cut to the same moment. The migration ended every open admin session.
+  5. **Every active admin is told**, by a notification nobody can mute, of every admin sign-in (`admin_signed_in`), every refusal after a right phone code, with the reason and whether it locked (`admin_second_factor_refused`), and every ticket issued or redeemed (`admin_second_factor_changed`); refusals and changes are also logged at error level for error tracking.
+  6. **Dependency**: `pyotp==2.10.0` (MIT, 14 June 2026), checked against RFC 6238's own test vectors. The export shows when the factor was set up, waiting or locked, never the secret or the ticket. The downgrade refuses while any factor exists (twelve refusing migrations).
+  7. **Changes from the proposal, stated here**: none of substance. Two details settled while building: the ticket's size (192 bits), which the proposal left open; and a code is computed from its step number directly, not through a date, after a property test found pyotp's date conversion fails on Windows for far-off steps.
+  8. **Still owed, outside the code**: each admin is given a ticket and enrols after deploy, with the authenticator on a different device from the admin phone or locked by fingerprint, and not one that syncs codes to a cloud account (`infra/README.md` step 13); Sentry's alert rule (item 51's) to carry the error-level lines. **Trigger for passkeys (option B's strength)**: the day an admin web page exists, or the domain is decided, whichever is later, with item 79. Brands and creators still log in with one factor (ASVS 6.3.3 asks more at Level 2), which items 79 and 82 address.
+
+## D-106: A brand proves it controls its website's domain, by DNS TXT record (item 74)
+- Date: 2026-10-17
+- Approved by: Adhi, in this session: "A", after the proposal with its ten dimensions, the dependency and schema requests, and the DECISION NEEDED between DNS now with email later (A) and both now with email switched off (B); then "Attention list" to the change stated below before it was built. **Not reviewed by the other founder** (D-051).
+- Context: Fake brands start the scams that hurt creators most (`trust-and-safety.md` section 2), and nothing about a brand was checked: creators saw only the name it typed. `legal.md` rule 3 allows "verified" only for a named check. Read 17 October 2026: the IETF's draft best practice for DNS domain verification (draft-ietf-dnsop-domain-verification-techniques-13, 22 June 2026); UCL at WEIS 2025 (phishing domains live 8.6 days on average); IANA's .in record (the registry's RDAP server) and NIXI's e-KYC for .in registrations since December 2025; Upwork (verifies a client's payment method, not who they are), LinkedIn (page verification asks for website ownership) and GitHub (TXT records, kept in place).
+- Options considered: A) a DNS TXT record now, email once our own sender domain exists (item 4, SES); B) both now, email off by a setting until then.
+- Chosen: A.
+- Reason: usable today by any brand that controls its DNS, and the IETF's recommended method; email waits on the one thing it needs, our own domain.
+- Consequences / follow-ups:
+  1. **The claim** (`brand_domain`, module `profiles`): `POST /api/v1/brands/me/domain` takes the registrable domain only, from the Public Suffix List (never `co.in` or `myshopify.com`; `nykaa.com.evil.ru` is a claim to `evil.ru`), lower case, no punycode or other scripts, and returns a TXT record for `_nicheconnect-challenge.<domain>` with a 128-bit token, good for 7 days. A new claim always gets a new token; one claim per brand; `GET` and `DELETE` alongside.
+  2. **The check**: `POST .../check` answers 202, and a DBOS job every minute does it: Cloudflare's and Google's DNS-over-HTTPS resolvers must both see the record (TLS, DNSSEC flag kept); found verifies, and the registration date is read over RDAP. Lookups run with no transaction open, and a result is applied only if the claim still has the token looked up. 5 checks a minute and 10 a day per brand.
+  3. **Kept true**: verified domains are checked again daily; three absent checks in a row lapse it, while a resolver that cannot be asked never counts; a lapsed claim is never revived, so a domain that changed hands inherits nothing. One verified holder per domain (partial unique index); two brands proving one at once leave one holder and the other `taken`, proven by a concurrency test.
+  4. **What creators see**: `verified_domain` on every campaign read and on `GET /brands/{id}/reliability`: the domain, since when, last checked, `registered_on` (null when the registry did not say) and whether DNSSEC validated. One query per page. It does not change any ranking (`legal.md` section 3.4), and says the brand controls the domain, not that it is who its name claims.
+  5. **Dependency**: `publicsuffixlist==1.1.0.20261010` (MPL-2.0, used unchanged). DNS and RDAP go through `httpx2`, already a dependency, to fixed hosts only, never a URL anyone gives us. In the export (`website_domain`, never the token); the downgrade refuses while any domain is verified (thirteen refusing migrations).
+  6. **Changes from the proposal, stated and approved before building**: the brand is told of a failed check, a lapse or an expired token through its attention list (`fix_domain_record`, `domain_lapsed`, `domain_claim_expired` in `GET /api/v1/me/attention`), not a notification, because `profiles` and `notifications` are siblings in one layer. So an attention item's `campaign_id` and `campaign_title` may now be null, with a new `domain` field: a widening of that response, safe while no client exists. Stated only now: the token and its expiry are left out of the export, since the export refuses any field named for a token.
+  7. **Still owed**: email proof, once item 4 decides our domain and SES is set up; look-alike names (item 75); business identity from GST (item 36); the screen copy says "controls smallshop.in since 3 October, registered 2019", never "verified brand" (`trust-and-safety.md` section 5); **Confirm** whether showing a business's domain registration date needs wording (validation pack). When the product is renamed (item 4), the record name changes too: the old name must keep being accepted until every verified brand has moved.
+
+## D-107: A second check before risky changes, and a new UPI ID waits 24 hours (item 82)
+- Date: 2026-10-17
+- Approved by: Adhi, in this session: "A", after the proposal with its ten dimensions, the schema request and the DECISION NEEDED between one code per change with a 24-hour wait on a new UPI ID (A) and a 10-minute "sudo mode" with no wait (B); then "Separate table" and "At once" to the two changes stated below before they were built. **Not reviewed by the other founder** (D-051).
+- Context: A stolen session (malware, a borrowed laptop, a copied token) could set a creator's UPI ID, take their whole data export, or log them out of every device, with the access token alone. The UPI ID is where a creator's money goes. OWASP ASVS 5.0 7.5.1 to 7.5.3 (re-authenticate before changing what affects authentication or recovery, before ending sessions, and before highly sensitive operations). Read 17 October 2026: RFC 9470 (the step-up challenge, `insufficient_user_authentication`); NIST SP 800-63B-4 sections 4.1.2.1 (notify through a channel independent of the change) and 3.1.3.3 (a SIM change as a risk signal); the EU's RTS Article 5 and the EBA's answers on it (a code tied to its amount and payee); Upwork's 3-day hold on a new withdrawal method; UPI apps' 24-hour limit after a new device or PIN (SBI, Razorpay; no NPCI circular found, so it is a convention, not a rule); the 2021 Twitch payout hijacks (from search results; the article blocked a direct read).
+- Options considered: A) a code for each risky change, bound to that change and, for a UPI ID, that exact ID, plus a 24-hour wait on a new UPI ID with an alert and a cancel; B) "sudo mode": one code opens 10 minutes for any risky action, with no wait.
+- Chosen: A.
+- Reason: a SIM swap is the main takeover in India, and the code goes to whoever has the number, so only the wait answers it; a code tied to one change cannot be spent on another.
+- Consequences / follow-ups:
+  1. **The code** (`step_up_challenge`, module `auth`): `POST /api/v1/me/step-up` with `set_upi_id` (and the UPI ID, checked and spelled as it would be stored), `download_export` or `log_out_everywhere` sends a 6-digit code by the login template. The change carries it in a `Step-Up-Code` header. It works once, for 5 minutes, for that action and value only (an HMAC of both is stored, never the value or the code); only the newest code for an action counts; 5 wrong tries use it up. Without a code: 401 `step_up_required` with RFC 9470's `WWW-Authenticate: Bearer error="insufficient_user_authentication"` (its error code and status, not its token protocol). Wrong, used, expired or for another change: 400 `step_up_code_invalid`. Codes count with login codes against the phone's caps, for sending (3 in 10 minutes, 10 a day) and for guessing (10 wrong in 10 minutes), under the same per-phone lock; the route also allows 3 per 10 minutes and 10 a day per account. A refused change (a stale notice) does not spend the code: it is used in the change's own transaction.
+  2. **Admins** are sent nothing (`method: authenticator`): they use their authenticator's code, under the login's rules (each step once, refusals towards the lock, D-105).
+  3. **What needs it**: setting a UPI ID (ASVS 7.5.3), the data export, and logging out everywhere (ASVS 7.5.2: a stolen session cannot throw the owner out; the owner, with the phone, can throw it out). Removing a UPI ID and cancelling a waiting one never need it.
+  4. **A new UPI ID waits 24 hours** (`creator_upi_change`, module `payment_status`, at most one per creator): until `usable_at` brands are shown the previous ID, or none for a first one; `GET /creators/me/upi` returns it under `waiting`; `DELETE /api/v1/creators/me/upi/waiting` cancels it with no code (409 once its wait is over). A second change replaces the first and starts again. Which ID is in effect is worked out on read against `now`; the next write folds a finished wait into `creator_upi`. The "changed recently" warning to brands counts from when the ID took effect.
+  5. **The owner is told**, by urgent notifications nobody can mute: `upi_change_pending` (with `usable_at`, never the ID), `upi_change_cancelled`, `data_exported`, `logged_out_everywhere` (with how many sessions ended); and a waiting ID is first on the creator's attention list (`upi_change_pending`, due the day it takes effect).
+  6. **Changes from the proposal, stated and approved before building**: the waiting ID is a table of its own rather than four columns on `creator_upi`, which stays unchanged ("Separate table"); setting the ID already in effect only renews its consent, at once, and drops any other ID waiting ("At once"). **Stated only now**: the logout-everywhere route moved from `auth` to `me`, its path unchanged, because the owner's alert needs `notifications`, a layer above `auth`; the step-up request route is in `me` too, because it checks the UPI ID by `payment_status`'s rule. Shared code: the login service's per-phone caps now read both tables (`codes_for_phone`).
+  7. **Personal data**: both tables are in the export (`step_up_codes`, never the hashes; `upi_id_change`, with its consent). The downgrade refuses while any new UPI ID is waiting, since each is a consent record (fourteen refusing migrations).
+  8. **Not stopped, said plainly**: a SIM swap or a hijacked WhatsApp still gets the code; the wait and the alert are the answer, and today the alert is in the app only, since nothing yet delivers notifications beyond login codes (E1, which waits on Meta business verification). Someone talked into reading out a code beats the code; the wait buys the day. A SIM-swap victim cannot log everyone out (no code reaches them) and must go to the admins. A creator's first UPI ID takes a day before brands can use it. Refused admin step-up codes are counted towards the lock but do not alert the other admins, as a refused login does.
+  9. **Still owed**: **Confirm** that the UPI notice mentions the 24-hour wait (validation pack); the login template's wording says we never ask for a code (item 62), which matters more now that codes guard changes too; changing a phone number (item 80), account deletion and passkeys (item 79) each name their action when built.
+
+## D-108: Changing one's phone number: a code from each number, then a 72-hour wait (item 80)
+- Date: 2026-10-17
+- Approved by: Adhi, in this session: "A", after the proposal with its ten dimensions, the schema request and the DECISION NEEDED between codes from both numbers with a 72-hour wait, lost numbers going to the admins until E1 (A), and A plus a self-service path for a lost old number with a 7-day wait (B); then "End all" and "Refuse that login" to the two changes stated below before they were built. **Not reviewed by the other founder** (D-051).
+- Context: The phone number is the whole login, and nobody could change theirs: switching numbers lost the account, and a number left behind is reissued after 90 days (TRAI to the Supreme Court) to a stranger who could then log into it, deals and UPI ID included. An instant change would also let a SIM swapper make a takeover permanent. Read 17 October 2026: NIST SP 800-63B-4 sections 3.1.3.3 (changing the phone binds a new authenticator), 4.1.2.1 (notify through an independent channel) and 4.2 (recovery always notifies); WhatsApp's change-number feature (both numbers, instant, no undo); TRAI's 90-day reissue rule; the help-desk resets behind the Scattered Spider and M&S attacks (why no admin path is built here).
+- Options considered: A) a step-up code from the current number bound to the new one, plus a login code from the new number, then a 72-hour wait the owner can cancel with no code, a job making the change; a lost old number goes to the admins until alerts reach outside the app (E1); B) A, plus a self-service path for a lost old number (a signed-in session, a code from the new number, a 7-day wait), now.
+- Chosen: A.
+- Reason: B's path is safe only once the alert can reach the owner outside the app; today a stolen session plus 7 days of the owner not opening the app would be a permanent takeover.
+- Consequences / follow-ups:
+  1. **Asking** (`POST /api/v1/me/phone-change`, 202, module `me`): a step-up code from the current number, asked for with `change_phone` and the exact new number (`POST /api/v1/me/step-up`), in `Step-Up-Code`; and `new_phone_code`, a login code sent to the new number by `POST /api/v1/auth/otp/request`, used up here so it logs nobody in. The new number's code is checked first, so a wrong one never spends the other. Both numbers' per-phone locks are taken in sorted order, by every piece of work that touches two numbers. Refused: an admin (403, their number changes only through `scripts/make_admin.py`); their own number (409 `phone_unchanged`, before any code is sent); a number with an account, or one another account is waiting for (409 `phone_in_use`, said only after that number's code was right). Limited to 5 per 10 minutes and 10 a day per account, beside both numbers' code caps.
+  2. **The wait**: the change takes over 72 hours later (`account_phone_change`, at most one per account, the new number unique across accounts, `takes_effect_at` held to exactly 72 hours by the database). Asking again replaces it and starts again. Until then the old number logs in as before, and `DELETE /api/v1/me/phone-change` cancels with no code, from any session (409 `phone_change_taking_effect`, with `Retry-After: 60`, from the 72nd hour). `GET /api/v1/me/phone-change` shows it. The 72 hours are a judgement from how quickly a carrier reverses a SIM swap, not a sourced number.
+  3. **The change** (DBOS job, every minute, no backfill): under both numbers' locks, the account takes the new number, every session ends and every push token is forgotten, and the row is deleted. The old number is let go: a later login with it makes a new account. If the new number gained an account meanwhile (only `make_admin.py` could), the change is dropped instead.
+  4. **The owner is told**, by urgent notifications nobody can mute: `phone_change_requested` (with `takes_effect_at`, never the number), `phone_change_cancelled`, `phone_changed` (with how many sessions ended), `phone_change_failed`; and a waiting change is first on the attention list of brands and creators (`phone_change_pending`, due the day it takes over).
+  5. **Changes from the proposal, stated and approved before building**: every session ends when the change is made, the asking one included, rather than "every other session", since a job has no current session ("End all": the new number is proven once more by logging in with it); and login refuses to make a new account on a number an account is waiting for, 409 `phone_change_waiting`, the code staying usable ("Refuse that login"). **Stated only now**: the routes and the job are in `me`, with the table and login's check in `auth`, as for item 82, since the owner's alerts need `notifications`; the fourth notification type is `phone_change_failed`, for the case in point 3.
+  6. **Personal data**: the waiting number is in the export (`phone_change`) and deleted once the change is made or cancelled; no earlier number is kept. The downgrade refuses while any change is waiting (fifteen refusing migrations).
+  7. **Not stopped, said plainly**: a SIM swapper whose victim does not open the app for 72 hours wins, since the alert is in the app only until E1. Someone whose old number is already gone cannot change it themselves; the admins' procedure for that is still to be written, carefully (help-desk resets are how Scattered Spider got in). Admins cannot change their number through the API.
+  8. **Still owed**: E1 (alerts outside the app), then option B's self-service path for a lost number; the admins' written procedure for a lost number; the login template's wording (item 62).
+
+## D-109: A login at least a week old before changing the phone number or replacing a UPI ID, and the waits' sources (weaknesses 1 and 4 of item 80)
+- Date: 2026-10-18
+- Approved by: Adhi, in this session: "B A A keep", after the proposal fixing the weaknesses item 80's report named; this entry records the first and fourth ("B": the rule for both the phone number and a UPI ID in effect; "keep": 72 hours, with sources). The second and third are their own entries when built. **Not reviewed by the other founder** (D-051).
+- Context: A code sent to the phone does not stop a SIM swap, since the code goes to whoever holds the number; the 72-hour wait on a new phone number (D-108) and the 24-hour wait on a new UPI ID (D-107) then rested on the owner opening the app in time, and nothing yet reaches them outside it (E1). Alerts to the old number would not help: after a swap the attacker holds it. Read 18 October 2026: Google blocks sensitive actions unless the device, or the phone number, has been on the account for at least 7 days; the DoT bars SMS for 24 hours on a swapped SIM (27 September 2022); TRAI refuses a porting code for 7 days after a SIM swap (MNP Ninth Amendment, in force 1 July 2024); Upwork holds a new payout method for 3 days (read 17 October for D-107).
+- Options considered: A) the rule for the phone number only; B) the rule for the phone number and for replacing a UPI ID already in effect, a first ID never held back.
+- Chosen: B.
+- Reason: a SIM swapper's login is always made the day they take the number, so a week-old login is the one thing they cannot have; where a creator is paid had the same hole.
+- Consequences / follow-ups:
+  1. **The login's age** travels in the access token as OpenID Connect's `auth_time`, rounded up to the second. A refresh carries the login's own time, read from the family's first session (`service.logged_in_at`; rotation never removes a row, and `family_id` is indexed), so refreshing never makes a login look older or newer. A token without it counts as a login made now. No schema change.
+  2. **The rule** (`auth/login_age.py`, `ESTABLISHED_LOGIN` = 7 days): asking for a `change_phone` code, `POST /api/v1/me/phone-change`, asking for a `set_upi_id` code for an ID other than the one in effect, and `PUT /api/v1/creators/me/upi` replacing the ID in effect, each need a login at least 7 days old, or answer 403 `login_too_recent` with `Retry-After` in seconds and the time in the detail. It is checked before any code is sent or spent. A first UPI ID, one replacing a first ID still waiting, and confirming the ID in effect are never held back. Admins change neither through the API.
+  3. **The 72 hours stay** for a phone number change, now sourced: Upwork's 3-day hold on a new payout method is the closest equivalent; with the 7-day login in front of it, a SIM swapper needs the number for about 10 days unnoticed. This replaces D-108's "a judgement, not a sourced number".
+  4. **What is left, said plainly**: an attacker who holds the number for over a week without the owner noticing their phone has no network, or one who also steals an old login's tokens (malware on the owner's device), and an owner who does not open the app in the wait. Passkeys (item 79, waiting on the domain) and alerts outside the app (E1) are the further answers.
+  5. **Measured**: refreshing a token, with its one extra query, 16.0 ms at p95 over a 100-long chain (21.5 ms before: noise); the changes themselves within budget (`docs/PERFORMANCE.md`).
+
+## D-110: A lost current number: self-service from a 30-day-old login with a 7-day wait, and no help-desk recovery (weakness 2 of item 80)
+- Date: 2026-10-18
+- Approved by: Adhi, in this session: "B A A keep" (the second, "A"), after the proposal fixing the weaknesses item 80's report named; then "One new column" and "Reuse 'cancelled'" to the two details stated before they were built. **Not reviewed by the other founder** (D-051).
+- Context: A phone change needed a code from the current number (D-108), so someone whose number was already gone (a lost prepaid SIM, a stolen phone) had no way to move their account, and the admins' procedure for it was not written: the gap help-desk social engineering goes for first (Scattered Spider, M&S). Google likewise refuses recovery when it cannot verify a person, and lets an established device make sensitive changes (read 18 October 2026).
+- Options considered: A) self-service from a login at least 30 days old, with a code from the new number, a 7-day wait, cancelled by any login with the current number, plus a written rule that admins never move a number; B) the written rule only: a lost number means a new account.
+- Chosen: A.
+- Reason: the person who lost their number keeps their account through the one proof left, an old login, while the owner, if it was not them, still holds the number and cancels it just by logging in.
+- Consequences / follow-ups:
+  1. **`POST /api/v1/me/phone-change/without-current-number`** (202), with the new number and its login code; no `Step-Up-Code`. It needs a login at least 30 days old (`login_age.LOST_NUMBER_LOGIN`; 403 `login_too_recent` with `Retry-After`), and otherwise the checks of a change with both numbers (admins, the same number, a number in use, a change past its wait).
+  2. **The wait is 7 days**, held by the database: `account_phone_change.without_current_number`, and `takes_effect_at` exactly 72 hours after `requested_at`, or 7 days when it is set (`ck_account_phone_change_takes_effect_after_its_wait`, swapped NOT VALID then validated). The read and the export show `without_current_number`; the request's notification carries it.
+  3. **Any login with the current number after the request cancels it** (`phone_changes.is_void`): a login starts a new session family and a refresh never does, so a family begun no earlier than the request is such a login. A cancelled change disappears from the read and the attention list at once; the job, which now also looks at every such change each minute, deletes it and records `phone_change_cancelled` with `{"reason": "logged_in_with_current_number"}`. A login with the current number never cancels a change made with both numbers. The job holds the current number's lock, so a login lands wholly before the move (and cancels it) or after it (on a new account).
+  4. **No help-desk recovery, written down** (`docs/standards/security.md` section 1, `trust-and-safety.md`): admins never move a number, on anyone's word or documents; someone with neither the number nor a login 30 days old cannot recover the account. A verified ID check (item 76) could later open a safe path.
+  5. **What is left, said plainly**: a thief holding an old login's tokens (malware) can ask, and wins if the owner neither logs in nor opens the app for 7 days; alerts outside the app (E1) and passkeys (item 79) close more of it. If the lost number is reissued to someone else (TRAI: after 90 days) before the change is made, their login with it cancels the change and enters the account: the phone is the login, so a lost number should be moved within days, as the screen must say.
+  6. **Measured**: the request 32.0 ms p95, within budget. The downgrade refuses while such a change waits (sixteen refusing migrations).
+
+## D-111: The data export is built in the background and downloaded once (weakness 3 of item 80)
+- Date: 2026-10-18
+- Approved by: Adhi, in this session: "B A A keep" (the third, "A"), after the proposal fixing the weaknesses item 80's report named; then "Remove it now", "Through our API, once" and "As described" to the three details stated before they were built. **Not reviewed by the other founder** (D-051).
+- Context: The export was built inside the request. It reads every table an account appears in, so a busy account's took 300 to 400 ms at p95, over the 300 ms budget, and grows with the account's history; trimming it (one memo read, each fingerprint once) measured 230 to 306 ms, not reliably under. GitHub and Google build archives in the background and send a link when ready (read 18 October 2026).
+- Options considered: A) asked for with a code, built by a job, the owner told, downloaded once with a code, the stored copy encrypted and destroyed after 24 hours; B) only the two trims.
+- Chosen: A.
+- Reason: no fixed request budget can hold a file that grows with an account's whole history; in the background it never slows anyone, however big.
+- Consequences / follow-ups:
+  1. **Routes** (module `me`): `POST /api/v1/me/exports` (202) with a `download_export` code asked for without a value; `GET /api/v1/me/exports` (the 5 newest) and `GET /api/v1/me/exports/{export_id}`, with a status worked out from its times (`preparing`, `ready`, `downloaded`, `failed`, `expired`); `POST /api/v1/me/exports/{export_id}/download` with a `download_export` code asked for with that `export_id`, so a code for one export cannot release another. Asking for a code for an export that cannot be downloaded is refused before anything is sent. **The old `GET /api/v1/me/export` is removed** ("Remove it now"): no client used it, as no frontend code exists, so this is recorded as the one exception to `backend.md`'s deprecation rule.
+  2. **The job** (DBOS, every minute, no backfill) builds up to 10 exports a run, writes each file with no transaction open, and marks it ready only if it still waits, telling the owner (`data_export_ready`, urgent, with `export_id` and `expires_at`). A build that fails is marked failed and logged by its error type; another may then be asked for. It also destroys every file 24 hours past ready and never downloaded.
+  3. **The stored copy**: `exports/<id>.json` in the uploads bucket, encrypted by its KMS key; the download reads it under the row's lock, destroys every version of it (`FileStore.destroy`), and only then answers, so it is handed over once; a lifecycle rule on `exports/` removes anything left after 2 days as a backstop. The app's role may read, write and destroy only under `exports/` (infra).
+  4. **Never replayed**: the download is the one write outside login that takes no `Idempotency-Key`, since a replay would keep the whole file in the idempotency store; a lost answer means asking again (3 an hour). `tests/modules/test_retry_safety_api.py` names it, with that reason.
+  5. **The table** (`data_export`): times and size only, never the file, with the database holding ready-has-a-file, expires-exactly-24-hours-after-ready, downloaded-only-while-ready, failed-never-ready, and at most one being prepared per account (a partial unique index). It is in the export itself (`data_exports`). The downgrade refuses while an export is being prepared or has a file stored (seventeen refusing migrations).
+  6. **Measured**: asking 22.6 to 26.0 ms p95, downloading 22.7 to 28.3 ms, the job's build 303.8 to 335.8 ms, in the background (three runs on seeded data).
+  7. **Weak, said plainly**: a failed build tells the owner nothing; they see `failed` when they look, and may ask again. Asking and downloading take two codes, so two messages. The download holds the row's lock while it reads from storage.
+
+## D-112: A failed export retries and then tells its owner; asking for an export needs no code (the weaknesses D-111 named)
+- Date: 2026-10-18
+- Approved by: Adhi, in this session: "A", after the proposal fixing the two export weaknesses D-111's report named ("still weak should not solved"). **Not reviewed by the other founder** (D-051).
+- Context: A build that failed was marked failed at once and nobody was told, against `backend.md` section 7 (failed jobs retry, then fail where someone can see). And an export took two codes, so two messages: one to ask, one to download, though only the download releases anything.
+- Options considered: A) a failed build retried up to 3 runs a minute apart, then marked failed and the owner told by an alert nobody can mute; and no code to ask, the download keeping its code for that exact export; B) the retry and alert only, keeping two codes.
+- Chosen: A.
+- Reason: the download's code alone guards the data; a stolen session asking can only start a build (3 an hour), and the owner is told when it is ready, which is itself an alarm.
+- Consequences / follow-ups:
+  1. **Retries**: `data_export.attempts` (0 to 3) counts failed tries; each run tries again what still waits; the third failure marks it failed and records `data_export_failed` (urgent, with `export_id`). The database holds that an export is failed only once all 3 tries are spent. A try is counted only while the export still waits, so an overlapping run never counts past the last.
+  2. **No code to ask**: `POST /api/v1/me/exports` takes no `Step-Up-Code`; `POST /api/v1/me/step-up` with `download_export` now requires `export_id`, and is refused before anything is sent unless that export is ready. This supersedes D-111 point 1's code for asking.
+  3. **Measured** for the record, in a throwaway database with every request committed, as production runs: the bulk mark-paid (25 rows) **337 ms p95** over 12 rounds (median 293 ms), within its 500 ms; the harness's 465 to 605 ms was its savepoint chain, as `docs/PERFORMANCE.md` explained on 14 October.
+  4. **What is left, said plainly**: a SIM swap held unnoticed for over a week, or malware on the owner's own logged-in device, still beats a login code; passkeys (item 79, which needs the domain) and alerts outside the app (E1) are the answer. The storage rules for exports (D-111) go live at the first deploy, which needs the AWS account.
+
+## D-113: Passkeys: signing in, and alone proving every risky change once you have one, with optional passkey-only sign-in (item 79)
+- Date: 2026-10-18
+- Approved by: Adhi, in this session: "B", after the proposal with its ten dimensions, the dependency and schema requests and the DECISION NEEDED; "fido2" for the library; then "Add the column" (twice), "Yes, its own alert" and "Phone and code, no login" to the four details stated before they were built. **Not reviewed by the other founder** (D-051).
+- Context: A login code goes to whoever holds the number, so a SIM swap, held long enough or joined by malware on the owner's device, beat every check this backend had; the earlier fixes (D-107 to D-112) made it slow and visible, not impossible. A passkey is a key pair on the person's own device, unlocked by its fingerprint, face or screen lock, bound to our domain, so neither a fake page nor a SIM swapper can use it. Read 18 October 2026: WebAuthn Level 3 a W3C Recommendation since 25 August 2026; NIST SP 800-63B's supplement accepting synced passkeys at AAL2; WhatsApp reporting over a billion users with a passkey; Google's Advanced Protection recovery taking days; Android's Digital Asset Links and Apple's associated domains, which bind an app to the domain.
+- Options considered: A) passkey login, and once an account has one, only a passkey proves a risky change, with a first-passkey rule and a 7-day reset, phone-code login kept as a fallback; B) A plus optional passkey-only sign-in. Library: fido2 2.2.1 (Yubico; one new package, its only dependency `cryptography` already ours) or webauthn 3.0.1 (Duo; four more packages).
+- Chosen: B, with fido2 2.2.1 (BSD-2-Clause, on the licence list; added with `uv add fido2==2.2.1`).
+- Reason: B is the only choice that leaves no SIM-swap path at all, for whoever turns it on, while the reset lets an owner who lost every key recover.
+- Consequences / follow-ups:
+  1. **Off until the domain exists** (item 4): `PASSKEY_RP_ID` unset answers every passkey route 503 `passkeys_unavailable`. Switching on needs the domain, `PASSKEY_RP_ID`, `PASSKEY_RP_NAME` and `PASSKEY_ORIGINS` (the website's origins on that domain, and `android:apk-key-hash:<hash>` for the app; checked at startup), and the website serving `/.well-known/assetlinks.json` and `apple-app-site-association`. Infra passes none of the three settings yet.
+  2. **The checks** (`auth/passkeys.py`, fido2's `Fido2Server` with attestation off): our domain's hash, one of our origins, a challenge we made (32 random bytes, used once, 5 minutes, made for this purpose and this account, and for a change bound to its action and an HMAC of its value), the person present and verified by the phone's lock, the signature by the key we hold the public half of, and a counter that only rises unless it stays 0 (synced passkeys; `counter_is_fresh`). One error, 400 `passkey_invalid`, for every refusal.
+  3. **Routes**: `POST /api/v1/me/passkeys/options` and `POST /api/v1/me/passkeys` (201) to add one; `GET /api/v1/me/passkeys`; `PATCH` and `DELETE /api/v1/me/passkeys/{passkey_id}`; `PUT /api/v1/me/passkeys/only`; `POST /api/v1/auth/passkey/options` and `/passkey/login`; `POST /api/v1/auth/passkey-reset`; `POST /api/v1/me/step-up/passkey`.
+  4. **Adding**: the first needs a phone code for `add_passkey` and a login at least 7 days old (D-109), unless that login is the account's first, when no earlier owner exists; every later one needs a passkey's approval. At most 10, counted under the account's lock. Admins cannot add one yet: their two-factor login (D-105) waits for its web page.
+  5. **A passkey alone proves a change** once there is one: `POST /api/v1/me/step-up` sends no message and answers `method: passkey` with WebAuthn options for exactly that change; the passkey's answer at `POST /api/v1/me/step-up/passkey` earns a one-use code for that change, kept in `step_up_challenge` with `method = 'passkey'` ("Add the column"); a phone code no longer proves anything for that account. Grants count towards the phone's guessing caps but not its sending caps, since no message carried them. The week-old login rule (D-109) is waived, since the passkey proves it, and the lost-number path (D-110) needs the passkey's approval instead of the login's age.
+  6. **Logging in**: usernameless, with any of the person's passkeys; a new session family whose `auth_session.passkey_at` keeps every token's `amr` at `pop`, `user` through each refresh ("Add the column"). Suspended accounts are refused.
+  7. **Passkey-only sign-in**: turned on or off with a passkey's approval for exactly "on" or "off"; while on, a right phone code is answered 403 `passkey_only` and stays unused; removing the last passkey turns it off.
+  8. **Reset** ("Phone and code, no login"): the number and a login code start it; every passkey is removed and passkey-only turned off 7 days later by a job (every minute), unless any passkey signs in or approves a change meanwhile, which cancels it. Asking again never moves it. The job locks the account's keys before deciding, keys before the account, with the account's lock `FOR NO KEY UPDATE`, so a sign-in under way is counted and the two can never deadlock (found by the concurrency test, and fixed before merging).
+  9. **Told**, by alerts nobody can mute: `passkey_added`, `passkey_removed` (one, or all by a reset), `passkey_reset_requested`, `passkey_reset_cancelled`, `passkey_only_changed` ("Yes, its own alert").
+  10. **Personal data**: public keys only; the authenticator's make (AAGUID), whether it syncs, a name and its last use; all in the export except the key and its id. Challenges are not exported (random numbers) and are deleted a day after expiry. The downgrade refuses while any passkey exists (eighteen refusing migrations).
+  11. **What is left, said plainly**: nothing reaches anyone until the domain exists and the apps are built; until then the D-107 to D-112 defences stand alone. A person who turns passkey-only on and loses every key waits 7 days. Admins keep their authenticator until their web page exists.
+  12. **CI's fuzz step switches passkeys on** for `nicheconnect.test`, approved by Adhi in this session ("Switch on in the fuzz step") after the first CI run failed: while off, the two public passkey routes answer 503 by design, which the fuzzer counts as a server error. Switched on, it fuzzes the real checks; locally, 120 seconds found no server error. Production is unchanged.
+
+## D-114: Where you are logged in: every session listed, one ended at once, and new sign-ins in front of the owner (item 81)
+- Date: 2026-10-24
+- Approved by: Adhi, in this session: "A", after the proposal with its ten dimensions, the schema request and the DECISION NEEDED. **Not reviewed by the other founder** (D-051).
+- Context: Nobody could see their sessions or end one without ending them all, and nothing told one session from another. Reading the code for the proposal found two more weaknesses. An access token named no session, so every logout (one device, everywhere, a moved phone number) left the last access token working for up to 15 minutes. And a refresh at the moment of a logout outlived it: the refresh locked its token's row and added the next one, the logout waited on the row, and under read committed never saw the new one, so the logged-out phone kept a working session for up to 30 days. Shown with a probe and then a committed test on 24 October 2026, failing before the fix. Read the same day: OWASP ASVS 5.0 7.5.2 (view and end sessions, after authenticating again) and 7.4.1 (an ended session cannot be used); Google's devices page and new sign-in alerts; GitHub's sessions page; WhatsApp's linked devices.
+- Options considered: A) the list, ending one session, `sid` in every access token checked on each request, the race fixed, a new sign-in on the attention list, and no address or location kept; B) A plus an approximate city from the IP address, which stores addresses and so waits on the lawyer, as item 61 does.
+- Chosen: A.
+- Reason: A covers what Google, WhatsApp and GitHub offer except location, with no new personal data beyond what the app says it is; location can follow by its own decision.
+- Consequences / follow-ups:
+  1. **The race, fixed first** (its own commit): every refresh and every way of ending sessions takes one lock per account (`FOR NO KEY UPDATE` on the account row, `auth.service.lock_sessions_of`), then ends sessions in a statement of its own (`end_sessions`), which sees any row a refresh added while it waited. Logout, logging out everywhere, a moved phone number, suspension and a new admin ticket all go through it. `tests/modules/auth/test_session_end_concurrency.py`.
+  2. **Every access token carries `sid`**, its session's family id (OpenID Connect's claim), and every request checks, in the same query that loads the account, that the session has a row not revoked. Ending a session ends its access tokens at once. A suspended account is still answered 403 `account_suspended`. Tokens signed before this carry no `sid` and live out their 15 minutes.
+  3. **`GET /api/v1/me/sessions`**: each live session (its latest row unused, not revoked, not expired), latest sign-in first, keyset pages, one query: what the app said it is, when it signed in (the family's first row), when it last renewed, when it expires, how it signed in (`phone_code`, `passkey`, `two_factors`) and `is_current`.
+  4. **`DELETE /api/v1/me/sessions/{session_id}`** (204): this device's own needs nothing more; any other needs a step-up code for `end_session` bound to that exact session (a passkey's approval once the account has one, D-113), and the owner is told by `session_ended`, a notification nobody can mute, with the device's platform and label. Another account's session, an unknown one and one already ended all read 404 `session_not_found`, before any code is asked for or spent.
+  5. **Logins may name their device**: `device: {platform, label}` on `/auth/otp/verify`, `/auth/passkey/login` and `/auth/admin/login`, optional; `platform` is `android`, `ios` or `web`, `label` 1 to 60 characters, trimmed, with no control characters (the database counts the line and paragraph separators as control characters too, so the API refuses them; a property test holds the two rules together). Kept on every row of the session through each refresh, in `auth_session.client_platform` and `client_label`, both or neither, each rule held by the database. Never checked: the list shows it beside the sign-in time and method, which no app can choose.
+  6. **A new sign-in on the attention list**: `new_sign_in`, for brands and creators, for each other live session that signed in in the last 7 days, with its session id, time, device and method; listed before every other item, since if it was not them someone is inside the account. Worked out from the sessions, nothing stored. At most 50 are counted.
+  7. **Migration `de322e936678`**: the two columns (nullable, no default) with three checks added NOT VALID and validated after; `end_session` on step-up codes and passkey challenges; `session_ended` as a notification type. The downgrade refuses while any `session_ended` notice exists (nineteen refusing migrations), otherwise deletes the `end_session` codes and challenges and drops the columns.
+  8. **Personal data**: the device platform and label, in the export's login sessions with their purpose. No address and no location (option A).
+  9. **Changes from the proposal, all inside its gates**: the race fix also covers suspension and a new admin ticket, which ended sessions the same way; a new sign-in is listed before everything else rather than among items without a date; a stranger's session id is answered 404 before a code is asked for, found by the stranger-routes test; one existing test (`test_logout_all_twice_reports_nothing_left_to_end`) asserted the 15-minute weakness and now asserts the token is refused at once.
+  10. **What is left, said plainly**: push tokens are not tied to sessions, so an ended session's phone stays registered for push; nothing is delivered by push yet (E1), and this must be closed before E1 delivers. A label is whatever the app says. Last active is the last renewal, up to 15 minutes behind. A new sign-in stays on the list for its 7 days even when it was the owner's; there is no "it was me". Every renewal adds a session row (about 96 a day per device in use), never deleted until the validation pack sets retention; the per-request check reads one account's rows by index (0.05 ms measured), to be watched as rows grow.
+
+## D-115: Pillow 13.0.0 and certifi 2026.10.19, for 38 published advisories
+- Date: 2026-10-24
+- Approved by: Adhi, in this session: "yes", to the dependency request naming both packages, why, the alternatives, the risk and the rollback. **Not reviewed by the other founder** (D-051).
+- Context: CI's dependency audit (pip-audit) and image scan (Grype) failed on 24 October for advisories published that week: 37 in Pillow 12.3.0, fixed in 13.0.0 (2 critical, among them a JPEG decoder buffer overflow; 13 high), and one critical in certifi 2026.7.22, fixed in 2026.10.19. The lock file on `main` carried both, so every branch failed the two scans, `main` included.
+- Options considered: A) upgrade both now; B) hold them back, listing them as accepted risks (wrong for advisories with a fix); C) wait for Dependabot's pull request #64 (Pillow only, not certifi).
+- Chosen: A, on its own branch before item 81 merges.
+- Reason: Pillow re-encodes every uploaded proof image (D-065); a decoder overflow there is reachable by anyone who uploads a file. Security fixes come at once (D-047).
+- Consequences / follow-ups:
+  1. Pillow 13 is a major version. Its release notes (read 24 October) remove `Image._show`, `ImageCmsProfile.product_name` and `product_info`, and `ExifTags.IFD.Makernote`, and change PNG saving of `I` mode images; the app calls none of these. It uses `Image.open`, the decompression-bomb error and warning, and `ImageOps.exif_transpose`, all unchanged.
+  2. Proven locally: the full suite passes; pip-audit finds no known vulnerability; the API image, built fresh, passes Grype with `--only-fixed --fail-on negligible`.
+  3. Dependabot's pull request #64 becomes redundant once this merges.
+
+## D-116: A phone's push token follows its session (the gap D-114 named)
+- Date: 2026-10-24
+- Approved by: Adhi, in this session: "yes", to the proposal with its ten dimensions, tables, gates and rollback. **Not reviewed by the other founder** (D-051).
+- Context: D-114 let a person end a session from another device, but the phone behind it stayed registered for push (D-095), so once push is delivered (E1) a stolen phone logged out from elsewhere would keep showing the owner's deals and payments. Firebase's token guide (read 24 October 2026) covers stale and invalid tokens, not logout; this is ours to do.
+- Options considered: A) record on each push token the session that registered it, and unregister it whenever that session ends; B) leave it to the app to send its token at logout, as before, which an ended session's phone never does.
+- Chosen: A.
+- Reason: Only the server sees every way a session ends: a logout, ending it from another device, logging out everywhere, a moved phone number, a suspension.
+- Consequences / follow-ups:
+  1. `device_token.session_id` (migration `ecb64002aa29`): the session family that last registered the token, nullable, no foreign key (a family is not a row of its own), indexed where set, built CONCURRENTLY. In the export.
+  2. `PUT /api/v1/me/devices` records the asking token's `sid`; a phone registering again moves to the session now using it. A session already ended is refused 401, checked under the account's lock, the lock every ending of a session takes, so the two cannot interleave (a race test, both orders).
+  3. `auth.service.end_sessions` unregisters the ended sessions' phones in the same transaction: one session's when one ends, every phone of the account when all end.
+  4. Tokens registered before D-114 have no session; they go with their phone's own logout (sending the token, as before) or logging out everywhere, and take a session the next time their app registers, which it does on every start.
+  5. One behaviour changed on purpose: logging out of a phone now unregisters it even when the app does not send its token. Two tests that held the old behaviour were rewritten to the new one.
+
+## D-117: Design waits for Erode Harish's canvas; when it starts, design first and test it with real people
+- Date: 2026-10-24
+- Approved by: Adhi, in this session, choosing "Wait for Harish" and "Design now, test after" when asked how to start the UI and UX design he wants far beyond Interview Coach AI. **Not reviewed by the other founder** (D-051); Erode Harish owns design (section 0 of `CLAUDE.md`).
+- Context: Adhi asked for the frontend design. Design is Erode Harish's track; on 4 October Adhi said to wait for Harish's additions to the wireframe canvas before settling any design; and `docs/standards/ux.md` section 2 asked for five conversations a side before any flow is designed, and none are recorded.
+- Options considered: who designs: A) Claude designs now as a proposal for Harish, B) wait for Harish, C) Adhi decides alone now. Research: A) design now and test after, B) interviews first, C) skip research.
+- Chosen: B for who; A for research.
+- Reason: Harish's canvas additions come first, as agreed on 4 October; once design starts, testable prototypes give the interviews something real to react to, which talk about an idea does not (the Mom Test, `docs/research/README.md`).
+- Consequences / follow-ups:
+  1. No design work starts until Harish pushes his canvas additions; the backend carries on meanwhile.
+  2. `ux.md` section 2 changes: when design starts, the design system and the core screens come first as prototypes, and the five conversations a side and the five-second test run on them before any flow is final.
+  3. "Better than Interview Coach AI" is measured, never multiplied: server-rendered public pages, the budgets and CI gates in `docs/standards/frontend.md`, accessibility beyond AA, and its own tests.
+
+## D-118: Look-alike brand names are flagged, and cannot publish until the real brand's domain is verified (item 75, option B)
+- Date: 2026-10-24
+- Approved by: Adhi, in this session: "B", after the proposal naming the matching, the protected list, the vendored Unicode data, the legal questions and its weak points. **Not reviewed by the other founder** (D-051). The schema for an admin clearing a name was asked for separately and is not yet approved, so it is not built.
+- Context: the pay-to-collab scam starts with a believable fake brand (trust-and-safety.md section 2); item 74's verified domain lets a real brand stand apart, but nothing stopped "Nykaa Collabs" from posting campaigns. Read 24 October 2026: UTS #39 version 18.0.0 (27 August 2026) on confusable detection, its skeleton and mixed-script levels; no maintained Python library implements it; reports of brand impersonation in India rising.
+- Options considered: A) flag only, to creators and admins; B) A plus a hold on publishing until the brand verifies the resembled brand's domain.
+- Chosen: B.
+- Reason: fake well-known brands are the top scam, and the domain check gives the genuine brand a way through in minutes that an impersonator cannot take.
+- Consequences / follow-ups:
+  1. **Matching** (`app/modules/profiles/brand_names.py`, pure): case folded and made comparable by Unicode's skeleton (`app/core/confusables.py`, `confusables.txt` 18.0.0 of 6 August 2026 vendored byte for byte under the Unicode License v3, its SHA-256 checked by a test and kept by `.gitattributes`); filler words ("official", "india", "collabs", "team", "pvt ltd" and more) dropped in the same form; one slip (Damerau's distance 1) allowed for protected names of 5 letters or more. A protected name matches anywhere as a word, or, for an everyday word ("Plum", "boAt"), only whole. Latin mixed with Cyrillic, Greek, Armenian or Cherokee letters is flagged on its own.
+  2. **Protected**: a curated list of 17 well-known brands with their domains (`app/modules/profiles/protected_brands.json`, each domain checked to resolve on 24 October, not to belong to the brand; the founders' to review), and every brand here with a verified domain (item 74). A brand never resembles a name whose domain, or a subdomain of it, it has itself verified; a look-alike domain does not count.
+  3. **Shown**: `brand_name_flag` (resembled name, its domain, mixed alphabet) on every campaign read and on the brand's payment record, as facts beside the name. Worked out on read, one query a page.
+  4. **Held**: publishing a campaign under a flagged name answers 409 `brand_name_needs_domain`, its detail naming the brand and the domain to verify. Campaigns already open stay open, with the flag.
+  5. **Admins**: `GET /api/v1/admin/brands/look-alikes`, the newest 100 flagged brands with their accounts.
+  6. **Not built**: an admin clearing an innocent name (three columns on `brand`, a refusing downgrade): until its schema is approved, a genuine shop whose name is close to a protected one can only rename or verify the resembled domain. A brand on neither list is not protected; the list is hand-made. Legal **Confirm**: naming other companies' brands in the list, and the hold's wording.
+  7. Proven: the confusable data's hash, UTS #39's own examples, the rules by example and by property (which found filler words read in the wrong form, fixed), the API, query counts, and thirteen rules broken on purpose, each seen caught.
+
+## D-119: An admin may clear a look-alike brand name after review, for that exact name
+- Date: 2026-10-24
+- Approved by: Adhi, in this session: "yes", to the schema request naming the three columns, the migration and the refusing downgrade, and "no weakness should be there". **Not reviewed by the other founder** (D-051).
+- Context: D-118 holds a brand whose name looks like a protected brand's until it verifies that brand's domain. A genuine shop with a close name and no website ("Amazon Organics Coimbatore") had no way through but to rename.
+- Options considered: A) an admin clears the exact name, with a note in the admin log; B) clear the brand whatever it is called later.
+- Chosen: A.
+- Reason: a clearance of the name, not the brand, means a later rename to something closer to a protected brand is looked at again.
+- Consequences / follow-ups:
+  1. Migration `82bb81b5eed4`: `brand.name_cleared`, `name_cleared_at`, `name_cleared_by_account_id` (SET NULL, indexed CONCURRENTLY), held together by two checks, each constraint added NOT VALID and validated after; `clear_brand_name` and `withdraw_brand_name_clearance` added to the admin log's actions. The downgrade refuses while any clearance or such log entry exists (twenty refusing migrations).
+  2. `POST /api/v1/admin/brands/{brand_id}/name-clearance` and `.../withdraw`, each with a note of 3 to 1,000 characters, decided under the brand's row lock (a race test: four admins at once clear it once); only a name the check holds can be cleared, once.
+  3. A cleared name is not flagged to creators and may publish, while the brand keeps that exact name; the admins' list leaves it out.
+  4. The brand sees its own hold (`name_hold` on `GET /api/v1/brands/me`), so it learns of it before trying to publish.
+  5. The clearance and its time are in the brand's export; which admin gave it is not (another person's account), and is in the admin log.
+
+## D-120: "It was me" on a new sign-in, only from a session that signed in before it
+- Date: 2026-10-24
+- Approved by: Adhi, in this session: "yes", to the schema request. **Not reviewed by the other founder** (D-051).
+- Context: a new sign-in leads the owner's attention list for 7 days (D-114), even when it was the owner's own laptop; there was no way to say so. A plain "dismiss" would let a SIM swapper, signed in as the owner, hide their own sign-in.
+- Options considered: A) any session may acknowledge any other; B) only a session that signed in earlier may acknowledge a later one.
+- Chosen: B (built within the approved schema; stated before building).
+- Reason: an intruder's sessions are always the newest, so the earliest of them can only be vouched for by the owner's older device; the owner always sees at least one.
+- Consequences / follow-ups:
+  1. `auth_session.sign_in_acknowledged_at` (migration `c80694db3a26`), carried through every refresh; set under the account's sessions lock, so a refresh at the same moment carries it on (a race test).
+  2. `POST /api/v1/me/sessions/{session_id}/acknowledge` (204); 409 `acknowledge_from_an_earlier_session` from the session itself, a later one, or a token naming no session; 404 for another account's or an ended one.
+  3. An acknowledged sign-in leaves the attention list; the session stays listed, with `sign_in_acknowledged_at`, and can still be ended.
+  4. A new device's own list keeps showing an older device's sign-in for its 7 days, since it cannot vouch for an earlier one. That is the price of the rule, and harmless: it is the owner's own device.
+
+## D-121: Published Passports offered to search engines, switched off until the consent notice says so (item 85)
+- Date: 2026-10-24
+- Approved by: Adhi, in this session: "yes", to the proposal with its ten dimensions, the switch and its Infrastructure gate. **Not reviewed by the other founder** (D-051).
+- Context: a Passport is the creator's public record, but nothing helped search engines or AI search find or read it; Interview Coach AI, the founder's earlier project, renders in the browser and is invisible to them (measured 1 October). Read 24 October 2026: Google's ProfilePage structured data (for profiles of people affiliated with the site; name required; handle, identifier, description, dates and `sameAs` recommended; statistics only from the hosting platform) and its sitemap guidance (50,000 URLs a file; `lastmod` used only when accurate; `priority` and `changefreq` ignored).
+- Options considered: A) the feed, the structured data and `noindex` on the API, behind a switch that stays off until the publish notice mentions search engines; B) the same, on at once.
+- Chosen: A.
+- Reason: making a Passport findable by search engines is a wider use than a link in a bio, so the notice the creator consents to should say so (legal.md section 1, rule 1: a Confirm item that decides wording ships behind a setting that stays off).
+- Consequences / follow-ups:
+  1. `GET /api/v1/creators/indexable`: every Passport anyone may read (published, not suspended, not withheld), newest first, keyset pages, one query, cached 5 minutes with an ETag; each with its handle and when what its readers see last changed (the profile, its publishing, its channels and, while prices are public, its packages and their publishing). A deleted channel or package does not move it.
+  2. The public Passport gains `structured_data`, a schema.org ProfilePage of the published name, handle, creator id, bio, channel links and dates; never contact details or follower figures. The feed's and the Passport's times are held equal by a test.
+  3. `X-Robots-Tag: noindex` on every API answer, errors included.
+  4. `PASSPORT_INDEXING` (default off): while off the feed is empty and `structured_data` null. Infra passes nothing yet; switching on is a founder step once the validation pack gives the wording.
+  5. The website renders the pages, `sitemap.xml` and `robots.txt`, and embeds the markup with each page's URL: frontend work.
+
+## D-122: Deleting your account: refused mid-deal, 30 days to cancel, the other side keeps the facts (item 6)
+- Date: 2026-10-25
+- Approved by: Adhi. "A A A" to the proposal and its three choices on the night of 24 October, in an earlier session; re-confirmed in this session on 25 October, since CLAUDE.md section 5 does not count an earlier session, together with two changes from the proposal and four details (below). **Not reviewed by the other founder** (D-051).
+- Context: Apple (App Review guideline 5.1.1(v)) and Google Play reject apps that let people make an account but not delete it in the app, and DPDP Rule 8 asks for erasure; no website or app can launch without it (sources read 24 October 2026: Apple's account deletion guideline, Google Play's account deletion requirements, the Android Developers Blog of April 2023). The deal record (D-057) already holds only ids and fingerprints, with no foreign key to accounts, so deletion was possible without unsealing anything.
+- Options considered: 1) deals in progress: A) refuse deletion while any is unfinished, as Upwork requires closing contracts first; B) delete anyway. 2) the wait: A) 30 days, cancelled by the owner at any time, as Google and Instagram give; B) 7 days; C) none. 3) what the other side sees: A) the deal's facts, with "a creator (or brand) who left"; B) the deal hidden from them.
+- Chosen: 1A, 2A, 3A.
+- Reason: a brand must not be able to leave to avoid paying, nor anyone lose the person they are working with mid-deal (1A); a SIM swapper gets the step-up code, so the owner needs a month to see and cancel it (2A); the other side's own record of delivery and payment must not change when someone else leaves (3A).
+- Changes from the proposal, approved before they were built: (a) only `account.phone` becomes nullable; a deleted brand's email and creator's handle become random placeholders, because a check on `brand` or `creator` cannot read the account; (b) the retention settings and the register of what is kept are built now, and deleting each kind when its period ends is a later item, since every period is unset until the validation pack gives it.
+- Details approved before they were built: (1) a waiting deletion leads the attention list (`deletion_pending`); (2) at erasure a brand's open campaigns close, its drafts are cancelled and its waiting invitations withdrawn, a creator's waiting applications are withdrawn and invitations to them declined ("other"), with nobody notified; (3) nothing new starts with someone who left: an invitation reads as not found, a memo is refused (`creator_left`), under the same locks as the erasure; (4) a creator's city, niches and languages stay on the emptied profile as deal facts, leaving search, matching, the Passport and the figures with the account.
+- Consequences / follow-ups:
+  1. `GET`, `POST` and `DELETE /api/v1/me/deletion`. Asking needs a step-up code for `delete_account` (brands and creators only), is refused while a deal is unfinished (`deletion_held_by_deals`) or one is already waiting, and takes effect 30 days later; cancelling needs no code and works while held. Both tell the owner by notices nobody can mute; a deal begun in the wait holds the erasure, with the owner told once (`deletion_held_by_deals`).
+  2. A DBOS job every 15 minutes erases what no law asks us to keep: sessions, push tokens, passkeys, codes, a waiting phone change, an admin's authenticator, attribution and invite code, notifications and preferences, blocks both ways, UPI IDs, channels and packages, the creator's embedding, the brand's domain, exports and their files; then empties the account (the number let go), the brand (name and email) and the creator (name, handle, bio, Passport and rate card consents, booked until). Locks are taken phone, profile, campaigns, applications, account: account-first deadlocked with an invitation and with an application in the race tests, and was changed before merge.
+  3. Kept, under seven `RETENTION_<KIND>_DAYS` settings, all unset (kept, as the law may require): deal records, payment records, disputes, proof files, reports, takedowns (at least 180 days, IT Rules 3(1)(g)) and the admin log. `app/modules/me/account_deletion_registry.py` places every table exactly once, enforced by a test.
+  4. "Suspended" and "deleted" are one notion of "unavailable" in `auth.suspension`, so search, matching, the Passport, the figures, invitations and applications all leave a deleted account out.
+  5. Migration `b7e026caa4a9`: three nullable columns, `phone` nullable, four checks (added `NOT VALID`, then validated), the new step-up action and notification types. Its downgrade refuses while any account has asked to be deleted.
+  6. Confirm items for the validation pack: every retention period; whether the de-identified deal facts may stay visible to the other side; whether a departed creator's city may stay; the notices' wording.
+  7. Later: deleting each kept kind when its period ends (a new item); an export requested at the very moment of erasure can leave its row, and a file the bucket's 2-day lifecycle rule removes.
+
+## D-123: Counter-offers on a quote: both sides, three each, the memo stays the contract (item 44)
+- Date: 2026-10-25
+- Approved by: Adhi, in this session: "A A A", to the proposal with its ten dimensions and three choices. **Not reviewed by the other founder** (D-051).
+- Context: a quote had one answer (shortlist, accept or reject), so any haggling moved to WhatsApp, off the record, where pay-to-collab scams and "we agreed 8,000" disputes start. Read 25 October 2026: Upfluence's counter-offer rework of 20 February 2026 (creators counter without declining first); JoinBrands (only higher-level creators counter, at most 5 times the payout; a rejected creator can still take the original price); Upwork's proposed contracts and counteroffers (its help pages refuse automated reads, so they were read through search summaries); Collabstr and TikTok One document no formal counter.
+- Options considered: 1) who counters: A) both sides, alternating, at most 3 offers each per application; B) the brand only. 2) how binding: A) an agreed figure pre-fills the memo's fee, a different fee shown beside it; B) the memo's fee locked to it. 3) sealing: A) offers in their own table and both exports; B) also fingerprinted into the deal record.
+- Chosen: 1A, 2A, 3A.
+- Reason: a real negotiation names a price both ways, and the cap stops anyone grinding the other down (1A); the memo is the contract and scope can still change honestly, in the open (2A, legal.md section 3.5, bait and switch); the fee that binds is already sealed by the memo's acceptance, so a second sealed kind would add a refusing downgrade for little (3A, revisitable if disputes show the need).
+- Consequences / follow-ups:
+  1. `GET` and `POST /api/v1/applications/{id}/offers`, `POST .../offers/{offer_id}/accept` and `/decline`, and `DELETE .../offers/{offer_id}` (withdraw). Either party of a waiting application (submitted, shortlisted, or an invitation not yet answered); 404 to anyone else. Not on barter campaigns, which pay in goods.
+  2. One open offer per application (`uq_quote_offer_one_open`); a counter replaces the other side's open offer; each side at most 3; nothing more once a figure is agreed. The rules are pure functions (`offer_rules.py`) with property tests over every sequence of moves.
+  3. **Detail chosen in the build, stated here:** accepting the application or the invitation is refused while an offer is open (`offer_open`), so nobody can say afterwards which price was agreed; rejecting, withdrawing or declining it closes the open offer. A deletion (D-122) withdraws it.
+  4. Application reads gain `open_offer` and `agreed_amount_paise`; memo reads gain `agreed_amount_paise`, worked out on read in one query for any page. A new memo with no fee takes the agreed figure, as does a repeat deal's draft.
+  5. Notifications `offer_received`, `offer_accepted`, `offer_declined`, `offer_withdrawn`, each mutable (D-079). Notes are text-flagged: money and contact for a brand's, contact only for a creator's.
+  6. 100 offers a day per account (trust-and-safety.md rule 2), and blocks, takedowns, suspensions and deletions end a negotiation as they end anything new.
+  7. Migration `8b6662af4839`: `quote_offer`, new and empty; the two allowed-value lists widened, staged; its downgrade refuses while any offer exists. Held on deletion as a deal record (D-122's registry).
+  8. Item 87 (a brand's median days to pay) was found already built by D-027 and D-034, in the brand payment record that matching shows creators; the backlog now says so.
+
+## D-124: Three advisories fixed in packages the served app does not install
+- Date: 2026-10-25
+- Approved by: Adhi, in this session, choosing "fix all three". **Not reviewed by the other founder** (D-051).
+- Context: pushing item 44, GitHub reported 5 Dependabot advisories on `main` (1 critical, 1 high, 3 low). CI's audit was clean because it checks only what the app installs; an audit of every dependency group found 6 advisories in 3 transitive packages: `filelock` 4.0.8 and `setuptools` 84.0.0, both through `torch` and `sentence-transformers` (the `ml` group, which the embeddings image installs, D-052), and `brotli` 1.2.0 through Locust (the `load` group, laptop only).
+- Options considered: A) raise all three to their first fixed versions in `uv.lock`; B) only the two the embeddings image carries; C) leave them.
+- Chosen: A, to exactly the first fixed versions the advisories name (`filelock` 4.2.1, `setuptools` 84.1.0, `brotli` 1.2.1), not the newest releases `uv` would pick, which have had less time to settle (D-047).
+- Reason: D-047 says security fixes come at once; these are compatible patch and minor releases of tools already approved, and `pyproject.toml` does not change.
+- Consequences / follow-ups: (1) Every group audits clean (`torch`'s CPU build is not on PyPI and is skipped, as before). (2) **A gap named:** CI audits only the app's own packages and only reports the embeddings image's findings, so advisories in the `ml` and `load` groups never turn CI red; GitHub's alert was the only signal. Widening the audit to every group is a CI change, an Infrastructure gate, proposed separately rather than slipped in here.
+
+## D-125: CI audits every dependency group, and checks the embeddings image without a pull request
+- Date: 2026-10-25
+- Approved by: Adhi, in this session: "A A", to the DECISION NEEDED for both gaps (Infrastructure gate). **Not reviewed by the other founder** (D-051).
+- Context: two gaps let D-124's advisories through unseen. (1) CI's `pip-audit` read only the packages the API installs, so six advisories in the `ml` and `load` groups left every run green; GitHub's push warning was the only signal. (2) The embeddings image was built and scanned only for pull requests, and merges made without one under D-101 skipped it: items 6 and 44 and D-124 itself, on 25 October.
+- Options considered: gap 1: A) a second audit over every group that fails on any advisory; B) the same, reporting only. Gap 2: A) build on every push to `main` and on a branch whose changes touch the image's inputs; B) build on every push; C) open a pull request for every merge.
+- Chosen: A and A.
+- Reason: the bar the API's own audit already meets, applied to everything we install (1A); the image is checked whenever its inputs change, and on `main` always, without paying for the 1.2 GB model on every run, and without me using stored GitHub credentials to open pull requests (2A).
+- Consequences / follow-ups: (1) A new step, "Audit every dependency group", not `--strict`, because torch's CPU build is not on PyPI; an advisory with no fix is accepted only by `--ignore-vuln` with who and why. (2) The image job checks out the whole history and compares the branch with `main` over `uv.lock`, `pyproject.toml`, `Dockerfile`, `.dockerignore` and `app/modules/matching`; anything that cannot be compared counts as a change. (3) The embeddings scan stays report-only (D-052). (4) Proven on the branch itself: its first push carried a vulnerable `filelock` on purpose, and the run had to fail on it and build the image; the second push restored the fixed lock.
+
+## D-126: One phone number, both sides: a brand and a creator account may share it (item 8)
+- Date: 2026-10-25
+- Approved by: Adhi, in this session: "B", to the proposal with its ten dimensions. **Not reviewed by the other founder** (D-051). Resolves D-046's open question.
+- Context: one app per platform serves brands and creators (D-046), but one phone was one account with one role (D-014, `uq_account_phone`), so a food creator who also runs a bakery needed a second SIM card, and someone who used one could deal with themselves unseen (item 61). Read 25 October 2026: Upwork holds a client and a freelancer profile in one login, switching from the account menu, and treats a second login as a breach of its terms; Fiverr's and Collabstr's own help pages were not found, only third-party guides, so neither was relied on.
+- Options considered: A) keep one role per number and write it down; B) two accounts on one number, one per role, each exactly as before; C) one account with two profiles and the active side in the token, as Upwork does.
+- Chosen: B.
+- Reason: the person gets one number for both sides, as on Upwork, while every one of the 58 role checks in 31 files and D-014's one-account-one-profile guarantee stay as they are, which C would rewrite; and because the two sides of a number are known to be one person, they are refused from dealing with each other, which A leaves open to anyone with a second SIM.
+- Consequences / follow-ups:
+  1. `uq_account_phone` becomes `uq_account_phone_role` (phone first, built `CONCURRENTLY` and adopted); migration `3cab62503c56`, whose downgrade refuses while any number holds two accounts.
+  2. Login signs in to the number's account for the role asked, and makes it when the number has none for that role. Refused, with the code left usable: an admin's number (`role_mismatch`, as before, so nothing reveals an admin); a suspended other side (`account_suspended`); an other side waiting to move to a new number (`phone_change_waiting`). `GET /api/v1/auth/me` gains `other_side`. Switching sides is signing in as the other, a code each time until passkeys are on.
+  3. What belongs to the number covers both: a phone change moves every account on it and ends both sides' sessions; one change waits for a number at a time (`phone_change_on_other_side`), and none while a deletion waits on it (`deletion_waiting`); a login to either side cancels a lost-number change (D-110); a passkey reset covers each side with a passkey; login codes and their caps were already the number's.
+  4. Deleting one side (D-122) erases that account only, and the number's login codes stay while the other side does.
+  5. Applying, inviting and repeating between the two accounts of a number read as not found, like a block; offers and memos need an application, so they follow.
+  6. A test whose clock never moves can give a number two codes in one instant, and "the latest code counts" then ties on its timestamp; real codes never do. Found while testing, existing behaviour, noted rather than changed.
+
+## D-127: Deliverables as a list on campaigns and memos, sealed from terms version 2 (item 26)
+- Date: 2026-10-26
+- Approved by: Adhi, in this session: "1A 2B 3A", to the proposal with its ten dimensions. **Not reviewed by the other founder** (D-051).
+- Context: "3 Instagram reels, 1 story set" was free text on campaigns and memos, so nothing could count it: agreed fees could not be compared per reel (fair-rate guidance step 2, D-056), reports could not say what was asked, and the apps would have to parse prose. Read 26 October 2026: TikTok One sets a count of videos per creator; Aspire's briefs list deliverables with their due dates; neither seals the list into a record both sides can verify.
+- Options considered: 1) where: A) campaigns and memos, the campaign's list pre-filling the memo's; B) memos only. 2) proof: A) per deliverable, a deal delivered only when every line is approved; B) the list agreed, sealed, shown and counted, with proof per deal as today. 3) the text: A) kept as the summary; B) replaced by the list.
+- Chosen: 1A, 2B, 3A.
+- Reason: a brand writes the list once (1A); per-deliverable proof would change deal stage, the approval clock and when payment falls due, and deserves its own proposal (2B); the summary is what people read (3A).
+- Consequences / follow-ups:
+  1. `campaign_deliverable` and `memo_deliverable`: platform and format from the rate card's vocabulary (D-055), quantity 1 to 20, a note of at most 200 characters, at most 10 lines; CASCADE on the campaign, RESTRICT on the memo. Campaign and memo bodies take `deliverable_items`, and every read returns it, loaded in one more query a page.
+  2. A memo with no list given copies its campaign's; a repeat deal copies the deal it repeats; a memo's list changes only while it is editable.
+  3. **Terms versions:** `deal_memo.terms_version` was added with 1 for every existing memo, whose fingerprint stays exactly as sealed, for ever; new memos are version 2, and their fingerprint adds the list (`docs/DEAL_RECORD_VERIFY.md` section 5). Changing a sealed line shows as terms changed since acceptance. Migration `413468ae18cf`; its downgrade refuses while any version 2 memo or any line exists.
+  4. Both exports gain the lists; the deletion registry holds them as deal records (D-122).
+  5. Three query-count ceilings rose by one, for the one query that loads every row's list; each test still proves a long page costs the same as a short one.
+  6. Next: per-deliverable proof (choice 2A, its own proposal), and agreed-fee guidance per format (D-056 step 2), which the list now makes possible.
+
+## D-128: Deal notes on the record, sealed and append-only, in place of chat (item 17)
+- Date: 2026-10-26
+- Approved by: Adhi, in this session: "all as recommended i mean the best", to the batch proposal of items 17, 66 and 43 with their dimensions. **Not reviewed by the other founder** (D-051).
+- Context: once a deal was agreed the talk went to WhatsApp, so "we agreed two reels, not three" could not be proven. Wobb, Collabstr and Passionfroot run in-app chats (`docs/COMPETITIVE_LANDSCAPE.md` section 3), and their messages prove nothing.
+- Options considered: (a) when: A) from the memo being sent; B) only once it is accepted. (b) what: A) sealed and append-only; B) editable and unsealed.
+- Chosen: A and A.
+- Reason: most of what needs proving is said while the terms are argued over (aA); a note that can be edited proves nothing, and sealing is what no chat offers (bA).
+- Consequences / follow-ups:
+  1. `GET` and `POST /api/v1/deal-memos/{memo_id}/notes`: either party, plain text up to 1,000 characters, from `sent` through `accepted`; a draft or an ended deal answers `notes_closed`. Newest first in keyset pages. The other side is told (`note_added`, mutable).
+  2. Each note and its `note_added` record entry, carrying `note_sha256`, are written in one transaction under the deal's lock, so notes at once all land, in one unbroken chain. `GET .../record` gains `notes_unchanged`, which catches a note rewritten by someone who switched the triggers off.
+  3. `deal_note` refuses UPDATE, DELETE and TRUNCATE by trigger, and the app's own role lost those rights (D-100); a correction is another note.
+  4. A brand's note is flagged for fee requests; contact details are not flagged, the two being matched. 200 notes a day per account. An agreed deal carries on across a block (item 59), so do its notes.
+  5. Both exports hold the notes; the deletion registry holds them as deal records (D-122). Migration `a9188046bec4`; its downgrade refuses while any note or sealed note entry exists.
+
+## D-129: Saved creator lists, private to the brand, showing only creators search would (item 66)
+- Date: 2026-10-26
+- Approved by: Adhi, in this session: "all as recommended i mean the best", to the batch proposal of items 17, 66 and 43 with their dimensions. **Not reviewed by the other founder** (D-051).
+- Context: a brand found creators in search or matches and lost them again by the next campaign. Every enterprise tool keeps lists (`docs/COMPETITIVE_LANDSCAPE.md`); ours put each creator's delivery record, what happened on their deals, beside the name.
+- Options considered: A) one list belongs to one brand account, shared with a team later under item 13; B) team sharing now, before team seats exist.
+- Chosen: A.
+- Reason: team seats (item 13) wait on a founders' decision, and a list shared before there is a team would have to guess who the team is.
+- Consequences / follow-ups:
+  1. `GET` and `POST /api/v1/creator-lists`, `PATCH` and `DELETE /{list_id}`, `GET /{list_id}/creators` (keyset pages), `PUT` and `DELETE /{list_id}/creators/{creator_id}`. Brands only; another brand's list answers 404 `creator_list_not_found`. A name is 1 to 60 characters, trimmed, and once per brand (`creator_list_name_taken`). At most 50 lists (`creator_lists_full`) of 200 creators (`creator_list_full`), each cap counted under a row lock. Saving a creator twice keeps one line.
+  2. Who appears follows search's own rule, now one function (`search_service.visible`): a creator who unpublished, was suspended, deleted or withheld, or a block either way, drops out of every list and its count, and saving one is refused as `creator_not_found`. Each creator carries search's facts, their delivery record (the new `delivery_record.for_creators`, two queries for a whole page) and `saved_at`.
+  3. Reading a list's creators has search's ceiling, 30 a minute and 600 a day per account, so a list is never a way round it. The proposal said no ceiling was needed, since nothing reaches the creator; this is stricter, and is said here so it can be undone.
+  4. The creator is never told. The brand's export holds the lists and their lines; the creator's does not say which brands listed them, and whether it must is a legal.md Confirm item. Deleting an account erases a brand's lists, or every line about a creator (D-122).
+  5. Tables `creator_list` and `creator_list_entry`, migration `3c527a80ee4e`; its downgrade refuses while any list exists.
+
+## D-130: Campaign alerts for creators, sent from an outbox at publish (item 43)
+- Date: 2026-10-26
+- Approved by: Adhi, in this session: "all as recommended i mean the best", to the batch proposal of items 17, 66 and 43 (option A, notify at publish); and, asked again when building showed the campaign table records no publish time, "Outbox table (Recommended)". **Not reviewed by the other founder** (D-051).
+- Context: a creator learnt of a new campaign only by opening discovery, so the first to apply were whoever happened to look. Collabstr distributes a live campaign to the creators it matches (read 26 October 2026, `docs/COMPETITIVE_LANDSCAPE.md` section 4); ours go by the terms the creator chose.
+- Options considered: (a) when: A) at publish; B) a daily digest only. (b) how the job learns of a publish: A) an outbox table written in the publishing transaction; B) `published_at` and `alerts_sent_at` columns on `campaign`.
+- Chosen: aA and bA.
+- Reason: a digest is already a preference anyone may choose (D-079), so publish-time loses nothing (aA). The outbox leaves the campaign table untouched, needs no backfill, and keeps job state out of a domain row (bA).
+- Consequences / follow-ups:
+  1. `GET` and `POST /api/v1/me/campaign-alerts`, `DELETE /{alert_id}`. Creators only; another creator's alert answers 404 `campaign_alert_not_found`. An alert is any mix of a city (any case), a niche, a campaign type and a least budget, naming at least one; no budget on barter. At most 5 (`campaign_alerts_full`), counted under the creator's lock; the same terms once (`campaign_alert_exists`).
+  2. What fits is one pure rule, `alert_rules.matches`, with property tests; `alert_service.fits` asks it in SQL, and a test holds the two to each other over every shape of alert.
+  3. Publishing writes a `campaign_alert_send` row in its own transaction. Every minute, a DBOS job sends the oldest due, 500 creators a transaction, each under one advisory lock, and records a mutable `campaign_alert` notification once per creator per campaign, so a run cut short or run twice tells nobody twice. At most 20 a Tamil Nadu day per creator.
+  4. Nobody is told across a block either way, by a suspended, deleted or withheld brand, of a campaign withheld or closed before its turn, or as a suspended, deleted or withheld creator; never the brand's own other side (D-126). Campaigns already open when this shipped are not alerted.
+  5. The creator's export holds their alerts; deleting the account erases them (D-122). Delivery outside the app, and so quiet hours, wait on push (E1).
+  6. Tables `campaign_alert` and `campaign_alert_send`, migration `d78ed34127dd`, which also widens the notification and mutable types; its downgrade refuses while any alert exists.
+
+## D-131: A barter deal's shipment on the record (item 68)
+- Date: 2026-10-26
+- Approved by: Adhi, in this session: "carry on i need the best the standards limit should be sky", to the proposal of items 68, 70 and 65 with their dimensions. **Not reviewed by the other founder** (D-051).
+- Context: on a barter deal the fight is "I sent it" against "I never got it", and nothing on the record answered it. GRIN tracks delivery, and Kyra and Billo show a "received" the creator sets (read 26 October 2026, `docs/COMPETITIVE_LANDSCAPE.md` section 4); none of them seals it as evidence.
+- Options considered: A) the courier and tracking number, sealed, with the creator's "received" sealed; B) also the delivery address, to check against the courier.
+- Chosen: A.
+- Reason: a tracking number names no one and settles the dispute; an address is personal data we would only hold to look at (legal.md rule 6).
+- Consequences / follow-ups:
+  1. `PUT /api/v1/deal-memos/{memo_id}/shipment`: the deal's brand, on an agreed barter deal only (`shipment_closed` otherwise). A courier from a fixed list and a tracking number of 8 to 20 letters and digits, spaces and dashes dropped; India Post's held to two letters, nine digits, then IN. Correctable until the creator says it arrived, each version sealed as `product_shipped` with the number's fingerprint; the same again changes nothing.
+  2. `POST .../shipment/received`: the deal's creator only, once (`shipment_already_received`), sealed as `product_received`. Afterwards neither side changes the shipment. `GET .../shipment` for either party; each step tells the other side; 100 writes a day per account.
+  3. Each step runs under the deal's lock with its record entry, so a correction racing "it arrived" never lands after it. `GET .../record` gains `shipment_unchanged`, which catches a row rewritten behind the app's back.
+  4. Both parties' exports hold the shipment; the deletion registry keeps it as a deal record (D-122). An agreed deal carries on across a block (item 59), and so does its shipment.
+  5. Table `barter_shipment` (ON DELETE RESTRICT on the memo), migration `b7c240ab2d4b`, which widens the record kinds and the notification and mutable types; its downgrade refuses while any shipment or shipment entry exists. Courier status fetched from the courier is not built: it needs an outside service and a founder decision.
+
+## D-132: A brand's content library, worked out from the sealed memo (item 70)
+- Date: 2026-10-26
+- Approved by: Adhi, in this session: "carry on i need the best the standards limit should be sky", to the proposal of items 68, 70 and 65 with their dimensions. **Not reviewed by the other founder** (D-051).
+- Context: a brand loses track of which approved posts it may still use. impact.com and The Cirqle track rights expiry from dates typed into their dashboards (read 26 October 2026, `docs/COMPETITIVE_LANDSCAPE.md` section 4); the accepted memo here already seals `usage_rights_days`.
+- Options considered: A) worked out on read from the memo and the approved proofs; B) a library table copying each approval and its expiry.
+- Chosen: A.
+- Reason: a stored copy of a derived fact drifts (backend.md section 2), and the memo is already the sealed source both sides accepted.
+- Consequences / follow-ups:
+  1. `GET /api/v1/brands/me/content`: the brand's approved posts, latest approved first, in keyset pages, each with its deal, campaign, creator, link, the memo's days, `rights_until` and `rights_state` (`active`, `lapsing` within 30 days, `lapsed`, `not_agreed`), filterable by state. Brands only.
+  2. The days count from the Tamil Nadu day the work was approved (`content_rights`, a pure rule with property tests; the SQL filter is held to it at every edge). Which day the memo's wording should name is a legal.md section 3.11 Confirm item; the library says what it counts from beside every date.
+  3. Submissions past their review window are settled before a page is read (`proof_service.settle_if_overdue`), so approval by the clock counts without anyone opening the deal.
+  4. No new table, migration or export. Item 37's partnership-ad permissions, and reminders before a window ends (C5, waiting on delivery, E1), remain.
+
+## D-133: More like the creators who delivered for you (item 65)
+- Date: 2026-10-26
+- Approved by: Adhi, in this session: "carry on i need the best the standards limit should be sky", to the proposal of items 68, 70 and 65 with their dimensions. **Not reviewed by the other founder** (D-051).
+- Context: a brand that found a creator who delivered wants more like them. Meta's Similar Creators ranks on past partners and predicted ad performance (read 26 October 2026, `docs/COMPETITIVE_LANDSCAPE.md` section 4); only we hold who actually delivered and was paid.
+- Options considered: A) closeness to the average embedding of the creators who finished a deal with the brand; B) closeness to each one separately, merged.
+- Chosen: A, with each result naming its nearest anchor.
+- Reason: one exact vector query a page at pilot scale; naming the nearest anchor keeps every result explainable (legal.md section 3.4).
+- Consequences / follow-ups:
+  1. `GET /api/v1/creators/like-my-best`: brands only, `based_on` (how many anchors) and keyset pages by closeness then id, at most 50 a page. Anchors: creators of the brand's deals paid and confirmed, or barter with the work approved. No anchors, an empty list.
+  2. Shown only while the brand could find them in search (`search_service.visible`); never one it has agreed a deal with, nor its own other side (D-126), nor one without an embedding yet. Each carries search's facts, its similarity, its nearest anchor and its delivery record.
+  3. Search's ceiling, 30 a minute and 600 a day, so it is never a way round it. Embeddings hold internal ids only (constraint 2); exact search until real embeddings need HNSW, a decision after measuring recall.
+  4. No new table or migration. The public page of ranking parameters (item 50) must name it.
+
+## D-134: Connected Instagram and YouTube accounts, built switched off (item 29)
+- Date: 2026-10-26
+- Approved by: Adhi, in this session: "all as recommended", to the proposal of item 29 with its dimensions, gates and three choices. **Not reviewed by the other founder** (D-051).
+- Context: every figure a creator shows is what they typed. First-party numbers, read with their consent, are what brands trust; they also unlock items 30, 31, 67 and 78. Meta App Review and Google's verification need a live product, our domain, a privacy policy and Meta Business Verification first, so the backend is built now behind a switch.
+- Options considered: (a) where: A) `profiles`, beside channels; B) a new `platforms` module. (b) what we keep: A) the latest verified figures only; B) a daily history. (c) order: A) both platforms behind one interface; B) Instagram first.
+- Chosen: A, A and A.
+- Reason: channels already live in `profiles`; the latest figure is the least data that answers the question (legal.md rule 6), and a history waits on a retention period; one interface keeps a third platform a client, not a rewrite.
+- Consequences / follow-ups:
+  1. `GET /api/v1/creators/me/connections`, `POST .../{platform}/start` and `.../complete`, `DELETE .../{platform}`; Meta's `POST /api/v1/platforms/meta/data-deletion` and `.../deauthorize`, and the status page `GET .../data-deletion/{confirmation_code}`, public by design and verified by Meta's signature. Off (503 `connections_unavailable`) until `PLATFORM_CONNECTIONS_ENABLED`; disconnecting always works.
+  2. The platform returns the creator to our website or app, which posts the code and `state` from the creator's own session; there is no public OAuth callback. A state works once, for 10 minutes, for its account and platform; Google adds PKCE. Instagram asks only for `instagram_business_basic`.
+  3. Tokens sealed with AES-256-GCM under `PLATFORM_TOKEN_KEY` (generated by OpenTofu); the Meta app secret and Google client secret are pasted in by a founder (`infra/README.md`). The incident plan has each rotation.
+  4. Tables `connected_account`, `connection_attempt` and `platform_deletion_request`, migration `3734d5492968`; its downgrade refuses while any connection or deletion request exists. The export holds connections, never tokens; deleting the account erases them.
+  5. The real clients follow Meta's and Google's references, read 26 October 2026, and are tested against those request shapes; they have **not** run against the live platforms. Meta's `signed_request` user id is assumed to be the Instagram user id the token exchange returns, to be checked when the app exists.
+  6. Piece 2 remains: the daily DBOS job (refresh Instagram tokens once 30 days old, Google tokens as needed, read the counts, mark a connection expired and tell the creator), and the verified figure beside the stated one on the Passport and in search.
+
+## D-135: The public Passport shows a connected account as control, never a count
+- Date: 2026-10-26
+- Approved by: Adhi, in this session: "A", to the decision raised while building item 29's second piece. **Not reviewed by the other founder** (D-051).
+- Context: D-042 keeps follower counts off the public Passport, since they are the easiest number to fake and repeating ours lends it our name. Item 29's proposal said the Passport would show the verified count. A count read from the platform is real, but bought followers still inflate it, so D-042's reason still partly holds.
+- Options considered: A) the public Passport shows only "connected", the platform, the handle and since when; signed-in brands see the platform's count beside the stated one (search, saved lists, "like my best", the media kit). B) the public Passport also shows the count, dated.
+- Chosen: A.
+- Reason: proving control of the channel is what the public needs; the count stays for signed-in brands, who also see the delivery record a bought audience cannot fake. D-042 stands.
+- Consequences / follow-ups:
+  1. `PublicCreatorRead.connected_accounts`: platform, handle, `connected_since`; never a count. `MediaKitRead.connected_accounts` and each search channel's `verified_followers` and `verified_as_of` carry the count, beside `followers`, never instead.
+  2. An expired connection shows nowhere. Item 29's daily job (`me.connection_jobs`) renews tokens, reads the counts, and expires a connection the platform refuses, telling its creator (`connection_expired`, migration `3e711c2efcc6`).
+  3. Item 29 counts as built (`docs/BACKEND_COMPLETE.md` section 1): only Meta App Review, Google verification and the connect notice remain, and they only switch it on.
+
+## D-136: Feedback on a finished deal, revealed only when both sides have answered (item 77)
+- Date: 2026-10-26
+- Approved by: Adhi, in this session: "all as recommended", to the proposal of items 77, 27 and 11 with their dimensions and choices. **Not reviewed by the other founder** (D-051).
+- Context: the records say what happened; they cannot say whether a brief was clear or a creator was easy to work with. Reviews usually break by retaliation, by being bought, or by being buried. Airbnb and Upwork answer retaliation with 14-day double-blind reviews (read 26 October 2026, `docs/COMPETITIVE_LANDSCAPE.md` section 4).
+- Options considered: (a) A) three fixed questions, 1 to 5; B) free stars. (b) A) a 14-day window; B) 30 days.
+- Chosen: A and A.
+- Reason: fixed questions are comparable and harder to game; 14 days is long enough to answer and short enough to remember (aA, bA).
+- Consequences / follow-ups:
+  1. `GET` and `POST /api/v1/deal-memos/{memo_id}/feedback`: the deal's two parties; once a side, within 14 days of the deal finishing (paid and confirmed, or barter with its work approved); `feedback_closed` otherwise. Scores `brief`, `reliability`, `easy`, 1 to 5, read for whoever is answered about, and an optional note of at most 500 characters, a brand's flagged for fee requests. 50 a day per account.
+  2. Neither side's answer is seen, by the other side, the profile figures, the notes lists or the other side's export, until both answered or the window closed (`feedback_rules.revealed`, with property tests; asked in SQL by `feedback_service._shown`). A person always sees their own.
+  3. `deal_feedback` is sealed like deal notes: triggers refuse UPDATE, DELETE and TRUNCATE, and the app's role may only read and add; each answer is also sealed onto the deal record (`feedback_given`, with its fingerprint). The other side is told an answer exists (`feedback_received`), never what it says.
+  4. `GET /api/v1/creators/{creator_id}/feedback` (brands, or the creator) and `GET /api/v1/brands/{brand_id}/feedback` (anyone signed in): averages of revealed answers, null below three, with the number of answers and of different partners; `.../feedback/notes` pages the revealed notes, each beside the subject's own words on that deal.
+  5. Kept as a deal record on deletion (D-122); in both exports, the other side's once revealed. Migration `a2a642dc46be`; its downgrade refuses while any feedback or feedback entry exists. Whether a note may be removed, and on what grounds, is a legal.md Confirm item.
+
+## D-137: Rate limits count per route, so every ceiling holds per account
+- Date: 2026-10-26
+- Approved by: Adhi, in this session: "Count per route (Recommended)", to the decision raised when building item 77 found the gap. **Not reviewed by the other founder** (D-051).
+- Context: slowapi counts a limit per URL path by default (`key_style="url"`). A route with an id in its path, such as `/campaigns/{campaign_id}/invitations`, had a fresh counter for every campaign, so each daily ceiling held per object, not per account: a brand could send 100 invitations a day on each of many campaigns, against trust-and-safety.md rule 2. `tests/modules/test_daily_ceilings.py` checked that the ceilings were registered, never that they held across objects.
+- Options considered: A) count per route (`key_style="endpoint"`), every limit across every object; B) only the daily ceilings route-wide, the minute limits per path; C) leave it and correct the documents.
+- Chosen: A.
+- Reason: one counting rule, and every documented ceiling then means what it says.
+- Consequences / follow-ups:
+  1. `app/core/rate_limit.py` sets `key_style="endpoint"`. Per-minute limits are stricter too: 60 reads a minute of one route across all deals, not per deal.
+  2. `test_a_limit_holds_across_every_object_its_route_names` proves a route's limit holds across two deals, and was seen failing with the old setting.
+  3. Every ceiling in security.md section 5 and trust-and-safety.md section 3 now holds as written; no limit value changed.
+
+## D-138: Scoped tokens for assistants and agents (item 11)
+- Date: 2026-10-27
+- Approved by: Adhi, in this session: "all as recommended", to the proposal of items 77, 27 and 11 with their dimensions and choices; then "Harden (Recommended)", to the hardening raised before building. **Not reviewed by the other founder** (D-051).
+- Context: assistants and agents (Claude, ChatGPT, MCP clients) will act for people through our API. Handing one a login's token would hand it everything, money and account control included. GitHub's fine-grained tokens are the model: one owner, chosen permissions, an expiry (GitHub's docs, read 27 October 2026, allow 1 to 366 days or none, and 50 tokens an account). Item 41, an MCP server, will follow the MCP authorization spec of 2026-07-28 (OAuth 2.1, RFC 8707 resource indicators), read 26 October 2026.
+- Options considered: (a) A) five scopes to start, more by decision; B) one broad read-all scope. (b) A) at most 90 days; B) no expiry. (c) Hardening: A) a step-up code to make one, a notice nobody can mute, every token ended by logging out everywhere, a phone change and deletion, the account's own rate limits; B) none of these.
+- Chosen: A, A and A.
+- Reason: least privilege, and no token that lives forever. A token is a way to keep access to an account, so making one is guarded like the other risky changes, and its owner always learns of it.
+- Consequences / follow-ups:
+  1. `POST /api/v1/me/agent-tokens` makes a token with a name, scopes and 1 to 90 days, proven by a step-up code for `create_agent_token` bound to exactly its scopes; the value is `nct_` and 256 random bits, shown in that answer only, sent with `Cache-Control: no-store`, and never replayed from the idempotency store. Brands and creators only: no admin token exists. `GET` lists working tokens with their last use; `DELETE /api/v1/me/agent-tokens/{token_id}` revokes one with no code.
+  2. Scopes: `deals:read` (the person's deals and their terms, notes, proof, feedback, calendar), `campaigns:read` (campaigns and applications as the person sees them), `applications:write` (applying, withdrawing, declining an invitation, shortlisting and turning down; never accepting an application or an invitation), `notes:write`, `alerts:write`. `auth/agent_scopes.py` lists each route by its method and path template; every other route answers 403 `agent_scope_missing`, denied by default, and no route is open to every token. A token reads a deal's terms and where it stands: its stage (payment due, or finished once confirmed), whether a dispute is open, and the calendar's "payment due" while it is. No scope reaches a payment's details or a dispute's content (the deal record and the campaign report included), a UPI ID, a counter-offer, an address, the person's phone number (so not `GET /auth/me`), passkeys, sessions, step-up, exports, deletion, devices, blocks, notification settings, tokens themselves, or anything an admin does. `tests/modules/auth/test_agent_scopes.py` calls every route of the API with a token holding every scope, and reads every listed route's response model, computed fields included, refusing any field named as one of these or left free-form; a second test proves that check flags each route taken out.
+  3. Only an HMAC of each token is stored, keyed by `OTP_HASH_KEY` under its own label, so rotating that key ends every token (`docs/INCIDENT_RESPONSE.md`). A token is checked on every request with its account's suspension and deletion; `last_used_at` is written at most once a minute, and only for a request that passed every check.
+  4. The owner is told by `agent_token_created`, which cannot be muted. Logging out everywhere, and so a phone change, revokes every token, as suspension does, so restoring an account taken over never brings its tokens back; deletion erases them. Tokens share the account's rate limits.
+  5. Secret scanning: `.gitleaks.toml` adds a rule for `nct_` tokens to Gitleaks' own, so one committed by mistake fails CI.
+  6. Migration `2de4ccbd813c`: `agent_token`, and the step-up actions and notification types widened; its downgrade refuses while any token exists. In the export without its hash; erased with the account.
+  7. Measured locally on the seeded data, 300 requests each, 27 October 2026, after the review's fixes: `GET /api/v1/campaigns/discover` with an assistant's token p95 45.0 ms; the token list (25 tokens, a page of 20) 11.6 ms; a refusal 10.0 ms; `GET /api/v1/auth/me` with a login's token 9.1 ms, and refused to an assistant's in 15.1 ms. All inside the 300 ms read budget.
+  8. **Two independent reviews** (27 October 2026), by separate reviewers told to find faults. The second, of the fixes, found the wording above had said "no payment record" where a token still reads the stage, and that the field check would have missed the deal record itself; both corrected. The first found before merge: the deal record, the campaign report and `GET /auth/me` handed an assistant payment records and the phone number; suspension did not revoke tokens, so a restore brought them back; `accept-invitation` was listed though accepting binds the person, and the test meant to catch it read only the path's end; the answer carrying a token lacked `no-store`; and a refused call was written as a use. Each is fixed above with a test seen to fail without its fix. Still open, each a proposal of its own: the step-up code binds the scopes but not the lifetime (a code for a 1-day token can make a 90-day one); a stored idempotent answer is replayed before the token is checked (the pattern predates this item, for every route); a notice nobody can mute can still be marked read by whoever holds the session.
+  9. Not built: a limit on how many tokens an account holds (GitHub's is 50), and a login at least a week old before making one (D-109), which would stop a SIM swapper making one on the day; each is a proposal of its own.
+
+## D-139: Twelve dimensions, five raises to the bar, and every md file raised again
+- Date: 2026-10-27
+- Approved by: Adhi, in this session: "A and even more i need the standards to be skyhigh", to the decision on adding reliability and maintainability to the ten dimensions; then "yes to all and all md files standard also should be sky high", to the five raises and a pass over every md file. **Not reviewed by the other founder** (D-051).
+- Context: Adhi asked for every feature to be perfect in every way. Weighed against ISO/IEC 25010 (product quality) and AWS Well-Architected (from knowledge; re-read when the standards pass reaches them), the ten dimensions of D-098 left reliability and operations, and maintainability and change, to habit. Item 11's own report showed the gap: its query count was tested but its response times had not been measured until asked.
+- Options considered: (a) A) twelve dimensions; B) keep ten. (b) The five raises, each on or off: an independent review of every change; mutation testing as a merge gate with a floor per module; a STRIDE threat model in every proposal; every new route's p95 measured and reported; a restore drill on a schedule. (c) A pass over every md file to the best published practice, or none.
+- Chosen: A; all five; the pass.
+- Reason: reliability and safe change are where a product loses people's trust after launch, and each raise turns something done by habit into something checked.
+- Consequences / follow-ups:
+  1. `CLAUDE.md` section 5: twelve dimensions, adding Reliability and Maintainability; Security asks for a STRIDE threat model; Performance for the measured p95. The same twelve are the audit of every feature built before them, one module at a time, money and trust first (`payment_status`, `deal_memo`, `disputes`), each gap a fix brought back for approval.
+  2. `CLAUDE.md` section 6 step 6 and section 8: the measured p95, the mutation floor and an independent review in every change. The review is a separate reviewer told to find faults, and never counts as the other founder's.
+  3. **Still to build, each in its own change:** the mutation gate in CI (an infrastructure change, approved here; its floor per module is set from a measured baseline, never guessed); the restore drill (locally now, on AWS once the account exists, in `docs/INCIDENT_RESPONSE.md`).
+  4. `docs/README.md` section 0 gains point 9: each standard names the strongest outside benchmark for its area, says where we meet, beat or fall short of it, and raises a number only once a tool shows it can be held. Every md file is raised again, one at a time, each coming back to Adhi before it binds.

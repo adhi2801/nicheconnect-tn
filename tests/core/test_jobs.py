@@ -17,9 +17,29 @@ from app.core import jobs
 from app.core.config import settings
 from app.db.session import SessionLocal
 from app.main import app
-from app.modules.deal_memo import anchor_jobs, anchor_service
+from app.modules.admin import report_clock_jobs
+from app.modules.campaigns import alert_jobs
+from app.modules.deal_memo import (
+    anchor_jobs,
+    anchor_service,
+    proof_cleaning_jobs,
+    proof_reading_jobs,
+)
 from app.modules.deal_memo.anchor_models import DealRecordCheckpoint, DealRecordTimestamp
 from app.modules.deal_memo.timestamp_authority import Stamp
+from app.modules.me import (
+    account_deletion_jobs,
+    connection_jobs,
+    data_export_jobs,
+    passkey_jobs,
+    phone_change_jobs,
+)
+from app.modules.profiles import brand_domain_jobs
+from app.modules.profiles.domain_lookup import FakeDomainLookup
+
+# The owner: DBOS makes its own schema here, and the record is cleared with
+# the triggers set aside, neither of which the app's login may do (item 97).
+pytestmark = pytest.mark.owner
 
 TEST_SCHEMA = "dbos_test"
 # 18:40 UTC on 1 January 2020 is 00:10 on 2 January in Tamil Nadu.
@@ -97,6 +117,93 @@ def test_the_workflow_writes_and_stamps_the_days_checkpoint(launched):
     assert sorted(authorities) == ["digicert", "sectigo"]
 
 
+def test_proof_files_are_cleaned_every_minute_with_no_backfill(launched):
+    """A missed minute needs no replay: the next run takes whatever is queued."""
+    schedule = DBOS.get_schedule(proof_cleaning_jobs.SCHEDULE_NAME)
+
+    assert schedule is not None
+    assert schedule["schedule"] == proof_cleaning_jobs.EVERY_MINUTE_CRON == "* * * * *"
+
+
+def test_the_cleaning_workflow_runs_through_dbos(launched, monkeypatch):
+    runs = []
+    monkeypatch.setattr(
+        proof_cleaning_jobs,
+        "run_cleaning",
+        lambda scheduled_at: runs.append(scheduled_at),
+    )
+
+    proof_cleaning_jobs.clean_proof_files(SCHEDULED, None)
+
+    assert runs == [SCHEDULED]
+
+
+def test_a_cleaning_run_with_nothing_queued_does_nothing(launched):
+    run = proof_cleaning_jobs.run_cleaning(SCHEDULED)
+
+    assert run.cleaned == run.rejected == 0
+
+
+def test_proof_files_are_read_every_minute_with_no_backfill(launched):
+    schedule = DBOS.get_schedule(proof_reading_jobs.SCHEDULE_NAME)
+
+    assert schedule is not None
+    assert schedule["schedule"] == proof_reading_jobs.EVERY_MINUTE_CRON == "* * * * *"
+
+
+def test_the_reading_workflow_runs_through_dbos(launched, monkeypatch):
+    runs = []
+    monkeypatch.setattr(
+        proof_reading_jobs,
+        "run_reading",
+        lambda scheduled_at: runs.append(scheduled_at),
+    )
+
+    proof_reading_jobs.read_proof_files(SCHEDULED, None)
+
+    assert runs == [SCHEDULED]
+
+
+def test_a_reading_run_while_switched_off_does_nothing(launched):
+    """The default until the validation pack answers (D-070): no reader, no call."""
+    assert settings.proof_reading_enabled is False
+
+    run = proof_reading_jobs.run_reading(SCHEDULED)
+
+    assert run.read == run.no_numbers == run.failed == run.skipped == 0
+    assert run.stopped_at_limit is False
+
+
+def test_report_deadlines_are_checked_every_five_minutes_with_no_backfill(launched):
+    """The shortest clock is 2 hours and the warning comes 30 minutes before
+    it, so a 5-minute run warns 25 to 30 minutes ahead (item 51)."""
+    schedule = DBOS.get_schedule(report_clock_jobs.SCHEDULE_NAME)
+
+    assert schedule is not None
+    assert (
+        schedule["schedule"] == report_clock_jobs.EVERY_FIVE_MINUTES_CRON == "*/5 * * * *"
+    )
+
+
+def test_the_warning_workflow_runs_through_dbos(launched, monkeypatch):
+    runs = []
+    monkeypatch.setattr(
+        report_clock_jobs,
+        "run_warnings",
+        lambda scheduled_at: runs.append(scheduled_at),
+    )
+
+    report_clock_jobs.warn_about_report_deadlines(SCHEDULED, None)
+
+    assert runs == [SCHEDULED]
+
+
+def test_a_warning_run_with_nothing_due_does_nothing(launched):
+    run = report_clock_jobs.run_warnings(SCHEDULED)
+
+    assert run.due_soon == run.overdue == 0
+
+
 def test_dbos_keeps_its_state_in_its_own_schema(launched):
     with SessionLocal() as db:
         tables = db.scalars(
@@ -130,3 +237,191 @@ def test_the_app_starts_and_stops_jobs_when_asked(monkeypatch):
         assert calls == ["start"]
 
     assert calls == ["start", "stop"]
+
+
+def test_brand_domains_are_checked_every_minute_with_no_backfill(launched):
+    """Item 74: checks a brand asked for, and verified domains a day after their last."""
+    schedule = DBOS.get_schedule(brand_domain_jobs.SCHEDULE_NAME)
+
+    assert schedule is not None
+    assert schedule["schedule"] == brand_domain_jobs.EVERY_MINUTE_CRON == "* * * * *"
+    assert schedule["automatic_backfill"] is False
+
+
+def test_the_domain_checking_workflow_runs_through_dbos(launched, monkeypatch):
+    runs = []
+    monkeypatch.setattr(
+        brand_domain_jobs,
+        "run_checks",
+        lambda scheduled_at: runs.append(scheduled_at),
+    )
+
+    brand_domain_jobs.check_brand_domains(SCHEDULED, None)
+
+    assert runs == [SCHEDULED]
+
+
+def test_a_domain_run_with_nothing_due_asks_nobody(launched, monkeypatch):
+    fake = FakeDomainLookup()
+    monkeypatch.setattr(brand_domain_jobs, "get_domain_lookup", lambda: fake)
+
+    run = brand_domain_jobs.run_checks(SCHEDULED)
+
+    assert run.checked == run.verified == run.lapsed == 0
+    assert fake.asked == []
+
+
+def test_phone_changes_are_made_every_minute_with_no_backfill(launched):
+    """Item 80: a change is made within a minute of its 72 hours ending."""
+    schedule = DBOS.get_schedule(phone_change_jobs.SCHEDULE_NAME)
+
+    assert schedule is not None
+    assert schedule["schedule"] == phone_change_jobs.EVERY_MINUTE_CRON == "* * * * *"
+    assert schedule["automatic_backfill"] is False
+
+
+def test_the_phone_change_workflow_runs_through_dbos(launched, monkeypatch):
+    runs = []
+    monkeypatch.setattr(
+        phone_change_jobs, "run_changes", lambda scheduled_at: runs.append(scheduled_at)
+    )
+
+    phone_change_jobs.make_phone_changes(SCHEDULED, None)
+
+    assert runs == [SCHEDULED]
+
+
+def test_a_phone_change_run_with_nothing_due_changes_nothing(launched):
+    run = phone_change_jobs.run_changes(SCHEDULED)
+
+    assert run.due == run.made == run.dropped == 0
+
+
+def test_data_exports_are_built_every_minute_with_no_backfill(launched):
+    """D-111: an export asked for is ready within about a minute."""
+    schedule = DBOS.get_schedule(data_export_jobs.SCHEDULE_NAME)
+
+    assert schedule is not None
+    assert schedule["schedule"] == data_export_jobs.EVERY_MINUTE_CRON == "* * * * *"
+    assert schedule["automatic_backfill"] is False
+
+
+def test_the_export_workflow_runs_through_dbos(launched, monkeypatch):
+    runs = []
+    monkeypatch.setattr(
+        data_export_jobs, "run_exports", lambda scheduled_at: runs.append(scheduled_at)
+    )
+
+    data_export_jobs.build_data_exports(SCHEDULED, None)
+
+    assert runs == [SCHEDULED]
+
+
+def test_an_export_run_with_nothing_asked_builds_nothing(launched):
+    run = data_export_jobs.run_exports(SCHEDULED)
+
+    assert run.built == run.failed == run.expired == 0
+
+
+def test_passkey_resets_are_settled_every_minute_with_no_backfill(launched):
+    """D-113: a reset cancelled by a sign-in is told within a minute."""
+    schedule = DBOS.get_schedule(passkey_jobs.SCHEDULE_NAME)
+
+    assert schedule is not None
+    assert schedule["schedule"] == passkey_jobs.EVERY_MINUTE_CRON == "* * * * *"
+    assert schedule["automatic_backfill"] is False
+
+
+def test_the_passkey_workflow_runs_through_dbos(launched, monkeypatch):
+    runs = []
+    monkeypatch.setattr(
+        passkey_jobs, "run_resets", lambda scheduled_at: runs.append(scheduled_at)
+    )
+
+    passkey_jobs.settle_passkey_resets(SCHEDULED, None)
+
+    assert runs == [SCHEDULED]
+
+
+def test_a_passkey_run_with_nothing_waiting_resets_nothing(launched):
+    run = passkey_jobs.run_resets(SCHEDULED)
+
+    assert run.reset == run.cancelled == 0
+
+
+def test_account_deletions_run_every_15_minutes_with_no_backfill(launched):
+    """D-122: an account is erased within 15 minutes of its 30 days ending."""
+    schedule = DBOS.get_schedule(account_deletion_jobs.SCHEDULE_NAME)
+
+    assert schedule is not None
+    assert (
+        schedule["schedule"]
+        == account_deletion_jobs.EVERY_15_MINUTES_CRON
+        == "*/15 * * * *"
+    )
+    assert schedule["automatic_backfill"] is False
+
+
+def test_the_deletion_workflow_runs_through_dbos(launched, monkeypatch):
+    runs = []
+    monkeypatch.setattr(
+        account_deletion_jobs,
+        "run_deletions",
+        lambda scheduled_at: runs.append(scheduled_at),
+    )
+
+    account_deletion_jobs.erase_accounts(SCHEDULED, None)
+
+    assert runs == [SCHEDULED]
+
+
+def test_a_deletion_run_with_nothing_due_erases_nothing(launched):
+    run = account_deletion_jobs.run_deletions(SCHEDULED)
+
+    assert run.due == run.erased == run.held == run.waiting_for_export == 0
+
+
+def test_campaign_alerts_are_sent_every_minute_with_no_backfill(launched):
+    """D-130: a creator hears of a fitting campaign within about a minute."""
+    schedule = DBOS.get_schedule(alert_jobs.SCHEDULE_NAME)
+
+    assert schedule is not None
+    assert schedule["schedule"] == alert_jobs.EVERY_MINUTE_CRON == "* * * * *"
+    assert schedule["automatic_backfill"] is False
+
+
+def test_the_alert_workflow_runs_through_dbos(launched, monkeypatch):
+    runs = []
+    monkeypatch.setattr(
+        alert_jobs, "run_sending", lambda scheduled_at: runs.append(scheduled_at)
+    )
+
+    alert_jobs.send_campaign_alerts(SCHEDULED, None)
+
+    assert runs == [SCHEDULED]
+
+
+def test_connections_are_refreshed_each_morning_with_no_backfill(launched):
+    """D-134: 02:30 UTC, 08:00 in Tamil Nadu; a missed day needs no replay."""
+    schedule = DBOS.get_schedule(connection_jobs.SCHEDULE_NAME)
+
+    assert schedule is not None
+    assert schedule["schedule"] == connection_jobs.DAILY_CRON == "30 2 * * *"
+    assert schedule["automatic_backfill"] is False
+
+
+def test_the_refresh_workflow_runs_through_dbos(launched, monkeypatch):
+    runs = []
+    monkeypatch.setattr(
+        connection_jobs, "run_refresh", lambda scheduled_at: runs.append(scheduled_at)
+    )
+
+    connection_jobs.refresh_connections(SCHEDULED, None)
+
+    assert runs == [SCHEDULED]
+
+
+def test_a_refresh_run_while_switched_off_reads_nothing(launched):
+    run = connection_jobs.run_refresh(SCHEDULED)
+
+    assert run.read == run.expired == run.unavailable == 0

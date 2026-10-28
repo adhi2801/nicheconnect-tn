@@ -12,10 +12,12 @@ from tests.deal_flow import (
     brand_user,
     creator_user,
 )
+from tests.query_counts import queries_for
+from tests.step_up import download_export
 
 RRN = "412345678901"
 REASON = "The payment was marked sent on 8 September but nothing has reached my account."
-RECEIPT = "https://example.com/upi-receipt.png"
+RECEIPT = "https://drive.google.com/file/d/1UpiReceipt/view"
 
 
 def dispute_url(memo_id: str) -> str:
@@ -140,7 +142,7 @@ def test_both_sides_export_the_same_timeline(client, deal):
     dispute_id = raise_dispute(client, deal).json()["id"]
 
     exports = {
-        who: client.get("/api/v1/me/export", headers=deal[who].headers).json()["data"]
+        who: download_export(client, deal[who].headers).json()["data"]
         for who in ("creator", "brand")
     }
 
@@ -357,3 +359,41 @@ def test_an_open_dispute_holds_the_payment_short_of_unpaid(client, db, clock):
 
     assert payment["has_open_dispute"] is True
     assert payment["state"] == "late"
+
+
+# --- cost ------------------------------------------------------------------
+
+
+def test_a_longer_timeline_costs_no_more_queries(client, deal):
+    raise_dispute(client, deal)
+    url = dispute_url(deal["memo_id"])
+    one_entry = queries_for(client, url, deal["creator"].headers)
+
+    for who in ("brand", "creator", "brand", "creator"):
+        deal["clock"].advance(timedelta(hours=1))
+        added = client.post(
+            f"{url}/entries",
+            json={"note": f"More for the record, from the {who}."},
+            headers=deal[who].headers,
+        )
+        assert added.status_code == 201, added.text
+    five_entries = queries_for(client, url, deal["creator"].headers)
+
+    timeline = client.get(url, headers=deal["creator"].headers).json()["timeline"]
+    assert len(timeline) == 5
+    assert five_entries == one_entry
+
+
+def test_evidence_off_the_known_hosts_is_refused(client, deal):
+    raise_dispute(client, deal)
+
+    response = client.post(
+        f"{dispute_url(deal['memo_id'])}/entries",
+        json={
+            "note": "Receipt here.",
+            "evidence_url": "https://upi-receipt-check.in/r/1",
+        },
+        headers=deal["brand"].headers,
+    )
+
+    assert response.status_code == 422

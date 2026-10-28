@@ -1,3 +1,7 @@
 # Signed RFC 3161 timestamp tokens (D-060). One changed byte breaks the
 # signature, so git must never touch their line endings or diff them as text.
 *.tsr binary
+
+# Unicode's confusables data (D-118), vendored byte for byte: its SHA-256 is
+# checked by tests/core/test_confusables.py, so git must never change it.
+app/core/unicode_data/*.txt -text

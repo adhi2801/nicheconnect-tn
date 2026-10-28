@@ -13,7 +13,12 @@ from app.core.errors import ResponseDocs, problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount
-from app.modules.deal_memo import anchor_service, record_service
+from app.modules.deal_memo import (
+    anchor_service,
+    note_service,
+    record_service,
+    shipment_service,
+)
 from app.modules.deal_memo.dependencies import visible_memo_for_account
 from app.modules.deal_memo.exceptions import CheckpointNotFound
 from app.modules.deal_memo.schemas import (
@@ -65,6 +70,8 @@ def read_deal_record(
         intact=check.intact,
         first_broken_sequence=check.first_broken_sequence,
         terms_unchanged_since_accepted=check.terms_unchanged_since_accepted,
+        notes_unchanged=note_service.unchanged(db, memo),
+        shipment_unchanged=shipment_service.unchanged(db, memo),
         latest_seal=entries[-1].entry_hash.hex() if entries else None,
         entries=[
             DealRecordEntryRead(

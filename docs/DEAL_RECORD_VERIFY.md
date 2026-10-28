@@ -15,7 +15,7 @@ Either of these works:
 
 - `GET /api/v1/deal-memos/{memo_id}/record`, as the brand or the creator of
   that deal; or
-- your data export (`GET /api/v1/me/export`), section `deal_record`, which
+- your data export (`POST /api/v1/me/exports`, then its download, D-111), section `deal_record`, which
   holds the same entries for every deal you are part of.
 
 **Keep `latest_seal`.** It is the one number that lets you catch a rewrite
@@ -123,10 +123,18 @@ hashlib.sha256("412345678901".encode("utf-8")).hexdigest()
 ```
 
 `terms_sha256` covers the memo's terms, in this exact object, canonicalised
-as in section 2: `deliverables`, `fee_amount_paise`, `currency`,
-`cancellation_fee_paise`, `approval_window_days`, `payment_due_days`,
-`usage_rights_days`, `content_due_on` (as `YYYY-MM-DD`), `disclosure_required`
-and `extra_terms`.
+as in section 2. Which terms depends on the memo's `terms_version`, which
+your export shows for each memo (D-127):
+
+- **Version 1** (every memo made before 25 October 2026): `deliverables`,
+  `fee_amount_paise`, `currency`, `cancellation_fee_paise`,
+  `approval_window_days`, `payment_due_days`, `usage_rights_days`,
+  `content_due_on` (as `YYYY-MM-DD`), `disclosure_required` and
+  `extra_terms`. This never changes, so a version 1 seal verifies for ever.
+- **Version 2**: the same fields, plus `deliverable_items`, the memo's list of
+  deliverables in its agreed order, each line an object of exactly
+  `platform`, `format`, `quantity` and `note` (`null` when there is none). An
+  empty list is `[]`.
 
 `actor_account_sha256` is the fingerprint of the acting account's id. Hash
 your own account id the same way to find the entries you made. The other

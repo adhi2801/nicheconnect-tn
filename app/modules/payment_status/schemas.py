@@ -9,6 +9,7 @@ from pydantic_core import PydanticCustomError
 
 from app.core.literals import ensure_same_values
 from app.core.taxonomy import CURRENCY
+from app.modules.payment_status.listing import VIEWS, Bucket, PaymentRow, PaymentTotals
 from app.modules.payment_status.models import (
     PAYMENT_METHODS,
     REFERENCE_MAX_LENGTH,
@@ -26,6 +27,14 @@ from app.modules.payment_status.service import (
     days_overdue,
     derive_state,
     is_auto_matchable,
+)
+from app.modules.profiles.brand_domain_models import BrandDomain
+from app.modules.profiles.brand_names import NameFlag
+from app.modules.profiles.schemas import (
+    BrandNameFlagRead,
+    VerifiedDomainRead,
+    to_brand_name_flag_read,
+    to_verified_domain_read,
 )
 
 PaymentMethod = Literal["upi", "bank_transfer", "cash"]
@@ -137,9 +146,36 @@ class BrandReliabilityRead(BaseModel):
     currently_overdue: int
     paid_on_time_share: float | None
     median_days_to_pay: float | None
+    distinct_creators: int = Field(
+        description=(
+            "How many different creators the settled deals were with. Show it beside "
+            "the figures: many deals with one creator say less than the same number "
+            "across many"
+        )
+    )
+    verified_domain: VerifiedDomainRead | None = Field(
+        default=None,
+        description=(
+            "The website domain the brand proved it controls, checked daily "
+            "(item 74); null when it has none. A fact about the domain, not a "
+            "verdict on the brand"
+        ),
+    )
+    brand_name_flag: BrandNameFlagRead | None = Field(
+        default=None,
+        description=(
+            "Set when the brand's name looks like a protected brand's whose domain "
+            "it has not verified, or mixes look-alike letters (item 75). Show it "
+            "beside the brand's name; null when there is nothing to say"
+        ),
+    )
 
 
-def to_reliability_read(record: ReliabilityRecord) -> BrandReliabilityRead:
+def to_reliability_read(
+    record: ReliabilityRecord,
+    domain: BrandDomain | None = None,
+    name_flag: NameFlag | None = None,
+) -> BrandReliabilityRead:
     return BrandReliabilityRead(
         brand_id=record.brand_id,
         status=record.status,
@@ -149,6 +185,9 @@ def to_reliability_read(record: ReliabilityRecord) -> BrandReliabilityRead:
         currently_overdue=record.currently_overdue,
         paid_on_time_share=record.paid_on_time_share,
         median_days_to_pay=record.median_days_to_pay,
+        distinct_creators=record.distinct_creators,
+        verified_domain=None if domain is None else to_verified_domain_read(domain),
+        brand_name_flag=None if name_flag is None else to_brand_name_flag_read(name_flag),
     )
 
 
@@ -171,7 +210,7 @@ class BulkMarkPaidRequest(BaseModel):
     )
 
     @model_validator(mode="after")
-    def each_deal_once(self) -> "BulkMarkPaidRequest":
+    def each_deal_once(self) -> BulkMarkPaidRequest:
         # Two rows for one deal would make "which reference is the real one"
         # a question the order of the list answers. Refuse it instead.
         memo_ids = [row.memo_id for row in self.payments]
@@ -205,3 +244,71 @@ class BulkMarkPaidRead(BaseModel):
     recorded: int
     refused: int
     results: list[BulkMarkPaidResult]
+
+
+# --- every payment across a party's deals (D-075) -----------------------------------------
+
+PaymentView = Literal["to_pay", "awaiting_confirmation", "finished"]
+
+ensure_same_values("PaymentView", PaymentView, VIEWS)
+
+
+class PaymentListItem(PaymentRead):
+    """A payment record plus the deal it belongs to, so a list needs no
+    second call per row."""
+
+    campaign_id: uuid.UUID
+    campaign_title: str
+    creator_id: uuid.UUID
+    creator_handle: str
+    creator_display_name: str
+    brand_id: uuid.UUID
+    brand_name: str
+
+
+def to_list_item(
+    row: PaymentRow, today: date, *, has_open_dispute: bool
+) -> PaymentListItem:
+    return PaymentListItem(
+        **to_read(row.payment, today, has_open_dispute=has_open_dispute).model_dump(),
+        campaign_id=row.campaign_id,
+        campaign_title=row.campaign_title,
+        creator_id=row.creator_id,
+        creator_handle=row.creator_handle,
+        creator_display_name=row.creator_display_name,
+        brand_id=row.brand_id,
+        brand_name=row.brand_name,
+    )
+
+
+class PaymentBucketRead(BaseModel):
+    count: int = Field(ge=0)
+    amount_paise: int = Field(ge=0)
+    currency: str = CURRENCY
+
+
+class PaymentTotalsRead(BaseModel):
+    """How many payments, and how much, in each view, as of `as_of`.
+
+    `overdue` is the part of `to_pay` past its due date. It is always
+    returned, zero included, so a screen can never hide it.
+    """
+
+    as_of: date
+    to_pay: PaymentBucketRead
+    overdue: PaymentBucketRead
+    awaiting_confirmation: PaymentBucketRead
+    finished: PaymentBucketRead
+
+
+def to_totals_read(totals: PaymentTotals, today: date) -> PaymentTotalsRead:
+    def bucket(found: Bucket) -> PaymentBucketRead:
+        return PaymentBucketRead(count=found.count, amount_paise=found.amount_paise)
+
+    return PaymentTotalsRead(
+        as_of=today,
+        to_pay=bucket(totals.to_pay),
+        overdue=bucket(totals.overdue),
+        awaiting_confirmation=bucket(totals.awaiting_confirmation),
+        finished=bucket(totals.finished),
+    )

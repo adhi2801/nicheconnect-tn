@@ -1,27 +1,45 @@
 """Request and response shapes for deal memos."""
 
+import re
 import uuid
 from datetime import date, datetime
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 from pydantic_core import PydanticCustomError
 
 from app.core.literals import ensure_same_values
 from app.core.taxonomy import CURRENCY
+from app.core.text_flags import FieldFlag, field_flags
+from app.modules.campaigns.schemas import DeliverableItems, DeliverableRead
+from app.modules.deal_memo.content_rights import RIGHTS_STATES
 from app.modules.deal_memo.delivery_record import (
     HAS_HISTORY,
     NO_HISTORY_YET,
     DeliveryRecord,
 )
+from app.modules.deal_memo.feedback_models import FEEDBACK_NOTE_MAX_LENGTH, FEEDBACK_SIDES
+from app.modules.deal_memo.feedback_rules import SCORE_MAX, SCORE_MIN
 from app.modules.deal_memo.models import (
     CANCELLATION_KINDS,
+    CHANGE_REQUEST_MAX_LENGTH,
+    CHANGE_REQUEST_MIN_LENGTH,
     DELIVERABLES_MAX_LENGTH,
     MAX_USAGE_RIGHTS_DAYS,
     MAX_WINDOW_DAYS,
     MEMO_STATUSES,
     TERMS_MAX_LENGTH,
+    DealMemo,
 )
+from app.modules.deal_memo.note_models import NOTE_MAX_LENGTH, NOTE_SIDES
+from app.modules.deal_memo.response_times import MIN_EXAMPLES, ResponseTime
+from app.modules.deal_memo.shipment_models import (
+    CARRIERS,
+    INDIA_POST_PATTERN,
+    TRACKING_MAX_LENGTH,
+    TRACKING_PATTERN,
+)
+from app.modules.deal_memo.stage import DEAL_SIDES, DEAL_STAGES, DealStage
 
 MemoStatus = Literal[
     "draft", "sent", "change_requested", "accepted", "declined", "cancelled"
@@ -57,6 +75,13 @@ class MemoCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     deliverables: Deliverables
+    deliverable_items: DeliverableItems | None = Field(
+        default=None,
+        description=(
+            "The deliverables as a list (D-127). Left out, the campaign's own "
+            "list is copied; an empty list means none"
+        ),
+    )
     # Required for paid and local-business campaigns, refused for barter.
     # The campaign decides, so the service checks it, not this schema.
     fee_amount_paise: Paise | None = None
@@ -75,6 +100,7 @@ class MemoUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     deliverables: Deliverables | None = None
+    deliverable_items: DeliverableItems | None = None
     fee_amount_paise: Paise | None = None
     cancellation_fee_paise: CancellationFee | None = None
     approval_window_days: WindowDays | None = None
@@ -85,7 +111,7 @@ class MemoUpdate(BaseModel):
     extra_terms: ExtraTerms | None = None
 
     @model_validator(mode="after")
-    def at_least_one_field(self) -> "MemoUpdate":
+    def at_least_one_field(self) -> MemoUpdate:
         if not self.model_fields_set:
             raise PydanticCustomError("empty_update", "Send at least one field to change")
         return self
@@ -99,21 +125,27 @@ class ChangeRequest(BaseModel):
     message: Annotated[
         str,
         Field(
-            min_length=5,
-            max_length=1000,
+            min_length=CHANGE_REQUEST_MIN_LENGTH,
+            max_length=CHANGE_REQUEST_MAX_LENGTH,
             examples=["Can we make it 2 reels instead of 3, for the same fee?"],
         ),
     ]
 
 
-class MemoRead(BaseModel):
-    """A memo as the API returns it."""
+class MemoFields(BaseModel):
+    """What a memo says by itself; `MemoRead` adds the figure agreed before it."""
 
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
     application_id: uuid.UUID
     deliverables: str
+    deliverable_items: list[DeliverableRead] = Field(
+        description=(
+            "The deliverables as a list, in order (D-127). Sealed with the "
+            "terms from 25 October 2026; empty on memos made before"
+        )
+    )
     fee_amount_paise: int | None
     currency: Literal["INR"] = CURRENCY
     cancellation_fee_paise: int
@@ -130,8 +162,106 @@ class MemoRead(BaseModel):
     work_started_at: datetime | None
     cancelled_at: datetime | None
     cancellation_kind: CancellationKind | None
+    declined_at: datetime | None = Field(
+        description=(
+            "When the creator declined. Null otherwise, and on memos declined "
+            "before 12 October 2026, when it was first kept"
+        )
+    )
+    change_request_message: str | None = Field(
+        description=(
+            "What the creator last asked to change, in their words; kept after "
+            "the memo is sent again. Null until a request, and on requests made "
+            "before 12 October 2026"
+        )
+    )
     created_at: datetime
     updated_at: datetime
+
+    @computed_field(  # type: ignore[prop-decorator]  # pydantic documents this
+        description=(
+            "Warnings on the free text above, worked out on every read: a request "
+            "for money from a creator, or contact details before a deal is agreed "
+            "(item 60). Show each beside its field; never hide the text"
+        )
+    )
+    @property
+    def text_flags(self) -> list[FieldFlag]:
+        # The brand writes the memo and the creator reads it: a request for a
+        # fee or deposit in its terms is the scam to catch. The two are
+        # already matched, so contact details are no longer a warning.
+        # `change_request_message` goes the other way, creator to brand,
+        # after they were matched: a creator naming a price is ordinary and
+        # contact is no longer a warning, so neither flag applies to it.
+        return field_flags(
+            {"deliverables": self.deliverables, "extra_terms": self.extra_terms},
+            money=True,
+            contact=False,
+        )
+
+
+class MemoRead(MemoFields):
+    """A memo as the API returns it."""
+
+    agreed_amount_paise: int | None = Field(
+        description=(
+            "The figure both sides agreed through a counter-offer on the "
+            "application (item 44), in paise; null when none was. It pre-filled "
+            "`fee_amount_paise`. When the two differ, show both: the creator "
+            "accepts the memo's fee, so they see the change before they do"
+        )
+    )
+
+
+def to_memo_read(memo: DealMemo, agreed_amount_paise: int | None) -> MemoRead:
+    return MemoRead(
+        **MemoFields.model_validate(memo).model_dump(),
+        agreed_amount_paise=agreed_amount_paise,
+    )
+
+
+DealStageName = Literal[
+    "draft",
+    "memo_sent",
+    "agreed",
+    "in_progress",
+    "payment",
+    "finished",
+    "declined",
+    "cancelled",
+]
+DealSide = Literal["brand", "creator"]
+
+ensure_same_values("DealStageName", DealStageName, DEAL_STAGES)
+ensure_same_values("DealSide", DealSide, DEAL_SIDES)
+
+
+class MemoWithStageRead(MemoRead):
+    """A memo, with where the deal stands and whose move it is (D-076).
+
+    Worked out from the memo, its proof and its payment as of the request,
+    never stored. The five stages a deal passes through are `memo_sent`,
+    `agreed`, `in_progress`, `payment`, `finished`; `draft`, `declined` and
+    `cancelled` sit outside them. A barter deal is `finished` once its work
+    is approved; a paid one only when the creator confirms the money arrived.
+    """
+
+    stage: DealStageName
+    waiting_on: DealSide | None = Field(
+        description="The side whose move it is; null once the deal has ended"
+    )
+    has_open_dispute: bool
+
+
+def with_stage(
+    memo: DealMemo, found: DealStage, agreed_amount_paise: int | None
+) -> MemoWithStageRead:
+    return MemoWithStageRead(
+        **to_memo_read(memo, agreed_amount_paise).model_dump(),
+        stage=found.stage,
+        waiting_on=found.waiting_on,
+        has_open_dispute=found.has_open_dispute,
+    )
 
 
 DeliveryStatus = Literal["new_creator_no_history_yet", "has_delivery_history"]
@@ -182,6 +312,12 @@ class CreatorDeliveryRead(BaseModel):
     )
     barter_deals_delivered: int
     barter_deals_not_delivered: int
+    distinct_brands: int = Field(
+        description=(
+            "How many different brands the completed deals were with. Show it beside "
+            "the figures: twelve deals with one brand say less than twelve across nine"
+        )
+    )
 
 
 def to_delivery_read(record: DeliveryRecord) -> CreatorDeliveryRead:
@@ -196,6 +332,7 @@ def to_delivery_read(record: DeliveryRecord) -> CreatorDeliveryRead:
         disclosure_confirmed_share=record.disclosure_confirmed_share,
         barter_deals_delivered=record.barter_deals_delivered,
         barter_deals_not_delivered=record.barter_deals_not_delivered,
+        distinct_brands=record.distinct_brands,
     )
 
 
@@ -248,6 +385,20 @@ class DealRecordRead(BaseModel):
     )
     terms_unchanged_since_accepted: bool | None = Field(
         description="Null until accepted; then whether today's terms are the accepted ones"
+    )
+    notes_unchanged: bool | None = Field(
+        default=None,
+        description=(
+            "Null when the deal has no notes; otherwise whether every note still "
+            "matches the fingerprint sealed for it (D-128)"
+        ),
+    )
+    shipment_unchanged: bool | None = Field(
+        default=None,
+        description=(
+            "Null when the deal has no shipment; otherwise whether its courier and "
+            "tracking number still match what was last sealed for them (D-131)"
+        ),
     )
     latest_seal: str | None = Field(description="Save this to detect a later rewrite")
     entries: list[DealRecordEntryRead]
@@ -302,3 +453,298 @@ class DealRecordProofRead(BaseModel):
         description="False while no authority has stamped the root yet: a visible gap"
     )
     timestamps: list[CheckpointTimestampRead]
+
+
+# --- typical response times (D-077) --------------------------------------------------------
+
+
+class ResponseTimeRead(BaseModel):
+    """How long one kind of answer usually takes, from the deal record.
+
+    `median_hours` is null until there are five examples (D-071). **Null
+    means "not enough to say" and must never be shown as zero.** `examples`
+    is always returned so the figure can be weighed.
+    """
+
+    examples: int = Field(ge=0)
+    median_hours: float | None
+    min_examples: int = Field(description="Examples needed before a figure is shown")
+
+
+def to_response_time_read(found: ResponseTime) -> ResponseTimeRead:
+    return ResponseTimeRead(
+        examples=found.examples,
+        median_hours=found.median_hours,
+        min_examples=MIN_EXAMPLES,
+    )
+
+
+class BrandResponseTimesRead(BaseModel):
+    """How long creators wait for this brand to decide on their work.
+
+    An approval by the clock counts, at the moment the window ended.
+    """
+
+    brand_id: uuid.UUID
+    work_reviewed: ResponseTimeRead
+
+
+class CreatorResponseTimesRead(BaseModel):
+    """How long brands wait for this creator to answer a memo, and to confirm
+    a payment arrived."""
+
+    creator_id: uuid.UUID
+    memo_answered: ResponseTimeRead
+    payment_confirmed: ResponseTimeRead
+
+
+# --- deal notes (item 17, D-128) ------------------------------------------------
+
+NoteSide = Literal["brand", "creator"]
+
+ensure_same_values("NoteSide", NoteSide, NOTE_SIDES)
+
+
+class NoteCreate(BaseModel):
+    """A note one side writes on the deal, sealed onto its record."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    body: str = Field(
+        min_length=1,
+        max_length=NOTE_MAX_LENGTH,
+        examples=["Can the second reel go up on Saturday instead of Friday?"],
+    )
+
+
+class NoteRead(BaseModel):
+    """A note, as both sides read it. It never changes once written."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    deal_memo_id: uuid.UUID
+    author_side: NoteSide = Field(description="Who wrote it")
+    body: str
+    created_at: datetime
+
+    @computed_field(  # type: ignore[prop-decorator]  # pydantic documents this
+        description=(
+            "Warnings on the note, worked out on every read: a request for money "
+            "from a creator. The two are matched, so contact details are not a "
+            "warning. Show each beside the note; never hide it"
+        )
+    )
+    @property
+    def text_flags(self) -> list[FieldFlag]:
+        # A brand's words reach a creator: a fee request is the scam to catch.
+        return field_flags(
+            {"body": self.body}, money=self.author_side == "brand", contact=False
+        )
+
+
+# --- a barter deal's shipment (item 68, D-131) ----------------------------------
+
+Carrier = Literal[
+    "india_post",
+    "delhivery",
+    "blue_dart",
+    "dtdc",
+    "ecom_express",
+    "xpressbees",
+    "shadowfax",
+    "ekart",
+    "other",
+]
+
+ensure_same_values("Carrier", Carrier, CARRIERS)
+
+
+class ShipmentIn(BaseModel):
+    """How the goods were sent. Never an address: that stays between you."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    carrier: Carrier
+    tracking_number: str = Field(
+        min_length=1,
+        max_length=40,
+        examples=["EE123456789IN"],
+        description=(
+            "As the courier gives it; spaces and dashes are dropped and letters "
+            "made capital. India Post numbers are two letters, nine digits, then IN"
+        ),
+    )
+
+    @model_validator(mode="after")
+    def tracking_number_shape(self) -> ShipmentIn:
+        cleaned = "".join(ch for ch in self.tracking_number.upper() if ch not in " -\t")
+        if len(cleaned) > TRACKING_MAX_LENGTH or not re.fullmatch(
+            TRACKING_PATTERN, cleaned
+        ):
+            raise PydanticCustomError(
+                "tracking_number_shape",
+                "A tracking number is 8 to 20 letters and digits",
+            )
+        if self.carrier == "india_post" and not re.fullmatch(INDIA_POST_PATTERN, cleaned):
+            raise PydanticCustomError(
+                "india_post_number_shape",
+                "An India Post number is two letters, nine digits, then IN",
+            )
+        self.tracking_number = cleaned
+        return self
+
+
+class ShipmentRead(BaseModel):
+    """A barter deal's shipment, as both sides read it."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    deal_memo_id: uuid.UUID
+    carrier: Carrier
+    tracking_number: str = Field(
+        description="Shown as text, never as a link: look it up on the courier's own site"
+    )
+    shipped_at: datetime
+    received_at: datetime | None = Field(
+        description="When the creator said it arrived; null until they do"
+    )
+
+
+# --- a brand's content library (item 70, D-132) ----------------------------------
+
+RightsState = Literal["active", "lapsing", "lapsed", "not_agreed"]
+
+ensure_same_values("RightsState", RightsState, RIGHTS_STATES)
+
+
+class ContentItemRead(BaseModel):
+    """One approved post, with the usage window its accepted memo sealed."""
+
+    proof_id: uuid.UUID
+    deal_memo_id: uuid.UUID = Field(
+        description="Its deal; the deal's record proves the terms and the approval"
+    )
+    campaign_id: uuid.UUID
+    campaign_title: str
+    creator_id: uuid.UUID
+    creator_handle: str
+    format: str
+    content_url: str | None = Field(
+        description="Shown as text and opened by the person, never fetched for them"
+    )
+    approved_at: datetime
+    auto_approved: bool = Field(description="Approved by the clock, not by the brand")
+    content_removed_on: date | None = Field(
+        description="When the post was found taken down, if it was"
+    )
+    usage_rights_days: int | None = Field(
+        description="The days of use the accepted memo states; null if it states none"
+    )
+    rights_until: date | None = Field(
+        description=(
+            "The day those days end, counted from the Tamil Nadu day the work was "
+            "approved; null if the memo states none. The memo's terms, not a "
+            "ruling on what the law allows"
+        )
+    )
+    rights_state: RightsState = Field(
+        description=(
+            "`active`; `lapsing` within 30 days; `lapsed`; or `not_agreed` when the "
+            "memo states no days"
+        )
+    )
+
+
+# --- feedback on a finished deal (item 77, D-136) --------------------------------
+
+FeedbackSide = Literal["brand", "creator"]
+ensure_same_values("FeedbackSide", FeedbackSide, FEEDBACK_SIDES)
+Score = Annotated[int, Field(ge=SCORE_MIN, le=SCORE_MAX)]
+
+
+class FeedbackIn(BaseModel):
+    """One side's answer about the other, once, never changed."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    brief: Score = Field(
+        description="Followed the brief (about a creator), or gave a clear one (about a brand)"
+    )
+    reliability: Score = Field(
+        description="Delivered on time (about a creator), or paid as agreed (about a brand)"
+    )
+    easy: Score = Field(description="Easy to work with")
+    note: str | None = Field(
+        default=None, min_length=1, max_length=FEEDBACK_NOTE_MAX_LENGTH
+    )
+
+
+class FeedbackRead(BaseModel):
+    """One answer, as its writer, or the other side once revealed, reads it."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    author_side: FeedbackSide
+    brief: int
+    reliability: int
+    easy: int
+    note: str | None
+    created_at: datetime
+
+    @computed_field(  # type: ignore[prop-decorator]  # pydantic documents this
+        description="Warnings worked out on read: a brand's request for money. Show beside the note"
+    )
+    @property
+    def text_flags(self) -> list[FieldFlag]:
+        if self.note is None:
+            return []
+        return field_flags(
+            {"note": self.note}, money=self.author_side == "brand", contact=False
+        )
+
+
+class DealFeedbackRead(BaseModel):
+    """A deal's feedback, as one side may see it now."""
+
+    window_ends_at: datetime | None = Field(
+        description="When answers may no longer be given, and are all shown; null until the deal finishes"
+    )
+    open: bool = Field(description="Whether you may still answer")
+    mine: FeedbackRead | None
+    theirs: FeedbackRead | None = Field(
+        description="The other side's, only once you have both answered or the window has closed"
+    )
+
+
+class FeedbackFiguresRead(BaseModel):
+    """What the other sides of someone's finished deals said, once revealed."""
+
+    answers: int = Field(description="How many revealed answers these rest on")
+    counterparties: int = Field(
+        description="How many different brands or creators gave them: twelve from one say less than twelve from nine"
+    )
+    brief: float | None = Field(
+        description="Average, 1 to 5. Null below three answers: not enough to say, never zero"
+    )
+    reliability: float | None
+    easy: float | None
+
+
+class FeedbackNoteRead(BaseModel):
+    """A revealed note about someone, and their own words on the same deal."""
+
+    note: str
+    reply: str | None = Field(description="What the person it is about said on that deal")
+    author_side: FeedbackSide
+    created_at: datetime
+
+    @computed_field(  # type: ignore[prop-decorator]  # pydantic documents this
+        description="Warnings worked out on read: a brand's request for money"
+    )
+    @property
+    def text_flags(self) -> list[FieldFlag]:
+        return field_flags(
+            {"note": self.note}, money=self.author_side == "brand", contact=False
+        )

@@ -1,8 +1,11 @@
+import uuid
+
 import pytest
+from sqlalchemy import text
 from sqlalchemy.exc import DataError, IntegrityError
 
 from app.modules.auth.models.brand import Brand
-from tests.factories import build_brand
+from tests.factories import build_brand, create_account
 
 
 def assert_rejected_by(db, brand: Brand, constraint_name: str) -> None:
@@ -96,3 +99,54 @@ def test_two_brands_cannot_share_an_account(db):
         build_brand(db, email="second@example.com", account_id=first.account_id),
         "uq_brand_account_id",
     )
+
+
+# --- an admin's clearance of a look-alike name (D-119) -----------------------------------
+
+
+@pytest.mark.parametrize(
+    ("statement", "rule"),
+    [
+        (
+            "UPDATE brand SET name_cleared = name WHERE id = :b",
+            "name_cleared_with_its_time",
+        ),
+        (
+            "UPDATE brand SET name_cleared_at = now() WHERE id = :b",
+            "name_cleared_with_its_time",
+        ),
+        (
+            "UPDATE brand SET name_cleared_by_account_id = account_id WHERE id = :b",
+            "name_cleared_by_only_with_a_clearance",
+        ),
+    ],
+)
+def test_a_clearance_is_whole_or_absent(db, statement, rule):
+    brand = build_brand(db, email=f"c-{uuid.uuid4().hex[:10]}@example.com")
+    db.add(brand)
+    db.flush()
+
+    with pytest.raises(IntegrityError, match=f"ck_brand_{rule}"):
+        db.execute(text(statement), {"b": brand.id})
+
+
+def test_a_clearance_outlives_the_admin_who_gave_it(db):
+    admin = create_account(db, "admin")
+    brand = build_brand(db, email=f"c-{uuid.uuid4().hex[:10]}@example.com")
+    db.add(brand)
+    db.flush()
+    db.execute(
+        text(
+            "UPDATE brand SET name_cleared = name, name_cleared_at = now(),"
+            " name_cleared_by_account_id = :a WHERE id = :b"
+        ),
+        {"a": admin.id, "b": brand.id},
+    )
+
+    db.execute(text("DELETE FROM account WHERE id = :a"), {"a": admin.id})
+
+    row = db.execute(
+        text("SELECT name_cleared, name_cleared_by_account_id FROM brand WHERE id = :b"),
+        {"b": brand.id},
+    ).one()
+    assert row.name_cleared is not None and row.name_cleared_by_account_id is None

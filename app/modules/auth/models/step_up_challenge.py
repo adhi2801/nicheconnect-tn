@@ -1,0 +1,115 @@
+import uuid
+from datetime import datetime, timedelta
+
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    SmallInteger,
+    String,
+    text,
+)
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.sql import func
+
+from app.db.base import Base
+from app.modules.auth.models.otp_challenge import CODE_HASH_PATTERN, MAX_OTP_ATTEMPTS
+
+# A second check before a risky change (item 82, D-107): a code sent to the
+# account's phone, good for one action and, where the action has one, one
+# exact new value. A code asked for to set one UPI ID cannot set another
+# (the EU's dynamic linking, RTS Article 5, applied to an account change).
+#
+# Only keyed hashes are kept: the code's (as for login codes, D-011) and the
+# value's, so the table never holds the new UPI ID itself.
+
+STEP_UP_ACTIONS: tuple[str, ...] = (
+    "set_upi_id",
+    "download_export",
+    "log_out_everywhere",
+    # Moving the account onto a new phone number (item 80, D-108): the
+    # value is the new number, so the code cannot move it anywhere else.
+    "change_phone",
+    # Passkeys (item 79, D-113): adding one, removing one (its id is the
+    # value), and turning "passkey only" sign-in on or off ("on", "off").
+    "add_passkey",
+    "remove_passkey",
+    "passkey_only",
+    # Ending one other session (item 81, D-114): the value is its id, so a
+    # code for one session cannot end another.
+    "end_session",
+    # Deleting the account (item 6, D-122).
+    "delete_account",
+    # Making a token for an assistant (item 11, D-138): the value is its
+    # scopes, so a code for a read-only token cannot make one that writes.
+    "create_agent_token",
+)
+# How a step-up was proven (D-113): a code sent to the phone, or a passkey
+# answering a challenge for exactly this change. Once an account has a
+# passkey, only the second is accepted.
+STEP_UP_METHODS: tuple[str, ...] = ("phone_code", "passkey")
+STEP_UP_TTL = timedelta(minutes=5)
+MAX_STEP_UP_ATTEMPTS = MAX_OTP_ATTEMPTS
+VALUE_HASH_PATTERN = CODE_HASH_PATTERN
+
+
+class StepUpChallenge(Base):
+    __tablename__ = "step_up_challenge"
+    __table_args__ = (
+        CheckConstraint(f"action IN {STEP_UP_ACTIONS}", name="action_allowed"),
+        CheckConstraint(f"value_hash ~ '{VALUE_HASH_PATTERN}'", name="value_hash_format"),
+        CheckConstraint(f"code_hash ~ '{CODE_HASH_PATTERN}'", name="code_hash_format"),
+        CheckConstraint(
+            f"attempts BETWEEN 0 AND {MAX_STEP_UP_ATTEMPTS}", name="attempts_range"
+        ),
+        CheckConstraint(
+            "expires_at = created_at + interval '5 minutes'",
+            name="expires_five_minutes_after_created",
+        ),
+        CheckConstraint(
+            "consumed_at IS NULL OR consumed_at >= created_at",
+            name="consumed_after_created",
+        ),
+        CheckConstraint(f"method IN {STEP_UP_METHODS}", name="method_allowed"),
+        # The account's latest code, and the send and guess caps counted per
+        # account; its first column also serves the foreign key.
+        Index(
+            "ix_step_up_challenge_account_id_created_at",
+            "account_id",
+            text("created_at DESC"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("uuidv7()")
+    )
+    # CASCADE: a code means nothing without its account.
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("account.id", ondelete="CASCADE"), nullable=False
+    )
+    action: Mapped[str] = mapped_column(String(20), nullable=False)
+    # HMAC-SHA256 of the action and its new value (the empty string for an
+    # action without one), keyed by OTP_HASH_KEY.
+    value_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    # A phone code, or a grant issued once a passkey answered (D-113).
+    method: Mapped[str] = mapped_column(
+        String(12), nullable=False, server_default=text("'phone_code'")
+    )
+    attempts: Mapped[int] = mapped_column(
+        SmallInteger, nullable=False, server_default=text("0")
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # NULL until the code is used (single use).
+    consumed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Set by the service from its injectable clock, which the caps read.
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )

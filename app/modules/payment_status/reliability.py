@@ -54,6 +54,10 @@ from app.modules.payment_status.service import (
     UNPAID,
     derive_state,
 )
+from app.modules.profiles import brand_domain_service as brand_domains
+from app.modules.profiles import brand_name_service
+from app.modules.profiles.brand_domain_models import BrandDomain
+from app.modules.profiles.brand_names import NameFlag
 
 # Below this, the figures are withheld rather than shown with a caveat
 # nobody reads (D-027).
@@ -92,24 +96,34 @@ class ReliabilityRecord:
     # the same as zero and must never be rendered as zero.
     paid_on_time_share: float | None
     median_days_to_pay: float | None
+    # How many different creators the settled deals were with (item 61):
+    # many deals with one creator say less than the same number across many.
+    distinct_creators: int
 
     @property
     def has_history(self) -> bool:
         return self.status == HAS_HISTORY
 
 
-def _payments_for_brand(db: Session, brand_id: uuid.UUID) -> list[PaymentStatus]:
-    """Every payment record on this brand's own deals, in one query."""
-    return list(
-        db.scalars(
-            select(PaymentStatus)
-            .join(DealMemo, DealMemo.id == PaymentStatus.deal_memo_id)
-            .join(Application, Application.id == DealMemo.application_id)
-            .join(Campaign, Campaign.id == Application.campaign_id)
-            .where(Campaign.brand_id == brand_id)
-            .order_by(PaymentStatus.due_on, PaymentStatus.id)
-        ).all()
-    )
+def _payments_for_brand(
+    db: Session, brand_id: uuid.UUID
+) -> tuple[list[PaymentStatus], dict[uuid.UUID, uuid.UUID]]:
+    """Every payment record on this brand's own deals, and each one's
+    creator, in one query."""
+    rows = db.execute(
+        select(PaymentStatus, Application.creator_id)
+        .join(DealMemo, DealMemo.id == PaymentStatus.deal_memo_id)
+        .join(Application, Application.id == DealMemo.application_id)
+        .join(Campaign, Campaign.id == Application.campaign_id)
+        .where(Campaign.brand_id == brand_id)
+        .order_by(PaymentStatus.due_on, PaymentStatus.id)
+    ).tuples()
+    payments: list[PaymentStatus] = []
+    creator_of: dict[uuid.UUID, uuid.UUID] = {}
+    for payment, creator_id in rows:
+        payments.append(payment)
+        creator_of[payment.id] = creator_id
+    return payments, creator_of
 
 
 def _days_to_pay(payment: PaymentStatus) -> int:
@@ -138,6 +152,7 @@ def build_record(
     brand_id: uuid.UUID,
     today: date,
     disputed: set[uuid.UUID] | None = None,
+    creator_of: dict[uuid.UUID, uuid.UUID] | None = None,
 ) -> ReliabilityRecord:
     """Work the record out from payment rows. Pure, so it is easy to trust.
 
@@ -188,15 +203,64 @@ def build_record(
         currently_overdue=len(overdue_now),
         paid_on_time_share=on_time_share,
         median_days_to_pay=median_days,
+        distinct_creators=len(
+            {(creator_of or {}).get(payment.id) for payment in settled} - {None}
+        ),
     )
 
 
 def for_brand(db: Session, brand_id: uuid.UUID, today: date) -> ReliabilityRecord:
     """This brand's payment record as of today."""
-    payments = _payments_for_brand(db, brand_id)
+    payments, creator_of = _payments_for_brand(db, brand_id)
     disputed = disputes.open_payment_ids(db, {p.id for p in payments}, today)
-    return build_record(payments, brand_id, today, disputed)
+    return build_record(payments, brand_id, today, disputed, creator_of)
+
+
+def for_brands(
+    db: Session, brand_ids: set[uuid.UUID], today: date
+) -> dict[uuid.UUID, ReliabilityRecord]:
+    """Several brands' records at once, for a list that shows one per row.
+
+    Two queries whatever the number of brands: one for every payment, one for
+    their live disputes. Calling `for_brand` per row would be one query per
+    brand, the N+1 that backend.md rules out. Each record is built by the same
+    `build_record`, so a brand reads identically here and on its own.
+    """
+    if not brand_ids:
+        return {}
+    rows = db.execute(
+        select(Campaign.brand_id, PaymentStatus, Application.creator_id)
+        .join(Application, Application.campaign_id == Campaign.id)
+        .join(DealMemo, DealMemo.application_id == Application.id)
+        .join(PaymentStatus, PaymentStatus.deal_memo_id == DealMemo.id)
+        .where(Campaign.brand_id.in_(brand_ids))
+        .order_by(PaymentStatus.due_on, PaymentStatus.id)
+    ).tuples()
+    by_brand: dict[uuid.UUID, list[PaymentStatus]] = {
+        brand_id: [] for brand_id in brand_ids
+    }
+    creator_of: dict[uuid.UUID, uuid.UUID] = {}
+    for brand_id, payment, creator_id in rows:
+        by_brand[brand_id].append(payment)
+        creator_of[payment.id] = creator_id
+    disputed = disputes.open_payment_ids(
+        db, {p.id for payments in by_brand.values() for p in payments}, today
+    )
+    return {
+        brand_id: build_record(payments, brand_id, today, disputed, creator_of)
+        for brand_id, payments in by_brand.items()
+    }
 
 
 def brand_exists(db: Session, brand_id: uuid.UUID) -> bool:
     return db.scalar(select(Brand.id).where(Brand.id == brand_id)) is not None
+
+
+def verified_domain_of(db: Session, brand_id: uuid.UUID) -> BrandDomain | None:
+    """The brand's verified domain (item 74), shown beside how it pays."""
+    return brand_domains.verified_for_brands(db, [brand_id]).get(brand_id)
+
+
+def name_flag_of(db: Session, brand_id: uuid.UUID) -> NameFlag | None:
+    """Whether the brand's name looks like a protected brand's (item 75)."""
+    return brand_name_service.flags_for(db, [brand_id]).get(brand_id)

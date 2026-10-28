@@ -1,6 +1,6 @@
 # CLAUDE.md — NicheConnect TN Backend
 
-This file is the operating manual for Claude Code in this repository. It is loaded at the start of every session. Rules here override any conflicting instruction except an explicit, in-the-moment instruction from a founder that does not break a **Non-negotiable constraint**.
+This file is the operating manual for Claude Code in this repository. It is loaded at the start of every session. **Last checked against the code: 12 October 2026.** Rules here override any conflicting instruction except an explicit, in-the-moment instruction from a founder that does not break a **Non-negotiable constraint**.
 
 ---
 
@@ -13,7 +13,7 @@ Updated 2026-09-23 by Adhi.
 | **Adhi** | **The whole backend**, both tracks, in this repository |
 | **Erode Harish** | **Frontend research and design**, outside this repository |
 
-Erode Harish reviewed the outstanding backend work and confirmed the open points from the 21 and 22 September notice, so that notice is closed; his confirmation was **relayed by Adhi**, not given in a session here, and the points it carried are kept below as a record of what was settled.
+Erode Harish reviewed the outstanding backend work and confirmed the open points from the 21 and 22 September notice, so that notice is closed; his confirmation was **relayed by Adhi**, not given in a session here, and the points it carried are kept as a record of what was settled (below).
 
 What this changes, until a founder says otherwise:
 
@@ -25,31 +25,7 @@ What this changes, until a founder says otherwise:
 
 Recorded as D-051 and D-053.
 
-<details>
-<summary>The closed notice, 21–23 September, kept as a record</summary>
-
-
-1. By the end of 20 September nothing had been pushed for two Data-track tasks: the `payment_status` table (D-027) and the Creator Passport opt-out column. Five features were blocked behind them, so Adhi's session built them, together with the dispute tables. They are migrations 17–20 (`b5603ae`, `a3e24d4`, `11a9ed6`, `97a9236`). Decisions D-032 to D-036 describe them.
-2. Adhi asks you to acknowledge this before starting new backend work. Git only shows what was pushed. If you had work on these that never got pushed, say so; it may still be useful.
-3. **Do not write a new migration for `payment_status`, disputes or the Passport column.** Two migrations in flight would fork the chain (section 1).
-4. **Your review is what blocks every merge to `main`.** Review **PR #13** (`feature/attention`), starting with migrations 17–20. It contains all of PR #11 and everything since, so Adhi proposes closing #11 and reviewing only #13. Do you agree?
-5. After #13, review the PR from `chore/cors-and-docs`, which is stacked on it: the CORS allow-list, 500 errors with every header, and the API docs off in production (D-044, D-045). It touches no Data-track file and adds no migration.
-6. **Rate card decision 1** (`docs/PROPOSAL_PASSPORT_RATE_CARD.md`): two new tables and one column. It needs both founders, and the tables are yours to build. What is your decision?
-7. After #13 merges, run `pip install -r requirements.txt`: it adds ruff, mypy and pytest-cov (D-037), and CI fails on lint, formatting, types and coverage without them. Shared files Adhi edited on 22 September: `.env.example` (new optional `CORS_ALLOWED_ORIGINS`), `docs/DECISIONS.md` (D-044, D-045) and `docs/standards/security.md`.
-8. The full account is in the reports under `docs/reports/` dated 2026-09-21 and 2026-09-22, on those branches.
-
-**Added 23 September.** D-047 locked the technology baseline on 22 September, with your approval relayed by Adhi. Building it has now started.
-
-9. **Branch `chore/tech-baseline` is pushed and its CI is green.** Three rows of the section 4.0 baseline are built: the backend library versions (including the `httpx` → `httpx2` swap); the CI supply chain (both actions pinned to commit SHAs at v7, `persist-credentials: false`, a least-privilege `permissions:` block, and zizmor auditing every run); and Schemathesis fuzzing the API against its own contract. It adds no migration and touches no file in your track. Please review it after PR #13 and the `chore/cors-and-docs` PR.
-10. **`requirements.txt` changed again** (shared file, Adhi edited it on 23 September): ten pins moved to current releases, `httpx` was replaced by `httpx2`, and `coverage` and `schemathesis` were added. **Run `pip install -r requirements.txt` before your next session** or CI and your laptop will disagree. Schemathesis found 48 contract failures on its first run; 35 were one bug, now fixed, and the rest are written up in `docs/API_CONTRACT_FINDINGS.md`.
-11. **Valkey 9.1.2 or newer, in place of Redis 7** (baseline section 4.2). It is a drop-in for how we use it, the licence is open, and 9.1 is up to 17% faster. It changes `docker-compose.yml` and `.github/workflows/ci.yml`, both of which need both founders. **Do you approve, and do you want to build it or should Adhi?**
-12. **PostgreSQL 18, UUIDv7 for new tables, and exact image tags** (baseline section 4.2). We run 16.15 on a floating `pg16` tag. 18 brings asynchronous I/O, native `uuidv7()` and statistics that survive an upgrade. **This is your track and yours to build. When can you take it?**
-13. **uv and Python 3.14** (baseline section 4.1). We are on Python 3.12 and plain pip. uv would install and pin both, but it changes the commands in section 4 of this file and the CI workflow, so it needs both founders. Python 3.14 is not installed on Adhi's machine either. **Do you approve, and does moving your local environment to 3.14 cause you any problem?**
-14. **Two product decisions Adhi has made that change your track.** (a) **The product is now called Colyv.** The name appears 52 times in 31 tracked files, including `docker-compose.yml`, `.env.example`, `ERROR_TYPE_BASE` in `app/core/errors.py` (a public API contract, and it assumes we own `colyv.in`) and the database name, which means every local database is recreated. Historical reports and `docs/DECISIONS.md` keep the old name, being a record. (b) **English only; Tamil is dropped.** This unpicks several locked D-047 rows, including hybrid Tamil search in Postgres, which is your track, and the Tamil test set that was to choose every AI and embedding model. It also removes what `docs/COMPETITIVE_LANDSCAPE.md` calls our separation from every competitor. **Both need your agreement before anything is renamed or removed, and both need a decision entry.**
-
-State these as facts from git, not as blame.
-
-</details>
+The closed notice of 21 to 23 September is kept as a record in `docs/reports/2026-09-23-closed-notice.md`.
 
 ---
 
@@ -57,7 +33,7 @@ State these as facts from git, not as blame.
 
 NicheConnect TN is a Tamil Nadu-focused brand↔creator marketplace. This repo is the **backend only** (FastAPI).
 
-**Build order (approved):** backend first, to completion. UI/UX design and all frontend work (brand web dashboard, creator mobile app) start only after the backend is complete.
+**Build order (approved):** backend first, to completion. UI/UX design and all frontend work (a website, an Android app and an iOS app, each serving brands and creators: D-046, Adhi's direction, awaiting Erode Harish) start only after the backend is complete.
 
 - This repo contains **no frontend code**. Don't create UI, screens, or frontend scaffolding here.
 - Design the API around the product's domain (brands, creators, campaigns, applications, deal memos, payment status), not around assumed screens.
@@ -68,7 +44,7 @@ NicheConnect TN is a Tamil Nadu-focused brand↔creator marketplace. This repo i
 | Founder | Track | Owns these areas (nobody else edits them the same day) |
 |---|---|---|
 | **Adhi** | API | `app/main.py`, `app/core/` (config, rate limiting, security), `app/modules/*/router.py`, `app/modules/*/schemas.py`, `app/modules/*/service.py`, `.github/workflows/`, API docs |
-| **Erode Harish** | Data | `app/db/`, `app/modules/*/models*`, `alembic/`, seed scripts, pgvector and Redis wiring, query performance |
+| **Erode Harish** | Data | `app/db/`, `app/modules/*/models*`, `alembic/`, seed scripts, pgvector and Valkey wiring, query performance |
 
 Shared, and only ever edited by one person at a time with the other told first: `CLAUDE.md`, `docs/standards/`, `docs/DECISIONS.md`, `requirements.txt`, `docker-compose.yml`, `.env.example`.
 
@@ -100,8 +76,16 @@ Never violate these, even if asked. If a request would break one, stop and say w
 ## 3. Architecture (approved)
 
 - **Modular monolith:** one deployable FastAPI app. No microservices, event sourcing, CQRS, service mesh, or additional deployable services without both founders' approval.
-- **Modules:** `app/modules/{auth, campaigns, matching, deal_memo, payment_status, notifications}`. Inside a module: `router.py` (HTTP) → `service.py` (rules) → `models.py` (DB), plus `schemas.py`.
-- **Stack:** PostgreSQL + pgvector · Redis (limits, cache, jobs) · Alembic · pytest + httpx · GitHub Actions.
+- **Modules, in layers** (D-099; `docs/standards/backend.md` section 1). A module imports only from layers below it, and `lint-imports` fails CI otherwise:
+  1. `me`: the views that read every module (attention, the data export)
+  2. `admin`: the admin API and log, the founders' numbers, user reports
+  3. `matching` (with creator search) | `insights` (city figures, fair-rate guidance) | `passport` (the public Passport, the media kit)
+  4. `campaigns` : `deal_memo` : `payment_status` : `disputes`, the deal domain (they may import each other until phase 2)
+  5. `profiles` (editing, rate cards, availability) | `safety` (blocking) | `notifications`
+  6. `auth`: login, tokens, sessions, devices, attribution, suspension, every access check, and the account, brand and creator tables
+
+  `app/core` and `app/db` sit below every module. A new module is placed in a layer before it is built. Inside a module: `<feature>_router.py` (HTTP) → `<feature>_service.py` (rules) → models (DB), plus schemas.
+- **Stack:** PostgreSQL 18 + pgvector · Valkey (rate limits, idempotency; D-048) · DBOS (background jobs; D-060) · S3 (proof files; D-065) · Alembic · pytest + httpx2 · GitHub Actions · AWS Mumbai, described in OpenTofu (D-062, D-063). The locked baseline is `docs/PLATFORM_AND_TECH_PLAN.md` section 4.0; what is still to build is `docs/BACKEND_COMPLETE.md`.
 - **Matching (later):** SentenceTransformers embeddings + pgvector cosine similarity, as in InterviewCoach AI.
 - **External calls** (WhatsApp, Claude API): retry with backoff; never block a request on them.
 - **Scale posture:** build for pilot scale first. Do not introduce Kafka or other brokers, Kubernetes, multi-region, service mesh, GraphQL, or dedicated vector/search databases without both founders' approval. Future-scale ideas go in `docs/ARCHITECTURE_SCALE.md` as proposals with explicit migration triggers, never straight into code.
@@ -113,12 +97,14 @@ Never violate these, even if asked. If a request would break one, stop and say w
 Developers use **Windows PowerShell 5**: give commands one per line and never join them with `&&`.
 
 ```powershell
-docker compose up -d                          # Postgres (pgvector) + Redis
-pip install -r requirements.txt
-uvicorn app.main:app --reload                 # http://localhost:8000/healthz
-alembic revision --autogenerate -m "message"
-alembic upgrade head
-pytest
+docker compose up -d                          # Postgres (pgvector) + Valkey
+uv sync                                       # Python 3.14 and the locked dependencies (D-072)
+uv run uvicorn app.main:app --reload          # http://localhost:8000/healthz
+uv run alembic revision --autogenerate -m "message"
+uv run alembic upgrade head
+uv run pytest
+uv run python scripts\dev_login.py +919000000001   # access token for a sample account (local only)
+uv add <package>==<version>                   # a new dependency, only after its approval (section 5)
 ```
 
 ---
@@ -145,7 +131,7 @@ Stop and get explicit approval before any of these:
 
 ### How to ask
 
-**Small, low-risk step** (one file, inside an agreed task): use the Learning format (section 6) and wait for "yes".
+**A feature** (section 6): research it, then propose it in the format below with its gates named, and wait for "yes" to that exact proposal. A change from the approved proposal is stated and approved before it is built, never only reported after.
 
 **Gated or multi-path decision:** use this format.
 
@@ -159,6 +145,26 @@ Risk & rollback: <what could go wrong, how we undo it>
 → Approve A, B, or modify?
 ```
 
+**Every feature proposal also weighs twelve dimensions** (D-098, D-139), one or two lines each, saying "none" where one does not apply rather than leaving it out. The same twelve are the audit applied to every feature built before them (D-139):
+
+```
+Quality:        how it is proven (the tests testing.md requires, the rules broken on purpose)
+Novelty:        the strongest competitor's version, and how ours goes further
+Architecture:   which module it belongs in, what it touches, and whether ARCHITECTURE_SCALE.md changes
+Research:       the dated sources behind each non-obvious choice
+Security:       who may see or change what; a STRIDE threat model: spoofing, tampering,
+                repudiation, information disclosure, denial of service, elevation of privilege
+Privacy & law:  personal data held, its export, consent; legal.md sections touched
+Trust & safety: how one person could use it against another, and what stops them
+Performance:    queries per request, the budget, and the p95 measured with a tool, in the report
+Design:         what the screens need from it, in at most two calls
+Business:       what it does for brands, creators and the business, and what it costs us
+Reliability:    how it fails and recovers: timeouts, retries, a job stopping halfway, a
+                dependency down; what is watched and alerted on; backups and their restore
+Maintainability: how it changes safely: the contract the three apps rely on kept stable,
+                readable in five minutes, and how it is undone or extended later
+```
+
 **Dependency request:** add `Package`, `Why`, `Alternatives (incl. no package)`, `Security/maintenance impact`.
 
 **Schema request:** add `Tables affected`, `Migration`, `Rollback (downgrade)`, `Data impact`.
@@ -169,24 +175,28 @@ Approved decisions are recorded in `docs/DECISIONS.md` (section 10).
 
 ## 6. How we work
 
-### Learning format (default for every file)
+### How a feature is built (D-096)
 
-We're learning the codebase as we build it. For each file:
+One feature at a time, built whole, to these eight steps. Adhi chose this on 12 October 2026 over one file at a time, for pace; the steps keep the quality.
 
-1. **Purpose:** one line on what the file is for.
-2. **Plan:** files to create, modify or delete (normally just one).
-3. **Code:** the full change.
-4. **Explanation:** what each line or block does, in plain English.
-5. **Check:** one command to verify it, and the expected output.
-6. **Stop:** wait for confirmation before the next file.
+1. **The constraints** (section 2) are checked first. If the feature would break one, stop and say which.
+2. **The area's standards are re-read in full** before the first file (section 7.0's table), and the report names which were read.
+3. **Research:** the strongest version that exists, with dated sources, and how ours goes further (`docs/COMPETITIVE_LANDSCAPE.md`).
+4. **Proposal and approval** (section 5): what, tables, endpoints, dependencies, gates, rollback. Nothing is built before "yes".
+5. **Build** to the standards, one file one job, on its own branch.
+6. **Proof:** every test `docs/standards/testing.md` section 1 requires; every rule broken on purpose and seen to fail; properties for rules, concurrency tests for "only if" checks, query counts for lists; the p95 of every new route measured against the budgets and written in the report; the mutation floor held (D-139); and an **independent review**: a separate reviewer, told to find faults, reads the whole change, and each finding is fixed or answered in the report. It never counts as the other founder's review.
+7. **The whole job in one change** (section 7.0): code, tests, decision entry, OpenAPI snapshot, export, `docs/BACKEND_COMPLETE.md`, the affected docs.
+8. **Report honestly:** what was built and proven, what was not, any change from the proposal, and that CI and review are still owed until they happen.
+
+**The learning format**, when a founder asks to learn a file: purpose, plan, the code, a plain-English explanation of each block, one command to check it, then stop for confirmation.
 
 ### Rules
 
-- **One file at a time.** Never generate a project, a batch of files, or a multi-module refactor without approval.
+- **One feature at a time** (above). Never a batch of features, a new project, or a multi-module refactor without approval.
 - **One file, one job.** Don't combine unrelated responsibilities for convenience.
 - **Branch per task.** Never commit directly to `main`. Branch names: `feature/<name>`, `fix/<name>`, `chore/<name>`, `docs/<name>`.
 - **Small commits** in Conventional Commits style: `feat(auth): add OTP request endpoint`.
-- **Every merge to `main`** goes through a PR the other founder reviews, with green CI.
+- **Every merge to `main`** goes through a PR the other founder reviews, with green CI. **While Adhi builds alone (D-101), Claude merges finished work to `main` itself, without asking each time**: only when every local gate has passed and CI is seen green on GitHub for the exact commit being merged (read through GitHub's API), with a merge commit (`--no-ff`), never a force-push or a rewritten history, and saying in the report that no second person reviewed it.
 - **No silent shortcuts.** If the fast way conflicts with this file, stop and ask.
 - **Before touching payments, PII or embeddings,** re-read section 2.
 - **Status words mean exactly this:**
@@ -201,13 +211,31 @@ We're learning the codebase as we build it. For each file:
 
 - Never run `git push --force`, `git reset --hard`, `git rebase` on shared branches, or delete branches without approval.
 - Never commit `.env`, secrets, keys, tokens, `venv/`, or large generated files. If one is staged, unstage it and warn.
-- Never merge PRs; founders merge on GitHub.
+- Merge only as D-101 allows (above); otherwise founders merge on GitHub.
 
 ---
 
 ## 7. Quality bar
 
 We're building a product people trust with their business and income. Quality is never traded for speed. When a shortcut is tempting, name the trade-off and ask.
+
+### 7.0 The bar: world-class by default (Adhi's standing order, 8 October 2026)
+
+The target is a product at the level of the best companies in the world. **This is the default for every task; no founder should have to ask for it again.**
+
+- **Best, not good enough.** Pick the highest-quality option and say why. Name the trade-off only when one exists.
+- **Researched, with dates.** Before any non-trivial choice (a library, a rule, a design, a number), check current sources and how the leading companies do it. Put the sources in the doc or the commit.
+- **Beat the best, not the average.** For each feature, name the strongest competitor's version and say how ours is better (`docs/COMPETITIVE_LANDSCAPE.md`).
+- **Proven, not claimed.**
+  - Every fix has a test that fails without it: break the code, watch the test fail, restore it.
+  - Every list has a test proving it makes no query per row.
+  - Every number comes from a tool.
+- **The whole job, in one change.** That means the code, its tests, the decision entry, the OpenAPI snapshot, the data export, `docs/BACKEND_COMPLETE.md` and `docs/README.md`.
+- **Keep moving.** After each piece, propose the next most valuable item and carry on within the gates.
+- **Brutally honest.** Say what is weak, unmeasured or unreviewed, every time.
+- **Never a shortcut around section 2 or section 5.** World-class includes the constraints and the approvals.
+
+Which doc is for what, and when each is read: `docs/README.md`.
 
 **Before writing code in an area, read its standard.** These files are binding:
 
@@ -216,14 +244,18 @@ We're building a product people trust with their business and income. Quality is
 | Endpoints, services, schemas, errors, background jobs | `docs/standards/backend.md` |
 | Tables, migrations, indexes, queries, pgvector | `docs/standards/database.md` |
 | Auth, permissions, secrets, PII, rate limits | `docs/standards/security.md` |
+| Anything that lets one person reach, pay, judge or be judged by another; anything someone could use to cheat | `docs/standards/trust-and-safety.md` |
+| Anything touching the law: personal data and consent, what we say about people, ranking, payments, tax, content rights, messages, who may sign up | `docs/standards/legal.md` |
 | Any test, CI, or coverage question | `docs/standards/testing.md` |
 | Web dashboard or mobile app (after backend is complete) | `docs/standards/frontend.md` |
 | Research, flows, design system, copy, accessibility | `docs/standards/ux.md` |
+| Where code belongs, a new module, or anything that changes how the system scales | `docs/standards/backend.md` section 1 and `docs/ARCHITECTURE_SCALE.md` |
+| Any choice that rests on how others do it, or on a number | `docs/research/README.md`, and the dated sources in the plan it changes |
 
 **The bar, in one screen:**
 
 - **Correct first.** Every input validated, every failure path handled, no unhandled exceptions reach a user.
-- **Secure by default.** Every read and write checks that the caller owns the object. No secrets in code. No PII in logs or embeddings.
+- **Secure by default.** Every read and write checks that the caller may see or change that object: its owner, a party to it (both sides of a deal), or anyone, where it is public by design (an open campaign, a consented Passport). Changes are for its owner or a party, never just anyone signed in. No secrets in code. No PII in logs or embeddings.
 - **Fast by design.** Pilot API budget: p95 ≤ 300 ms for reads and ≤ 500 ms for writes, measured locally with seeded data. No N+1 queries; every foreign key indexed.
 - **Tested for real.** Success, validation failure, permission failure and not-found cases for every endpoint. Database tests run against real Postgres.
 - **Readable.** Type hints everywhere. Clear names. Small functions. A new developer understands a file in 5 minutes.
@@ -237,14 +269,17 @@ If a standard conflicts with a founder's explicit instruction, point out the con
 
 ## 8. Definition of done
 
-- [ ] Follows sections 2, 3 and 6, and the relevant `docs/standards/` file
+- [ ] Proposed with all twelve dimensions (section 5) and approved before it was built
+- [ ] Its p95 measured against the budgets, its mutation floor held, and an independent review's findings fixed or answered (D-139)
+- [ ] Follows sections 2, 3 and 6, and the relevant `docs/standards/` files, re-read for this work
 - [ ] Tests for success and failure cases, run in this session and passing
-- [ ] Public endpoints rate limited, with ownership checks on every object
+- [ ] Public endpoints rate limited, with an access check on every object (owner, party, or public by design)
 - [ ] Error format, pagination and naming match `docs/standards/backend.md`
 - [ ] Schema changes only via a reviewed migration with a working downgrade
 - [ ] No new dependency without a recorded approval
 - [ ] Committed on a feature branch and pushed
-- [ ] PR open, CI green, reviewed by the other founder
+- [ ] Every document it affects still meets the documents' bar (`docs/README.md`)
+- [ ] CI seen green (not assumed) on the exact commit; merged by a founder, or by Claude under D-101; reviewed by the other founder, or the report says it was not
 
 ---
 

@@ -107,6 +107,9 @@ def test_an_entry_gets_a_time_ordered_id_and_a_32_byte_seal(db):
 # --- the database refuses to rewrite history -----------------------------------
 
 
+# The owner: the app's own login is refused by permission before the trigger
+# this shows is reached (item 97, tests/owner.py).
+@pytest.mark.owner
 def test_an_entry_cannot_be_updated(db):
     entry = sealed_entry(db)
 
@@ -122,6 +125,9 @@ def test_an_entry_cannot_be_updated(db):
     assert said.message_primary == "deal_record_entry is append-only: UPDATE refused"
 
 
+# The owner: the app's own login is refused by permission before the trigger
+# this shows is reached (item 97, tests/owner.py).
+@pytest.mark.owner
 def test_an_entry_cannot_be_deleted(db):
     entry = sealed_entry(db)
 
@@ -133,6 +139,9 @@ def test_an_entry_cannot_be_deleted(db):
     assert said.message_primary == "deal_record_entry is append-only: DELETE refused"
 
 
+# The owner: the app's own login is refused by permission before the trigger
+# this shows is reached (item 97, tests/owner.py).
+@pytest.mark.owner
 def test_the_table_cannot_be_truncated(db):
     sealed_entry(db)
 

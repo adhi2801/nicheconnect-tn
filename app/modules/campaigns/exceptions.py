@@ -71,3 +71,99 @@ class ApplicationStatusConflict(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "application_status_conflict"
     title = "This application is not in a state where that is allowed"
+
+
+# --- invitations (D-084) -----------------------------------------------------
+
+
+class CreatorNotFound(DomainError):
+    # Also for a suspended creator: they are out of search (D-061), and
+    # saying "suspended" would tell a brand something private.
+    status_code = HTTPStatus.NOT_FOUND
+    code = "creator_not_found"
+    title = "That creator does not exist"
+
+
+class AlreadyOnCampaign(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "creator_already_on_campaign"
+    title = "This creator has already applied to or been invited to this campaign"
+
+
+class InvitationLimitReached(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "invitation_limit_reached"
+    title = "This campaign has as many unanswered invitations as it may have"
+
+
+class InvitationPending(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "invitation_pending"
+    title = "You have been invited to this campaign: accept the invitation instead"
+
+
+class OfferNotFound(DomainError):
+    # Also an offer on someone else's application: 404, never 403.
+    status_code = HTTPStatus.NOT_FOUND
+    code = "offer_not_found"
+    title = "That offer does not exist"
+
+
+class OffersClosed(DomainError):
+    # Only a waiting application can be negotiated (item 44, D-123).
+    status_code = HTTPStatus.CONFLICT
+    code = "offers_closed"
+    title = "This application is no longer open to offers"
+
+
+class OfferAlreadyAgreed(DomainError):
+    # Once a figure is agreed, later changes go through the memo.
+    status_code = HTTPStatus.CONFLICT
+    code = "offer_already_agreed"
+    title = "A figure is already agreed on this application"
+
+
+class OfferLimitReached(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "offer_limit_reached"
+    title = "You have made every offer you can on this application"
+
+
+class OfferOpen(DomainError):
+    # The figure must be settled before the deal moves on, so nobody can say
+    # afterwards which price was agreed.
+    status_code = HTTPStatus.CONFLICT
+    code = "offer_open"
+    title = "Answer or withdraw the open offer first"
+
+
+class OfferNotYours(DomainError):
+    # Accepting or declining is the other side's move; withdrawing is the maker's.
+    status_code = HTTPStatus.CONFLICT
+    code = "offer_not_yours_to_answer"
+    title = "That move on this offer belongs to the other side"
+
+
+class OfferAnswered(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "offer_already_answered"
+    title = "That offer has already been answered or taken back"
+
+
+class CampaignAlertNotFound(DomainError):
+    # Also another creator's alert: 404, never 403 (security.md section 2).
+    status_code = HTTPStatus.NOT_FOUND
+    code = "campaign_alert_not_found"
+    title = "That alert is not one of yours"
+
+
+class CampaignAlertsFull(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "campaign_alerts_full"
+    title = "You have as many alerts as you can keep; remove one first"
+
+
+class CampaignAlertExists(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "campaign_alert_exists"
+    title = "You already have an alert with these terms"

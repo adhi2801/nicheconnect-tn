@@ -1,6 +1,7 @@
 """Domain errors for the deal memo module."""
 
 from http import HTTPStatus
+from typing import ClassVar
 
 from app.core.errors import DomainError
 
@@ -17,6 +18,14 @@ class ApplicationNotAccepted(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "application_not_accepted"
     title = "Accept the application before writing a deal memo"
+
+
+class CreatorLeft(DomainError):
+    # The creator deleted their account (D-122): nothing new starts with
+    # someone who left, though deals already agreed stay on the record.
+    status_code = HTTPStatus.CONFLICT
+    code = "creator_left"
+    title = "This creator has left the platform"
 
 
 class MemoAlreadyExists(DomainError):
@@ -98,3 +107,98 @@ class RecordDoesNotMatchCheckpoint(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "record_does_not_match_checkpoint"
     title = "The deal record no longer matches its stamped daily checkpoint"
+
+
+# --- proof files (D-065) --------------------------------------------------------
+
+
+class TooManyPendingUploads(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "too_many_pending_uploads"
+    title = "Finish or submit the uploads already started before starting more"
+
+
+class ProofFileNotFound(DomainError):
+    # Someone else's file, a file on another deal, or one already used: all
+    # the same answer, so nothing about other files is confirmed.
+    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
+    code = "proof_file_not_found"
+    title = "A file in this proof is not one of your uploads for this deal"
+
+
+class ProofFileNotUploaded(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "proof_file_not_uploaded"
+    title = "A file in this proof has not finished uploading"
+
+
+class ProofNeedsEvidence(DomainError):
+    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
+    code = "proof_needs_evidence"
+    title = "A proof needs a link to the post, at least one file, or both"
+
+
+class ProofReadingNotFound(DomainError):
+    # A file not on this proof gets the same answer: nothing about other
+    # deals' files is confirmed.
+    status_code = HTTPStatus.NOT_FOUND
+    code = "proof_reading_not_found"
+    title = "That file on this proof has not been read"
+
+
+class ProofReadingNotMarkable(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "proof_reading_not_markable"
+    title = "Only numbers that were read from the screenshot can be marked as misread"
+
+
+class ProofReadingAlreadyMarked(DomainError):
+    # Once: the mark sits next to the reading for good, so the brand never
+    # sees a note that changes after they read it.
+    status_code = HTTPStatus.CONFLICT
+    code = "proof_reading_already_marked"
+    title = "This reading has already been marked as misread"
+
+
+class NotesClosed(DomainError):
+    # Notes run from the memo being sent until the deal ends (D-128).
+    status_code = HTTPStatus.CONFLICT
+    code = "notes_closed"
+    title = "Notes can be written once the memo is sent, until the deal ends"
+
+
+class ShipmentClosed(DomainError):
+    # Goods are sent on an agreed barter deal only (D-131).
+    status_code = HTTPStatus.CONFLICT
+    code = "shipment_closed"
+    title = "A shipment is recorded on an agreed barter deal only"
+
+
+class ShipmentAlreadyReceived(DomainError):
+    # Once the creator says it arrived, neither side changes the shipment.
+    status_code = HTTPStatus.CONFLICT
+    code = "shipment_already_received"
+    title = "The creator has already said this shipment arrived"
+
+
+class ShipmentNotFound(DomainError):
+    status_code = HTTPStatus.NOT_FOUND
+    code = "shipment_not_found"
+    title = "No shipment has been recorded on this deal yet"
+
+
+class FeedbackClosed(DomainError):
+    # Feedback runs from a deal finishing for 14 days, once a side (D-136).
+    status_code = HTTPStatus.CONFLICT
+    code = "feedback_closed"
+    title = "Feedback can't be given on this deal now"
+
+    REASONS: ClassVar[dict[str, str]] = {
+        "not_finished": "The deal has not finished: feedback opens once it is paid and confirmed, or its barter work approved.",
+        "already_given": "You have already given feedback on this deal; it can't be changed.",
+        "closed": "The 14 days for feedback on this deal have passed.",
+    }
+
+    @classmethod
+    def because(cls, reason: str) -> FeedbackClosed:
+        return cls(cls.REASONS[reason])

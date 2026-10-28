@@ -4,17 +4,28 @@ import uuid
 from datetime import date, datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 from pydantic_core import PydanticCustomError
 
 from app.core.literals import ensure_same_values
 from app.core.taxonomy import CURRENCY, MAX_NICHES, Niche
+from app.core.text_flags import FieldFlag, field_flags
+from app.modules.campaigns.deliverable_models import (
+    DELIVERABLE_FORMATS,
+    DELIVERABLE_NOTE_MAX_LENGTH,
+    DELIVERABLE_PLATFORMS,
+    MAX_DELIVERABLE_QUANTITY,
+    MAX_DELIVERABLES,
+)
 from app.modules.campaigns.models import (
+    APPLICATION_ORIGINS,
     APPLICATION_STATUSES,
     BUDGETED_TYPES,
     CAMPAIGN_TYPES,
+    DECLINE_REASONS,
     DELIVERABLES_MAX_LENGTH,
     DESCRIPTION_MAX_LENGTH,
+    INVITATION_NOTE_MAX_LENGTH,
     MAX_CITIES,
     PITCH_MAX_LENGTH,
     PITCH_MIN_LENGTH,
@@ -22,6 +33,12 @@ from app.modules.campaigns.models import (
     REJECTION_REASONS,
     TITLE_MAX_LENGTH,
 )
+from app.modules.campaigns.offer_models import (
+    OFFER_NOTE_MAX_LENGTH,
+    OFFER_OUTCOMES,
+    OFFER_SIDES,
+)
+from app.modules.profiles.schemas import BrandNameFlagRead, VerifiedDomainRead
 
 CampaignType = Literal["paid", "barter", "commission", "local_business"]
 CampaignStatus = Literal["draft", "open", "closed", "cancelled"]
@@ -71,6 +88,51 @@ def _check_budget(campaign_type: str, minimum: int | None, maximum: int | None) 
         )
 
 
+# --- deliverables as a list (item 26, D-127) --------------------------------
+
+DeliverablePlatform = Literal["instagram", "youtube"]
+DeliverableFormat = Literal["post", "reel", "story", "short", "video", "live", "other"]
+
+ensure_same_values("DeliverablePlatform", DeliverablePlatform, DELIVERABLE_PLATFORMS)
+ensure_same_values("DeliverableFormat", DeliverableFormat, DELIVERABLE_FORMATS)
+
+
+class DeliverableIn(BaseModel):
+    """One line of what is asked or agreed: "2 Instagram reels"."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    platform: DeliverablePlatform
+    format: DeliverableFormat = Field(
+        description="The rate card's own words (D-055); `other` when none fits"
+    )
+    quantity: int = Field(default=1, ge=1, le=MAX_DELIVERABLE_QUANTITY, examples=[2])
+    note: (
+        Annotated[str, Field(min_length=1, max_length=DELIVERABLE_NOTE_MAX_LENGTH)] | None
+    ) = Field(default=None, examples=["60 seconds, in Tamil"])
+
+
+class DeliverableRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    platform: DeliverablePlatform
+    format: DeliverableFormat
+    quantity: int
+    note: str | None
+
+
+DeliverableItems = Annotated[
+    list[DeliverableIn],
+    Field(
+        max_length=MAX_DELIVERABLES,
+        description=(
+            "The deliverables as a list, in order: at most 10 lines. The "
+            "`deliverables` text stays, as the summary both sides read"
+        ),
+    ),
+]
+
+
 class CampaignCreate(BaseModel):
     """What a brand sends to create a campaign. It starts as a draft."""
 
@@ -84,10 +146,11 @@ class CampaignCreate(BaseModel):
     cities: Cities
     niches: Niches
     deliverables: Deliverables
+    deliverable_items: DeliverableItems = []
     applications_close_on: date | None = None
 
     @model_validator(mode="after")
-    def check_budget(self) -> "CampaignCreate":
+    def check_budget(self) -> CampaignCreate:
         _check_budget(self.campaign_type, self.budget_min_paise, self.budget_max_paise)
         return self
 
@@ -105,10 +168,11 @@ class CampaignUpdate(BaseModel):
     cities: Cities | None = None
     niches: Niches | None = None
     deliverables: Deliverables | None = None
+    deliverable_items: DeliverableItems | None = None
     applications_close_on: date | None = None
 
     @model_validator(mode="after")
-    def at_least_one_field(self) -> "CampaignUpdate":
+    def at_least_one_field(self) -> CampaignUpdate:
         if not self.model_fields_set:
             raise PydanticCustomError("empty_update", "Send at least one field to change")
         return self
@@ -130,17 +194,61 @@ class CampaignRead(BaseModel):
     cities: list[str]
     niches: list[str]
     deliverables: str
+    deliverable_items: list[DeliverableRead]
     applications_close_on: date | None
     status: CampaignStatus
     created_at: datetime
     updated_at: datetime
+    verified_domain: VerifiedDomainRead | None = Field(
+        default=None,
+        description=(
+            "The website domain the brand proved it controls, checked daily, "
+            "with when it was registered (item 74). Null when it has none. It "
+            "says the brand controls this domain, not that the brand is who its "
+            "name claims: show the domain itself, never only a badge"
+        ),
+    )
+    brand_name_flag: BrandNameFlagRead | None = Field(
+        default=None,
+        description=(
+            "Set when the brand's name looks like a protected brand's and the "
+            "brand has not verified that brand's domain, or mixes look-alike "
+            "letters (item 75). Show it beside the brand's name: \"looks like "
+            'Nykaa; nykaa.com is not verified by this account". Such a brand '
+            "cannot publish a new campaign; one already open keeps this warning"
+        ),
+    )
+
+    @computed_field(  # type: ignore[prop-decorator]  # pydantic documents this
+        description=(
+            "Warnings on the free text above, worked out on every read: a request "
+            "for money from a creator, or contact details before a deal is agreed "
+            "(item 60). Show each beside its field; never hide the text"
+        )
+    )
+    @property
+    def text_flags(self) -> list[FieldFlag]:
+        # Creators read a brief before any deal: money and contact both count.
+        return field_flags(
+            {"description": self.description, "deliverables": self.deliverables},
+            money=True,
+            contact=True,
+        )
 
 
 # --- applications --------------------------------------------------------
 
 ApplicationStatus = Literal[
-    "submitted", "shortlisted", "accepted", "rejected", "withdrawn"
+    "submitted",
+    "shortlisted",
+    "accepted",
+    "rejected",
+    "withdrawn",
+    "invited",
+    "declined",
 ]
+ApplicationOrigin = Literal["applied", "invited"]
+DeclineReason = Literal["timing", "budget", "not_a_fit", "other"]
 RejectionReason = Literal[
     "budget_mismatch",
     "audience_mismatch",
@@ -152,6 +260,8 @@ RejectionReason = Literal[
 
 ensure_same_values("ApplicationStatus", ApplicationStatus, APPLICATION_STATUSES)
 ensure_same_values("RejectionReason", RejectionReason, REJECTION_REASONS)
+ensure_same_values("ApplicationOrigin", ApplicationOrigin, APPLICATION_ORIGINS)
+ensure_same_values("DeclineReason", DeclineReason, DECLINE_REASONS)
 
 Pitch = Annotated[
     str,
@@ -183,21 +293,198 @@ class ApplicationReject(BaseModel):
     note: RejectionNote | None = None
 
 
-class ApplicationRead(BaseModel):
+InvitationNote = Annotated[
+    str,
+    Field(
+        min_length=1,
+        max_length=INVITATION_NOTE_MAX_LENGTH,
+        description="A few words from the brand, shown with the invitation",
+        examples=["Loved your Madurai food walks. Our Pongal box would suit them."],
+    ),
+]
+
+
+class InvitationCreate(BaseModel):
+    """A brand invites one creator to one of its open campaigns (D-084)."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    creator_id: uuid.UUID = Field(description="From search or a match")
+    note: InvitationNote | None = None
+
+
+class RepeatCreate(BaseModel):
+    """Work together again: the same creator, invited to another open campaign."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    campaign_id: uuid.UUID = Field(description="One of your open campaigns")
+    note: InvitationNote | None = None
+
+
+class InvitationDecline(BaseModel):
+    """Why a creator said no. A code, so the brand sees it clearly."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reason: DeclineReason
+
+
+# --- counter-offers on a quote (item 44, D-123) -------------------------------
+
+OfferSide = Literal["brand", "creator"]
+OfferOutcome = Literal["accepted", "declined", "replaced", "withdrawn"]
+
+ensure_same_values("OfferSide", OfferSide, OFFER_SIDES)
+ensure_same_values("OfferOutcome", OfferOutcome, OFFER_OUTCOMES)
+
+OfferNote = Annotated[
+    str,
+    Field(
+        min_length=1,
+        max_length=OFFER_NOTE_MAX_LENGTH,
+        description="A few words beside the figure, shown to the other side",
+        examples=["Two reels at this fee, or three at 9,000."],
+    ),
+]
+
+
+class OfferCreate(BaseModel):
+    """A figure named on a waiting application, by either side."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    amount_paise: Paise
+    note: OfferNote | None = None
+
+
+class OfferRead(BaseModel):
+    """One offer, and how it was answered."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    application_id: uuid.UUID
+    side: OfferSide = Field(description="Who offered it")
+    amount_paise: int
+    currency: Literal["INR"]
+    note: str | None
+    made_at: datetime
+    outcome: OfferOutcome | None = Field(
+        description=(
+            "Null while it waits for the other side. `replaced`: they answered "
+            "with an offer of their own. `withdrawn`: taken back, or closed "
+            "when the application ended. Clients tolerate outcomes they do not know"
+        )
+    )
+    answered_at: datetime | None
+
+    @computed_field(  # type: ignore[prop-decorator]  # pydantic documents this
+        description=(
+            "Warnings on the note, worked out on every read: a request for "
+            "money from a creator, or contact details before a deal is agreed. "
+            "Show each beside the note; never hide it"
+        )
+    )
+    @property
+    def text_flags(self) -> list[FieldFlag]:
+        # A brand's words reach a creator: money and contact. A creator
+        # naming their own price is ordinary, so only contact.
+        return field_flags({"note": self.note}, money=self.side == "brand", contact=True)
+
+
+class ApplicationFields(BaseModel):
+    """What an application says by itself; `ApplicationRead` adds its negotiation."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
     campaign_id: uuid.UUID
     creator_id: uuid.UUID
-    pitch: str
+    origin: ApplicationOrigin
+    pitch: str | None = Field(description="Null for an invitation")
+    invitation_note: str | None
+    repeat_of_application_id: uuid.UUID | None
     quoted_amount_paise: int | None
     currency: Literal["INR"] = CURRENCY
     status: ApplicationStatus
     rejection_reason: RejectionReason | None
     rejection_note: str | None
+    decline_reason: DeclineReason | None
     status_changed_at: datetime
+    first_answered_at: datetime | None = Field(
+        description=(
+            "When the brand first shortlisted, accepted or rejected this "
+            "application. Null while it waits, on invitations, and on answers "
+            "given before 12 October 2026, when it was first kept"
+        )
+    )
     created_at: datetime
     updated_at: datetime
+
+    @computed_field(  # type: ignore[prop-decorator]  # pydantic documents this
+        description=(
+            "Warnings on the free text above, worked out on every read: a request "
+            "for money from a creator, or contact details before a deal is agreed "
+            "(item 60). Show each beside its field; never hide the text"
+        )
+    )
+    @property
+    def text_flags(self) -> list[FieldFlag]:
+        before_a_deal = self.status != "accepted"
+        # The brand's words reach a creator: money and contact. A creator
+        # naming their own price in a pitch is ordinary, so only contact.
+        return [
+            *field_flags(
+                {
+                    "invitation_note": self.invitation_note,
+                    "rejection_note": self.rejection_note,
+                },
+                money=True,
+                contact=before_a_deal,
+            ),
+            *field_flags({"pitch": self.pitch}, money=False, contact=before_a_deal),
+        ]
+
+
+class ApplicationRead(ApplicationFields):
+    """A creator on a campaign, whether they applied or were invited.
+
+    `origin` says which. An invitation has no `pitch`; it may carry the
+    brand's `invitation_note`. `repeat_of_application_id` names the earlier
+    deal a repeat invitation repeats. Clients must tolerate statuses they do
+    not know: `invited` and `declined` were added on 10 October 2026.
+    `open_offer` and `agreed_amount_paise` were added on 25 October 2026.
+    """
+
+    open_offer: OfferRead | None = Field(
+        description=(
+            "A counter-offer waiting for an answer (item 44): the side that did "
+            "not make it accepts, declines or answers with its own at "
+            "`/api/v1/applications/{id}/offers`. While one waits, the "
+            "application cannot be accepted"
+        )
+    )
+    agreed_amount_paise: int | None = Field(
+        description=(
+            "The figure both sides agreed through an offer, in paise. It "
+            "pre-fills the memo's fee; the memo is still the contract. Null when "
+            "none was agreed"
+        )
+    )
+
+
+def to_application_read(
+    application: object, open_offer: object | None, agreed_amount_paise: int | None
+) -> ApplicationRead:
+    """An application with its negotiation, as `offer_service.summaries_for` finds it."""
+    return ApplicationRead(
+        **ApplicationFields.model_validate(application).model_dump(),
+        open_offer=OfferRead.model_validate(open_offer)
+        if open_offer is not None
+        else None,
+        agreed_amount_paise=agreed_amount_paise,
+    )
 
 
 class ApplicationFeedbackRead(BaseModel):
@@ -235,3 +522,96 @@ class ApplicationFeedbackRead(BaseModel):
     passport_published: bool = Field(
         description="A fact, not a to-do: publishing is the creator's choice (D-036)"
     )
+
+
+# --- a campaign at a glance (D-076) --------------------------------------------------------
+
+
+class ApplicationCountsRead(BaseModel):
+    """How many applications are in each status. Every status, zeros included."""
+
+    submitted: int
+    shortlisted: int
+    accepted: int
+    rejected: int
+    withdrawn: int
+    invited: int = Field(description="Invitations still waiting for an answer")
+    declined: int = Field(description="Invitations the creator said no to")
+
+
+class DealStageCountsRead(BaseModel):
+    """How many deals stand at each stage, worked out as of the request."""
+
+    draft: int
+    memo_sent: int
+    agreed: int
+    in_progress: int
+    payment: int
+    finished: int
+    declined: int
+    cancelled: int
+
+
+class CampaignSummaryRead(BaseModel):
+    """One campaign at a glance, for its board and the Campaigns list.
+
+    `deals_agreed` counts deals agreed and not cancelled; "2 of 6 deals
+    finished" is `deals_finished` of `deals_agreed`. `complete` is worked
+    out, never stored: closed, at least one deal agreed, every agreed deal
+    finished and no memo left unanswered.
+    """
+
+    campaign_id: uuid.UUID
+    status: CampaignStatus
+    applications: ApplicationCountsRead
+    deals_by_stage: DealStageCountsRead
+    deals_agreed: int
+    deals_finished: int
+    deals_waiting_on_brand: int
+    complete: bool
+
+
+# --- campaign alerts (item 43, D-130) ---------------------------------------
+
+
+class CampaignAlertIn(BaseModel):
+    """An alert's terms. Each one named must fit; one left out fits anything."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    city: City | None = None
+    niche: Niche | None = None
+    campaign_type: CampaignType | None = None
+    min_budget_paise: Paise | None = Field(
+        default=None,
+        description="Fits a campaign whose budget reaches this, in whole paise",
+    )
+
+    @model_validator(mode="after")
+    def names_a_term(self) -> CampaignAlertIn:
+        if (
+            self.city is None
+            and self.niche is None
+            and self.campaign_type is None
+            and self.min_budget_paise is None
+        ):
+            raise PydanticCustomError(
+                "alert_empty", "Name at least one of a city, a niche, a type or a budget"
+            )
+        if self.campaign_type == "barter" and self.min_budget_paise is not None:
+            raise PydanticCustomError(
+                "budget_on_barter", "A barter campaign pays in goods, so it has no budget"
+            )
+        return self
+
+
+class CampaignAlertRead(BaseModel):
+    """One of the creator's alerts. `null` in a term means any."""
+
+    id: uuid.UUID
+    city: str | None
+    niche: Niche | None
+    campaign_type: CampaignType | None
+    min_budget_paise: int | None
+    currency: Literal["INR"]
+    created_at: datetime

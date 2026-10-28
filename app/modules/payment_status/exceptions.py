@@ -51,3 +51,34 @@ class BarterMemoHasNoPayment(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "barter_memo_has_no_payment"
     title = "A barter deal has no payment to record"
+
+
+class NotAPaymentParty(DomainError):
+    status_code = HTTPStatus.FORBIDDEN
+    code = "not_a_payment_party"
+    title = "Only brand and creator accounts have payments"
+
+
+# --- the UPI pay link (D-085) ---------------------------------------------------------
+
+
+class UpiNotOpenYet(DomainError):
+    # The notice a creator must read first comes from the validation pack
+    # (constraint 6). Until it exists, nobody can give a UPI ID.
+    status_code = HTTPStatus.SERVICE_UNAVAILABLE
+    code = "upi_not_open_yet"
+    title = "Adding a UPI ID is not open yet"
+
+
+class UpiNoticeChanged(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "upi_notice_changed"
+    title = "The notice has changed since you read it; read the new one and try again"
+
+
+class UpiChangeAlreadyInEffect(DomainError):
+    # The 24 hours are over, so brands already see it: cancelling now would
+    # not undo anything. Setting the earlier ID again is how to go back.
+    status_code = HTTPStatus.CONFLICT
+    code = "upi_change_already_in_effect"
+    title = "That UPI ID is already in effect; set the one you want instead"

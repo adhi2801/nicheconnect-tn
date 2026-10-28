@@ -20,7 +20,7 @@ rules are enforced here rather than trusted to each caller:
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time
 from typing import Any
 
 # Enough for any pilot account, small enough that one request cannot exhaust
@@ -71,6 +71,10 @@ def to_json_value(value: Any) -> Any:
         return moment.astimezone(UTC).isoformat().replace("+00:00", "Z")
     if isinstance(value, date):
         return value.isoformat()
+    if isinstance(value, time):
+        # A time of day with no date, such as the start of quiet hours. It is
+        # Tamil Nadu time by definition, so no offset is attached.
+        return value.isoformat(timespec="minutes")
     if isinstance(value, (list, tuple)):
         return [to_json_value(item) for item in value]
     if isinstance(value, dict):
@@ -95,7 +99,7 @@ class ExportedSection:
     # reads these, so no table can be quietly left out of an export.
     table: str
     # Why we hold this data, in words the person reading the file will
-    # understand (security.md section 6: every PII field has a purpose).
+    # understand (security.md section 7: every PII field has a purpose).
     purpose: str
     records: list[dict[str, Any]] = field(default_factory=list)
     truncated: bool = False

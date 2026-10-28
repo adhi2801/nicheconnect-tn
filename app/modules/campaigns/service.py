@@ -14,7 +14,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -25,8 +25,13 @@ from app.core.export import (
     build_section,
 )
 from app.core.pagination import Slice, build_slice, older_than_cursor
+from app.modules.auth import sides
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
+from app.modules.auth.suspension import brand_is_active, brand_is_unavailable
+from app.modules.campaigns import alert_service
+from app.modules.campaigns import offer_service as offers
+from app.modules.campaigns.deliverable_models import CampaignDeliverable
 from app.modules.campaigns.exceptions import (
     AlreadyApplied,
     ApplicationsClosed,
@@ -38,13 +43,41 @@ from app.modules.campaigns.exceptions import (
     CampaignStatusConflict,
     CreatorProfileRequired,
     FieldNotEditableNow,
+    InvitationPending,
+    OfferOpen,
 )
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.notifications import service as notifications
+from app.modules.profiles import brand_domain_service as brand_domains
+from app.modules.profiles import brand_name_service
+from app.modules.profiles.schemas import (
+    BrandNameFlagRead,
+    VerifiedDomainRead,
+    to_brand_name_flag_read,
+    to_verified_domain_read,
+)
+from app.modules.safety.blocks import blocked_between, not_blocked_with_brand
+from app.modules.safety.exceptions import ContentWithheld, OwnContentWithheld
+from app.modules.safety.takedowns import (
+    campaign_is_withheld,
+    campaign_not_withheld,
+    is_withheld,
+)
 
 # Tables this module answers for in a data export (see
-# tests/modules/auth/test_export_api.py, which fails if one is missed).
-EXPORTED_TABLES = frozenset({"campaign", "application"})
+# tests/modules/me/test_export_api.py, which fails if one is missed).
+CAMPAIGN_DELIVERABLE_EXPORT_FIELDS = allow(
+    "id",
+    "campaign_id",
+    "position",
+    "platform",
+    "format",
+    "quantity",
+    "note",
+    "created_at",
+    "updated_at",
+)
+EXPORTED_TABLES = frozenset({"campaign", "campaign_deliverable", "application"})
 
 CAMPAIGN_EXPORT_FIELDS = allow(
     "id",
@@ -66,12 +99,17 @@ CAMPAIGN_EXPORT_FIELDS = allow(
 APPLICATION_EXPORT_FIELDS = allow(
     "id",
     "campaign_id",
+    "origin",
     "pitch",
+    "invitation_note",
+    "repeat_of_application_id",
     "quoted_amount_paise",
     "status",
     "rejection_reason",
     "rejection_note",
+    "decline_reason",
     "status_changed_at",
+    "first_answered_at",
     "created_at",
     "updated_at",
 )
@@ -84,7 +122,56 @@ ALLOWED_TRANSITIONS: dict[str, frozenset[str]] = {
     "cancelled": frozenset(),
 }
 # Once creators can apply, the deal on offer must not change under them.
-EDITABLE_WHILE_OPEN = frozenset({"description", "deliverables", "applications_close_on"})
+EDITABLE_WHILE_OPEN = frozenset(
+    {"description", "deliverables", "deliverable_items", "applications_close_on"}
+)
+
+
+def get_visible_campaign(
+    db: Session, campaign_id: uuid.UUID, account_id: uuid.UUID
+) -> Campaign:
+    """A campaign this account may read: its owner sees it in any status,
+    everyone else only while it is open and not withheld (item 52).
+
+    Raises CampaignNotFound for another brand's campaign that is not open,
+    never 403, so drafts stay private; and ContentWithheld (451) for an open
+    one withheld by a takedown, of it or of its brand.
+    """
+    campaign = db.get(Campaign, campaign_id)
+    if campaign is None:
+        raise CampaignNotFound()
+    withheld = campaign_is_withheld(db, campaign.id, campaign.brand_id)
+    if campaign.status != "open" or withheld:
+        owner_account_id = db.scalar(
+            select(Brand.account_id).where(Brand.id == campaign.brand_id)
+        )
+        if owner_account_id != account_id:
+            if campaign.status != "open":
+                raise CampaignNotFound()
+            raise ContentWithheld()
+    return campaign
+
+
+def verified_domains_for(
+    db: Session, campaigns: list[Campaign]
+) -> dict[uuid.UUID, VerifiedDomainRead]:
+    """Each brand's verified domain (item 74), by brand id, for these campaigns.
+
+    One query however many campaigns: the page's brands, at once.
+    """
+    found = brand_domains.verified_for_brands(db, {c.brand_id for c in campaigns})
+    return {brand_id: to_verified_domain_read(row) for brand_id, row in found.items()}
+
+
+def brand_name_flags_for(
+    db: Session, campaigns: list[Campaign]
+) -> dict[uuid.UUID, BrandNameFlagRead]:
+    """Each flagged brand's look-alike name warning (item 75), for these campaigns.
+
+    One query however many campaigns (`brand_name_service.flags_for`).
+    """
+    found = brand_name_service.flags_for(db, {c.brand_id for c in campaigns})
+    return {brand_id: to_brand_name_flag_read(flag) for brand_id, flag in found.items()}
 
 
 def get_brand_for_account(db: Session, account_id: uuid.UUID) -> Brand:
@@ -102,6 +189,7 @@ def create_campaign(
     db: Session, brand: Brand, fields: dict[str, Any], now: datetime
 ) -> Campaign:
     """Create a campaign as a draft. Only publishing makes it visible."""
+    items = fields.pop("deliverable_items", None) or []
     campaign = Campaign(
         brand_id=brand.id,
         status="draft",
@@ -110,6 +198,8 @@ def create_campaign(
         **fields,
     )
     db.add(campaign)
+    db.flush()
+    replace_deliverables(db, campaign.id, items, now)
     db.commit()
     db.refresh(campaign)
     return campaign
@@ -135,23 +225,56 @@ def update_campaign(
                 f"Cannot change {', '.join(sorted(blocked))} while the campaign is open."
             )
 
+    items = changes.pop("deliverable_items", None)
     for field, value in changes.items():
         setattr(campaign, field, value)
+    if items is not None:
+        replace_deliverables(db, campaign.id, items, now)
     campaign.updated_at = now
     db.commit()
     db.refresh(campaign)
     return campaign
 
 
+def replace_deliverables(
+    db: Session, campaign_id: uuid.UUID, items: list[dict[str, Any]], now: datetime
+) -> None:
+    """The campaign's list of deliverables, replaced whole (item 26, D-127). Never commits."""
+    db.execute(
+        delete(CampaignDeliverable).where(CampaignDeliverable.campaign_id == campaign_id)
+    )
+    db.flush()
+    db.add_all(
+        CampaignDeliverable(
+            campaign_id=campaign_id,
+            position=position,
+            created_at=now,
+            updated_at=now,
+            **item,
+        )
+        for position, item in enumerate(items)
+    )
+    db.flush()
+
+
 def change_status(
     db: Session, campaign: Campaign, new_status: str, now: datetime
 ) -> Campaign:
     """Move a campaign to `new_status`, or raise CampaignStatusConflict."""
+    # Locked and read again before the check: two moves at once would both
+    # pass it, and the last write would silently win (review audit, 4 Oct).
+    db.refresh(campaign, attribute_names=["status"], with_for_update=True)
     if new_status not in ALLOWED_TRANSITIONS[campaign.status]:
         db.rollback()
         raise CampaignStatusConflict(
             f"A {campaign.status} campaign cannot become {new_status}."
         )
+    if new_status == "open":
+        # A name that looks like a protected brand's publishes nothing until
+        # the brand verifies that brand's domain (item 75, option B).
+        brand_name_service.ensure_may_publish(db, campaign.brand_id)
+        # Its alerts are due, in this same transaction (item 43, D-130).
+        alert_service.queue(db, campaign, now)
     campaign.status = new_status
     campaign.updated_at = now
     db.commit()
@@ -160,7 +283,7 @@ def change_status(
 
 
 def _paginate(
-    db: Session, query: Select[tuple[Campaign]], limit: int, cursor: str | None
+    db: Session, query: Select[Campaign], limit: int, cursor: str | None
 ) -> Slice[Campaign]:
     """Newest first, one row past the limit to know whether more exist."""
     if cursor is not None:
@@ -199,9 +322,19 @@ def discover_campaigns(
     niche: str | None = None,
     campaign_type: str | None = None,
     min_budget_paise: int | None = None,
+    viewer_account_id: uuid.UUID | None = None,
 ) -> Slice[Campaign]:
     """Open campaigns for creators to browse, with optional filters."""
-    query = select(Campaign).where(Campaign.status == "open")
+    query = select(Campaign).where(
+        Campaign.status == "open",
+        # A suspended brand's campaigns leave discovery (D-061).
+        brand_is_active(Campaign.brand_id),
+        # So does one withheld, or whose brand is (item 52).
+        campaign_not_withheld(Campaign.id, Campaign.brand_id),
+    )
+    if viewer_account_id is not None:
+        # So do those of a brand either side has blocked (item 59).
+        query = query.where(not_blocked_with_brand(viewer_account_id, Campaign.brand_id))
     if city is not None:
         query = query.where(Campaign.cities.any_() == city)
     if niche is not None:
@@ -223,14 +356,32 @@ def discover_campaigns(
 #         │  └────reject─────────┘  └────reject───────> rejected
 #         └────withdraw────────────────withdraw───────> withdrawn
 #
-# The brand shortlists, accepts and rejects; the creator withdraws. Accepted,
-# rejected and withdrawn are final: a new attempt means a new campaign.
-APPLICATION_TRANSITIONS: dict[str, frozenset[str]] = {
-    "submitted": frozenset({"shortlisted", "rejected", "withdrawn"}),
-    "shortlisted": frozenset({"accepted", "rejected", "withdrawn"}),
-    "accepted": frozenset(),
-    "rejected": frozenset(),
-    "withdrawn": frozenset(),
+# The brand shortlists, accepts and rejects; the creator withdraws.
+#
+# And for an invitation (D-084):
+#
+#     invited ──accept (creator)──> accepted
+#        │ └───decline (creator)──> declined
+#        └─────withdraw (brand)───> withdrawn
+#
+# "Withdrawn" means whoever started it took it back. Accepted, rejected,
+# declined and withdrawn are final: a new attempt means a new campaign.
+#
+# Who may make each move matters, not only where it leads: a creator answers
+# an invitation by declining it, never by withdrawing the brand's offer.
+BRAND_MOVES: dict[str, frozenset[str]] = {
+    "submitted": frozenset({"shortlisted", "rejected"}),
+    "shortlisted": frozenset({"accepted", "rejected"}),
+    "invited": frozenset({"withdrawn"}),
+}
+CREATOR_MOVES: dict[str, frozenset[str]] = {
+    "submitted": frozenset({"withdrawn"}),
+    "shortlisted": frozenset({"withdrawn"}),
+    "invited": frozenset({"accepted", "declined"}),
+}
+APPLICATION_MOVES: dict[str, dict[str, frozenset[str]]] = {
+    "brand": BRAND_MOVES,
+    "creator": CREATOR_MOVES,
 }
 
 
@@ -253,13 +404,16 @@ def _creator_account_id(db: Session, application: Application) -> uuid.UUID | No
     )
 
 
-# Which status change tells whom. The brand hears about withdrawals; the
-# creator hears the brand's decisions (D-023).
-STATUS_NOTIFICATIONS: dict[str, tuple[str, str]] = {
-    "shortlisted": ("creator", "application_shortlisted"),
-    "accepted": ("creator", "application_accepted"),
-    "rejected": ("creator", "application_rejected"),
-    "withdrawn": ("brand", "application_withdrawn"),
+# Which move tells whom, keyed by (who moved, the new status). The other
+# side always hears (D-023, D-084).
+STATUS_NOTIFICATIONS: dict[tuple[str, str], tuple[str, str]] = {
+    ("brand", "shortlisted"): ("creator", "application_shortlisted"),
+    ("brand", "accepted"): ("creator", "application_accepted"),
+    ("brand", "rejected"): ("creator", "application_rejected"),
+    ("brand", "withdrawn"): ("creator", "invitation_withdrawn"),
+    ("creator", "withdrawn"): ("brand", "application_withdrawn"),
+    ("creator", "accepted"): ("brand", "invitation_accepted"),
+    ("creator", "declined"): ("brand", "invitation_declined"),
 }
 
 
@@ -273,15 +427,35 @@ def apply_to_campaign(
     """Apply to an open campaign.
 
     Raises CampaignNotFound (unknown or not open to this creator),
-    ApplicationsClosed (past the closing date) and AlreadyApplied.
+    ApplicationsClosed (past the closing date), AlreadyApplied,
+    ContentWithheld (the campaign or its brand is withheld) and
+    OwnContentWithheld (the creator's own profile is: item 52).
     """
     campaign = db.get(Campaign, campaign_id)
     if campaign is None:
         db.rollback()
         raise CampaignNotFound()
-    if campaign.status != "open":
+    if campaign.status != "open" or brand_is_unavailable(db, campaign.brand_id):
+        # A suspended brand's campaign cannot be applied to, even by its id.
         db.rollback()
         raise CampaignNotOpen()
+    brand_account_id = _brand_account_id(db, campaign)
+    if brand_account_id is not None and (
+        blocked_between(db, creator.account_id, brand_account_id)
+        # One person's two sides on one number never deal (D-126).
+        or sides.same_person(db, creator.account_id, brand_account_id)
+    ):
+        # Blocked either way (item 59): it reads as not found, so the block
+        # is never revealed.
+        db.rollback()
+        raise CampaignNotFound()
+    # Withheld (item 52): nothing new reaches a withheld item, or comes from one.
+    if campaign_is_withheld(db, campaign.id, campaign.brand_id):
+        db.rollback()
+        raise ContentWithheld()
+    if is_withheld(db, "creator", creator.id):
+        db.rollback()
+        raise OwnContentWithheld()
     if (
         campaign.applications_close_on is not None
         and now.date() > campaign.applications_close_on
@@ -305,9 +479,17 @@ def apply_to_campaign(
         db.flush()
     except IntegrityError as error:
         db.rollback()
-        if "uq_application_campaign_creator" in str(error):
-            raise AlreadyApplied() from error
-        raise
+        if "uq_application_campaign_creator" not in str(error):
+            raise
+        waiting = db.scalar(
+            select(Application.status).where(
+                Application.campaign_id == campaign.id,
+                Application.creator_id == creator.id,
+            )
+        )
+        if waiting == "invited":
+            raise InvitationPending() from error
+        raise AlreadyApplied() from error
 
     brand_account_id = _brand_account_id(db, campaign)
     if brand_account_id is not None:
@@ -331,25 +513,110 @@ def change_application_status(
     new_status: str,
     now: datetime,
     *,
+    actor: str,
     rejection_reason: str | None = None,
     rejection_note: str | None = None,
+    decline_reason: str | None = None,
 ) -> Application:
-    """Move an application on, or raise ApplicationStatusConflict."""
-    if new_status not in APPLICATION_TRANSITIONS[application.status]:
+    """Move an application on as `actor` ("brand" or "creator"), and commit.
+
+    Raises ApplicationStatusConflict, and CampaignNotOpen when a creator
+    accepts an invitation to a campaign that is no longer open.
+    """
+    move_application(
+        db,
+        application,
+        new_status,
+        now,
+        actor=actor,
+        rejection_reason=rejection_reason,
+        rejection_note=rejection_note,
+        decline_reason=decline_reason,
+    )
+    db.commit()
+    db.refresh(application)
+    return application
+
+
+def move_application(
+    db: Session,
+    application: Application,
+    new_status: str,
+    now: datetime,
+    *,
+    actor: str,
+    rejection_reason: str | None = None,
+    rejection_note: str | None = None,
+    decline_reason: str | None = None,
+) -> Campaign:
+    """The move itself, without committing, for a caller with more to write.
+
+    Returns the application's campaign. Accepting an invitation needs the
+    campaign still open, its brand not suspended and neither of them nor the
+    creator withheld (item 52), checked under the application's lock: an
+    invitation outlives none of them.
+    """
+    # Locked and read again before the check: two moves at once would both
+    # pass it, and the last write would silently win (review audit, 4 Oct).
+    db.refresh(
+        application,
+        attribute_names=["status", "first_answered_at"],
+        with_for_update=True,
+    )
+    if new_status not in APPLICATION_MOVES[actor].get(application.status, frozenset()):
         db.rollback()
         raise ApplicationStatusConflict(
             f"A {application.status} application cannot become {new_status}."
         )
+    campaign = db.get_one(Campaign, application.campaign_id)
+    if (actor, new_status) == ("creator", "accepted") and (
+        campaign.status != "open" or brand_is_unavailable(db, campaign.brand_id)
+    ):
+        db.rollback()
+        raise CampaignNotOpen()
+    # Withheld (item 52): no move towards a new deal, by either side. Saying
+    # no (rejecting, declining, withdrawing) stays open to both.
+    if (actor, new_status) == ("creator", "accepted"):
+        if campaign_is_withheld(db, campaign.id, campaign.brand_id):
+            db.rollback()
+            raise ContentWithheld()
+        if is_withheld(db, "creator", application.creator_id):
+            db.rollback()
+            raise OwnContentWithheld()
+    if actor == "brand" and new_status in {"shortlisted", "accepted"}:
+        if campaign_is_withheld(db, campaign.id, campaign.brand_id):
+            db.rollback()
+            raise OwnContentWithheld()
+        if is_withheld(db, "creator", application.creator_id):
+            db.rollback()
+            raise ContentWithheld()
+    # A counter-offer (item 44, D-123): the figure is settled before the deal
+    # moves on, so nobody can say afterwards which price was agreed; saying
+    # no ends the open offer with the application.
+    if new_status == "accepted" and offers.has_open(db, application.id):
+        db.rollback()
+        raise OfferOpen()
+    if new_status in {"rejected", "withdrawn", "declined"}:
+        offers.close_open(db, [application.id], actor, now)
     application.status = new_status
     application.rejection_reason = rejection_reason if new_status == "rejected" else None
     application.rejection_note = rejection_note if new_status == "rejected" else None
+    application.decline_reason = decline_reason if new_status == "declined" else None
     application.status_changed_at = now
     application.updated_at = now
+    # The brand's first answer to someone who applied, kept once (item 28):
+    # how fast brands reply is measured from it. Read under the lock above,
+    # so two first answers at once cannot both write it.
+    if (
+        actor == "brand"
+        and application.origin == "applied"
+        and application.first_answered_at is None
+    ):
+        application.first_answered_at = now
 
     # Tell the other side what happened, in the same transaction: a record
     # that exists only if the change itself succeeded.
-    side, notification_type = STATUS_NOTIFICATIONS[new_status]
-    campaign = db.get_one(Campaign, application.campaign_id)
+    side, notification_type = STATUS_NOTIFICATIONS[(actor, new_status)]
     account_id = (
         _creator_account_id(db, application)
         if side == "creator"
@@ -357,8 +624,9 @@ def change_application_status(
     )
     if account_id is not None:
         details: dict[str, object] = {"campaign_title": campaign.title}
-        if rejection_reason is not None:
-            details["reason"] = rejection_reason
+        reason = rejection_reason or decline_reason
+        if reason is not None:
+            details["reason"] = reason
         notifications.record(
             db,
             account_id=account_id,
@@ -368,14 +636,11 @@ def change_application_status(
             application_id=application.id,
             details=details,
         )
-
-    db.commit()
-    db.refresh(application)
-    return application
+    return campaign
 
 
 def _paginate_applications(
-    db: Session, query: Select[tuple[Application]], limit: int, cursor: str | None
+    db: Session, query: Select[Application], limit: int, cursor: str | None
 ) -> Slice[Application]:
     if cursor is not None:
         query = query.where(
@@ -474,6 +739,17 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
                 fields=CAMPAIGN_EXPORT_FIELDS,
             )
         )
+        sections.append(
+            build_section(
+                "campaign_deliverables",
+                table="campaign_deliverable",
+                purpose="Each campaign's deliverables as a list, in your order (D-127).",
+                objects=[
+                    item for campaign in campaigns for item in campaign.deliverable_items
+                ],
+                fields=CAMPAIGN_DELIVERABLE_EXPORT_FIELDS,
+            )
+        )
 
         received = list(
             db.scalars(
@@ -491,8 +767,9 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
                 "applications_received",
                 table="application",
                 purpose=(
-                    "Applications creators sent to your campaigns. The creator "
-                    "is identified by their public handle only."
+                    "Applications creators sent to your campaigns, and the "
+                    "invitations you sent creators. The creator is identified "
+                    "by their public handle only."
                 ),
                 objects=received,
                 fields=APPLICATION_EXPORT_FIELDS,
@@ -518,7 +795,10 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
             build_section(
                 "applications_sent",
                 table="application",
-                purpose="Applications you sent to campaigns, and how each ended.",
+                purpose=(
+                    "Applications you sent to campaigns, invitations brands sent "
+                    "you, and how each ended."
+                ),
                 objects=sent,
                 fields=APPLICATION_EXPORT_FIELDS,
                 extra=lambda row: {"campaign_title": titles.get(row.campaign_id)},

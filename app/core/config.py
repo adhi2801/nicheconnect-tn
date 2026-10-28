@@ -8,6 +8,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # Keys must carry at least 256 bits (D-008). A token_urlsafe(32) value is
 # 43 characters, so 32 characters is the floor.
 MIN_KEY_LENGTH = 32
+# The app's own database login's password (item 97, app/db/roles.py).
+APP_DATABASE_PASSWORD = re.compile(r"[A-Za-z0-9]{32,128}")
 PLACEHOLDER_PREFIX = "change-me"
 
 # Every environment the app knows. Anything else is a typo, and a typo must
@@ -20,7 +22,19 @@ PLAIN_HTTP_ENVIRONMENTS = frozenset({"local", "test"})
 # A host name as a browser writes it in the Origin header: lower case, digits,
 # dots and hyphens. An international name arrives as punycode, so this covers it.
 HOST_NAME = re.compile(r"[a-z0-9-]+(\.[a-z0-9-]+)*")
+# An Android app's own origin for passkeys: its signing key's SHA-256,
+# base64url without padding (43 characters).
+ANDROID_APP_ORIGIN = re.compile(r"android:apk-key-hash:[A-Za-z0-9_-]{43}")
 DEFAULT_PORTS = {"http": 80, "https": 443}
+
+# How login codes reach a phone (D-058). "fake" keeps them in memory and only
+# runs in local and test; "msg91" sends them by WhatsApp through MSG91.
+OtpSenderName = Literal["fake", "msg91"]
+# The WhatsApp number registered with MSG91, as MSG91 writes it: country code
+# then number, digits only (e.g. 919876543210).
+MSG91_NUMBER = re.compile(r"91[6-9][0-9]{9}")
+# WhatsApp template names: lower case letters, digits and underscores.
+WHATSAPP_TEMPLATE_NAME = re.compile(r"[a-z0-9_]{1,512}")
 
 
 def split_origins(raw: str) -> tuple[str, ...]:
@@ -84,6 +98,21 @@ class Settings(BaseSettings):
     db_pool_size: int = Field(default=5, ge=1, le=50)
     db_max_overflow: int = Field(default=10, ge=0, le=50)
     db_statement_timeout_ms: int = Field(default=5000, ge=100, le=60000)
+    # How long a request may wait for a free connection before it is told
+    # "busy, retry" with a 503, instead of SQLAlchemy's 30 seconds and a 500
+    # (item 5a, D-093).
+    db_pool_timeout_seconds: float = Field(default=2.0, gt=0, le=30)
+    # The app's own login's password (item 97, D-100), given only to the
+    # release step (app/db/prepare.py), which sets it on the login. The app
+    # itself connects with DATABASE_URL; in production that is the login.
+    app_database_password: SecretStr | None = None
+    # Requests one process works on at once. Below the pool's connections,
+    # so every request let in can always get one: the load test froze a
+    # process when 40 worker threads waited on 15 connections (D-092). One
+    # connection stays free for the readiness check.
+    max_in_flight_requests: int = Field(default=12, ge=1, le=100)
+    # How long a request may wait for one of those places before the 503.
+    busy_queue_ms: int = Field(default=1000, ge=0, le=10_000)
     redis_url: str
     # Addresses or ranges we accept X-Forwarded-For from, comma separated
     # (e.g. "10.0.0.0/8,172.16.0.0/12"). Empty means trust nothing, which is
@@ -97,11 +126,259 @@ class Settings(BaseSettings):
     secret_key: SecretStr = Field(min_length=MIN_KEY_LENGTH)
     # Keys the HMAC of one-time codes (D-011). Must differ from secret_key.
     otp_hash_key: SecretStr = Field(min_length=MIN_KEY_LENGTH)
+    # Encrypts the admins' authenticator secrets at rest (item 101, D-105),
+    # so a copy of the database alone yields none of them. Must differ from
+    # both keys above. Rotating it voids every enrolled authenticator.
+    second_factor_key: SecretStr = Field(min_length=MIN_KEY_LENGTH)
     access_token_expire_minutes: int = Field(default=15, ge=1, le=15)
     refresh_token_expire_days: int = Field(default=30, ge=1, le=30)
     # Background jobs (D-060). Off unless this instance should run them;
     # several instances may, since DBOS shares the work between them.
     run_jobs: bool = False
+    # Whether DBOS creates and upgrades its schema at start. Off in
+    # production, where the app's login may not create schemas and the
+    # release step does it as the owner (item 97, D-100).
+    dbos_migrate_at_start: bool = True
+    # Login codes (D-058). The MSG91 settings are required only when
+    # otp_sender is "msg91", and checked at startup when they are.
+    otp_sender: OtpSenderName = "fake"
+    msg91_auth_key: SecretStr | None = None
+    msg91_whatsapp_number: str | None = None
+    msg91_otp_template: str = "login_code"
+    msg91_template_language: str = Field(default="en", pattern=r"^[a-z]{2}(_[A-Z]{2})?$")
+    # Proof files (D-065): the private bucket infra/ creates, and its region.
+    # Unset in local and test, which use the in-memory store instead.
+    uploads_bucket: str | None = Field(
+        default=None, pattern=r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
+    )
+    aws_region: str = Field(default="ap-south-1", pattern=r"^[a-z]{2}(-[a-z]+)+-\d$")
+    # Results read from proof (D-070). Off until the validation pack says
+    # whether a creator's insights may go to a processor (constraint 6).
+    # On, it needs the key, checked at startup.
+    proof_reading_enabled: bool = False
+    anthropic_api_key: SecretStr | None = None
+    proof_reader_model: str = Field(
+        default="claude-opus-5-5", pattern=r"^claude-[a-z0-9]+(-[a-z0-9]+)*$"
+    )
+    # The most screenshots read in any 24 hours: a ceiling on the bill if
+    # something loops. The job stops at it; no request ever waits on it.
+    proof_reading_daily_limit: int = Field(default=300, ge=1, le=10_000)
+    # Error tracking (D-074). Unset means off, which is right for local and
+    # test. A DSN only lets a program send errors in, never read them, which
+    # is why Sentry treats it as public; it is still a setting, never code.
+    sentry_dsn: str | None = Field(
+        default=None, pattern=r"^https://[0-9a-f]{32}@[a-z0-9.-]+/[0-9]+$"
+    )
+    # Which build an error came from: the image's git commit, set by infra/.
+    app_release: str | None = Field(default=None, pattern=r"^[A-Za-z0-9._+-]{1,200}$")
+    # Tracing (item 3, D-094): where spans go, as an OpenTelemetry (OTLP over
+    # HTTP) traces URL. Unset means off, which is right until hosting decides
+    # the destination; locally a Jaeger at http://localhost:4318/v1/traces.
+    traces_endpoint: str | None = Field(
+        default=None,
+        pattern=r"^https?://[A-Za-z0-9.-]+(:[0-9]{1,5})?(/[A-Za-z0-9._/-]*)?$",
+    )
+    # The share of requests traced, 0 to 1, unless the caller already chose
+    # (a `traceparent` from the app is followed either way).
+    traces_sample_ratio: float = Field(default=0.1, ge=0, le=1)
+    # Log lines as JSON for CloudWatch, or readable text on a laptop (D-102).
+    log_format: Literal["text", "json"] = "text"
+    # The version of the notice a creator reads before giving their UPI ID
+    # (D-085). Its wording comes from the validation pack (constraint 6);
+    # until it exists this stays unset, and adding a UPI ID is off.
+    upi_notice_version: str | None = Field(
+        default=None, pattern=r"^[A-Za-z0-9._-]{1,40}$"
+    )
+    # Passkeys (item 79, D-113): the domain they are bound to, WebAuthn's
+    # relying party ID. Unset until the name and the domain exist (item 4);
+    # passkeys are off until then. A passkey made for one domain never works
+    # on another, so it is set once, to the domain we will keep.
+    passkey_rp_id: str | None = Field(
+        default=None, pattern=r"^[a-z0-9-]+(\.[a-z0-9-]+)*$"
+    )
+    # The name a phone shows when it offers the passkey.
+    passkey_rp_name: str = Field(default="NicheConnect TN", min_length=1, max_length=64)
+    # Where a passkey's answer may come from, comma-separated: the website's
+    # own origins (the domain or its subdomains), and each app's
+    # android:apk-key-hash:<hash>. iOS apps answer with the website's origin.
+    passkey_origins: str = ""
+    # Published Passports offered to search engines (item 85, D-121): the
+    # feed for the website's sitemap and each Passport's structured data. Off
+    # until the publish notice says search engines will show the Passport
+    # (legal.md section 3.1, a Confirm item).
+    passport_indexing: bool = False
+    # Connected Instagram and YouTube accounts (item 29, D-134): numbers read
+    # from the platform with the creator's consent. Off until Meta App Review
+    # and Google's verification approve the apps, and the connect notice's
+    # wording exists (legal.md section 3.1). On, every setting below must be
+    # set, checked at startup. The app ids are not secret; the app secrets and
+    # PLATFORM_TOKEN_KEY, which encrypts the tokens at rest, are.
+    platform_connections_enabled: bool = False
+    platform_redirect_base: str | None = Field(
+        default=None,
+        pattern=r"^https?://[A-Za-z0-9.-]+(:[0-9]{1,5})?(/[A-Za-z0-9._/-]*)?$",
+    )
+    meta_app_id: str | None = Field(default=None, pattern=r"^[0-9]{5,25}$")
+    meta_app_secret: SecretStr | None = None
+    google_client_id: str | None = Field(
+        default=None, pattern=r"^[A-Za-z0-9.-]{10,200}\.apps\.googleusercontent\.com$"
+    )
+    google_client_secret: SecretStr | None = None
+    platform_token_key: SecretStr | None = None
+    # The version of the notice a creator reads before connecting (legal.md
+    # rule 5). Its wording comes from the validation pack (constraint 6).
+    connect_notice_version: str | None = Field(
+        default=None, pattern=r"^[A-Za-z0-9._-]{1,40}$"
+    )
+    # How long what a law may require us to keep is kept after its account
+    # is deleted (item 6, D-122), in days, one setting a kind. Unset means
+    # kept, as the law may require: the periods come from the validation
+    # pack (constraint 6) and are never guessed here. Each kind's tables are
+    # in app/modules/me/account_deletion_registry.py. The upper bound only
+    # catches a typo.
+    retention_deal_record_days: int | None = Field(default=None, ge=1, le=36_500)
+    retention_payment_record_days: int | None = Field(default=None, ge=1, le=36_500)
+    retention_dispute_days: int | None = Field(default=None, ge=1, le=36_500)
+    retention_proof_file_days: int | None = Field(default=None, ge=1, le=36_500)
+    retention_report_days: int | None = Field(default=None, ge=1, le=36_500)
+    # The IT Rules keep a takedown and its records at least 180 days (rule
+    # 3(1)(g), legal.md section 3.3), so less is refused.
+    retention_takedown_days: int | None = Field(default=None, ge=180, le=36_500)
+    retention_admin_log_days: int | None = Field(default=None, ge=1, le=36_500)
+
+    @field_validator(
+        "sentry_dsn",
+        "app_release",
+        "upi_notice_version",
+        "traces_endpoint",
+        "passkey_rp_id",
+        "platform_redirect_base",
+        "meta_app_id",
+        "google_client_id",
+        "connect_notice_version",
+        "retention_deal_record_days",
+        "retention_payment_record_days",
+        "retention_dispute_days",
+        "retention_proof_file_days",
+        "retention_report_days",
+        "retention_takedown_days",
+        "retention_admin_log_days",
+        mode="before",
+    )
+    @classmethod
+    def empty_is_unset(cls, value: object) -> object:
+        # `SENTRY_DSN=` in .env means "off", not an address that is "".
+        return None if value == "" else value
+
+    @field_validator(
+        "anthropic_api_key",
+        "meta_app_secret",
+        "google_client_secret",
+        "platform_token_key",
+        mode="before",
+    )
+    @classmethod
+    def empty_key_is_no_key(cls, value: object) -> object:
+        # `ANTHROPIC_API_KEY=` in .env means "none", not an empty key.
+        return None if value == "" else value
+
+    @model_validator(mode="after")
+    def passkeys_are_usable(self) -> Settings:
+        """Passkeys on need somewhere to be used from, each on their domain (D-113)."""
+        if self.passkey_rp_id is None:
+            return self
+        origins = split_origins(self.passkey_origins)
+        if not origins:
+            raise ValueError("passkey_rp_id is set, so PASSKEY_ORIGINS must list origins")
+        allow_http = self.environment in PLAIN_HTTP_ENVIRONMENTS
+        for origin in origins:
+            if ANDROID_APP_ORIGIN.fullmatch(origin):
+                continue
+            problem = origin_problem(origin, allow_http=allow_http)
+            if problem:
+                raise ValueError(f"passkey origin '{origin}' {problem}")
+            host = urlsplit(origin).hostname or ""
+            if host != self.passkey_rp_id and not host.endswith("." + self.passkey_rp_id):
+                raise ValueError(
+                    f"passkey origin '{origin}' is not on {self.passkey_rp_id}"
+                )
+        return self
+
+    @property
+    def passkey_origin_list(self) -> tuple[str, ...]:
+        return split_origins(self.passkey_origins)
+
+    @model_validator(mode="after")
+    def proof_reading_is_usable(self) -> Settings:
+        """Reading switched on without a key fails at startup, not per file."""
+        if not self.proof_reading_enabled:
+            return self
+        key = self.anthropic_api_key.get_secret_value() if self.anthropic_api_key else ""
+        if not key or key.startswith(PLACEHOLDER_PREFIX):
+            raise ValueError(
+                "proof_reading_enabled is on, so ANTHROPIC_API_KEY must be set"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def platform_connections_are_usable(self) -> Settings:
+        """Connections switched on with a setting missing fail at startup (D-134)."""
+        if not self.platform_connections_enabled:
+            return self
+        plain = {
+            "PLATFORM_REDIRECT_BASE": self.platform_redirect_base,
+            "META_APP_ID": self.meta_app_id,
+            "GOOGLE_CLIENT_ID": self.google_client_id,
+            "CONNECT_NOTICE_VERSION": self.connect_notice_version,
+        }
+        secret = {
+            "META_APP_SECRET": self.meta_app_secret,
+            "GOOGLE_CLIENT_SECRET": self.google_client_secret,
+            "PLATFORM_TOKEN_KEY": self.platform_token_key,
+        }
+        missing = [name for name, value in plain.items() if not value] + [
+            name
+            for name, value in secret.items()
+            if value is None or value.get_secret_value().startswith(PLACEHOLDER_PREFIX)
+        ]
+        if missing:
+            raise ValueError(
+                "platform_connections_enabled is on, so these must be set: "
+                + ", ".join(missing)
+            )
+        key = self.platform_token_key
+        if key is not None and len(key.get_secret_value()) < MIN_KEY_LENGTH:
+            raise ValueError(
+                f"PLATFORM_TOKEN_KEY must be at least {MIN_KEY_LENGTH} characters"
+            )
+        if self.environment not in PLAIN_HTTP_ENVIRONMENTS and not str(
+            self.platform_redirect_base
+        ).startswith("https://"):
+            raise ValueError(
+                "PLATFORM_REDIRECT_BASE must be https outside local and test"
+            )
+        return self
+
+    @field_validator("app_database_password", mode="before")
+    @classmethod
+    def empty_password_is_none(cls, value: object) -> object:
+        return None if value == "" else value
+
+    @field_validator("app_database_password")
+    @classmethod
+    def usable_app_password(cls, value: SecretStr | None) -> SecretStr | None:
+        # Letters and digits, so SASLprep leaves it unchanged (app/db/roles.py).
+        if value is not None and not APP_DATABASE_PASSWORD.fullmatch(
+            value.get_secret_value()
+        ):
+            raise ValueError("must be 32 to 128 letters and digits")
+        return value
+
+    @field_validator("uploads_bucket", mode="before")
+    @classmethod
+    def empty_bucket_is_no_bucket(cls, value: object) -> object:
+        # `UPLOADS_BUCKET=` in .env means "none", not a bucket named "".
+        return None if value == "" else value
 
     @field_validator("cors_allowed_origins")
     @classmethod
@@ -127,7 +404,7 @@ class Settings(BaseSettings):
             raise ValueError("must start with memory://, redis:// or rediss://")
         return value
 
-    @field_validator("secret_key", "otp_hash_key")
+    @field_validator("secret_key", "otp_hash_key", "second_factor_key")
     @classmethod
     def reject_placeholder(cls, value: SecretStr) -> SecretStr:
         if value.get_secret_value().startswith(PLACEHOLDER_PREFIX):
@@ -135,9 +412,59 @@ class Settings(BaseSettings):
         return value
 
     @model_validator(mode="after")
-    def keys_must_differ(self) -> "Settings":
-        if self.secret_key.get_secret_value() == self.otp_hash_key.get_secret_value():
-            raise ValueError("secret_key and otp_hash_key must be different keys")
+    def msg91_is_usable(self) -> Settings:
+        """A half-configured provider fails at startup, not at a user's login."""
+        if self.otp_sender != "msg91":
+            return self
+        key = self.msg91_auth_key.get_secret_value() if self.msg91_auth_key else ""
+        if not key or key.startswith(PLACEHOLDER_PREFIX):
+            raise ValueError("otp_sender is msg91, so MSG91_AUTH_KEY must be set")
+        if not self.msg91_whatsapp_number or not MSG91_NUMBER.fullmatch(
+            self.msg91_whatsapp_number
+        ):
+            raise ValueError(
+                "otp_sender is msg91, so MSG91_WHATSAPP_NUMBER must be the "
+                "registered number as digits, e.g. 919876543210"
+            )
+        if not WHATSAPP_TEMPLATE_NAME.fullmatch(self.msg91_otp_template):
+            raise ValueError(
+                "MSG91_OTP_TEMPLATE must be a WhatsApp template name: "
+                "lower case letters, digits and underscores"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def traces_leave_encrypted(self) -> Settings:
+        """Spans name endpoints and timings; outside a laptop they go over TLS."""
+        endpoint = self.traces_endpoint
+        if (
+            endpoint
+            and endpoint.startswith("http://")
+            and self.environment not in PLAIN_HTTP_ENVIRONMENTS
+        ):
+            raise ValueError("TRACES_ENDPOINT must use https:// outside local and test")
+        return self
+
+    @model_validator(mode="after")
+    def in_flight_fits_the_pool(self) -> Settings:
+        """More requests at once than connections is what froze a process."""
+        connections = self.db_pool_size + self.db_max_overflow
+        if self.max_in_flight_requests >= connections:
+            raise ValueError(
+                f"MAX_IN_FLIGHT_REQUESTS must be below DB_POOL_SIZE + "
+                f"DB_MAX_OVERFLOW ({connections}), leaving a connection for "
+                "the readiness check"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def keys_must_differ(self) -> Settings:
+        keys = (self.secret_key, self.otp_hash_key, self.second_factor_key)
+        if len({key.get_secret_value() for key in keys}) < len(keys):
+            raise ValueError(
+                "secret_key, otp_hash_key and second_factor_key must be "
+                "three different keys"
+            )
         return self
 
 

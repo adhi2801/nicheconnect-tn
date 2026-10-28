@@ -8,12 +8,12 @@ from sqlalchemy.orm import Session
 from app.core.errors import problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
-from app.modules.auth import service
+from app.modules.auth import service, sides
+from app.modules.auth.attribution_service import Arrival
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.auth.schemas import (
     AccountRead,
     AccountSummary,
-    LoggedOutAll,
     LoginTokens,
     LogoutIn,
     OtpRequestAccepted,
@@ -23,7 +23,7 @@ from app.modules.auth.schemas import (
 )
 from app.modules.auth.sender import OtpSender, get_otp_sender
 
-# Per-IP limits (security.md section 4). Per-phone send limits live in the service.
+# Per-IP limits (security.md section 5). Per-phone send limits live in the service.
 OTP_REQUEST_LIMIT = "3 per 10 minutes"
 OTP_VERIFY_LIMIT = "10 per 10 minutes"
 SESSION_LIMIT = "30 per minute"
@@ -71,13 +71,26 @@ def request_code(
     response_model=LoginTokens,
     summary="Log in with a one-time code",
     description=(
-        "Checks the latest code sent to the phone. A new number gets an account with "
-        "the given role. Returns a 15-minute access token and a 30-day refresh token. "
+        "Checks the latest code sent to the phone, and signs in to the number's "
+        "account for the given role. A number may hold a brand and a creator "
+        "account of one person (D-126): signing in as a role the number has no "
+        "account for yet makes that account, and `arrival` (optional) records how it found us; a "
+        "returning login ignores `arrival`. Returns a 15-minute access token and a 30-day refresh token. "
         "Limit: 10 requests per 10 minutes per IP address; each code allows 5 attempts."
     ),
     responses={
         400: problem_doc("The code is wrong, expired, already used, or was never sent"),
-        409: problem_doc("The number is registered with the other role"),
+        403: problem_doc(
+            "`account_suspended`: the account, or the number's other account "
+            "when starting a second, is suspended"
+        ),
+        409: problem_doc(
+            "`role_mismatch`: the number is an admin's, which holds no other "
+            "account; `phone_change_waiting`: it has no account, but an account "
+            "is waiting to move onto it (log in with that account's current "
+            "number until the change is made), or its other account is waiting "
+            "to move off it. The code stays usable"
+        ),
         422: problem_doc("A field is missing or invalid"),
         429: problem_doc("Too many attempts; see the Retry-After header"),
     },
@@ -90,7 +103,15 @@ def verify_code(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> LoginTokens:
-    result = service.verify_otp(db, body.phone, body.code, body.role, now)
+    arrival = Arrival(**body.arrival.model_dump()) if body.arrival is not None else None
+    device = (
+        service.ClientDevice(**body.device.model_dump())
+        if body.device is not None
+        else None
+    )
+    result = service.verify_otp(
+        db, body.phone, body.code, body.role, now, arrival=arrival, device=device
+    )
     # Tokens must never be cached by browsers or proxies.
     response.headers["Cache-Control"] = "no-store"
     return LoginTokens(
@@ -150,7 +171,8 @@ def refresh(
     summary="Log out of this device",
     description=(
         "Ends the login the refresh token belongs to, including tokens it was "
-        "rotated from. Always returns 204, even for an unknown token, so nobody "
+        "rotated from, and, given this phone's `device_token`, its push "
+        "notifications. Always returns 204, even for an unknown token, so nobody "
         "can test whether a token exists. Limit: 30 requests per minute per IP address."
     ),
     responses={
@@ -165,7 +187,7 @@ def logout(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> None:
-    service.logout(db, body.refresh_token, now)
+    service.logout(db, body.refresh_token, now, device_token=body.device_token)
 
 
 @router.get(
@@ -182,33 +204,13 @@ def logout(
     },
 )
 @rate_limit(SESSION_LIMIT)
-def me(request: Request, account: CurrentAccount) -> AccountRead:
+def me(
+    request: Request, account: CurrentAccount, db: Session = Depends(get_db)
+) -> AccountRead:
     return AccountRead(
         id=account.id,
         role=account.role,
-        phone=account.phone,
+        phone=service.phone_of(account),
         created_at=account.created_at,
+        other_side=sides.other_side(db, account),
     )
-
-
-@router.post(
-    "/logout-all",
-    response_model=LoggedOutAll,
-    summary="Log out of every device",
-    description=(
-        "Ends every session of the signed-in account, on all devices. Needs a "
-        "valid access token. Limit: 30 requests per minute per IP address."
-    ),
-    responses={
-        401: problem_doc("No access token, or it is invalid or expired"),
-        429: problem_doc("Too many requests; see the Retry-After header"),
-    },
-)
-@rate_limit(SESSION_LIMIT)
-def logout_all(
-    request: Request,
-    account: CurrentAccount,
-    db: Session = Depends(get_db),
-    now: datetime = Depends(get_now),
-) -> LoggedOutAll:
-    return LoggedOutAll(sessions_ended=service.logout_all_sessions(db, account.id, now))

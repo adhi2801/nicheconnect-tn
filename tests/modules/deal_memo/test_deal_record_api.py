@@ -26,6 +26,8 @@ from tests.deal_flow import (
     brand_user,
     creator_user,
 )
+from tests.query_counts import queries_for
+from tests.step_up import download_export
 
 REFERENCE = "412345678901"
 DOMAIN = bytes([*b"deal-record/v1", 10])  # the prefix, ending in a newline
@@ -344,9 +346,7 @@ def test_the_seals_check_out_from_the_json_alone(client, brand, creator):
 
 def test_the_seals_check_out_from_the_export_file_alone(client, brand, creator):
     memo_id = paid_deal(client, brand, creator)
-    rows = client.get("/api/v1/me/export", headers=brand.headers).json()["data"][
-        "deal_record"
-    ]
+    rows = download_export(client, brand.headers).json()["data"]["deal_record"]
 
     latest = check_seals([r for r in rows if r["deal_memo_id"] == memo_id], memo_id)
 
@@ -431,7 +431,7 @@ def test_both_parties_export_the_record_with_its_seals(client, brand, creator):
     sealed = record_of(client, brand, memo_id)["entries"]
 
     for party in (brand, creator):
-        exported = client.get("/api/v1/me/export", headers=party.headers).json()
+        exported = download_export(client, party.headers).json()
         rows = exported["data"]["deal_record"]
         assert [r["seal"] for r in rows] == [e["seal"] for e in sealed]
         assert [r["previous_seal"] for r in rows] == [e["previous_seal"] for e in sealed]
@@ -441,7 +441,7 @@ def test_both_parties_export_the_record_with_its_seals(client, brand, creator):
 def test_the_export_never_carries_the_other_sides_account_id(client, brand, creator):
     paid_deal(client, brand, creator)
 
-    text = client.get("/api/v1/me/export", headers=creator.headers).text
+    text = download_export(client, creator.headers).text
 
     assert str(brand.account_id) not in text
 
@@ -469,3 +469,18 @@ def test_the_script_in_the_verification_guide_works(
     assert capsys.readouterr().out.strip() == (
         f"Every seal matches. Latest seal: {record['latest_seal']}"
     )
+
+
+# --- cost ------------------------------------------------------------------------------
+
+
+def test_a_longer_record_costs_no_more_queries(client, db, clock, brand, creator):
+    short = accepted_memo(client, brand, creator)
+    long = paid_deal(client, brand, creator_user(db, clock))
+    assert len(record_of(client, brand, short)["entries"]) == 2
+    assert len(record_of(client, brand, long)["entries"]) == 7
+
+    two_entries = queries_for(client, f"{MEMOS_URL}/{short}/record", brand.headers)
+    seven_entries = queries_for(client, f"{MEMOS_URL}/{long}/record", brand.headers)
+
+    assert seven_entries == two_entries

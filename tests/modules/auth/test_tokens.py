@@ -9,6 +9,7 @@ from app.modules.auth.exceptions import InvalidToken
 from app.modules.auth.tokens import (
     ALGORITHM,
     CURRENT_KEY_ID,
+    TWO_FACTORS,
     create_access_token,
     decode_access_token,
     generate_otp_code,
@@ -110,7 +111,8 @@ def test_unknown_or_missing_key_id_is_rejected(kid):
     "overrides",
     [
         {"typ": "refresh"},
-        {"role": "admin"},
+        # "admin" became a real role in D-061; "superuser" never exists.
+        {"role": "superuser"},
         {"sub": "not-a-uuid"},
         {"exp": "soon"},
     ],
@@ -184,3 +186,81 @@ def test_token_issued_ahead_of_the_machine_clock_still_works():
     assert claims.expires_at == expires_at
     with pytest.raises(InvalidToken):
         decode_access_token(token, expires_at)
+
+
+# --- how the login was proven (RFC 8176 `amr`, D-105) --------------------------------------
+
+
+def test_a_token_says_one_factor_by_default():
+    token, _ = create_access_token(uuid.uuid4(), "creator", FIXED_NOW)
+
+    claims = decode_access_token(token, FIXED_NOW)
+
+    assert claims.methods == ("otp",)
+    assert not claims.is_multi_factor
+
+
+def test_a_token_can_say_two_factors():
+    token, _ = create_access_token(uuid.uuid4(), "admin", FIXED_NOW, methods=TWO_FACTORS)
+
+    assert decode_access_token(token, FIXED_NOW).is_multi_factor
+
+
+def test_a_token_from_before_amr_existed_decodes_as_no_factor_named():
+    claims = valid_claims()
+    claims.pop("amr", None)
+
+    decoded = decode_access_token(signed(claims), FIXED_NOW)
+
+    assert decoded.methods == ()
+    assert not decoded.is_multi_factor
+
+
+@pytest.mark.parametrize(
+    "amr", ["mfa", ["mfa", "pwd"], [{"mfa": True}], [["mfa"]], [1], None]
+)
+def test_a_token_with_a_malformed_or_unknown_amr_is_rejected(amr):
+    with pytest.raises(InvalidToken):
+        decode_access_token(signed(valid_claims(amr=amr)), FIXED_NOW)
+
+
+def test_not_after_ends_a_token_sooner_never_later():
+    sooner = FIXED_NOW + timedelta(minutes=5)
+    later = FIXED_NOW + timedelta(hours=5)
+
+    _, cut = create_access_token(uuid.uuid4(), "admin", FIXED_NOW, not_after=sooner)
+    _, kept = create_access_token(uuid.uuid4(), "admin", FIXED_NOW, not_after=later)
+
+    assert cut == sooner
+    assert kept == FIXED_NOW + timedelta(minutes=settings.access_token_expire_minutes)
+
+
+# --- auth_time: when the login was proven (D-109) -------------------------------
+
+
+def test_a_token_carries_its_logins_time_rounded_up_to_the_second():
+    logged_in = FIXED_NOW - timedelta(days=9, microseconds=250_000)
+
+    token, _ = create_access_token(
+        uuid.uuid4(), "creator", FIXED_NOW, authenticated_at=logged_in
+    )
+
+    decoded = decode_access_token(token, FIXED_NOW)
+    assert decoded.authenticated_at == FIXED_NOW - timedelta(days=9)
+    assert jwt.decode(token, options={"verify_signature": False})["auth_time"] == int(
+        (FIXED_NOW - timedelta(days=9)).timestamp()
+    )
+
+
+def test_a_token_without_a_login_time_decodes_as_none():
+    token, _ = create_access_token(uuid.uuid4(), "creator", FIXED_NOW)
+
+    assert decode_access_token(token, FIXED_NOW).authenticated_at is None
+
+
+@pytest.mark.parametrize("auth_time", ["1760000000", 1760000000.5, True, None, [1]])
+def test_a_token_with_a_malformed_login_time_is_rejected(auth_time):
+    claims = valid_claims(auth_time=auth_time)
+
+    with pytest.raises(InvalidToken):
+        decode_access_token(signed(claims), FIXED_NOW)

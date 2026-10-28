@@ -6,6 +6,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.links import EvidenceLink
 from app.core.literals import ensure_same_values
 from app.modules.disputes.event_models import (
     EVENT_KINDS,
@@ -44,12 +45,16 @@ Note = Annotated[
     ),
 ]
 EvidenceUrl = Annotated[
-    str,
+    EvidenceLink,
     Field(
         pattern=r"^https://.+",
         max_length=URL_MAX_LENGTH,
-        description="A link to something that supports your account",
-        examples=["https://example.com/upi-receipt.png"],
+        description=(
+            "A link to something that supports your account: a post, or a file "
+            "on Google Drive, Google Photos, Dropbox or OneDrive. Other hosts "
+            "are refused, so nobody is sent to a page pretending to be one"
+        ),
+        examples=["https://drive.google.com/file/d/1AbC/view"],
     ),
 ]
 

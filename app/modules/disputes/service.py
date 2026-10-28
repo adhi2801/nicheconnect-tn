@@ -222,6 +222,25 @@ def open_for_payment(
     return dispute
 
 
+def _lock_and_reread(db: Session, dispute: Dispute) -> None:
+    """Lock the dispute's row and read it again, before any check on it.
+
+    Two requests can both read a dispute as open before either writes: two
+    closes with different outcomes, or an entry racing a close. Without the
+    lock both pass the "already closed?" check, so a dispute is closed twice
+    with the last outcome silently winning, or a finished record grows a new
+    entry. The lock makes the second request wait for the first to commit;
+    `populate_existing` makes it see what the first wrote. The row must be
+    fetched, not only selected: the object is refreshed as rows are loaded.
+    """
+    db.scalars(
+        select(Dispute)
+        .where(Dispute.id == dispute.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).one()
+
+
 def add_entry(
     db: Session,
     dispute: Dispute,
@@ -240,7 +259,9 @@ def add_entry(
     once an outcome has been agreed, because that record is finished.
     """
     check_party(actor_role)
+    _lock_and_reread(db, dispute)
     if dispute.outcome is not None:
+        db.rollback()
         raise DisputeAlreadyClosed()
 
     event = _add_event(
@@ -290,7 +311,9 @@ def close(
     """
     check_party(actor_role)
     check_outcome(outcome)
+    _lock_and_reread(db, dispute)
     if dispute.outcome is not None:
+        db.rollback()
         raise DisputeAlreadyClosed()
 
     dispute.outcome = outcome

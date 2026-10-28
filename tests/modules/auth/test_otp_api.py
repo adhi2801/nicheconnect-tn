@@ -280,12 +280,13 @@ def test_all_code_failures_look_the_same(client, sender, clock):
     assert bodies[0] == bodies[1] == bodies[2]
 
 
-def test_role_mismatch_gets_409(client, sender, db):
-    account = create_account(db, "brand")
+def test_an_admins_number_takes_no_other_side(client, sender, db):
+    """D-126: a brand and a creator may share a number; an admin's holds the admin alone."""
+    account = create_account(db, "admin")
     code = request_code(client, sender, account.phone)
 
-    assert_problem(verify(client, account.phone, code, "creator"), 409, "role_mismatch")
-    assert verify(client, account.phone, code, "brand").status_code == 200
+    for role in ("brand", "creator"):
+        assert_problem(verify(client, account.phone, code, role), 409, "role_mismatch")
 
 
 @pytest.mark.parametrize(
@@ -293,7 +294,7 @@ def test_role_mismatch_gets_409(client, sender, db):
     [
         ({"phone": "9999900001", "code": "12345", "role": "creator"}, ["code"]),
         ({"phone": "123", "code": "123456", "role": "creator"}, ["phone"]),
-        ({"phone": "9999900001", "code": "123456", "role": "admin"}, ["role"]),
+        ({"phone": "9999900001", "code": "123456", "role": "superuser"}, ["role"]),
         ({"phone": "9999900001", "code": "123456"}, ["role"]),
         (
             {

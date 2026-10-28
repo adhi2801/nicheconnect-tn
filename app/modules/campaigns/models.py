@@ -14,11 +14,12 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.core.taxonomy import CURRENCY, MAX_NICHES, NICHES, sql_text_array
 from app.db.base import Base
+from app.modules.campaigns.deliverable_models import CampaignDeliverable
 
 # What a brand asks for (D-016). Money is whole paise (D-015); no float ever.
 
@@ -113,6 +114,14 @@ class Campaign(Base):
     cities: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
     niches: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
     deliverables: Mapped[str] = mapped_column(Text, nullable=False)
+    # The same, as rows (item 26, D-127), in the brand's order. "selectin": a
+    # page of campaigns loads every list in one more query, never one each.
+    deliverable_items: Mapped[list[CampaignDeliverable]] = relationship(
+        "CampaignDeliverable",
+        order_by="CampaignDeliverable.position",
+        lazy="selectin",
+        viewonly=True,
+    )
     # Nullable on purpose: a campaign need not have a closing date.
     applications_close_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     status: Mapped[str] = mapped_column(
@@ -131,15 +140,26 @@ class Campaign(Base):
     )
 
 
-# A creator's answer to a campaign (D-016). One per creator per campaign.
+# A creator on a campaign (D-016): one row per creator per campaign, however
+# it began. A creator applies (origin 'applied', with a pitch), or a brand
+# invites them (origin 'invited', no pitch, D-084). A repeat of an earlier
+# deal is an invitation that names the deal it repeats.
 
+APPLICATION_ORIGINS: tuple[str, ...] = ("applied", "invited")
 APPLICATION_STATUSES: tuple[str, ...] = (
     "submitted",
     "shortlisted",
     "accepted",
     "rejected",
     "withdrawn",
+    # An invitation waiting for the creator's answer, and the creator's no.
+    "invited",
+    "declined",
 )
+# Why a creator said no to an invitation: the brand sees a clear reason, as a
+# creator does when a brand rejects them (D-084).
+DECLINE_REASONS: tuple[str, ...] = ("timing", "budget", "not_a_fit", "other")
+INVITATION_NOTE_MAX_LENGTH = 500
 # Why a brand said no. Stored as a code so the creator sees a clear reason and
 # we can report on it, rather than free text nobody reads.
 REJECTION_REASONS: tuple[str, ...] = (
@@ -168,6 +188,45 @@ class Application(Base):
             f"char_length(btrim(pitch)) BETWEEN {PITCH_MIN_LENGTH} AND {PITCH_MAX_LENGTH}",
             name="pitch_length",
         ),
+        CheckConstraint(f"origin IN {tuple(APPLICATION_ORIGINS)}", name="origin_allowed"),
+        # The creator who applied wrote a pitch; an invited creator did not.
+        CheckConstraint(
+            "(origin = 'applied') = (pitch IS NOT NULL)", name="pitch_matches_origin"
+        ),
+        # Only an invitation carries the brand's note, is ever waiting as
+        # 'invited', can be declined, or repeats an earlier deal.
+        CheckConstraint(
+            "origin = 'invited' OR (invitation_note IS NULL"
+            " AND status NOT IN ('invited', 'declined')"
+            " AND repeat_of_application_id IS NULL)",
+            name="invitation_fields_need_invitation",
+        ),
+        # An invitation is answered, or taken back; it is never shortlisted or
+        # rejected, which are the brand's answers to an application.
+        CheckConstraint(
+            "origin = 'applied'"
+            " OR status IN ('invited', 'accepted', 'declined', 'withdrawn')",
+            name="invitation_status_allowed",
+        ),
+        CheckConstraint(
+            f"invitation_note IS NULL OR char_length(invitation_note)"
+            f" BETWEEN 1 AND {INVITATION_NOTE_MAX_LENGTH}",
+            name="invitation_note_length",
+        ),
+        CheckConstraint(
+            f"decline_reason IS NULL OR decline_reason IN {tuple(DECLINE_REASONS)}",
+            name="decline_reason_allowed",
+        ),
+        # A decline always carries a reason; nothing else may.
+        CheckConstraint(
+            "(status = 'declined') = (decline_reason IS NOT NULL)",
+            name="decline_reason_matches_status",
+        ),
+        # A deal repeats another deal, never itself.
+        CheckConstraint(
+            "repeat_of_application_id IS NULL OR repeat_of_application_id <> id",
+            name="repeat_not_itself",
+        ),
         CheckConstraint(
             "quoted_amount_paise IS NULL OR quoted_amount_paise > 0",
             name="quoted_amount_positive",
@@ -185,10 +244,23 @@ class Application(Base):
             f"rejection_note IS NULL OR char_length(rejection_note) <= {REJECTION_NOTE_MAX_LENGTH}",
             name="rejection_note_length",
         ),
+        # The brand's first answer to a creator who applied (item 28): never on
+        # an invitation, and never while the application still waits.
+        CheckConstraint(
+            "first_answered_at IS NULL OR (origin = 'applied' AND status <> 'submitted')",
+            name="first_answered_at_only_if_answered",
+        ),
         # The brand's list for one campaign, newest first.
         Index("ix_application_campaign_created_at", "campaign_id", "created_at"),
         # The creator's own list, newest first.
         Index("ix_application_creator_created_at", "creator_id", "created_at"),
+        # Every foreign key is indexed (database.md section 5); only repeats
+        # carry one, so the index holds only those.
+        Index(
+            "ix_application_repeat_of_application_id",
+            "repeat_of_application_id",
+            postgresql_where=text("repeat_of_application_id IS NOT NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -208,7 +280,24 @@ class Application(Base):
         ForeignKey("creator.id", ondelete="RESTRICT"),
         nullable=False,
     )
-    pitch: Mapped[str] = mapped_column(Text, nullable=False)
+    # How it began: 'applied' by the creator, or 'invited' by the brand.
+    origin: Mapped[str] = mapped_column(
+        String(10), nullable=False, server_default=text("'applied'")
+    )
+    # NULL for an invitation: the brand chose the creator, so there is
+    # nothing to pitch.
+    pitch: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The brand's few words with an invitation. NULL when it said nothing,
+    # and always for an application.
+    invitation_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The earlier deal this one repeats ("work together again", D-084). It
+    # names that deal's application, which has exactly one memo. NULL for
+    # everything else. RESTRICT: a record of what happened.
+    repeat_of_application_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("application.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
     # What the creator asks for, in paise (D-015). Optional: barter campaigns
     # and commission deals may have nothing to quote.
     quoted_amount_paise: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
@@ -218,6 +307,14 @@ class Application(Base):
     # Set only when the status is 'rejected'.
     rejection_reason: Mapped[str | None] = mapped_column(String(30), nullable=True)
     rejection_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Set only when the status is 'declined'.
+    decline_reason: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # When the brand first shortlisted, accepted or rejected an application,
+    # for how fast brands reply (item 28). Set once, never moved. NULL while
+    # it waits, on invitations, and on answers given before 12 October 2026.
+    first_answered_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     # When the status last changed, so the app can show "what happened when".
     status_changed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()

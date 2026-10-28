@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Select, select
+from sqlalchemy import delete as sa_delete
 from sqlalchemy.orm import Session
 
 from app.core.clock import india_date
@@ -20,13 +21,18 @@ from app.core.export import (
     build_section,
 )
 from app.core.pagination import Slice, build_slice, older_than_cursor
+from app.modules.auth import suspension
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
+from app.modules.campaigns import offer_service as offers
+from app.modules.campaigns.deliverable_models import CampaignDeliverable
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo import record_service as record
+from app.modules.deal_memo.deliverable_models import MemoDeliverable
 from app.modules.deal_memo.exceptions import (
     ApplicationNotAccepted,
     BarterMemoHasNoFee,
+    CreatorLeft,
     DueDateHasPassed,
     MemoAlreadyExists,
     MemoNeedsDueDate,
@@ -35,13 +41,23 @@ from app.modules.deal_memo.exceptions import (
     PaidMemoNeedsFee,
 )
 from app.modules.deal_memo.models import DealMemo
-from app.modules.deal_memo.proof_models import DeliverableProof
+from app.modules.deal_memo.proof_models import DeliverableProof, ProofFile
+from app.modules.deal_memo.proof_reading_models import ProofFileReading
 from app.modules.deal_memo.record_models import DealRecordEntry
 from app.modules.notifications import service as notifications
 
 # Tables this module answers for in a data export (see
-# tests/modules/auth/test_export_api.py, which fails if one is missed).
-EXPORTED_TABLES = frozenset({"deal_memo", "deliverable_proof", "deal_record_entry"})
+# tests/modules/me/test_export_api.py, which fails if one is missed).
+EXPORTED_TABLES = frozenset(
+    {
+        "deal_memo",
+        "memo_deliverable",
+        "deliverable_proof",
+        "proof_file",
+        "proof_file_reading",
+        "deal_record_entry",
+    }
+)
 
 # The deal record (D-057). The seals are exported as `seal` and
 # `previous_seal`: they are public by design, and naming them so keeps the
@@ -68,6 +84,8 @@ MEMO_EXPORT_FIELDS = allow(
     "content_due_on",
     "disclosure_required",
     "extra_terms",
+    # Which terms the record's fingerprint covers (D-127).
+    "terms_version",
     "status",
     "revision_count",
     "sent_at",
@@ -75,10 +93,23 @@ MEMO_EXPORT_FIELDS = allow(
     "work_started_at",
     "cancelled_at",
     "cancellation_kind",
+    "declined_at",
+    "change_request_message",
     "created_at",
     "updated_at",
 )
 
+DELIVERABLE_EXPORT_FIELDS = allow(
+    "id",
+    "deal_memo_id",
+    "position",
+    "platform",
+    "format",
+    "quantity",
+    "note",
+    "created_at",
+    "updated_at",
+)
 PROOF_EXPORT_FIELDS = allow(
     "id",
     "deal_memo_id",
@@ -94,6 +125,54 @@ PROOF_EXPORT_FIELDS = allow(
     "last_checked_at",
     "created_at",
     "updated_at",
+)
+# What is known about each proof file (D-065). Not the storage keys: they are
+# our internal addresses, and the files are opened through the app's links.
+PROOF_FILE_EXPORT_FIELDS = allow(
+    "id",
+    "deal_memo_id",
+    "proof_id",
+    "position",
+    "content_type",
+    "size_bytes",
+    "sha256",
+    "status",
+    "clean_sha256",
+    "clean_size_bytes",
+    "rejection_reason",
+    "attached_at",
+    "cleaned_at",
+    "created_at",
+)
+# What was read from each proof screenshot, how it checked out, and what the
+# creator said about it (D-070). Not the token counts: they are our cost of
+# reading, not anything about the person.
+PROOF_FILE_READING_EXPORT_FIELDS = allow(
+    "id",
+    "proof_file_id",
+    "status",
+    "failure",
+    "model",
+    "prompt_version",
+    "platform",
+    "handle",
+    "post_date",
+    "views",
+    "reach",
+    "impressions",
+    "likes",
+    "comments",
+    "saves",
+    "shares",
+    "abbreviated",
+    "handle_matches",
+    "date_within_deal",
+    "numbers_consistent",
+    "stated_followers",
+    "stated_average_views",
+    "creator_marked_at",
+    "creator_note",
+    "read_at",
 )
 
 # Who may make each move, and where it leads.
@@ -176,11 +255,30 @@ def create_memo(
 ) -> DealMemo:
     """Draft a memo for an accepted application.
 
-    Raises ApplicationNotAccepted, MemoAlreadyExists, and the fee errors.
+    Raises ApplicationNotAccepted, CreatorLeft (the creator deleted their
+    account, D-122), MemoAlreadyExists, and the fee errors.
+
+    The application's row is locked and read again first: two requests at
+    once would otherwise both find no memo, and the database's unique rule
+    would refuse the second as a raw error, a 500, instead of the conflict
+    the API documents. Locked, the second waits and finds the first's memo.
+    Erasing a creator who left locks their applications too, so a memo
+    lands wholly before it, and holds the deletion, or after it, and is
+    refused.
     """
+    db.scalars(
+        select(Application)
+        .where(Application.id == application.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).one()
     if application.status != "accepted":
         db.rollback()
         raise ApplicationNotAccepted()
+    creator_account_id = _creator_account_id(db, application)
+    if creator_account_id is not None and suspension.is_deleted(db, creator_account_id):
+        db.rollback()
+        raise CreatorLeft()
     existing = db.scalars(
         select(DealMemo).where(DealMemo.application_id == application.id)
     ).first()
@@ -188,6 +286,14 @@ def create_memo(
         db.rollback()
         raise MemoAlreadyExists()
 
+    # The list of deliverables (item 26, D-127): left out, the campaign's.
+    items = fields.pop("deliverable_items", None)
+    # A figure agreed through a counter-offer (item 44, D-123) pre-fills the
+    # fee; a fee the brand writes instead stands, shown beside it on reads.
+    if fields.get("fee_amount_paise") is None:
+        agreed = offers.summary_for(db, application.id).agreed_amount_paise
+        if agreed is not None:
+            fields = {**fields, "fee_amount_paise": agreed}
     campaign = _campaign_of(db, application)
     _check_fee_against_campaign(campaign, fields.get("fee_amount_paise"))
 
@@ -199,9 +305,122 @@ def create_memo(
         **fields,
     )
     db.add(memo)
+    db.flush()
+    if items is None:
+        items = [_item_fields(item) for item in campaign.deliverable_items]
+    replace_deliverables(db, memo.id, items, now)
     db.commit()
     db.refresh(memo)
     return memo
+
+
+# What a repeat deal carries over from the deal it repeats (D-084): every
+# term both sides agreed, except the date the work is due, which belongs to
+# the new deal and must be set before this one can be sent. The memo's own
+# state (status, dates, counts) starts fresh. tests/modules/deal_memo/
+# test_repeat_api.py fails if a memo column is in neither list.
+REPEATED_TERMS: tuple[str, ...] = (
+    "deliverables",
+    "fee_amount_paise",
+    "currency",
+    "cancellation_fee_paise",
+    "approval_window_days",
+    "payment_due_days",
+    "usage_rights_days",
+    "disclosure_required",
+    "extra_terms",
+)
+NOT_REPEATED: dict[str, str] = {
+    "id": "the new memo's own",
+    "application_id": "the new deal's application",
+    "content_due_on": "a new deal has a new date, set before it is sent",
+    "status": "starts as a draft the brand reviews",
+    "revision_count": "starts again",
+    "sent_at": "not sent yet",
+    "accepted_at": "not accepted yet",
+    "work_started_at": "no work yet",
+    "cancelled_at": "not cancelled",
+    "cancellation_kind": "not cancelled",
+    "declined_at": "not declined",
+    "change_request_message": "the old deal's request, already answered",
+    "terms_version": "the new memo's own, the current version (D-127)",
+    "created_at": "now",
+    "updated_at": "now",
+}
+
+
+def check_repeatable(memo: DealMemo, campaign: Campaign) -> None:
+    """Whether a deal can be repeated on `campaign`.
+
+    Only a deal both sides agreed and nobody cancelled is worth repeating,
+    and its fee must suit the new campaign's type. Raises MemoStatusConflict,
+    BarterMemoHasNoFee and PaidMemoNeedsFee.
+    """
+    if memo.status != "accepted":
+        raise MemoStatusConflict(
+            "Only a deal both sides agreed, and nobody cancelled, can be repeated."
+        )
+    _check_fee_against_campaign(campaign, memo.fee_amount_paise)
+
+
+def draft_repeat_memo(db: Session, application: Application, now: datetime) -> DealMemo:
+    """Draft the memo for an accepted repeat invitation, without committing.
+
+    The brand finds it ready with the earlier deal's terms, sets the new
+    date and sends it; nothing reaches the creator before that. The fee was
+    checked against this campaign when the invitation was sent, and an open
+    campaign's type cannot change (EDITABLE_WHILE_OPEN), so it still fits.
+    """
+    previous = db.scalars(
+        select(DealMemo).where(
+            DealMemo.application_id == application.repeat_of_application_id
+        )
+    ).one()
+    memo = DealMemo(
+        application_id=application.id,
+        status="draft",
+        created_at=now,
+        updated_at=now,
+        **{term: getattr(previous, term) for term in REPEATED_TERMS},
+    )
+    # A figure agreed on the repeat itself is newer than the old deal's fee.
+    agreed = offers.summary_for(db, application.id).agreed_amount_paise
+    if agreed is not None:
+        memo.fee_amount_paise = agreed
+    db.add(memo)
+    db.flush()
+    # The same deliverables as the deal it repeats (D-127).
+    replace_deliverables(
+        db, memo.id, [_item_fields(item) for item in previous.deliverable_items], now
+    )
+    return memo
+
+
+def _item_fields(item: CampaignDeliverable | MemoDeliverable) -> dict[str, Any]:
+    return {field: getattr(item, field) for field in record.DELIVERABLE_FIELDS}
+
+
+def replace_deliverables(
+    db: Session, memo_id: uuid.UUID, items: list[dict[str, Any]], now: datetime
+) -> None:
+    """The memo's list of deliverables, replaced whole (D-127). Never commits.
+
+    Only while the memo is editable, which its callers check: once sent, the
+    list is part of the terms the record seals.
+    """
+    db.execute(sa_delete(MemoDeliverable).where(MemoDeliverable.deal_memo_id == memo_id))
+    db.flush()
+    db.add_all(
+        MemoDeliverable(
+            deal_memo_id=memo_id,
+            position=position,
+            created_at=now,
+            updated_at=now,
+            **item,
+        )
+        for position, item in enumerate(items)
+    )
+    db.flush()
 
 
 def update_memo(
@@ -218,8 +437,11 @@ def update_memo(
             _campaign_of(db, application), changes["fee_amount_paise"]
         )
 
+    items = changes.pop("deliverable_items", None)
     for field, value in changes.items():
         setattr(memo, field, value)
+    if items is not None:
+        replace_deliverables(db, memo.id, items, now)
     memo.updated_at = now
     db.commit()
     db.refresh(memo)
@@ -273,6 +495,15 @@ def change_status(
 
     Raises MemoStatusConflict when that side may not make that move from here.
     """
+    # Locked and read again before the check: two moves at once would both
+    # pass it, and the last write would silently win (review audit, 4 Oct).
+    # revision_count too: two change requests at once would add one each to
+    # the same old count.
+    db.refresh(
+        memo,
+        attribute_names=["status", "revision_count", "work_started_at"],
+        with_for_update=True,
+    )
     allowed = BRAND_TRANSITIONS if actor == "brand" else CREATOR_TRANSITIONS
     if new_status not in allowed[memo.status]:
         db.rollback()
@@ -290,6 +521,11 @@ def change_status(
         # Only the first request restarts the approval clock (D-025); the
         # count is what the UI uses to say so before a second one.
         memo.revision_count += 1
+        # The latest request, in the creator's words, for the memo editor
+        # (item 25). Kept after the memo is sent again.
+        memo.change_request_message = message
+    elif new_status == "declined":
+        memo.declined_at = now  # the deal pass dates every step (item 24)
     elif new_status == "cancelled":
         memo.cancelled_at = now
         memo.cancellation_kind = cancellation_kind or (
@@ -342,7 +578,7 @@ def change_status(
 
 
 def _paginate(
-    db: Session, query: Select[tuple[DealMemo]], limit: int, cursor: str | None
+    db: Session, query: Select[DealMemo], limit: int, cursor: str | None
 ) -> Slice[DealMemo]:
     if cursor is not None:
         query = query.where(older_than_cursor(DealMemo.created_at, DealMemo.id, cursor))
@@ -363,8 +599,9 @@ def list_for_brand(
     limit: int,
     cursor: str | None = None,
     status: str | None = None,
+    campaign_id: uuid.UUID | None = None,
 ) -> Slice[DealMemo]:
-    """Memos on the brand's own campaigns."""
+    """Memos on the brand's own campaigns, or on one of them."""
     query = (
         select(DealMemo)
         .join(Application, Application.id == DealMemo.application_id)
@@ -373,6 +610,8 @@ def list_for_brand(
     )
     if status is not None:
         query = query.where(DealMemo.status == status)
+    if campaign_id is not None:
+        query = query.where(Application.campaign_id == campaign_id)
     return _paginate(db, query, limit, cursor)
 
 
@@ -383,6 +622,7 @@ def list_for_creator(
     limit: int,
     cursor: str | None = None,
     status: str | None = None,
+    campaign_id: uuid.UUID | None = None,
 ) -> Slice[DealMemo]:
     """Memos sent to this creator. Drafts are not theirs to see yet."""
     query = (
@@ -392,6 +632,8 @@ def list_for_creator(
     )
     if status is not None:
         query = query.where(DealMemo.status == status)
+    if campaign_id is not None:
+        query = query.where(Application.campaign_id == campaign_id)
     return _paginate(db, query, limit, cursor)
 
 
@@ -443,6 +685,29 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
             ).all()
         )
 
+    files: list[ProofFile] = []
+    if memo_ids:
+        files = list(
+            db.scalars(
+                select(ProofFile)
+                .where(ProofFile.deal_memo_id.in_(memo_ids))
+                .order_by(ProofFile.created_at, ProofFile.id)
+                .limit(MAX_ROWS_PER_SECTION + 1)
+            ).all()
+        )
+
+    readings: list[ProofFileReading] = []
+    if memo_ids:
+        readings = list(
+            db.scalars(
+                select(ProofFileReading)
+                .join(ProofFile, ProofFile.id == ProofFileReading.proof_file_id)
+                .where(ProofFile.deal_memo_id.in_(memo_ids))
+                .order_by(ProofFileReading.read_at, ProofFileReading.id)
+                .limit(MAX_ROWS_PER_SECTION + 1)
+            ).all()
+        )
+
     entries: list[DealRecordEntry] = []
     if memo_ids:
         entries = list(
@@ -466,11 +731,45 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
             fields=MEMO_EXPORT_FIELDS,
         ),
         build_section(
+            "memo_deliverables",
+            table="memo_deliverable",
+            purpose=(
+                "Each memo's deliverables as a list, in the order agreed: "
+                "platform, format, how many and a note (D-127)."
+            ),
+            objects=[item for memo in memos for item in memo.deliverable_items],
+            fields=DELIVERABLE_EXPORT_FIELDS,
+        ),
+        build_section(
             "deliverable_proofs",
             table="deliverable_proof",
             purpose="Proof of published work filed against those memos, and its review.",
             objects=proofs,
             fields=PROOF_EXPORT_FIELDS,
+        ),
+        build_section(
+            "proof_files",
+            table="proof_file",
+            purpose=(
+                "Screenshots and photos filed as proof on those deals: type, "
+                "size and fingerprints, the declared one and the cleaned copy's "
+                "after location and other hidden data were removed. The files "
+                "themselves are opened in the app."
+            ),
+            objects=files,
+            fields=PROOF_FILE_EXPORT_FIELDS,
+        ),
+        build_section(
+            "proof_file_readings",
+            table="proof_file_reading",
+            purpose=(
+                "The numbers read from those screenshots (views, reach and the "
+                "rest), which model read them, how they compared with what we "
+                "hold, and any note the creator added. Read from a screenshot, "
+                "never verified."
+            ),
+            objects=readings,
+            fields=PROOF_FILE_READING_EXPORT_FIELDS,
         ),
         build_section(
             "deal_record",
@@ -516,3 +815,13 @@ def notify_party(
     the joins and risking telling the wrong person about their money.
     """
     _notify_other_side(db, memo, to=to, notification_type=notification_type, now=now)
+
+
+def agreed_amounts(db: Session, memos: list[DealMemo]) -> dict[uuid.UUID, int | None]:
+    """Each memo's figure agreed through a counter-offer, in one query for all."""
+    summaries = offers.summaries_for(db, [memo.application_id for memo in memos])
+    return {memo.id: summaries[memo.application_id].agreed_amount_paise for memo in memos}
+
+
+def agreed_amount(db: Session, memo: DealMemo) -> int | None:
+    return agreed_amounts(db, [memo])[memo.id]

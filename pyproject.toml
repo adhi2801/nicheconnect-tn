@@ -1,9 +1,151 @@
-# Tool configuration. There is no packaging here: this repo is a deployed
-# service, not a library, so it has no [project] section on purpose.
+# The project's dependencies and tool configuration (D-072).
+#
+# One list, read by uv, replaces requirements.txt, requirements-dev.txt and
+# requirements-ml.txt. `uv.lock`, committed beside this file, pins every
+# package, direct or not, to one version and its hashes, for Linux (CI and
+# the images) and Windows (laptops) alike, so every machine installs the same
+# bytes and a tampered download fails to install.
+#
+# This is a deployed service, not a library: `package = false` below means uv
+# installs the dependencies and never tries to build or publish the project.
+#
+#   uv sync              the app and its checking tools (the "dev" group)
+#   uv sync --group ml   also the embedding stack (D-052)
+#   uv run pytest        anything, run in the project's environment
+
+[project]
+name = "nicheconnect-backend"
+version = "0.0.0"
+requires-python = "==3.14.*"
+# What the running app needs, and nothing else: this is what the production
+# image installs (D-063). Every pin is exact; changing one needs the
+# dependency approval in CLAUDE.md section 5.
+dependencies = [
+    "fastapi==0.146.0",
+    # Pinned although FastAPI pulls it in: FastAPI only asks for >=0.46.0,
+    # and advisories in that range stay open until 1.3.1. Left unpinned, a
+    # fresh install could resolve to a vulnerable Starlette (security.md
+    # section 8).
+    "starlette==1.9.0",
+    "uvicorn[standard]==0.54.0",
+    "sqlalchemy==2.1.5",
+    # In the image because migrations run from it, as a step before each deploy.
+    "alembic==1.20.0",
+    "psycopg[binary]==3.3.6",
+    "pgvector==0.5.1",
+    "redis==8.1.0",
+    "pydantic-settings==2.16.0",
+    "slowapi==0.1.10",
+    "PyJWT==2.15.0",
+    # The app's HTTP client (the MSG91 sender, the timestamp authorities) and
+    # Starlette's test client. The original httpx is no longer maintained
+    # (D-047).
+    "httpx2==2.14.0",
+    # Background jobs (D-060). Durable workflows whose state lives in
+    # Postgres, in DBOS's own `dbos` schema; they run inside the app, so there
+    # is no broker and no new service to deploy (CLAUDE.md section 3).
+    "dbos==3.3.0",
+    # Checks the RFC 3161 timestamps on the deal record's daily checkpoint.
+    "rfc3161-client==1.0.9",
+    # Pinned although rfc3161-client pulls it in: it performs the signature
+    # checks, so which version does that is ours to choose, not the resolver's.
+    "cryptography==50.0.2",
+    # The Mozilla root certificate list, which the timestamp checks trust.
+    # Pinned directly: it once arrived only through a developer tool, and the
+    # app could not start without it.
+    "certifi==2026.10.19",
+    # Proof files in S3 (D-065): signs the upload and view links and checks
+    # the objects. Signing requests by hand is security code we should not own.
+    "boto3==1.43.114",
+    # Re-encodes every uploaded image so no GPS location or hidden data
+    # reaches a brand (D-065). Security releases are frequent: the dependency
+    # audit fails CI until it is upgraded, which is the point.
+    "pillow==13.0.0",
+    # Reads the numbers on cleaned proof screenshots, in a background job only
+    # (D-070). Built on httpx2 2.x, the same client the app pins above.
+    "anthropic==1.15.0",
+    # Error tracking (D-074): every unexpected error and every error log line
+    # reaches a founder with its stack trace, scrubbed of personal data first
+    # (app/core/error_tracking.py). Off unless SENTRY_DSN is set.
+    "sentry-sdk==2.72.0",
+    "opentelemetry-api==1.45.1",
+    "opentelemetry-sdk==1.45.1",
+    "opentelemetry-exporter-otlp-proto-http==1.45.1",
+    # The admins' second factor (item 101, D-105): the 6-digit codes an
+    # authenticator app shows (RFC 6238), and the link that sets one up.
+    # Pure Python, no dependencies of its own; checked against the RFC's
+    # own test vectors in tests/modules/auth/test_second_factor.py.
+    "pyotp==2.10.0",
+    # A brand's verified domain (item 74, D-106): which part of a name is
+    # registrable (smallshop.co.in) and which is a public suffix (co.in),
+    # from the Public Suffix List it bundles, with no network call. Released
+    # as the list changes; Dependabot proposes each one. MPL-2.0, used
+    # unchanged (legal.md section 3.15).
+    "publicsuffixlist==1.1.0.20261010",
+    "fido2==2.2.1",
+]
+
+[dependency-groups]
+# The tools that check the app (D-037). The app never imports them; they are
+# pinned so every laptop and CI check the code with the same versions, and so
+# the dependency audit covers them too. Never in an image.
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.17.1",
+    "mypy==2.4.0",
+    "pytest-cov==7.1.0",
+    # Pinned although pytest-cov pulls it in: unpinned, local and CI runs
+    # could count branches differently (D-047).
+    "coverage==7.16.2",
+    # API fuzz testing (D-047). Reads docs/api/openapi.json, generates
+    # thousands of requests from it and checks every answer.
+    "schemathesis==4.32.0",
+    # Imitates S3 in tests, so the storage code is tested without AWS (D-065).
+    "moto==5.2.4",
+    # Property-based tests (D-090): one test states a rule, Hypothesis tries
+    # hundreds of generated inputs and shrinks any failure to the smallest.
+    # Schemathesis pulls it in too; pinned here because tests import it.
+    "hypothesis==6.170.1",
+    "import-linter==2.15",
+]
+load = [
+    "locust==2.46.7",
+]
+# The embedding stack (D-052), deliberately apart from the app:
+# 1. The API image does not need it: embedding is never on the request path.
+# 2. torch's advisory surface is far larger than the rest of the project's,
+#    and the strict audit covers the app and its tools, not this group.
+# 3. It brings back `httpx` (D-047 replaced it) through huggingface-hub.
+# torch comes from PyTorch's CPU index ([tool.uv.sources] below): the default
+# wheel declares about 1.4 GB of CUDA libraries for a workload that never
+# touches a GPU.
+ml = [
+    "torch==2.14.1",
+    "sentence-transformers==6.1.0",
+]
+# Automated mutation testing (D-091): breaks the rule-heavy code in thousands
+# of small ways and reports any break no test noticed. Its own group because
+# it brings a terminal UI and a parser the test suite does not need; installed
+# only by the nightly mutation workflow. Linux only (it forks).
+mutation = [
+    "mutmut==3.8.0",
+]
+
+[tool.uv]
+package = false
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+# Only packages named in [tool.uv.sources] ever come from here.
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
 
 [tool.ruff]
 line-length = 90
-target-version = "py312"
+target-version = "py314"
 extend-exclude = ["alembic/versions"]
 
 [tool.ruff.lint]
@@ -56,7 +198,7 @@ extend-immutable-calls = [
 known-first-party = ["app", "tests"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.14"
 files = ["app"]
 # Pydantic's own plugin: without it mypy reads every BaseSettings field as a
 # required constructor argument, when they actually come from the environment.
@@ -71,28 +213,108 @@ strict = true
 [[tool.mypy.overrides]]
 # Third-party packages without type information. Listing them is better than
 # ignore_missing_imports globally, which would also hide our own mistakes.
-module = ["slowapi.*", "pgvector.*", "limits.*"]
+module = ["slowapi.*", "pgvector.*", "limits.*", "boto3.*", "botocore.*", "moto.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-# Installed only where embeddings are made (requirements-ml.txt, D-052), never
+# Installed only where embeddings are made (the ml group, D-052), never
 # in CI or the API image. embedder.py imports it inside a function for that
 # reason; without this entry mypy fails wherever it is absent, which is CI.
 # It failed there from PR #28 on while passing on any laptop that had it.
 module = ["sentence_transformers.*", "sentence_transformers"]
 ignore_missing_imports = true
 
+[tool.mutmut]
+# The pure rules where a silent mistake costs someone money or trust
+# (testing.md section 2, D-091): a deal's stage, payment state and its
+# dates, the approval clock, the record's fingerprint and Merkle proofs, the
+# contact and money flags, cursors, and the report spreadsheet.
+source_paths = ["app/"]
+only_mutate = [
+    "app/modules/deal_memo/stage.py",
+    "app/modules/deal_memo/merkle.py",
+    "app/modules/deal_memo/record_service.py",
+    "app/modules/deal_memo/proof_service.py",
+    "app/modules/payment_status/service.py",
+    "app/core/text_flags.py",
+    "app/core/pagination.py",
+    "app/modules/campaigns/report_csv.py",
+]
+# Only lines the chosen tests reach: a function they never call is not
+# evidence of a weak test, and would bury the real survivors.
+mutate_only_covered_lines = true
+# The wording of an error is for people; clients and tests branch on the
+# error's type and code, never its text (backend.md section 3). Mutating it
+# reports thirty "survivors" that are not weak tests.
+do_not_mutate_patterns = ['^\s*raise \w+\(".*"\)\s*$', '^\s*raise \w+\(f".*"\)\s*$']
+also_copy = ["alembic", "alembic.ini", "tests", "docs"]
+pytest_add_cli_args_test_selection = [
+    "tests/modules/deal_memo/test_deal_stage.py",
+    "tests/modules/deal_memo/test_deal_rules_properties.py",
+    "tests/modules/deal_memo/test_merkle.py",
+    "tests/modules/deal_memo/test_record_properties.py",
+    "tests/modules/deal_memo/test_deal_record_service.py",
+    "tests/modules/payment_status/test_payment_state.py",
+    "tests/modules/payment_status/test_payment_state_properties.py",
+    "tests/modules/payment_status/test_reference.py",
+    "tests/modules/payment_status/test_reference_properties.py",
+    "tests/core/test_text_flags.py",
+    "tests/core/test_text_flags_properties.py",
+    "tests/core/test_pagination_properties.py",
+    "tests/modules/campaigns/test_campaign_report_csv.py",
+]
+
+[tool.importlinter]
+# The module layers (D-099; backend.md section 1). A module may import only
+# from layers below it. CI fails on any import the other way, and on a new
+# module nobody placed in a layer (`exhaustive`).
+root_package = "app"
+
+[[tool.importlinter.contracts]]
+name = "Modules import only from the layers below them"
+type = "layers"
+containers = ["app.modules"]
+exhaustive = true
+layers = [
+    # The export includes the reports a person filed, a table admin owns.
+    "me",
+    "admin",
+    "matching | insights | passport",
+    # The deal domain may still import across itself until phase 2.
+    "campaigns : deal_memo : payment_status : disputes",
+    "profiles | safety | notifications",
+    "auth",
+]
+
+[[tool.importlinter.contracts]]
+name = "The core and the database never import a module"
+type = "forbidden"
+source_modules = ["app.core", "app.db"]
+forbidden_modules = ["app.modules"]
+# Two registries whose job is to list every module, named here so no other
+# file can do the same unnoticed: every table, so Alembic sees them all, and
+# every background job, so DBOS can run them.
+ignore_imports = [
+    "app.db.models -> app.modules.**",
+    "app.core.jobs -> app.modules.**",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # Quiet by default; CI adds coverage flags explicitly.
 addopts = "-q"
+# CI runs the suite as the app's own login, which may only read and write
+# rows (item 97), then runs these as the owner (tests/owner.py).
+markers = [
+    "owner: needs the database owner, not the app's login (a trigger shown refusing, a scratch schema, the cleanup bypass)",
+]
 
 [tool.coverage.run]
 source = ["app"]
 branch = true
 
 [tool.coverage.report]
-# A floor, not a goal (testing.md section 5): 80% overall here, and 90% for
+# A floor, not a goal (testing.md section 7): 80% overall here, and 90% for
 # every service.py, which CI checks file by file. Missing failure-case tests
 # fail review even when coverage is high. Counts branches as well as lines.
 fail_under = 80

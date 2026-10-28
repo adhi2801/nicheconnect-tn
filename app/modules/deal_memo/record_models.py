@@ -53,12 +53,26 @@ RECORD_KINDS: tuple[str, ...] = (
     "proof_approved",
     "proof_auto_approved",
     "proof_revision_requested",
+    # A proof file was cleaned of location and hidden data; seals the copy a
+    # brand actually sees (D-065).
+    "proof_file_cleaned",
+    # The numbers read from a cleaned proof file, and how they checked out
+    # against what we hold (D-070). Never "verified".
+    "proof_results_read",
     "payment_opened",
     "payment_marked_paid",
     "payment_confirmed",
     "dispute_opened",
     "dispute_entry_added",
     "dispute_closed",
+    # A note one side wrote about the deal (item 17, D-128): its fingerprint.
+    "note_added",
+    # A barter deal's goods sent, with the courier and the tracking number's
+    # fingerprint, and the creator saying they arrived (item 68, D-131).
+    "product_shipped",
+    "product_received",
+    # One side's feedback on a finished deal (item 77, D-136): its fingerprint.
+    "feedback_given",
 )
 # "system" is us acting on the deal's own rules, such as approving work at the
 # end of the review window (D-025) or opening the payment record it causes.

@@ -20,6 +20,7 @@ from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import get_now
 from app.modules.campaigns import feedback, service
+from app.modules.campaigns import offer_service as offers
 from app.modules.campaigns.dependencies import (
     BrandApplication,
     CreatorApplication,
@@ -38,6 +39,9 @@ from app.modules.campaigns.schemas import (
 
 WRITE_LIMIT = "30 per minute"
 READ_LIMIT = "60 per minute"
+# A ceiling per day as well as per minute (trust-and-safety.md rule 2, item 58):
+# a per-minute limit stops a script, not a person spamming by hand all day.
+APPLY_LIMIT = "30 per minute;30 per day"
 
 # route_class: every POST here accepts an Idempotency-Key header, so a
 # creator whose connection dropped can retry safely (backend.md section 2).
@@ -54,9 +58,10 @@ _COMMON_ERRORS: ResponseDocs = {
 }
 
 
-def _page(result: Slice[Application]) -> Page[ApplicationRead]:
+def _page(db: Session, result: Slice[Application]) -> Page[ApplicationRead]:
+    # Every row's offers in one query, never one per row.
     return Page[ApplicationRead](
-        items=[ApplicationRead.model_validate(row) for row in result.rows],
+        items=offers.read_applications(db, result.rows),
         next_cursor=result.next_cursor,
     )
 
@@ -75,12 +80,16 @@ def _page(result: Slice[Application]) -> Page[ApplicationRead]:
         404: problem_doc("No such campaign"),
         409: problem_doc(
             "The creator profile is missing, the campaign is not open, the "
-            "closing date has passed, or you already applied"
+            "closing date has passed, you already applied, or your profile is "
+            "withheld for legal reasons (`own_content_withheld`)"
         ),
         422: problem_doc("A field is missing or invalid"),
+        451: problem_doc(
+            "The campaign or its brand is withheld for legal reasons (item 52)"
+        ),
     },
 )
-@rate_limit(WRITE_LIMIT)
+@rate_limit(APPLY_LIMIT)
 def apply_to_campaign(
     request: Request,
     response: Response,
@@ -94,7 +103,7 @@ def apply_to_campaign(
         db, campaign_id, creator, body.model_dump(), now
     )
     response.headers["Location"] = f"/api/v1/applications/{application.id}"
-    return ApplicationRead.model_validate(application)
+    return offers.read_application(db, application)
 
 
 @router.get(
@@ -119,9 +128,10 @@ def list_campaign_applications(
     db: Session = Depends(get_db),
 ) -> Page[ApplicationRead]:
     return _page(
+        db,
         service.list_campaign_applications(
             db, campaign, limit=limit, cursor=cursor, status=application_status
-        )
+        ),
     )
 
 
@@ -146,9 +156,10 @@ def list_my_applications(
     db: Session = Depends(get_db),
 ) -> Page[ApplicationRead]:
     return _page(
+        db,
         service.list_creator_applications(
             db, creator, limit=limit, cursor=cursor, status=application_status
-        )
+        ),
     )
 
 
@@ -191,9 +202,9 @@ def read_my_application_feedback(
 )
 @rate_limit(READ_LIMIT)
 def read_application(
-    request: Request, application: VisibleApplication
+    request: Request, application: VisibleApplication, db: Session = Depends(get_db)
 ) -> ApplicationRead:
-    return ApplicationRead.model_validate(application)
+    return offers.read_application(db, application)
 
 
 def _brand_decision(
@@ -210,7 +221,12 @@ def _brand_decision(
         responses={
             **_COMMON_ERRORS,
             404: problem_doc("No such application, or it is not for your campaign"),
-            409: problem_doc("The application is not in a state where that is allowed"),
+            409: problem_doc(
+                "The application is not in a state where that is allowed, or "
+                "your campaign or brand is withheld for legal reasons "
+                "(`own_content_withheld`)"
+            ),
+            451: problem_doc("The creator is withheld for legal reasons (item 52)"),
         },
     )
     @rate_limit(WRITE_LIMIT)
@@ -220,8 +236,11 @@ def _brand_decision(
         db: Session = Depends(get_db),
         now: datetime = Depends(get_now),
     ) -> ApplicationRead:
-        return ApplicationRead.model_validate(
-            service.change_application_status(db, application, new_status, now)
+        return offers.read_application(
+            db,
+            service.change_application_status(
+                db, application, new_status, now, actor="brand"
+            ),
         )
 
     return endpoint
@@ -264,15 +283,17 @@ def reject_application(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> ApplicationRead:
-    return ApplicationRead.model_validate(
+    return offers.read_application(
+        db,
         service.change_application_status(
             db,
             application,
             "rejected",
             now,
+            actor="brand",
             rejection_reason=body.reason,
             rejection_note=body.note,
-        )
+        ),
     )
 
 
@@ -294,6 +315,9 @@ def withdraw_application(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> ApplicationRead:
-    return ApplicationRead.model_validate(
-        service.change_application_status(db, application, "withdrawn", now)
+    return offers.read_application(
+        db,
+        service.change_application_status(
+            db, application, "withdrawn", now, actor="creator"
+        ),
     )

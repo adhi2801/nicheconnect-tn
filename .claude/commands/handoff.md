@@ -50,5 +50,5 @@ Print this in the chat. Keep it under one screen and use plain English.
 6. Next task: <specific next step>
 
 **Suggested first prompt for Claude Code**
-> I'm continuing branch <branch>. <Done summary>. Next: <task>. Follow CLAUDE.md learning format.
+> I'm continuing branch <branch>. <Done summary>. Next: <task>. Follow CLAUDE.md section 6: one feature at a time, the eight steps.
 ```

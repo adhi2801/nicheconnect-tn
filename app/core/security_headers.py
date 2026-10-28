@@ -1,4 +1,4 @@
-"""Security headers on every response (security.md section 7).
+"""Security headers on every response (security.md section 8).
 
 These are cheap instructions to the browser about what it may do with our
 response. They matter even for a JSON API: a response a browser can be
@@ -65,6 +65,9 @@ BASE_HEADERS = {
     "Referrer-Policy": "no-referrer",
     # Nobody frames us; defends against clickjacking on any HTML we serve.
     "X-Frame-Options": "DENY",
+    # Search engines index the website's pages, never this API's JSON: a
+    # Passport is found through the page that shows it (item 85, D-121).
+    "X-Robots-Tag": "noindex",
 }
 
 

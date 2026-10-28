@@ -9,16 +9,18 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    SmallInteger,
     String,
     Text,
     text,
 )
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.core.taxonomy import CURRENCY
 from app.db.base import Base
+from app.modules.deal_memo.deliverable_models import MemoDeliverable
 
 # What the two sides agreed, for one accepted application (D-024 to D-027).
 # One memo per application: the deal is the thing, not the paperwork.
@@ -57,12 +59,16 @@ MAX_WINDOW_DAYS = 30
 MAX_USAGE_RIGHTS_DAYS = 3650
 DELIVERABLES_MAX_LENGTH = 2000
 TERMS_MAX_LENGTH = 2000
+# The creator's own words when sending a memo back (item 25).
+CHANGE_REQUEST_MIN_LENGTH = 5
+CHANGE_REQUEST_MAX_LENGTH = 1000
 
 
 class DealMemo(Base):
     __tablename__ = "deal_memo"
     __table_args__ = (
         CheckConstraint(f"status IN {tuple(MEMO_STATUSES)}", name="status_allowed"),
+        CheckConstraint("terms_version IN (1, 2)", name="terms_version_known"),
         CheckConstraint(
             f"cancellation_kind IS NULL OR cancellation_kind IN {tuple(CANCELLATION_KINDS)}",
             name="cancellation_kind_allowed",
@@ -102,6 +108,19 @@ class DealMemo(Base):
             f"extra_terms IS NULL OR char_length(extra_terms) <= {TERMS_MAX_LENGTH}",
             name="extra_terms_length",
         ),
+        # A decline has a date, and nothing else does (item 24). Memos declined
+        # before the column existed keep it empty: a date is never invented.
+        CheckConstraint(
+            "declined_at IS NULL OR status = 'declined'",
+            name="declined_at_only_if_declined",
+        ),
+        # Only a memo that was sent back carries the creator's words (item 25).
+        CheckConstraint(
+            "change_request_message IS NULL OR (revision_count > 0"
+            " AND char_length(btrim(change_request_message))"
+            f" BETWEEN {CHANGE_REQUEST_MIN_LENGTH} AND {CHANGE_REQUEST_MAX_LENGTH})",
+            name="change_request_message_needs_request",
+        ),
         # The brand's and creator's memo lists, newest first.
         Index("ix_deal_memo_status_created_at", "status", "created_at"),
     )
@@ -120,6 +139,20 @@ class DealMemo(Base):
         unique=True,
     )
     deliverables: Mapped[str] = mapped_column(Text, nullable=False)
+    # The same, as rows (item 26, D-127), in the order agreed; loaded with
+    # the memo in one more query a page, never one a memo.
+    deliverable_items: Mapped[list[MemoDeliverable]] = relationship(
+        "MemoDeliverable",
+        order_by="MemoDeliverable.position",
+        lazy="selectin",
+        viewonly=True,
+    )
+    # Which terms the deal record's fingerprint covers (D-127): 1 is every
+    # memo before 25 October 2026, fingerprinted as it always was, forever;
+    # 2 adds the list of deliverables. Never changes once set.
+    terms_version: Mapped[int] = mapped_column(
+        SmallInteger, nullable=False, server_default=text("2")
+    )
     # Paise (D-015). Empty for barter, where the payment is goods.
     fee_amount_paise: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     currency: Mapped[str] = mapped_column(
@@ -169,6 +202,15 @@ class DealMemo(Base):
         DateTime(timezone=True), nullable=True
     )
     cancellation_kind: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # When the creator declined. NULL on any other memo, and on memos declined
+    # before 12 October 2026, when it was first kept (item 24).
+    declined_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # What the creator asked to change, in their words: the latest request,
+    # kept after the brand sends the memo again so both can see what was
+    # asked. NULL until a request, and on requests made before it was kept.
+    change_request_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

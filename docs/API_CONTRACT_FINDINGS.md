@@ -134,12 +134,12 @@ code is wrong".
 The API must be running. From the repository root, in two terminals:
 
 ```powershell
-venv\Scripts\python.exe -m uvicorn app.main:app --port 8099
+uv run uvicorn app.main:app --port 8099
 ```
 
 ```powershell
 $env:PYTHONIOENCODING = "utf-8"
-venv\Scripts\schemathesis.exe run http://127.0.0.1:8099/openapi.json --max-time 120 --workers 4 --warnings off
+uv run schemathesis run http://127.0.0.1:8099/openapi.json --max-time 120 --workers 4 --warnings off
 ```
 
 `PYTHONIOENCODING` is needed on Windows only: the default console encoding

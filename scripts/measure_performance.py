@@ -17,11 +17,13 @@ import pathlib
 import statistics
 import sys
 import time
+import uuid
 
 # Run as `python scripts/measure_performance.py` from the project root.
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
 from collections import defaultdict
+from contextlib import nullcontext
 from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
@@ -30,14 +32,30 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.rate_limit import limiter
+from app.core.storage import get_file_store
 from app.db.session import SessionLocal, engine, get_db
 from app.main import app
+from app.modules.auth import second_factor, second_factor_secrets
+from app.modules.auth import service as login
 from app.modules.auth.dependencies import get_now
 from app.modules.auth.models.account import Account
+from app.modules.auth.models.account_phone_change import (
+    PHONE_CHANGE_WAIT,
+    AccountPhoneChange,
+)
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
-from app.modules.auth.tokens import create_access_token
+from app.modules.auth.models.otp_challenge import OtpChallenge
+from app.modules.auth.models.totp_factor import TotpFactor
+from app.modules.auth.sender import FakeOtpSender, get_otp_sender
+from app.modules.auth.tokens import (
+    TWO_FACTORS,
+    create_access_token,
+    decode_access_token,
+    hash_otp_code,
+)
 from app.modules.campaigns.models import Campaign
+from app.modules.me import data_export_service, phone_change_service
 from app.modules.payment_status.service import MAX_BULK_MARK_PAID
 
 READ_BUDGET_MS = 300
@@ -107,6 +125,14 @@ def summarise(name: str, timings: list[float], budget: int) -> dict:
     }
 
 
+# Kept low on purpose. Every request here runs in a savepoint of one
+# transaction that is rolled back, and each bulk row adds a savepoint of its
+# own, so the rounds pile hundreds of subtransactions into one transaction.
+# Past 64, PostgreSQL's visibility checks slow down, and each round reads
+# slower than the last: 292 ms rising to 477 ms over 20 rounds on
+# 30 September. The same 20 rounds with every request committed, as in
+# production, stayed flat at 269-341 ms. A slow bulk number here is worth
+# re-checking with real commits before it is believed.
 BULK_ROUNDS = 5
 # The most a brand may send in one call: the worst case is the one that matters.
 BULK_ROWS = MAX_BULK_MARK_PAID
@@ -125,6 +151,17 @@ def measure_writes(
        the bulk mark-paid.
     3. `deals` rounds of rate card writes, by a creator made for the run:
        the seeded creators may already hold the ten-package limit.
+    4. `deals` reports, by that same creator, each about a different
+       campaign: a second report of the same thing only returns the first;
+       then the admin's queue and its clocks, `deals` times each (item 51).
+    5. Those campaigns withheld on an order, the takedown lists and discovery
+       read with them in place, then each lifted (item 52).
+    6. `deals` rounds of the second check (item 82): a code asked for and a
+       UPI ID set with it, read back and its wait cancelled; the export
+       asked for, built by the job and downloaded (D-111), and logging out
+       everywhere, each with its own code.
+    7. `deals` phone number changes (item 80), each with both codes, read
+       and cancelled; then `deals` runs of the job, each making one change.
     """
     timings: dict[str, list[float]] = defaultdict(list)
     due_on = (now + timedelta(days=60)).date().isoformat()
@@ -225,6 +262,17 @@ def measure_writes(
             f"{memos}/{memo}/proof/{proof}/approve",
             brand_headers,
         )
+        if timed:
+            # A read, timed here because only these deals have agreed dates
+            # (item 69); the seeded data has no accepted deal.
+            limiter.reset()
+            started = time.perf_counter()
+            calendar = client.get(f"{memos}/{memo}/calendar.ics", headers=creator_headers)
+            timings["GET /deal-memos/{id}/calendar.ics"].append(
+                (time.perf_counter() - started) * 1000
+            )
+            if calendar.status_code != 200:
+                raise SystemExit(f"calendar.ics: {calendar.status_code}")
         return str(memo)
 
     try:
@@ -348,13 +396,303 @@ def measure_writes(
                 f"{cards}/rate-card/unpublish",
                 rate_card_headers,
             )
+
+        reported = db.scalars(select(Campaign.id).limit(deals)).all()
+        for campaign_id in reported:
+            write(
+                "POST /reports",
+                "/api/v1/reports",
+                rate_card_headers,
+                {
+                    "subject_kind": "campaign",
+                    "subject_id": str(campaign_id),
+                    "category": "spam",
+                    "note": "Measured, then rolled back.",
+                },
+            )
+
+        # The admin's queue and its clocks (item 51), with those reports in it.
+        admin = Account(phone="+919000099998", role="admin")
+        db.add(admin)
+        db.flush()
+        admin_token, _ = create_access_token(admin.id, "admin", now, methods=TWO_FACTORS)
+        admin_headers = {"Authorization": f"Bearer {admin_token}"}
+
+        # The admins' login with two factors (item 101), once per report: a
+        # fresh phone code each round, and the factor's last step cleared
+        # between rounds, since this script's clock stands still and each
+        # authenticator code works once.
+        secret = bytes(range(20))
+        factor = TotpFactor(
+            account_id=admin.id,
+            secret_ciphertext=second_factor_secrets.seal(secret, admin.id),
+            enrolled_at=now,
+        )
+        db.add(factor)
+        db.flush()
+        for round_number, _ in enumerate(reported, start=1):
+            factor.last_used_step = None
+            db.add(
+                OtpChallenge(
+                    phone=admin.phone,
+                    code_hash=hash_otp_code("135790"),
+                    expires_at=now + timedelta(minutes=5),
+                    created_at=now + timedelta(microseconds=round_number),
+                    updated_at=now,
+                )
+            )
+            db.flush()
+            write(
+                "POST /auth/admin/login",
+                "/api/v1/auth/admin/login",
+                {},
+                {
+                    "phone": admin.phone,
+                    "code": "135790",
+                    "authenticator_code": second_factor.code_at_step(
+                        secret, second_factor.step_at(now)
+                    ),
+                },
+            )
+        for _ in reported:
+            write(
+                "GET /admin/reports (queue)",
+                "/api/v1/admin/reports",
+                admin_headers,
+                method="GET",
+            )
+            write(
+                "GET /admin/reports/clocks",
+                "/api/v1/admin/reports/clocks",
+                admin_headers,
+                method="GET",
+            )
+
+        # A brand's domain (item 74): claimed, a check asked for, read back.
+        # The check itself runs in the background job, never in a request.
+        for round_number, _ in enumerate(reported, start=1):
+            write(
+                "POST /brands/me/domain",
+                "/api/v1/brands/me/domain",
+                brand_headers,
+                {"domain": f"measured{round_number}.in"},
+            )
+            write(
+                "POST /brands/me/domain/check",
+                "/api/v1/brands/me/domain/check",
+                brand_headers,
+            )
+            write(
+                "GET /brands/me/domain",
+                "/api/v1/brands/me/domain",
+                brand_headers,
+                method="GET",
+            )
+
+        # Takedowns (item 52): each reported campaign withheld on an order,
+        # the lists read with them in place, discovery read past them, and
+        # each lifted again.
+        takedowns = []
+        for campaign_id in reported:
+            takedowns.append(
+                write(
+                    "POST /admin/takedowns",
+                    "/api/v1/admin/takedowns",
+                    admin_headers,
+                    {
+                        "subject_kind": "campaign",
+                        "subject_id": str(campaign_id),
+                        "basis": "court_order",
+                        "issued_by": "High Court of Madras",
+                        "order_reference": "WP 1012 of 2026",
+                        "received_at": (now - timedelta(hours=1)).isoformat(),
+                        "note": "Measured, then rolled back.",
+                    },
+                )
+            )
+        owner = db.scalar(
+            select(Brand.account_id)
+            .join(Campaign, Campaign.brand_id == Brand.id)
+            .where(Campaign.id == reported[0])
+        )
+        owner_token, _ = create_access_token(owner, "brand", now)
+        owner_headers = {"Authorization": f"Bearer {owner_token}"}
+        for _ in takedowns:
+            write(
+                "GET /admin/takedowns",
+                "/api/v1/admin/takedowns?active=true",
+                admin_headers,
+                method="GET",
+            )
+            write(
+                "GET /me/takedowns",
+                "/api/v1/me/takedowns",
+                owner_headers,
+                method="GET",
+            )
+            write(
+                "GET /campaigns/discover (with takedowns)",
+                "/api/v1/campaigns/discover",
+                creator_headers,
+                method="GET",
+            )
+        for takedown in takedowns:
+            write(
+                "POST /admin/takedowns/{id}/lift",
+                f"/api/v1/admin/takedowns/{takedown['id']}/lift",
+                admin_headers,
+                {"note": "Measured, then rolled back."},
+            )
+
+        # The second check (item 82). The phone's caps, like the limiter,
+        # are not what is measured, so they are lifted for the run; the
+        # code is read from a fake sender, as in the tests.
+        sender = FakeOtpSender()
+        app.dependency_overrides[get_otp_sender] = lambda: sender
+        caps, login.OTP_SEND_LIMITS = login.OTP_SEND_LIMITS, ((timedelta(days=1), 10**6),)
+        notice, settings.upi_notice_version = settings.upi_notice_version, "measured"
+        creator_id = decode_access_token(
+            creator_headers["Authorization"].removeprefix("Bearer "), now
+        ).account_id
+        phone = db.get_one(Account, creator_id).phone
+
+        def with_code(name: str, action: str, **fields: str) -> dict:
+            write(
+                name, "/api/v1/me/step-up", creator_headers, {"action": action, **fields}
+            )
+            return {**creator_headers, "Step-Up-Code": sender.last_code_for(phone) or ""}
+
+        try:
+            for round_number in range(deals):
+                upi_id = f"measured{round_number}@okaxis"
+                write(
+                    "PUT /creators/me/upi (with its code)",
+                    "/api/v1/creators/me/upi",
+                    with_code("POST /me/step-up", "set_upi_id", upi_id=upi_id),
+                    {"upi_id": upi_id, "consent": True, "notice_version": "measured"},
+                    method="PUT",
+                )
+                write(
+                    "GET /creators/me/upi",
+                    "/api/v1/creators/me/upi",
+                    creator_headers,
+                    method="GET",
+                )
+                write(
+                    "DELETE /creators/me/upi/waiting",
+                    "/api/v1/creators/me/upi/waiting",
+                    creator_headers,
+                    method="DELETE",
+                )
+                # The export (D-111): asked for, built by the job, then
+                # downloaded once, each step timed on its own.
+                asked = write(
+                    "POST /me/exports",
+                    "/api/v1/me/exports",
+                    creator_headers,
+                )
+                started = time.perf_counter()
+                data_export_service.run_exports(
+                    lambda: nullcontext(db), get_file_store(), now
+                )
+                timings["job: one data export built"].append(
+                    (time.perf_counter() - started) * 1000
+                )
+                download_headers = with_code(
+                    "POST /me/step-up", "download_export", export_id=asked["id"]
+                )
+                write(
+                    "POST /me/exports/{id}/download (with its code)",
+                    f"/api/v1/me/exports/{asked['id']}/download",
+                    download_headers,
+                )
+                write(
+                    "POST /auth/logout-all (with its code)",
+                    "/api/v1/auth/logout-all",
+                    with_code("POST /me/step-up", "log_out_everywhere"),
+                )
+
+            # Changing the phone number (item 80): both codes, the change, a
+            # read and the cancel; then the job making one due change, on an
+            # account made for it, timed as one whole run.
+            for _ in range(deals):
+                new_phone = f"+9197{uuid.uuid4().int % 10**8:08d}"
+                current = with_code(
+                    "POST /me/step-up", "change_phone", new_phone=new_phone
+                )
+                write(None, "/api/v1/auth/otp/request", {}, {"phone": new_phone})
+                write(
+                    "POST /me/phone-change (with both codes)",
+                    "/api/v1/me/phone-change",
+                    current,
+                    {
+                        "new_phone": new_phone,
+                        "new_phone_code": sender.last_code_for(new_phone) or "",
+                    },
+                )
+                write(
+                    "GET /me/phone-change",
+                    "/api/v1/me/phone-change",
+                    creator_headers,
+                    method="GET",
+                )
+                write(
+                    "DELETE /me/phone-change",
+                    "/api/v1/me/phone-change",
+                    creator_headers,
+                    method="DELETE",
+                )
+                # The same without the current number (D-110), then cancelled.
+                lost_phone = f"+9197{uuid.uuid4().int % 10**8:08d}"
+                write(None, "/api/v1/auth/otp/request", {}, {"phone": lost_phone})
+                write(
+                    "POST /me/phone-change/without-current-number",
+                    "/api/v1/me/phone-change/without-current-number",
+                    creator_headers,
+                    {
+                        "new_phone": lost_phone,
+                        "new_phone_code": sender.last_code_for(lost_phone) or "",
+                    },
+                )
+                write(None, "/api/v1/me/phone-change", creator_headers, method="DELETE")
+            for _ in range(deals):
+                moving = Account(
+                    phone=f"+9196{uuid.uuid4().int % 10**8:08d}", role="creator"
+                )
+                db.add(moving)
+                db.flush()
+                db.add(
+                    AccountPhoneChange(
+                        account_id=moving.id,
+                        new_phone=f"+9195{uuid.uuid4().int % 10**8:08d}",
+                        requested_at=now - PHONE_CHANGE_WAIT,
+                        takes_effect_at=now,
+                    )
+                )
+                db.commit()
+                started = time.perf_counter()
+                run = phone_change_service.run_changes(lambda: nullcontext(db), now)
+                timings["job: one phone change made"].append(
+                    (time.perf_counter() - started) * 1000
+                )
+                if run.made != 1:
+                    raise SystemExit(f"phone change job: {run}")
+        finally:
+            login.OTP_SEND_LIMITS = caps
+            settings.upi_notice_version = notice
+            app.dependency_overrides.pop(get_otp_sender, None)
     finally:
         app.dependency_overrides.pop(get_db, None)
         db.close()
         outer.rollback()
         connection.close()
 
-    return [summarise(name, values, WRITE_BUDGET_MS) for name, values in timings.items()]
+    return [
+        summarise(
+            name, values, READ_BUDGET_MS if name.startswith("GET ") else WRITE_BUDGET_MS
+        )
+        for name, values in timings.items()
+    ]
 
 
 def main() -> int:
@@ -430,7 +768,12 @@ def main() -> int:
     now = datetime.now(UTC)
     app.dependency_overrides[get_now] = lambda: now
     brand_token, _ = create_access_token(brand.account_id, "brand", now)
-    creator_token, _ = create_access_token(creator.account_id, "creator", now)
+    # Logged in two months ago, as a seeded creator would be: changing a
+    # phone number asks for a login a week old, or 30 days without the
+    # current number (D-109, D-110).
+    creator_token, _ = create_access_token(
+        creator.account_id, "creator", now, authenticated_at=now - timedelta(days=60)
+    )
     brand_headers = {"Authorization": f"Bearer {brand_token}"}
     creator_headers = {"Authorization": f"Bearer {creator_token}"}
     busiest_campaign_id = busiest[0] if busiest else campaign.id
@@ -527,6 +870,42 @@ def main() -> int:
             brand_headers,
             args.runs,
             READ_BUDGET_MS,
+        ),
+        # A reporter's own reports and what became of each (item 102).
+        measure(
+            client,
+            "GET /reports/mine",
+            "GET",
+            "/api/v1/reports/mine",
+            brand_headers,
+            args.runs,
+            READ_BUDGET_MS,
+        ),
+        # Creator search: the query a brand runs most. Each filter joins or
+        # scans something different, so each shape is timed on its own.
+        *(
+            measure(
+                client,
+                name,
+                "GET",
+                f"/api/v1/creators{query}",
+                brand_headers,
+                args.runs,
+                READ_BUDGET_MS,
+            )
+            for name, query in (
+                ("GET /creators (search, no filter)", ""),
+                ("GET /creators?niche&city", "?niche=food&city=Madurai"),
+                (
+                    "GET /creators?platform&followers",
+                    "?platform=instagram&min_followers=10000&max_followers=100000",
+                ),
+                (
+                    "GET /creators?max_price&format",
+                    "?max_price_paise=1500000&format=reel",
+                ),
+                ("GET /creators?q (words)", "?q=food"),
+            )
         ),
     ]
     results += measure_writes(args.deals, brand_headers, creator_headers, now)

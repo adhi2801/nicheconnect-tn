@@ -19,6 +19,10 @@ from app.modules.deal_memo.record_models import DealRecordEntry
 from app.modules.deal_memo.timestamp_authority import Stamp, TimestampFailed
 from tests.modules.deal_memo.test_deal_record_model import make_memo
 
+# The owner: each test clears the record with the triggers set aside, which
+# the app's own login may not do (item 97, tests/owner.py).
+pytestmark = pytest.mark.owner
+
 DAY = date(2026, 9, 27)
 MIDNIGHT = datetime(2026, 9, 27, 0, 0, tzinfo=IST)
 BEFORE = MIDNIGHT - timedelta(hours=3)

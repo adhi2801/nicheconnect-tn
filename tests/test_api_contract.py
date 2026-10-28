@@ -22,8 +22,20 @@ from tests import openapi_snapshot
 PUBLIC = {
     ("GET", "/healthz"): "a deployment platform's liveness probe",
     ("GET", "/readyz"): "a deployment platform's readiness probe",
+    (
+        "GET",
+        "/.well-known/security.txt",
+    ): "how a researcher reports a vulnerability (RFC 9116)",
     ("POST", "/api/v1/auth/otp/request"): "how a login starts",
     ("POST", "/api/v1/auth/otp/verify"): "how a login finishes",
+    (
+        "POST",
+        "/api/v1/auth/admin/login",
+    ): "how an admin logs in: both codes in the body are the credentials (D-105)",
+    (
+        "POST",
+        "/api/v1/auth/admin/second-factor",
+    ): "how an admin sets up an authenticator: the ticket and phone code are the credentials",
     (
         "POST",
         "/api/v1/auth/refresh",
@@ -32,8 +44,39 @@ PUBLIC = {
         "POST",
         "/api/v1/auth/logout",
     ): "the refresh token in the body is the credential; always 204",
+    (
+        "POST",
+        "/api/v1/auth/passkey/options",
+    ): "how a passkey login starts: nobody is known yet (D-113)",
+    (
+        "POST",
+        "/api/v1/auth/passkey/login",
+    ): "how a passkey login finishes: the passkey's answer is the credential (D-113)",
+    (
+        "POST",
+        "/api/v1/auth/passkey-reset",
+    ): "a passkey reset: the number and its code are the credential (D-113)",
     ("GET", "/api/v1/creators/by-handle/{handle}"): "the public Creator Passport (D-036)",
+    ("GET", "/api/v1/creators/indexable"): (
+        "the published Passports, for the website's sitemap (item 85, D-121)"
+    ),
+    ("GET", "/api/v1/cities"): "cities with public figures (D-078)",
+    ("GET", "/api/v1/cities/{city}/figures"): "a city's public figures (D-078)",
+    ("POST", "/api/v1/platforms/meta/data-deletion"): (
+        "Meta's data deletion callback: Meta's signature is the credential (D-134)"
+    ),
+    ("POST", "/api/v1/platforms/meta/deauthorize"): (
+        "Meta's deauthorize callback: Meta's signature is the credential (D-134)"
+    ),
+    ("GET", "/api/v1/platforms/meta/data-deletion/{confirmation_code}"): (
+        "the status page Meta requires: a random code, naming no one (D-134)"
+    ),
 }
+
+# The admin API answers anyone who is not an admin, a caller without a token
+# included, exactly as a path that does not exist: 404, never 401, so it
+# cannot be found by probing (D-061). Held to that instead of to 401.
+ADMIN_PREFIX = "/api/v1/admin/"
 
 PROBLEM_TYPE = "application/problem+json"
 WRITE_METHODS = {"post", "patch", "put", "delete"}
@@ -73,7 +116,8 @@ def test_every_other_operation_refuses_a_request_without_a_token():
             url = re.sub(r"\{[^}]+\}", str(uuid.uuid4()), path)
             body = {} if method.lower() in WRITE_METHODS else None
             response = client.request(method, url, json=body)
-            if response.status_code != 401:
+            expected = 404 if path.startswith(ADMIN_PREFIX) else 401
+            if response.status_code != expected:
                 reachable.append(f"{label(method, path)} -> {response.status_code}")
     finally:
         limiter.enabled = True
@@ -98,9 +142,13 @@ def test_every_successful_answer_has_a_documented_shape():
     missing = []
     for method, path, op in operations():
         success = {code: r for code, r in op["responses"].items() if code.startswith("2")}
+        # JSON nearly everywhere; plain text for /.well-known/security.txt.
         described = all(
             code == "204"
-            or r.get("content", {}).get("application/json", {}).get("schema")
+            or (
+                r.get("content")
+                and all(media.get("schema") for media in r["content"].values())
+            )
             for code, r in success.items()
         )
         if not success or not described:
@@ -123,7 +171,9 @@ def test_every_operation_behind_a_login_documents_401():
     missing = [
         label(method, path)
         for method, path, op in operations()
-        if (method, path) not in PUBLIC and "401" not in op["responses"]
+        if (method, path) not in PUBLIC
+        # Admin routes document the 404 they give instead (D-061).
+        and ("404" if path.startswith(ADMIN_PREFIX) else "401") not in op["responses"]
     ]
 
     assert missing == [], missing
@@ -212,6 +262,6 @@ def test_the_contract_matches_the_committed_copy():
     )
     pytest.fail(
         "The API contract changed. If that is intended, refresh the committed copy "
-        "and commit it with the change: venv\\Scripts\\python.exe -m "
+        "and commit it with the change: uv run python -m "
         f"tests.openapi_snapshot\nPaths: {changed}\nSchemas: {schemas}"
     )

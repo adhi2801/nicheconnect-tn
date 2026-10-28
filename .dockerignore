@@ -1,0 +1,21 @@
+# Only what the Dockerfile copies should ever reach the build. Above all, a
+# developer's .env and local virtual environment must never end up in an image.
+.env
+.env.*
+!.env.example
+venv/
+.venv/
+**/__pycache__/
+**/*.py[cod]
+.git/
+.github/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.json
+htmlcov/
+tests/
+docs/
+*.log
+.claude/

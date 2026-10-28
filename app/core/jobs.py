@@ -17,7 +17,17 @@ from dbos import DBOS, DBOSConfig
 from fastapi import FastAPI
 
 from app.core.config import settings
-from app.modules.deal_memo import anchor_jobs
+from app.modules.admin import report_clock_jobs
+from app.modules.campaigns import alert_jobs
+from app.modules.deal_memo import anchor_jobs, proof_cleaning_jobs, proof_reading_jobs
+from app.modules.me import (
+    account_deletion_jobs,
+    connection_jobs,
+    data_export_jobs,
+    passkey_jobs,
+    phone_change_jobs,
+)
+from app.modules.profiles import brand_domain_jobs
 
 DBOS_SCHEMA = "dbos"
 
@@ -27,7 +37,9 @@ def dbos_config(*, schema: str = DBOS_SCHEMA) -> DBOSConfig:
         "name": "nicheconnect-backend",
         "system_database_url": settings.database_url,
         "dbos_system_schema": schema,
-        "run_migrations": True,
+        # Production migrates DBOS in the release step, as the owner
+        # (app/db/prepare.py); the app's own login may not create schemas.
+        "run_migrations": settings.dbos_migrate_at_start,
     }
 
 
@@ -35,7 +47,19 @@ def start(*, schema: str = DBOS_SCHEMA) -> None:
     """Launch DBOS and put every schedule in place."""
     DBOS(config=dbos_config(schema=schema))
     DBOS.launch()
-    DBOS.apply_schedules(anchor_jobs.schedules())
+    DBOS.apply_schedules(
+        anchor_jobs.schedules()
+        + proof_cleaning_jobs.schedules()
+        + proof_reading_jobs.schedules()
+        + report_clock_jobs.schedules()
+        + brand_domain_jobs.schedules()
+        + phone_change_jobs.schedules()
+        + data_export_jobs.schedules()
+        + passkey_jobs.schedules()
+        + account_deletion_jobs.schedules()
+        + alert_jobs.schedules()
+        + connection_jobs.schedules()
+    )
 
 
 def stop() -> None:

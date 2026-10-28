@@ -6,7 +6,7 @@ in what order, and who is kept out — not whether Qwen3 produces good vectors.
 
 import uuid
 from collections.abc import Iterator
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -279,3 +279,40 @@ def test_the_limit_is_honoured(client, db, encoder):
     body = client.get(f"{url(campaign)}?limit=2", headers=headers).json()
 
     assert len(body["matches"]) == 2
+
+
+# --- availability (D-083) -------------------------------------------------------------
+
+
+def test_creators_taking_work_come_before_booked_ones(client, db):
+    brand, headers = brand_login(db)
+    campaign = a_campaign(db, brand)
+    # Without availability the tie breaks on id, so book the one that would
+    # otherwise come first: only the availability rule can put it second.
+    busy, free = sorted(
+        (a_creator(db, published=True), a_creator(db, published=True)),
+        key=lambda c: c.id,
+    )
+    busy.booked_until = FIXED_NOW.date() + timedelta(days=10)
+    db.flush()
+
+    matches = client.get(url(campaign), headers=headers).json()["matches"]
+
+    assert [m["creator"]["handle"] for m in matches] == [free.handle, busy.handle]
+    assert matches[0]["reasons"]["booked_until"] is None
+    assert (
+        matches[1]["reasons"]["booked_until"]
+        == (FIXED_NOW.date() + timedelta(days=10)).isoformat()
+    )
+
+
+def test_a_booking_that_has_passed_does_not_count(client, db):
+    brand, headers = brand_login(db)
+    campaign = a_campaign(db, brand)
+    was_busy = a_creator(db, published=True)
+    was_busy.booked_until = FIXED_NOW.date() - timedelta(days=1)
+    db.flush()
+
+    [match] = client.get(url(campaign), headers=headers).json()["matches"]
+
+    assert match["reasons"]["booked_until"] is None

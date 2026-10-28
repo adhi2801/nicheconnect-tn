@@ -10,6 +10,9 @@ dimensions, and the column enforces that in
 `test_embedding_model.py::test_a_vector_of_the_wrong_width_is_refused`.
 """
 
+import pathlib
+import sys
+import types
 import uuid
 
 import pytest
@@ -217,6 +220,40 @@ def test_embedding_an_empty_list_never_loads_the_model():
 def test_the_source_hash_changes_with_the_text():
     assert embedder.source_hash("city: Madurai") != embedder.source_hash("city: Salem")
     assert embedder.source_hash("city: Madurai") == embedder.source_hash("city: Madurai")
+
+
+def test_the_model_is_loaded_at_its_pinned_revision(monkeypatch):
+    """Never "whatever is newest": that differs between machines, and offline
+    it cannot be looked up at all. A stand-in library records the call, so no
+    torch and no 1.2 GB download."""
+    calls = []
+
+    class RecordingSentenceTransformer:
+        def __init__(self, name, **kwargs):
+            calls.append((name, kwargs))
+
+    monkeypatch.setitem(
+        sys.modules,
+        "sentence_transformers",
+        types.SimpleNamespace(SentenceTransformer=RecordingSentenceTransformer),
+    )
+    embedder.set_model(None)
+    try:
+        embedder.load_model()
+    finally:
+        embedder.set_model(None)
+
+    assert calls == [(embedder.MODEL_NAME, {"revision": embedder.MODEL_REVISION})]
+
+
+def test_the_embeddings_image_bakes_the_same_model_the_code_loads():
+    """The image runs offline, so if the Dockerfile fetched one revision and
+    the code asked for another, the daily refresh would fail on its first run
+    in production and nowhere earlier."""
+    dockerfile = (pathlib.Path(__file__).parents[3] / "Dockerfile").read_text()
+
+    assert f"ARG MODEL_REVISION={embedder.MODEL_REVISION}\n" in dockerfile
+    assert f"snapshot_download('{embedder.MODEL_NAME}'" in dockerfile
 
 
 # --- who gets an embedding at all ------------------------------------------

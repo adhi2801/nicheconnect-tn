@@ -1,3 +1,4 @@
+import re
 import secrets
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,7 @@ def valid_values(**overrides: Any) -> dict[str, Any]:
         "redis_url": "redis://localhost:6379/0",
         "secret_key": secrets.token_urlsafe(32),
         "otp_hash_key": secrets.token_urlsafe(32),
+        "second_factor_key": secrets.token_urlsafe(32),
     }
     values.update(overrides)
     return values
@@ -48,7 +50,8 @@ def test_keys_are_hidden_when_printed():
 
 
 @pytest.mark.parametrize(
-    "field", ["database_url", "redis_url", "secret_key", "otp_hash_key"]
+    "field",
+    ["database_url", "redis_url", "secret_key", "otp_hash_key", "second_factor_key"],
 )
 def test_missing_required_setting_is_rejected(monkeypatch, field):
     monkeypatch.delenv(field.upper(), raising=False)
@@ -60,22 +63,33 @@ def test_missing_required_setting_is_rejected(monkeypatch, field):
     assert field in str(exc_info.value)
 
 
-@pytest.mark.parametrize("field", ["secret_key", "otp_hash_key"])
+KEYS = ["secret_key", "otp_hash_key", "second_factor_key"]
+
+
+@pytest.mark.parametrize("field", KEYS)
 def test_short_key_is_rejected(field):
     assert_rejected(field, **{field: "x" * 31})
 
 
-@pytest.mark.parametrize("field", ["secret_key", "otp_hash_key"])
+@pytest.mark.parametrize("field", KEYS)
 def test_placeholder_key_is_rejected(field):
     assert_rejected(field, **{field: "change-me-generate-a-real-key-please"})
 
 
-def test_same_key_for_both_purposes_is_rejected():
+@pytest.mark.parametrize(
+    ("first", "second"),
+    [
+        ("secret_key", "otp_hash_key"),
+        ("secret_key", "second_factor_key"),
+        ("otp_hash_key", "second_factor_key"),
+    ],
+)
+def test_one_key_for_two_purposes_is_rejected(first, second):
     key = secrets.token_urlsafe(32)
 
     with pytest.raises(ValidationError) as exc_info:
-        load(secret_key=key, otp_hash_key=key)
-    assert "must be different" in str(exc_info.value)
+        load(**{first: key, second: key})
+    assert "three different keys" in str(exc_info.value)
 
 
 @pytest.mark.parametrize(
@@ -220,13 +234,322 @@ def test_every_setting_is_listed_in_env_example():
 
 
 def test_the_example_values_load():
-    """Copying .env.example must give a working app once the two keys are
+    """Copying .env.example must give a working app once the three keys are
     generated, which the placeholders deliberately force."""
     values = {name.lower(): value for name, value in env_example_values().items()}
-    values["secret_key"] = secrets.token_urlsafe(32)
-    values["otp_hash_key"] = secrets.token_urlsafe(32)
+    for key in KEYS:
+        values[key] = secrets.token_urlsafe(32)
 
     settings = Settings(_env_file=None, **values)
 
     assert settings.environment == "local"
     assert settings.cors_origins == ()
+
+
+# --- the login code provider (D-058) ------------------------------------------------
+
+
+def msg91(**overrides: Any) -> dict[str, Any]:
+    values: dict[str, Any] = {
+        "otp_sender": "msg91",
+        "msg91_auth_key": "a-real-looking-msg91-auth-key",
+        "msg91_whatsapp_number": "919876543210",
+    }
+    values.update(overrides)
+    return values
+
+
+def assert_startup_refused(message: str, **overrides: Any) -> None:
+    with pytest.raises(ValidationError, match=message):
+        load(**overrides)
+
+
+def test_the_fake_sender_needs_no_provider_settings():
+    settings = load()
+
+    assert settings.otp_sender == "fake"
+    assert settings.msg91_auth_key is None
+
+
+def test_a_complete_msg91_configuration_loads():
+    settings = load(**msg91())
+
+    assert settings.otp_sender == "msg91"
+    assert settings.msg91_otp_template == "login_code"
+
+
+@pytest.mark.parametrize("key", [None, "", "change-me-msg91"])
+def test_msg91_without_a_real_key_stops_the_app(key):
+    assert_startup_refused("MSG91_AUTH_KEY", **msg91(msg91_auth_key=key))
+
+
+def test_the_placeholder_aws_holds_before_the_key_is_pasted_stops_the_app():
+    """infra/ fills the MSG91 secret with a placeholder until a founder pastes
+    the real key. If msg91 were chosen first, that placeholder must stop the
+    app at startup, so a deploy rolls back rather than failing every login."""
+    secrets_tf = (Path(__file__).parents[2] / "infra/modules/app/secrets.tf").read_text()
+    placeholder = re.search(
+        r'resource "aws_secretsmanager_secret_version" "msg91".*?secret_string\s*=\s*"([^"]+)"',
+        secrets_tf,
+        re.S,
+    )
+
+    assert placeholder is not None
+    assert_startup_refused("MSG91_AUTH_KEY", **msg91(msg91_auth_key=placeholder.group(1)))
+
+
+@pytest.mark.parametrize("number", [None, "+919876543210", "9876543210", "91987654321"])
+def test_msg91_needs_the_number_as_msg91_writes_it(number):
+    assert_startup_refused("MSG91_WHATSAPP_NUMBER", **msg91(msg91_whatsapp_number=number))
+
+
+@pytest.mark.parametrize("template", ["Login Code", "login-code", ""])
+def test_msg91_template_must_be_a_whatsapp_template_name(template):
+    assert_startup_refused("MSG91_OTP_TEMPLATE", **msg91(msg91_otp_template=template))
+
+
+def test_an_unknown_sender_stops_the_app():
+    assert_rejected("otp_sender", otp_sender="carrier_pigeon")
+
+
+# --- proof files (D-065) ---------------------------------------------------------------
+
+
+def test_an_empty_uploads_bucket_means_none():
+    assert load(uploads_bucket="").uploads_bucket is None
+    assert (
+        load(uploads_bucket="colyv-prod-uploads").uploads_bucket == "colyv-prod-uploads"
+    )
+
+
+@pytest.mark.parametrize("bucket", ["UPPER", "a", "-starts-badly", "has space", "s3://x"])
+def test_an_invalid_bucket_name_is_refused(bucket):
+    assert_rejected("uploads_bucket", uploads_bucket=bucket)
+
+
+@pytest.mark.parametrize("region", ["mumbai", "AP-SOUTH-1", "ap-south", ""])
+def test_an_invalid_region_is_refused(region):
+    assert_rejected("aws_region", aws_region=region)
+
+
+# --- results read from proof (D-070) ---------------------------------------------------
+
+
+def test_proof_reading_is_off_by_default_and_needs_no_key():
+    settings = load()
+
+    assert settings.proof_reading_enabled is False
+    assert settings.anthropic_api_key is None
+    assert settings.proof_reader_model == "claude-opus-5-5"
+
+
+def test_proof_reading_on_with_a_key_loads():
+    settings = load(
+        proof_reading_enabled=True, anthropic_api_key="sk-ant-a-real-looking-key"
+    )
+
+    assert settings.anthropic_api_key is not None
+    assert settings.anthropic_api_key.get_secret_value() == "sk-ant-a-real-looking-key"
+
+
+@pytest.mark.parametrize("key", [None, "", "change-me-anthropic"])
+def test_proof_reading_on_without_a_real_key_stops_the_app(key):
+    assert_startup_refused(
+        "ANTHROPIC_API_KEY", proof_reading_enabled=True, anthropic_api_key=key
+    )
+
+
+def test_an_empty_key_line_means_no_key():
+    assert load(anthropic_api_key="").anthropic_api_key is None
+
+
+@pytest.mark.parametrize("model", ["gpt-5", "Claude-Opus", "claude-", ""])
+def test_the_reader_model_must_be_a_claude_model_id(model):
+    assert_rejected("proof_reader_model", proof_reader_model=model)
+
+
+def test_the_key_never_appears_when_settings_are_printed():
+    settings = load(proof_reading_enabled=True, anthropic_api_key="sk-ant-do-not-show")
+
+    assert "sk-ant-do-not-show" not in repr(settings)
+    assert "sk-ant-do-not-show" not in str(settings.model_dump())
+
+
+@pytest.mark.parametrize("limit", [0, -1, 10_001])
+def test_the_daily_reading_limit_must_be_sensible(limit):
+    assert_rejected("proof_reading_daily_limit", proof_reading_daily_limit=limit)
+
+
+def test_the_placeholder_aws_holds_before_the_claude_key_is_pasted_stops_the_app():
+    """infra/ fills the Claude key's secret with a placeholder until a founder
+    pastes the real key. Reading switched on before that must stop the app at
+    startup, so the deploy rolls back rather than every reading failing."""
+    secrets_tf = (Path(__file__).parents[2] / "infra/modules/app/secrets.tf").read_text()
+    placeholder = re.search(
+        r'resource "aws_secretsmanager_secret_version" "anthropic".*?secret_string\s*=\s*"([^"]+)"',
+        secrets_tf,
+        re.S,
+    )
+
+    assert placeholder is not None
+    assert_startup_refused(
+        "ANTHROPIC_API_KEY",
+        proof_reading_enabled=True,
+        anthropic_api_key=placeholder.group(1),
+    )
+    # Switched off, the placeholder is harmless: the app starts.
+    assert load(anthropic_api_key=placeholder.group(1)).proof_reading_enabled is False
+
+
+# --- passkeys (D-113) -------------------------------------------------------------
+
+APK_ORIGIN = "android:apk-key-hash:" + "A" * 43
+
+
+def test_passkeys_are_off_unless_a_domain_is_set():
+    assert load().passkey_rp_id is None
+    assert load(passkey_rp_id="").passkey_rp_id is None
+
+
+def test_passkeys_on_load_with_the_website_and_the_app():
+    settings = load(
+        environment="production",
+        passkey_rp_id="colyv.in",
+        passkey_origins=f"https://colyv.in,https://app.colyv.in,{APK_ORIGIN}",
+    )
+
+    assert settings.passkey_origin_list == (
+        "https://colyv.in",
+        "https://app.colyv.in",
+        APK_ORIGIN,
+    )
+
+
+@pytest.mark.parametrize(
+    "origins",
+    [
+        "",
+        "https://evil.example",
+        "https://colyv.in.evil.example",
+        "https://notcolyv.in",
+        "http://colyv.in",
+        "android:apk-key-hash:short",
+        "https://colyv.in/",
+    ],
+)
+def test_passkeys_on_refuse_an_origin_off_their_domain(origins):
+    with pytest.raises(ValidationError):
+        load(environment="production", passkey_rp_id="colyv.in", passkey_origins=origins)
+
+
+def test_a_passkey_domain_must_be_a_bare_host():
+    assert_rejected("passkey_rp_id", passkey_rp_id="https://colyv.in")
+
+
+# --- Retention after deletion (item 6, D-122) ----------------------------
+
+RETENTION_FIELDS = [
+    name for name in Settings.model_fields if name.startswith("retention_")
+]
+
+
+def test_the_retention_settings_are_found():
+    assert len(RETENTION_FIELDS) == 7
+
+
+@pytest.mark.parametrize("field", RETENTION_FIELDS)
+def test_an_empty_retention_period_means_unset(field):
+    """`RETENTION_..._DAYS=` in .env means "kept, as the law may require"."""
+    assert getattr(load(**{field: ""}), field) is None
+
+
+@pytest.mark.parametrize("field", RETENTION_FIELDS)
+def test_a_retention_period_is_read_in_days(field):
+    assert getattr(load(**{field: "400"}), field) == 400
+
+
+@pytest.mark.parametrize("field", RETENTION_FIELDS)
+def test_a_retention_period_of_no_days_is_refused(field):
+    assert_rejected(field, **{field: 0})
+
+
+def test_a_takedown_is_kept_at_least_the_180_days_the_it_rules_ask():
+    assert_rejected("retention_takedown_days", retention_takedown_days=179)
+    assert load(retention_takedown_days=180).retention_takedown_days == 180
+
+
+# --- connected accounts (item 29, D-134) -------------------------------------------
+
+CONNECTIONS_ON: dict[str, Any] = {
+    "platform_connections_enabled": True,
+    "platform_redirect_base": "https://app.nicheconnect.test/connect",
+    "meta_app_id": "123456789",
+    "meta_app_secret": "meta-app-secret-for-a-test",
+    "google_client_id": "test-client.apps.googleusercontent.com",
+    "google_client_secret": "google-client-secret-for-a-test",
+    "platform_token_key": "p" * 40,
+    "connect_notice_version": "connect-v1",
+}
+
+
+def test_connections_are_off_by_default_and_need_nothing():
+    settings = load()
+
+    assert settings.platform_connections_enabled is False
+    assert settings.platform_token_key is None
+
+
+def test_connections_on_with_everything_set_load():
+    settings = load(environment="production", **CONNECTIONS_ON)
+
+    assert settings.platform_connections_enabled is True
+
+
+@pytest.mark.parametrize(
+    ("name", "variable"),
+    [
+        ("platform_redirect_base", "PLATFORM_REDIRECT_BASE"),
+        ("meta_app_id", "META_APP_ID"),
+        ("meta_app_secret", "META_APP_SECRET"),
+        ("google_client_id", "GOOGLE_CLIENT_ID"),
+        ("google_client_secret", "GOOGLE_CLIENT_SECRET"),
+        ("platform_token_key", "PLATFORM_TOKEN_KEY"),
+        ("connect_notice_version", "CONNECT_NOTICE_VERSION"),
+    ],
+)
+def test_connections_on_with_a_setting_missing_stop_the_app(name, variable):
+    assert_startup_refused(variable, **(CONNECTIONS_ON | {name: None}))
+
+
+@pytest.mark.parametrize(
+    "name", ["meta_app_secret", "google_client_secret", "platform_token_key"]
+)
+def test_a_placeholder_secret_stops_the_app(name):
+    assert_startup_refused(
+        name.upper(), **(CONNECTIONS_ON | {name: "change-me-" + "x" * 40})
+    )
+
+
+def test_a_short_token_key_stops_the_app():
+    assert_startup_refused(
+        "PLATFORM_TOKEN_KEY", **(CONNECTIONS_ON | {"platform_token_key": "short"})
+    )
+
+
+def test_a_plain_http_return_outside_local_stops_the_app():
+    assert_startup_refused(
+        "https",
+        environment="production",
+        **(
+            CONNECTIONS_ON
+            | {"platform_redirect_base": "http://app.nicheconnect.test/connect"}
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [("meta_app_id", "abc"), ("google_client_id", "client.example.com")],
+)
+def test_malformed_app_ids_are_refused(name, value):
+    assert_rejected(name, **{name: value})

@@ -5,6 +5,7 @@ Pure functions: callers pass `now`, so expiry is testable without waiting.
 
 import hashlib
 import hmac
+import math
 import secrets
 import uuid
 from dataclasses import dataclass
@@ -24,19 +25,61 @@ ACCESS_TOKEN_TYPE = "access"  # noqa: S105 - a claim value, not a secret
 OTP_CODE_DIGITS = 6
 REFRESH_TOKEN_BYTES = 32
 
+# How the login behind a token was proven, as RFC 8176's registered
+# "Authentication Method Reference" values: `otp`, a one-time code (the
+# phone's); `mfa`, more than one factor (D-105). Admin routes refuse a token
+# without `mfa`, so no admin session can come from the phone code alone.
+PHONE_CODE_ONLY: tuple[str, ...] = ("otp",)
+TWO_FACTORS: tuple[str, ...] = ("mfa", "otp")
+# A passkey (D-113): proof of possession of a key (`pop`), with the person
+# checked by the phone's own lock (`user`).
+PASSKEY: tuple[str, ...] = ("pop", "user")
+MULTI_FACTOR = "mfa"
+KNOWN_METHODS = frozenset(TWO_FACTORS) | frozenset(PASSKEY)
+
 
 @dataclass(frozen=True)
 class AccessTokenClaims:
     account_id: uuid.UUID
     role: str
     expires_at: datetime
+    # RFC 8176 values. Empty for a token signed before D-105.
+    methods: tuple[str, ...] = ()
+    # When the person last proved a code to log in: OpenID Connect's
+    # `auth_time`, kept through every refresh of that login (D-109). None
+    # for a token signed before it, which counts as a login made just now.
+    authenticated_at: datetime | None = None
+    # Which session the token belongs to: its login's family id, as OpenID
+    # Connect's `sid` (D-114). Every request checks the session is still
+    # live, so ending it ends its access tokens at once. None for a token
+    # signed before D-114, which lives out its 15 minutes.
+    session_id: uuid.UUID | None = None
+
+    @property
+    def is_multi_factor(self) -> bool:
+        return MULTI_FACTOR in self.methods
 
 
 def create_access_token(
-    account_id: uuid.UUID, role: str, now: datetime
+    account_id: uuid.UUID,
+    role: str,
+    now: datetime,
+    *,
+    methods: tuple[str, ...] = PHONE_CODE_ONLY,
+    not_after: datetime | None = None,
+    authenticated_at: datetime | None = None,
+    session_id: uuid.UUID | None = None,
 ) -> tuple[str, datetime]:
-    """Sign a short-lived access token. Returns the token and its expiry time."""
+    """Sign a short-lived access token. Returns the token and its expiry time.
+
+    `not_after` ends it sooner, so a session's own limit binds its last
+    access token too (an admin's 12 hours, D-105). `authenticated_at` is
+    when its login was proven, signed as `auth_time` (D-109). `session_id`
+    is the session's family, signed as `sid` (D-114).
+    """
     expires_at = now + timedelta(minutes=settings.access_token_expire_minutes)
+    if not_after is not None:
+        expires_at = min(expires_at, not_after)
     claims = {
         "sub": str(account_id),
         "role": role,
@@ -44,7 +87,13 @@ def create_access_token(
         "iat": int(now.timestamp()),
         "exp": int(expires_at.timestamp()),
         "jti": uuid.uuid4().hex,
+        "amr": list(methods),
     }
+    if authenticated_at is not None:
+        # Rounded up, so a login never reads as older than it is.
+        claims["auth_time"] = math.ceil(authenticated_at.timestamp())
+    if session_id is not None:
+        claims["sid"] = str(session_id)
     token = jwt.encode(
         claims,
         settings.secret_key.get_secret_value(),
@@ -86,6 +135,25 @@ def _verified_claims(token: str) -> dict[str, Any]:
 
     if claims["typ"] != ACCESS_TOKEN_TYPE or claims["role"] not in ACCOUNT_ROLES:
         raise InvalidToken()
+    # Optional, so tokens signed before D-105 still decode (as one factor).
+    methods = claims.get("amr", [])
+    if not isinstance(methods, list) or not all(
+        isinstance(method, str) and method in KNOWN_METHODS for method in methods
+    ):
+        raise InvalidToken()
+    # Optional for the same reason (D-109); an integer when present.
+    if "auth_time" in claims and (
+        isinstance(claims["auth_time"], bool) or not isinstance(claims["auth_time"], int)
+    ):
+        raise InvalidToken()
+    # Optional for the same reason (D-114); a UUID when present.
+    if "sid" in claims:
+        if not isinstance(claims["sid"], str):
+            raise InvalidToken()
+        try:
+            uuid.UUID(claims["sid"])
+        except ValueError as exc:
+            raise InvalidToken() from exc
     return claims
 
 
@@ -103,6 +171,13 @@ def decode_access_token(token: str, now: datetime) -> AccessTokenClaims:
         account_id=uuid.UUID(claims["sub"]),
         role=claims["role"],
         expires_at=expires_at,
+        methods=tuple(claims.get("amr", [])),
+        authenticated_at=(
+            datetime.fromtimestamp(claims["auth_time"], tz=UTC)
+            if "auth_time" in claims
+            else None
+        ),
+        session_id=uuid.UUID(claims["sid"]) if "sid" in claims else None,
     )
 
 

@@ -45,6 +45,13 @@ from typing import Any, Protocol, cast
 MODEL_NAME = "Qwen/Qwen3-Embedding-0.6B"
 EXPECTED_DIMENSIONS = 1024
 
+# The exact commit of the model, pinned like any other dependency. Without
+# it the library loads whatever is newest, so a laptop and production could
+# embed with different weights, and offline (as the embeddings image runs)
+# "newest" cannot be looked up at all. The Dockerfile bakes this same commit
+# into the image; a test fails if the two ever disagree.
+MODEL_REVISION = "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
+
 
 class WrongDimensions(RuntimeError):
     """The model returned a vector the column cannot store."""
@@ -75,7 +82,9 @@ def load_model() -> Encoder:
 
                 # SentenceTransformer satisfies Encoder structurally; mypy
                 # cannot see that through the local import.
-                _model = cast(Encoder, SentenceTransformer(MODEL_NAME))
+                _model = cast(
+                    Encoder, SentenceTransformer(MODEL_NAME, revision=MODEL_REVISION)
+                )
     loaded = _model
     if loaded is None:  # pragma: no cover - the lock above guarantees it
         raise RuntimeError("the model failed to load")
