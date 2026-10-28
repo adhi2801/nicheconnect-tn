@@ -143,13 +143,22 @@ Measured, never estimated (`CLAUDE.md` section 7). **Field data** (real users) i
 - **Every visual choice traces to a root**: a source in `docs/research/TAMIL_DESIGN_ROOTS.md` or `docs/PSYCHOLOGY_AND_TRUST.md`, written in the screen's design notes. A choice with no reason is decoration, and decoration is cut.
 - **Benchmarked, not admired.** Each landing-page section and each core screen is put side by side with its strongest reference (named in its notes) and with the prototypes in `frontend/prototypes/`; it ships only when a founder judges it better. Adhi's Interview Coach AI site is far below this bar (28 October 2026), not the bar.
 - **Real content only**: the product's own screens, never illustrations of them; every sample figure labelled as sample.
-- **Images and 3D assets only with written rights**: captured by us, commissioned, or licensed for the web; never stock, never an unknown source.
+- **Nothing is a photograph (D-142).** Every visual is made:
+  - the temple and the thalaiyatti bommai in 3D;
+  - ornaments (kolam, thoranam, borders) as vectors or generated in code;
+  - every one detailed, sculpted and lit to look real.
+- **Photographs are private references** for the people making the visuals, kept out of the repository's served files and never shown on a page.
+- **Every made asset has written rights:** made by us, commissioned with the rights assigned to us, or modelled from an object we own. Never stock, never traced from someone else's photo or drawing, never an unknown source.
 - **Raised gold appears only on what cannot change** (the sealed record, the seal, a confirmed payment), and kaavi red only at thresholds (`docs/research/TAMIL_DESIGN_ROOTS.md` sections 5 and 7).
 
 ## 8b. 3D (D-141)
 
 - **Where**: the landing page, at full grandeur, and a few signature moments (a deal agreed, a deal sealed, the Passport). Never on working product screens, where it would cost the speed budgets in section 4.
-- **Realism comes from capture**, not hand modelling: Gaussian splats or photogrammetry of objects and places we own or have written permission to capture, with physically based materials (granite, bronze, gold) and baked lighting (`docs/research/TAMIL_DESIGN_ROOTS.md` section 9).
+- **Realism comes from making it properly (D-142)**:
+  - **Architecture** is modelled procedurally in Blender from the documented anatomy and a primary source for its proportions (`docs/research/FRONTEND_RESEARCH_2026.md` B5).
+  - **Objects** are sculpted. An AI image-to-3D draft is allowed only from our own photos of an object we own, and it is always finished by hand.
+  - **All of it** gets physically based materials (granite, sandstone, bronze, raised gold) and baked lighting, by the recipes in `docs/research/TAMIL_DESIGN_ROOTS.md` section 12.
+  - **A captured scan** (Gaussian splat or photogrammetry) of something we own or have written permission to capture may serve as a modelling reference or a detail source. It is never a substitute for the made scene.
 - **Stack**: React Three Fiber on Three.js's WebGPU renderer with its WebGL 2 fallback; textures in KTX2, geometry compressed with meshopt, splats in a compressed format through a viewer built for phones **(decision: the viewer, after the benchmark below)**.
 - **Budgets**: no 3D starts until the page is readable and its largest content has painted (section 4); each scene's first load stays within a byte budget **(decision: the number, set from a benchmark on the budget Android reference phone before the first scene is built)**; 60 fps on the mid-range reference phone, otherwise a still poster rendered from the same scene; paused when off screen or when the tab is hidden.
 - **Never the only way to know something**: everything a scene says is also in text; reduce motion shows the still; a screen reader hears the text, not the scene.

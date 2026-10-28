@@ -1806,3 +1806,25 @@ Newest entries at the bottom.
 - Chosen: A, A and A.
 - Reason: the product is judged first by how it looks and feels, and the bar Adhi set cannot wait for the backend to finish; 3D on working screens would break the speed budgets on the phones most creators use; and a page that stops looking like a SaaS product stops looking trustworthy for money and work.
 - Consequences / follow-ups: reverses D-053's rule that frontend code waits for the backend (design no longer runs alone). `CLAUDE.md` sections 0 and 1 and `docs/standards/frontend.md` (new sections 8a to 8d: the aesthetic bar, 3D, motion, being found) and `docs/standards/ux.md` follow. The roots every visual choice traces to are `docs/research/TAMIL_DESIGN_ROOTS.md`. The look (the brand book, the dashboard prototype or the green of #78) is chosen from a coded prototype, not from words. **Still open, for both founders:** whether the frontend stays in this repository, and Flutter or Expo for the apps (`docs/PROPOSAL_FRONTEND_HOME_AND_STACK.md`); until then the website is built first.
+
+## D-142: Nothing on Colyv is a photograph; the temple and the doll are made in 3D, and Blender is the modelling tool
+- Date: 2026-10-28
+- Approved by: Adhi, in this session. On the rule: "no images and stuffs all should be made like the thalayati bommai in my prototype or the 2d temple or 3d temple but billion times better well destailed well sculptured well must look like real". Then "2 4 do it", approving two items from the list he was shown: installing Blender (item 2) and writing the no-photos rule into the frontend standard (item 4). **Not reviewed by the other founder** (D-051).
+- Context: a landing prototype built with Wikimedia temple photographs was rejected as a downgrade from Adhi's own `frontend/prototypes/homepage.html`. The audit and research in `docs/research/FRONTEND_RESEARCH_2026.md` found the homepage's temple is made of 24 primitive shapes with painted textures, which is why it reads as a game. `docs/standards/frontend.md` section 8b said realism comes from capture, not modelling.
+- Options considered:
+  - A) Photographs and licensed images where they look best.
+  - B) Captured 3D only (splats or photogrammetry), as 8b said.
+  - C) Everything made: architecture modelled procedurally from its documented anatomy, objects sculpted, materials physically based with baked light; photographs and scans only as private references.
+- Chosen: C.
+- Reason:
+  - A made scene can be detailed, lit and moved exactly as the product needs, and it owns its rights.
+  - Photographs cannot rock, nod or be walked through.
+  - No licensed scan of the Brihadeeswarar exists, and none of the Thanjavur doll.
+- Consequences / follow-ups:
+  - **The standard:** `docs/standards/frontend.md` 8a and 8b are amended; `TAMIL_DESIGN_ROOTS.md` rule 5 records the rule.
+  - **Blender:** 5.2.3 is installed on Adhi's machine as a modelling tool. It is not a dependency of the website or the apps. Its source files and export scripts will live with the frontend, and only compressed glTF reaches a page.
+  - **The prototype:** the doll in its pilot-list niche is a flat embedded picture, so it is replaced by a made 3D doll.
+  - **Still open:**
+    - the colour direction (burgundy and gold, or Harish's green), for both founders;
+    - where the doll's 3D reference comes from (a doll we buy, or the prototype's own picture if Adhi made it);
+    - a primary architectural source for the vimana's proportions.
