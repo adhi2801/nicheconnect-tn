@@ -26,7 +26,7 @@ Read with `TAMIL_DESIGN_ROOTS.md` (the roots and their sources) and `FRONTEND_RE
   - temple bells, chants and any sacred sound;
   - theistic verses;
   - one faith's festivals as the main theme;
-  - **any political party's symbol or colour**: no lotus, no saffron or orange, no sun drawn as an emblem (a natural sunrise in a scene is allowed), no two leaves, no hand, no whistle, no flag colour pair (`TAMIL_DESIGN_ROOTS.md` rule 6, Adhi, 29 October 2026);
+  - **anything that reads as the BJP's**: no lotus, no saffron or orange (`TAMIL_DESIGN_ROOTS.md` rule 6, Adhi, 29 October 2026); a sunrise appears only as natural light, never as an emblem;
   - caste and community emblems;
   - political symbols.
 

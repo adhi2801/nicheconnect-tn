@@ -1829,15 +1829,16 @@ Newest entries at the bottom.
     - where the doll's 3D reference comes from (a doll we buy, or the prototype's own picture if Adhi made it);
     - a primary architectural source for the vimana's proportions.
 
-## D-143: Colyv is politically neutral: no lotus, no saffron or orange, no party symbol or flag colours
+## D-143: Nothing on Colyv reads as the BJP's: no lotus, no saffron or orange
 - Date: 2026-10-29
-- Approved by: Adhi, in this session: "no lotus and safron and orange no bjp", and then "rsing sun can be there if needed". **Not reviewed by the other founder** (D-051).
-- Context: the temple study used carved lotus medallions and lotus-petal bands, and a saffron-orange sunrise sky that Adhi had asked for earlier. The lotus is the BJP's election symbol and saffron its colour. A rising sun is the DMK's symbol, and Tamil Nadu's other parties have their own symbols and flag colours.
-- Options considered: A) keep old Tamil motifs whatever their present political reading; B) drop any motif or colour that a party has made its own.
-- Chosen: B.
-- Reason: Colyv serves brands and creators of every party and none. A visual that reads as a party's mark tells part of Tamil Nadu that the product is not theirs, and drags a business product into politics.
+- Approved by: Adhi, in this session: "no lotus and safron and orange no bjp", then "rsing sun can be there if needed", then "only bjp and stuff is reject not dmk". **Not reviewed by the other founder** (D-051).
+- Context: the temple study used carved lotus medallions, lotus-petal bands and a saffron-orange sunrise sky. The lotus is the BJP's election symbol and saffron its colour.
+- Options considered:
+  - A) keep old Tamil motifs whatever their present political reading;
+  - B) drop any motif or colour of any party;
+  - C) drop what reads as the BJP's (the lotus, saffron and orange) and judge other motifs on their own.
+- Chosen: C.
+- Reason: Adhi's direction. Claude advised that avoiding one party's marks while showing another's can read as partisan. So a sunrise appears only as natural light in a scene, never as an emblem.
 - Consequences / follow-ups:
   - `docs/research/TAMIL_DESIGN_ROOTS.md` gains rule 6 and withdraws "kaavi red" (kaavi is also the word for saffron); `docs/standards/frontend.md` 8a and `docs/research/LANDING_CULTURE_FIT.md` follow.
-  - The temple study loses its lotus carvings (replaced with geometric kolam medallions and bead bands) and its orange sky.
-  - **A rising sun is allowed** as natural light in a scene, never drawn as an emblem (no stylised rays, no sun-and-horizon mark), since it is the DMK's symbol.
-  - **Still to check:** the brand's deep red with gold or yellow against every Tamil Nadu party flag before the palette is final.
+  - The temple study loses its lotus carvings (replaced with geometric kolam panels and bead bands) and its orange sky.

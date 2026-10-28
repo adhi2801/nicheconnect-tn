@@ -16,14 +16,12 @@ The cultural and historical roots Colyv's look is built from, each with its sour
 3. **Fact before feeling.** Where sources disagree (dates, meanings), the design never states the disputed fact as true.
 4. **Tested with Tamil people before it ships.** Anything cultural is shown to Tamil brand owners and creators (`docs/research/README.md`) before launch. A use that feels wrong to them is dropped.
 
-**Rule 6. Politically neutral, always (Adhi, 29 October 2026: "no lotus and saffron and orange no bjp").** Colyv takes no side in politics. Nothing on any screen may echo a party's symbol or flag:
-- **No lotus** in any form: medallion, petal band, icon or illustration. It is the BJP's symbol.
+**Rule 6. Nothing that reads as the BJP's (Adhi, 29 October 2026: "no lotus and safron and orange no bjp", then "only bjp and stuff is reject not dmk").**
+- **No lotus** in any form: medallion, petal band, icon or illustration.
 - **No saffron or orange** as a brand colour, a sky or a large field of colour.
-- **A rising sun may be shown where the scene needs it** (Adhi, 29 October 2026: "rising sun can be there if needed"). It is the DMK's symbol, so it is never drawn as an emblem: no stylised rays, no sun-and-horizon mark, and never alone as a logo or icon. It appears only as natural light in a scene.
-- **No two leaves** (AIADMK), **no open hand** (Congress), **no whistle** (TVK, 2026) ([DT Next](https://www.dtnext.in/news/tamilnadu/tvk-gets-state-party-status-eci-confirms-whistle-symbol)), and no other party's symbol.
-- **No colour pair that copies a party flag.** AIADMK has gone to court over flag colours that were too close to its own ([The News Minute](https://www.thenewsminute.com/article/ammk-flag-too-similar-ours-aiadmk-moves-madras-hc-78105)).
-- **To check before the palette is final:** the brand's deep red with gold or yellow against every Tamil Nadu party flag, starting with TVK's.
-- Every visual and every palette is checked against this list before it ships. Where a Tamil root has become a party symbol, the root is dropped, however old it is.
+- **Other parties' symbols are not banned** by this rule. A rising sun may be shown, for example. Every visual is still a design choice, judged on its own.
+- **The risk, as Claude advised and Adhi decided:** avoiding one party's marks while showing another's can read as partisan. So a sunrise appears as natural light in a scene, never as a stylised emblem.
+- Where a Tamil root has become a BJP mark (the lotus), the root is dropped, however old it is.
 
 ---
 
