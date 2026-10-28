@@ -7,6 +7,7 @@
     "tokens": "node scripts/build-tokens.mjs",
     "web": "pnpm --filter web dev",
     "build": "pnpm --filter web build",
-    "lint": "pnpm --filter web lint"
+    "lint": "pnpm --filter web lint",
+    "api:changes": "node scripts/api-changes.mjs"
   }
 }

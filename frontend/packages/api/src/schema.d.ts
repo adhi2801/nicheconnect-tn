@@ -4,6 +4,330 @@
  */
 
 export interface paths {
+    "/.well-known/security.txt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * How to report a security problem
+         * @description RFC 9116: where to report a vulnerability, in which language, and the disclosure policy. Plain text, the same for everyone.
+         */
+        get: operations["security_txt__well_known_security_txt_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find an account by phone or creator handle
+         * @description Give exactly one of `phone` or `handle`, and a `reason`. Every account returned is written to the admin log as viewed, with the reason.
+         */
+        get: operations["find_accounts_api_v1_admin_accounts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/accounts/{account_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read one account
+         * @description Written to the admin log as viewed, with the reason.
+         */
+        get: operations["read_account_api_v1_admin_accounts__account_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/accounts/{account_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Lift a suspension
+         * @description Clears the suspension so the account works again at once. The note goes to the admin log. Admins are restored by a founder, not here.
+         */
+        post: operations["restore_account_api_v1_admin_accounts__account_id__restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/accounts/{account_id}/suspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Suspend an account
+         * @description Stops the account at once and ends its sessions. Its existing deals stay usable by the other party. The person is told the reason's category, never the note. Admins cannot be suspended here.
+         */
+        post: operations["suspend_account_api_v1_admin_accounts__account_id__suspend_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The admin log
+         * @description Newest first. With `account_id`, only entries about that account or by it: how to answer "who looked at my number, and why?".
+         */
+        get: operations["list_actions_api_v1_admin_actions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/brands/look-alikes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Brands whose names look like a protected brand's
+         * @description Every brand whose name looks like a protected brand's (the curated list, or a brand here with a verified domain) and has not verified that brand's domain, or mixes look-alike letters, newest first, at most 100. Each cannot publish a campaign until it verifies the domain (item 75). Worked out from the names each time. Limit: 60 requests per minute.
+         */
+        get: operations["list_look_alike_brands_api_v1_admin_brands_look_alikes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/brands/{brand_id}/name-clearance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Clear a brand's look-alike name after review
+         * @description For a genuine brand whose name is close to a protected one and that cannot verify that brand's domain: after looking at the business behind it, clear its current name, so it can publish and creators see no warning. Only that exact name: a rename is held again until looked at. Written to the admin log with your note. Limit: 60 requests per minute.
+         */
+        post: operations["clear_brand_name_api_v1_admin_brands__brand_id__name_clearance_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/brands/{brand_id}/name-clearance/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Withdraw a brand name's clearance
+         * @description Puts the brand's current name back on hold: it cannot publish a new campaign, and creators see the warning again. Written to the admin log with your note. Limit: 60 requests per minute.
+         */
+        post: operations["withdraw_brand_name_clearance_api_v1_admin_brands__brand_id__name_clearance_withdraw_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/numbers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The founders' weekly numbers
+         * @description How dense the market is and whether the business is alive, for a period of 1 to 90 Tamil Nadu days ending on `ending_on` (today by default), beside the same length before it. Campaign fill rate, time to a first application, application success, repeat deals, payments on time, and active brands and creators. **Every rate is null below five examples**, and a campaign counts towards the fill rate only once it is 14 days old. Optionally for one city. Totals only. Admins only; anyone else gets 404.
+         */
+        get: operations["founder_numbers_api_v1_admin_numbers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The report queue
+         * @description Nearest deadline first: each report's `due_at` is the IT Rules' clock for its category, 2 hours to 7 days (item 51), and `late` says it was answered after it, or is still open past it.
+         */
+        get: operations["list_reports_api_v1_admin_reports_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/reports/clocks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The report queue against its legal clocks
+         * @description How many reports are open, how many are past their deadline now, the next deadline, and how many of those answered in the last `days` days were answered in time. The IT Rules give each category its clock (item 51): listed in `clocks`. Totals only.
+         */
+        get: operations["read_clocks_api_v1_admin_reports_clocks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/reports/{report_id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resolve a report
+         * @description Marks an open report `actioned` or `dismissed`, with a note for the admin log. The reporter sees the outcome, never who decided it.
+         */
+        post: operations["resolve_report_api_v1_admin_reports__report_id__resolve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/signups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sign-ups by source and week
+         * @description New accounts per week (from Monday, Tamil Nadu time), per source and role, newest week first. Counts only: no account is named, so nothing is written to the admin log.
+         */
+        get: operations["signups_api_v1_admin_signups_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/takedowns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Takedowns
+         * @description Newest first. `active=true` keeps those still withheld; `active=false` those lifted; leave it out for both.
+         */
+        get: operations["list_takedowns_api_v1_admin_takedowns_get"];
+        put?: never;
+        /**
+         * Withhold one creator, brand or campaign
+         * @description On a court order, or a government notice from an authorised officer, the IT Rules give us 3 hours from when it reached us (rule 3(1)(d)); or on a report, while an admin looks into it (the report keeps its own deadline). At once, everyone but the owner stops seeing the item: it leaves search, matches and discovery, and opening it answers 451. The owner keeps their account and sees it, deals already agreed carry on, and nothing new can start from it. The owner is told (unless the order is sealed, with its details). Its visible text is kept as it stands (`preserved`). `late` says it was withheld after `due_at`.
+         */
+        post: operations["withhold_api_v1_admin_takedowns_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/takedowns/{takedown_id}/lift": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Lift a takedown
+         * @description Makes the item visible again, with a note for the admin log: the order withdrawn or set aside, or the report dismissed. The owner is told. The record and its preserved text stay.
+         */
+        post: operations["lift_api_v1_admin_takedowns__takedown_id__lift_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/applications/me": {
         parameters: {
             query?: never;
@@ -84,6 +408,130 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/applications/{application_id}/accept-invitation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept an invitation
+         * @description The signed-in creator says yes. The invitation becomes `accepted`, and the brand is told. For a repeat of an earlier deal, the deal memo is drafted from that deal's terms for the brand to date and send.
+         */
+        post: operations["accept_invitation_api_v1_applications__application_id__accept_invitation_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/applications/{application_id}/decline-invitation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decline an invitation
+         * @description The signed-in creator says no, with a reason the brand sees, as a creator sees the brand's reason for a rejection. This is final.
+         */
+        post: operations["decline_invitation_api_v1_applications__application_id__decline_invitation_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/applications/{application_id}/offers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The offers on an application
+         * @description Every figure either side named on this application, oldest first, with how each was answered. Whole, not paged: at most 6, since each side makes at most 3. For the creator who applied and the brand whose campaign it is.
+         */
+        get: operations["list_offers_api_v1_applications__application_id__offers_get"];
+        put?: never;
+        /**
+         * Offer a figure on an application
+         * @description Names a figure, in paise, on an application still waiting (submitted, shortlisted, or an invitation not yet answered), with an optional note. The other side is told, and accepts, declines or answers with an offer of its own, which replaces this one. Each side makes at most 3 on one application, and one is open at a time: withdraw your own before making another. While an offer is open the application cannot be accepted, so the figure is settled first. Limits: 30 a minute and 100 a day.
+         */
+        post: operations["make_offer_api_v1_applications__application_id__offers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/applications/{application_id}/offers/{offer_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Withdraw my offer
+         * @description Takes back your own offer while it waits. The other side is told.
+         */
+        delete: operations["withdraw_offer_api_v1_applications__application_id__offers__offer_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/applications/{application_id}/offers/{offer_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept the other side's offer
+         * @description Agrees the figure. It pre-fills the deal memo's fee; the memo is still the contract, and a different fee there is shown beside this one. Negotiation then closes.
+         */
+        post: operations["accept_offer_api_v1_applications__application_id__offers__offer_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/applications/{application_id}/offers/{offer_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decline the other side's offer
+         * @description Says no to the figure. The application waits on as it was, and either side may still make another offer while it can.
+         */
+        post: operations["decline_offer_api_v1_applications__application_id__offers__offer_id__decline_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/applications/{application_id}/reject": {
         parameters: {
             query?: never;
@@ -144,6 +592,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/applications/{application_id}/withdraw-invitation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Withdraw an invitation
+         * @description The signed-in brand takes back an invitation the creator has not answered yet. The creator is told. This is final.
+         */
+        post: operations["withdraw_invitation_api_v1_applications__application_id__withdraw_invitation_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/admin/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Log in as an admin, with the phone code and the authenticator code
+         * @description Both factors in one request: the code sent to the phone, and the 6-digit code the admin's authenticator app shows. Either wrong is answered exactly as a wrong phone code. Every active admin is told of every sign-in, and of a right phone code with a refused authenticator code. Ten refused authenticator codes in a row lock it until a founder issues a new setup ticket. The refresh token lasts an hour from each use and never past 12 hours from this login. Limit: 10 requests per 10 minutes per IP address; each phone code allows 5 attempts.
+         */
+        post: operations["log_in_api_v1_auth_admin_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/admin/second-factor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set up an authenticator app, with a founder's setup ticket
+         * @description Redeems the one-time ticket from `scripts/make_admin.py <phone> --second-factor` (15 minutes), with a code sent to the admin's phone, for a new authenticator secret. **Shown once**: put it into an authenticator app on a different device from this phone, or one locked by fingerprint, and not one that copies codes to a cloud account. Every active admin is told. There is no other way to change an admin's authenticator. Limit: 10 requests per 10 minutes per IP address.
+         */
+        post: operations["set_up_second_factor_api_v1_auth_admin_second_factor_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/logout": {
         parameters: {
             query?: never;
@@ -155,7 +663,7 @@ export interface paths {
         put?: never;
         /**
          * Log out of this device
-         * @description Ends the login the refresh token belongs to, including tokens it was rotated from. Always returns 204, even for an unknown token, so nobody can test whether a token exists. Limit: 30 requests per minute per IP address.
+         * @description Ends the login the refresh token belongs to, including tokens it was rotated from, and, given this phone's `device_token`, its push notifications. Always returns 204, even for an unknown token, so nobody can test whether a token exists. Limit: 30 requests per minute per IP address.
          */
         post: operations["logout_api_v1_auth_logout_post"];
         delete?: never;
@@ -175,7 +683,7 @@ export interface paths {
         put?: never;
         /**
          * Log out of every device
-         * @description Ends every session of the signed-in account, on all devices. Needs a valid access token. Limit: 30 requests per minute per IP address.
+         * @description Ends every session of the signed-in account, on all devices, and stops push notifications to all of them. Needs a valid access token and **a code**: ask for one at `POST /api/v1/me/step-up` with `log_out_everywhere`, then send it in the `Step-Up-Code` header. You are told in the app when you next log in. Limit: 30 requests per minute per IP address.
          */
         post: operations["logout_all_api_v1_auth_logout_all_post"];
         delete?: never;
@@ -235,9 +743,69 @@ export interface paths {
         put?: never;
         /**
          * Log in with a one-time code
-         * @description Checks the latest code sent to the phone. A new number gets an account with the given role. Returns a 15-minute access token and a 30-day refresh token. Limit: 10 requests per 10 minutes per IP address; each code allows 5 attempts.
+         * @description Checks the latest code sent to the phone, and signs in to the number's account for the given role. A number may hold a brand and a creator account of one person (D-126): signing in as a role the number has no account for yet makes that account, and `arrival` (optional) records how it found us; a returning login ignores `arrival`. Returns a 15-minute access token and a 30-day refresh token. Limit: 10 requests per 10 minutes per IP address; each code allows 5 attempts.
          */
         post: operations["verify_code_api_v1_auth_otp_verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/passkey-reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset my passkeys, having lost them all
+         * @description For when every passkey is lost. Send your number and a login code sent to it (`POST /api/v1/auth/otp/request`); the code is used up here. **Every passkey is removed 7 days later**, and passkey-only sign-in turned off, unless anyone signs in with a passkey before then, which cancels it. You are told in the app either way. Asking again while one waits changes nothing. Limit: 10 per 10 minutes per address.
+         */
+        post: operations["start_a_passkey_reset_api_v1_auth_passkey_reset_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/passkey/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Log in with a passkey
+         * @description Checks the passkey's answer and returns tokens, as a code login does. The session's tokens say it was proven by a passkey. Limit: 10 per 10 minutes per address.
+         */
+        post: operations["passkey_login_api_v1_auth_passkey_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/passkey/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start logging in with a passkey
+         * @description WebAuthn's request options, to pass to `navigator.credentials.get` (or the phone's credential manager); no number is needed, as the phone offers the passkeys it holds for us. Its challenge works once, for 5 minutes. Limit: 10 per 10 minutes per address.
+         */
+        post: operations["passkey_login_options_api_v1_auth_passkey_options_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -292,6 +860,74 @@ export interface paths {
         patch: operations["update_brand_profile_api_v1_brands_me_patch"];
         trace?: never;
     };
+    "/api/v1/brands/me/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My content library
+         * @description Every post approved on your deals, latest approved first, each with the days of use its accepted memo states and the day they end, counted from the day the work was approved. `rights_state` is `active`, `lapsing` within 30 days, `lapsed`, or `not_agreed` when the memo states none. These are the memo's terms, not a ruling on what the law allows. Pass `next_cursor` back as `cursor` for more.
+         */
+        get: operations["my_content_api_v1_brands_me_content_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/brands/me/domain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Your domain claim and its last check
+         * @description The record to publish, and what the last check found. Only you see this; creators see the domain once it is verified.
+         */
+        get: operations["read_domain_api_v1_brands_me_domain_get"];
+        put?: never;
+        /**
+         * Claim your website's domain
+         * @description Returns a TXT record to add at your DNS host: `record_name` and `record_value`. Then ask for a check. The token is good for 7 days. Claiming again, the same domain or another, replaces the claim with a new token, and a verified domain stops showing until the new one is found. Creators are shown the domain itself and when it was registered, never a verdict on the brand.
+         */
+        post: operations["claim_domain_api_v1_brands_me_domain_post"];
+        /**
+         * Withdraw your domain claim
+         * @description Creators stop seeing the domain at once.
+         */
+        delete: operations["withdraw_domain_api_v1_brands_me_domain_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/brands/me/domain/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check the TXT record now
+         * @description Accepted at once, and checked within a minute: Cloudflare's and Google's resolvers must both see the record. Read the claim again for the result, or see it in `GET /api/v1/me/attention`. A verified domain is also checked every day; three days in a row without the record, and it lapses. Limit: 10 a day.
+         */
+        post: operations["check_domain_api_v1_brands_me_domain_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/brands/me/payments/mark-paid": {
         parameters: {
             query?: never;
@@ -312,6 +948,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/brands/{brand_id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What creators said about a brand
+         * @description Averages of the revealed answers creators gave after finished deals, with how many and from how many creators. Null below three answers. Show beside the payment record, never instead. Any signed-in account.
+         */
+        get: operations["brand_feedback_api_v1_brands__brand_id__feedback_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/brands/{brand_id}/feedback/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Creators' notes about a brand
+         * @description Revealed notes, newest first, each beside the brand's own words on that deal.
+         */
+        get: operations["brand_feedback_notes_api_v1_brands__brand_id__feedback_notes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/brands/{brand_id}/reliability": {
         parameters: {
             query?: never;
@@ -324,6 +1000,26 @@ export interface paths {
          * @description A brand's payment record, built from what happened rather than from reviews. The figures are withheld until three deals have completed, because two out of two is not evidence of anything; `null` there means **not enough to say**, and must not be shown as zero. `currently_overdue` is always reported, including for a brand with no completed deals, so a new account can never hide a creator who is still waiting to be paid.
          */
         get: operations["read_brand_reliability_api_v1_brands__brand_id__reliability_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/brands/{brand_id}/response-times": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * How long this brand takes to decide on work
+         * @description From work submitted to approved or sent back; an approval by the clock counts at the moment the review window ended. Measured from the deal record, never estimated. `median_hours` is null until there are five examples, meaning **not enough to say**, and must not be shown as zero; `examples` is always returned.
+         */
+        get: operations["brand_response_times_api_v1_brands__brand_id__response_times_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -376,6 +1072,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/campaigns/discover/for-me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Campaigns that suit me
+         * @description Open campaigns worth the signed-in creator's time, best first, each with the reasons it was suggested, including **how the brand pays** (the same record as `GET /brands/{id}/reliability`).
+         *
+         *     Only campaigns that name the creator's city and share one of their niches, whose applications are still open, from brands that are not suspended, and that the creator has not already applied to.
+         *
+         *     A creator who has not published their Passport has no embedding yet, so `ranked_by_similarity` is false and the list is newest first. Nothing about the creator is shown to anyone by this call.
+         */
+        get: operations["list_campaigns_for_me_api_v1_campaigns_discover_for_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/campaigns/{campaign_id}": {
         parameters: {
             query?: never;
@@ -385,7 +1105,7 @@ export interface paths {
         };
         /**
          * Read one campaign
-         * @description The owning brand sees its campaign in any status. Everyone else sees it only while it is open; otherwise the answer is 404, so drafts stay private.
+         * @description The owning brand sees its campaign in any status. Everyone else sees it only while it is open; otherwise the answer is 404, so drafts stay private. An open campaign withheld for legal reasons, or whose brand is, answers 451 to everyone but its brand (item 52).
          */
         get: operations["read_campaign_api_v1_campaigns__campaign_id__get"];
         put?: never;
@@ -464,6 +1184,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/campaigns/{campaign_id}/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Invite a creator to my campaign
+         * @description Invites one creator, found in search or in a campaign's matches, to one of the signed-in brand's open campaigns. The creator is told at once and answers in one tap; accepting makes the invitation `accepted`, ready for the deal memo. A campaign may have at most 25 invitations waiting for an answer at once. An invitation lasts while the campaign is open.
+         */
+        post: operations["invite_creator_api_v1_campaigns__campaign_id__invitations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/campaigns/{campaign_id}/matches": {
         parameters: {
             query?: never;
@@ -499,9 +1239,221 @@ export interface paths {
         put?: never;
         /**
          * Publish a campaign
-         * @description Moves a draft to open, so creators can see and apply to it.
+         * @description Moves a draft to open, so creators can see and apply to it. A brand whose name looks like a protected brand's is refused, 409 `brand_name_needs_domain`, until it verifies that brand's domain at `POST /api/v1/brands/me/domain` (item 75); the detail names the brand and the domain.
          */
         post: operations["campaign_publish_api_v1_campaigns__campaign_id__publish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaigns/{campaign_id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A campaign report to hand on
+         * @description For the owning brand: every deal on the campaign (drafts left out) with its creator, terms, delivery, approval, payment, the results read from its screenshots, and the deal record's latest seal, plus totals. Worked out as of now, never stored. Results are read from screenshots, never verified. The same as a spreadsheet: `/report.csv`.
+         */
+        get: operations["campaign_report_api_v1_campaigns__campaign_id__report_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaigns/{campaign_id}/report.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A campaign report as a spreadsheet
+         * @description The campaign report's deals as CSV, one row per deal, for Excel, Google Sheets or Numbers: UTF-8 with a byte-order mark, money in rupees, Tamil Nadu dates, and any cell a spreadsheet would run as a formula written with a leading apostrophe. Saved as a file. The owning brand only.
+         */
+        get: operations["campaign_report_csv_api_v1_campaigns__campaign_id__report_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaigns/{campaign_id}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A campaign at a glance
+         * @description For the owning brand: applications by status, deals by stage, how many deals are agreed and finished, how many wait on the brand, and whether the campaign is complete. Worked out as of now, never stored.
+         */
+        get: operations["campaign_summary_api_v1_campaigns__campaign_id__summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cities with public figures
+         * @description Every city with at least five creators who published their Passport, largest first: the cities a public page can be made for. Cached for an hour, with an ETag.
+         */
+        get: operations["list_cities_api_v1_cities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cities/{city}/figures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A city's public figures
+         * @description Counts and medians for one city: published creators, by niche, open campaigns, and median asking prices by platform and format. Any figure resting on fewer than five is `null`, meaning **not enough to say**, and must not be shown as zero; a city nobody has joined answers the same way rather than 404. Nothing is built from a deal. Cached for an hour, with an ETag.
+         */
+        get: operations["city_figures_api_v1_cities__city__figures_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/creator-lists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My creator lists
+         * @description Every list you saved, newest first, each with how many of its creators you can find today. Whole, not paged: at most 50. Lists are yours alone; no creator is told they are on one.
+         */
+        get: operations["list_my_lists_api_v1_creator_lists_get"];
+        put?: never;
+        /**
+         * Start a creator list
+         * @description A new, empty list with a name of your own. At most 50 lists.
+         */
+        post: operations["start_a_list_api_v1_creator_lists_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/creator-lists/{list_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a creator list
+         * @description The list and every creator saved on it. The creators are not told.
+         */
+        delete: operations["remove_a_list_api_v1_creator_lists__list_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Rename a creator list
+         * @description A new name of your own; the creators on it stay as they are.
+         */
+        patch: operations["rename_a_list_api_v1_creator_lists__list_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/creator-lists/{list_id}/creators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The creators on a list
+         * @description Each creator you can find today, latest saved first, with the same facts search shows, their delivery record (as `GET /api/v1/creators/{creator_id}/delivery-record` gives it) and when you saved them. One who has since unpublished, left, been suspended or withheld, or a block either way, is not shown. Pass `next_cursor` back as `cursor` for more.
+         */
+        get: operations["creators_on_a_list_api_v1_creator_lists__list_id__creators_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/creator-lists/{list_id}/creators/{creator_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Save a creator to a list
+         * @description From search or your matches. Saving one already there changes nothing. At most 200 creators a list. The creator is not told.
+         */
+        put: operations["save_a_creator_api_v1_creator_lists__list_id__creators__creator_id__put"];
+        post?: never;
+        /**
+         * Take a creator off a list
+         * @description One not on it is fine. The creator is not told.
+         */
+        delete: operations["take_a_creator_off_api_v1_creator_lists__list_id__creators__creator_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/creators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search for creators
+         * @description Creators who published their Passport, filtered by any combination of words in their handle, name or bio; niche; city; a platform and an audience size on it; and a price limit, optionally for one format. Every audience filter must hold for one channel, and every price filter for one package. Follower counts are the creator's own statement, dated, never verified. Newest profiles first; pass `next_cursor` back as `cursor` for the next page. Each result says until when the creator is booked, if they are; `available_on` keeps only creators free that day. Brands only.
+         */
+        get: operations["search_creators_api_v1_creators_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -520,6 +1472,46 @@ export interface paths {
          * @description The public Creator Passport, readable without logging in. Handles are matched in lowercase, so `@Priya.Eats` and `priya.eats` find the same profile. Channels are links only, never follower counts; packages appear only once the creator has published their prices, and are an empty list otherwise. Contact details are never included. Cached for 5 minutes, with an ETag so an unchanged profile costs almost nothing to re-read.
          */
         get: operations["read_public_profile_api_v1_creators_by_handle__handle__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/creators/indexable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every Passport search engines may show
+         * @description For the website's sitemap.xml (item 85): each published Passport's handle and when what its readers see last changed, newest Passport first. Exactly the Passports anyone may read: published by their creator, not suspended, not withheld. Readable without logging in. Empty until indexing is switched on, once the publish notice says search engines will show the Passport. Paginated: `limit` (default 20, at most 100) and `cursor`. Cached for 5 minutes, with an ETag.
+         */
+        get: operations["list_indexable_passports_api_v1_creators_indexable_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/creators/like-my-best": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Creators like the ones who delivered for you
+         * @description Ranked by how close each creator's public profile is to those of the creators who finished a deal with you: paid and confirmed, or barter with the work approved. Each result names which of them it is most like and carries its own delivery record. Only creators you could find in search today, never one you have already agreed a deal with. `based_on` is how many it rests on; with none yet the list is empty. Pass `next_cursor` back as `cursor` for more.
+         */
+        get: operations["like_my_best_api_v1_creators_like_my_best_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -554,6 +1546,30 @@ export interface paths {
          * @description Changes the fields sent and leaves the rest as they are. A handle another creator already has is refused with 409. Publishing the Passport is its own action, never a side effect of an edit (D-036).
          */
         patch: operations["update_creator_profile_api_v1_creators_me_patch"];
+        trace?: never;
+    };
+    "/api/v1/creators/me/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My availability
+         * @description Whether you are taking new work, and from when. Signed-in brands see the same date in search and in suggested creators; it is never on your public Passport.
+         */
+        get: operations["read_availability_api_v1_creators_me_availability_get"];
+        /**
+         * Set my availability
+         * @description "Booked until 20 Nov": the last day you are not taking new work, from today to a year ahead; null when you are taking work. Nothing is blocked: brands can still reach you and you can still apply.
+         */
+        put: operations["set_availability_api_v1_creators_me_availability_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/creators/me/channels": {
@@ -597,6 +1613,86 @@ export interface paths {
          * @description Takes the channel off your profile and your media kit at once.
          */
         delete: operations["delete_my_channel_api_v1_creators_me_channels__platform__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/creators/me/connections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My connected accounts
+         * @description The Instagram and YouTube accounts you connected, with the counts the platform itself reported. At most one a platform.
+         */
+        get: operations["my_connections_api_v1_creators_me_connections_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/creators/me/connections/{platform}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Disconnect an account
+         * @description Deletes the connection and the keys the platform gave us, then asks the platform to revoke them where it offers that. Always allowed.
+         */
+        delete: operations["disconnect_api_v1_creators_me_connections__platform__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/creators/me/connections/{platform}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finish connecting an account
+         * @description With the `code` and `state` the platform sent back. The account it reaches is connected to you, and its count read. Connecting again replaces your earlier connection on that platform.
+         */
+        post: operations["complete_connecting_api_v1_creators_me_connections__platform__complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/creators/me/connections/{platform}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start connecting an account
+         * @description Returns the platform's sign-in link, good for 10 minutes and once. The platform sends you back to our website or app with `code` and `state`; post them to `.../complete` while signed in as you.
+         */
+        post: operations["start_connecting_api_v1_creators_me_connections__platform__start_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -732,6 +1828,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/creators/me/upi": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My UPI ID
+         * @description The UPI ID brands on your deals are shown so they can pay you directly, and the notice version you agreed to; all null when there is none. `waiting` is a new ID you set that brands do not see until its `usable_at`.
+         */
+        get: operations["read_my_upi_api_v1_creators_me_upi_get"];
+        /**
+         * Give or change my UPI ID
+         * @description Stores your UPI ID, with your consent to the notice you were shown. `consent` must be true, and `notice_version` the version you read; consent is given again with every change. **Needs a code**: ask for one at `POST /api/v1/me/step-up` with this exact UPI ID, then send it in the `Step-Up-Code` header. **A new ID waits 24 hours** before brands see it, and is returned under `waiting`; and **replacing an ID already in effect needs a login at least 7 days old** (403 `login_too_recent`, with `Retry-After`), which a SIM swapper never has, while a first ID never waits for that; until then they see your previous one, or none. You are told, and can cancel it. Setting the ID already in effect only renews your consent. Brands see the ID only while a payment to you on their deal is open. A UPI ID made of a phone number is refused, because brands would see the number. Money still goes from the brand's bank straight to yours.
+         */
+        put: operations["set_my_upi_api_v1_creators_me_upi_put"];
+        post?: never;
+        /**
+         * Remove my UPI ID
+         * @description Deletes your UPI ID, and any new one waiting, and withdraws the consent you gave for them. Brands then pay you by bank transfer. Always allowed, with no code, and safe to repeat.
+         */
+        delete: operations["remove_my_upi_api_v1_creators_me_upi_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/creators/me/upi/waiting": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Cancel a new UPI ID before brands see it
+         * @description Drops the new UPI ID under `waiting`, so brands keep seeing the one they see now. For when the change was not you: no code is needed, so it works even if someone else has your number. Safe to repeat; nothing waiting is fine.
+         */
+        delete: operations["cancel_my_waiting_upi_api_v1_creators_me_upi_waiting_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/creators/{creator_id}/delivery-record": {
         parameters: {
             query?: never;
@@ -752,6 +1896,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/creators/{creator_id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What brands said about a creator
+         * @description Averages of the revealed answers brands gave after finished deals, with how many and from how many brands. Null below three answers. Show beside the delivery record, never instead. Any brand, or the creator themself.
+         */
+        get: operations["creator_feedback_api_v1_creators__creator_id__feedback_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/creators/{creator_id}/feedback/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Brands' notes about a creator
+         * @description Revealed notes, newest first, each beside the creator's own words on that deal.
+         */
+        get: operations["creator_feedback_notes_api_v1_creators__creator_id__feedback_notes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/creators/{creator_id}/media-kit": {
         parameters: {
             query?: never;
@@ -764,6 +1948,26 @@ export interface paths {
          * @description Everything a brand needs to weigh a creator, on one screen: the profile, each channel with its follower count and average views, every package with its price, and the delivery record. Channel numbers are the creator's own claim, dated by `figures_as_of`, and must be shown as self-reported. Prices appear here whether or not the creator published them on their public page. Readable by any brand and by the creator themself, never by another creator.
          */
         get: operations["read_media_kit_api_v1_creators__creator_id__media_kit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/creators/{creator_id}/response-times": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * How long this creator takes to answer
+         * @description From a memo sent to its answer (accepted, declined or a change requested), and from a payment marked as sent to the creator confirming it arrived. Measured from the deal record, never estimated. `median_hours` is null until there are five examples, meaning **not enough to say**, and must not be shown as zero; `examples` is always returned.
+         */
+        get: operations["creator_response_times_api_v1_creators__creator_id__response_times_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -801,7 +2005,7 @@ export interface paths {
         };
         /**
          * List my deal memos
-         * @description For a brand, memos on its own campaigns, drafts included. For a creator, memos sent to them; drafts are not theirs to see.
+         * @description For a brand, memos on its own campaigns, drafts included. For a creator, memos sent to them; drafts are not theirs to see. Each carries the deal's `stage` and the side it is `waiting_on`, worked out as of now.
          */
         get: operations["list_my_memos_api_v1_deal_memos_mine_get"];
         put?: never;
@@ -821,7 +2025,7 @@ export interface paths {
         };
         /**
          * Read one deal memo
-         * @description The owning brand sees it in any status; the creator sees it once it has been sent. Anyone else gets 404.
+         * @description The owning brand sees it in any status; the creator sees it once it has been sent. Anyone else gets 404. Carries the deal's `stage` and the side it is `waiting_on`, worked out as of now.
          */
         get: operations["read_memo_api_v1_deal_memos__memo_id__get"];
         put?: never;
@@ -850,6 +2054,26 @@ export interface paths {
          * @description Agrees to these terms. From here the work begins and the terms stop changing. Refused with 409 `due_date_has_passed` if the agreed date went by while the memo waited: ask for a new date instead, rather than starting a deal already overdue.
          */
         post: operations["memo_accept_api_v1_deal_memos__memo_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deal-memos/{memo_id}/calendar.ics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The deal's agreed dates, as a calendar file
+         * @description An iCalendar file (RFC 5545) to add to any phone or desktop calendar: the content due date, the moment submitted work approves itself while it waits, and the payment due date while unconfirmed, each with a reminder a day before. Only an accepted deal has dates; any other gives an empty calendar. Adding it again updates the same events. The brand and the creator of this deal only.
+         */
+        get: operations["deal_calendar_api_v1_deal_memos__memo_id__calendar_ics_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -890,6 +2114,54 @@ export interface paths {
          * @description Says no to these terms. This is final; the brand can start a new memo.
          */
         post: operations["memo_decline_api_v1_deal_memos__memo_id__decline_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deal-memos/{memo_id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A finished deal's feedback
+         * @description Your own answer, and the other side's once you have both answered or the 14 days have passed. The brand and the creator of this deal only.
+         */
+        get: operations["read_feedback_api_v1_deal_memos__memo_id__feedback_get"];
+        put?: never;
+        /**
+         * Give feedback on a finished deal
+         * @description Three scores, 1 to 5, and an optional note, once, within 14 days of the deal finishing (paid and confirmed, or its barter work approved). It can never be changed. Neither side sees the other's until both have answered or the 14 days pass, so nobody answers to retaliate. The other side is told an answer exists, never what it says.
+         */
+        post: operations["give_feedback_api_v1_deal_memos__memo_id__feedback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deal-memos/{memo_id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A deal's notes
+         * @description Every note either side wrote on this deal, newest first; pass `next_cursor` back as `cursor` for older ones. Each is sealed onto the deal's record (`GET /api/v1/deal-memos/{memo_id}/record`, `notes_unchanged`). The brand and the creator of this deal only.
+         */
+        get: operations["list_notes_api_v1_deal_memos__memo_id__notes_get"];
+        put?: never;
+        /**
+         * Write a note on a deal
+         * @description A plain note, at most 1,000 characters, from the memo being sent until the deal ends. It is sealed onto the deal's record by its fingerprint, so either side can prove later what was said, and it never changes: a correction is another note. The other side is told. Limits: 30 a minute and 200 a day.
+         */
+        post: operations["write_note_api_v1_deal_memos__memo_id__notes_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1020,6 +2292,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/deal-memos/{memo_id}/payment/pay-details": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * How to pay the creator by UPI
+         * @description For the brand on this deal, while its payment is open: the creator's UPI ID, the amount and a `upi://pay` link that opens the brand's own UPI app with everything filled in. Before entering the PIN, check that the name the UPI app shows is the creator's. NicheConnect TN never receives the money. `pay_link` is null when the creator has added no UPI ID or the amount is above UPI's limit between people, and `unavailable_reason` says which. Then mark the payment sent with the UPI reference, as usual.
+         */
+        get: operations["read_pay_details_api_v1_deal_memos__memo_id__payment_pay_details_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/deal-memos/{memo_id}/proof": {
         parameters: {
             query?: never;
@@ -1035,9 +2327,31 @@ export interface paths {
         put?: never;
         /**
          * Submit proof of the work
-         * @description The creator gives the public link to the live post. Submitting also marks that work has started, which decides how a later cancellation counts. One submission waits for review at a time.
+         * @description The creator gives the public link to the live post, files uploaded through `POST .../proof/uploads`, or both. Each file's fingerprint is sealed into the deal record with the proof. Submitting also marks that work has started, which decides how a later cancellation counts. One submission waits for review at a time.
          */
         post: operations["submit_proof_api_v1_deal_memos__memo_id__proof_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deal-memos/{memo_id}/proof/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start uploading a proof file
+         * @description Describe a screenshot or photo (type, exact size, SHA-256) and get a signed form to upload it **straight to storage**, valid for 10 minutes. Storage refuses any file that does not match the description. Then give `upload_id` in `file_ids` when submitting proof.
+         *
+         *     JPEG, PNG or WebP, up to 10 MB. Only the creator, only on an accepted memo, at most 20 unfinished uploads per memo, 30 an hour per account. Every image is cleaned of location and hidden data before a brand can see it.
+         */
+        post: operations["start_proof_upload_api_v1_deal_memos__memo_id__proof_uploads_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1058,6 +2372,46 @@ export interface paths {
          * @description The brand accepts the work. Approval starts the payment clock: payment is due the agreed number of days after this moment (D-027).
          */
         post: operations["approve_proof_api_v1_deal_memos__memo_id__proof__proof_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deal-memos/{memo_id}/proof/{proof_id}/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Open the files on a proof
+         * @description Every file on the proof, in the order the creator chose, each cleaned one with a link to open it, valid for 5 minutes. Only the brand and the creator on the deal can ask. A file still being cleaned has no link yet; it is usually ready within a minute. Only the cleaned copy is ever shown, to either side: the original, with its location data, is never served.
+         */
+        get: operations["view_proof_files_api_v1_deal_memos__memo_id__proof__proof_id__files_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deal-memos/{memo_id}/proof/{proof_id}/files/{file_id}/reading/mark": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Say a reading is wrong
+         * @description The creator marks the numbers read from their screenshot as misread, with a note. The note is kept beside the reading for both sides to see, never in place of it. Once per reading, and only on numbers that were read.
+         */
+        post: operations["mark_reading_misread_api_v1_deal_memos__memo_id__proof__proof_id__files__file_id__reading_mark_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1124,6 +2478,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/deal-memos/{memo_id}/repeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Work together again
+         * @description Invites the creator of this deal to another of the signed-in brand's open campaigns, as a repeat of it. The deal must be one both sides agreed and nobody cancelled. When the creator accepts, the new deal memo is drafted with this deal's terms (everything but the due date, which the brand sets before sending). Answers with the invitation.
+         */
+        post: operations["repeat_deal_api_v1_deal_memos__memo_id__repeat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/deal-memos/{memo_id}/request-change": {
         parameters: {
             query?: never;
@@ -1164,6 +2538,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/deal-memos/{memo_id}/shipment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A barter deal's shipment
+         * @description How the brand sent the goods, and when the creator said they arrived. Show the tracking number as text, never as a link. The brand and the creator of this deal only.
+         */
+        get: operations["read_shipment_api_v1_deal_memos__memo_id__shipment_get"];
+        /**
+         * Record how a barter deal's goods were sent
+         * @description The courier and the tracking number, once the deal is agreed; never an address. It is sealed onto the deal's record and the creator is told. Until the creator says the goods arrived, a mistyped number may be corrected, and each version stays on the record; the same courier and number again changes nothing. The deal's brand only.
+         */
+        put: operations["record_shipment_api_v1_deal_memos__memo_id__shipment_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deal-memos/{memo_id}/shipment/received": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Say a barter deal's goods arrived
+         * @description Only the creator says so, once, the way only the creator confirms a payment arrived. It is sealed onto the deal's record and the brand is told. The deal's creator only.
+         */
+        post: operations["receive_shipment_api_v1_deal_memos__memo_id__shipment_received_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/deal-memos/{memo_id}/withdraw": {
         parameters: {
             query?: never;
@@ -1184,6 +2602,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/agent-tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My assistants' tokens
+         * @description Every token of yours that still works, newest first, with its scopes, its end and when it was last used (to within a minute), never its value. Paginated: `limit` (default 20, at most 100) and `cursor`. Limit: 60 requests per minute.
+         */
+        get: operations["list_agent_tokens_api_v1_me_agent_tokens_get"];
+        put?: never;
+        /**
+         * Make a token for an assistant
+         * @description Makes a token for one assistant or agent (Claude, ChatGPT, an MCP client) that may do only what its `scopes` allow, for at most 90 days, until you revoke it. No scope reaches money, your phone, passkeys, sessions, exports or deletion. Needs **a code** for exactly these scopes: ask at `POST /api/v1/me/step-up` with `create_agent_token` and the same `scopes`, then send it in the `Step-Up-Code` header. You are told in the app, in a notice that cannot be turned off. **The token is in this answer only**: we keep no copy we could show again. Logging out everywhere, moving to a new number or deleting your account ends every token. Brands and creators only. Limits: 5 a minute, 10 a day.
+         */
+        post: operations["create_agent_token_api_v1_me_agent_tokens_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/agent-tokens/{token_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke an assistant's token
+         * @description The token stops working on its next request. No code is needed: revoking only takes access away. Limit: 30 requests per minute.
+         */
+        delete: operations["revoke_agent_token_api_v1_me_agent_tokens__token_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/attention": {
         parameters: {
             query?: never;
@@ -1193,7 +2655,7 @@ export interface paths {
         };
         /**
          * What needs my attention
-         * @description Everything waiting on the signed-in brand or creator, the most urgent first: overdue, then soonest due, then anything without a date. For a brand: applications to review, memos to draft or revise, proof to review before it approves itself, creators to pay, and disputes to answer. For a creator: memos to answer, work to deliver or redo, payments to confirm, payments owed past their date, and disputes to answer. Worked out from the records each time, so an item disappears the moment it is done. Items carry a `kind` code and the facts; the wording belongs to the app. At most 50 items; `counts` and `total` always cover everything.
+         * @description Everything waiting on the signed-in brand or creator, the most urgent first: any `new_sign_in` (a session signed in during the last 7 days, other than this one: if it was not you, end it at `DELETE /api/v1/me/sessions/{session_id}`), then overdue, then soonest due, then anything without a date. For a brand: applications to review, memos to draft or revise, proof to review before it approves itself, creators to pay, and disputes to answer. For a creator: memos to answer, work to deliver or redo, payments to confirm, payments owed past their date, and disputes to answer. Worked out from the records each time, so an item disappears the moment it is done. Items carry a `kind` code and the facts; the wording belongs to the app. At most 50 items; `counts` and `total` always cover everything, except that at most 50 new sign-ins are counted.
          */
         get: operations["read_my_attention_api_v1_me_attention_get"];
         put?: never;
@@ -1204,7 +2666,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/me/export": {
+    "/api/v1/me/blocks": {
         parameters: {
             query?: never;
             header?: never;
@@ -1212,10 +2674,530 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Download my data
-         * @description Everything we hold about the signed-in account, as one JSON file. Includes a manifest explaining each section and why we hold it, and a list of what is deliberately not included. Limited to 3 requests an hour.
+         * My blocks
+         * @description Everyone you blocked, newest first. Never who blocked you.
          */
-        get: operations["export_my_data_api_v1_me_export_get"];
+        get: operations["list_blocks_api_v1_me_blocks_get"];
+        put?: never;
+        /**
+         * Block a brand or a creator
+         * @description A creator blocks a brand (`brand_id`, from any of its campaigns); a brand blocks a creator (`creator_id`, from search or matches). From then on, in both directions, no invitation, repeat or application can start, and neither appears in the other's search, suggestions or campaign discovery. Deals already agreed carry on: a block cannot undo a contract. **The other side is never told**, and anything they try reads as not found. Blocking twice is one block.
+         */
+        post: operations["block_api_v1_me_blocks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/blocks/{block_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Unblock
+         * @description Removes one of your blocks. The other side is not told.
+         */
+        delete: operations["unblock_api_v1_me_blocks__block_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/campaign-alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My campaign alerts
+         * @description Every alert you saved, newest first. Whole, not paged: at most 5. When a campaign is published that fits one, you are told within a few minutes (`campaign_alert`, which you can mute), at most 20 a day.
+         */
+        get: operations["list_my_alerts_api_v1_me_campaign_alerts_get"];
+        put?: never;
+        /**
+         * Save a campaign alert
+         * @description Any mix of a city (in any case), a niche, a campaign type and a least budget; each one named must fit, and one left out fits anything. Name at least one. Campaigns already open are not alerted; browse them instead.
+         */
+        post: operations["save_an_alert_api_v1_me_campaign_alerts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/campaign-alerts/{alert_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a campaign alert
+         * @description Notices it already sent stay in your notifications.
+         */
+        delete: operations["remove_an_alert_api_v1_me_campaign_alerts__alert_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/deletion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Deleting my account: where it stands
+         * @description Whether your account is waiting to be deleted and when, the deals that would hold it, and what is kept afterwards because a law may require it. Show a waiting deletion at the top of every screen, with a one-tap cancel: if it was not you, someone may have your number.
+         */
+        get: operations["read_my_deletion_api_v1_me_deletion_get"];
+        put?: never;
+        /**
+         * Delete my account, 30 days from now
+         * @description Needs **a code**: ask at `POST /api/v1/me/step-up` with `delete_account`, and send it in the `Step-Up-Code` header. Refused while any of your deals is unfinished: finish, decline or cancel each first. **It takes effect 30 days later**: until then everything works as before, you are told in the app, and you can cancel with no code. Then what no law asks us to keep is erased: your number, sessions, passkeys, notifications, prices, channels, UPI IDs, blocks, exports, Passport, and your name and handle, which the other side's deals then show as someone who left. What is kept is listed under `kept`. Your number is free to make a new account with. A deal begun in the 30 days holds the deletion until it is finished. Brands and creators only. Limits: 5 per 10 minutes and 10 a day.
+         */
+        post: operations["delete_my_account_api_v1_me_deletion_post"];
+        /**
+         * Keep my account: cancel its deletion
+         * @description Cancels a deletion waiting its 30 days, or held by a deal. For when it was not you: no code is needed, so it works from any of your sessions even if someone else has your number. Safe to repeat; nothing waiting is fine.
+         */
+        delete: operations["cancel_my_deletion_api_v1_me_deletion_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Register this phone for push notifications
+         * @description Records the push token Firebase or Apple gave this install, or refreshes it; send it on every app start and whenever the token changes. Safe to repeat. A token already registered to another account moves to this one, so a phone handed on stops showing the last person's notifications. Each account keeps its 10 most recently seen phones. The phone belongs to the session registering it: when that session ends, by a logout, from another device or everywhere, the phone is unregistered with it. A session already ended is refused (401). The token is never returned; keep the `id` to unregister.
+         */
+        put: operations["register_device_api_v1_me_devices_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/devices/{device_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Stop push notifications to a phone
+         * @description Unregisters one of your phones, by the `id` registering it returned. Ending the session that registered it does this too.
+         */
+        delete: operations["remove_device_api_v1_me_devices__device_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My data exports
+         * @description The 5 newest exports you asked for, newest first, and where each stands.
+         */
+        get: operations["list_my_exports_api_v1_me_exports_get"];
+        put?: never;
+        /**
+         * Ask for a copy of my data
+         * @description Starts building one JSON file of everything we hold about the signed-in account, with a manifest saying why we hold each part and what is deliberately left out. No code is needed to ask: the download needs one. You are told in the app when it is ready, usually within minutes, or if it could not be made after three tries; then download it, once, within 24 hours. One is prepared at a time. Limited to 3 an hour.
+         */
+        post: operations["ask_for_my_data_api_v1_me_exports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/exports/{export_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One of my data exports
+         * @description Where one export you asked for stands.
+         */
+        get: operations["read_my_export_api_v1_me_exports__export_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/exports/{export_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Download a copy of my data, once
+         * @description Returns the export's file, offered as a download, and destroys the stored copy: it can be downloaded once. **Needs a code for this export**: ask at `POST /api/v1/me/step-up` with `download_export` and this `export_id`. You are told in the app each time a file is downloaded. Not replayed for a retried request, so no copy is kept anywhere: if the download breaks, ask for a new export. Limited to 10 an hour.
+         */
+        post: operations["download_my_data_api_v1_me_exports__export_id__download_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/invite-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My invite code
+         * @description The code to share with people you invite, made the first time it is asked for and the same ever after.
+         */
+        get: operations["my_invite_code_api_v1_me_invite_code_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * How many joined with my code
+         * @description Counts of brands and creators only, never who they are.
+         */
+        get: operations["my_invites_api_v1_me_invites_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/notification-preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read my notification preferences
+         * @description The defaults until saved: quiet hours 22:00 to 08:00 Tamil Nadu time, digest off, nothing muted. They govern delivery outside the app only; the in-app list keeps everything. `always_sent` lists the types that arrive at once whatever is set.
+         */
+        get: operations["read_preferences_api_v1_me_notification_preferences_get"];
+        /**
+         * Replace my notification preferences
+         * @description Saves the whole set, so sending the same body twice is harmless. Urgent types (those in `always_sent`) cannot be muted.
+         */
+        put: operations["save_preferences_api_v1_me_notification_preferences_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/passkeys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My passkeys
+         * @description Every passkey on your account, whether only they sign you in, and a reset waiting, if one was asked for with your number.
+         */
+        get: operations["list_my_passkeys_api_v1_me_passkeys_get"];
+        put?: never;
+        /**
+         * Add a passkey
+         * @description Keeps the passkey your phone made. **Needs a code** for `add_passkey` from `POST /api/v1/me/step-up`: for your first passkey, a code sent to your phone, from a login at least 7 days old (or your account's very first login); for every later one, your passkey's approval. You are told on every device. At most 10.
+         */
+        post: operations["add_a_passkey_api_v1_me_passkeys_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/passkeys/only": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Sign in only with a passkey, or not
+         * @description With it on, a code sent to your phone no longer signs you in, so a SIM swapper cannot either; a code can then only start a 7-day reset. **Needs your passkey's approval** for `passkey_only` with exactly this `enabled`. You are told on every device.
+         */
+        put: operations["set_passkey_only_api_v1_me_passkeys_only_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/passkeys/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start adding a passkey
+         * @description WebAuthn's creation options, to pass to `navigator.credentials.create` (or the phone's credential manager). Its challenge works once, for 5 minutes. Then send the answer to `POST /api/v1/me/passkeys`.
+         */
+        post: operations["start_adding_a_passkey_api_v1_me_passkeys_options_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/passkeys/{passkey_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a passkey
+         * @description **Needs your passkey's approval** for `remove_passkey` and this passkey's id. Removing the last one also turns passkey-only sign-in off. You are told on every device. Lost every passkey? Start a reset with your number at `POST /api/v1/auth/passkey-reset`.
+         */
+        delete: operations["remove_a_passkey_api_v1_me_passkeys__passkey_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Rename a passkey
+         * @description Changes only its name. No code is needed.
+         */
+        patch: operations["rename_a_passkey_api_v1_me_passkeys__passkey_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/me/phone-change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My phone number, and a new one waiting
+         * @description The number you log in with, and under `waiting` a new number you asked to move to, with when it takes over; null when there is none. Show a waiting change at the top of every screen, with a one-tap cancel: if it was not you, someone may have your number.
+         */
+        get: operations["read_my_phone_change_api_v1_me_phone_change_get"];
+        put?: never;
+        /**
+         * Move my account to a new phone number
+         * @description Needs **a login at least 7 days old**, which a SIM swapper never has: from a newer one, 403 `login_too_recent`, with `Retry-After` saying when. And **a code from each number**: from your current number, ask at `POST /api/v1/me/step-up` with `change_phone` and this exact new number, and send it in the `Step-Up-Code` header; from the new number, ask at `POST /api/v1/auth/otp/request`, and send it as `new_phone_code`. **The new number takes over 72 hours later**: until then you log in with your current number, are told in the app, and can cancel with no code. Then every session ends, and you log in with the new number; the old one no longer reaches this account. If the number also holds your other account (a brand and a creator, D-126), both move together and both are logged out. Asking again replaces a change still waiting and starts its 72 hours again. Brands and creators only: an admin's number is changed by the founders. Limits: 5 per 10 minutes and 10 a day, beside each number's own limits on codes.
+         */
+        post: operations["change_my_phone_api_v1_me_phone_change_post"];
+        /**
+         * Cancel a new phone number before it takes over
+         * @description Drops the new number under `waiting`, so you keep logging in with the one you have. For when the change was not you: no code is needed, so it works from any of your sessions even if someone else has your number. Safe to repeat; nothing waiting is fine.
+         */
+        delete: operations["cancel_my_phone_change_api_v1_me_phone_change_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/phone-change/without-current-number": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move my account to a new number when my current number is lost
+         * @description For when your current number is already gone, so no code can reach it. Needs **a login at least 30 days old** (403 `login_too_recent`, with `Retry-After`, from a newer one), or, once you have a passkey, the passkey's grant in `Step-Up-Code` instead; and a code from the new number, asked for at `POST /api/v1/auth/otp/request`, as `new_phone_code`. **The new number takes over 7 days later**, and **any login with your current number before then cancels it**, since that number was not lost after all; you are told either way. Asking again replaces a change still waiting. Brands and creators only. There is no other way: we never move a number on someone's word, so a lost number with no login this old cannot be recovered. Limits as for a change with both numbers.
+         */
+        post: operations["change_my_lost_phone_api_v1_me_phone_change_without_current_number_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Where I am logged in
+         * @description Every session of yours that can still renew itself, the latest sign-in first, with what each app said it is, when and how it signed in, and when it was last active. `is_current` marks the one asking. A label is whatever the app sent at sign-in, never checked: show it beside the sign-in time and method, which no app can choose. No address or location is kept. Paginated: `limit` (default 20, at most 100) and `cursor`. Limit: 60 requests per minute.
+         */
+        get: operations["list_my_sessions_api_v1_me_sessions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * End one session
+         * @description Logs that session out at once: its access token stops working on its next request, and it can no longer renew. Ending **this** session needs nothing more; it is logging out. Ending any **other** needs a code: ask at `POST /api/v1/me/step-up` with `end_session` and this session's id, then send it in the `Step-Up-Code` header; you are then told in the app. That way someone holding a stolen session cannot throw you out. To stop push notifications to this phone too, log out with `POST /api/v1/auth/logout` and its push token instead. Limit: 30 requests per minute.
+         */
+        delete: operations["end_my_session_api_v1_me_sessions__session_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/sessions/{session_id}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Say a sign-in was yours
+         * @description Takes a `new_sign_in` off your attention list once you know it was you, for example your new laptop. Only from a device that was signed in **before** that sign-in: whoever signed in last can never vouch for themselves, so a sign-in you did not make always stays in front of you. The session stays listed and can still be ended. Limit: 30 requests per minute.
+         */
+        post: operations["acknowledge_sign_in_api_v1_me_sessions__session_id__acknowledge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/step-up": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask for a code before a risky change
+         * @description Sends a 6-digit code to your phone for one change: setting a UPI ID (this exact one), downloading one exact copy of your data, logging out everywhere, moving your account to a new phone number (this exact one), or deleting your account (`delete_account`), or making a token for an assistant with exactly these scopes (`create_agent_token`). Then make the change with the code in the `Step-Up-Code` header, within 5 minutes. A code works once, and only for the change it was asked for. Admins are sent nothing: they use their authenticator app's code. Limits: 3 per 10 minutes and 10 a day, counted with login codes for your phone.
+         */
+        post: operations["ask_for_step_up_api_v1_me_step_up_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/step-up/passkey": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve a risky change with a passkey
+         * @description Once you have a passkey, a risky change is proven by it, never by a code sent to your phone, which a SIM swapper could read. Ask at `POST /api/v1/me/step-up` for the change: the answer's `passkey_options` is a challenge for exactly that change. Answer it with your passkey and send the answer here, with the same change. You get a code for exactly that change, working once, for 5 minutes: send it in `Step-Up-Code` with the change itself.
+         */
+        post: operations["approve_with_passkey_api_v1_me_step_up_passkey_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/takedowns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What of mine is withheld
+         * @description Your creator profile, brand or campaigns withheld for legal reasons, newest first, including those since lifted (item 52). While one is withheld, everyone else gets 451 for it and it leaves search, matches and discovery; you still see it, and deals already agreed carry on. Nothing new can start from it until it is lifted. A sealed order's details are null.
+         */
+        get: operations["list_my_takedowns_api_v1_me_takedowns_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1304,6 +3286,106 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/payments/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List my payments
+         * @description Every payment across the caller's deals, newest first, each with its campaign, creator and brand, so a screen needs no call per row. `state` is worked out from the dates, as for a single payment.
+         */
+        get: operations["list_my_payments_api_v1_payments_mine_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/mine/totals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Totals of my payments
+         * @description How many payments, and how much, are to pay, overdue, awaiting confirmation and finished, across all the caller's deals. Overdue is always returned, zero included.
+         */
+        get: operations["my_payment_totals_api_v1_payments_mine_totals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platforms/meta/data-deletion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Meta: delete what we hold about one of its users
+         * @description Meta's data deletion callback, public by design: verified by Meta's signature. Deletes the person's connection and answers with a status link and a confirmation code.
+         */
+        post: operations["meta_data_deletion_api_v1_platforms_meta_data_deletion_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platforms/meta/data-deletion/{confirmation_code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Meta: what happened to a deletion request
+         * @description Public by design, as Meta requires: the code alone, 24 random characters, says nothing about the person.
+         */
+        get: operations["meta_deletion_status_api_v1_platforms_meta_data_deletion__confirmation_code__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platforms/meta/deauthorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Meta: one of its users removed our app
+         * @description Meta's deauthorize callback, public by design: verified by Meta's signature. The person's connection is deleted.
+         */
+        post: operations["meta_deauthorize_api_v1_platforms_meta_deauthorize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/rate-guidance": {
         parameters: {
             query?: never;
@@ -1316,6 +3398,46 @@ export interface paths {
          * @description The lower quarter, middle and upper quarter of what creators of this audience size charge for this format, from rate cards creators have published. Narrowed to the niche and city when at least five creators match; otherwise wider, and `narrowed_to` says so. Below five creators the figures are `null`, meaning **not enough to say**: never show that as zero. Readable by any signed-in brand or creator.
          */
         get: operations["read_rate_guidance_api_v1_rate_guidance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Report a creator, a brand or a campaign
+         * @description Flags it for an admin to look at. Reporting the same thing again while your first report is still open changes nothing and answers 200 with that report, rather than 201. You cannot report yourself. At most 10 reports an hour.
+         */
+        post: operations["file_report_api_v1_reports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My reports, and what became of each
+         * @description Every report you made, newest first, with its status and when it was resolved. When an admin resolves one you also get a `report_resolved` notification. Who handled it, and their note, are never shown.
+         */
+        get: operations["list_my_reports_api_v1_reports_mine_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1369,6 +3491,40 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * AccountDeletionRead
+         * @description Where deleting your account stands, and what would hold or survive it.
+         */
+        AccountDeletionRead: {
+            /**
+             * Kept
+             * @description What is kept after deletion, because a law may require it. Everything else about you is erased, and your name, handle and number go from the deals the other side keeps
+             */
+            kept: components["schemas"]["KeptKindRead"][];
+            /** Requested At */
+            requested_at: string | null;
+            /**
+             * Status
+             * @description `none`: not asked for, or cancelled. `waiting`: it takes effect at `takes_effect_at`. `held`: its 30 days are over, but a deal begun meanwhile is not finished; it takes effect once it is, within 15 minutes. Cancel either with `DELETE /api/v1/me/deletion`
+             * @enum {string}
+             */
+            status: "none" | "waiting" | "held";
+            /**
+             * Takes Effect At
+             * @description 30 days after it was asked for. Until then everything works as before, and you can cancel with no code
+             */
+            takes_effect_at: string | null;
+            /**
+             * Unfinished Deal Ids
+             * @description The memos of the first 20 of them, by id
+             */
+            unfinished_deal_ids: string[];
+            /**
+             * Unfinished Deals
+             * @description Your deals not yet finished, declined or cancelled, or with a payment dispute open. Asking is refused while any is, and an erasure is held by one begun meanwhile
+             */
+            unfinished_deals: number;
+        };
+        /**
          * AccountRead
          * @description The signed-in account, returned to its owner only.
          */
@@ -1384,6 +3540,11 @@ export interface components {
              */
             id: string;
             /**
+             * Other Side
+             * @description The other account on this number, if you have one (D-126): sign in as it with a code for this number and that role. Null when you have none; a brand or creator may start one by signing in as it. Added on 25 October 2026
+             */
+            other_side: ("brand" | "creator") | null;
+            /**
              * Phone
              * @description Indian mobile number, stored as +91XXXXXXXXXX. Send it in that form. Spaces, dashes and brackets, and a leading +91, 91 or 0, are also accepted and normalised away.
              * @example +919876543210
@@ -1393,7 +3554,7 @@ export interface components {
              * Role
              * @enum {string}
              */
-            role: "brand" | "creator";
+            role: "brand" | "creator" | "admin";
         };
         /** AccountSummary */
         AccountSummary: {
@@ -1411,7 +3572,389 @@ export interface components {
              * Role
              * @enum {string}
              */
-            role: "brand" | "creator";
+            role: "brand" | "creator" | "admin";
+        };
+        /**
+         * AdminAccountRead
+         * @description An account as an admin sees it. Viewing it is written to the admin log.
+         */
+        AdminAccountRead: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Deals
+             * @description Deal memos this account is a party to
+             */
+            deals: number;
+            /**
+             * Deleted At
+             * @description When the account was deleted at its owner's request (D-122)
+             */
+            deleted_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Phone
+             * @description Null once the account is deleted: the number is let go (D-122)
+             */
+            phone: string | null;
+            profile: components["schemas"]["AdminProfileRead"] | null;
+            /** Reports About Open */
+            reports_about_open: number;
+            /** Reports About Total */
+            reports_about_total: number;
+            /** Reports Made */
+            reports_made: number;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "brand" | "creator" | "admin";
+            /** Suspended At */
+            suspended_at: string | null;
+            /** Suspension Reason */
+            suspension_reason: ("fake_profile" | "spam" | "abuse" | "non_payment" | "other" | "impersonation" | "intimate_content") | null;
+        };
+        /** AdminActionRead */
+        AdminActionRead: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "view_account" | "suspend" | "restore" | "resolve_report" | "withhold" | "lift_withhold" | "clear_brand_name" | "withdraw_brand_name_clearance";
+            /**
+             * Admin Account Id
+             * Format: uuid
+             */
+            admin_account_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Note */
+            note: string | null;
+            /** Report Id */
+            report_id: string | null;
+            /** Subject Account Id */
+            subject_account_id: string | null;
+        };
+        /** AdminLoginIn */
+        AdminLoginIn: {
+            /**
+             * Authenticator Code
+             * @description The 6-digit code the authenticator app shows now
+             * @example 492039
+             */
+            authenticator_code: string;
+            /**
+             * Code
+             * @description The 6-digit code sent to the phone
+             * @example 042917
+             */
+            code: string;
+            /** @description Optional: what this app is, shown in the person's list of sessions (`GET /api/v1/me/sessions`) */
+            device?: components["schemas"]["DeviceIn"] | null;
+            /**
+             * Phone
+             * @description Indian mobile number, stored as +91XXXXXXXXXX. Send it in that form. Spaces, dashes and brackets, and a leading +91, 91 or 0, are also accepted and normalised away.
+             * @example +919876543210
+             */
+            phone: string;
+        };
+        /** AdminProfileRead */
+        AdminProfileRead: {
+            /**
+             * Handle
+             * @description A creator's handle
+             */
+            handle: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "brand" | "creator";
+            /**
+             * Name
+             * @description The brand's name, or the creator's display name
+             */
+            name: string;
+        };
+        /** AdminReportRead */
+        AdminReportRead: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "fake_profile" | "spam" | "abuse" | "non_payment" | "other" | "impersonation" | "intimate_content";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Due At
+             * Format: date-time
+             * @description When it will be answered by: the deadline the IT Rules set for its category, fixed when it was filed (item 51)
+             */
+            due_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Late
+             * @description Answered after `due_at`, or still open past it
+             */
+            late: boolean;
+            /** Note */
+            note: string | null;
+            /**
+             * Reporter Account Id
+             * Format: uuid
+             */
+            reporter_account_id: string;
+            /** Resolution Note */
+            resolution_note: string | null;
+            /**
+             * Resolved At
+             * @description When an admin resolved it; null while it is open (item 102)
+             */
+            resolved_at: string | null;
+            /**
+             * Status
+             * @description `actioned`: an admin acted on it. `dismissed`: looked at, no action
+             * @enum {string}
+             */
+            status: "open" | "actioned" | "dismissed";
+            /**
+             * Subject Id
+             * Format: uuid
+             */
+            subject_id: string;
+            /**
+             * Subject Kind
+             * @enum {string}
+             */
+            subject_kind: "creator" | "brand" | "campaign";
+        };
+        /**
+         * AdminTakedownRead
+         * @description A takedown as an admin sees it: the order, the clock and the preserved text.
+         */
+        AdminTakedownRead: {
+            /**
+             * Basis
+             * @enum {string}
+             */
+            basis: "court_order" | "government_notice" | "report";
+            /**
+             * Due At
+             * Format: date-time
+             * @description 3 hours after `received_at` for an order; the report's own deadline for a report
+             */
+            due_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Issued By */
+            issued_by: string | null;
+            /**
+             * Late
+             * @description Withheld after `due_at`
+             */
+            late: boolean;
+            /** Legal Provision */
+            legal_provision: string | null;
+            /** Lifted At */
+            lifted_at: string | null;
+            /** Lifted By Account Id */
+            lifted_by_account_id: string | null;
+            /** Order Reference */
+            order_reference: string | null;
+            /**
+             * Owner Account Id
+             * Format: uuid
+             */
+            owner_account_id: string;
+            /**
+             * Preserved
+             * @description The item's visible text when it was withheld, kept as the IT Rules ask (rule 3(1)(g)): later edits cannot change it
+             */
+            preserved: {
+                [key: string]: unknown;
+            };
+            /**
+             * Received At
+             * Format: date-time
+             * @description When the order reached us, or the report was filed
+             */
+            received_at: string;
+            /** Reference Sealed */
+            reference_sealed: boolean;
+            /** Report Id */
+            report_id: string | null;
+            /**
+             * Subject Id
+             * Format: uuid
+             */
+            subject_id: string;
+            /**
+             * Subject Kind
+             * @enum {string}
+             */
+            subject_kind: "creator" | "brand" | "campaign";
+            /**
+             * Withheld At
+             * Format: date-time
+             * @description When it was withheld: the server's clock
+             */
+            withheld_at: string;
+            /**
+             * Withheld By Account Id
+             * Format: uuid
+             */
+            withheld_by_account_id: string;
+        };
+        /**
+         * AgentTokenCreate
+         * @description A token for one assistant: what it is called, what it may do, how long it lasts.
+         */
+        AgentTokenCreate: {
+            /**
+             * Expires In Days
+             * @description How many days it works for, at most 90
+             * @example 30
+             */
+            expires_in_days: number;
+            /**
+             * Name
+             * @description The assistant it is for, as you will recognise it
+             * @example Claude on my laptop
+             */
+            name: string;
+            /**
+             * Scopes
+             * @description What the assistant may do. `deals:read`: your deals, their terms and stage, notes, proof and feedback; never the deal record, a payment's details, a dispute's content, a UPI ID or an address. `campaigns:read`: campaigns and applications as you see them; never the campaign report. `applications:write`: applying and withdrawing, declining an invitation, and a brand's shortlisting or turning down; never accepting an application or an invitation. `notes:write`: adding a note to a deal. `alerts:write`: your campaign alerts. No scope reaches payment records, your phone number, passkeys, sessions, exports or deletion
+             * @example [
+             *       "deals:read",
+             *       "campaigns:read"
+             *     ]
+             */
+            scopes: ("deals:read" | "campaigns:read" | "applications:write" | "notes:write" | "alerts:write")[];
+        };
+        /**
+         * AgentTokenCreated
+         * @description The new token, with its value: shown this once and never again.
+         */
+        AgentTokenCreated: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             * @description Revoke it at DELETE /api/v1/me/agent-tokens/{id}
+             */
+            id: string;
+            /**
+             * Last Used At
+             * @description When it was last used, to within a minute; null if never
+             */
+            last_used_at: string | null;
+            /** Name */
+            name: string;
+            /** Scopes */
+            scopes: ("deals:read" | "campaigns:read" | "applications:write" | "notes:write" | "alerts:write")[];
+            /**
+             * Token
+             * @description Give it to the assistant as `Authorization: Bearer <token>`. It is shown only now; we keep no copy we could show you again
+             * @example nct_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+             */
+            token: string;
+        };
+        /**
+         * AgentTokenRead
+         * @description One of your assistants' tokens, never its value.
+         */
+        AgentTokenRead: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             * @description Revoke it at DELETE /api/v1/me/agent-tokens/{id}
+             */
+            id: string;
+            /**
+             * Last Used At
+             * @description When it was last used, to within a minute; null if never
+             */
+            last_used_at: string | null;
+            /** Name */
+            name: string;
+            /** Scopes */
+            scopes: ("deals:read" | "campaigns:read" | "applications:write" | "notes:write" | "alerts:write")[];
+        };
+        /**
+         * ApplicationCountsRead
+         * @description How many applications are in each status. Every status, zeros included.
+         */
+        ApplicationCountsRead: {
+            /** Accepted */
+            accepted: number;
+            /**
+             * Declined
+             * @description Invitations the creator said no to
+             */
+            declined: number;
+            /**
+             * Invited
+             * @description Invitations still waiting for an answer
+             */
+            invited: number;
+            /** Rejected */
+            rejected: number;
+            /** Shortlisted */
+            shortlisted: number;
+            /** Submitted */
+            submitted: number;
+            /** Withdrawn */
+            withdrawn: number;
         };
         /**
          * ApplicationCreate
@@ -1491,8 +4034,22 @@ export interface components {
                 [key: string]: number;
             };
         };
-        /** ApplicationRead */
+        /**
+         * ApplicationRead
+         * @description A creator on a campaign, whether they applied or were invited.
+         *
+         *     `origin` says which. An invitation has no `pitch`; it may carry the
+         *     brand's `invitation_note`. `repeat_of_application_id` names the earlier
+         *     deal a repeat invitation repeats. Clients must tolerate statuses they do
+         *     not know: `invited` and `declined` were added on 10 October 2026.
+         *     `open_offer` and `agreed_amount_paise` were added on 25 October 2026.
+         */
         ApplicationRead: {
+            /**
+             * Agreed Amount Paise
+             * @description The figure both sides agreed through an offer, in paise. It pre-fills the memo's fee; the memo is still the contract. Null when none was agreed
+             */
+            agreed_amount_paise: number | null;
             /**
              * Campaign Id
              * Format: uuid
@@ -1514,29 +4071,55 @@ export interface components {
              * @constant
              */
             currency: "INR";
+            /** Decline Reason */
+            decline_reason: ("timing" | "budget" | "not_a_fit" | "other") | null;
+            /**
+             * First Answered At
+             * @description When the brand first shortlisted, accepted or rejected this application. Null while it waits, on invitations, and on answers given before 12 October 2026, when it was first kept
+             */
+            first_answered_at: string | null;
             /**
              * Id
              * Format: uuid
              */
             id: string;
-            /** Pitch */
-            pitch: string;
+            /** Invitation Note */
+            invitation_note: string | null;
+            /** @description A counter-offer waiting for an answer (item 44): the side that did not make it accepts, declines or answers with its own at `/api/v1/applications/{id}/offers`. While one waits, the application cannot be accepted */
+            open_offer: components["schemas"]["OfferRead"] | null;
+            /**
+             * Origin
+             * @enum {string}
+             */
+            origin: "applied" | "invited";
+            /**
+             * Pitch
+             * @description Null for an invitation
+             */
+            pitch: string | null;
             /** Quoted Amount Paise */
             quoted_amount_paise: number | null;
             /** Rejection Note */
             rejection_note: string | null;
             /** Rejection Reason */
             rejection_reason: ("budget_mismatch" | "audience_mismatch" | "timing" | "chose_another_creator" | "incomplete_profile" | "other") | null;
+            /** Repeat Of Application Id */
+            repeat_of_application_id: string | null;
             /**
              * Status
              * @enum {string}
              */
-            status: "submitted" | "shortlisted" | "accepted" | "rejected" | "withdrawn";
+            status: "submitted" | "shortlisted" | "accepted" | "rejected" | "withdrawn" | "invited" | "declined";
             /**
              * Status Changed At
              * Format: date-time
              */
             status_changed_at: string;
+            /**
+             * Text Flags
+             * @description Warnings on the free text above, worked out on every read: a request for money from a creator, or contact details before a deal is agreed (item 60). Show each beside its field; never hide the text
+             */
+            readonly text_flags: components["schemas"]["FieldFlag"][];
             /**
              * Updated At
              * Format: date-time
@@ -1557,6 +4140,57 @@ export interface components {
             reason: "budget_mismatch" | "audience_mismatch" | "timing" | "chose_another_creator" | "incomplete_profile" | "other";
         };
         /**
+         * ArrivalIn
+         * @description How a new person found us (D-080). Read only when the login creates the
+         *     account; a returning login ignores it, so nobody can rewrite how they came.
+         */
+        ArrivalIn: {
+            /**
+             * Campaign Tag
+             * @description The label on the link or poster they came from
+             * @example codissia-oct
+             */
+            campaign_tag?: string | null;
+            /**
+             * Invite Code
+             * @description Someone's invite code, as typed. An unknown code is ignored, never refused: a typo must not block sign-up
+             * @example K7PQ2XMA
+             */
+            invite_code?: string | null;
+            /**
+             * Source
+             * @description Where the person says they heard of us
+             */
+            source?: ("passport_link" | "instagram" | "whatsapp" | "event" | "search" | "other") | null;
+        };
+        /**
+         * AskingPriceRead
+         * @description The median asking price for one platform and format in a city.
+         *
+         *     Each creator counts once; only groups of five creators or more appear.
+         */
+        AskingPriceRead: {
+            /** Creators */
+            creators: number;
+            /**
+             * Currency
+             * @default INR
+             */
+            currency: string;
+            /**
+             * Format
+             * @enum {string}
+             */
+            format: "post" | "reel" | "story" | "short" | "video" | "live" | "other";
+            /** Median Paise */
+            median_paise: number;
+            /**
+             * Platform
+             * @enum {string}
+             */
+            platform: "instagram" | "youtube";
+        };
+        /**
          * AttentionItemRead
          * @description One thing waiting on the caller. The words belong to the frontend.
          */
@@ -1567,11 +4201,11 @@ export interface components {
             application_id: string | null;
             /**
              * Campaign Id
-             * Format: uuid
+             * @description The campaign it is about; null for an item about the account itself (a domain item, added 17 October 2026). Clients must tolerate null
              */
-            campaign_id: string;
+            campaign_id: string | null;
             /** Campaign Title */
-            campaign_title: string;
+            campaign_title: string | null;
             /**
              * Count
              * @description For an item that stands for several things, such as applications
@@ -1590,6 +4224,21 @@ export interface components {
              */
             days_left: number | null;
             /**
+             * Device Label
+             * @description For new_sign_in: the name the app gave itself, never checked; null when it said nothing
+             */
+            device_label?: string | null;
+            /**
+             * Device Platform
+             * @description For new_sign_in: what the app said it is; null when it said nothing
+             */
+            device_platform?: ("android" | "ios" | "web") | null;
+            /**
+             * Domain
+             * @description The brand's domain, for fix_domain_record, domain_lapsed and domain_claim_expired
+             */
+            domain?: string | null;
+            /**
              * Due On
              * @description The Tamil Nadu date it is due by; null when nothing sets a date
              */
@@ -1598,11 +4247,26 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "respond_to_dispute" | "pay_creator" | "review_proof" | "revise_memo" | "draft_memo" | "review_applications" | "confirm_payment" | "payment_overdue" | "resubmit_work" | "deliver_work" | "answer_memo";
+            kind: "respond_to_dispute" | "pay_creator" | "review_proof" | "revise_memo" | "draft_memo" | "review_applications" | "fix_domain_record" | "domain_lapsed" | "domain_claim_expired" | "confirm_payment" | "payment_overdue" | "resubmit_work" | "deliver_work" | "answer_memo" | "answer_invitation" | "upi_change_pending" | "phone_change_pending" | "deletion_pending" | "new_sign_in";
             /** Memo Id */
             memo_id: string | null;
             /** Proof Id */
             proof_id: string | null;
+            /**
+             * Session Id
+             * @description For new_sign_in: the session, to end at DELETE /api/v1/me/sessions/{id}
+             */
+            session_id?: string | null;
+            /**
+             * Signed In At
+             * @description For new_sign_in: when it signed in
+             */
+            signed_in_at?: string | null;
+            /**
+             * Signed In With
+             * @description For new_sign_in: `phone_code`, `passkey` or `two_factors`
+             */
+            signed_in_with?: ("phone_code" | "passkey" | "two_factors") | null;
         };
         /**
          * AttentionRead
@@ -1637,8 +4301,185 @@ export interface components {
              */
             truncated: boolean;
         };
+        /** AvailabilityRead */
+        AvailabilityRead: {
+            /**
+             * Available From
+             * Format: date
+             * @description The first Tamil Nadu day the creator is taking work
+             */
+            available_from: string;
+            /**
+             * Booked Until
+             * @description Null when taking work today; a date already past reads as null
+             */
+            booked_until: string | null;
+        };
+        /**
+         * AvailabilityUpdate
+         * @description The whole setting, replaced: a date, or null for taking work.
+         */
+        AvailabilityUpdate: {
+            /**
+             * Booked Until
+             * @description The last Tamil Nadu day you are not taking new work, from today to a year ahead. Null if you are taking work.
+             * @example 2026-11-20
+             */
+            booked_until: string | null;
+        };
+        /**
+         * BlockCreate
+         * @description Whom to block. A creator names a brand; a brand names a creator.
+         */
+        BlockCreate: {
+            /**
+             * Brand Id
+             * @description For a creator: the brand to block, from a campaign
+             */
+            brand_id?: string | null;
+            /**
+             * Creator Id
+             * @description For a brand: the creator to block, from search
+             */
+            creator_id?: string | null;
+        };
+        /**
+         * BlockRead
+         * @description A block you placed. The other side is never told.
+         */
+        BlockRead: {
+            /** Brand Id */
+            brand_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Creator Id */
+            creator_id: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Name
+             * @description The brand's name, or the creator's handle
+             */
+            name: string;
+        };
+        /** BrandDomainClaim */
+        BrandDomainClaim: {
+            /**
+             * Domain
+             * @description The website's own domain, such as smallshop.in. A leading www. is dropped; a name under the domain, a shared suffix (co.in) or a domain in another script is refused, saying what to claim instead
+             * @example smallshop.in
+             */
+            domain: string;
+        };
+        /**
+         * BrandDomainRead
+         * @description The brand's own claim, with what to publish. Only the brand sees this.
+         */
+        BrandDomainRead: {
+            /**
+             * Check Waiting
+             * @description A check was asked for and has not run yet
+             */
+            check_waiting: boolean;
+            /**
+             * Consecutive Absent
+             * @description Daily checks in a row that found the record gone; at 3 it lapses
+             */
+            consecutive_absent: number;
+            /** Dnssec Validated */
+            dnssec_validated: boolean | null;
+            /** Domain */
+            domain: string;
+            /** Lapsed At */
+            lapsed_at: string | null;
+            /** Last Checked At */
+            last_checked_at: string | null;
+            /**
+             * Last Result
+             * @description found: both resolvers saw the record. absent: they answered without it. unknown: a resolver could not be asked, which never counts against you. taken: another brand already holds the domain
+             */
+            last_result: ("found" | "absent" | "unknown" | "taken") | null;
+            /**
+             * Record Name
+             * @description Where to add the TXT record, at your DNS host
+             * @example _nicheconnect-challenge.smallshop.in
+             */
+            record_name: string;
+            /**
+             * Record Type
+             * @default TXT
+             * @constant
+             */
+            record_type: "TXT";
+            /**
+             * Record Value
+             * @description What the TXT record says. Keep it there: it is checked daily
+             * @example nicheconnect-domain-verification=mfrggzdfmztwq2lknnwg23tpoa
+             */
+            record_value: string;
+            /**
+             * Registered On
+             * @description When the registry says the domain was registered; null if it did not say
+             */
+            registered_on: string | null;
+            /**
+             * Status
+             * @description pending until a check finds the record; verified after; lapsed once three daily checks in a row find it gone, after which the domain is claimed again for a new token
+             * @enum {string}
+             */
+            status: "pending" | "verified" | "lapsed";
+            /**
+             * Token Expires At
+             * Format: date-time
+             * @description A pending claim must be found by then, or claimed again
+             */
+            token_expires_at: string;
+            /** Verified At */
+            verified_at: string | null;
+        };
+        /**
+         * BrandNameFlagRead
+         * @description What a creator is told about a brand's name (item 75, D-118). Facts, never a verdict.
+         *
+         *     The brand's name looks like a protected brand's, and this account has not
+         *     verified that brand's domain; or its name mixes Latin letters with
+         *     look-alike letters from another alphabet. Shown beside the brand's name,
+         *     never in place of it.
+         */
+        BrandNameFlagRead: {
+            /**
+             * Mixed Script
+             * @description True when the name mixes Latin letters with Cyrillic, Greek, Armenian or Cherokee ones, which is how look-alike names are made
+             */
+            mixed_script: boolean;
+            /**
+             * Resembles Domain
+             * @description That brand's real domain, which this account has not verified
+             * @example nykaa.com
+             */
+            resembles_domain: string | null;
+            /**
+             * Resembles Name
+             * @description The protected brand this name looks like; null for a mixed-alphabet name only
+             * @example Nykaa
+             */
+            resembles_name: string | null;
+        };
         /** BrandProfileCreate */
         BrandProfileCreate: {
+            /**
+             * Date Of Birth
+             * Format: date
+             * @description Used once, to confirm you are 18 or over, and never stored: we keep only when you confirmed it
+             * @example 1999-04-14
+             */
+            date_of_birth: string;
             /**
              * Email
              * @example hello@ammasweets.in
@@ -1671,6 +4512,8 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /** @description Set while your name looks like a protected brand's and you have not verified that brand's domain, or mixes look-alike letters (item 75): you cannot publish a campaign, and creators see the warning. Verify the domain named, rename, or ask us to review it */
+            name_hold?: components["schemas"]["BrandNameFlagRead"] | null;
             /**
              * Updated At
              * Format: date-time
@@ -1702,6 +4545,8 @@ export interface components {
              * Format: uuid
              */
             brand_id: string;
+            /** @description Set when the brand's name looks like a protected brand's whose domain it has not verified, or mixes look-alike letters (item 75). Show it beside the brand's name; null when there is nothing to say */
+            brand_name_flag?: components["schemas"]["BrandNameFlagRead"] | null;
             /** Currently Overdue */
             currently_overdue: number;
             /** Deals Completed */
@@ -1710,6 +4555,11 @@ export interface components {
             deals_paid: number;
             /** Deals Unpaid */
             deals_unpaid: number;
+            /**
+             * Distinct Creators
+             * @description How many different creators the settled deals were with. Show it beside the figures: many deals with one creator say less than the same number across many
+             */
+            distinct_creators: number;
             /** Median Days To Pay */
             median_days_to_pay: number | null;
             /** Paid On Time Share */
@@ -1719,6 +4569,22 @@ export interface components {
              * @enum {string}
              */
             status: "new_brand_no_history_yet" | "has_payment_history";
+            /** @description The website domain the brand proved it controls, checked daily (item 74); null when it has none. A fact about the domain, not a verdict on the brand */
+            verified_domain?: components["schemas"]["VerifiedDomainRead"] | null;
+        };
+        /**
+         * BrandResponseTimesRead
+         * @description How long creators wait for this brand to decide on their work.
+         *
+         *     An approval by the clock counts, at the moment the window ended.
+         */
+        BrandResponseTimesRead: {
+            /**
+             * Brand Id
+             * Format: uuid
+             */
+            brand_id: string;
+            work_reviewed: components["schemas"]["ResponseTimeRead"];
         };
         /**
          * BulkMarkPaidRead
@@ -1786,6 +4652,52 @@ export interface components {
             reference: string;
         };
         /**
+         * CampaignAlertIn
+         * @description An alert's terms. Each one named must fit; one left out fits anything.
+         */
+        CampaignAlertIn: {
+            /** Campaign Type */
+            campaign_type?: ("paid" | "barter" | "commission" | "local_business") | null;
+            /** City */
+            city?: string | null;
+            /**
+             * Min Budget Paise
+             * @description Fits a campaign whose budget reaches this, in whole paise
+             */
+            min_budget_paise?: number | null;
+            /** Niche */
+            niche?: ("food" | "fashion" | "beauty" | "tech" | "travel" | "fitness" | "education" | "entertainment" | "finance" | "lifestyle") | null;
+        };
+        /**
+         * CampaignAlertRead
+         * @description One of the creator's alerts. `null` in a term means any.
+         */
+        CampaignAlertRead: {
+            /** Campaign Type */
+            campaign_type: ("paid" | "barter" | "commission" | "local_business") | null;
+            /** City */
+            city: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Currency
+             * @constant
+             */
+            currency: "INR";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Min Budget Paise */
+            min_budget_paise: number | null;
+            /** Niche */
+            niche: ("food" | "fashion" | "beauty" | "tech" | "travel" | "fitness" | "education" | "entertainment" | "finance" | "lifestyle") | null;
+        };
+        /**
          * CampaignCreate
          * @description What a brand sends to create a campaign. It starts as a draft.
          */
@@ -1804,6 +4716,12 @@ export interface components {
             /** Cities */
             cities: string[];
             /**
+             * Deliverable Items
+             * @description The deliverables as a list, in order: at most 10 lines. The `deliverables` text stays, as the summary both sides read
+             * @default []
+             */
+            deliverable_items: components["schemas"]["DeliverableIn"][];
+            /**
              * Deliverables
              * @example 3 Instagram reels, 1 story set
              */
@@ -1819,6 +4737,56 @@ export interface components {
             title: string;
         };
         /**
+         * CampaignMatchRead
+         * @description One suggested campaign, and why.
+         */
+        CampaignMatchRead: {
+            campaign: components["schemas"]["CampaignRead"];
+            reasons: components["schemas"]["CampaignMatchReasonsRead"];
+        };
+        /**
+         * CampaignMatchReasonsRead
+         * @description Why this campaign was suggested to a creator, in facts they can check.
+         */
+        CampaignMatchReasonsRead: {
+            /** @description How this brand pays, exactly as its reliability page says. The figures are null below three completed deals, meaning **not enough to say**, never zero; `currently_overdue` is always reported */
+            brand_payments: components["schemas"]["BrandReliabilityRead"];
+            /**
+             * City
+             * @description The creator's city, which is one the campaign named
+             * @example Madurai
+             */
+            city: string;
+            /**
+             * Shared Niches
+             * @description Niches this campaign and the creator have in common
+             * @example [
+             *       "food"
+             *     ]
+             */
+            shared_niches: string[];
+            /**
+             * Similarity
+             * @description How close the brief reads to the creator's profile, from 0 to 1. **Null when either side has not been indexed yet** (a creator is indexed once they publish their Passport); the list is then newest first
+             * @example 0.79
+             */
+            similarity: number | null;
+        };
+        /**
+         * CampaignMatchesRead
+         * @description Campaigns suggested to the signed-in creator, best first.
+         */
+        CampaignMatchesRead: {
+            /** Matches */
+            matches: components["schemas"]["CampaignMatchRead"][];
+            /**
+             * Ranked By Similarity
+             * @description False when the creator has no embedding yet, so the list is newest first. Say so rather than presenting it as a ranking
+             * @example true
+             */
+            ranked_by_similarity: boolean;
+        };
+        /**
          * CampaignRead
          * @description A campaign as the API returns it.
          */
@@ -1830,6 +4798,8 @@ export interface components {
              * Format: uuid
              */
             brand_id: string;
+            /** @description Set when the brand's name looks like a protected brand's and the brand has not verified that brand's domain, or mixes look-alike letters (item 75). Show it beside the brand's name: "looks like Nykaa; nykaa.com is not verified by this account". Such a brand cannot publish a new campaign; one already open keeps this warning */
+            brand_name_flag?: components["schemas"]["BrandNameFlagRead"] | null;
             /** Budget Max Paise */
             budget_max_paise: number | null;
             /** Budget Min Paise */
@@ -1852,6 +4822,8 @@ export interface components {
              * @constant
              */
             currency: "INR";
+            /** Deliverable Items */
+            deliverable_items: components["schemas"]["DeliverableRead"][];
             /** Deliverables */
             deliverables: string;
             /** Description */
@@ -1868,6 +4840,11 @@ export interface components {
              * @enum {string}
              */
             status: "draft" | "open" | "closed" | "cancelled";
+            /**
+             * Text Flags
+             * @description Warnings on the free text above, worked out on every read: a request for money from a creator, or contact details before a deal is agreed (item 60). Show each beside its field; never hide the text
+             */
+            readonly text_flags: components["schemas"]["FieldFlag"][];
             /** Title */
             title: string;
             /**
@@ -1875,6 +4852,74 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /** @description The website domain the brand proved it controls, checked daily, with when it was registered (item 74). Null when it has none. It says the brand controls this domain, not that the brand is who its name claims: show the domain itself, never only a badge */
+            verified_domain?: components["schemas"]["VerifiedDomainRead"] | null;
+        };
+        /**
+         * CampaignReportRead
+         * @description Every deal on one campaign, with the proof behind it (item 47).
+         *
+         *     Worked out from the records as of `generated_at`, never stored. Dates are
+         *     Tamil Nadu dates. The same report as a spreadsheet is
+         *     `GET /api/v1/campaigns/{id}/report.csv`.
+         */
+        CampaignReportRead: {
+            /**
+             * Campaign Id
+             * Format: uuid
+             */
+            campaign_id: string;
+            /**
+             * Campaign Type
+             * @enum {string}
+             */
+            campaign_type: "paid" | "barter" | "commission" | "local_business";
+            /** Deals */
+            deals: components["schemas"]["ReportDealRead"][];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "open" | "closed" | "cancelled";
+            /** Title */
+            title: string;
+            totals: components["schemas"]["ReportTotalsRead"];
+        };
+        /**
+         * CampaignSummaryRead
+         * @description One campaign at a glance, for its board and the Campaigns list.
+         *
+         *     `deals_agreed` counts deals agreed and not cancelled; "2 of 6 deals
+         *     finished" is `deals_finished` of `deals_agreed`. `complete` is worked
+         *     out, never stored: closed, at least one deal agreed, every agreed deal
+         *     finished and no memo left unanswered.
+         */
+        CampaignSummaryRead: {
+            applications: components["schemas"]["ApplicationCountsRead"];
+            /**
+             * Campaign Id
+             * Format: uuid
+             */
+            campaign_id: string;
+            /** Complete */
+            complete: boolean;
+            /** Deals Agreed */
+            deals_agreed: number;
+            deals_by_stage: components["schemas"]["DealStageCountsRead"];
+            /** Deals Finished */
+            deals_finished: number;
+            /** Deals Waiting On Brand */
+            deals_waiting_on_brand: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "open" | "closed" | "cancelled";
         };
         /**
          * CampaignUpdate
@@ -1891,6 +4936,8 @@ export interface components {
             campaign_type?: ("paid" | "barter" | "commission" | "local_business") | null;
             /** Cities */
             cities?: string[] | null;
+            /** Deliverable Items */
+            deliverable_items?: components["schemas"]["DeliverableIn"][] | null;
             /** Deliverables */
             deliverables?: string | null;
             /** Description */
@@ -1993,6 +5040,167 @@ export interface components {
              */
             token_base64: string;
         };
+        /** CityCountRead */
+        CityCountRead: {
+            /**
+             * City
+             * @description As most of its creators spell it
+             */
+            city: string;
+            /** Published Creators */
+            published_creators: number;
+        };
+        /**
+         * CityFiguresRead
+         * @description One city's public figures: counts and medians, five or nothing.
+         *
+         *     Every count rests on creators who published their Passport, or on open
+         *     campaigns; nothing comes from a deal. **Null means "not enough to say"
+         *     and must never be shown as zero.**
+         */
+        CityFiguresRead: {
+            /** Asking Prices */
+            asking_prices: components["schemas"]["AskingPriceRead"][];
+            /** City */
+            city: string;
+            /** Creators By Niche */
+            creators_by_niche: components["schemas"]["NicheCountRead"][];
+            /**
+             * Min Count
+             * @description The smallest count any figure is shown for
+             */
+            min_count: number;
+            /** Open Campaigns */
+            open_campaigns: number | null;
+            /** Published Creators */
+            published_creators: number | null;
+        };
+        /**
+         * ConnectionComplete
+         * @description What the platform sent back.
+         */
+        ConnectionComplete: {
+            /** Code */
+            code: string;
+            /** State */
+            state: string;
+        };
+        /**
+         * ConnectionRead
+         * @description One connected account, as its creator sees it. Never its tokens.
+         */
+        ConnectionRead: {
+            /**
+             * Connected At
+             * Format: date-time
+             */
+            connected_at: string;
+            /** Handle */
+            handle: string;
+            /**
+             * Platform
+             * @enum {string}
+             */
+            platform: "instagram" | "youtube";
+            /**
+             * Status
+             * @description `expired` when the platform stopped answering for it: reconnect
+             * @enum {string}
+             */
+            status: "active" | "expired";
+            /** Verified As Of */
+            verified_as_of: string | null;
+            /**
+             * Verified Followers
+             * @description The count the platform itself reported; null if it hides it. Shown beside, never instead of, the figure the creator gave
+             */
+            verified_followers: number | null;
+        };
+        /**
+         * ConnectionStartRead
+         * @description Where to send the creator to sign in to the platform.
+         */
+        ConnectionStartRead: {
+            /**
+             * Authorize Url
+             * @description Open it in the browser or the platform's app. It comes back to our website or app with `code` and `state`, to post to `.../complete`
+             */
+            authorize_url: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+        };
+        /**
+         * ContentItemRead
+         * @description One approved post, with the usage window its accepted memo sealed.
+         */
+        ContentItemRead: {
+            /**
+             * Approved At
+             * Format: date-time
+             */
+            approved_at: string;
+            /**
+             * Auto Approved
+             * @description Approved by the clock, not by the brand
+             */
+            auto_approved: boolean;
+            /**
+             * Campaign Id
+             * Format: uuid
+             */
+            campaign_id: string;
+            /** Campaign Title */
+            campaign_title: string;
+            /**
+             * Content Removed On
+             * @description When the post was found taken down, if it was
+             */
+            content_removed_on: string | null;
+            /**
+             * Content Url
+             * @description Shown as text and opened by the person, never fetched for them
+             */
+            content_url: string | null;
+            /** Creator Handle */
+            creator_handle: string;
+            /**
+             * Creator Id
+             * Format: uuid
+             */
+            creator_id: string;
+            /**
+             * Deal Memo Id
+             * Format: uuid
+             * @description Its deal; the deal's record proves the terms and the approval
+             */
+            deal_memo_id: string;
+            /** Format */
+            format: string;
+            /**
+             * Proof Id
+             * Format: uuid
+             */
+            proof_id: string;
+            /**
+             * Rights State
+             * @description `active`; `lapsing` within 30 days; `lapsed`; or `not_agreed` when the memo states no days
+             * @enum {string}
+             */
+            rights_state: "active" | "lapsing" | "lapsed" | "not_agreed";
+            /**
+             * Rights Until
+             * @description The day those days end, counted from the Tamil Nadu day the work was approved; null if the memo states none. The memo's terms, not a ruling on what the law allows
+             */
+            rights_until: string | null;
+            /**
+             * Usage Rights Days
+             * @description The days of use the accepted memo states; null if it states none
+             */
+            usage_rights_days: number | null;
+        };
         /**
          * CreatorDeliveryRead
          * @description How a creator delivers, from what happened rather than from opinions.
@@ -2043,10 +5251,54 @@ export interface components {
              */
             disclosure_confirmed_share: number | null;
             /**
+             * Distinct Brands
+             * @description How many different brands the completed deals were with. Show it beside the figures: twelve deals with one brand say less than twelve across nine
+             */
+            distinct_brands: number;
+            /**
              * Status
              * @enum {string}
              */
             status: "new_creator_no_history_yet" | "has_delivery_history";
+        };
+        /**
+         * CreatorListIn
+         * @description A list's name, when making or renaming one.
+         */
+        CreatorListIn: {
+            /**
+             * Name
+             * @example Diwali food creators
+             */
+            name: string;
+        };
+        /**
+         * CreatorListRead
+         * @description One of the brand's lists. Private: the creators on it are never told.
+         */
+        CreatorListRead: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Creators
+             * @description How many creators on it you can find today; one who unpublished, left or was withheld, or a block, takes them out of view
+             */
+            creators: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /**
          * CreatorMatchRead
@@ -2079,6 +5331,13 @@ export interface components {
              * @example Coimbatore
              */
             city: string;
+            /**
+             * Date Of Birth
+             * Format: date
+             * @description Used once, to confirm you are 18 or over, and never stored: we keep only when you confirmed it
+             * @example 1999-04-14
+             */
+            date_of_birth: string;
             /**
              * Display Name
              * @example Priya Eats
@@ -2152,6 +5411,126 @@ export interface components {
             languages?: "en"[] | null;
             /** Niches */
             niches?: ("food" | "fashion" | "beauty" | "tech" | "travel" | "fitness" | "education" | "entertainment" | "finance" | "lifestyle")[] | null;
+        };
+        /**
+         * CreatorResponseTimesRead
+         * @description How long brands wait for this creator to answer a memo, and to confirm
+         *     a payment arrived.
+         */
+        CreatorResponseTimesRead: {
+            /**
+             * Creator Id
+             * Format: uuid
+             */
+            creator_id: string;
+            memo_answered: components["schemas"]["ResponseTimeRead"];
+            payment_confirmed: components["schemas"]["ResponseTimeRead"];
+        };
+        /**
+         * CreatorSearchResultRead
+         * @description One creator in a brand's search: enough to decide whether to open the media kit.
+         */
+        CreatorSearchResultRead: {
+            /** Bio */
+            bio: string | null;
+            /**
+             * Booked Until
+             * @description The last day the creator is not taking new work; null if taking work today
+             */
+            booked_until: string | null;
+            /** Channels */
+            channels: components["schemas"]["SearchChannelRead"][];
+            /** City */
+            city: string;
+            /**
+             * Creator Id
+             * Format: uuid
+             */
+            creator_id: string;
+            /** Currency */
+            currency: string;
+            /** Display Name */
+            display_name: string;
+            /**
+             * From Price Paise
+             * @description The cheapest package that answers the search (of the format and platform asked for, if any). Null when the creator lists none
+             */
+            from_price_paise: number | null;
+            /** Handle */
+            handle: string;
+            /**
+             * Member Since
+             * @example 2026-09
+             */
+            member_since: string;
+            /** Niches */
+            niches: string[];
+        };
+        /**
+         * DataExportList
+         * @description The account's newest exports.
+         */
+        DataExportList: {
+            /**
+             * Items
+             * @description At most the 5 newest, newest first: a bound by rule, not paged
+             */
+            items: components["schemas"]["DataExportRead"][];
+        };
+        /**
+         * DataExportRead
+         * @description One export asked for, and where it stands.
+         */
+        DataExportRead: {
+            /** Downloaded At */
+            downloaded_at: string | null;
+            /**
+             * Expires At
+             * @description When an undownloaded file is destroyed; null until ready
+             */
+            expires_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Ready At */
+            ready_at: string | null;
+            /**
+             * Requested At
+             * Format: date-time
+             */
+            requested_at: string;
+            /**
+             * Size Bytes
+             * @description The file's size; null until ready
+             */
+            size_bytes: number | null;
+            /**
+             * Status
+             * @description `preparing`, then `ready` (download it, once, before `expires_at`), then `downloaded`; or `failed`, or `expired` if not downloaded in 24 hours. Ask for a new one after any of the last three.
+             * @enum {string}
+             */
+            status: "preparing" | "failed" | "ready" | "downloaded" | "expired";
+        };
+        /**
+         * DealFeedbackRead
+         * @description A deal's feedback, as one side may see it now.
+         */
+        DealFeedbackRead: {
+            mine: components["schemas"]["FeedbackRead"] | null;
+            /**
+             * Open
+             * @description Whether you may still answer
+             */
+            open: boolean;
+            /** @description The other side's, only once you have both answered or the window has closed */
+            theirs: components["schemas"]["FeedbackRead"] | null;
+            /**
+             * Window Ends At
+             * @description When answers may no longer be given, and are all shown; null until the deal finishes
+             */
+            window_ends_at: string | null;
         };
         /**
          * DealRecordEntryRead
@@ -2300,10 +5679,189 @@ export interface components {
              */
             latest_seal: string | null;
             /**
+             * Notes Unchanged
+             * @description Null when the deal has no notes; otherwise whether every note still matches the fingerprint sealed for it (D-128)
+             */
+            notes_unchanged?: boolean | null;
+            /**
+             * Shipment Unchanged
+             * @description Null when the deal has no shipment; otherwise whether its courier and tracking number still match what was last sealed for them (D-131)
+             */
+            shipment_unchanged?: boolean | null;
+            /**
              * Terms Unchanged Since Accepted
              * @description Null until accepted; then whether today's terms are the accepted ones
              */
             terms_unchanged_since_accepted: boolean | null;
+        };
+        /**
+         * DealStageCountsRead
+         * @description How many deals stand at each stage, worked out as of the request.
+         */
+        DealStageCountsRead: {
+            /** Agreed */
+            agreed: number;
+            /** Cancelled */
+            cancelled: number;
+            /** Declined */
+            declined: number;
+            /** Draft */
+            draft: number;
+            /** Finished */
+            finished: number;
+            /** In Progress */
+            in_progress: number;
+            /** Memo Sent */
+            memo_sent: number;
+            /** Payment */
+            payment: number;
+        };
+        /**
+         * DeletionStatusRead
+         * @description What happened to a deletion Meta asked for.
+         */
+        DeletionStatusRead: {
+            /** Confirmation Code */
+            confirmation_code: string;
+            /**
+             * Platform
+             * @enum {string}
+             */
+            platform: "instagram" | "youtube";
+            /**
+             * Received At
+             * Format: date-time
+             */
+            received_at: string;
+            /**
+             * Removed
+             * @description How many connections it deleted; 0 if we held none
+             */
+            removed: number;
+            /**
+             * Status
+             * @description Done when it was received: every connection named was deleted then
+             * @constant
+             */
+            status: "done";
+        };
+        /**
+         * DeliverableIn
+         * @description One line of what is asked or agreed: "2 Instagram reels".
+         */
+        DeliverableIn: {
+            /**
+             * Format
+             * @description The rate card's own words (D-055); `other` when none fits
+             * @enum {string}
+             */
+            format: "post" | "reel" | "story" | "short" | "video" | "live" | "other";
+            /**
+             * Note
+             * @example 60 seconds, in Tamil
+             */
+            note?: string | null;
+            /**
+             * Platform
+             * @enum {string}
+             */
+            platform: "instagram" | "youtube";
+            /**
+             * Quantity
+             * @default 1
+             * @example 2
+             */
+            quantity: number;
+        };
+        /** DeliverableRead */
+        DeliverableRead: {
+            /**
+             * Format
+             * @enum {string}
+             */
+            format: "post" | "reel" | "story" | "short" | "video" | "live" | "other";
+            /** Note */
+            note: string | null;
+            /**
+             * Platform
+             * @enum {string}
+             */
+            platform: "instagram" | "youtube";
+            /** Quantity */
+            quantity: number;
+        };
+        /**
+         * DeviceIn
+         * @description What this app is, so its owner can tell this session from the others (D-114).
+         *
+         *     Optional, said by the app and never checked: the session list shows it
+         *     beside when and how the session signed in, which no app can choose.
+         */
+        DeviceIn: {
+            /**
+             * Label
+             * @description A name the person will recognise: the phone's model, or the browser and computer
+             * @example Pixel 8
+             * @example Chrome on Windows
+             */
+            label: string;
+            /**
+             * Platform
+             * @enum {string}
+             */
+            platform: "android" | "ios" | "web";
+        };
+        /**
+         * DeviceRead
+         * @description A registered phone. Its token is never returned.
+         */
+        DeviceRead: {
+            /** App Version */
+            app_version: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             * @description Keep it to unregister this phone later
+             */
+            id: string;
+            /**
+             * Last Seen At
+             * Format: date-time
+             */
+            last_seen_at: string;
+            /**
+             * Platform
+             * @enum {string}
+             */
+            platform: "android" | "ios" | "ios_live_activity";
+        };
+        /**
+         * DeviceRegister
+         * @description Register this phone, or refresh it. Send on every app start.
+         */
+        DeviceRegister: {
+            /**
+             * App Version
+             * @example 1.4.0 (212)
+             */
+            app_version?: string | null;
+            /**
+             * Platform
+             * @description `ios_live_activity` for a Live Activity's own push token
+             * @enum {string}
+             */
+            platform: "android" | "ios" | "ios_live_activity";
+            /**
+             * Token
+             * @description The token Firebase (Android) or Apple (iPhone, Live Activity) gave this install. Sent in the body, never a URL, so it reaches no log
+             * @example fMEP0vJqS0Kp1Xz9:APA91bH-example-token-from-firebase-0123456789
+             */
+            token: string;
         };
         /**
          * DisputeClose
@@ -2420,7 +5978,7 @@ export interface components {
         };
         /**
          * ExportFile
-         * @description The file `GET /api/v1/me/export` returns, for the API documentation.
+         * @description The file `POST /api/v1/me/exports/{export_id}/download` returns, for the API docs.
          *
          *     The route builds the file itself so it can offer it as a download, so
          *     FastAPI cannot see this shape on its own. A test checks every real
@@ -2484,12 +6042,154 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /**
+         * FeedbackFiguresRead
+         * @description What the other sides of someone's finished deals said, once revealed.
+         */
+        FeedbackFiguresRead: {
+            /**
+             * Answers
+             * @description How many revealed answers these rest on
+             */
+            answers: number;
+            /**
+             * Brief
+             * @description Average, 1 to 5. Null below three answers: not enough to say, never zero
+             */
+            brief: number | null;
+            /**
+             * Counterparties
+             * @description How many different brands or creators gave them: twelve from one say less than twelve from nine
+             */
+            counterparties: number;
+            /** Easy */
+            easy: number | null;
+            /** Reliability */
+            reliability: number | null;
+        };
+        /**
+         * FeedbackIn
+         * @description One side's answer about the other, once, never changed.
+         */
+        FeedbackIn: {
+            /**
+             * Brief
+             * @description Followed the brief (about a creator), or gave a clear one (about a brand)
+             */
+            brief: number;
+            /**
+             * Easy
+             * @description Easy to work with
+             */
+            easy: number;
+            /** Note */
+            note?: string | null;
+            /**
+             * Reliability
+             * @description Delivered on time (about a creator), or paid as agreed (about a brand)
+             */
+            reliability: number;
+        };
+        /**
+         * FeedbackNoteRead
+         * @description A revealed note about someone, and their own words on the same deal.
+         */
+        FeedbackNoteRead: {
+            /**
+             * Author Side
+             * @enum {string}
+             */
+            author_side: "brand" | "creator";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Note */
+            note: string;
+            /**
+             * Reply
+             * @description What the person it is about said on that deal
+             */
+            reply: string | null;
+            /**
+             * Text Flags
+             * @description Warnings worked out on read: a brand's request for money
+             */
+            readonly text_flags: components["schemas"]["FieldFlag"][];
+        };
+        /**
+         * FeedbackRead
+         * @description One answer, as its writer, or the other side once revealed, reads it.
+         */
+        FeedbackRead: {
+            /**
+             * Author Side
+             * @enum {string}
+             */
+            author_side: "brand" | "creator";
+            /** Brief */
+            brief: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Easy */
+            easy: number;
+            /** Note */
+            note: string | null;
+            /** Reliability */
+            reliability: number;
+            /**
+             * Text Flags
+             * @description Warnings worked out on read: a brand's request for money. Show beside the note
+             */
+            readonly text_flags: components["schemas"]["FieldFlag"][];
+        };
         /** FieldError */
         FieldError: {
             /** Field */
             field: string;
             /** Message */
             message: string;
+        };
+        /**
+         * FieldFlag
+         * @description One warning on one field, for the app to show beside that text.
+         */
+        FieldFlag: {
+            /** Field */
+            field: string;
+            /**
+             * Flag
+             * @description asks_for_money: someone is asked to pay a fee or deposit, which never happens here; phone_number, email, upi_id, messaging_link: contact details before a deal is agreed. Clients must tolerate new values
+             * @enum {string}
+             */
+            flag: "asks_for_money" | "phone_number" | "email" | "upi_id" | "messaging_link";
+        };
+        /**
+         * FounderNumbersRead
+         * @description The founders' weekly numbers, beside the period before them.
+         *
+         *     `docs/SURVIVAL_PLAYBOOK.md` section 4 says what each tells you. Totals
+         *     only: nothing here names or describes a person.
+         */
+        FounderNumbersRead: {
+            /**
+             * As Of
+             * Format: date
+             */
+            as_of: string;
+            /**
+             * City
+             * @description Lower-cased; null means every city
+             */
+            city: string | null;
+            current: components["schemas"]["PeriodNumbersRead"];
+            /** Days */
+            days: number;
+            previous: components["schemas"]["PeriodNumbersRead"];
         };
         /**
          * HealthRead
@@ -2501,6 +6201,148 @@ export interface components {
              * @constant
              */
             status: "ok";
+        };
+        /**
+         * IndexablePassportRead
+         * @description One Passport for the website's sitemap.xml (item 85).
+         */
+        IndexablePassportRead: {
+            /**
+             * Handle
+             * @example priya.eats
+             */
+            handle: string;
+            /**
+             * Last Modified
+             * Format: date-time
+             * @description When what its readers see last changed: the sitemap's lastmod
+             */
+            last_modified: string;
+        };
+        /**
+         * InvitationCreate
+         * @description A brand invites one creator to one of its open campaigns (D-084).
+         */
+        InvitationCreate: {
+            /**
+             * Creator Id
+             * Format: uuid
+             * @description From search or a match
+             */
+            creator_id: string;
+            /** Note */
+            note?: string | null;
+        };
+        /**
+         * InvitationDecline
+         * @description Why a creator said no. A code, so the brand sees it clearly.
+         */
+        InvitationDecline: {
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "timing" | "budget" | "not_a_fit" | "other";
+        };
+        /** InviteCodeRead */
+        InviteCodeRead: {
+            /**
+             * Code
+             * @description Eight characters; no 0, O, 1 or I
+             */
+            code: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * InviteCountsRead
+         * @description How many joined with my code. Counts only, never who (D-080).
+         */
+        InviteCountsRead: {
+            /** Brands */
+            brands: number;
+            /** Creators */
+            creators: number;
+        };
+        /**
+         * KeptKindRead
+         * @description One kind of record kept after the account is deleted.
+         */
+        KeptKindRead: {
+            /**
+             * Kept For Days
+             * @description How many days it is kept after the account is deleted. Null: kept, as the law may require, until a period is set; we do not guess one
+             */
+            kept_for_days: number | null;
+            /**
+             * Kind
+             * @description Clients tolerate kinds they do not know (backend.md section 2)
+             * @enum {string}
+             */
+            kind: "deal_record" | "payment_record" | "dispute" | "proof_file" | "report" | "takedown" | "admin_log";
+            /**
+             * What
+             * @description What it holds, in plain words, safe to show
+             */
+            what: string;
+        };
+        /** LiftTakedownIn */
+        LiftTakedownIn: {
+            /**
+             * Note
+             * @description Why: the order withdrawn or set aside, or the report dismissed
+             */
+            note: string;
+        };
+        /**
+         * ListedCreatorRead
+         * @description A creator on a list: search's facts, how they deliver, and when you saved them.
+         */
+        ListedCreatorRead: {
+            /** Bio */
+            bio: string | null;
+            /**
+             * Booked Until
+             * @description The last day the creator is not taking new work; null if taking work today
+             */
+            booked_until: string | null;
+            /** Channels */
+            channels: components["schemas"]["SearchChannelRead"][];
+            /** City */
+            city: string;
+            /**
+             * Creator Id
+             * Format: uuid
+             */
+            creator_id: string;
+            /** Currency */
+            currency: string;
+            /** @description What happened on their deals, not reviews; null shares mean not enough to say, never zero */
+            delivery: components["schemas"]["CreatorDeliveryRead"];
+            /** Display Name */
+            display_name: string;
+            /**
+             * From Price Paise
+             * @description The cheapest package that answers the search (of the format and platform asked for, if any). Null when the creator lists none
+             */
+            from_price_paise: number | null;
+            /** Handle */
+            handle: string;
+            /**
+             * Member Since
+             * @example 2026-09
+             */
+            member_since: string;
+            /** Niches */
+            niches: string[];
+            /**
+             * Saved At
+             * Format: date-time
+             */
+            saved_at: string;
         };
         /** LoggedOutAll */
         LoggedOutAll: {
@@ -2540,10 +6382,55 @@ export interface components {
         /** LogoutIn */
         LogoutIn: {
             /**
+             * Device Token
+             * @description This phone's push token, to stop its notifications too
+             */
+            device_token?: string | null;
+            /**
              * Refresh Token
              * @description The refresh token from a login or an earlier refresh
              */
             refresh_token: string;
+        };
+        /**
+         * LookAlikeBrandRead
+         * @description A brand whose name looks like a protected brand's, as an admin sees it.
+         */
+        LookAlikeBrandRead: {
+            /**
+             * Account Id
+             * Format: uuid
+             * @description To open the account at /api/v1/admin/accounts/{id}
+             */
+            account_id: string;
+            /**
+             * Brand Id
+             * Format: uuid
+             */
+            brand_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Mixed Script */
+            mixed_script: boolean;
+            /** Name */
+            name: string;
+            /** Resembles Domain */
+            resembles_domain: string | null;
+            /** Resembles Name */
+            resembles_name: string | null;
+        };
+        /** LookAlikeListRead */
+        LookAlikeListRead: {
+            /** Items */
+            items: components["schemas"]["LookAlikeBrandRead"][];
+            /**
+             * Truncated
+             * @description True when more than the 100 listed are flagged
+             */
+            truncated: boolean;
         };
         /**
          * MarkPaidRequest
@@ -2588,6 +6475,12 @@ export interface components {
              */
             accepted_deals: number;
             /**
+             * Booked Until
+             * @description The last day the creator is not taking new work, or null if they are taking work today. Creators taking work come first
+             * @example null
+             */
+            booked_until?: string | null;
+            /**
              * City
              * @description The creator's city, which is one the campaign named
              * @example Madurai
@@ -2628,6 +6521,11 @@ export interface components {
             channels: components["schemas"]["ChannelRead"][];
             /** City */
             city: string;
+            /**
+             * Connected Accounts
+             * @description Accounts the creator connected (D-134), with the count the platform itself reported. Show it beside the channel's stated count, never instead: bought followers inflate both
+             */
+            connected_accounts?: components["schemas"]["VerifiedConnectionRead"][];
             /**
              * Creator Id
              * Format: uuid
@@ -2672,6 +6570,11 @@ export interface components {
             /** Content Due On */
             content_due_on?: string | null;
             /**
+             * Deliverable Items
+             * @description The deliverables as a list (D-127). Left out, the campaign's own list is copied; an empty list means none
+             */
+            deliverable_items?: components["schemas"]["DeliverableIn"][] | null;
+            /**
              * Deliverables
              * @example 3 Instagram reels, 1 story set
              */
@@ -2701,6 +6604,11 @@ export interface components {
             /** Accepted At */
             accepted_at: string | null;
             /**
+             * Agreed Amount Paise
+             * @description The figure both sides agreed through a counter-offer on the application (item 44), in paise; null when none was. It pre-filled `fee_amount_paise`. When the two differ, show both: the creator accepts the memo's fee, so they see the change before they do
+             */
+            agreed_amount_paise: number | null;
+            /**
              * Application Id
              * Format: uuid
              */
@@ -2713,6 +6621,11 @@ export interface components {
             cancellation_kind: ("withdrawn_early" | "cancelled_by_brand" | "cancelled_by_creator") | null;
             /** Cancelled At */
             cancelled_at: string | null;
+            /**
+             * Change Request Message
+             * @description What the creator last asked to change, in their words; kept after the memo is sent again. Null until a request, and on requests made before 12 October 2026
+             */
+            change_request_message: string | null;
             /** Content Due On */
             content_due_on: string | null;
             /**
@@ -2726,6 +6639,16 @@ export interface components {
              * @constant
              */
             currency: "INR";
+            /**
+             * Declined At
+             * @description When the creator declined. Null otherwise, and on memos declined before 12 October 2026, when it was first kept
+             */
+            declined_at: string | null;
+            /**
+             * Deliverable Items
+             * @description The deliverables as a list, in order (D-127). Sealed with the terms from 25 October 2026; empty on memos made before
+             */
+            deliverable_items: components["schemas"]["DeliverableRead"][];
             /** Deliverables */
             deliverables: string;
             /** Disclosure Required */
@@ -2751,6 +6674,11 @@ export interface components {
              */
             status: "draft" | "sent" | "change_requested" | "accepted" | "declined" | "cancelled";
             /**
+             * Text Flags
+             * @description Warnings on the free text above, worked out on every read: a request for money from a creator, or contact details before a deal is agreed (item 60). Show each beside its field; never hide the text
+             */
+            readonly text_flags: components["schemas"]["FieldFlag"][];
+            /**
              * Updated At
              * Format: date-time
              */
@@ -2771,6 +6699,8 @@ export interface components {
             cancellation_fee_paise?: number | null;
             /** Content Due On */
             content_due_on?: string | null;
+            /** Deliverable Items */
+            deliverable_items?: components["schemas"]["DeliverableIn"][] | null;
             /** Deliverables */
             deliverables?: string | null;
             /** Disclosure Required */
@@ -2785,6 +6715,164 @@ export interface components {
             usage_rights_days?: number | null;
         };
         /**
+         * MemoWithStageRead
+         * @description A memo, with where the deal stands and whose move it is (D-076).
+         *
+         *     Worked out from the memo, its proof and its payment as of the request,
+         *     never stored. The five stages a deal passes through are `memo_sent`,
+         *     `agreed`, `in_progress`, `payment`, `finished`; `draft`, `declined` and
+         *     `cancelled` sit outside them. A barter deal is `finished` once its work
+         *     is approved; a paid one only when the creator confirms the money arrived.
+         */
+        MemoWithStageRead: {
+            /** Accepted At */
+            accepted_at: string | null;
+            /**
+             * Agreed Amount Paise
+             * @description The figure both sides agreed through a counter-offer on the application (item 44), in paise; null when none was. It pre-filled `fee_amount_paise`. When the two differ, show both: the creator accepts the memo's fee, so they see the change before they do
+             */
+            agreed_amount_paise: number | null;
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            /** Approval Window Days */
+            approval_window_days: number;
+            /** Cancellation Fee Paise */
+            cancellation_fee_paise: number;
+            /** Cancellation Kind */
+            cancellation_kind: ("withdrawn_early" | "cancelled_by_brand" | "cancelled_by_creator") | null;
+            /** Cancelled At */
+            cancelled_at: string | null;
+            /**
+             * Change Request Message
+             * @description What the creator last asked to change, in their words; kept after the memo is sent again. Null until a request, and on requests made before 12 October 2026
+             */
+            change_request_message: string | null;
+            /** Content Due On */
+            content_due_on: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Currency
+             * @default INR
+             * @constant
+             */
+            currency: "INR";
+            /**
+             * Declined At
+             * @description When the creator declined. Null otherwise, and on memos declined before 12 October 2026, when it was first kept
+             */
+            declined_at: string | null;
+            /**
+             * Deliverable Items
+             * @description The deliverables as a list, in order (D-127). Sealed with the terms from 25 October 2026; empty on memos made before
+             */
+            deliverable_items: components["schemas"]["DeliverableRead"][];
+            /** Deliverables */
+            deliverables: string;
+            /** Disclosure Required */
+            disclosure_required: boolean;
+            /** Extra Terms */
+            extra_terms: string | null;
+            /** Fee Amount Paise */
+            fee_amount_paise: number | null;
+            /** Has Open Dispute */
+            has_open_dispute: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Payment Due Days */
+            payment_due_days: number;
+            /** Revision Count */
+            revision_count: number;
+            /** Sent At */
+            sent_at: string | null;
+            /**
+             * Stage
+             * @enum {string}
+             */
+            stage: "draft" | "memo_sent" | "agreed" | "in_progress" | "payment" | "finished" | "declined" | "cancelled";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "sent" | "change_requested" | "accepted" | "declined" | "cancelled";
+            /**
+             * Text Flags
+             * @description Warnings on the free text above, worked out on every read: a request for money from a creator, or contact details before a deal is agreed (item 60). Show each beside its field; never hide the text
+             */
+            readonly text_flags: components["schemas"]["FieldFlag"][];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Usage Rights Days */
+            usage_rights_days: number | null;
+            /**
+             * Waiting On
+             * @description The side whose move it is; null once the deal has ended
+             */
+            waiting_on: ("brand" | "creator") | null;
+            /** Work Started At */
+            work_started_at: string | null;
+        };
+        /**
+         * MetaDeletionRead
+         * @description Meta's required answer: where the status is, and our confirmation code.
+         */
+        MetaDeletionRead: {
+            /** Confirmation Code */
+            confirmation_code: string;
+            /** Url */
+            url: string;
+        };
+        /** MisreadMark */
+        MisreadMark: {
+            /**
+             * Note
+             * @description What is wrong, in the creator's words
+             * @example Reach is 31,040, not 31,400.
+             */
+            note: string;
+        };
+        /** NameClearanceIn */
+        NameClearanceIn: {
+            /**
+             * Note
+             * @description What you checked and why the name is genuine. Written to the admin log
+             * @example Spoke to the owner; a Coimbatore bakery since 2011, no relation to Nykaa.
+             */
+            note: string;
+        };
+        /**
+         * NameClearanceRead
+         * @description A brand's name, and whether an admin cleared it as it stands now.
+         */
+        NameClearanceRead: {
+            /**
+             * Brand Id
+             * Format: uuid
+             */
+            brand_id: string;
+            /** Name */
+            name: string;
+            /**
+             * Name Cleared
+             * @description True while the brand keeps the name that was cleared
+             */
+            name_cleared: boolean;
+            /** Name Cleared At */
+            name_cleared_at: string | null;
+        };
+        /**
          * NarrowedTo
          * @description Which filters the figures actually used. Null means "all of them".
          */
@@ -2793,6 +6881,136 @@ export interface components {
             city: string | null;
             /** Niche */
             niche: ("food" | "fashion" | "beauty" | "tech" | "travel" | "fitness" | "education" | "entertainment" | "finance" | "lifestyle") | null;
+        };
+        /** NicheCountRead */
+        NicheCountRead: {
+            /**
+             * Creators
+             * @description Null below five: not enough to say
+             */
+            creators: number | null;
+            /**
+             * Niche
+             * @enum {string}
+             */
+            niche: "food" | "fashion" | "beauty" | "tech" | "travel" | "fitness" | "education" | "entertainment" | "finance" | "lifestyle";
+        };
+        /**
+         * NoteCreate
+         * @description A note one side writes on the deal, sealed onto its record.
+         */
+        NoteCreate: {
+            /**
+             * Body
+             * @example Can the second reel go up on Saturday instead of Friday?
+             */
+            body: string;
+        };
+        /**
+         * NoteRead
+         * @description A note, as both sides read it. It never changes once written.
+         */
+        NoteRead: {
+            /**
+             * Author Side
+             * @description Who wrote it
+             * @enum {string}
+             */
+            author_side: "brand" | "creator";
+            /** Body */
+            body: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Deal Memo Id
+             * Format: uuid
+             */
+            deal_memo_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Text Flags
+             * @description Warnings on the note, worked out on every read: a request for money from a creator. The two are matched, so contact details are not a warning. Show each beside the note; never hide it
+             */
+            readonly text_flags: components["schemas"]["FieldFlag"][];
+        };
+        /**
+         * NotificationPreferencesIn
+         * @description The whole set of preferences. Saving replaces them all, so a retry is safe.
+         */
+        NotificationPreferencesIn: {
+            /**
+             * Digest
+             * @description `daily` collects every non-urgent notification into one a day
+             * @enum {string}
+             */
+            digest: "off" | "daily";
+            /**
+             * Digest Hour
+             * @description The digest's hour, Tamil Nadu time
+             */
+            digest_hour: number;
+            /**
+             * Muted Types
+             * @description Kept in the app only, never sent. Urgent types are refused.
+             */
+            muted_types: ("application_received" | "application_withdrawn" | "application_shortlisted" | "application_accepted" | "application_rejected" | "memo_sent" | "memo_accepted" | "memo_declined" | "memo_change_requested" | "memo_cancelled" | "proof_submitted" | "proof_approved" | "proof_auto_approved" | "proof_revision_requested" | "payment_marked_paid" | "payment_confirmed" | "invitation_received" | "invitation_accepted" | "invitation_declined" | "invitation_withdrawn" | "report_resolved" | "report_received" | "report_due_soon" | "report_overdue" | "content_withheld" | "content_restored" | "admin_signed_in" | "admin_second_factor_refused" | "admin_second_factor_changed" | "upi_change_pending" | "upi_change_cancelled" | "data_exported" | "logged_out_everywhere" | "phone_change_requested" | "phone_change_cancelled" | "phone_changed" | "phone_change_failed" | "data_export_ready" | "data_export_failed" | "passkey_added" | "passkey_removed" | "passkey_reset_requested" | "passkey_reset_cancelled" | "passkey_only_changed" | "session_ended" | "deletion_requested" | "deletion_cancelled" | "deletion_held_by_deals" | "offer_received" | "offer_accepted" | "offer_declined" | "offer_withdrawn" | "note_added" | "campaign_alert" | "product_shipped" | "product_received" | "connection_expired" | "feedback_received" | "agent_token_created")[];
+            /**
+             * Quiet From
+             * @description A time of day in Tamil Nadu, to the minute (`22:00`). Both ends or neither; a window may cross midnight.
+             * @example 22:00
+             */
+            quiet_from: string | null;
+            /**
+             * Quiet Until
+             * @description A time of day in Tamil Nadu, to the minute (`22:00`). Both ends or neither; a window may cross midnight.
+             * @example 08:00
+             */
+            quiet_until: string | null;
+        };
+        /**
+         * NotificationPreferencesRead
+         * @description How this person is told things outside the app.
+         *
+         *     The in-app list keeps every notification whatever is set here. The types
+         *     in `always_sent` arrive at once whatever is set, because a deadline runs
+         *     against the reader.
+         */
+        NotificationPreferencesRead: {
+            /** Always Sent */
+            always_sent: ("application_received" | "application_withdrawn" | "application_shortlisted" | "application_accepted" | "application_rejected" | "memo_sent" | "memo_accepted" | "memo_declined" | "memo_change_requested" | "memo_cancelled" | "proof_submitted" | "proof_approved" | "proof_auto_approved" | "proof_revision_requested" | "payment_marked_paid" | "payment_confirmed" | "invitation_received" | "invitation_accepted" | "invitation_declined" | "invitation_withdrawn" | "report_resolved" | "report_received" | "report_due_soon" | "report_overdue" | "content_withheld" | "content_restored" | "admin_signed_in" | "admin_second_factor_refused" | "admin_second_factor_changed" | "upi_change_pending" | "upi_change_cancelled" | "data_exported" | "logged_out_everywhere" | "phone_change_requested" | "phone_change_cancelled" | "phone_changed" | "phone_change_failed" | "data_export_ready" | "data_export_failed" | "passkey_added" | "passkey_removed" | "passkey_reset_requested" | "passkey_reset_cancelled" | "passkey_only_changed" | "session_ended" | "deletion_requested" | "deletion_cancelled" | "deletion_held_by_deals" | "offer_received" | "offer_accepted" | "offer_declined" | "offer_withdrawn" | "note_added" | "campaign_alert" | "product_shipped" | "product_received" | "connection_expired" | "feedback_received" | "agent_token_created")[];
+            /**
+             * Digest
+             * @enum {string}
+             */
+            digest: "off" | "daily";
+            /** Digest Hour */
+            digest_hour: number;
+            /**
+             * Is Default
+             * @description True until the person saves their own
+             */
+            is_default: boolean;
+            /** Muted Types */
+            muted_types: ("application_received" | "application_withdrawn" | "application_shortlisted" | "application_accepted" | "application_rejected" | "memo_sent" | "memo_accepted" | "memo_declined" | "memo_change_requested" | "memo_cancelled" | "proof_submitted" | "proof_approved" | "proof_auto_approved" | "proof_revision_requested" | "payment_marked_paid" | "payment_confirmed" | "invitation_received" | "invitation_accepted" | "invitation_declined" | "invitation_withdrawn" | "report_resolved" | "report_received" | "report_due_soon" | "report_overdue" | "content_withheld" | "content_restored" | "admin_signed_in" | "admin_second_factor_refused" | "admin_second_factor_changed" | "upi_change_pending" | "upi_change_cancelled" | "data_exported" | "logged_out_everywhere" | "phone_change_requested" | "phone_change_cancelled" | "phone_changed" | "phone_change_failed" | "data_export_ready" | "data_export_failed" | "passkey_added" | "passkey_removed" | "passkey_reset_requested" | "passkey_reset_cancelled" | "passkey_only_changed" | "session_ended" | "deletion_requested" | "deletion_cancelled" | "deletion_held_by_deals" | "offer_received" | "offer_accepted" | "offer_declined" | "offer_withdrawn" | "note_added" | "campaign_alert" | "product_shipped" | "product_received" | "connection_expired" | "feedback_received" | "agent_token_created")[];
+            /**
+             * Quiet From
+             * @description HH:MM, Tamil Nadu time
+             */
+            quiet_from: string | null;
+            /**
+             * Quiet Until
+             * @description HH:MM, Tamil Nadu time
+             */
+            quiet_until: string | null;
+            /** Saved At */
+            saved_at: string | null;
         };
         /**
          * NotificationRead
@@ -2822,9 +7040,70 @@ export interface components {
              * Notification Type
              * @enum {string}
              */
-            notification_type: "application_received" | "application_withdrawn" | "application_shortlisted" | "application_accepted" | "application_rejected" | "memo_sent" | "memo_accepted" | "memo_declined" | "memo_change_requested" | "memo_cancelled" | "proof_submitted" | "proof_approved" | "proof_auto_approved" | "proof_revision_requested" | "payment_marked_paid" | "payment_confirmed";
+            notification_type: "application_received" | "application_withdrawn" | "application_shortlisted" | "application_accepted" | "application_rejected" | "memo_sent" | "memo_accepted" | "memo_declined" | "memo_change_requested" | "memo_cancelled" | "proof_submitted" | "proof_approved" | "proof_auto_approved" | "proof_revision_requested" | "payment_marked_paid" | "payment_confirmed" | "invitation_received" | "invitation_accepted" | "invitation_declined" | "invitation_withdrawn" | "report_resolved" | "report_received" | "report_due_soon" | "report_overdue" | "content_withheld" | "content_restored" | "admin_signed_in" | "admin_second_factor_refused" | "admin_second_factor_changed" | "upi_change_pending" | "upi_change_cancelled" | "data_exported" | "logged_out_everywhere" | "phone_change_requested" | "phone_change_cancelled" | "phone_changed" | "phone_change_failed" | "data_export_ready" | "data_export_failed" | "passkey_added" | "passkey_removed" | "passkey_reset_requested" | "passkey_reset_cancelled" | "passkey_only_changed" | "session_ended" | "deletion_requested" | "deletion_cancelled" | "deletion_held_by_deals" | "offer_received" | "offer_accepted" | "offer_declined" | "offer_withdrawn" | "note_added" | "campaign_alert" | "product_shipped" | "product_received" | "connection_expired" | "feedback_received" | "agent_token_created";
             /** Read At */
             read_at: string | null;
+        };
+        /**
+         * OfferCreate
+         * @description A figure named on a waiting application, by either side.
+         */
+        OfferCreate: {
+            /**
+             * Amount Paise
+             * @description Whole paise, e.g. 500000 is Rs 5,000
+             */
+            amount_paise: number;
+            /** Note */
+            note?: string | null;
+        };
+        /**
+         * OfferRead
+         * @description One offer, and how it was answered.
+         */
+        OfferRead: {
+            /** Amount Paise */
+            amount_paise: number;
+            /** Answered At */
+            answered_at: string | null;
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            /**
+             * Currency
+             * @constant
+             */
+            currency: "INR";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Made At
+             * Format: date-time
+             */
+            made_at: string;
+            /** Note */
+            note: string | null;
+            /**
+             * Outcome
+             * @description Null while it waits for the other side. `replaced`: they answered with an offer of their own. `withdrawn`: taken back, or closed when the application ended. Clients tolerate outcomes they do not know
+             */
+            outcome: ("accepted" | "declined" | "replaced" | "withdrawn") | null;
+            /**
+             * Side
+             * @description Who offered it
+             * @enum {string}
+             */
+            side: "brand" | "creator";
+            /**
+             * Text Flags
+             * @description Warnings on the note, worked out on every read: a request for money from a creator, or contact details before a deal is agreed. Show each beside the note; never hide it
+             */
+            readonly text_flags: components["schemas"]["FieldFlag"][];
         };
         /** OtpRequestAccepted */
         OtpRequestAccepted: {
@@ -2845,12 +7124,16 @@ export interface components {
         };
         /** OtpVerifyIn */
         OtpVerifyIn: {
+            /** @description Optional, and read only when this login creates the account */
+            arrival?: components["schemas"]["ArrivalIn"] | null;
             /**
              * Code
              * @description The 6-digit code sent to the phone
              * @example 042917
              */
             code: string;
+            /** @description Optional: what this app is, shown in the person's list of sessions (`GET /api/v1/me/sessions`) */
+            device?: components["schemas"]["DeviceIn"] | null;
             /**
              * Phone
              * @description Indian mobile number, stored as +91XXXXXXXXXX. Send it in that form. Spaces, dashes and brackets, and a leading +91, 91 or 0, are also accepted and normalised away.
@@ -2859,11 +7142,11 @@ export interface components {
             phone: string;
             /**
              * Role
-             * @description Which app is logging in
+             * @description Which app is logging in. `admin` is always answered as a wrong code: admins log in with two factors at /api/v1/auth/admin/login
              * @example creator
              * @enum {string}
              */
-            role: "brand" | "creator";
+            role: "brand" | "creator" | "admin";
         };
         /**
          * PackageCreate
@@ -2960,10 +7243,60 @@ export interface components {
             /** Usage Rights Days */
             usage_rights_days?: number | null;
         };
+        /** Page[AdminActionRead] */
+        Page_AdminActionRead_: {
+            /** Items */
+            items: components["schemas"]["AdminActionRead"][];
+            /**
+             * Next Cursor
+             * @description Pass as ?cursor= to get the next page
+             */
+            next_cursor?: string | null;
+        };
+        /** Page[AdminReportRead] */
+        Page_AdminReportRead_: {
+            /** Items */
+            items: components["schemas"]["AdminReportRead"][];
+            /**
+             * Next Cursor
+             * @description Pass as ?cursor= to get the next page
+             */
+            next_cursor?: string | null;
+        };
+        /** Page[AdminTakedownRead] */
+        Page_AdminTakedownRead_: {
+            /** Items */
+            items: components["schemas"]["AdminTakedownRead"][];
+            /**
+             * Next Cursor
+             * @description Pass as ?cursor= to get the next page
+             */
+            next_cursor?: string | null;
+        };
+        /** Page[AgentTokenRead] */
+        Page_AgentTokenRead_: {
+            /** Items */
+            items: components["schemas"]["AgentTokenRead"][];
+            /**
+             * Next Cursor
+             * @description Pass as ?cursor= to get the next page
+             */
+            next_cursor?: string | null;
+        };
         /** Page[ApplicationRead] */
         Page_ApplicationRead_: {
             /** Items */
             items: components["schemas"]["ApplicationRead"][];
+            /**
+             * Next Cursor
+             * @description Pass as ?cursor= to get the next page
+             */
+            next_cursor?: string | null;
+        };
+        /** Page[BlockRead] */
+        Page_BlockRead_: {
+            /** Items */
+            items: components["schemas"]["BlockRead"][];
             /**
              * Next Cursor
              * @description Pass as ?cursor= to get the next page
@@ -2980,10 +7313,70 @@ export interface components {
              */
             next_cursor?: string | null;
         };
-        /** Page[MemoRead] */
-        Page_MemoRead_: {
+        /** Page[ContentItemRead] */
+        Page_ContentItemRead_: {
             /** Items */
-            items: components["schemas"]["MemoRead"][];
+            items: components["schemas"]["ContentItemRead"][];
+            /**
+             * Next Cursor
+             * @description Pass as ?cursor= to get the next page
+             */
+            next_cursor?: string | null;
+        };
+        /** Page[CreatorSearchResultRead] */
+        Page_CreatorSearchResultRead_: {
+            /** Items */
+            items: components["schemas"]["CreatorSearchResultRead"][];
+            /**
+             * Next Cursor
+             * @description Pass as ?cursor= to get the next page
+             */
+            next_cursor?: string | null;
+        };
+        /** Page[FeedbackNoteRead] */
+        Page_FeedbackNoteRead_: {
+            /** Items */
+            items: components["schemas"]["FeedbackNoteRead"][];
+            /**
+             * Next Cursor
+             * @description Pass as ?cursor= to get the next page
+             */
+            next_cursor?: string | null;
+        };
+        /** Page[IndexablePassportRead] */
+        Page_IndexablePassportRead_: {
+            /** Items */
+            items: components["schemas"]["IndexablePassportRead"][];
+            /**
+             * Next Cursor
+             * @description Pass as ?cursor= to get the next page
+             */
+            next_cursor?: string | null;
+        };
+        /** Page[ListedCreatorRead] */
+        Page_ListedCreatorRead_: {
+            /** Items */
+            items: components["schemas"]["ListedCreatorRead"][];
+            /**
+             * Next Cursor
+             * @description Pass as ?cursor= to get the next page
+             */
+            next_cursor?: string | null;
+        };
+        /** Page[MemoWithStageRead] */
+        Page_MemoWithStageRead_: {
+            /** Items */
+            items: components["schemas"]["MemoWithStageRead"][];
+            /**
+             * Next Cursor
+             * @description Pass as ?cursor= to get the next page
+             */
+            next_cursor?: string | null;
+        };
+        /** Page[NoteRead] */
+        Page_NoteRead_: {
+            /** Items */
+            items: components["schemas"]["NoteRead"][];
             /**
              * Next Cursor
              * @description Pass as ?cursor= to get the next page
@@ -2999,6 +7392,323 @@ export interface components {
              * @description Pass as ?cursor= to get the next page
              */
             next_cursor?: string | null;
+        };
+        /** Page[PaymentListItem] */
+        Page_PaymentListItem_: {
+            /** Items */
+            items: components["schemas"]["PaymentListItem"][];
+            /**
+             * Next Cursor
+             * @description Pass as ?cursor= to get the next page
+             */
+            next_cursor?: string | null;
+        };
+        /** Page[ReportRead] */
+        Page_ReportRead_: {
+            /** Items */
+            items: components["schemas"]["ReportRead"][];
+            /**
+             * Next Cursor
+             * @description Pass as ?cursor= to get the next page
+             */
+            next_cursor?: string | null;
+        };
+        /** Page[SessionRead] */
+        Page_SessionRead_: {
+            /** Items */
+            items: components["schemas"]["SessionRead"][];
+            /**
+             * Next Cursor
+             * @description Pass as ?cursor= to get the next page
+             */
+            next_cursor?: string | null;
+        };
+        /** Page[TakedownRead] */
+        Page_TakedownRead_: {
+            /** Items */
+            items: components["schemas"]["TakedownRead"][];
+            /**
+             * Next Cursor
+             * @description Pass as ?cursor= to get the next page
+             */
+            next_cursor?: string | null;
+        };
+        /**
+         * PasskeyCreate
+         * @description A new passkey: the phone's answer to the sign-up challenge, and a name.
+         */
+        PasskeyCreate: {
+            /**
+             * Credential
+             * @description The passkey's answer, exactly as `navigator.credentials` (or the phone's credential manager) gives it, in WebAuthn's JSON form
+             */
+            credential: {
+                [key: string]: unknown;
+            };
+            /**
+             * Name
+             * @description A name you will recognise it by
+             * @example My phone
+             */
+            name: string;
+        };
+        /**
+         * PasskeyLoginIn
+         * @description A passkey's answer to a login challenge.
+         */
+        PasskeyLoginIn: {
+            /**
+             * Credential
+             * @description The passkey's answer, exactly as `navigator.credentials` (or the phone's credential manager) gives it, in WebAuthn's JSON form
+             */
+            credential: {
+                [key: string]: unknown;
+            };
+            /** @description Optional: what this app is, shown in the person's list of sessions (`GET /api/v1/me/sessions`) */
+            device?: components["schemas"]["DeviceIn"] | null;
+        };
+        /** PasskeyOnlySet */
+        PasskeyOnlySet: {
+            /**
+             * Enabled
+             * @description True: only a passkey signs you in. False: a phone code does too.
+             */
+            enabled: boolean;
+        };
+        /**
+         * PasskeyRead
+         * @description One of your passkeys, as you can recognise it.
+         */
+        PasskeyRead: {
+            /**
+             * Aaguid
+             * Format: uuid
+             * @description Which kind of authenticator made it (a password manager, a security key), as it says; never who you are
+             */
+            aaguid: string;
+            /**
+             * Backup Eligible
+             * @description Whether it may sync to your other devices
+             */
+            backup_eligible: boolean;
+            /**
+             * Backup State
+             * @description Whether it is synced now
+             */
+            backup_state: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Last Used At */
+            last_used_at: string | null;
+            /** Name */
+            name: string;
+        };
+        /** PasskeyRename */
+        PasskeyRename: {
+            /**
+             * Name
+             * @description A name you will recognise it by
+             * @example My phone
+             */
+            name: string;
+        };
+        /**
+         * PasskeyResetIn
+         * @description Your number, and a login code sent to it.
+         */
+        PasskeyResetIn: {
+            /**
+             * Code
+             * @description The 6-digit code sent to the phone
+             * @example 042917
+             */
+            code: string;
+            /**
+             * Phone
+             * @description Indian mobile number, stored as +91XXXXXXXXXX. Send it in that form. Spaces, dashes and brackets, and a leading +91, 91 or 0, are also accepted and normalised away.
+             * @example +919876543210
+             */
+            phone: string;
+        };
+        /**
+         * PasskeyResetRead
+         * @description A reset of your passkeys, waiting.
+         */
+        PasskeyResetRead: {
+            /**
+             * Requested At
+             * Format: date-time
+             */
+            requested_at: string;
+            /**
+             * Takes Effect At
+             * Format: date-time
+             * @description When every passkey is removed, 7 days after it was asked for. Any sign-in with a passkey before then cancels it.
+             */
+            takes_effect_at: string;
+        };
+        /**
+         * PasskeysRead
+         * @description Your passkeys, whether only they sign you in, and a reset waiting.
+         */
+        PasskeysRead: {
+            /**
+             * Items
+             * @description Every passkey, oldest first: at most 10, a bound by rule
+             */
+            items: components["schemas"]["PasskeyRead"][];
+            /**
+             * Passkey Only
+             * @description When true, a phone code no longer signs you in
+             */
+            passkey_only: boolean;
+            reset: components["schemas"]["PasskeyResetRead"] | null;
+        };
+        /**
+         * PayDetailsRead
+         * @description What the brand needs to pay the creator directly, by UPI.
+         *
+         *     `pay_link` opens the brand's own UPI app with everything filled in; the
+         *     brand checks the name the app shows (the bank's, not ours) and approves
+         *     with its PIN. NicheConnect TN never receives the money. `pay_link` is
+         *     null when the creator has added no UPI ID, or when the amount is above
+         *     what UPI allows between people in a day, and `unavailable_reason` says
+         *     which: pay by bank transfer instead.
+         */
+        PayDetailsRead: {
+            /** Amount Paise */
+            amount_paise: number;
+            /**
+             * Currency
+             * @default INR
+             * @constant
+             */
+            currency: "INR";
+            /**
+             * Pay Link
+             * @description A upi://pay link; render it as a button, or as a QR code
+             */
+            pay_link: string | null;
+            /**
+             * Payee Name
+             * @description The creator's display name
+             */
+            payee_name: string;
+            /** Unavailable Reason */
+            unavailable_reason: ("no_upi_id" | "above_upi_limit") | null;
+            /** Upi Id */
+            upi_id: string | null;
+            /**
+             * Upi Id Changed Recently
+             * @description True when the UPI ID was set in the last 24 hours. Worth confirming with the creator before paying: a changed ID is how payment fraud usually starts.
+             */
+            upi_id_changed_recently: boolean;
+            /**
+             * Upi Id Set At
+             * @description When the creator last set their UPI ID
+             */
+            upi_id_set_at: string | null;
+        };
+        /** PaymentBucketRead */
+        PaymentBucketRead: {
+            /** Amount Paise */
+            amount_paise: number;
+            /** Count */
+            count: number;
+            /**
+             * Currency
+             * @default INR
+             */
+            currency: string;
+        };
+        /**
+         * PaymentListItem
+         * @description A payment record plus the deal it belongs to, so a list needs no
+         *     second call per row.
+         */
+        PaymentListItem: {
+            /** Amount Paise */
+            amount_paise: number;
+            /**
+             * Brand Id
+             * Format: uuid
+             */
+            brand_id: string;
+            /** Brand Name */
+            brand_name: string;
+            /**
+             * Campaign Id
+             * Format: uuid
+             */
+            campaign_id: string;
+            /** Campaign Title */
+            campaign_title: string;
+            /** Confirmed At */
+            confirmed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Creator Display Name */
+            creator_display_name: string;
+            /** Creator Handle */
+            creator_handle: string;
+            /**
+             * Creator Id
+             * Format: uuid
+             */
+            creator_id: string;
+            /**
+             * Currency
+             * @default INR
+             */
+            currency: string;
+            /** Days Overdue */
+            days_overdue: number;
+            /**
+             * Deal Memo Id
+             * Format: uuid
+             */
+            deal_memo_id: string;
+            /**
+             * Due On
+             * Format: date
+             */
+            due_on: string;
+            /** Has Open Dispute */
+            has_open_dispute: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Marked Paid At */
+            marked_paid_at: string | null;
+            /** Method */
+            method: ("upi" | "bank_transfer" | "cash") | null;
+            /** Reference */
+            reference: string | null;
+            /** Reference Auto Matchable */
+            reference_auto_matchable: boolean;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "due" | "late" | "unpaid" | "paid" | "unconfirmed" | "confirmed";
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /**
          * PaymentRead
@@ -3062,6 +7772,179 @@ export interface components {
             updated_at: string;
         };
         /**
+         * PaymentTotalsRead
+         * @description How many payments, and how much, in each view, as of `as_of`.
+         *
+         *     `overdue` is the part of `to_pay` past its due date. It is always
+         *     returned, zero included, so a screen can never hide it.
+         */
+        PaymentTotalsRead: {
+            /**
+             * As Of
+             * Format: date
+             */
+            as_of: string;
+            awaiting_confirmation: components["schemas"]["PaymentBucketRead"];
+            finished: components["schemas"]["PaymentBucketRead"];
+            overdue: components["schemas"]["PaymentBucketRead"];
+            to_pay: components["schemas"]["PaymentBucketRead"];
+        };
+        /**
+         * PeriodNumbersRead
+         * @description One period's numbers. Every rate is null below five examples.
+         */
+        PeriodNumbersRead: {
+            /**
+             * Active Brands
+             * @description Brands that posted a campaign or agreed a deal
+             */
+            active_brands: number;
+            /**
+             * Active Creators
+             * @description Creators who applied or agreed a deal
+             */
+            active_creators: number;
+            /**
+             * Application Success So Far
+             * @description Accepted so far; recent applications may still be decided
+             */
+            application_success_so_far: number | null;
+            /** Applications Accepted So Far */
+            applications_accepted_so_far: number;
+            /**
+             * Applications Sent
+             * @description Applications creators chose to send
+             */
+            applications_sent: number;
+            /**
+             * Campaign Fill Rate
+             * @description Filled of old enough to judge; the headline number for density
+             */
+            campaign_fill_rate: number | null;
+            /** Campaigns Filled Within 14 Days */
+            campaigns_filled_within_14_days: number;
+            /**
+             * Campaigns Old Enough To Judge
+             * @description Of those, posted at least 14 days before the period ended
+             */
+            campaigns_old_enough_to_judge: number;
+            /**
+             * Campaigns Posted
+             * @description Campaigns created and no longer in draft
+             */
+            campaigns_posted: number;
+            /**
+             * Deals Agreed
+             * @description Deal memos accepted by both sides
+             */
+            deals_agreed: number;
+            /**
+             * From On
+             * Format: date
+             * @description First Tamil Nadu day of the period
+             */
+            from_on: string;
+            /** Invitations Sent */
+            invitations_sent: number;
+            /** Median Hours To First Application */
+            median_hours_to_first_application: number | null;
+            /**
+             * New Brands
+             * @description Brand profiles created (all cities)
+             */
+            new_brands: number;
+            /** New Creators */
+            new_creators: number;
+            /**
+             * Paid On Time
+             * @description Of those, marked paid by the due date
+             */
+            paid_on_time: number;
+            /** Paid On Time Share */
+            paid_on_time_share: number | null;
+            /**
+             * Payments Confirmed
+             * @description Payments the creator confirmed arriving
+             */
+            payments_confirmed: number;
+            /**
+             * Repeat Deals
+             * @description Deals between a brand and a creator who had agreed one before
+             */
+            repeat_deals: number;
+            /** Repeat Share */
+            repeat_share: number | null;
+            /**
+             * To On
+             * Format: date
+             * @description Last Tamil Nadu day of the period
+             */
+            to_on: string;
+            /**
+             * Value Of Deals Agreed Paise
+             * @description The fees of those deals. Paid brand to creator, never through us
+             */
+            value_of_deals_agreed_paise: number;
+        };
+        /**
+         * PhoneChangeIn
+         * @description The new number, and the login code sent to it.
+         */
+        PhoneChangeIn: {
+            /**
+             * New Phone
+             * @description Indian mobile number, stored as +91XXXXXXXXXX. Send it in that form. Spaces, dashes and brackets, and a leading +91, 91 or 0, are also accepted and normalised away.
+             * @example +919876543210
+             */
+            new_phone: string;
+            /**
+             * New Phone Code
+             * @description The 6-digit code sent to the new number: ask for it at `POST /api/v1/auth/otp/request` with the new number. It is used up here, so it logs nobody in.
+             * @example 042917
+             */
+            new_phone_code: string;
+        };
+        /**
+         * PhoneChangeRead
+         * @description The number you log in with, and a new one waiting, if any.
+         */
+        PhoneChangeRead: {
+            /**
+             * Phone
+             * @description The number you log in with now
+             * @example +919876543210
+             */
+            phone: string;
+            waiting: components["schemas"]["PhoneChangeWaitingRead"] | null;
+        };
+        /**
+         * PhoneChangeWaitingRead
+         * @description A new number waiting to take over the login.
+         */
+        PhoneChangeWaitingRead: {
+            /**
+             * New Phone
+             * @example +919876501234
+             */
+            new_phone: string;
+            /**
+             * Requested At
+             * Format: date-time
+             */
+            requested_at: string;
+            /**
+             * Takes Effect At
+             * Format: date-time
+             * @description When the new number takes over, 72 hours after it was asked for. Until then you log in with your current number, and can cancel with `DELETE /api/v1/me/phone-change`, with no code. Then every session ends, within a minute, and you log in with the new number.
+             */
+            takes_effect_at: string;
+            /**
+             * Without Current Number
+             * @description Asked for without a code from your current number, which you said is lost: it waits 7 days, and any login with your current number before then cancels it.
+             */
+            without_current_number: boolean;
+        };
+        /**
          * ProblemDetails
          * @description The error body every non-2xx response uses (for the API docs).
          */
@@ -3083,7 +7966,10 @@ export interface components {
         };
         /**
          * ProofCreate
-         * @description What the creator submits. The link is the evidence that lasts.
+         * @description What the creator submits: a link, files, or both (D-065).
+         *
+         *     A link proves the post is live; files survive it being deleted and show
+         *     reach and insights, which have no link.
          */
         ProofCreate: {
             /**
@@ -3091,12 +7977,18 @@ export interface components {
              * @description Public link to the live post
              * @example https://www.instagram.com/reel/abc123/
              */
-            content_url: string;
+            content_url?: string | null;
             /**
              * Disclosure Confirmed
              * @default false
              */
             disclosure_confirmed: boolean;
+            /**
+             * File Ids
+             * @description Up to 10 finished uploads from `POST /deal-memos/{memo_id}/proof/uploads`, in the order to show them
+             * @default []
+             */
+            file_ids: string[];
             /**
              * Format
              * @enum {string}
@@ -3104,6 +7996,69 @@ export interface components {
             format: "post" | "reel" | "story" | "video" | "other";
             /** Note */
             note?: string | null;
+        };
+        /**
+         * ProofFileSummary
+         * @description A file on a proof. `cleaned` is the only state a brand can open.
+         */
+        ProofFileSummary: {
+            /**
+             * Content Type
+             * @enum {string}
+             */
+            content_type: "image/jpeg" | "image/png" | "image/webp";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Size Bytes */
+            size_bytes: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "attached" | "cleaned" | "rejected";
+        };
+        /**
+         * ProofFileView
+         * @description A file on a proof, and a link to open it once it has been cleaned.
+         */
+        ProofFileView: {
+            /**
+             * Content Type
+             * @enum {string}
+             */
+            content_type: "image/jpeg" | "image/png" | "image/webp";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** @description The numbers read from this screenshot, once read. Empty until then */
+            reading: components["schemas"]["ProofReadingView"] | null;
+            /**
+             * Rejection Reason
+             * @description Why a rejected file cannot be shown
+             */
+            rejection_reason: ("fingerprint_mismatch" | "not_an_image" | "too_many_pixels" | "missing") | null;
+            /**
+             * Size Bytes
+             * @description The size of what the link opens
+             */
+            size_bytes: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "attached" | "cleaned" | "rejected";
+            /**
+             * Url
+             * @description Opens the cleaned image. Only cleaned files have one. It works for a few minutes and must not be stored: ask again for a fresh one
+             */
+            url: string | null;
+            /** Url Expires At */
+            url_expires_at: string | null;
         };
         /** ProofRead */
         ProofRead: {
@@ -3114,7 +8069,7 @@ export interface components {
             /** Content Removed On */
             content_removed_on: string | null;
             /** Content Url */
-            content_url: string;
+            content_url: string | null;
             /**
              * Created At
              * Format: date-time
@@ -3127,6 +8082,8 @@ export interface components {
             deal_memo_id: string;
             /** Disclosure Confirmed */
             disclosure_confirmed: boolean;
+            /** Files */
+            files: components["schemas"]["ProofFileSummary"][];
             /**
              * Format
              * @enum {string}
@@ -3147,10 +8104,159 @@ export interface components {
              */
             status: "submitted" | "approved" | "revision_requested";
             /**
+             * Text Flags
+             * @description Warnings on the free text above, worked out on every read: a request for money from a creator, or contact details before a deal is agreed (item 60). Show each beside its field; never hide the text
+             */
+            readonly text_flags: components["schemas"]["FieldFlag"][];
+            /**
              * Updated At
              * Format: date-time
              */
             updated_at: string;
+        };
+        /**
+         * ProofReadingChecks
+         * @description Plain rules against facts we hold. Empty means nothing to compare.
+         */
+        ProofReadingChecks: {
+            /**
+             * Date Within Deal
+             * @description The post date is on or after the day the memo was accepted, and not in the future
+             */
+            date_within_deal: boolean | null;
+            /**
+             * Handle Matches
+             * @description The handle on the screenshot is the creator's linked channel
+             */
+            handle_matches: boolean | null;
+            /**
+             * Numbers Consistent
+             * @description Likes, comments, saves, shares and reach are not above views, and reach is not above impressions
+             */
+            numbers_consistent: boolean | null;
+        };
+        /** ProofReadingNumbers */
+        ProofReadingNumbers: {
+            /** Comments */
+            comments: number | null;
+            /** Impressions */
+            impressions: number | null;
+            /** Likes */
+            likes: number | null;
+            /** Reach */
+            reach: number | null;
+            /** Saves */
+            saves: number | null;
+            /** Shares */
+            shares: number | null;
+            /** Views */
+            views: number | null;
+        };
+        /**
+         * ProofReadingView
+         * @description What a proof screenshot said, read by AI and checked by us (D-070).
+         *
+         *     **Read from a screenshot, never verified.** A screenshot can be edited;
+         *     the checks say whether it agrees with what we hold, not that it is true.
+         */
+        ProofReadingView: {
+            /**
+             * Abbreviated
+             * @description Shown abbreviated on screen (such as 12.5K), so not exact
+             */
+            abbreviated: ("views" | "reach" | "impressions" | "likes" | "comments" | "saves" | "shares")[];
+            checks: components["schemas"]["ProofReadingChecks"];
+            /**
+             * Creator Marked At
+             * @description When the creator said this reading is wrong; kept beside it
+             */
+            creator_marked_at: string | null;
+            /** Creator Note */
+            creator_note: string | null;
+            /** Handle */
+            handle: string | null;
+            numbers: components["schemas"]["ProofReadingNumbers"];
+            /** Platform */
+            platform: ("instagram" | "youtube" | "other") | null;
+            /** Post Date */
+            post_date: string | null;
+            /**
+             * Read At
+             * Format: date-time
+             */
+            read_at: string;
+            /**
+             * Source
+             * @description Always this: the numbers come from the creator's screenshot
+             * @constant
+             */
+            source: "read_from_screenshot";
+            /** Stated Average Views */
+            stated_average_views: number | null;
+            /**
+             * Stated Followers
+             * @description What the creator said about this channel when it was read
+             */
+            stated_followers: number | null;
+            /**
+             * Status
+             * @description `no_numbers`: not an insights screen, or one showing none
+             * @enum {string}
+             */
+            status: "read" | "no_numbers";
+            /**
+             * Views Against Stated
+             * @description Views read (or reach, when views are not shown) over the creator's stated average views: 1.0 is what they claim, 9.0 nine times it
+             */
+            views_against_stated: number | null;
+        };
+        /**
+         * ProofUploadCreate
+         * @description The file the creator is about to upload, described before it is sent.
+         */
+        ProofUploadCreate: {
+            /**
+             * Content Type
+             * @enum {string}
+             */
+            content_type: "image/jpeg" | "image/png" | "image/webp";
+            /**
+             * Sha256
+             * @description SHA-256 of the file, lowercase hex. Storage refuses any other file
+             * @example 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
+             */
+            sha256: string;
+            /**
+             * Size Bytes
+             * @description Exact size, in bytes
+             */
+            size_bytes: number;
+        };
+        /**
+         * ProofUploadRead
+         * @description Where and how to upload: POST every one of `fields`, then the file, to `url`.
+         */
+        ProofUploadRead: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Fields
+             * @description Send each as a form field, unchanged, before the file itself
+             */
+            fields: {
+                [key: string]: string;
+            };
+            /**
+             * Upload Id
+             * Format: uuid
+             * @description Give this in `file_ids` when submitting
+             */
+            upload_id: string;
+            /** Url */
+            url: string;
         };
         /**
          * PublicChannelRead
@@ -3171,6 +8277,24 @@ export interface components {
             profile_url: string;
         };
         /**
+         * PublicConnectionRead
+         * @description A connected account on the open internet: proof of control, no count (D-135).
+         */
+        PublicConnectionRead: {
+            /**
+             * Connected Since
+             * Format: date
+             */
+            connected_since: string;
+            /** Handle */
+            handle: string;
+            /**
+             * Platform
+             * @enum {string}
+             */
+            platform: "instagram" | "youtube";
+        };
+        /**
          * PublicCreatorRead
          * @description The public Creator Passport: the profile, links, and published prices.
          */
@@ -3184,6 +8308,11 @@ export interface components {
             channels: components["schemas"]["PublicChannelRead"][];
             /** City */
             city: string;
+            /**
+             * Connected Accounts
+             * @description The accounts the creator proved they control by signing in to them (D-134): the platform, the handle and since when. Never a count (D-135, keeping D-042)
+             */
+            connected_accounts?: components["schemas"]["PublicConnectionRead"][];
             /** Display Name */
             display_name: string;
             /** Handle */
@@ -3208,6 +8337,13 @@ export interface components {
              * @description Prices, only when the creator has chosen to publish them (D-055). Empty otherwise, which looks the same as having none
              */
             packages: components["schemas"]["PublicPackageRead"][];
+            /**
+             * Structured Data
+             * @description schema.org ProfilePage JSON-LD for the website to embed in this Passport's page, so search engines read it (item 85): the published name, handle, bio, channel links and dates, nothing else. The website adds the page's URL. Null while indexing is switched off
+             */
+            structured_data?: {
+                [key: string]: unknown;
+            } | null;
         };
         /**
          * PublicCreatorSummary
@@ -3362,6 +8498,418 @@ export interface components {
              */
             refresh_token: string;
         };
+        /**
+         * RepeatCreate
+         * @description Work together again: the same creator, invited to another open campaign.
+         */
+        RepeatCreate: {
+            /**
+             * Campaign Id
+             * Format: uuid
+             * @description One of your open campaigns
+             */
+            campaign_id: string;
+            /** Note */
+            note?: string | null;
+        };
+        /** ReportClockRead */
+        ReportClockRead: {
+            /**
+             * Answer Within Hours
+             * @description The IT Rules' clock for it
+             */
+            answer_within_hours: number;
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "fake_profile" | "spam" | "abuse" | "non_payment" | "other" | "impersonation" | "intimate_content";
+        };
+        /**
+         * ReportClocksRead
+         * @description The report queue against its legal clocks (item 51). Totals only.
+         */
+        ReportClocksRead: {
+            /**
+             * Answered
+             * @description Resolved in the last `days` days
+             */
+            answered: number;
+            /**
+             * Answered In Time
+             * @description Of those, resolved by their deadline
+             */
+            answered_in_time: number;
+            /**
+             * Answered In Time Share
+             * @description answered_in_time / answered; null below 5 answered (D-056)
+             */
+            answered_in_time_share: number | null;
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Clocks
+             * @description Every category's clock, shortest first: at most 7
+             */
+            clocks: components["schemas"]["ReportClockRead"][];
+            /**
+             * Days
+             * @description How far back the answered figures look
+             */
+            days: number;
+            /**
+             * Next Due At
+             * @description The earliest deadline among open reports; null when none is open
+             */
+            next_due_at: string | null;
+            /** Open */
+            open: number;
+            /**
+             * Open Late
+             * @description Open, and past their deadline now
+             */
+            open_late: number;
+        };
+        /** ReportCreate */
+        ReportCreate: {
+            /**
+             * Category
+             * @description What is wrong. `impersonation`: someone is pretending to be you. `intimate_content`: something shows you undressed or sexually, real or made up. Both are answered within 2 hours; `abuse`, `fake_profile`, `spam` and `other` within 36 hours; `non_payment` within 7 days (item 51). Clients tolerate values they do not know
+             * @enum {string}
+             */
+            category: "fake_profile" | "spam" | "abuse" | "non_payment" | "other" | "impersonation" | "intimate_content";
+            /** Note */
+            note?: string | null;
+            /**
+             * Subject Id
+             * Format: uuid
+             */
+            subject_id: string;
+            /**
+             * Subject Kind
+             * @enum {string}
+             */
+            subject_kind: "creator" | "brand" | "campaign";
+        };
+        /**
+         * ReportCreatorRead
+         * @description The creator as the brand already sees them; nothing private.
+         */
+        ReportCreatorRead: {
+            /** Display Name */
+            display_name: string;
+            /** Handle */
+            handle: string;
+        };
+        /** ReportDealRead */
+        ReportDealRead: {
+            /** Accepted On */
+            accepted_on: string | null;
+            /** Approved By Clock */
+            approved_by_clock: boolean;
+            /**
+             * Approved On
+             * @description When the work was approved; by the clock, the day its review window ended (D-025)
+             */
+            approved_on: string | null;
+            /** Content Due On */
+            content_due_on: string | null;
+            /**
+             * Content Url
+             * @description The approved post's link
+             */
+            content_url: string | null;
+            creator: components["schemas"]["ReportCreatorRead"];
+            /**
+             * Currency
+             * @default INR
+             * @constant
+             */
+            currency: "INR";
+            /**
+             * Deal Memo Id
+             * Format: uuid
+             */
+            deal_memo_id: string;
+            /** Deliverables */
+            deliverables: string;
+            /**
+             * Delivered On Time
+             * @description First sent on or before the agreed date. Null with no work sent yet, or no date agreed
+             */
+            delivered_on_time: boolean | null;
+            /**
+             * Disclosure Confirmed
+             * @description The creator's own confirmation that the post carries the ad label, as recorded (D-024). Null until work is approved
+             */
+            disclosure_confirmed: boolean | null;
+            /**
+             * Fee Amount Paise
+             * @description Null for a barter deal
+             */
+            fee_amount_paise: number | null;
+            /**
+             * First Submitted On
+             * @description When the creator first sent work, in Tamil Nadu
+             */
+            first_submitted_on: string | null;
+            /** Has Open Dispute */
+            has_open_dispute: boolean;
+            /**
+             * Paid On Time
+             * @description Marked as sent on or before the due date. Null until marked
+             */
+            paid_on_time: boolean | null;
+            /**
+             * Payment Confirmed On
+             * @description When the creator confirmed it arrived
+             */
+            payment_confirmed_on: string | null;
+            /** Payment Due On */
+            payment_due_on: string | null;
+            /**
+             * Payment Marked Paid On
+             * @description When the brand said it sent the money
+             */
+            payment_marked_paid_on: string | null;
+            /**
+             * Payment State
+             * @description Null until the work is approved and a payment is due. Clients ignore values they do not know
+             */
+            payment_state: ("due" | "late" | "unpaid" | "paid" | "unconfirmed" | "confirmed") | null;
+            record: components["schemas"]["ReportSealRead"];
+            results: components["schemas"]["ReportResultsRead"];
+            /**
+             * Stage
+             * @description Where the deal stands as of the report (D-076). Clients ignore values they do not know
+             * @enum {string}
+             */
+            stage: "draft" | "memo_sent" | "agreed" | "in_progress" | "payment" | "finished" | "declined" | "cancelled";
+            /** Waiting On */
+            waiting_on: ("brand" | "creator") | null;
+        };
+        /**
+         * ReportNumbersRead
+         * @description Each figure summed over the counted readings; null when none showed it.
+         */
+        ReportNumbersRead: {
+            /** Comments */
+            comments: number | null;
+            /** Impressions */
+            impressions: number | null;
+            /** Likes */
+            likes: number | null;
+            /** Reach */
+            reach: number | null;
+            /** Saves */
+            saves: number | null;
+            /** Shares */
+            shares: number | null;
+            /** Views */
+            views: number | null;
+        };
+        /**
+         * ReportRead
+         * @description A report, as the person who made it sees it. Who handled it is not shown.
+         */
+        ReportRead: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "fake_profile" | "spam" | "abuse" | "non_payment" | "other" | "impersonation" | "intimate_content";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Due At
+             * Format: date-time
+             * @description When it will be answered by: the deadline the IT Rules set for its category, fixed when it was filed (item 51)
+             */
+            due_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Note */
+            note: string | null;
+            /**
+             * Resolved At
+             * @description When an admin resolved it; null while it is open (item 102)
+             */
+            resolved_at: string | null;
+            /**
+             * Status
+             * @description `actioned`: an admin acted on it. `dismissed`: looked at, no action
+             * @enum {string}
+             */
+            status: "open" | "actioned" | "dismissed";
+            /**
+             * Subject Id
+             * Format: uuid
+             */
+            subject_id: string;
+            /**
+             * Subject Kind
+             * @enum {string}
+             */
+            subject_kind: "creator" | "brand" | "campaign";
+        };
+        /**
+         * ReportResultsRead
+         * @description What the approved work's screenshots said (D-070).
+         *
+         *     **Read from screenshots, never verified**: a screenshot can be edited.
+         *     Readings the creator marked as wrong are counted apart and left out of
+         *     the numbers.
+         */
+        ReportResultsRead: {
+            /**
+             * Includes Abbreviated
+             * @description A figure was shown abbreviated on screen (such as 12.5K), so a sum is not exact
+             */
+            includes_abbreviated: boolean;
+            numbers: components["schemas"]["ReportNumbersRead"];
+            /**
+             * Readings
+             * @description Screenshots read and counted in the numbers
+             */
+            readings: number;
+            /**
+             * Readings Marked Wrong
+             * @description Readings the creator said are wrong: left out of the numbers
+             */
+            readings_marked_wrong: number;
+            /**
+             * Source
+             * @default read_from_screenshots
+             * @constant
+             */
+            source: "read_from_screenshots";
+        };
+        /**
+         * ReportSealRead
+         * @description The deal record behind this line (D-057, D-060).
+         */
+        ReportSealRead: {
+            /** Entries */
+            entries: number;
+            /**
+             * Intact
+             * @description Every entry's seal checks against the one before
+             */
+            intact: boolean;
+            /**
+             * Latest Seal
+             * @description SHA-256 of the record's latest entry, as hex. Keep it to catch a rewrite later; `GET /api/v1/deal-memos/{id}/record` shows every entry
+             * @example 5f1c0b9e4a7d2c3b8e6f0a1d2c3b4a5f6e7d8c9b0a1f2e3d4c5b6a7f8e9d0c1b
+             */
+            latest_seal: string | null;
+            /**
+             * Stamped On
+             * @description The first daily checkpoint holding the latest seal that an outside timestamp authority signed, as a Tamil Nadu date. Null until the next one. `GET /api/v1/deal-memos/{id}/record/proof` gives the proof that checks it
+             */
+            stamped_on: string | null;
+        };
+        /** ReportTotalsRead */
+        ReportTotalsRead: {
+            /**
+             * Agreed Value Paise
+             * @description Fees of the agreed deals
+             */
+            agreed_value_paise: number;
+            applications: components["schemas"]["ApplicationCountsRead"];
+            /** Barter Deals Agreed */
+            barter_deals_agreed: number;
+            /**
+             * Confirmed Paise
+             * @description Confirmed by the creator as arrived
+             */
+            confirmed_paise: number;
+            /**
+             * Currency
+             * @default INR
+             * @constant
+             */
+            currency: "INR";
+            /**
+             * Deals
+             * @description Memos sent, in any stage; drafts are left out
+             */
+            deals: number;
+            /**
+             * Deals Agreed
+             * @description Agreed and not cancelled
+             */
+            deals_agreed: number;
+            /** Deals Finished */
+            deals_finished: number;
+            /** Delivered On Time */
+            delivered_on_time: number;
+            /**
+             * Deliveries Judged
+             * @description Deals with an agreed date whose work was sent
+             */
+            deliveries_judged: number;
+            /**
+             * Marked Paid Paise
+             * @description Said by the brand to be sent
+             */
+            marked_paid_paise: number;
+            /**
+             * Payments Sent
+             * @description Payments the brand marked as sent
+             */
+            payments_sent: number;
+            /** Payments Sent On Time */
+            payments_sent_on_time: number;
+            /**
+             * Records Intact
+             * @description Every deal's record checks
+             */
+            records_intact: boolean;
+            results: components["schemas"]["ReportResultsRead"];
+        };
+        /** ResolveReportIn */
+        ResolveReportIn: {
+            /** Note */
+            note: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "actioned" | "dismissed";
+        };
+        /**
+         * ResponseTimeRead
+         * @description How long one kind of answer usually takes, from the deal record.
+         *
+         *     `median_hours` is null until there are five examples (D-071). **Null
+         *     means "not enough to say" and must never be shown as zero.** `examples`
+         *     is always returned so the figure can be weighed.
+         */
+        ResponseTimeRead: {
+            /** Examples */
+            examples: number;
+            /** Median Hours */
+            median_hours: number | null;
+            /**
+             * Min Examples
+             * @description Examples needed before a figure is shown
+             */
+            min_examples: number;
+        };
+        /** RestoreIn */
+        RestoreIn: {
+            /** Note */
+            note: string;
+        };
         /** RevisionRequest */
         RevisionRequest: {
             /**
@@ -3384,6 +8932,639 @@ export interface components {
             /** Title */
             title: string;
         };
+        /**
+         * SearchChannelRead
+         * @description A channel's size, as the creator stated it and when.
+         */
+        SearchChannelRead: {
+            /**
+             * Figures As Of
+             * Format: date
+             */
+            figures_as_of: string;
+            /** Followers */
+            followers: number;
+            /**
+             * Platform
+             * @enum {string}
+             */
+            platform: "instagram" | "youtube";
+            /**
+             * Self Reported
+             * @description Always true: `followers` is the creator's number, as they gave it
+             * @default true
+             * @constant
+             */
+            self_reported: true;
+            /**
+             * Verified As Of
+             * @description When the platform reported it
+             */
+            verified_as_of?: string | null;
+            /**
+             * Verified Followers
+             * @description The count the platform itself reported, if the creator connected the account (D-134); null when not connected or the platform hides it. Show it beside `followers`, never instead: bought followers inflate both
+             */
+            verified_followers?: number | null;
+        };
+        /** SecondFactorSetupIn */
+        SecondFactorSetupIn: {
+            /**
+             * Code
+             * @description The 6-digit code sent to the phone
+             * @example 042917
+             */
+            code: string;
+            /**
+             * Phone
+             * @description Indian mobile number, stored as +91XXXXXXXXXX. Send it in that form. Spaces, dashes and brackets, and a leading +91, 91 or 0, are also accepted and normalised away.
+             * @example +919876543210
+             */
+            phone: string;
+            /**
+             * Ticket
+             * @description The setup ticket a founder issued with scripts/make_admin.py
+             * @example example_ticket_not_a_real_one_01
+             */
+            ticket: string;
+        };
+        /**
+         * SecondFactorSetupRead
+         * @description Shown once. Nothing here can be read again, by anyone.
+         */
+        SecondFactorSetupRead: {
+            /**
+             * Algorithm
+             * @default SHA1
+             * @constant
+             */
+            algorithm: "SHA1";
+            /**
+             * Digits
+             * @default 6
+             * @constant
+             */
+            digits: 6;
+            /**
+             * Period Seconds
+             * @default 30
+             * @constant
+             */
+            period_seconds: 30;
+            /**
+             * Secret
+             * @description The secret, base32, for typing into an authenticator app
+             * @example JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP
+             */
+            secret: string;
+            /**
+             * Setup Link
+             * @description The same secret as an otpauth:// link, for a QR code
+             * @example otpauth://totp/NicheConnect%20TN:admin-1f0c2a9b?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=NicheConnect%20TN
+             */
+            setup_link: string;
+        };
+        /**
+         * SessionRead
+         * @description One login still able to refresh, as its owner sees it.
+         */
+        SessionRead: {
+            /**
+             * Expires At
+             * Format: date-time
+             * @description When it ends unless it is used again before then
+             */
+            expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             * @description The session; end it at DELETE /api/v1/me/sessions/{id}
+             */
+            id: string;
+            /**
+             * Is Current
+             * @description True for the session making this request
+             */
+            is_current: boolean;
+            /**
+             * Label
+             * @description The name the app gave itself at sign-in, never checked; null when it said nothing. Show it beside `signed_in_at` and `signed_in_with`, which no app can choose
+             * @example Pixel 8
+             */
+            label: string | null;
+            /**
+             * Last Active At
+             * Format: date-time
+             * @description When it last renewed its access, at most 15 minutes behind its last use while in use
+             */
+            last_active_at: string;
+            /**
+             * Platform
+             * @description What the app said it is at sign-in; null when it said nothing
+             */
+            platform: ("android" | "ios" | "web") | null;
+            /**
+             * Sign In Acknowledged At
+             * @description When you said this sign-in was yours, from a device signed in before it; it then leaves the attention list. Null until then
+             */
+            sign_in_acknowledged_at?: string | null;
+            /**
+             * Signed In At
+             * Format: date-time
+             * @description When this login was made
+             */
+            signed_in_at: string;
+            /**
+             * Signed In With
+             * @description `phone_code`, `passkey`, or `two_factors` (an admin's phone code and authenticator)
+             * @enum {string}
+             */
+            signed_in_with: "phone_code" | "passkey" | "two_factors";
+        };
+        /**
+         * ShipmentIn
+         * @description How the goods were sent. Never an address: that stays between you.
+         */
+        ShipmentIn: {
+            /**
+             * Carrier
+             * @enum {string}
+             */
+            carrier: "india_post" | "delhivery" | "blue_dart" | "dtdc" | "ecom_express" | "xpressbees" | "shadowfax" | "ekart" | "other";
+            /**
+             * Tracking Number
+             * @description As the courier gives it; spaces and dashes are dropped and letters made capital. India Post numbers are two letters, nine digits, then IN
+             * @example EE123456789IN
+             */
+            tracking_number: string;
+        };
+        /**
+         * ShipmentRead
+         * @description A barter deal's shipment, as both sides read it.
+         */
+        ShipmentRead: {
+            /**
+             * Carrier
+             * @enum {string}
+             */
+            carrier: "india_post" | "delhivery" | "blue_dart" | "dtdc" | "ecom_express" | "xpressbees" | "shadowfax" | "ekart" | "other";
+            /**
+             * Deal Memo Id
+             * Format: uuid
+             */
+            deal_memo_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Received At
+             * @description When the creator said it arrived; null until they do
+             */
+            received_at: string | null;
+            /**
+             * Shipped At
+             * Format: date-time
+             */
+            shipped_at: string;
+            /**
+             * Tracking Number
+             * @description Shown as text, never as a link: look it up on the courier's own site
+             */
+            tracking_number: string;
+        };
+        /** SignupCountRead */
+        SignupCountRead: {
+            /** Accounts */
+            accounts: number;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "brand" | "creator" | "admin";
+            /** Source */
+            source: string;
+            /**
+             * Week Starting
+             * Format: date
+             * @description A Monday, Tamil Nadu time
+             */
+            week_starting: string;
+        };
+        /**
+         * SimilarAnchorRead
+         * @description One of the creators who delivered for you, that this one is closest to.
+         */
+        SimilarAnchorRead: {
+            /**
+             * Creator Id
+             * Format: uuid
+             */
+            creator_id: string;
+            /** Handle */
+            handle: string;
+        };
+        /**
+         * SimilarCreatorRead
+         * @description A creator like those who delivered for you: why, and how they deliver.
+         */
+        SimilarCreatorRead: {
+            /** Bio */
+            bio: string | null;
+            /**
+             * Booked Until
+             * @description The last day the creator is not taking new work; null if taking work today
+             */
+            booked_until: string | null;
+            /** Channels */
+            channels: components["schemas"]["SearchChannelRead"][];
+            /** City */
+            city: string;
+            /** @description Which creator who delivered for you this one is most like */
+            closest_to: components["schemas"]["SimilarAnchorRead"];
+            /**
+             * Creator Id
+             * Format: uuid
+             */
+            creator_id: string;
+            /** Currency */
+            currency: string;
+            delivery: components["schemas"]["CreatorDeliveryRead"];
+            /** Display Name */
+            display_name: string;
+            /**
+             * From Price Paise
+             * @description The cheapest package that answers the search (of the format and platform asked for, if any). Null when the creator lists none
+             */
+            from_price_paise: number | null;
+            /** Handle */
+            handle: string;
+            /**
+             * Member Since
+             * @example 2026-09
+             */
+            member_since: string;
+            /** Niches */
+            niches: string[];
+            /**
+             * Similarity
+             * @description 1 is the same; closeness of their public profile to your anchors'
+             */
+            similarity: number;
+        };
+        /**
+         * SimilarPageRead
+         * @description A page of creators like the ones who delivered for you.
+         */
+        SimilarPageRead: {
+            /**
+             * Based On
+             * @description How many creators who finished a deal with you this rests on; 0 means none yet, and the list is empty
+             */
+            based_on: number;
+            /** Items */
+            items: components["schemas"]["SimilarCreatorRead"][];
+            /**
+             * Next Cursor
+             * @description Pass as ?cursor= to get the next page
+             */
+            next_cursor?: string | null;
+        };
+        /**
+         * StepUpAccepted
+         * @description How to prove this change, and for how long the code works.
+         */
+        StepUpAccepted: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "set_upi_id" | "download_export" | "log_out_everywhere" | "change_phone" | "add_passkey" | "remove_passkey" | "passkey_only" | "end_session" | "delete_account" | "create_agent_token";
+            /**
+             * Expires In Seconds
+             * @description How long the code, or the passkey's challenge, works; null for an authenticator code
+             * @example 300
+             */
+            expires_in_seconds: number | null;
+            /**
+             * Method
+             * @description `phone_code`: a code was sent to your phone. `authenticator`: admins only; nothing was sent, use the code your authenticator app shows. `passkey`: you have a passkey, so nothing was sent: answer `passkey_options` with it at `POST /api/v1/me/step-up/passkey`, which gives the code.
+             * @enum {string}
+             */
+            method: "phone_code" | "authenticator" | "passkey";
+            /**
+             * Passkey Options
+             * @description For `passkey`: WebAuthn's request options, to pass to `navigator.credentials.get` (or the phone's credential manager)
+             */
+            passkey_options?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /**
+         * StepUpForAccount
+         * @description A code to log out of every device, to add a passkey (D-113), or to delete the account (D-122).
+         */
+        StepUpForAccount: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "add_passkey" | "delete_account" | "log_out_everywhere";
+        };
+        /**
+         * StepUpForAgentToken
+         * @description A code to make an assistant's token with exactly these scopes (item 11, D-138).
+         */
+        StepUpForAgentToken: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "create_agent_token";
+            /**
+             * Scopes
+             * @description What the assistant may do. `deals:read`: your deals, their terms and stage, notes, proof and feedback; never the deal record, a payment's details, a dispute's content, a UPI ID or an address. `campaigns:read`: campaigns and applications as you see them; never the campaign report. `applications:write`: applying and withdrawing, declining an invitation, and a brand's shortlisting or turning down; never accepting an application or an invitation. `notes:write`: adding a note to a deal. `alerts:write`: your campaign alerts. No scope reaches payment records, your phone number, passkeys, sessions, exports or deletion
+             * @example [
+             *       "deals:read",
+             *       "campaigns:read"
+             *     ]
+             */
+            scopes: ("deals:read" | "campaigns:read" | "applications:write" | "notes:write" | "alerts:write")[];
+        };
+        /**
+         * StepUpForExport
+         * @description A code to download one exact data export, which must be ready (D-111, D-112).
+         */
+        StepUpForExport: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "download_export";
+            /**
+             * Export Id
+             * Format: uuid
+             */
+            export_id: string;
+        };
+        /**
+         * StepUpForPasskeyOnly
+         * @description A code to turn passkey-only sign-in exactly on, or exactly off (D-113).
+         */
+        StepUpForPasskeyOnly: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "passkey_only";
+            /** Enabled */
+            enabled: boolean;
+        };
+        /**
+         * StepUpForPasskeyRemoval
+         * @description A code to remove one exact passkey (D-113).
+         */
+        StepUpForPasskeyRemoval: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "remove_passkey";
+            /**
+             * Passkey Id
+             * Format: uuid
+             */
+            passkey_id: string;
+        };
+        /**
+         * StepUpForPhone
+         * @description A code to move the account onto one exact new number (item 80).
+         */
+        StepUpForPhone: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "change_phone";
+            /**
+             * New Phone
+             * @description Indian mobile number, stored as +91XXXXXXXXXX. Send it in that form. Spaces, dashes and brackets, and a leading +91, 91 or 0, are also accepted and normalised away.
+             * @example +919876543210
+             */
+            new_phone: string;
+        };
+        /**
+         * StepUpForSession
+         * @description A code to end one exact other session of yours (item 81, D-114).
+         */
+        StepUpForSession: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "end_session";
+            /**
+             * Session Id
+             * Format: uuid
+             */
+            session_id: string;
+        };
+        /**
+         * StepUpForUpiId
+         * @description A code to set one exact UPI ID: it cannot set any other.
+         */
+        StepUpForUpiId: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "set_upi_id";
+            /**
+             * Upi Id
+             * @description name@handle, as your UPI app shows it. Not one made of your phone number: your UPI app lets you create a name instead.
+             * @example meena.cooks@okhdfcbank
+             */
+            upi_id: string;
+        };
+        /**
+         * StepUpGranted
+         * @description The code for exactly this change, earned by the passkey (D-113).
+         */
+        StepUpGranted: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "set_upi_id" | "download_export" | "log_out_everywhere" | "change_phone" | "add_passkey" | "remove_passkey" | "passkey_only" | "end_session" | "delete_account" | "create_agent_token";
+            /**
+             * Code
+             * @description Send it in the `Step-Up-Code` header with the change itself
+             * @example 042917
+             */
+            code: string;
+            /**
+             * Expires In Seconds
+             * @example 300
+             */
+            expires_in_seconds: number;
+        };
+        /**
+         * StepUpPasskeyIn
+         * @description A passkey's answer to the challenge for one change.
+         */
+        StepUpPasskeyIn: {
+            /** Change */
+            change: components["schemas"]["StepUpForUpiId"] | components["schemas"]["StepUpForPhone"] | components["schemas"]["StepUpForExport"] | components["schemas"]["StepUpForAccount"] | components["schemas"]["StepUpForPasskeyRemoval"] | components["schemas"]["StepUpForPasskeyOnly"] | components["schemas"]["StepUpForSession"] | components["schemas"]["StepUpForAgentToken"];
+            /**
+             * Credential
+             * @description The passkey's answer, exactly as `navigator.credentials` (or the phone's credential manager) gives it, in WebAuthn's JSON form
+             */
+            credential: {
+                [key: string]: unknown;
+            };
+        };
+        /** SuspendIn */
+        SuspendIn: {
+            /**
+             * Note
+             * @description Why, for the admin log. The person never sees it
+             */
+            note: string;
+            /**
+             * Reason
+             * @description The category the person is told
+             * @enum {string}
+             */
+            reason: "fake_profile" | "spam" | "abuse" | "non_payment" | "other" | "impersonation" | "intimate_content";
+        };
+        /**
+         * TakedownCreate
+         * @description Withhold one item (item 52): on an order, or on a report.
+         *
+         *     An order (`court_order`, `government_notice`) gives `issued_by`,
+         *     `order_reference` and `received_at`, and may give `legal_provision`,
+         *     `reference_sealed` and a `report_id`. A report gives `report_id`, about
+         *     this same item, and none of the order's fields.
+         */
+        TakedownCreate: {
+            /**
+             * Basis
+             * @description `court_order`, or `government_notice` from an authorised officer: rule 3(1)(d), 3 hours from `received_at`. `report`: withheld while an admin looks into a report, which keeps its own deadline (item 51)
+             * @enum {string}
+             */
+            basis: "court_order" | "government_notice" | "report";
+            /**
+             * Issued By
+             * @description The court, or the authority and its officer's designation
+             * @example Deputy Inspector General of Police, Cyber Crime, Chennai
+             */
+            issued_by?: string | null;
+            /**
+             * Legal Provision
+             * @description The law it cites, where it cites one
+             * @example IT Act 2000, section 79(3)(b)
+             */
+            legal_provision?: string | null;
+            /**
+             * Note
+             * @description Why, for the admin log. The owner never sees it
+             */
+            note: string;
+            /**
+             * Order Reference
+             * @description The order's or notice's number
+             */
+            order_reference?: string | null;
+            /**
+             * Received At
+             * @description When the order reached us, as the order or its email shows: the 3-hour clock runs from here. In the last 30 days, not in the future
+             */
+            received_at?: string | null;
+            /**
+             * Reference Sealed
+             * @description The order may not be shown to the owner: they see only that it exists
+             * @default false
+             */
+            reference_sealed: boolean;
+            /**
+             * Report Id
+             * @description The report about this item: required for `report`, optional for an order
+             */
+            report_id?: string | null;
+            /**
+             * Subject Id
+             * Format: uuid
+             */
+            subject_id: string;
+            /**
+             * Subject Kind
+             * @description `creator`: their profile and Passport. `brand`: the brand and every campaign it posts, now and later. `campaign`: that one campaign
+             * @enum {string}
+             */
+            subject_kind: "creator" | "brand" | "campaign";
+        };
+        /**
+         * TakedownRead
+         * @description One of your items withheld for legal reasons (item 52), as you see it.
+         *
+         *     Who issued the order, its number and the law it cites are shown unless the
+         *     order is sealed. The admins' names and notes are never shown.
+         */
+        TakedownRead: {
+            /**
+             * Basis
+             * @description `court_order` or `government_notice`: an order under the IT Rules, rule 3(1)(d). `report`: a report the IT Rules make us act on while an admin looks into it. Clients tolerate values they do not know
+             * @enum {string}
+             */
+            basis: "court_order" | "government_notice" | "report";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Issued By
+             * @description The court or authority; null for a report, or a sealed order
+             */
+            issued_by: string | null;
+            /**
+             * Legal Provision
+             * @description The law it cites; null when it cites none, or it is sealed
+             */
+            legal_provision: string | null;
+            /**
+             * Lifted At
+             * @description When it became visible again; null while it is withheld
+             */
+            lifted_at: string | null;
+            /**
+             * Order Reference
+             * @description The order's number; null for a report, or a sealed order
+             */
+            order_reference: string | null;
+            /**
+             * Reference Sealed
+             * @description The order may not be shown to you, so its details are null
+             */
+            reference_sealed: boolean;
+            /**
+             * Subject Id
+             * Format: uuid
+             */
+            subject_id: string;
+            /**
+             * Subject Kind
+             * @description What is withheld: your creator profile, your brand (and so every campaign it posts), or one campaign
+             * @enum {string}
+             */
+            subject_kind: "creator" | "brand" | "campaign";
+            /**
+             * Withheld At
+             * Format: date-time
+             */
+            withheld_at: string;
+        };
         /** UnreadCount */
         UnreadCount: {
             /**
@@ -3392,6 +9573,132 @@ export interface components {
              * @example 3
              */
             unread: number;
+        };
+        /**
+         * UpiRead
+         * @description The creator's own UPI ID, the consent it was given under, and any new one waiting.
+         *
+         *     The first four fields are the ID brands are shown now, all null when
+         *     there is none. `waiting` is a new ID not yet shown, or null.
+         */
+        UpiRead: {
+            /** Consented At */
+            consented_at: string | null;
+            /** Notice Version */
+            notice_version: string | null;
+            /**
+             * Updated At
+             * @description When brands began to be shown this ID
+             */
+            updated_at: string | null;
+            /** Upi Id */
+            upi_id: string | null;
+            waiting: components["schemas"]["UpiWaitingRead"] | null;
+        };
+        /**
+         * UpiSet
+         * @description A creator gives their UPI ID, having read the notice.
+         */
+        UpiSet: {
+            /**
+             * Consent
+             * @description Must be true: you agree to the notice you were shown
+             * @constant
+             */
+            consent: true;
+            /**
+             * Notice Version
+             * @description The version of the notice you were shown
+             */
+            notice_version: string;
+            /**
+             * Upi Id
+             * @description name@handle, as your UPI app shows it. Not one made of your phone number: your UPI app lets you create a name instead.
+             * @example meena.cooks@okhdfcbank
+             */
+            upi_id: string;
+        };
+        /**
+         * UpiWaitingRead
+         * @description A new UPI ID that brands do not see yet (item 82).
+         */
+        UpiWaitingRead: {
+            /**
+             * Consented At
+             * Format: date-time
+             */
+            consented_at: string;
+            /** Notice Version */
+            notice_version: string;
+            /** Upi Id */
+            upi_id: string;
+            /**
+             * Usable At
+             * Format: date-time
+             * @description When brands start to see it, 24 hours after you set it. Until then they see the ID above, or none. Cancel it before then with `DELETE /api/v1/creators/me/upi/waiting` if it was not you.
+             */
+            usable_at: string;
+        };
+        /**
+         * VerifiedConnectionRead
+         * @description A connected account as brands see it: what the platform itself reported.
+         */
+        VerifiedConnectionRead: {
+            /**
+             * Connected Since
+             * Format: date
+             */
+            connected_since: string;
+            /** Handle */
+            handle: string;
+            /**
+             * Platform
+             * @enum {string}
+             */
+            platform: "instagram" | "youtube";
+            /** Verified As Of */
+            verified_as_of: string | null;
+            /**
+             * Verified Followers
+             * @description Null when the platform hides it; never shown as zero
+             */
+            verified_followers: number | null;
+        };
+        /**
+         * VerifiedDomainRead
+         * @description What a creator sees: facts about one domain, never a verdict on the brand.
+         *
+         *     The brand controls the DNS of `domain`, as checked daily. It does not
+         *     say the brand is who its name claims: a look-alike domain can be
+         *     verified too, which is why the domain itself, and when it was
+         *     registered, are shown (legal.md rule 3).
+         */
+        VerifiedDomainRead: {
+            /**
+             * Dnssec Validated
+             * @description Whether the domain's DNS answers were signed and checked (DNSSEC)
+             */
+            dnssec_validated: boolean | null;
+            /**
+             * Domain
+             * @example smallshop.in
+             */
+            domain: string;
+            /**
+             * Last Checked At
+             * Format: date-time
+             */
+            last_checked_at: string;
+            /**
+             * Registered On
+             * @description When the registry says the domain was registered: a domain a few days old is what scams use. Null when the registry did not say
+             */
+            registered_on: string | null;
+            /**
+             * Verified Since
+             * Format: date-time
+             */
+            verified_since: string;
         };
     };
     responses: never;
@@ -3402,10 +9709,1243 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    security_txt__well_known_security_txt_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The security.txt file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": unknown;
+                    "text/plain": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    find_accounts_api_v1_admin_accounts_get: {
+        parameters: {
+            query: {
+                /** @description Why you are looking. Written to the admin log with your name */
+                reason: string;
+                phone?: string | null;
+                handle?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAccountRead"][];
+                };
+            };
+            /** @description Not found, which is also the answer for anyone who is not an admin */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A field is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    read_account_api_v1_admin_accounts__account_id__get: {
+        parameters: {
+            query: {
+                /** @description Why you are looking. Written to the admin log with your name */
+                reason: string;
+            };
+            header?: never;
+            path: {
+                /** @description The account's id */
+                account_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAccountRead"];
+                };
+            };
+            /** @description Not found, which is also the answer for anyone who is not an admin */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A field is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    restore_account_api_v1_admin_accounts__account_id__restore_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The account's id */
+                account_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestoreIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAccountRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not found, which is also the answer for anyone who is not an admin */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Not suspended, or an admin. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A field is not valid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    suspend_account_api_v1_admin_accounts__account_id__suspend_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The account's id */
+                account_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SuspendIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAccountRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not found, which is also the answer for anyone who is not an admin */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Already suspended, or an admin. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A field is not valid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    list_actions_api_v1_admin_actions_get: {
+        parameters: {
+            query?: {
+                account_id?: string | null;
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AdminActionRead_"];
+                };
+            };
+            /** @description Not found, which is also the answer for anyone who is not an admin */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A field is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    list_look_alike_brands_api_v1_admin_brands_look_alikes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LookAlikeListRead"];
+                };
+            };
+            /** @description Not found, which is also the answer for anyone who is not an admin */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    clear_brand_name_api_v1_admin_brands__brand_id__name_clearance_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The brand's id */
+                brand_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NameClearanceIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NameClearanceRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No such brand; also the answer for anyone who is not an admin */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brand_name_not_flagged`, `brand_name_already_cleared` or `brand_name_not_cleared`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The note is missing or too short. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    withdraw_brand_name_clearance_api_v1_admin_brands__brand_id__name_clearance_withdraw_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The brand's id */
+                brand_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NameClearanceIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NameClearanceRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No such brand; also the answer for anyone who is not an admin */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brand_name_not_flagged`, `brand_name_already_cleared` or `brand_name_not_cleared`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The note is missing or too short. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    founder_numbers_api_v1_admin_numbers_get: {
+        parameters: {
+            query?: {
+                days?: number;
+                /** @description Last day of the period; today if left out */
+                ending_on?: string | null;
+                city?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FounderNumbersRead"];
+                };
+            };
+            /** @description Not found, which is also the answer for anyone who is not an admin */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A query parameter is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    list_reports_api_v1_admin_reports_get: {
+        parameters: {
+            query?: {
+                status?: string;
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AdminReportRead_"];
+                };
+            };
+            /** @description Not found, which is also the answer for anyone who is not an admin */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A field is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    read_clocks_api_v1_admin_reports_clocks_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportClocksRead"];
+                };
+            };
+            /** @description Not found, which is also the answer for anyone who is not an admin */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A query parameter is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    resolve_report_api_v1_admin_reports__report_id__resolve_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The report's id */
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveReportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminReportRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not found, which is also the answer for anyone who is not an admin */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Already resolved. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A field is not valid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    signups_api_v1_admin_signups_get: {
+        parameters: {
+            query?: {
+                /** @description How many weeks back */
+                weeks?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignupCountRead"][];
+                };
+            };
+            /** @description Not found, which is also the answer for anyone who is not an admin */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description weeks is out of range */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    list_takedowns_api_v1_admin_takedowns_get: {
+        parameters: {
+            query?: {
+                active?: boolean | null;
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AdminTakedownRead_"];
+                };
+            };
+            /** @description Not found, which is also the answer for anyone who is not an admin */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A field is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    withhold_api_v1_admin_takedowns_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TakedownCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTakedownRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not found, which is also the answer for anyone who is not an admin */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description It is already withheld. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A field is not valid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    lift_api_v1_admin_takedowns__takedown_id__lift_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The takedown's id */
+                takedown_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LiftTakedownIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTakedownRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not found, which is also the answer for anyone who is not an admin */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Already lifted. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A field is not valid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
     list_my_applications_api_v1_applications_me_get: {
         parameters: {
             query?: {
-                status?: ("submitted" | "shortlisted" | "accepted" | "rejected" | "withdrawn") | null;
+                status?: ("submitted" | "shortlisted" | "accepted" | "rejected" | "withdrawn" | "invited" | "declined") | null;
                 /** @description Rows per page */
                 limit?: number;
                 /** @description From a previous page's next_cursor */
@@ -3476,6 +11016,17 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
     read_my_application_feedback_api_v1_applications_me_feedback_get: {
@@ -3534,6 +11085,17 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -3608,6 +11170,17 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
     application_accept_api_v1_applications__application_id__accept_post: {
@@ -3664,7 +11237,693 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description The application is not in a state where that is allowed. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            /** @description The application is not in a state where that is allowed, or your campaign or brand is withheld for legal reasons (`own_content_withheld`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The creator is withheld for legal reasons (item 52) */
+            451: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    accept_invitation_api_v1_applications__application_id__accept_invitation_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The application's id */
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description This account type cannot use this endpoint */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such invitation, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description It is not an invitation waiting for an answer, the campaign is no longer open, or your profile is withheld for legal reasons (`own_content_withheld`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The campaign or its brand is withheld for legal reasons (item 52) */
+            451: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    decline_invitation_api_v1_applications__application_id__decline_invitation_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The application's id */
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvitationDecline"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description This account type cannot use this endpoint */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such invitation, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description It is not an invitation waiting for an answer, the campaign is no longer open, or your profile is withheld for legal reasons (`own_content_withheld`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The reason is missing or not one of the allowed values. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The campaign or its brand is withheld for legal reasons (item 52) */
+            451: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    list_offers_api_v1_applications__application_id__offers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The application's id */
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferRead"][];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such application or offer, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    make_offer_api_v1_applications__application_id__offers_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The application's id */
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OfferCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such application or offer, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `offers_closed`: the application is no longer waiting, the campaign is barter, or the other side has gone; `campaign_not_open`; `offer_already_agreed`: a figure is agreed, so changes go through the memo; `offer_limit_reached`: you have made 3; `offer_open`: your own offer still waits; `own_content_withheld`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The amount or the note is not valid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The other side is withheld for legal reasons (item 52) */
+            451: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    withdraw_offer_api_v1_applications__application_id__offers__offer_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The offer's id */
+                offer_id: string;
+                /** @description The application's id */
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such application or offer, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `offer_already_answered`; `offer_not_yours_to_answer`: it is the other side's offer, theirs to withdraw */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    accept_offer_api_v1_applications__application_id__offers__offer_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The offer's id */
+                offer_id: string;
+                /** @description The application's id */
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such application or offer, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `offers_closed`: the application is no longer waiting, the campaign is barter, or the other side has gone; `campaign_not_open`; `offer_already_agreed`: a figure is agreed, so changes go through the memo; `offer_already_answered`; `offer_not_yours_to_answer`: it is your own offer; `own_content_withheld`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The other side is withheld for legal reasons (item 52) */
+            451: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    decline_offer_api_v1_applications__application_id__offers__offer_id__decline_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The offer's id */
+                offer_id: string;
+                /** @description The application's id */
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such application or offer, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `offer_already_answered`; `offer_not_yours_to_answer`: it is your own offer. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3869,7 +12128,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description The application is not in a state where that is allowed. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            /** @description The application is not in a state where that is allowed, or your campaign or brand is withheld for legal reasons (`own_content_withheld`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3891,6 +12150,16 @@ export interface operations {
             };
             /** @description Too many requests; see the Retry-After header */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The creator is withheld for legal reasons (item 52) */
+            451: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4007,6 +12276,252 @@ export interface operations {
             };
         };
     };
+    withdraw_invitation_api_v1_applications__application_id__withdraw_invitation_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The application's id */
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description This account type cannot use this endpoint */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such invitation, or it is not for your campaign */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description It is not an invitation waiting for an answer. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    log_in_api_v1_auth_admin_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminLoginIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginTokens"];
+                };
+            };
+            /** @description A code or the ticket is wrong, expired or used, or the number is not an admin's: one answer for all, so nothing is revealed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description This admin account is suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A field is missing or invalid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many attempts; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    set_up_second_factor_api_v1_auth_admin_second_factor_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SecondFactorSetupIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecondFactorSetupRead"];
+                };
+            };
+            /** @description A code or the ticket is wrong, expired or used, or the number is not an admin's: one answer for all, so nothing is revealed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description This admin account is suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A field is missing or invalid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many attempts; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     logout_api_v1_auth_logout_post: {
         parameters: {
             query?: never;
@@ -4056,12 +12571,26 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
     logout_all_api_v1_auth_logout_all_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`. */
+                "Step-Up-Code"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4076,7 +12605,17 @@ export interface operations {
                     "application/json": components["schemas"]["LoggedOutAll"];
                 };
             };
-            /** @description No access token, or it is invalid or expired */
+            /** @description The code is wrong, expired, used, or for another change */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No access token, or it is invalid or expired; or `step_up_required`: no code was sent */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4086,7 +12625,17 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Too many requests; see the Retry-After header */
+            /** @description The code is not 6 digits */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests, or too many wrong codes for your phone; see the Retry-After header */
             429: {
                 headers: {
                     [name: string]: unknown;
@@ -4094,6 +12643,17 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -4134,6 +12694,17 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -4189,6 +12760,17 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
     verify_code_api_v1_auth_otp_verify_post: {
@@ -4223,7 +12805,17 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description The number is registered with the other role */
+            /** @description `account_suspended`: the account, or the number's other account when starting a second, is suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `role_mismatch`: the number is an admin's, which holds no other account; `phone_change_waiting`: it has no account, but an account is waiting to move onto it (log in with that account's current number until the change is made), or its other account is waiting to move off it. The code stays usable */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -4245,6 +12837,208 @@ export interface operations {
             };
             /** @description Too many attempts; see the Retry-After header */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    start_a_passkey_reset_api_v1_auth_passkey_reset_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyResetIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeyResetRead"];
+                };
+            };
+            /** @description `otp_invalid`: the code is wrong, expired or used */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `no_passkey_to_reset`: the number's account has no passkey (said only once the code was right) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The number or the code is malformed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many attempts; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    passkey_login_api_v1_auth_passkey_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyLoginIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginTokens"];
+                };
+            };
+            /** @description `passkey_invalid`: the answer could not be checked */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `account_suspended` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The answer is malformed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many attempts; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `passkeys_unavailable`: passkeys are not switched on yet */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    passkey_login_options_api_v1_auth_passkey_options_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description WebAuthn's PublicKeyCredentialRequestOptions, as JSON */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `passkeys_unavailable`: passkeys are not switched on yet */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4316,6 +13110,17 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
     read_brand_profile_api_v1_brands_me_get: {
@@ -4374,6 +13179,17 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -4580,6 +13396,443 @@ export interface operations {
             };
         };
     };
+    my_content_api_v1_brands_me_content_get: {
+        parameters: {
+            query?: {
+                /** @description Posts per page */
+                limit?: number;
+                /** @description From a previous page's next_cursor */
+                cursor?: string | null;
+                /** @description Only posts whose usage window stands so; any when left out */
+                rights_state?: ("active" | "lapsing" | "lapsed" | "not_agreed") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ContentItemRead_"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only brands keep a content library */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A query parameter or the cursor is invalid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    read_domain_api_v1_brands_me_domain_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandDomainRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only a brand has a domain */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No brand profile yet, or no domain claimed */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A field is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    claim_domain_api_v1_brands_me_domain_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BrandDomainClaim"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandDomainRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only a brand has a domain */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No brand profile yet, or no domain claimed */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Another brand has already verified that domain. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A field is not valid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    withdraw_domain_api_v1_brands_me_domain_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only a brand has a domain */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No brand profile yet, or no domain claimed */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A field is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    check_domain_api_v1_brands_me_domain_check_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandDomainRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only a brand has a domain */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No brand profile yet, or no domain claimed */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The claim lapsed, or its token expired: claim again. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A field is not valid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
     mark_paid_in_bulk_api_v1_brands_me_payments_mark_paid_post: {
         parameters: {
             query?: never;
@@ -4676,6 +13929,158 @@ export interface operations {
             };
         };
     };
+    brand_feedback_api_v1_brands__brand_id__feedback_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The brand's id */
+                brand_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackFiguresRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such brand */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    brand_feedback_notes_api_v1_brands__brand_id__feedback_notes_get: {
+        parameters: {
+            query?: {
+                /** @description Notes per page */
+                limit?: number;
+                /** @description From a previous page's next_cursor */
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                /** @description The brand's id */
+                brand_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_FeedbackNoteRead_"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such brand */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A query parameter or the cursor is invalid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     read_brand_reliability_api_v1_brands__brand_id__reliability_get: {
         parameters: {
             query?: never;
@@ -4734,6 +14139,91 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    brand_response_times_api_v1_brands__brand_id__response_times_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The brand's id */
+                brand_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandResponseTimesRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such brand */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The id is not a valid id */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -4810,6 +14300,17 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -4967,6 +14468,101 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    list_campaigns_for_me_api_v1_campaigns_discover_for_me_get: {
+        parameters: {
+            query?: {
+                /** @description How many campaigns to suggest */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignMatchesRead"];
+                };
+            };
+            /** @description No token, or the token is not valid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only a creator may ask for campaign suggestions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The creator profile has not been created yet */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A query parameter is invalid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
     read_campaign_api_v1_campaigns__campaign_id__get: {
@@ -5026,6 +14622,27 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Withheld for legal reasons (item 52) */
+            451: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -5142,7 +14759,7 @@ export interface operations {
     list_campaign_applications_api_v1_campaigns__campaign_id__applications_get: {
         parameters: {
             query?: {
-                status?: ("submitted" | "shortlisted" | "accepted" | "rejected" | "withdrawn") | null;
+                status?: ("submitted" | "shortlisted" | "accepted" | "rejected" | "withdrawn" | "invited" | "declined") | null;
                 /** @description Rows per page */
                 limit?: number;
                 /** @description From a previous page's next_cursor */
@@ -5226,6 +14843,17 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
     apply_to_campaign_api_v1_campaigns__campaign_id__applications_post: {
@@ -5294,7 +14922,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description The creator profile is missing, the campaign is not open, the closing date has passed, or you already applied. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            /** @description The creator profile is missing, the campaign is not open, the closing date has passed, you already applied, or your profile is withheld for legal reasons (`own_content_withheld`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -5316,6 +14944,16 @@ export interface operations {
             };
             /** @description Too many requests; see the Retry-After header */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The campaign or its brand is withheld for legal reasons (item 52) */
+            451: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5528,6 +15166,125 @@ export interface operations {
             };
         };
     };
+    invite_creator_api_v1_campaigns__campaign_id__invitations_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The campaign's id */
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvitationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description This account type cannot use this endpoint */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such campaign or creator, or the campaign is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The brand profile is missing, the campaign is not open, the creator already applied or was invited, the campaign has 25 invitations waiting, or the campaign or the brand is withheld for legal reasons (`own_content_withheld`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A field is missing or invalid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The creator is withheld for legal reasons (item 52) */
+            451: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
     list_matches_for_campaign_api_v1_campaigns__campaign_id__matches_get: {
         parameters: {
             query?: {
@@ -5610,6 +15367,17 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -5710,6 +15478,1094 @@ export interface operations {
             };
         };
     };
+    campaign_report_api_v1_campaigns__campaign_id__report_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The campaign's id */
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignReportRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only brand accounts can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such campaign, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The brand profile has not been created yet */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The campaign id is not a valid id */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    campaign_report_csv_api_v1_campaigns__campaign_id__report_csv_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The campaign's id */
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The report as CSV, one row per deal */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only brand accounts can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such campaign, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The brand profile has not been created yet */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The campaign id is not a valid id */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    campaign_summary_api_v1_campaigns__campaign_id__summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The campaign's id */
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignSummaryRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only brand accounts can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such campaign, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The brand profile has not been created yet */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    list_cities_api_v1_cities_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "if-none-match"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CityCountRead"][];
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    city_figures_api_v1_cities__city__figures_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "if-none-match"?: string | null;
+            };
+            path: {
+                /** @description A city name as people write it; matched without regard to case */
+                city: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CityFiguresRead"];
+                };
+            };
+            /** @description That is not a city name */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    list_my_lists_api_v1_creator_lists_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatorListRead"][];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only brands keep creator lists */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    start_a_list_api_v1_creator_lists_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatorListIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatorListRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only brands keep creator lists */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `creator_lists_full`: you have 50; `creator_list_name_taken`: you have one by that name. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The name is empty or too long. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    remove_a_list_api_v1_creator_lists__list_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The list's id */
+                list_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only brands keep creator lists */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such list of yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    rename_a_list_api_v1_creator_lists__list_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The list's id */
+                list_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatorListIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatorListRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only brands keep creator lists */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such list of yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `creator_list_name_taken`: you have one by that name. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The name is empty or too long. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    creators_on_a_list_api_v1_creator_lists__list_id__creators_get: {
+        parameters: {
+            query?: {
+                /** @description Creators per page */
+                limit?: number;
+                /** @description From a previous page's next_cursor */
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                /** @description The list's id */
+                list_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ListedCreatorRead_"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only brands keep creator lists */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such list of yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A query parameter or the cursor is invalid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    save_a_creator_api_v1_creator_lists__list_id__creators__creator_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The list's id */
+                list_id: string;
+                /** @description The creator's id */
+                creator_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only brands keep creator lists */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such list of yours, or no creator you can find (`creator_not_found`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `creator_list_full`: the list holds 200 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    take_a_creator_off_api_v1_creator_lists__list_id__creators__creator_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The list's id */
+                list_id: string;
+                /** @description The creator's id */
+                creator_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only brands keep creator lists */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such list of yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    search_creators_api_v1_creators_get: {
+        parameters: {
+            query?: {
+                /** @description Words in the handle, name or bio */
+                q?: string | null;
+                niche?: ("food" | "fashion" | "beauty" | "tech" | "travel" | "fitness" | "education" | "entertainment" | "finance" | "lifestyle") | null;
+                city?: string | null;
+                platform?: ("instagram" | "youtube") | null;
+                min_followers?: number | null;
+                max_followers?: number | null;
+                /** @description In paise: ₹1 is 100 */
+                max_price_paise?: number | null;
+                /** @description Only packages of this format count */
+                format?: ("post" | "reel" | "story" | "short" | "video" | "live" | "other") | null;
+                /** @description Only creators not booked on this Tamil Nadu day */
+                available_on?: string | null;
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_CreatorSearchResultRead_"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only brands can search for creators */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A filter is not valid, or the filters contradict each other */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     read_public_profile_api_v1_creators_by_handle__handle__get: {
         parameters: {
             query?: never;
@@ -5760,6 +16616,160 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description The profile is withheld for legal reasons (item 52). Never cached */
+            451: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    list_indexable_passports_api_v1_creators_indexable_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                /** @description From a previous page */
+                cursor?: string | null;
+            };
+            header?: {
+                "if-none-match"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_IndexablePassportRead_"];
+                };
+            };
+            /** @description `limit` is out of range, or `cursor` is not one of ours */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    like_my_best_api_v1_creators_like_my_best_get: {
+        parameters: {
+            query?: {
+                /** @description Creators per page */
+                limit?: number;
+                /** @description From a previous page's next_cursor */
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimilarPageRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only brands are shown creators like their own */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A query parameter or the cursor is invalid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -5820,6 +16830,17 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -6026,6 +17047,171 @@ export interface operations {
             };
         };
     };
+    read_availability_api_v1_creators_me_availability_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AvailabilityRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only a creator may use this endpoint */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description You have not created a creator profile yet */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    set_availability_api_v1_creators_me_availability_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AvailabilityUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AvailabilityRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only a creator may use this endpoint */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description You have not created a creator profile yet */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The date is in the past or more than a year ahead */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     list_my_channels_api_v1_creators_me_channels_get: {
         parameters: {
             query?: never;
@@ -6082,6 +17268,17 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -6170,6 +17367,17 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
     delete_my_channel_api_v1_creators_me_channels__platform__delete: {
@@ -6240,6 +17448,374 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    my_connections_api_v1_creators_me_connections_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionRead"][];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only creators connect accounts */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description You have not created a creator profile yet */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    disconnect_api_v1_creators_me_connections__platform__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description instagram or youtube */
+                platform: "instagram" | "youtube";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only creators connect accounts */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No account connected on that platform */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    complete_connecting_api_v1_creators_me_connections__platform__complete_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description instagram or youtube */
+                platform: "instagram" | "youtube";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectionComplete"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only creators connect accounts */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description You have not created a creator profile yet */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `connection_attempt_invalid`: expired, used or not yours; `platform_refused`: the platform said no; `channel_already_connected`: another creator holds that account. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The code or state is missing or too long. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `connections_unavailable`: not switched on yet. Or: Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    start_connecting_api_v1_creators_me_connections__platform__start_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description instagram or youtube */
+                platform: "instagram" | "youtube";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionStartRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only creators connect accounts */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description You have not created a creator profile yet */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `connections_unavailable`: not switched on yet. Or: Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
         };
     };
     list_my_packages_api_v1_creators_me_packages_get: {
@@ -6298,6 +17874,17 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -6474,6 +18061,17 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -6959,6 +18557,332 @@ export interface operations {
             };
         };
     };
+    read_my_upi_api_v1_creators_me_upi_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpiRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only a creator may use this endpoint */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description You have not created a creator profile yet */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    set_my_upi_api_v1_creators_me_upi_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`. */
+                "Step-Up-Code"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpiSet"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpiRead"];
+                };
+            };
+            /** @description The code is wrong, expired, used, or for another UPI ID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No access token, or it is invalid or expired; or `step_up_required`: no code was sent */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only a creator may use this endpoint; or `login_too_recent`: replacing an ID in effect needs a login at least 7 days old */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description You have not created a creator profile yet */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The notice changed since you read it */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Consent is missing, or the UPI ID is not usable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests, or too many wrong codes for your phone; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Adding a UPI ID is not open yet: its notice is not ready */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    remove_my_upi_api_v1_creators_me_upi_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only a creator may use this endpoint */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description You have not created a creator profile yet */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    cancel_my_waiting_upi_api_v1_creators_me_upi_waiting_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only a creator may use this endpoint */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description You have not created a creator profile yet */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The new ID's 24 hours are over: it is already in effect */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     read_delivery_record_api_v1_creators__creator_id__delivery_record_get: {
         parameters: {
             query?: never;
@@ -7028,6 +18952,189 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    creator_feedback_api_v1_creators__creator_id__feedback_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The creator's id */
+                creator_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackFiguresRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Another creator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such creator */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    creator_feedback_notes_api_v1_creators__creator_id__feedback_notes_get: {
+        parameters: {
+            query?: {
+                /** @description Notes per page */
+                limit?: number;
+                /** @description From a previous page's next_cursor */
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                /** @description The creator's id */
+                creator_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_FeedbackNoteRead_"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Another creator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such creator */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A query parameter or the cursor is invalid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -7101,6 +19208,111 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description The creator's profile is withheld for legal reasons (item 52) */
+            451: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    creator_response_times_api_v1_creators__creator_id__response_times_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The creator's id */
+                creator_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatorResponseTimesRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only brands, or the creator themself, can read this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such creator */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The id is not a valid id */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -7218,6 +19430,8 @@ export interface operations {
         parameters: {
             query?: {
                 status?: ("draft" | "sent" | "change_requested" | "accepted" | "declined" | "cancelled") | null;
+                /** @description Only the deals on this campaign, as for a campaign's board */
+                campaign_id?: string | null;
                 /** @description Rows per page */
                 limit?: number;
                 /** @description From a previous page's next_cursor */
@@ -7235,7 +19449,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Page_MemoRead_"];
+                    "application/json": components["schemas"]["Page_MemoWithStageRead_"];
                 };
             };
             /** @description No access token, or it is invalid or expired */
@@ -7278,6 +19492,17 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
     read_memo_api_v1_deal_memos__memo_id__get: {
@@ -7297,7 +19522,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MemoRead"];
+                    "application/json": components["schemas"]["MemoWithStageRead"];
                 };
             };
             /** @description No access token, or it is invalid or expired */
@@ -7347,6 +19572,17 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -7556,6 +19792,80 @@ export interface operations {
             };
         };
     };
+    deal_calendar_api_v1_deal_memos__memo_id__calendar_ics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The memo's id */
+                memo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The calendar file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/calendar": string;
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such memo, or not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The memo id is not a valid id */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     memo_cancel_api_v1_deal_memos__memo_id__cancel_post: {
         parameters: {
             query?: never;
@@ -7748,6 +20058,356 @@ export interface operations {
             };
         };
     };
+    read_feedback_api_v1_deal_memos__memo_id__feedback_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The memo's id */
+                memo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealFeedbackRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such deal, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    give_feedback_api_v1_deal_memos__memo_id__feedback_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The memo's id */
+                memo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealFeedbackRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such deal, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `feedback_closed`: not finished, already given, or the 14 days passed. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A score outside 1 to 5, or a note too long. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    list_notes_api_v1_deal_memos__memo_id__notes_get: {
+        parameters: {
+            query?: {
+                /** @description Notes per page */
+                limit?: number;
+                /** @description From a previous page's next_cursor */
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                /** @description The memo's id */
+                memo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_NoteRead_"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such deal, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A query parameter or the cursor is invalid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    write_note_api_v1_deal_memos__memo_id__notes_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The memo's id */
+                memo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such deal, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `notes_closed`: the memo is a draft, or the deal has ended. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The note is empty or too long. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
     read_payment_api_v1_deal_memos__memo_id__payment_get: {
         parameters: {
             query?: never;
@@ -7816,6 +20476,17 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -7984,6 +20655,17 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -8424,6 +21106,99 @@ export interface operations {
             };
         };
     };
+    read_pay_details_api_v1_deal_memos__memo_id__payment_pay_details_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The memo's id */
+                memo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayDetailsRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only the brand on the deal may see this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such memo, it is not yours, or it has no payment record yet */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description This payment is already marked as sent */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     list_proof_api_v1_deal_memos__memo_id__proof_get: {
         parameters: {
             query?: never;
@@ -8492,6 +21267,17 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -8563,7 +21349,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description The memo is not accepted, or proof is already waiting. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            /** @description The memo is not accepted, proof is already waiting, or a file has not finished uploading. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -8573,7 +21359,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description A field is missing or invalid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            /** @description A field is missing or invalid, there is neither a link nor a file, or a file is not one of your uploads for this deal. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -8593,7 +21379,116 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            /** @description File uploads are not available right now. Or: Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    start_proof_upload_api_v1_deal_memos__memo_id__proof_uploads_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The memo's id */
+                memo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProofUploadCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProofUploadRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description This account type cannot use this endpoint */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such memo, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The memo is not accepted, or too many uploads are unfinished. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The type, size or fingerprint is invalid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description File uploads are not available right now. Or: Can't guarantee this request runs only once right now. Safe to retry */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -8672,6 +21567,203 @@ export interface operations {
                 };
             };
             /** @description The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    view_proof_files_api_v1_deal_memos__memo_id__proof__proof_id__files_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The memo's id */
+                memo_id: string;
+                /** @description The proof submission's id */
+                proof_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProofFileView"][];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description This account type cannot use this endpoint */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such memo or proof, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description File uploads are not available right now */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    mark_reading_misread_api_v1_deal_memos__memo_id__proof__proof_id__files__file_id__reading_mark_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The proof submission's id */
+                proof_id: string;
+                /** @description The proof file's id */
+                file_id: string;
+                /** @description The memo's id */
+                memo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MisreadMark"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProofReadingView"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description This account type cannot use this endpoint */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such memo or proof, or that file on it has not been read */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No numbers were read, or this reading is already marked. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The note is missing, too short or too long. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -8875,6 +21967,17 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
     read_deal_record_proof_api_v1_deal_memos__memo_id__record_proof_get: {
@@ -8943,6 +22046,136 @@ export interface operations {
             };
             /** @description Too many requests; see the Retry-After header */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    repeat_deal_api_v1_deal_memos__memo_id__repeat_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The memo's id */
+                memo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepeatCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only a brand may repeat a deal */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such deal or campaign, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The brand profile is missing, the deal was not agreed or was cancelled, its fee does not suit the campaign's type, the campaign is not open, the creator is already on it, it has 25 invitations waiting, or the campaign or the brand is withheld for legal reasons (`own_content_withheld`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A field is missing or invalid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The creator is withheld for legal reasons (item 52) */
+            451: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9158,6 +22391,282 @@ export interface operations {
             };
         };
     };
+    read_shipment_api_v1_deal_memos__memo_id__shipment_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The memo's id */
+                memo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShipmentRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such deal of yours, or no shipment recorded yet (`shipment_not_found`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    record_shipment_api_v1_deal_memos__memo_id__shipment_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The memo's id */
+                memo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShipmentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShipmentRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only the deal's brand records the shipment */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such deal of yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `shipment_closed`: not an agreed barter deal; `shipment_already_received`: the creator has said it arrived */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description An unknown courier, or a tracking number of the wrong shape */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    receive_shipment_api_v1_deal_memos__memo_id__shipment_received_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The memo's id */
+                memo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShipmentRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only the deal's creator says the goods arrived */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such deal of yours, or no shipment recorded yet (`shipment_not_found`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `shipment_already_received`: already said. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
     memo_withdraw_api_v1_deal_memos__memo_id__withdraw_post: {
         parameters: {
             query?: never;
@@ -9254,6 +22763,250 @@ export interface operations {
             };
         };
     };
+    list_agent_tokens_api_v1_me_agent_tokens_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                /** @description From a previous page */
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AgentTokenRead_"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `agent_scope_missing`: an assistant's token cannot manage tokens; only you can */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `limit` is out of range, or `cursor` is not one of ours */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    create_agent_token_api_v1_me_agent_tokens_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`. */
+                "Step-Up-Code"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentTokenCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentTokenCreated"];
+                };
+            };
+            /** @description The code is wrong, expired, used, or for other scopes */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No access token, or it is invalid or expired; or `step_up_required`: no code was sent */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `role_not_allowed`: an admin cannot make one; or `agent_scope_missing`: an assistant's token cannot make another */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The name, a scope or the number of days is not usable, or the code is not 6 digits */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    revoke_agent_token_api_v1_me_agent_tokens__token_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The token is revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `agent_scope_missing`: an assistant's token cannot manage tokens; only you can */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `agent_token_not_found`: no working token of yours has this id (another account's reads the same, as does one revoked or expired) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The id is not a UUID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     read_my_attention_api_v1_me_attention_get: {
         parameters: {
             query?: never;
@@ -9302,9 +23055,251 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
-    export_my_data_api_v1_me_export_get: {
+    list_blocks_api_v1_me_blocks_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_BlockRead_"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A query parameter or the cursor is invalid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    block_api_v1_me_blocks_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BlockCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlockRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Nobody with that id you could block */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Give brand_id or creator_id, exactly one. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    unblock_api_v1_me_blocks__block_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The block's id */
+                block_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such block, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    list_my_alerts_api_v1_me_campaign_alerts_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -9313,13 +23308,251 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The export file, offered as a download */
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ExportFile"];
+                    "application/json": components["schemas"]["CampaignAlertRead"][];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only creators keep campaign alerts */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    save_an_alert_api_v1_me_campaign_alerts_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CampaignAlertIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignAlertRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only creators keep campaign alerts */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `campaign_alerts_full`: you have 5; `campaign_alert_exists`: you have one with these terms. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No term named, a term out of range, or a budget on barter. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    remove_an_alert_api_v1_me_campaign_alerts__alert_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The alert's id */
+                alert_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only creators keep campaign alerts */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such alert of yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    read_my_deletion_api_v1_me_deletion_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountDeletionRead"];
                 };
             };
             /** @description No access token, or it is invalid or expired */
@@ -9340,6 +23573,2167 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    delete_my_account_api_v1_me_deletion_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`. */
+                "Step-Up-Code"?: string | null;
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountDeletionRead"];
+                };
+            };
+            /** @description `step_up_code_invalid`: the code is wrong, expired or used */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No access token, or it is invalid or expired; or `step_up_required`: no code was sent */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `role_not_allowed`: an admin account is removed by the founders */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `deletion_already_requested`: it is already waiting; `deletion_held_by_deals`: a deal of yours is unfinished. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests, or too many wrong codes for your phone; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    cancel_my_deletion_api_v1_me_deletion_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    register_device_api_v1_me_devices_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeviceRegister"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A field is missing or invalid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    remove_device_api_v1_me_devices__device_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The id registering returned */
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such device, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The device id is not a valid id */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    list_my_exports_api_v1_me_exports_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExportList"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ask_for_my_data_api_v1_me_exports_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExportRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `export_already_preparing`: one is already being prepared. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    read_my_export_api_v1_me_exports__export_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                export_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExportRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such export of yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    download_my_data_api_v1_me_exports__export_id__download_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`. */
+                "Step-Up-Code"?: string | null;
+            };
+            path: {
+                export_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The export file, offered as a download */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportFile"];
+                };
+            };
+            /** @description The code is wrong, expired, used, or for another change */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No access token, or it is invalid or expired; or `step_up_required`: no code was sent */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such export of yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `export_not_ready`, `export_failed`, `export_already_downloaded` or `export_expired` */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The code is not 6 digits */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests, or too many wrong codes for your phone; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    my_invite_code_api_v1_me_invite_code_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteCodeRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only brand and creator accounts invite people */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    my_invites_api_v1_me_invites_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteCountsRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only brand and creator accounts invite people */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    read_preferences_api_v1_me_notification_preferences_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPreferencesRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    save_preferences_api_v1_me_notification_preferences_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationPreferencesIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPreferencesRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A field is invalid, or an urgent type was muted */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    list_my_passkeys_api_v1_me_passkeys_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeysRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    add_a_passkey_api_v1_me_passkeys_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`. */
+                "Step-Up-Code"?: string | null;
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeyRead"];
+                };
+            };
+            /** @description `passkey_invalid`: the answer could not be checked; or the code is wrong, expired or used */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No access token, or it is invalid or expired; or `step_up_required`: no code was sent */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Admins cannot add passkeys yet; or `login_too_recent` for a first passkey from a login under 7 days old */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `too_many_passkeys`: you have 10 already. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The name or the answer is malformed. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests, or too many wrong codes; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `passkeys_unavailable`: passkeys are not switched on yet. Or: Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    set_passkey_only_api_v1_me_passkeys_only_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`. */
+                "Step-Up-Code"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyOnlySet"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeysRead"];
+                };
+            };
+            /** @description The code is wrong, expired, used, or for another change */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No access token, or it is invalid or expired; or `step_up_required`: no code was sent */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Admins cannot use passkeys yet */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `passkey_needed_first`: add a passkey first */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `enabled` is missing or not true or false */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests, or too many wrong codes; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    start_adding_a_passkey_api_v1_me_passkeys_options_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description WebAuthn's PublicKeyCredentialCreationOptions, as JSON */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Admins cannot add passkeys yet */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `passkeys_unavailable`: passkeys are not switched on yet. Or: Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    remove_a_passkey_api_v1_me_passkeys__passkey_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`. */
+                "Step-Up-Code"?: string | null;
+            };
+            path: {
+                passkey_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The code is wrong, expired, used, or for another change */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No access token, or it is invalid or expired; or `step_up_required`: no code was sent */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such passkey of yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests, or too many wrong codes; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    rename_a_passkey_api_v1_me_passkeys__passkey_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                passkey_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyRename"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeyRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such passkey of yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The name is blank or too long. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    read_my_phone_change_api_v1_me_phone_change_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhoneChangeRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    change_my_phone_api_v1_me_phone_change_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`. */
+                "Step-Up-Code"?: string | null;
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhoneChangeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhoneChangeRead"];
+                };
+            };
+            /** @description A code is wrong, expired or used: `otp_invalid` for the new number's, `step_up_code_invalid` for the current number's */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No access token, or it is invalid or expired; or `step_up_required`: no code from the current number was sent */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `role_not_allowed`: an admin's number cannot be changed here; `login_too_recent`: this login is under 7 days old (see Retry-After) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `phone_unchanged`: it is already your number; `phone_in_use`: the new number is on an account, or waiting to move onto one; `phone_change_taking_effect`: the change waiting is past its 72 hours and being made; `phone_change_on_other_side`: your other account on this number is already moving it (D-126: a change moves both); `deletion_waiting`: an account on the number is waiting to be deleted. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The new number or its code is not valid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests, or too many wrong codes for either number; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    cancel_my_phone_change_api_v1_me_phone_change_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `phone_change_taking_effect`: its 72 hours are over and it is being made; see the Retry-After header */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    change_my_lost_phone_api_v1_me_phone_change_without_current_number_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`. */
+                "Step-Up-Code"?: string | null;
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhoneChangeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhoneChangeRead"];
+                };
+            };
+            /** @description The new number's code is wrong, expired or used */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `role_not_allowed`: an admin's number cannot be changed here; `login_too_recent`: this login is under 30 days old (see Retry-After) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `phone_unchanged`, `phone_in_use`, `phone_change_taking_effect`, `phone_change_on_other_side` or `deletion_waiting`, as for a change with both numbers. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The new number or its code is not valid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests, or too many wrong codes for the new number; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    list_my_sessions_api_v1_me_sessions_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                /** @description From a previous page */
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_SessionRead_"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `limit` is out of range, or `cursor` is not one of ours */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    end_my_session_api_v1_me_sessions__session_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`. */
+                "Step-Up-Code"?: string | null;
+            };
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The session has ended */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The code is wrong, expired, used, or for another change */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No access token, or it is invalid or expired; or `step_up_required`: no code was sent for another session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `session_not_found`: no live session of yours has this id (another account's reads the same, as does one already ended) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The id or the code is malformed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests, or too many wrong codes for your phone; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    acknowledge_sign_in_api_v1_me_sessions__session_id__acknowledge_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The sign-in is acknowledged */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `session_not_found`: no live session of yours has this id */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `acknowledge_from_an_earlier_session`: this device signed in after that one, or is that one. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The id is malformed. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    ask_for_step_up_api_v1_me_step_up_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StepUpForUpiId"] | components["schemas"]["StepUpForPhone"] | components["schemas"]["StepUpForExport"] | components["schemas"]["StepUpForAccount"] | components["schemas"]["StepUpForPasskeyRemoval"] | components["schemas"]["StepUpForPasskeyOnly"] | components["schemas"]["StepUpForSession"] | components["schemas"]["StepUpForAgentToken"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StepUpAccepted"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only a creator may ask to set a UPI ID; an admin may not change their phone number here; or `login_too_recent`: changing the phone number, or replacing a UPI ID in effect, needs a login at least 7 days old (see Retry-After); an admin account cannot be deleted here, nor make a token for an assistant */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `export_not_found`: no such export of yours; `passkey_not_found`; or `session_not_found`: no such live session of yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `phone_unchanged`: that is already your number; or the export cannot be downloaded (`export_not_ready`, `export_failed`, `export_already_downloaded`, `export_expired`); or the account cannot be deleted yet (`deletion_already_requested`, `deletion_held_by_deals`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The action is unknown, or the UPI ID or new number is not usable. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many codes asked for; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    approve_with_passkey_api_v1_me_step_up_passkey_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StepUpPasskeyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StepUpGranted"];
+                };
+            };
+            /** @description The passkey's answer could not be checked */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description This account type cannot make this change */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The change or the answer is malformed. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `passkeys_unavailable`: passkeys are not switched on yet. Or: Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    list_my_takedowns_api_v1_me_takedowns_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_TakedownRead_"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A query parameter or the cursor is invalid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -9396,6 +25790,17 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -9511,6 +25916,17 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
     mark_read_api_v1_notifications__notification_id__read_post: {
@@ -9599,6 +26015,351 @@ export interface operations {
             };
         };
     };
+    list_my_payments_api_v1_payments_mine_get: {
+        parameters: {
+            query?: {
+                /** @description `to_pay`: not yet marked as sent. `awaiting_confirmation`: marked as sent, not yet confirmed as arrived. `finished`: confirmed. Leave out for all of them. */
+                view?: ("to_pay" | "awaiting_confirmation" | "finished") | null;
+                /** @description Rows per page */
+                limit?: number;
+                /** @description From a previous page's next_cursor */
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PaymentListItem_"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only brand and creator accounts have payments */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The profile has not been created yet */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A query parameter or the cursor is invalid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    my_payment_totals_api_v1_payments_mine_totals_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentTotalsRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only brand and creator accounts have payments */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The profile has not been created yet */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    meta_data_deletion_api_v1_platforms_meta_data_deletion_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": string;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MetaDeletionRead"];
+                };
+            };
+            /** @description `invalid_signed_request`: not signed by Meta with our app secret */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `connections_unavailable`: no Meta app is set up yet */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    meta_deletion_status_api_v1_platforms_meta_data_deletion__confirmation_code__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                confirmation_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletionStatusRead"];
+                };
+            };
+            /** @description `deletion_request_not_found`: no request has that code */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    meta_deauthorize_api_v1_platforms_meta_deauthorize_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": string;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `invalid_signed_request`: not signed by Meta with our app secret */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `connections_unavailable`: no Meta app is set up yet */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
     read_rate_guidance_api_v1_rate_guidance_get: {
         parameters: {
             query: {
@@ -9654,6 +26415,196 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    file_report_api_v1_reports_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportCreate"];
+            };
+        };
+        responses: {
+            /** @description You had already reported this; unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportRead"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Admins do not file reports */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description There is nothing with that id to report */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A field is not valid, or you reported yourself. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many reports; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    list_my_reports_api_v1_reports_mine_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ReportRead_"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A query parameter or the cursor is invalid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
     healthz_healthz_get: {
@@ -9682,6 +26633,17 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };

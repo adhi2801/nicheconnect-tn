@@ -2,6 +2,8 @@
 
 Lives in the same repository as the backend (`nicheconnect-tn`), under `frontend/`. The two meet at the API contract, `docs/api/openapi.json` at the repository root.
 
+**Open decisions (not yet approved by both founders):** where this code lives and which framework the apps use (Flutter is what exists here; Adhi's locked baseline, D-047, is Expo). See `docs/PROPOSAL_FRONTEND_HOME_AND_STACK.md`. The plan: `design/screen-plan.md` (every screen) and `design/execution-plan.md` (dates, pace with the backend). Run `pnpm api:changes` each Monday.
+
 | Part | What | Status |
 |---|---|---|
 | `apps/web` | The website (Next.js, TypeScript, Tailwind). One site; a creator and a brand each see their own screens after login. | Foundation builds |
