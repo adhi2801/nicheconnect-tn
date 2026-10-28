@@ -351,8 +351,8 @@ Each item keeps what Part A2 says is strong.
 | # | Decision | Who | Recommendation |
 |---|---|---|---|
 | 1 | Burgundy and gold (this homepage) or deep green (Harish, 28 October) | Both founders | One brand across site and apps; decide before any screen is built |
-| 2 | Amend standard 8b so a procedural model with baked materials is allowed beside captured objects | Adhi | Yes; Adhi asked for a made temple |
-| 3 | Install Blender 5 (free) on Adhi's machine for the model | Adhi | Yes |
+| 2 | Amend standard 8b so a procedural model with baked materials is allowed beside captured objects | Adhi | **Decided: D-142** |
+| 3 | Install Blender 5 (free) on Adhi's machine for the model | Adhi | **Decided: D-142** (Blender 5.2.3) |
 | 4 | Temple form: Thanjavur vimana, or a Madurai-style gopuram | Adhi | Thanjavur, matching the gold, the doll and the current page |
 | 5 | React Three Fiber v9 with WebGPU opt-in, or plain three.js, until R3F v10 is stable | Adhi | Plain three.js for the opening scene; R3F inside the app if needed |
 | 6 | Flutter or Expo for the apps | Both founders | Expo, per the locked stack, unless Harish shows Flutter's case |
@@ -360,8 +360,8 @@ Each item keeps what Part A2 says is strong.
 | 8 | The mark: "கோlyv.ai" or another form, and the domain | Adhi | After the domain is chosen (item 4 in the backlog) |
 | 9 | The 3D byte budget and the reference phones (a ₹9,000 to ₹17,000 Android) | Adhi | Set from a benchmark before the scene is built |
 | 10 | The Tamil body font | Adhi | Test Noto Sans Tamil and Anek Tamil at real sizes |
-| 11 | Write rule 5 (nothing is a photograph) into standard 8a, which today allows licensed images | Adhi | Yes; Adhi gave the rule on 28 October |
-| 12 | Buy a thalaiyatti bommai pair to model from (and photograph only as a reference) | Adhi | Yes; it is also the cleanest rights position for the 3D doll |
+| 11 | Write rule 5 (nothing is a photograph) into standard 8a, which today allows licensed images | Adhi | **Decided: D-142** |
+| 12 | The doll's 3D reference: a doll we buy, or the prototype's own doll picture if Adhi made it | Adhi | The prototype's picture, if Adhi made it; it is the doll he already chose |
 
 ---
 
