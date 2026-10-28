@@ -17,8 +17,14 @@ Context:      A creator browsing campaigns cannot see who the brand is: a campai
               The memo list (GET /deal-memos/mine) carries stage and waiting_on but no
               campaign title and no counterparty name, so a row in "My deals" cannot say
               which deal it is. Only attention items and the payments list carry names.
+Update 28 Oct: the Deals screen is now built as a journey board (stages left to right, a
+              dark card where it is the person's move) and every card wants the campaign and
+              the other side's name. Today those come only from the payments list, so a deal
+              with no payment yet (a memo sent, an agreement, work in progress) shows
+              "Deal memo" and "Awaiting details". This is the most visible gap in the product.
 Option A:     Add brand_name to CampaignRead (discover, for-me, mine, one campaign) and
-              campaign_title plus counterparty_name to MemoWithStageRead.
+              campaign_title plus counterparty_name to MemoWithStageRead. The frontend reads
+              exactly these two names, `campaign_title` and `counterparty_name`, if present.
               | + a screen needs one call (ux.md section 7); no schema change, only joins
               | - a brand's name is now public on every open campaign (it already appears
                   on payments and attention)

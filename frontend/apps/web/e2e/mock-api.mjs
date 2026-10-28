@@ -6,7 +6,7 @@ const port = Number(process.env.PORT ?? 8098);
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "POST, GET, PUT, PATCH, DELETE, OPTIONS", "Access-Control-Expose-Headers": "Retry-After, X-Request-ID, WWW-Authenticate" };
 
 let n, valid, used, reuseDetected, refreshCalls, lastForwardedFor, refreshDelayMs, tokens, scenario, calls;
-const defaults = () => ({ attention: "items", profile: "found", totals: "money", unread: 3, busyOnce: false });
+const defaults = () => ({ attention: "items", profile: "found", totals: "money", unread: 3, busyOnce: false, deals: "full", names: true });
 const reset = () => { n = 0; valid = new Map(); used = new Set(); tokens = new Map(); reuseDetected = false; refreshCalls = 0; lastForwardedFor = null; refreshDelayMs = 0; scenario = defaults(); calls = {}; };
 reset();
 
@@ -47,6 +47,40 @@ createServer((req, res) => {
         const z = { amount_paise: 0, count: 0, currency: "INR" };
         if (scenario.totals === "zero") return send(res, 200, { as_of: "2026-10-28", to_pay: z, overdue: z, awaiting_confirmation: z, finished: z });
         return send(res, 200, { as_of: "2026-10-28", to_pay: { amount_paise: 1_150_000, count: 2, currency: "INR" }, overdue: { amount_paise: 650_000, count: 1, currency: "INR" }, awaiting_confirmation: { amount_paise: 700_000, count: 1, currency: "INR" }, finished: { amount_paise: 12_500_000, count: 9, currency: "INR" } });
+      }
+
+      if (path === "/api/v1/deal-memos/mine") {
+        if (scenario.deals === "error") return fail(res, 500, "unexpected_error");
+        if (scenario.deals === "empty") return send(res, 200, { items: [], next_cursor: null });
+        // [id, stage, waiting_on, fee, content_due_on, brand name, creator name, campaign, dispute]
+        const rows = [
+          ["m-1", "payment", "creator", 700_000, "2026-10-14", "Chennai Bakes", "Lakshmi Loves", "Diwali sweets reel", false],
+          ["m-2", "in_progress", "creator", 650_000, "2026-10-25", "Madurai Masala Co.", "Lakshmi Loves", "Spice box unboxing", false],
+          ["m-3", "in_progress", "brand", 550_000, "2026-10-30", "Tanjore Coffee", "Priya Eats", "Filter coffee tasting", false],
+          ["m-4", "memo_sent", "creator", 500_000, "2026-11-06", "Kovai Organics", "Karthik Bites", "Millet snacks launch", false],
+          ["m-5", "agreed", "creator", 420_000, "2026-11-12", "Karur Kitchenware", "Divya Daily", "Kolu set styling", false],
+          ["m-6", "finished", null, 800_000, "2026-10-02", "Anbu Sweets", "Arun Tastes", "Mithai box reel", false],
+          ["m-7", "declined", null, 300_000, null, "Salem Spice House", "Rohit Reels", "Chilli powder shoot", false],
+          ["m-8", "cancelled", null, 300_000, null, "Erode Textiles", "Kavya Plates", "Saree styling", false],
+          ["m-11", "payment", "brand", 650_000, "2026-10-20", "Trichy Tiffins", "Suresh Snaps", "Combo meal reels", true],
+        ];
+        if (role === "brand") rows.push(["m-9", "draft", "brand", null, null, "Chennai Bakes", "Anand Cuts", "Protein laddu launch", false]);
+        const items = rows.map(([id, stage, waiting, fee, due, brandName, creatorName, title, dispute]) => ({
+          id, application_id: "a-" + id, stage, status: stage === "draft" ? "draft" : stage === "declined" ? "declined" : stage === "cancelled" ? "cancelled" : stage === "memo_sent" ? "sent" : "accepted",
+          waiting_on: waiting, fee_amount_paise: fee, agreed_amount_paise: stage === "memo_sent" || stage === "draft" ? null : fee, content_due_on: due, updated_at: "2026-10-2" + (id.length % 9) + "T10:00:00Z", has_open_dispute: dispute, currency: "INR",
+          ...(scenario.names ? { campaign_title: title, counterparty_name: role === "creator" ? brandName : creatorName } : {}),
+        }));
+        return send(res, 200, { items, next_cursor: null });
+      }
+      if (path === "/api/v1/payments/mine") {
+        const pay = (id, memo, amount, state, due, days, brandName, creatorName, handle, title) => ({ id, deal_memo_id: memo, amount_paise: amount, state, due_on: due, days_overdue: days, brand_name: brandName, creator_display_name: creatorName, creator_handle: handle, campaign_title: title, campaign_id: "c-1", brand_id: "b-1", creator_id: "cr-9", currency: "INR", has_open_dispute: false, created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-01T00:00:00Z", marked_paid_at: null, confirmed_at: null, method: null, reference: null, reference_auto_matchable: false });
+        if (scenario.deals === "empty") return send(res, 200, { items: [], next_cursor: null });
+        return send(res, 200, { next_cursor: null, items: [
+          pay("p-1", "m-1", 700_000, "paid", "2026-10-21", 0, "Chennai Bakes", "Lakshmi Loves", "lakshmi", "Diwali sweets reel"),
+          pay("p-2", "m-11", 650_000, "late", "2026-10-25", 3, "Trichy Tiffins", "Suresh Snaps", "suresh", "Combo meal reels"),
+          pay("p-3", "m-6", 800_000, "confirmed", "2026-10-09", 0, "Anbu Sweets", "Arun Tastes", "arun", "Mithai box reel"),
+          pay("p-4", "m-20", 450_000, "due", "2026-11-05", 0, "Kovai Organics", "Karthik Bites", "karthik", "Millet snacks launch"),
+        ] });
       }
       if (path === "/api/v1/me/attention") {
         if (scenario.attention === "error") return fail(res, 500, "unexpected_error");

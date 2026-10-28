@@ -111,10 +111,10 @@ test("the bell shows how many are unread, to a screen reader too", async ({ page
 test("the navigation marks where you are, and a screen not built yet answers kindly", async ({ page }) => {
   await signIn(page);
   await expect(page.getByRole("link", { name: "Today" }).first()).toHaveAttribute("aria-current", "page");
-  await page.getByRole("link", { name: "Deals" }).first().click();
-  await expect(page).toHaveURL(/\/app\/deals$/);
+  await page.getByRole("link", { name: "Inbox" }).first().click();
+  await expect(page).toHaveURL(/\/app\/inbox$/);
   await expect(page.getByRole("heading", { name: "This screen is being built" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Deals" }).first()).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("link", { name: "Inbox" }).first()).toHaveAttribute("aria-current", "page");
   await page.getByRole("link", { name: "Back to Today" }).click();
   await expect(page).toHaveURL(/\/app$/);
 });

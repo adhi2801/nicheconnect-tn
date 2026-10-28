@@ -21,3 +21,5 @@ export const ShieldIcon = (p: SVGProps<SVGSVGElement>) => (<svg {...base} {...p}
 export const ArrowUpRightIcon = (p: SVGProps<SVGSVGElement>) => (<svg {...base} {...p}><path d="M7 17 17 7M8 7h9v9" /></svg>);
 export const LogoutIcon = (p: SVGProps<SVGSVGElement>) => (<svg {...base} {...p}><path d="M10 5H6a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h4M15 8l4 4-4 4M19 12H9" /></svg>);
 export const PlusIcon = (p: SVGProps<SVGSVGElement>) => (<svg {...base} {...p}><path d="M12 5v14M5 12h14" /></svg>);
+export const ChevronLeftIcon = (p: SVGProps<SVGSVGElement>) => (<svg {...base} {...p}><path d="m14 6-6 6 6 6" /></svg>);
+export const ChevronRightIcon = (p: SVGProps<SVGSVGElement>) => (<svg {...base} {...p}><path d="m10 6 6 6-6 6" /></svg>);

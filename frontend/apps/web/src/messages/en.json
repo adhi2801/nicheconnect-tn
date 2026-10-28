@@ -279,5 +279,104 @@
     "signedInAs": "Signed in as a {role}.",
     "signOut": "Sign out",
     "signingOut": "Signing out"
+  },
+  "deals": {
+    "title": "Deals",
+    "subtitle": "Every deal, from the memo to the record. Where it is your move, the card is dark.",
+    "filter": {
+      "label": "Show",
+      "all": "All",
+      "mine": "Needs you",
+      "theirs": "Waiting on others"
+    },
+    "stage": {
+      "draft": {
+        "label": "Draft",
+        "hint": "Not sent yet"
+      },
+      "memo_sent": {
+        "label": "Memo sent",
+        "hint": "Waiting for an answer"
+      },
+      "agreed": {
+        "label": "Agreed",
+        "hint": "Terms accepted"
+      },
+      "in_progress": {
+        "label": "In progress",
+        "hint": "The work is being done"
+      },
+      "payment": {
+        "label": "Payment",
+        "hint": "Being paid and confirmed"
+      },
+      "finished": {
+        "label": "Finished",
+        "hint": "Done and on the record"
+      }
+    },
+    "count": {
+      "one": "1 deal",
+      "other": "{count} deals"
+    },
+    "columnEmpty": "Nothing here",
+    "yourMove": "Your move",
+    "waitingOn": {
+      "brand": "Waiting on the brand",
+      "creator": "Waiting on the creator"
+    },
+    "ended": "Ended",
+    "dispute": "Dispute open",
+    "card": {
+      "untitled": "Deal memo",
+      "someone": "Awaiting details",
+      "due": "Due {date}",
+      "open": "Open this deal"
+    },
+    "closed": {
+      "label": "Closed deals",
+      "declined": "{count} declined",
+      "cancelled": "{count} cancelled"
+    },
+    "empty": {
+      "title": "No deals yet",
+      "body": {
+        "creator": "A deal starts when a brand sends you a memo. Apply to a campaign and it will appear here.",
+        "brand": "A deal starts when you send a creator a memo. Choose a creator on a campaign and it will appear here."
+      },
+      "ctaCreator": "Browse campaigns",
+      "ctaBrand": "See your campaigns"
+    },
+    "errorTitle": "We could not load your deals",
+    "payments": {
+      "title": "Payments",
+      "none": "No payments yet. They start once work is approved.",
+      "deal": "Deal",
+      "amount": "Amount",
+      "status": "Status",
+      "with": {
+        "creator": "Brand",
+        "brand": "Creator"
+      },
+      "state": {
+        "due": "Due {date}",
+        "late": {
+          "one": "1 day late",
+          "other": "{days} days late"
+        },
+        "unpaid": "Not paid, {days} days past due",
+        "paid": "Marked paid",
+        "unconfirmed": "Marked paid, not confirmed",
+        "confirmed": "Confirmed received"
+      }
+    },
+    "summary": {
+      "needYou": "{count} need you",
+      "none": "None need you right now"
+    },
+    "scroll": {
+      "previous": "Earlier stages",
+      "next": "Later stages"
+    }
   }
 }

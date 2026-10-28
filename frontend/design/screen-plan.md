@@ -147,6 +147,7 @@ Format: **Job** (the one feature) · **Asks** (the question in the person's head
 - Shows: three groups: Needs you, Waiting on others, Finished. Each row is a pass strip: brand, campaign, fee, five-stage bar, one-line status. `GET /deal-memos/mine`.
 - Action: tap a row to open its pass.
 - Source: `stage` and `waiting_on` come with every memo (D-076). Gap: rows still need the brand name and campaign title (R1).
+- **Built 28 October as a journey board** (the design Harish asked for, from his CRM reference): the stages left to right as soft columns joined by dashed lines, a dark card wherever it is the person's move, grey cards for the rest, a filter (All, Needs you, Waiting on others), declined and cancelled deals counted apart, and a payments table beneath with each payment's state in words. A brand also gets a Draft stage. On a phone the stages swipe one at a time. Names come from the memo when R1 lands, from the payments list where a deal has a payment, and are left out otherwise.
 
 **C7. Deal pass (the hub of one deal)**
 - Job: show where this deal is and what to do next.

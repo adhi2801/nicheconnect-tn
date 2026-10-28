@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "./api";
 import { ApiError, apiErrorFrom } from "./errors";
+import type { Memo } from "./deals";
 import type { Role } from "./session";
 
 // Server data lives in one query cache (docs/standards/frontend.md section 9). Each screen asks for what it shows, and nothing here
@@ -42,3 +43,23 @@ export const usePaymentTotals = () => useQuery({ queryKey: ["payment-totals"], q
 
 export const useUnreadCount = () =>
   useQuery({ queryKey: ["unread"], queryFn: () => unwrap(api.GET("/api/v1/notifications/unread-count")), refetchInterval: 60_000, refetchIntervalInBackground: false });
+
+/** Every deal the person is in. Pilot scale: up to five pages of a hundred, then it stops. */
+export const useDeals = () =>
+  useQuery({
+    queryKey: ["deals"],
+    queryFn: async () => {
+      const memos: Memo[] = [];
+      let cursor: string | undefined;
+      for (let page = 0; page < 5; page++) {
+        const result = await unwrap(api.GET("/api/v1/deal-memos/mine", { params: { query: { limit: 100, cursor } } }));
+        memos.push(...result.items);
+        if (!result.next_cursor) break;
+        cursor = result.next_cursor;
+      }
+      return memos;
+    },
+  });
+
+/** The newest payments, each with its campaign, brand and creator, so a table needs no call per row. */
+export const usePayments = () => useQuery({ queryKey: ["payments"], queryFn: async () => (await unwrap(api.GET("/api/v1/payments/mine", { params: { query: { limit: 100 } } }))).items });
