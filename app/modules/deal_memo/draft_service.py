@@ -279,7 +279,7 @@ def list_for_memo(db: Session, memo: DealMemo, now: datetime) -> list[ContentDra
     drafts = drafts_of(db, memo)
     for draft in [d for d in drafts if d.status == "submitted"]:
         settle_if_overdue(db, memo, draft, now, history=drafts)
-    if inspect(memo).expired:
+    if inspect(memo).expired or any(inspect(d).expired for d in drafts):
         drafts = drafts_of(db, memo)
     return sorted(drafts, key=lambda d: (d.created_at, d.id), reverse=True)
 

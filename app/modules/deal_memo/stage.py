@@ -86,7 +86,7 @@ class DealStage:
     waiting_on: str | None
     has_open_dispute: bool
     # The date the work is due by: the agreed one, moved a day for every
-    # calendar day a draft waited for the brand (D-140). Left out of equality
+    # calendar day the brand held a draft (D-140). Left out of equality
     # so a stage compares as a stage; tests assert it on its own.
     work_due_on: date | None = field(default=None, compare=False)
 

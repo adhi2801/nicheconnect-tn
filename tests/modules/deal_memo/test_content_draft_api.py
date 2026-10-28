@@ -472,15 +472,13 @@ def test_once_answered_the_moved_date_holds(client, db, brand, creator, clock):
     )
     draft = shown(client, creator, memo_id)
     clock.advance(timedelta(days=5))
-    approve(client, brand, memo_id, draft["id"])
-    clock.advance(timedelta(days=4))  # due 20 Sep + 5 days waited = 25 Sep; now 26 Sep
+    approve(client, brand, memo_id, draft["id"])  # held 17 to 22 Sep: due 20 + 6 = 26 Sep
+    url = f"/api/v1/creators/{creator_id_of(db, creator)}/delivery-record"
 
-    record = client.get(
-        f"/api/v1/creators/{creator_id_of(db, creator)}/delivery-record",
-        headers=brand.headers,
-    ).json()
-
-    assert record["currently_overdue"] == 1
+    clock.advance(timedelta(days=4))  # 26 Sep, the moved day itself
+    assert client.get(url, headers=brand.headers).json()["currently_overdue"] == 0
+    clock.advance(timedelta(days=1))  # 27 Sep
+    assert client.get(url, headers=brand.headers).json()["currently_overdue"] == 1
 
 
 def test_every_draft_gets_two_whole_days(client, brand, creator, memo_id, clock):
@@ -691,10 +689,10 @@ def test_the_moved_date_is_the_due_date_everywhere(client, db, brand, creator, c
         client, brand, creator, draft_review=True, content_due_on="2026-09-25"
     )
     draft = shown(client, creator, memo_id)
-    clock.advance(timedelta(days=5, hours=1))  # five whole days waiting
+    clock.advance(timedelta(days=5, hours=1))  # held 17 to 22 Sep: 6 days
     assert approve(client, brand, memo_id, draft["id"]).status_code == 200
 
-    assert memo_read(client, creator, memo_id)["work_due_on"] == "2026-09-30"
+    assert memo_read(client, creator, memo_id)["work_due_on"] == "2026-10-01"
     [item] = [
         i
         for i in client.get("/api/v1/me/attention", headers=creator.headers).json()[
@@ -702,20 +700,20 @@ def test_the_moved_date_is_the_due_date_everywhere(client, db, brand, creator, c
         ]
         if i["kind"] == "deliver_work"
     ]
-    assert item["due_on"] == "2026-09-30"
+    assert item["due_on"] == "2026-10-01"
     ics = client.get(f"{MEMOS_URL}/{memo_id}/calendar.ics", headers=creator.headers).text
-    assert "DTSTART;VALUE=DATE:20260930" in ics
-    assert "moved 5 days while a draft waited for the brand" in ics.replace("\r\n ", "")
+    assert "DTSTART;VALUE=DATE:20261001" in ics
+    assert "moved 6 days while a draft waited for the brand" in ics.replace("\r\n ", "")
     [campaign] = client.get("/api/v1/campaigns", headers=brand.headers).json()["items"]
     [deal] = client.get(
         f"/api/v1/campaigns/{campaign['id']}/report", headers=brand.headers
     ).json()["deals"]
-    assert (deal["content_due_on"], deal["work_due_on"]) == ("2026-09-25", "2026-09-30")
+    assert (deal["content_due_on"], deal["work_due_on"]) == ("2026-09-25", "2026-10-01")
     csv = client.get(
         f"/api/v1/campaigns/{campaign['id']}/report.csv", headers=brand.headers
     ).text
     [row] = list(DictReader(StringIO(csv)))
-    assert (row["content_due_on"], row["work_due_on"]) == ("2026-09-25", "2026-09-30")
+    assert (row["content_due_on"], row["work_due_on"]) == ("2026-09-25", "2026-10-01")
 
 
 def test_a_deal_without_the_term_is_due_on_its_agreed_date(client, brand, creator):
@@ -724,8 +722,8 @@ def test_a_deal_without_the_term_is_due_on_its_agreed_date(client, brand, creato
     assert memo_read(client, creator, memo_id)["work_due_on"] == "2026-09-25"
 
 
-def test_crossing_midnight_moves_a_day(client, db, brand, creator, clock):
-    """Adhi's choice of calendar days: the creator lost the 25th's posting, so the date moves."""
+def test_crossing_midnight_moves_both_days(client, db, brand, creator, clock):
+    """Calendar days, the answer day included: the brand held it on the 17th and the 18th."""
     from app.core.clock import IST
 
     memo_id = accepted_memo(
@@ -736,10 +734,10 @@ def test_crossing_midnight_moves_a_day(client, db, brand, creator, clock):
     clock.advance(timedelta(minutes=10))
     approve(client, brand, memo_id, draft["id"])
 
-    assert memo_read(client, creator, memo_id)["work_due_on"] == "2026-09-26"
+    assert memo_read(client, creator, memo_id)["work_due_on"] == "2026-09-27"
 
 
-def test_answered_the_same_day_moves_nothing(client, brand, creator, clock):
+def test_an_answer_the_same_day_still_moves_a_day(client, brand, creator, clock):
     memo_id = accepted_memo(
         client, brand, creator, draft_review=True, content_due_on="2026-09-25"
     )
@@ -747,7 +745,7 @@ def test_answered_the_same_day_moves_nothing(client, brand, creator, clock):
     clock.advance(timedelta(hours=5))  # 17:30 to 22:30, Tamil Nadu time
     approve(client, brand, memo_id, draft["id"])
 
-    assert memo_read(client, creator, memo_id)["work_due_on"] == "2026-09-25"
+    assert memo_read(client, creator, memo_id)["work_due_on"] == "2026-09-26"
 
 
 def test_a_draft_held_overnight_on_the_due_day_never_makes_the_creator_late(
@@ -779,7 +777,7 @@ def test_a_draft_held_overnight_on_the_due_day_never_makes_the_creator_late(
     [deal] = client.get(
         f"/api/v1/campaigns/{campaign['id']}/report", headers=brand.headers
     ).json()["deals"]
-    assert (deal["work_due_on"], deal["delivered_on_time"]) == ("2026-09-21", True)
+    assert (deal["work_due_on"], deal["delivered_on_time"]) == ("2026-09-22", True)
 
 
 def test_silence_through_the_window_moves_the_date_by_every_day_it_held(
@@ -809,8 +807,8 @@ def test_every_round_the_brand_takes_is_added(client, brand, creator, clock):
     clock.advance(timedelta(days=3, hours=20))
     approve(client, brand, memo_id, second["id"])
 
-    # 17 to 19 Sep, then 23 to 27 Sep: 2 + 4 days; the creator's 4 days between are theirs.
-    assert memo_read(client, creator, memo_id)["work_due_on"] == "2026-10-01"
+    # Held 17 to 19 Sep, then 23 to 27 Sep: 3 + 5 days; the creator's days between are theirs.
+    assert memo_read(client, creator, memo_id)["work_due_on"] == "2026-10-03"
 
 
 def test_a_deadline_passed_before_a_cancellation_is_recorded(
@@ -889,7 +887,7 @@ def test_a_cancellation_stops_the_date_moving(client, db, brand, creator, memo_i
 
     assert (
         memo_read(client, brand, memo_id)["work_due_on"]
-        == (due + timedelta(days=1)).isoformat()
+        == (due + timedelta(days=2)).isoformat()  # held the 17th and 18th
     )
 
 
@@ -962,3 +960,97 @@ def test_a_list_that_settles_costs_the_same_queries_however_many_rounds(
         return count
 
     assert overdue_list(5) == overdue_list(1)
+
+
+def test_asking_for_changes_again_and_again_never_makes_the_creator_late(
+    client, db, brand, creator, clock
+):
+    """Found by the fourth review: quick change requests moved nothing, so rework ran out the date."""
+    from app.core.clock import IST
+
+    memo_id = accepted_memo(
+        client, brand, creator, draft_review=True, content_due_on="2026-09-25"
+    )
+    clock.now = datetime(2026, 9, 24, 10, 0, tzinfo=IST)
+    first = shown(client, creator, memo_id)
+    clock.now = datetime(2026, 9, 24, 10, 5, tzinfo=IST)
+    ask_changes(client, brand, memo_id, first["id"])
+    clock.now = datetime(2026, 9, 25, 9, 0, tzinfo=IST)
+    second = shown(client, creator, memo_id)
+    clock.now = datetime(2026, 9, 25, 9, 5, tzinfo=IST)
+    ask_changes(client, brand, memo_id, second["id"])
+    clock.now = datetime(2026, 9, 26, 10, 0, tzinfo=IST)
+    shown(client, creator, memo_id)
+
+    record = client.get(
+        f"/api/v1/creators/{creator_id_of(db, creator)}/delivery-record",
+        headers=brand.headers,
+    ).json()
+
+    assert record["currently_overdue"] == 0
+    # 24th, 25th, and the 26th while the third waits: due 25 + 3 = 28 Sep.
+    assert memo_read(client, creator, memo_id)["work_due_on"] == "2026-09-28"
+
+
+def test_an_answer_at_23_59_leaves_the_creator_the_next_day(
+    client, db, brand, creator, clock
+):
+    """Found by the fourth review: an answer late on the last day left the creator a minute."""
+    from app.core.clock import IST
+
+    memo_id = accepted_memo(
+        client, brand, creator, draft_review=True, content_due_on="2026-09-25"
+    )
+    clock.now = datetime(2026, 9, 25, 9, 0, tzinfo=IST)
+    draft = shown(client, creator, memo_id)
+    clock.now = datetime(2026, 9, 27, 23, 59, tzinfo=IST)
+    approve(client, brand, memo_id, draft["id"])
+
+    assert memo_read(client, creator, memo_id)["work_due_on"] == "2026-09-28"
+
+
+def test_the_clock_gives_the_same_day_back_as_an_answer_on_the_last_day(
+    client, db, brand, creator, clock
+):
+    """The clock answers at the midnight ending the brand's last day: that day is its answer day."""
+    from app.core.clock import IST
+
+    answered = accepted_memo(
+        client, brand, creator, draft_review=True, content_due_on="2026-09-30"
+    )
+    silent = accepted_memo(
+        client, brand, creator, draft_review=True, content_due_on="2026-09-30"
+    )
+    a = shown(client, creator, answered)
+    s = shown(client, creator, silent)
+    deadline = deadline_of(db, silent, s["id"])
+    clock.now = deadline - timedelta(minutes=1)
+    approve(client, brand, answered, a["id"])
+    clock.now = deadline + timedelta(days=1)
+
+    assert (
+        memo_read(client, creator, answered)["work_due_on"]
+        == memo_read(client, creator, silent)["work_due_on"]
+    )
+    assert deadline.astimezone(IST).hour == 0
+
+
+def test_a_draft_shown_after_the_due_date_is_late_while_it_waits(
+    client, db, brand, creator, clock
+):
+    """Found by the fourth review: waiting must not launder a late draft (delivery_record rule 1)."""
+    from app.core.clock import IST
+
+    memo_id = accepted_memo(
+        client, brand, creator, draft_review=True, content_due_on="2026-09-20"
+    )
+    clock.now = datetime(2026, 9, 22, 10, 0, tzinfo=IST)  # two days late
+    shown(client, creator, memo_id)
+    clock.now = datetime(2026, 9, 23, 10, 0, tzinfo=IST)  # due 20 + 2 held days = 22 Sep
+
+    record = client.get(
+        f"/api/v1/creators/{creator_id_of(db, creator)}/delivery-record",
+        headers=brand.headers,
+    ).json()
+
+    assert record["currently_overdue"] == 1

@@ -3,8 +3,8 @@
 Only an accepted deal has agreed dates; any other gets an empty calendar,
 which is a valid file. The events, each with a reminder a day before:
 
-- the content due date, all day: the memo's, moved a day for every whole
-  day a draft waited for the brand (D-140);
+- the content due date, all day: the memo's, moved a day for every
+  calendar day the brand held a draft, its answer day included (D-140);
 - while a draft waits for the brand, the moment it approves itself (D-140);
 - while proof waits for the brand, the moment it approves itself (D-025);
 - while the payment is unconfirmed, its due date, all day.

@@ -118,7 +118,7 @@ def classify(
 ) -> Outcome:
     """Where this accepted deal stands for the creator, as of `now`.
 
-    On a deal with a draft review, the due date moves by every whole day a
+    On a deal with a draft review, the due date moves by every calendar day a
     draft waited for the brand (`draft_rules.delivery_due_on`, item 27).
     """
     if memo.status == "cancelled":

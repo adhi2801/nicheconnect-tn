@@ -47,6 +47,8 @@ def memo(window: int, draft_review: bool = True) -> DealMemo:
 
 
 def draft(at: datetime, status: str = "submitted", round_: int = 1) -> ContentDraft:
+    """A row the database would accept: an answered draft carries its answer's moment."""
+    answered = status != "submitted"
     return ContentDraft(
         id=uuid.uuid4(),
         round=round_,
@@ -54,6 +56,9 @@ def draft(at: datetime, status: str = "submitted", round_: int = 1) -> ContentDr
         status=status,
         created_at=at,
         approved_at=at if status == "approved" else None,
+        answered_at=at + timedelta(hours=3) if answered else None,
+        changes_note="Add the ad label." if status == "changes_requested" else None,
+        auto_approved=False,
     )
 
 
@@ -130,7 +135,7 @@ waits = st.integers(min_value=0, max_value=30 * 24 * 60)
 
 @given(at=minutes, wait=waits, window=windows, due_in=st.integers(0, 60))
 def test_a_draft_shown_in_time_never_leaves_the_creator_late(at, wait, window, due_in):
-    """Shown on or before the due date: the moved date is never before the answer's day."""
+    """Shown on or before the due date: the creator always has the whole day after the answer."""
     m = memo(window)
     d = draft(START + timedelta(minutes=at), "approved")
     d.answered_at = d.created_at + timedelta(minutes=wait)
@@ -138,20 +143,20 @@ def test_a_draft_shown_in_time_never_leaves_the_creator_late(at, wait, window, d
 
     moved = delivery_due_on(m, [d], d.answered_at)
 
-    assert moved is not None and moved >= india_date(d.answered_at)
+    assert moved is not None and moved > india_date(d.answered_at)
 
 
 @given(at=minutes, wait=waits, window=windows)
-def test_the_wait_is_its_whole_days_or_one_more(at, wait, window):
-    """Calendar days: a day per midnight crossed, so the whole days waited, or one more."""
+def test_the_wait_is_its_whole_days_plus_one_or_two(at, wait, window):
+    """Calendar days, both ends included: the whole days held, plus one or two."""
     d = draft(START + timedelta(minutes=at), "approved")
     d.answered_at = d.created_at + timedelta(minutes=wait)
 
     days = days_waiting_on_brand(memo(window), [d], d.answered_at)
 
-    assert wait // (24 * 60) <= days <= wait // (24 * 60) + 1
+    assert wait // (24 * 60) + 1 <= days <= wait // (24 * 60) + 2
     if india_date(d.answered_at) == india_date(d.created_at):
-        assert days == 0
+        assert days == 1
 
 
 @given(steps=histories, window=windows, now=minutes)
@@ -214,3 +219,22 @@ def test_a_deal_cancelled_before_the_deadline_never_reaches_it(at, window, cut, 
     assert not is_approved(m, d, [d], when)
     assert approved_among(m, [d], when) is None
     assert answered_at(m, d, [d], when) is None  # the clock never answered it
+
+
+@given(at=minutes, window=windows, due_in=st.integers(0, 60), later=minutes)
+def test_a_waiting_draft_shown_in_time_never_shows_the_deal_overdue(
+    at, window, due_in, later
+):
+    m = memo(window)
+    d = draft(START + timedelta(minutes=at))
+    m.content_due_on = india_date(d.created_at) + timedelta(days=due_in)
+    # Any moment while it still waits, up to the instant before the clock answers.
+    when = min(
+        d.created_at + timedelta(minutes=later),
+        answer_deadline(m, d, [d]) - timedelta(microseconds=1),
+    )
+
+    moved = delivery_due_on(m, [d], when)
+
+    # Answered today at the latest, the creator still has the whole of tomorrow.
+    assert moved is not None and moved > india_date(when)

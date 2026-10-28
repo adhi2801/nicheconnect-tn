@@ -7705,7 +7705,7 @@
                 "type": "null"
               }
             ],
-            "description": "The date the work is due by: `content_due_on`, moved a day for every calendar day, in Tamil Nadu, a draft waited for the brand's answer (D-140), never past a cancellation. Show this as the due date; it equals `content_due_on` on a deal without a draft review. Null when no date was agreed",
+            "description": "The date the work is due by: `content_due_on`, moved a day for every calendar day, in Tamil Nadu, the brand held a draft, from the day it was shown to the day it answered, both included (D-140), never past a cancellation. Show this as the due date; it equals `content_due_on` on a deal without a draft review. Null when no date was agreed",
             "title": "Work Due On"
           },
           "work_started_at": {
@@ -12076,7 +12076,7 @@
                 "type": "null"
               }
             ],
-            "description": "First sent on or before the agreed date. Null with no work sent yet, or no date agreed",
+            "description": "First sent on or before the date the work was due by: the agreed date, moved by the brand's time on drafts (D-140). Null with no work sent yet, or no date agreed",
             "title": "Delivered On Time"
           },
           "disclosure_confirmed": {
@@ -12237,7 +12237,7 @@
                 "type": "null"
               }
             ],
-            "description": "The date the work is due by, as of the report: the agreed date, moved a day for every calendar day a draft waited for the brand (D-140). Delivered work is judged on time against it as it stood when the work was first sent",
+            "description": "The date the work is due by, as of the report: the agreed date, moved a day for every calendar day the brand held a draft, its answer day included (D-140). Delivered work is judged on time against it as it stood when the work was first sent",
             "title": "Work Due On"
           }
         },
@@ -29093,7 +29093,7 @@
         ]
       },
       "post": {
-        "description": "Only on a memo whose agreed terms include `draft_review`. The brand has the memo's approval window to approve it or ask for changes; if it does not answer, the draft approves itself (D-025), never sooner than 2 whole days after it is shown. Every day it waits for the brand is added to the date the work is due. Proof can be submitted once a draft is approved. One draft waits at a time; each is sealed onto the deal record by its fingerprints. Showing a draft counts as work started. Limits: 30 a minute, 200 a day.",
+        "description": "Only on a memo whose agreed terms include `draft_review`. The brand has the memo's approval window to approve it or ask for changes; if it does not answer, the draft approves itself (D-025), never sooner than 2 whole days after it is shown. Every calendar day the brand holds it, the day it answers included, is added to the date the work is due (`work_due_on` on the deal). Proof can be submitted once a draft is approved. One draft waits at a time; each is sealed onto the deal record by its fingerprints. Showing a draft counts as work started. Limits: 30 a minute, 200 a day.",
         "operationId": "submit_draft_api_v1_deal_memos__memo_id__drafts_post",
         "parameters": [
           {
