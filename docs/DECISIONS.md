@@ -1857,3 +1857,15 @@ Newest entries at the bottom.
   4. Proof and draft uploads share one limit of 30 an hour per account (`shared_rate_limit`, scope `file-uploads`) and the 20-unfinished cap per memo.
   5. The deletion notice says draft images are kept with their draft; `legal.md` asks the lawyer or CA whether unpublished draft images may be kept on proof's basis (**Confirm**).
   6. **An independent review** (29 October 2026) found before merge, and each is fixed with a test: approval of images nobody could open (3); uploads usable on the other route, and two hourly limits (4); the deletion notice (5); undocumented error codes; two sizes for one file (the list now shows the cleaned copy's); a concurrency test that did not exercise what its name said, replaced by a race of two images cleaned at once; and missing tests for a cancelled deal, the shared cap, storage missing, exactly 10 images, a draft of another deal between the same two, the read limit, and opening images after cancellation. **Noticed, not changed:** `attach` asks storage about each file (up to 10 calls) while the memo is locked; proof has done the same since D-065. It is unmeasured against real S3 latency and is proposed as its own fix.
+
+## D-145: Python 3.14.10 and uv 0.13.6, for a fixed CPython flaw (D-047: security fixes at once)
+- Date: 2026-10-29
+- Approved by: Adhi, in this session: "Upgrade both (Recommended)", to upgrading Python 3.14.8 to 3.14.10 and uv 0.12.23 to 0.13.6. **Not reviewed by the other founder** (D-051).
+- Context: CI's image gate (`--only-fixed`) failed on every branch, `main` included, on 29 October 2026: CPython 3.14.8 carries CVE-2026-114583 (Medium), fixed in 3.14.10. uv 0.12.23 cannot install 3.14.10; uv 0.13.6 (27 October 2026) is the first release that ships it.
+- Options considered: A) upgrade Python and uv now; B) accept the CVE for exactly 3.14.8 in `.grype.yaml` and upgrade later.
+- Chosen: A.
+- Reason: D-047's rule is that security fixes are taken at once; accepting a flaw that has a fix leaves it in the image for no reason. uv 0.13's breaking changes (the default Python becomes 3.15 when none is pinned, hashes enforced in included constraints files, native Python on Windows ARM64) do not touch this project: `.python-version` pins the interpreter, `uv.lock` carries hashes, and no constraints files are used.
+- Consequences / follow-ups:
+  1. `.python-version` is 3.14.10; the Dockerfile's Python and uv images are pinned by digest (`python:3.14.10-slim-trixie@sha256:3cabfd7d…`, `ghcr.io/astral-sh/uv:0.13.6@sha256:af22a52f…`); CI and the mutation workflow install uv 0.13.6.
+  2. 3.14.10 also fixes the tarfile flaw `.grype.yaml` accepted for 3.14.8, so that entry is gone. The two still fixed only in 3.15 (poplib, `tempfile.TemporaryDirectory`) are accepted again, for exactly 3.14.10, after checking once more that nothing in `app/`, `scripts/`, `alembic/` or the Dockerfile uses them.
+  3. Checked locally before pushing: the image builds, reports Python 3.14.10, and Grype 0.119.0 with `.grype.yaml` passes.
