@@ -24,7 +24,10 @@ from mathutils import Vector
 argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
 QUALITY = next((a.split("=", 1)[1] for a in argv if a.startswith("quality=")), "preview")
 GRADE = next((a.split("=", 1)[1] for a in argv if a.startswith("grade=")), "morning")
+HERO = "--hero" in argv
+ORBIT = float(next((a.split("=", 1)[1] for a in argv if a.startswith("orbit=")), "-38"))
 OUT = argv[0] if argv else "//vimana.png"
+WET = "--wet" in argv
 W = int(argv[1]) if len(argv) > 1 else 1600
 H = int(argv[2]) if len(argv) > 2 else 900
 SAMPLES = int(argv[3]) if len(argv) > 3 else 96
@@ -534,9 +537,10 @@ def inscription_band(half_out, z_lo, z_hi):
 def base_ornament(half, z0):
     inscription_band(half + 1.25, z0 + 3.9, z0 + 4.35)
     inscription_band(half + 0.85, z0 + 3.28, z0 + 3.77)
-    # inverted lotus petals on the slope below the kumuda, upright ones above the kantha
+    # a bead row below the kumuda, and one above the inscribed pattika
     petal_row(half + 1.22, z0 + 1.98, 0.32, 0.36, 0.42, tip_up=False)
-    petal_row(half + 1.27, z0 + 3.95, 0.4, 0.4, 0.46, tip_up=True)
+    # beads on the course above the pattika, so the inscription reads clear
+    petal_row(half + 0.95, z0 + 4.65, 0.36, 0.36, 0.42, tip_up=True)
     # little blocks (dentils) in the recessed neck
     for side in range(4):
         nrm = [(0, -1), (1, 0), (0, 1), (-1, 0)][side]
@@ -551,10 +555,10 @@ def base_ornament(half, z0):
             pass
 
 
-def lotus_relief(cx, cy, z, R, side, depth=0.12, petals=None):
+def lotus_relief(cx, cy, z, R, side, depth=0.12, petals=None, key="carve"):
     """(Kept name for call sites.) A carved kolam panel: a raised ring holding a 3 x 3 grid of
     pulli dots, set in a square frame. Geometric, not floral (rule 6: no lotus)."""
-    bm = MESHES["carve"]
+    bm = MESHES[key]
     nrm = [(0, -1), (1, 0), (0, 1), (-1, 0)][side]
     tan = (-nrm[1], nrm[0])
 
@@ -679,7 +683,7 @@ def lotus_relief(cx, cy, z, R, side, depth=0.12, petals=None):
                 depth * 0.9,
             )
         )
-    tube("carve", pts, [R * 0.045] * len(pts), n=6)
+    tube(key, pts, [R * 0.045] * len(pts), n=6)
     # the pulli dots the line loops around, where it allows: a grid matched to the knot
     for gu in range(-(a - 1), a, 2) if a > 1 else [0]:
         for gw in range(-(b - 1), b, 2) if b > 1 else [0]:
@@ -843,7 +847,86 @@ def build():
                 lst.append(bm.verts.new(p))
         for i in range(16):
             bm.faces.new((outer[i], outer[i + 1], inner[i + 1], inner[i]))
+        # depth: the arch's band stands 0.45 m proud of the dome, its soffit too
+        out_o = [bm.verts.new(v.co + Vector((dx, dy, 0)) * 0.45) for v in outer]
+        out_i = [bm.verts.new(v.co + Vector((dx, dy, 0)) * 0.45) for v in inner]
+        for i in range(16):
+            bm.faces.new((out_o[i], out_o[i + 1], out_i[i + 1], out_i[i]))
+            bm.faces.new((outer[i], outer[i + 1], out_o[i + 1], out_o[i]))
+            bm.faces.new((inner[i + 1], inner[i], out_i[i], out_i[i + 1]))
+        # the shadowed niche the arch frames
+        cx_, cy_ = dx * (4.55 - 0.05), dy * (4.55 - 0.05)
+        niche_pts = [
+            Vector((-dy * u * 0.7, dx * u * 0.7, z + 0.6 + w * 0.7))
+            + Vector((cx_, cy_, 0))
+            for u, w in arch
+        ]
+        nb = MESHES["niche"]
+        nv = [nb.verts.new(q) for q in niche_pts]
+        nb.faces.new(nv)
+        # its crowning finial (stupi) above the arch
+        tip = Vector((dx * 4.75, dy * 4.75, z + 0.6 + 2.7 + 0.1))
+        loft(
+            "stone",
+            tip.x,
+            tip.y,
+            [
+                (0.01, tip.z),
+                (0.22, tip.z + 0.1),
+                (0.26, tip.z + 0.35),
+                (0.12, tip.z + 0.6),
+                (0.01, tip.z + 0.85),
+            ],
+            e=2,
+            n=12,
+        )
+    # ribs on the eight edges of the octagonal dome, following its curve
+    for k8 in range(8):
+        a8 = math.pi / 8 + k8 * math.pi / 4
+        rib = [
+            Vector(
+                (
+                    r * 1.08 * math.cos(a8) / math.cos(math.pi / 8) * 1.0,
+                    r * 1.08 * math.sin(a8) / math.cos(math.pi / 8) * 1.0,
+                    zz,
+                )
+            )
+            for r, zz in dome
+        ]
+        tube(
+            "stone",
+            rib,
+            [0.2 * (1 - 0.6 * i / (len(rib) - 1)) + 0.05 for i in range(len(rib))],
+            n=8,
+        )
+    # a garland of round beads at the dome's foot
+    for i in range(72):
+        a72 = 2 * math.pi * i / 72
+        rr = 5.62
+        loft(
+            "stone",
+            rr * math.cos(a72),
+            rr * math.sin(a72),
+            [
+                (0.01, z - 0.02),
+                (0.17, z + 0.1),
+                (0.2, z + 0.22),
+                (0.15, z + 0.34),
+                (0.01, z + 0.44),
+            ],
+            e=2,
+            n=10,
+        )
     z += 5.2
+    # mouldings under the kalasa: a lotus-free stepped ring, then the gold
+    loft(
+        "stone",
+        0,
+        0,
+        [(1.7, z - 0.35), (1.85, z - 0.2), (1.6, z - 0.05), (1.45, z + 0.0)],
+        e=2,
+        n=32,
+    )
     k = [
         (1.2, z - 0.2),
         (1.25, z + 0.1),
@@ -1037,7 +1120,7 @@ def grass_blades(
                     (x + dx * off + px * ww, y + dy * off + py * ww, h * u),
                 )
             )
-        vs = [(bm.verts.new(left), bm.verts.new(right)) for left, right in pts]
+        vs = [(bm.verts.new(lft), bm.verts.new(rgt)) for lft, rgt in pts]
         for (l0, r0), (l1, r1) in itertools.pairwise(vs):
             bm.faces.new((l0, r0, r1, l1))
 
@@ -1215,6 +1298,64 @@ def palm(x, y, height, lean, heading, seed, detail=1.0):
         )
 
 
+def banana_blade(bm, spine, side, rnd, age):
+    """One banana leaf blade on its midrib, as a continuous surface with UVs (u along the
+    leaf, v from midrib to margin). Wind tears it along its parallel veins into strips:
+    each strip is its own surface, drooping a little more at its free edge, so the leaf
+    reads as torn, not as a comb with teeth missing."""
+    uvl = bm.loops.layers.uv.verify()
+    segs = len(spine) - 1
+
+    def at(u):
+        f = u * segs
+        i = min(int(f), segs - 1)
+        return spine[i].lerp(spine[i + 1], f - i)
+
+    def width(u):
+        return 0.6 * math.sin(math.pi * min(0.999, 0.02 + 0.98 * u)) ** 0.42
+
+    for sd in (-1, 1):
+        # tears: more and wider on older leaves, none near the base where it is tough
+        n_tears = int(rnd.uniform(1, 4) + age * 9)
+        cuts = sorted(rnd.uniform(0.18, 0.97) for _ in range(n_tears))
+        bounds = [0.0, *cuts, 1.0]
+        for k in range(len(bounds) - 1):
+            ua, ub = bounds[k] + (0.004 if k else 0.0), bounds[k + 1]
+            if ub - ua < 0.012:
+                continue
+            free = 0.0 if k == 0 else rnd.uniform(0.25, 1.0)
+            nu = max(2, int((ub - ua) * 40))
+            nv = 7
+            depth_cut = 1.0 if k else 0.0
+            grid = []
+            for i in range(nu + 1):
+                u = ua + (ub - ua) * i / nu
+                row = []
+                a = at(u)
+                w = width(u)
+                for j in range(nv + 1):
+                    v = 0.03 + 0.97 * j / nv
+                    # cupped across: rises from the midrib, then falls to the margin
+                    lift = 0.08 * w * math.sin(math.pi * v * 0.8) - 0.22 * w * v * v
+                    droop = -free * depth_cut * 0.25 * w * v**2.2
+                    q = a + side * sd * w * v + Vector((0, 0, lift + droop))
+                    row.append((bm.verts.new(q), (u, v)))
+                grid.append(row)
+            for i in range(nu):
+                for j in range(nv):
+                    quad = (
+                        grid[i][j],
+                        grid[i + 1][j],
+                        grid[i + 1][j + 1],
+                        grid[i][j + 1],
+                    )
+                    f = bm.faces.new([c[0] for c in (quad if sd > 0 else quad[::-1])])
+                    for loop, c in zip(
+                        f.loops, (quad if sd > 0 else quad[::-1]), strict=False
+                    ):
+                        loop[uvl].uv = c[1]
+
+
 def banana(x, y, height, heading, seed, fruit=True):
     """A banana plant (vazhai): a mottled, sheathed pseudostem, broad cupped leaves on arching
     petioles, torn along their veins, a rolled young leaf at the top, and on some a bunch with its heart."""
@@ -1233,7 +1374,7 @@ def banana(x, y, height, heading, seed, fruit=True):
         [0.07, 0.05, 0.015],
         n=8,
     )
-    nleaves = 11
+    nleaves = 15
     for k in range(nleaves):
         az = heading + 2 * math.pi * k * 0.382 + rnd.uniform(-0.2, 0.2)
         age = k / (nleaves - 1)
@@ -1258,28 +1399,26 @@ def banana(x, y, height, heading, seed, fruit=True):
             spine.append(
                 p1
                 + d * length * u
-                + Vector((0, 0, length * (0.55 * rise0 * u - (0.55 + 0.6 * age) * u * u)))
+                + Vector((0, 0, length * (0.5 * rise0 * u - (0.75 + 0.9 * age) * u * u)))
             )
         tube("midrib", spine, [0.025 - 0.02 * t / segs for t in range(segs + 1)], n=6)
         old = age > 0.8
         bm = MESHES["deadleaf" if old and rnd.random() < 0.6 else "banana"]
-        torn_from = rnd.uniform(0.35, 0.8)
-        for t in range(segs):
-            u = t / segs
-            w = 0.58 * math.sin(math.pi * min(0.999, 0.03 + 0.97 * u)) ** 0.45
-            for sd in (-1, 1):
-                tear = u > torn_from and rnd.random() < 0.22 + 0.3 * age
-                if tear:
-                    continue
-                a0, a1 = spine[t], spine[t + 1]
-                # the blade cups: rises a little from the midrib, then falls to the edge
-                m0 = a0 + side * sd * w * 0.5 + Vector((0, 0, 0.05 * w))
-                m1 = a1 + side * sd * w * 0.5 + Vector((0, 0, 0.05 * w))
-                e0 = a0 + side * sd * w + Vector((0, 0, -0.16 * w))
-                e1 = a1 + side * sd * w + Vector((0, 0, -0.16 * w))
-                v = [bm.verts.new(q) for q in (a0, a1, m1, m0, e0, e1)]
-                bm.faces.new((v[0], v[1], v[2], v[3]))
-                bm.faces.new((v[3], v[2], v[5], v[4]))
+        banana_blade(bm, spine, side, rnd, age)
+    for k in range(rnd.randint(2, 4)):
+        az = heading + rnd.uniform(0, 2 * math.pi)
+        d = Vector((math.cos(az), math.sin(az), 0))
+        side = Vector((-d.y, d.x, 0))
+        z0 = top.z - 0.15 - 0.25 * k
+        base = Vector((top.x, top.y, z0)) + d * 0.12
+        hang = [
+            base
+            + d * (0.25 * math.sin(math.pi * 0.5 * u))
+            + Vector((0, 0, -2.2 * u * rnd.uniform(0.7, 1.0)))
+            for u in [i / 20 for i in range(21)]
+        ]
+        tube("deadleaf", hang, [0.02] * len(hang), n=5)
+        banana_blade(MESHES["deadleaf"], hang, side * 0.35, rnd, 1.0)
     if fruit:
         stalk = [top, top + Vector((0.35, 0.1, -0.2)), top + Vector((0.5, 0.15, -0.9))]
         tube("banana", stalk, [0.04, 0.035, 0.03], n=6)
@@ -1380,126 +1519,382 @@ def birds(n=26, seed=11):
             bm.faces.new((v[0], v[2], v[3]))
 
 
-def pillar(x, y, h=4.6):
-    """A Chola-style pillar: moulded base, square blocks (saduram) alternating with octagonal
-    sections (kattu), a vase-shaped capital, a square abacus and a bracket (potika) with rolled ends."""
+MESHES["pstone"] = bmesh.new()
+
+
+def prism(key, origin, along, across, outline, half_w):
+    """A 2D outline (s along the arm, z up) extruded across a width: brackets, beams, steps."""
+    bm = MESHES[key]
+    o, a, c = Vector(origin), Vector(along), Vector(across)
+    sides = []
+    for sgn in (-1, 1):
+        sides.append(
+            [
+                bm.verts.new(o + a * s + Vector((0, 0, z)) + c * (sgn * half_w))
+                for (s, z) in outline
+            ]
+        )
+    n = len(outline)
+    bm.faces.new(sides[0][::-1])
+    bm.faces.new(sides[1])
+    for i in range(n):
+        j = (i + 1) % n
+        bm.faces.new((sides[0][i], sides[0][j], sides[1][j], sides[1][i]))
+
+
+def taranga_outline(L, depth_root, depth_tip, rolls=3):
+    """The wave bracket (taranga potika) of Chola and Pandya halls: flat on top, its underside
+    a run of rolls stepping down toward the pillar."""
+    top = [(0.0, 0.0), (L, 0.0), (L, -depth_tip)]
+    under = []
+    steps = 36
+    for i in range(steps + 1):
+        s = L - (L - 0.28) * i / steps
+        f = (L - s) / (L - 0.28)
+        base = depth_tip + (depth_root - depth_tip) * f
+        roll = 0.06 * abs(math.sin(math.pi * rolls * f))
+        under.append((s, -(base + roll)))
+    return top + under + [(0.0, -depth_root - 0.02)]
+
+
+def pillar(x, y, h=4.6, seed=0):
+    """A Chola-style granite pillar, after the hall pillars of Thanjavur and Darasuram: a moulded
+    plinth, square blocks (saduram) alternating with chamfered octagonal sections (kattu), each
+    block carved in a sunk frame, a capital of vase (kalasa), neck (tadi), dish (kumbha) and abacus
+    (palagai), and a wave bracket (taranga potika) in four directions."""
+    K = "pstone"
+    box(K, x, y, 0, 0.62, 0.62, 0.32)
     loft(
-        "stone",
+        K,
         x,
         y,
-        [(0.62, 0), (0.62, 0.25), (0.55, 0.3), (0.55, 0.55), (0.5, 0.6)],
-        e=60,
-        n=24,
+        [
+            (0.56, 0.32),
+            (0.56, 0.42),
+            (0.5, 0.47),
+            (0.58, 0.56),
+            (0.6, 0.62),
+            (0.56, 0.7),
+            (0.47, 0.76),
+            (0.47, 0.8),
+        ],
+        e=40,
+        n=40,
     )
-    z = 0.6
-    kz = h / 4.6
-    for k, (kind, hh) in enumerate(
-        (("sq", 0.75), ("oct", 0.55), ("sq", 0.7), ("oct", 0.55), ("sq", 0.6))
-    ):
+    z = 0.8
+    kz = (h - 1.9) / 3.15
+    plan = (("sq", 0.75), ("oct", 0.5), ("sq", 0.7), ("oct", 0.5), ("sq", 0.7))
+    for k, (kind, hh) in enumerate(plan):
         hh *= kz
         if kind == "sq":
-            box("stone", x, y, z, 0.4, 0.4, hh)
-            # a kolam knot carved on each face of the middle block
-            if k == 2:
-                for side in range(4):
-                    nrm = [(0, -1), (1, 0), (0, 1), (-1, 0)][side]
-                    lotus_relief(
-                        x + nrm[0] * 0.4,
-                        y + nrm[1] * 0.4,
-                        z + hh / 2,
-                        0.24,
-                        side,
-                        depth=0.03,
+            box(K, x, y, z, 0.42, 0.42, hh)
+            for side in range(4):
+                nrm = [(0, -1), (1, 0), (0, 1), (-1, 0)][side]
+                tan = (-nrm[1], nrm[0])
+                fx, fy = x + nrm[0] * 0.42, y + nrm[1] * 0.42
+                # the sunk frame: four raised fillets around a panel
+                for u0, u1, w0, w1 in (
+                    (-0.36, 0.36, 0.05, 0.1),
+                    (-0.36, 0.36, hh - 0.1, hh - 0.05),
+                    (-0.36, -0.31, 0.1, hh - 0.1),
+                    (0.31, 0.36, 0.1, hh - 0.1),
+                ):
+                    cu, cw = (u0 + u1) / 2, (w0 + w1) / 2
+                    hu, hw = (u1 - u0) / 2, (w1 - w0) / 2
+                    box(
+                        K,
+                        fx + tan[0] * cu + nrm[0] * 0.012,
+                        fy + tan[1] * cu + nrm[1] * 0.012,
+                        z + cw - hw,
+                        abs(tan[0]) * hu + abs(nrm[0]) * 0.014,
+                        abs(tan[1]) * hu + abs(nrm[1]) * 0.014,
+                        2 * hw,
                     )
+                if k == 2:
+                    lotus_relief(fx, fy, z + hh / 2, 0.24, side, depth=0.035, key=K)
+                else:
+                    # a diamond within a diamond: the geometric fill of the outer blocks
+                    for r in (0.24, 0.15):
+                        pts = [
+                            (
+                                fx + tan[0] * u + nrm[0] * 0.03,
+                                fy + tan[1] * u + nrm[1] * 0.03,
+                                z + hh / 2 + w,
+                            )
+                            for (u, w) in ((0, r), (r, 0), (0, -r), (-r, 0), (0, r))
+                        ]
+                        tube(K, pts, [0.018] * 5, n=6)
         else:
+            # chamfered: the corners cut back from the square, stopped with a little triangle
             loft(
-                "stone",
+                K,
                 x,
                 y,
-                [(0.4, z), (0.33, z + 0.06), (0.33, z + hh - 0.06), (0.4, z + hh)],
+                [
+                    (0.42, z),
+                    (0.4, z + 0.04),
+                    (0.35, z + 0.1),
+                    (0.35, z + hh - 0.1),
+                    (0.4, z + hh - 0.04),
+                    (0.42, z + hh),
+                ],
                 e=2,
                 n=8,
+                phase=math.pi / 8,
+            )
+            loft(
+                K,
+                x,
+                y,
+                [(0.37, z + hh * 0.48), (0.39, z + hh * 0.5), (0.37, z + hh * 0.52)],
+                e=2,
+                n=8,
+                phase=math.pi / 8,
             )
         z += hh
-    # capital: neck, the vase (kalasa), the dish, the abacus (palagai)
+    # the capital
     loft(
-        "stone",
+        K,
         x,
         y,
         [
             (0.3, z),
-            (0.26, z + 0.12),
-            (0.36, z + 0.3),
-            (0.42, z + 0.42),
-            (0.3, z + 0.5),
-            (0.48, z + 0.62),
+            (0.27, z + 0.08),
+            (0.27, z + 0.12),
+            (0.34, z + 0.22),
+            (0.4, z + 0.32),
+            (0.4, z + 0.38),
+            (0.3, z + 0.44),
+            (0.24, z + 0.5),
+            (0.24, z + 0.54),
+            (0.42, z + 0.66),
+            (0.5, z + 0.72),
         ],
         e=2.2,
-        n=24,
+        n=40,
     )
-    z += 0.62
-    box("stone", x, y, z, 0.55, 0.55, 0.12)
-    z += 0.12
-    # the bracket: arms in both directions, stepped, with a rolled (bevelled) end
-    for ax, ay in ((1, 0), (0, 1)):
-        box("stone", x, y, z, 0.95 if ax else 0.22, 0.22 if ax else 0.95, 0.22)
-        for sgn in (-1, 1):
-            box(
-                "stone",
-                x + ax * sgn * 0.85,
-                y + ay * sgn * 0.85,
-                z - 0.16,
-                0.12 if ax else 0.2,
-                0.2 if ax else 0.12,
-                0.16,
-            )
-    return z + 0.22
+    z += 0.72
+    box(K, x, y, z, 0.58, 0.58, 0.13)
+    z += 0.13
+    # the wave bracket, four arms
+    for ax, ay in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        prism(
+            K,
+            (x, y, z + 0.34),
+            (ax, ay, 0),
+            (-ay, ax, 0),
+            taranga_outline(1.0, 0.34, 0.13),
+            0.24,
+        )
+    return z + 0.34
 
 
 def pavilion(cx, cy, nx=4, ny=4, sp=3.3):
     """An open pillared pavilion (mandapa) on a moulded platform, roofed with stone slabs and beams."""
+    K = "pstone"
     hx, hy = (nx - 1) * sp / 2, (ny - 1) * sp / 2
     for d, hh in ((2.2, 0.35), (1.9, 0.35), (1.6, 0.3)):
-        box("stone", cx, cy, -0.3 + 0.0, hx + d, hy + d, hh + 0.3)
+        box(K, cx, cy, -0.3 + 0.0, hx + d, hy + d, hh + 0.3)
     box("path", cx, cy, 0.35, hx + 1.4, hy + 1.4, 0.04)
     top_z = 0
     for i in range(nx):
         for j in range(ny):
             px, py = cx - hx + i * sp, cy - hy + j * sp
-            ztop = pillar(px, py + 0.0, 6.6)
-            top_z = ztop
-    # pillars sit on the platform: lift them by moving the whole pavilion origin up is avoided; the
-    # platform top is at about 1.0 m, so the pillars stand from the ground inside the platform rim
+            top_z = pillar(px, py, 6.6, seed=i * ny + j)
+    # beams (uttiram) carried on the brackets, each with a moulded lower edge
     for i in range(nx):
-        box("stone", cx - hx + i * sp, cy, top_z, 0.3, hy + 0.6, 0.45)
+        prism(
+            K,
+            (cx - hx + i * sp, cy - hy - 0.6, top_z + 0.42),
+            (0, 1, 0),
+            (1, 0, 0),
+            [(0, 0), (2 * hy + 1.2, 0), (2 * hy + 1.2, -0.42), (0, -0.42)],
+            0.28,
+        )
     for j in range(ny):
-        box("stone", cx, cy - hy + j * sp, top_z + 0.45, hx + 0.6, 0.3, 0.4)
-    box("stone", cx, cy, top_z + 0.85, hx + 1.3, hy + 1.3, 0.35)
+        prism(
+            K,
+            (cx - hx - 0.6, cy - hy + j * sp, top_z + 0.84),
+            (1, 0, 0),
+            (0, 1, 0),
+            [(0, 0), (2 * hx + 1.2, 0), (2 * hx + 1.2, -0.4), (0, -0.4)],
+            0.27,
+        )
+    # the roof slabs, then the curved dripstone eave (kapota) with its little end-scrolls
+    box(K, cx, cy, top_z + 0.84, hx + 1.3, hy + 1.3, 0.3)
     loft(
-        "stone",
+        K,
         cx,
         cy,
         [
-            (hx + 1.3, top_z + 1.2),
-            (hx + 1.75, top_z + 1.45),
-            (hx + 1.8, top_z + 1.65),
-            (hx + 1.5, top_z + 1.75),
-            (hx + 0.9, top_z + 1.8),
+            (hx + 1.3, top_z + 1.14),
+            (hx + 1.85, top_z + 1.32),
+            (hx + 2.0, top_z + 1.5),
+            (hx + 1.92, top_z + 1.62),
+            (hx + 1.55, top_z + 1.7),
+            (hx + 1.5, top_z + 1.84),
+            (hx + 1.1, top_z + 1.9),
         ],
         e=40,
-        n=64,
+        n=96,
         aspect=(hy + 1.3) / (hx + 1.3),
     )
+    # a parapet of small pavilions on the roof, as on the Thanjavur halls
+    for i in range(nx + 1):
+        u = -hx - 0.8 + i * (2 * hx + 1.6) / nx
+        for x, y in ((cx + u, cy - hy - 1.0), (cx + u, cy + hy + 1.0)):
+            kuta(x, y, top_z + 1.9, 0.55)
     return top_z
 
 
 top = build()
-birds()
-HALL_TOP = pavilion(0.0, -115.0)
-courtyard()
-grove()
-mandapa(-16.5, -78, 11)
-lamp_pillar(-30, -98, 11.5)
+if not HERO:
+    birds()
+    HALL_TOP = pavilion(0.0, -115.0)
+HANGING = []
+
+
+def hanging_lamp(x, y, top, drop):
+    """A thoonga vilakku: a brass chain from the ceiling, a bowl of oil with five
+    wicks, and a small finial below; its light is added at dusk."""
+    z = top - drop
+    for k in range(int(drop / 0.09)):
+        zz = top - k * 0.09
+        loft(
+            "gold", x, y, [(0.012, zz - 0.07), (0.022, zz - 0.035), (0.012, zz)], e=2, n=6
+        )
+    loft(
+        "gold",
+        x,
+        y,
+        [
+            (0.01, z - 0.2),
+            (0.05, z - 0.16),
+            (0.16, z - 0.06),
+            (0.2, z),
+            (0.17, z + 0.02),
+            (0.02, z + 0.03),
+        ],
+        e=2,
+        n=24,
+    )
+    loft("gold", x, y, [(0.005, z - 0.42), (0.03, z - 0.33), (0.02, z - 0.2)], e=2, n=10)
+    for w in range(5):
+        a = 2 * math.pi * w / 5
+        loft(
+            "flame",
+            x + 0.15 * math.cos(a),
+            y + 0.15 * math.sin(a),
+            [(0.012, z + 0.02), (0.02, z + 0.06), (0.001, z + 0.12)],
+            e=2,
+            n=8,
+        )
+        HANGING.append((x + 0.15 * math.cos(a), y + 0.15 * math.sin(a), z + 0.08))
+
+
+def kuthu_vilakku(x, y, z0, h=1.55):
+    """A tall brass standing lamp: a stepped round foot, a stem of turned rings and
+    bulbs, an oil bowl with five spouts each holding a flame, and a crowning finial."""
+    s = h / 1.55
+    prof = [
+        (0.005, 0),
+        (0.24, 0),
+        (0.25, 0.02),
+        (0.22, 0.05),
+        (0.15, 0.08),
+        (0.17, 0.11),
+        (0.06, 0.16),
+        (0.05, 0.3),
+        (0.075, 0.34),
+        (0.05, 0.38),
+        (0.035, 0.6),
+        (0.06, 0.66),
+        (0.04, 0.72),
+        (0.03, 0.95),
+        (0.055, 1.0),
+        (0.04, 1.06),
+        (0.05, 1.12),
+        (0.03, 1.16),
+    ]
+    loft("gold", x, y, [(r * s, z0 + zz * s) for (r, zz) in prof], e=2, n=40)
+    zb = z0 + 1.16 * s
+    loft(
+        "gold",
+        x,
+        y,
+        [
+            (0.03 * s, zb),
+            (0.12 * s, zb + 0.02 * s),
+            (0.2 * s, zb + 0.06 * s),
+            (0.21 * s, zb + 0.09 * s),
+            (0.19 * s, zb + 0.09 * s),
+            (0.02 * s, zb + 0.05 * s),
+        ],
+        e=2,
+        n=40,
+    )
+    for w in range(5):
+        a = 2 * math.pi * w / 5 + 0.3
+        sx, sy = x + 0.23 * s * math.cos(a), y + 0.23 * s * math.sin(a)
+        tube(
+            "gold",
+            [
+                Vector(
+                    (
+                        x + 0.17 * s * math.cos(a),
+                        y + 0.17 * s * math.sin(a),
+                        zb + 0.07 * s,
+                    )
+                ),
+                Vector((sx, sy, zb + 0.085 * s)),
+            ],
+            [0.02 * s, 0.012 * s],
+            n=8,
+        )
+        loft(
+            "flame",
+            sx,
+            sy,
+            [
+                (0.006, zb + 0.09 * s),
+                (0.016, zb + 0.12 * s),
+                (0.01, zb + 0.16 * s),
+                (0.001, zb + 0.21 * s),
+            ],
+            e=2,
+            n=8,
+        )
+        HANGING.append((sx, sy, zb + 0.14 * s))
+    zf = zb + 0.09 * s
+    loft(
+        "gold",
+        x,
+        y,
+        [
+            (0.02 * s, zf),
+            (0.03 * s, zf + 0.12 * s),
+            (0.06 * s, zf + 0.18 * s),
+            (0.035 * s, zf + 0.24 * s),
+            (0.045 * s, zf + 0.3 * s),
+            (0.001, zf + 0.42 * s),
+        ],
+        e=2,
+        n=24,
+    )
+
+
+if not HERO:
+    kuthu_vilakku(-2.7, -106.6, 0.068)
+
+
+if not HERO:
+    for hx_ in (-3.3, 0.0, 3.3):
+        for hy_ in (-116.65, -113.35):
+            hanging_lamp(hx_, hy_, HALL_TOP + 0.42, 3.2 + 0.25 * abs(hx_) / 3.3)
+    courtyard()
+    grove()
+    mandapa(-16.5, -78, 11)
+    lamp_pillar(-30, -98, 11.5)
 LAMP_SPOTS = []
 
 
@@ -1554,17 +1949,88 @@ def ground_kolam(cx, cy, z, size, a=5, b=4, ph=0.5):
             )
 
 
-ground_kolam(0.0, -101.6, 0.075, 2.3, a=3, b=2, ph=0.5)
-ground_kolam(0.0, -21.5, 0.075, 1.8, a=4, b=3, ph=0.25)
-lamp_row(-6.0, 6.0, -105.2, 0.4, 1.0)  # the front step of the hall
-lamp_row(-13.0, 13.0, -18.4, 0.35, 1.3)  # along the temple's base
-grounds()
-grass_blades(
-    (-72.0, -138.0),
-    math.atan2(138.0, 102.0),
-    keep_out=((-35, -115, 35, 15), (-41, -151, 41, -109), (-71, -35, -9, 23)),
-)
-if len(argv) > 4 and argv[4] == "close":
+if not HERO:
+    ground_kolam(0.0, -101.6, 0.075, 2.3, a=3, b=2, ph=0.5)
+    ground_kolam(0.0, -21.5, 0.075, 1.8, a=4, b=3, ph=0.25)
+    lamp_row(-6.0, 6.0, -105.2, 0.4, 1.0)  # the front step of the hall
+    lamp_row(-13.0, 13.0, -18.4, 0.35, 1.3)  # along the temple's base
+    grounds()
+MESHES["pave"] = bmesh.new()
+
+
+def paving(x0, x1, y0, y1, top, seed):
+    """Dressed stone slabs laid in courses, each its own: a length and a course width
+    from the quarry, a few millimetres high or low, a hair out of level, a chamfered
+    edge, and its own tone. Water then lies in the joints and on the low slabs, and a
+    reflection breaks at every edge, as it does on real paving."""
+    import random
+
+    rnd = random.Random(seed)  # noqa: S311 - shape variation, not security
+    bm = MESHES["pave"]
+    tone_layer = bm.loops.layers.float_color.new("slab")
+    y = y0
+    while y < y1:
+        w = rnd.choice((0.6, 0.75, 0.9))
+        x = x0 - rnd.uniform(0, 1.2)
+        while x < x1:
+            ln = rnd.uniform(0.9, 1.7)
+            ax, bx = max(x, x0) + 0.004, min(x + ln, x1) - 0.004
+            ay, by = y + 0.004, min(y + w, y1) - 0.004
+            if bx - ax > 0.1 and by - ay > 0.1:
+                h = top + rnd.uniform(-0.004, 0.003)
+                tx, ty = rnd.uniform(-0.0025, 0.0025), rnd.uniform(-0.0025, 0.0025)
+                c = 0.012
+
+                def zt(
+                    px, py, d=0.0, h=h, tx=tx, ty=ty, cx=(ax + bx) / 2, cy=(ay + by) / 2
+                ):
+                    return h - d + tx * (px - cx) + ty * (py - cy)
+
+                bot = [
+                    bm.verts.new((px, py, top - 0.08))
+                    for (px, py) in ((ax, ay), (bx, ay), (bx, by), (ax, by))
+                ]
+                out = [
+                    bm.verts.new((px, py, zt(px, py, 0.007)))
+                    for (px, py) in ((ax, ay), (bx, ay), (bx, by), (ax, by))
+                ]
+                inn = [
+                    bm.verts.new((px, py, zt(px, py)))
+                    for (px, py) in (
+                        (ax + c, ay + c),
+                        (bx - c, ay + c),
+                        (bx - c, by - c),
+                        (ax + c, by - c),
+                    )
+                ]
+                faces = [bm.faces.new(inn)]
+                for i in range(4):
+                    j = (i + 1) % 4
+                    faces.append(bm.faces.new((out[i], out[j], inn[j], inn[i])))
+                    faces.append(bm.faces.new((bot[i], bot[j], out[j], out[i])))
+                tone = rnd.gauss(1.0, 0.07) * (0.86 if rnd.random() < 0.12 else 1.0)
+                for f in faces:
+                    for loop in f.loops:
+                        loop[tone_layer] = (
+                            tone,
+                            tone * rnd.uniform(0.985, 1.015),
+                            tone,
+                            1.0,
+                        )
+            x += ln
+        y += w
+
+
+if not HERO:
+    paving(-30.0, 30.0, -108.6, -20.0, 0.068, 31)  # the courtyard up to the tower
+    paving(-6.3, 6.3, -121.3, -108.7, 0.402, 32)  # the hall's own floor
+if not HERO:
+    grass_blades(
+        (-72.0, -138.0),
+        math.atan2(138.0, 102.0),
+        keep_out=((-35, -115, 35, 15), (-41, -151, 41, -109), (-71, -35, -9, 23)),
+    )
+if not HERO and len(argv) > 4 and argv[4] == "close":
     grass_blades(
         (-34.0, -44.0),
         math.atan2(29.0, 32.0),
@@ -1765,6 +2231,129 @@ def mat_foliage(name, c0, c1, trans, trans_amount):
     return m
 
 
+def mat_banana_leaf():
+    m = bpy.data.materials.new("banana_leaf")
+    nt = m.node_tree
+    N, L = nt.nodes, nt.links
+    b = N["Principled BSDF"]
+    uv = N.new("ShaderNodeUVMap")
+    sep = N.new("ShaderNodeSeparateXYZ")
+    L.new(uv.outputs["UV"], sep.inputs["Vector"])
+    # veins: lines of constant (u * 140 + v * 9), so they leave the midrib at a slant
+    vu = N.new("ShaderNodeMath")
+    vu.operation = "MULTIPLY_ADD"
+    vu.inputs[1].default_value = 140.0
+    vv = N.new("ShaderNodeMath")
+    vv.operation = "MULTIPLY"
+    vv.inputs[1].default_value = 9.0
+    L.new(sep.outputs["Y"], vv.inputs[0])
+    L.new(sep.outputs["X"], vu.inputs[0])
+    L.new(vv.outputs["Value"], vu.inputs[2])
+    sw = N.new("ShaderNodeMath")
+    sw.operation = "SINE"
+    L.new(vu.outputs["Value"], sw.inputs[0])
+    vein = N.new("ShaderNodeMapRange")
+    vein.inputs["From Min"].default_value = 0.6
+    vein.inputs["From Max"].default_value = 1.0
+    L.new(sw.outputs["Value"], vein.inputs["Value"])
+    # colour across the blade: pale by the midrib, deep green, a dry margin
+    across = N.new("ShaderNodeValToRGB")
+    els = across.color_ramp.elements
+    els[0].position, els[0].color = 0.0, (0.3, 0.38, 0.1, 1)
+    els[1].position, els[1].color = 0.12, (0.09, 0.2, 0.03, 1)
+    e = els.new(0.9)
+    e.color = (0.11, 0.22, 0.035, 1)
+    e = els.new(0.985)
+    e.color = (0.34, 0.26, 0.08, 1)
+    L.new(sep.outputs["Y"], across.inputs["Fac"])
+    pos = N.new("ShaderNodeNewGeometry")
+    nz = N.new("ShaderNodeTexNoise")
+    nz.inputs["Scale"].default_value = 2.5
+    nz.inputs["Detail"].default_value = 6
+    L.new(pos.outputs["Position"], nz.inputs["Vector"])
+    mot = N.new("ShaderNodeMapRange")
+    mot.inputs["To Min"].default_value = 0.75
+    mot.inputs["To Max"].default_value = 1.15
+    L.new(nz.outputs["Fac"], mot.inputs["Value"])
+    c1 = N.new("ShaderNodeMix")
+    c1.data_type = "RGBA"
+    c1.blend_type = "MULTIPLY"
+    c1.inputs["Factor"].default_value = 1.0
+    L.new(across.outputs["Color"], c1.inputs["A"])
+    L.new(mot.outputs["Result"], c1.inputs["B"])
+    c2 = N.new("ShaderNodeMix")
+    c2.data_type = "RGBA"
+    c2.blend_type = "MULTIPLY"
+    c2.inputs["B"].default_value = (0.78, 0.82, 0.7, 1)
+    L.new(vein.outputs["Result"], c2.inputs["Factor"])
+    L.new(c1.outputs["Result"], c2.inputs["A"])
+    L.new(c2.outputs["Result"], b.inputs["Base Color"])
+    b.inputs["Roughness"].default_value = 0.42
+    try:
+        b.inputs["Coat Weight"].default_value = 0.25
+        b.inputs["Coat Roughness"].default_value = 0.3
+    except KeyError:
+        pass
+    bump = N.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value = 0.25
+    bump.inputs["Distance"].default_value = 0.002
+    L.new(vein.outputs["Result"], bump.inputs["Height"])
+    L.new(bump.outputs["Normal"], b.inputs["Normal"])
+    tr = N.new("ShaderNodeBsdfTranslucent")
+    tcol = N.new("ShaderNodeMix")
+    tcol.data_type = "RGBA"
+    tcol.blend_type = "MULTIPLY"
+    tcol.inputs["Factor"].default_value = 1.0
+    L.new(c2.outputs["Result"], tcol.inputs["A"])
+    tcol.inputs["B"].default_value = (2.4, 2.6, 1.2, 1)
+    L.new(tcol.outputs["Result"], tr.inputs["Color"])
+    mix = N.new("ShaderNodeMixShader")
+    mix.inputs["Fac"].default_value = 0.42
+    L.new(b.outputs["BSDF"], mix.inputs[1])
+    L.new(tr.outputs["BSDF"], mix.inputs[2])
+    L.new(mix.outputs["Shader"], N["Material Output"].inputs["Surface"])
+    return m
+
+
+def mat_pseudostem():
+    m = bpy.data.materials.new("pseudostem")
+    nt = m.node_tree
+    N, L = nt.nodes, nt.links
+    b = N["Principled BSDF"]
+    pos = N.new("ShaderNodeNewGeometry")
+    # sheath edges: long vertical bands that wrap round the stem
+    mp = N.new("ShaderNodeMapping")
+    mp.inputs["Scale"].default_value = (14.0, 14.0, 0.6)
+    L.new(pos.outputs["Position"], mp.inputs["Vector"])
+    wv = N.new("ShaderNodeTexWave")
+    wv.wave_type = "BANDS"
+    wv.bands_direction = "X"
+    wv.inputs["Distortion"].default_value = 2.0
+    L.new(mp.outputs["Vector"], wv.inputs["Vector"])
+    blot = N.new("ShaderNodeTexNoise")
+    blot.inputs["Scale"].default_value = 6.0
+    blot.inputs["Detail"].default_value = 8
+    L.new(pos.outputs["Position"], blot.inputs["Vector"])
+    br = N.new("ShaderNodeValToRGB")
+    e = br.color_ramp.elements
+    e[0].position, e[0].color = 0.45, (0.2, 0.3, 0.08, 1)
+    e[1].position, e[1].color = 0.62, (0.16, 0.07, 0.05, 1)
+    L.new(blot.outputs["Fac"], br.inputs["Fac"])
+    shade = N.new("ShaderNodeMix")
+    shade.data_type = "RGBA"
+    shade.blend_type = "MULTIPLY"
+    shade.inputs["Factor"].default_value = 0.35
+    L.new(br.outputs["Color"], shade.inputs["A"])
+    L.new(wv.outputs["Color"], shade.inputs["B"])
+    L.new(shade.outputs["Result"], b.inputs["Base Color"])
+    b.inputs["Roughness"].default_value = 0.45
+    bump = N.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value = 0.4
+    L.new(wv.outputs["Fac"], bump.inputs["Height"])
+    L.new(bump.outputs["Normal"], b.inputs["Normal"])
+    return m
+
+
 def mat_leaf():
     m = bpy.data.materials.new("leaf")
     nt = m.node_tree
@@ -1899,6 +2488,9 @@ def mat_flame():
 TEX = __import__("os").path.join(__import__("os").path.dirname(__file__), "tex")
 
 
+WET_MASKS = {}
+
+
 def mat_scan(
     name,
     folder,
@@ -1908,6 +2500,7 @@ def mat_scan(
     normal_strength=1.0,
     blend=0.25,
     displace=0.0,
+    wet=False,
 ):
     """A scanned PBR material (CC0, Poly Haven), box-projected in world space at its real size,
     with ambient-occlusion grime, rain streaks and lichen laid over it when weather=True."""
@@ -2077,10 +2670,60 @@ def mat_scan(
         last = wear.outputs["Result"]
     L.new(last, b.inputs["Base Color"])
     L.new(rgh.outputs["Color"], b.inputs["Roughness"])
+    if wet:
+        # After a monsoon shower: the paving darkens as it soaks, and water stands
+        # in its low places, mirror-smooth, reflecting the tower and the lamps.
+        gw = N.new("ShaderNodeNewGeometry")
+        pz = N.new("ShaderNodeTexNoise")
+        pz.inputs["Scale"].default_value = 0.22
+        pz.inputs["Detail"].default_value = 7
+        pz.inputs["Roughness"].default_value = 0.62
+        L.new(gw.outputs["Position"], pz.inputs["Vector"])
+        hgt_w = img("Displacement.png", True)
+        sumw = N.new("ShaderNodeMath")
+        sumw.operation = "MULTIPLY_ADD"
+        sumw.inputs[1].default_value = -0.35
+        L.new(hgt_w.outputs["Color"], sumw.inputs[0])
+        L.new(pz.outputs["Fac"], sumw.inputs[2])
+        pud = N.new("ShaderNodeMapRange")
+        pud.inputs["From Min"].default_value = 0.31
+        pud.inputs["From Max"].default_value = 0.35
+        L.new(sumw.outputs["Value"], pud.inputs["Value"])
+        damp = N.new("ShaderNodeMapRange")
+        damp.inputs["From Min"].default_value = 0.2
+        damp.inputs["From Max"].default_value = 0.42
+        L.new(sumw.outputs["Value"], damp.inputs["Value"])
+        dk = N.new("ShaderNodeMix")
+        dk.data_type = "RGBA"
+        dk.blend_type = "MULTIPLY"
+        L.new(damp.outputs["Result"], dk.inputs["Factor"])
+        L.new(b.inputs["Base Color"].links[0].from_socket, dk.inputs["A"])
+        dk.inputs["B"].default_value = (0.62, 0.6, 0.58, 1)
+        L.new(dk.outputs["Result"], b.inputs["Base Color"])
+        rmix = N.new("ShaderNodeMix")
+        rmix.data_type = "FLOAT"
+        L.new(pud.outputs["Result"], rmix.inputs["Factor"])
+        rdamp = N.new("ShaderNodeMath")
+        rdamp.operation = "MULTIPLY"
+        rdamp.inputs[1].default_value = 0.85
+        L.new(rgh.outputs["Color"], rdamp.inputs[0])
+        L.new(rdamp.outputs["Value"], rmix.inputs["A"])
+        rmix.inputs["B"].default_value = 0.02
+        L.new(rmix.outputs["Result"], b.inputs["Roughness"])
+        WET_MASKS[name] = (N, L, pud)
     nm = N.new("ShaderNodeNormalMap")
     nm.inputs["Strength"].default_value = normal_strength
     L.new(nor.outputs["Color"], nm.inputs["Color"])
     L.new(nm.outputs["Normal"], b.inputs["Normal"])
+    if wet:
+        # standing water is flat: the stone's relief vanishes under it
+        flat = N.new("ShaderNodeNewGeometry")
+        nmix = N.new("ShaderNodeMix")
+        nmix.data_type = "VECTOR"
+        L.new(WET_MASKS[name][2].outputs["Result"], nmix.inputs["Factor"])
+        L.new(nm.outputs["Normal"], nmix.inputs[4])
+        L.new(flat.outputs["Normal"], nmix.inputs[5])
+        L.new(nmix.outputs[1], b.inputs["Normal"])
     if displace > 0:
         hgt = img("Displacement.png", True)
         dn = N.new("ShaderNodeDisplacement")
@@ -2090,6 +2733,188 @@ def mat_scan(
         L.new(dn.outputs["Displacement"], N["Material Output"].inputs["Displacement"])
         m.displacement_method = "BOTH"
         m.max_vertex_displacement = displace * 1.2
+    return m
+
+
+def mat_granite(name, warm=1.0):
+    """Tamil Nadu granite, made, not scanned: grains of biotite, feldspar and quartz in their
+    proportions, iron staining, chisel tooling, grime in the hollows, and edges polished by hands."""
+    m = bpy.data.materials.new(name)
+    nt = m.node_tree
+    N, L = nt.nodes, nt.links
+    b = N["Principled BSDF"]
+    geo = N.new("ShaderNodeNewGeometry")
+    pos = geo.outputs["Position"]
+
+    def voronoi(scale, out="Color"):
+        v = N.new("ShaderNodeTexVoronoi")
+        v.voronoi_dimensions = "3D"
+        v.inputs["Scale"].default_value = scale
+        v.inputs["Randomness"].default_value = 1.0
+        L.new(pos, v.inputs["Vector"])
+        return v.outputs[out]
+
+    def noise(scale, detail=4.0, rough=0.55):
+        n = N.new("ShaderNodeTexNoise")
+        n.inputs["Scale"].default_value = scale
+        n.inputs["Detail"].default_value = detail
+        n.inputs["Roughness"].default_value = rough
+        L.new(pos, n.inputs["Vector"])
+        return n.outputs["Fac"]
+
+    def ramp(src, stops, constant=False):
+        r = N.new("ShaderNodeValToRGB")
+        if constant:
+            r.color_ramp.interpolation = "CONSTANT"
+        els = r.color_ramp.elements
+        els[0].position, els[0].color = stops[0][0], (*stops[0][1], 1)
+        els[1].position, els[1].color = stops[1][0], (*stops[1][1], 1)
+        for p_, c_ in stops[2:]:
+            e = els.new(p_)
+            e.color = (*c_, 1)
+        L.new(src, r.inputs["Fac"])
+        return r.outputs["Color"]
+
+    def bw(src):
+        g = N.new("ShaderNodeRGBToBW")
+        L.new(src, g.inputs["Color"])
+        return g.outputs["Val"]
+
+    def mix(a, b_, fac, mode="MIX"):
+        x = N.new("ShaderNodeMix")
+        x.data_type = "RGBA"
+        x.blend_type = mode
+        if isinstance(fac, float):
+            x.inputs["Factor"].default_value = fac
+        else:
+            L.new(fac, x.inputs["Factor"])
+        for sock, v in (("A", a), ("B", b_)):
+            if isinstance(v, tuple):
+                x.inputs[sock].default_value = (*v, 1)
+            else:
+                L.new(v, x.inputs[sock])
+        return x.outputs["Result"]
+
+    w = warm
+
+    def channel(src):
+        # one channel of a cell's random colour is uniform over 0..1; a grey of all
+        # three bunches near the middle and starves the black and white grains
+        sp = N.new("ShaderNodeSeparateColor")
+        L.new(src, sp.inputs["Color"])
+        return sp.outputs["Red"]
+
+    # salt and pepper: black biotite, grey quartz, off-white and faintly pink feldspar
+    grains = ramp(
+        channel(voronoi(320)),
+        [
+            (0.0, (0.022, 0.021, 0.02)),
+            (0.24, (0.27, 0.265, 0.26)),
+            (0.52, (0.55, 0.53, 0.5)),
+            (0.78, (0.6 * w, 0.5, 0.47)),
+            (0.9, (0.74, 0.73, 0.7)),
+        ],
+        constant=True,
+    )
+    fine = ramp(
+        channel(voronoi(950)),
+        [(0.0, (0.03, 0.03, 0.03)), (0.3, (0.36, 0.35, 0.34)), (0.65, (0.62, 0.6, 0.57))],
+        constant=True,
+    )
+    col = mix(grains, fine, 0.4)
+    # a thousand years of air, soot and hands: a warm grey patina over the grain
+    pat = ramp(noise(1.1, 6, 0.6), [(0.35, (0.5, 0.47, 0.43)), (0.7, (0.78, 0.72, 0.64))])
+    col = mix(col, pat, 1.0, "MULTIPLY")
+    # the mass of the stone: broad warm and cool zones, and iron staining in clouds
+    zone = ramp(noise(0.35, 3), [(0.3, (0.6, 0.58, 0.57)), (0.7, (0.8, 0.74, 0.66))])
+    col = mix(col, zone, 1.0, "MULTIPLY")
+    stain = ramp(noise(1.6, 6, 0.65), [(0.55, (0, 0, 0)), (0.72, (1, 1, 1))])
+    col = mix(col, (0.36 * w, 0.24, 0.15), bw(stain), "MIX")
+    # grime where the light and the rain cannot reach
+    ao = N.new("ShaderNodeAmbientOcclusion")
+    ao.inputs["Distance"].default_value = 0.6
+    ao.samples = 8
+    grime = ramp(ao.outputs["AO"], [(0.0, (0.35, 0.33, 0.3)), (0.85, (1, 1, 1))])
+    col = mix(col, grime, 1.0, "MULTIPLY")
+    # dark rain streaks under ledges
+    sx = N.new("ShaderNodeMapping")
+    sx.inputs["Scale"].default_value = (8.0, 8.0, 0.4)
+    L.new(pos, sx.inputs["Vector"])
+    sn = N.new("ShaderNodeTexNoise")
+    sn.inputs["Scale"].default_value = 2.5
+    L.new(sx.outputs["Vector"], sn.inputs["Vector"])
+    streak = ramp(sn.outputs["Fac"], [(0.55, (1, 1, 1)), (0.75, (0.88, 0.87, 0.85))])
+    col = mix(col, streak, 1.0, "MULTIPLY")
+    # edges worn smooth and a little lighter by centuries of hands and feet
+    bev = N.new("ShaderNodeBevel")
+    bev.samples = 6
+    bev.inputs["Radius"].default_value = 0.03
+    dot = N.new("ShaderNodeVectorMath")
+    dot.operation = "DOT_PRODUCT"
+    L.new(bev.outputs["Normal"], dot.inputs[0])
+    L.new(geo.outputs["Normal"], dot.inputs[1])
+    edge = N.new("ShaderNodeMapRange")
+    edge.inputs["From Min"].default_value = 0.995
+    edge.inputs["From Max"].default_value = 0.9
+    L.new(dot.outputs["Value"], edge.inputs["Value"])
+    col = mix(col, (0.2, 0.19, 0.17), edge.outputs["Result"], "SCREEN")
+    L.new(col, b.inputs["Base Color"])
+    rr = N.new("ShaderNodeMapRange")
+    rr.inputs["To Min"].default_value = 0.5
+    rr.inputs["To Max"].default_value = 0.78
+    L.new(noise(4.0, 5), rr.inputs["Value"])
+    rsub = N.new("ShaderNodeMath")
+    rsub.operation = "MULTIPLY_ADD"
+    rsub.inputs[1].default_value = -0.22
+    L.new(edge.outputs["Result"], rsub.inputs[0])
+    L.new(rr.outputs["Result"], rsub.inputs[2])
+    L.new(rsub.outputs["Value"], b.inputs["Roughness"])
+    # relief: the grain, the chisel's tooling, and a gentle unevenness of the dressed face
+    h1 = N.new("ShaderNodeMath")
+    h1.operation = "MULTIPLY"
+    h1.inputs[1].default_value = 0.25
+    L.new(bw(voronoi(240)), h1.inputs[0])
+    tool = N.new("ShaderNodeMapping")
+    tool.inputs["Scale"].default_value = (22.0, 22.0, 70.0)
+    L.new(pos, tool.inputs["Vector"])
+    tw = N.new("ShaderNodeTexWave")
+    tw.wave_type = "BANDS"
+    tw.bands_direction = "Z"
+    tw.inputs["Scale"].default_value = 1.0
+    tw.inputs["Distortion"].default_value = 6.0
+    tw.inputs["Detail"].default_value = 3.0
+    L.new(tool.outputs["Vector"], tw.inputs["Vector"])
+    h2 = N.new("ShaderNodeMath")
+    h2.operation = "MULTIPLY_ADD"
+    h2.inputs[1].default_value = 0.35
+    L.new(tw.outputs["Fac"], h2.inputs[0])
+    L.new(h1.outputs["Value"], h2.inputs[2])
+    h3 = N.new("ShaderNodeMath")
+    h3.operation = "ADD"
+    L.new(h2.outputs["Value"], h3.inputs[0])
+    L.new(noise(2.0, 6), h3.inputs[1])
+    bump = N.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value = 0.35
+    bump.inputs["Distance"].default_value = 0.004
+    L.new(h3.outputs["Value"], bump.inputs["Height"])
+    L.new(bump.outputs["Normal"], b.inputs["Normal"])
+    return m
+
+
+def toned(m, attr):
+    """Multiply a material's colour by a per-slab tone stored on the mesh."""
+    N, L = m.node_tree.nodes, m.node_tree.links
+    b = N["Principled BSDF"]
+    src = b.inputs["Base Color"].links[0].from_socket
+    at = N.new("ShaderNodeAttribute")
+    at.attribute_name = attr
+    mx = N.new("ShaderNodeMix")
+    mx.data_type = "RGBA"
+    mx.blend_type = "MULTIPLY"
+    mx.inputs["Factor"].default_value = 1.0
+    L.new(src, mx.inputs["A"])
+    L.new(at.outputs["Color"], mx.inputs["B"])
+    L.new(mx.outputs["Result"], b.inputs["Base Color"])
     return m
 
 
@@ -2142,18 +2967,15 @@ MATS = {
         normal_strength=0.6,
     ),
     "inscr": mat_inscription(),
-    "rice": mat_simple("rice", (0.86, 0.84, 0.8), 0.95),
+    "pstone": mat_granite("pstone"),
+    "rice": mat_simple("rice", (0.5, 0.48, 0.45), 0.98),
     "bird": mat_simple("bird", (0.05, 0.045, 0.04), 0.8),
     "leaf": mat_leaf(),
     "deadleaf": mat_foliage(
         "deadleaf", (0.18, 0.12, 0.05), (0.42, 0.3, 0.14), (0.5, 0.32, 0.1), 0.25
     ),
-    "banana": mat_foliage(
-        "banana", (0.07, 0.15, 0.025), (0.2, 0.3, 0.06), (0.4, 0.55, 0.1), 0.4
-    ),
-    "bstem": mat_foliage(
-        "bstem", (0.08, 0.07, 0.03), (0.17, 0.19, 0.07), (0.25, 0.25, 0.08), 0.05
-    ),
+    "banana": mat_banana_leaf(),
+    "bstem": mat_pseudostem(),
     "midrib": mat_foliage(
         "midrib", (0.28, 0.32, 0.12), (0.42, 0.45, 0.2), (0.4, 0.45, 0.2), 0.1
     ),
@@ -2185,7 +3007,12 @@ MATS = {
     "gold": mat_simple("gold", (1.0, 0.7, 0.3), 0.22, 1.0),
     "niche": mat_simple("niche", (0.05, 0.035, 0.03), 0.9),
     "floor": mat_scan(
-        "floor", "red_sandstone_pavement", 2.15, tint=(1.0, 0.85, 0.72), weather=False
+        "floor",
+        "red_sandstone_pavement",
+        2.15,
+        tint=(1.0, 0.85, 0.72),
+        weather=False,
+        wet=WET,
     ),
     "grass": mat_scan("grass", "grass_path_2", 1.0, tint=(0.8, 0.85, 0.6), weather=False),
     "blade": mat_blade(),
@@ -2196,6 +3023,18 @@ MATS = {
         displace=0.03,
         tint=(1.05, 0.9, 0.78),
         weather=False,
+        wet=WET,
+    ),
+    "pave": toned(
+        mat_scan(
+            "pave",
+            "red_sandstone_pavement",
+            2.15,
+            tint=(1.0, 0.88, 0.78),
+            weather=False,
+            wet=WET,
+        ),
+        "slab",
     ),
     "flame": mat_flame(),
 }
@@ -2217,8 +3056,8 @@ for key, bm in MESHES.items():
     bpy.context.scene.collection.objects.link(ob)
     me.materials.append(MATS[key])
     for p in me.polygons:
-        p.use_smooth = True
-    if key in ("stone", "wall"):
+        p.use_smooth = key != "pave"
+    if key in ("stone", "wall", "pstone"):
         bv = ob.modifiers.new("bevel", "BEVEL")
         bv.width = 0.035
         bv.segments = 2
@@ -2332,7 +3171,7 @@ def world_clouds():
     cr.color_ramp.elements[0].color = (0.46, 0.47, 0.55, 1)
     cr.color_ramp.elements[1].color = (1.55, 1.48, 1.38, 1)
     wl.new(shade.outputs["Fac"], cr.inputs["Fac"])
-    # sunrise: a band of saffron and orange low on the horizon, fading into the blue above
+    # a pale warm band of light low on the horizon, fading into the blue above
     glow = wn.new("ShaderNodeMapRange")
     glow.inputs["From Min"].default_value = 0.0
     glow.inputs["From Max"].default_value = 0.42
@@ -2478,6 +3317,27 @@ vs.inputs["Anisotropy"].default_value = 0.55
 fnt.links.new(vs.outputs["Volume"], fnt.nodes["Material Output"].inputs["Volume"])
 fog.data.materials.append(fm)
 sc.cycles.volume_step_rate = 4.0
+if GRADE == "blue":
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, -55, 4.0))
+    mist = bpy.context.object
+    mist.scale = (110, 150, 8.0)
+    mist.name = "mist"
+    mm = bpy.data.materials.new("mist")
+    mnt = mm.node_tree
+    mnt.nodes.remove(mnt.nodes["Principled BSDF"])
+    mg = mnt.nodes.new("ShaderNodeTexCoord")
+    ms = mnt.nodes.new("ShaderNodeSeparateXYZ")
+    mnt.links.new(mg.outputs["Generated"], ms.inputs["Vector"])
+    mfall = mnt.nodes.new("ShaderNodeMapRange")
+    mfall.inputs["To Min"].default_value = 0.009
+    mfall.inputs["To Max"].default_value = 0.0
+    mnt.links.new(ms.outputs["Z"], mfall.inputs["Value"])
+    mv = mnt.nodes.new("ShaderNodeVolumePrincipled")
+    mv.inputs["Color"].default_value = (0.9, 0.92, 1.0, 1)
+    mv.inputs["Anisotropy"].default_value = 0.72
+    mnt.links.new(mfall.outputs["Result"], mv.inputs["Density"])
+    mnt.links.new(mv.outputs["Volume"], mnt.nodes["Material Output"].inputs["Volume"])
+    mist.data.materials.append(mm)
 
 cam_data = bpy.data.cameras.new("cam")
 cam_data.lens = 35
@@ -2503,6 +3363,23 @@ if len(argv) > 4 and argv[4] == "hall":
     dv.inputs["Anisotropy"].default_value = 0.6
     dn.links.new(dv.outputs["Volume"], dn.nodes["Material Output"].inputs["Volume"])
     dust.data.materials.append(dm)
+if len(argv) > 4 and argv[4] == "threshold":
+    # Kneeling height at the hall's edge, the tower framed by two pillars and
+    # mirrored in the wet paving, lamps along the step in the foreground.
+    cam.location = (0.35, -112.2, 1.05)
+    target = Vector((0.0, 0.0, 28.0))
+    cam_data.lens = 22
+if len(argv) > 4 and argv[4] == "approach":
+    # Down the processional path at golden hour, the sun raking across the
+    # tower's tiers so every pavilion throws a shadow.
+    cam.location = (-52.0, -120.0, 1.7)
+    target = Vector((-2.0, 0.0, 26.0))
+    cam_data.lens = 35
+if len(argv) > 4 and argv[4] == "pillarmacro":
+    # One carved block of a hall pillar, close, the tower soft behind.
+    cam.location = (-3.4, -117.45, 2.35)
+    target = Vector((-4.95, -116.1, 2.2))
+    cam_data.lens = 50
 if len(argv) > 4 and argv[4] == "low":
     cam.location = (-21.0, -36.0, 1.6)
     target = Vector((0.0, 0.0, 52.0))
@@ -2525,6 +3402,57 @@ cam_data.dof.focus_distance = (target - cam.location).length
 cam_data.dof.aperture_fstop = 2.8
 
 if GRADE == "blue":
+    # Warm floodlights in the paving at the tower's foot, aimed up its faces:
+    # each grazes the tiers, so every pavilion throws a shadow upward.
+    import random as _r
+
+    rr = _r.Random(5)  # noqa: S311 - light variation, not security
+    for side in range(4):
+        nrm = [(0, -1), (1, 0), (0, 1), (-1, 0)][side]
+        tan = (-nrm[1], nrm[0])
+        for u in (-11.0, -4.0, 4.0, 11.0):
+            fx = tan[0] * u + nrm[0] * 31.0
+            fy = tan[1] * u + nrm[1] * 31.0
+            if abs(u) > 5:
+                # the lower storey: a broad soft wash, never a hard pool
+                wl_ = bpy.data.lights.new("wash", "AREA")
+                wl_.shape = "RECTANGLE"
+                wl_.size, wl_.size_y = 9.0, 2.0
+                wl_.energy = 4.5e3
+                wl_.color = (1.0, 0.6, 0.32)
+                wo = bpy.data.objects.new("wash", wl_)
+                wo.location = (fx * 0.62, fy * 0.62, 0.4)
+                aim_w = Vector((tan[0] * u * 0.6, tan[1] * u * 0.6, 9.0)) - Vector(
+                    wo.location
+                )
+                wo.rotation_mode = "QUATERNION"
+                wo.rotation_quaternion = aim_w.to_track_quat("-Z", "Y")
+                wo.visible_glossy = False
+                wo.visible_camera = False
+                sc.collection.objects.link(wo)
+                continue
+            fl = bpy.data.lights.new("flood", "SPOT")
+            fl.energy = 7e4 * rr.uniform(0.85, 1.1) * (2.2 if abs(u) < 5 else 1.0)
+            fl.color = (1.0, 0.66, 0.36)
+            fl.spot_size = math.radians(24 if abs(u) < 5 else 44)
+            fl.spot_blend = 0.8
+            fl.shadow_soft_size = 0.3
+            fo = bpy.data.objects.new("flood", fl)
+            fo.location = (fx, fy, 0.25)
+            aim = Vector(
+                (tan[0] * u * 0.3, tan[1] * u * 0.3, 52.0 if abs(u) < 5 else 16.0)
+            ) - Vector((fx, fy, 0.25))
+            fo.rotation_mode = "QUATERNION"
+            fo.rotation_quaternion = aim.to_track_quat("-Z", "Y")
+            sc.collection.objects.link(fo)
+    for x, y, z in HANGING:
+        hl = bpy.data.lights.new("hang", "POINT")
+        hl.energy = 4.0
+        hl.color = (1.0, 0.68, 0.38)
+        hl.shadow_soft_size = 0.03
+        ho = bpy.data.objects.new("hang", hl)
+        ho.location = (x, y, z)
+        sc.collection.objects.link(ho)
     for x, y, z in LAMP_SPOTS:
         ld = bpy.data.lights.new("lamp", "POINT")
         ld.energy = 14
@@ -2588,6 +3516,176 @@ def finishing():
     L.new(last, out.inputs[0])
 
 
+def hero_stage():
+    """The vimana alone, as a crafted object on a dark stage."""
+    for ob in list(sc.objects):
+        if ob.name.split(".")[0] in (
+            "sun",
+            "mist",
+            "clouds",
+            "flood",
+            "wash",
+            "lamp",
+            "hang",
+            "haze",
+        ):
+            bpy.data.objects.remove(ob, do_unlink=True)
+    # the stone as it is at Thanjavur: a warm weathered granite, not pale sand
+    for key in ("stone", "carve", "wall"):
+        for nd in MATS[key].node_tree.nodes:
+            if (
+                nd.bl_idname == "ShaderNodeMix"
+                and nd.data_type == "RGBA"
+                and not nd.inputs["B"].is_linked
+            ):
+                v = nd.inputs["B"].default_value
+                if v[0] > 1.0:
+                    nd.inputs["B"].default_value = (0.98, 0.8, 0.62, 1)
+    # a thousand monsoons: long dark streaks run down from every ledge, patina
+    # gathers in broad clouds, and the stone is never one even tone
+    for key in ("stone", "carve", "wall"):
+        nt_ = MATS[key].node_tree
+        N_, L_ = nt_.nodes, nt_.links
+        b_ = N_["Principled BSDF"]
+        src = b_.inputs["Base Color"].links[0].from_socket
+        geo_ = N_.new("ShaderNodeNewGeometry")
+        mp_ = N_.new("ShaderNodeMapping")
+        mp_.inputs["Scale"].default_value = (0.9, 0.9, 0.035)
+        L_.new(geo_.outputs["Position"], mp_.inputs["Vector"])
+        st_ = N_.new("ShaderNodeTexNoise")
+        st_.inputs["Scale"].default_value = 3.0
+        st_.inputs["Detail"].default_value = 6
+        L_.new(mp_.outputs["Vector"], st_.inputs["Vector"])
+        sr_ = N_.new("ShaderNodeMapRange")
+        sr_.inputs["From Min"].default_value = 0.42
+        sr_.inputs["From Max"].default_value = 0.7
+        sr_.inputs["To Min"].default_value = 1.0
+        sr_.inputs["To Max"].default_value = 0.62
+        L_.new(st_.outputs["Fac"], sr_.inputs["Value"])
+        pc_ = N_.new("ShaderNodeTexNoise")
+        pc_.inputs["Scale"].default_value = 0.06
+        pc_.inputs["Detail"].default_value = 4
+        L_.new(geo_.outputs["Position"], pc_.inputs["Vector"])
+        pr_ = N_.new("ShaderNodeMapRange")
+        pr_.inputs["To Min"].default_value = 0.8
+        pr_.inputs["To Max"].default_value = 1.2
+        L_.new(pc_.outputs["Fac"], pr_.inputs["Value"])
+        both = N_.new("ShaderNodeMath")
+        both.operation = "MULTIPLY"
+        L_.new(sr_.outputs["Result"], both.inputs[0])
+        L_.new(pr_.outputs["Result"], both.inputs[1])
+        mx_ = N_.new("ShaderNodeMix")
+        mx_.data_type = "RGBA"
+        mx_.blend_type = "MULTIPLY"
+        mx_.inputs["Factor"].default_value = 1.0
+        L_.new(src, mx_.inputs["A"])
+        L_.new(both.outputs["Value"], mx_.inputs["B"])
+        L_.new(mx_.outputs["Result"], b_.inputs["Base Color"])
+    # the backdrop: deep indigo above, a warm umber at the floor, seamless
+    wnodes, wlinks = world.node_tree.nodes, world.node_tree.links
+    for nd in list(wnodes):
+        wnodes.remove(nd)
+    out = wnodes.new("ShaderNodeOutputWorld")
+    tc = wnodes.new("ShaderNodeTexCoord")
+    sp = wnodes.new("ShaderNodeSeparateXYZ")
+    wlinks.new(tc.outputs["Generated"], sp.inputs["Vector"])
+    gr = wnodes.new("ShaderNodeValToRGB")
+    e = gr.color_ramp.elements
+    e[0].position, e[0].color = 0.0, (0.012, 0.009, 0.008, 1)
+    e[1].position, e[1].color = 0.22, (0.004, 0.006, 0.018, 1)
+    mid = e.new(0.05)
+    mid.color = (0.02, 0.014, 0.012, 1)
+    wlinks.new(sp.outputs["Z"], gr.inputs["Fac"])
+    bg = wnodes.new("ShaderNodeBackground")
+    bg.inputs["Strength"].default_value = 1.0
+    wlinks.new(gr.outputs["Color"], bg.inputs["Color"])
+    wlinks.new(bg.outputs["Background"], out.inputs["Surface"])
+    # a polished dark granite floor that holds a soft reflection
+    bpy.ops.mesh.primitive_circle_add(
+        vertices=128, radius=20000, fill_type="NGON", location=(0, 0, -0.02)
+    )
+    floor = bpy.context.object
+    fm = bpy.data.materials.new("stage")
+    fb = fm.node_tree.nodes["Principled BSDF"]
+    fb.inputs["Base Color"].default_value = (0.018, 0.016, 0.015, 1)
+    fz = fm.node_tree.nodes.new("ShaderNodeTexNoise")
+    fz.inputs["Scale"].default_value = 0.08
+    fr = fm.node_tree.nodes.new("ShaderNodeMapRange")
+    fr.inputs["To Min"].default_value = 0.08
+    fr.inputs["To Max"].default_value = 0.26
+    fm.node_tree.links.new(fz.outputs["Fac"], fr.inputs["Value"])
+    fm.node_tree.links.new(fr.outputs["Result"], fb.inputs["Roughness"])
+    floor.data.materials.append(fm)
+    # key: a warm low sun from the front left, rim: cool from behind right, fill: faint
+    for name, energy, colour, el, az, angle in (
+        ("key", 11.0, (1.0, 0.7, 0.42), 9, 252, 1.4),
+        ("rim", 5.5, (0.55, 0.68, 1.0), 16, 40, 1.2),
+        ("fill", 0.12, (0.75, 0.8, 1.0), 35, 300, 12.0),
+    ):
+        ld = bpy.data.lights.new(name, "SUN")
+        ld.energy = energy
+        ld.color = colour
+        ld.angle = math.radians(angle)
+        lo = bpy.data.objects.new(name, ld)
+        e_, a_ = math.radians(el), math.radians(az)
+        d_ = Vector(
+            (math.cos(e_) * math.sin(a_), -math.cos(e_) * math.cos(a_), math.sin(e_))
+        )
+        lo.rotation_mode = "QUATERNION"
+        lo.rotation_quaternion = (-d_).to_track_quat("-Z", "Y")
+        sc.collection.objects.link(lo)
+    # the camera circles the tower, low, on a long lens: it stands, it does not lean
+    o = math.radians(ORBIT)
+    dist = 430.0
+    cam.location = (dist * math.sin(o), -dist * math.cos(o), 14.0)
+    tgt = Vector((0.0, 0.0, top * 0.47))
+    cam.rotation_quaternion = (tgt - cam.location).to_track_quat("-Z", "Y")
+    cam_data.lens = 105
+    cam_data.clip_end = 6000.0
+    cam_data.shift_y = 0.04
+    cam_data.dof.use_dof = False
+    # a soft warm glow on the far backdrop, behind the tower: the silhouette
+    # lifts off the dark, as a product does on a stage
+    back = Vector((-math.sin(o), math.cos(o), 0.0))
+    bpy.ops.mesh.primitive_plane_add(
+        size=1, location=tuple(back * 900 + Vector((0, 0, 115)))
+    )
+    halo = bpy.context.object
+    halo.scale = (900, 900, 1)
+    halo.rotation_mode = "QUATERNION"
+    halo.rotation_quaternion = (-back).to_track_quat("Z", "Y")
+    hm = bpy.data.materials.new("halo")
+    hn, hl_ = hm.node_tree.nodes, hm.node_tree.links
+    hn.remove(hn["Principled BSDF"])
+    hc = hn.new("ShaderNodeTexCoord")
+    hg = hn.new("ShaderNodeTexGradient")
+    hg.gradient_type = "SPHERICAL"
+    hmp = hn.new("ShaderNodeMapping")
+    hmp.inputs["Scale"].default_value = (5.0, 4.2, 1.0)
+    hl_.new(hc.outputs["Object"], hmp.inputs["Vector"])
+    hl_.new(hmp.outputs["Vector"], hg.inputs["Vector"])
+    hr = hn.new("ShaderNodeValToRGB")
+    hr.color_ramp.elements[0].color = (0, 0, 0, 1)
+    hr.color_ramp.elements[1].position = 1.0
+    hr.color_ramp.elements[1].color = (0.075, 0.048, 0.03, 1)
+    hr.color_ramp.interpolation = "EASE"
+    soft = hr.color_ramp.elements.new(0.55)
+    soft.color = (0.012, 0.008, 0.005, 1)
+    hl_.new(hg.outputs["Fac"], hr.inputs["Fac"])
+    he = hn.new("ShaderNodeEmission")
+    hl_.new(hr.outputs["Color"], he.inputs["Color"])
+    hl_.new(he.outputs["Emission"], hn["Material Output"].inputs["Surface"])
+    halo.data.materials.append(hm)
+    halo.visible_shadow = False
+    halo.visible_diffuse = False
+    halo.visible_glossy = False
+    sc.view_settings.exposure = -0.4
+    with contextlib.suppress(TypeError):
+        sc.view_settings.look = "AgX - Medium High Contrast"
+
+
+if HERO:
+    hero_stage()
 finishing()
 sc.render.filepath = OUT
 sc.render.image_settings.file_format = "PNG"
