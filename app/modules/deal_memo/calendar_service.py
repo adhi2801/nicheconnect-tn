@@ -65,7 +65,12 @@ def deal_dates(db: Session, memo: DealMemo, now: datetime) -> tuple[str, list[Ev
         )
     due_on = delivery_due_on(memo, drafts, now)
     waiting_draft = drafts[-1] if drafts and drafts[-1].status == "submitted" else None
-    if waiting_draft is not None and now >= answer_deadline(memo, waiting_draft, drafts):
+    deadline = (
+        answer_deadline(memo, waiting_draft, drafts)
+        if waiting_draft is not None
+        else None
+    )
+    if deadline is not None and now >= deadline:
         waiting_draft = None  # already approved by the clock, even if not yet recorded
     if due_on is not None and memo.content_due_on is not None:
         moved = (due_on - memo.content_due_on).days
@@ -86,7 +91,8 @@ def deal_dates(db: Session, memo: DealMemo, now: datetime) -> tuple[str, list[Ev
                 remind_before=REMIND,
             )
         )
-    if waiting_draft is not None:
+    # No moment yet while the draft's images are being cleaned.
+    if waiting_draft is not None and deadline is not None:
         events.append(
             Event(
                 uid=uid(memo, "draft-approval"),
@@ -95,7 +101,7 @@ def deal_dates(db: Session, memo: DealMemo, now: datetime) -> tuple[str, list[Ev
                     "Unless the brand approves it or asks for changes first, the "
                     f"draft is approved at this moment. {SAFETY}"
                 ),
-                start=answer_deadline(memo, waiting_draft, drafts),
+                start=deadline,
                 remind_before=REMIND,
             )
         )

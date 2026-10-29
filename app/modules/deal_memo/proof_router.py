@@ -12,7 +12,7 @@ from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.links import ContentLink
 from app.core.literals import ensure_same_values
-from app.core.rate_limit import per_account, rate_limit
+from app.core.rate_limit import per_account, rate_limit, shared_rate_limit
 from app.core.storage import FileStore, get_file_store
 from app.core.text_flags import FieldFlag, field_flags
 from app.db.session import get_db
@@ -50,6 +50,8 @@ READ_LIMIT = "60 per minute"
 # Per person, not per address (D-065): a proof takes at most 10 files, so 30
 # an hour covers three full attempts and stops anyone filling the bucket.
 UPLOAD_LIMIT = "30 per hour"
+# Counted once across proof and draft uploads (item 27, piece 2).
+UPLOAD_SCOPE = "file-uploads"
 
 router = APIRouter(
     prefix="/api/v1/deal-memos", tags=["proof"], route_class=IdempotentRoute
@@ -357,7 +359,8 @@ class ProofRead(BaseModel):
         "description. Then give `upload_id` in `file_ids` when submitting proof."
         "\n\nJPEG, PNG or WebP, up to 10 MB. Only the creator, only on an "
         "accepted memo, at most 20 unfinished uploads per memo, 30 an hour per "
-        "account. Every image is cleaned of location and hidden data before a "
+        "account, both counted with draft uploads. A proof upload joins only a "
+        "proof. Every image is cleaned of location and hidden data before a "
         "brand can see it."
     ),
     responses={
@@ -367,7 +370,7 @@ class ProofRead(BaseModel):
         503: problem_doc("File uploads are not available right now"),
     },
 )
-@rate_limit(UPLOAD_LIMIT, key=per_account)
+@shared_rate_limit(UPLOAD_LIMIT, scope=UPLOAD_SCOPE, key=per_account)
 def start_proof_upload(
     request: Request,
     body: ProofUploadCreate,

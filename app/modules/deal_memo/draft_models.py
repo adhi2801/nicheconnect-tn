@@ -78,6 +78,16 @@ class ContentDraft(Base):
         ),
         # Which attempt this is, counted from 1: rounds of changes are seen.
         CheckConstraint("round >= 1", name="round_positive"),
+        # Images become viewable once cleaned, never before the draft was shown,
+        # and nothing is approved that the brand could not yet open (piece 2).
+        CheckConstraint(
+            "images_ready_at IS NULL OR images_ready_at >= created_at",
+            name="images_ready_after_shown",
+        ),
+        CheckConstraint(
+            "status <> 'approved' OR images_ready_at IS NOT NULL",
+            name="approved_when_images_ready",
+        ),
         # One draft waiting for the brand per memo, as with proof.
         Index(
             "uq_content_draft_open",
@@ -121,6 +131,13 @@ class ContentDraft(Base):
     )
     # When the brand answered, or the clock did (its deadline).
     answered_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # When every image on the draft was cleaned or refused, so the brand
+    # could open what there was to see; the moment it was shown for a draft
+    # without images. NULL while any image is still being cleaned: the
+    # brand's 2-day minimum counts from here, and nothing approves before it.
+    images_ready_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     # True when the window ran out rather than the brand approving.

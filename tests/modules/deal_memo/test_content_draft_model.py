@@ -25,6 +25,8 @@ GOOD: dict[str, Any] = {
     "approved_at": None,
     "answered_at": None,
     "auto_approved": False,
+    # Shown without images: ready the moment it was shown (item 27, piece 2).
+    "images_ready_at": "2100-01-01T00:00:00Z",
 }
 
 
@@ -33,9 +35,9 @@ def insert(db, memo_id, **overrides: Any) -> None:
     db.execute(
         text(
             "INSERT INTO content_draft (deal_memo_id, round, body, content_url, note,"
-            " status, changes_note, approved_at, answered_at, auto_approved) VALUES (:m,"
-            " :round, :body, :content_url, :note, :status, :changes_note, :approved_at,"
-            " :answered_at, :auto_approved)"
+            " status, changes_note, approved_at, answered_at, auto_approved,"
+            " images_ready_at) VALUES (:m, :round, :body, :content_url, :note, :status,"
+            " :changes_note, :approved_at, :answered_at, :auto_approved, :images_ready_at)"
         ),
         values,
     )
@@ -96,6 +98,19 @@ def test_a_good_draft_is_kept(db, parents):  # noqa: F811
         ),
         ({"auto_approved": True}, "ck_content_draft_auto_approved_is_approved"),
         ({"round": 0}, "ck_content_draft_round_positive"),
+        (
+            {"images_ready_at": "2000-01-01T00:00:00Z"},
+            "ck_content_draft_images_ready_after_shown",
+        ),
+        (
+            {
+                "status": "approved",
+                "approved_at": "2026-10-27T10:00:00Z",
+                "answered_at": "2026-10-27T10:00:00Z",
+                "images_ready_at": None,
+            },
+            "ck_content_draft_approved_when_images_ready",
+        ),
     ],
 )
 def test_the_database_refuses_a_bad_draft(db, parents, overrides, rule):  # noqa: F811

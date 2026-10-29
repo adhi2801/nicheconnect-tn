@@ -47,19 +47,31 @@ MIN_ANSWER_DAYS = 2
 
 def answer_last_day(
     memo: DealMemo, draft: ContentDraft, history: Sequence[ContentDraft]
-) -> date:
-    """The last whole day, in Tamil Nadu, the brand has to answer this draft."""
+) -> date | None:
+    """The last whole day, in Tamil Nadu, the brand has to answer this draft.
+
+    None while its images are still being cleaned: the brand's 2-day
+    minimum counts from when it could open them (item 27, piece 2), so
+    there is no last day yet, and the clock cannot approve.
+    """
+    if draft.images_ready_at is None:
+        return None
     return max(
         approval_last_day(memo, draft, history),
-        india_date(draft.created_at) + timedelta(days=MIN_ANSWER_DAYS),
+        india_date(draft.images_ready_at) + timedelta(days=MIN_ANSWER_DAYS),
     )
 
 
 def answer_deadline(
     memo: DealMemo, draft: ContentDraft, history: Sequence[ContentDraft]
-) -> datetime:
-    """When an unanswered draft approves itself: midnight after its last day."""
+) -> datetime | None:
+    """When an unanswered draft approves itself: midnight after its last day.
+
+    None while its images are still being cleaned.
+    """
     last_day = answer_last_day(memo, draft, history)
+    if last_day is None:
+        return None
     return datetime.combine(last_day + timedelta(days=1), time.min, tzinfo=IST)
 
 
@@ -87,7 +99,7 @@ def is_approved(
     if draft.status != "submitted":
         return False
     deadline = answer_deadline(memo, draft, history)
-    return now >= deadline and agreed_at(memo, deadline)
+    return deadline is not None and now >= deadline and agreed_at(memo, deadline)
 
 
 def approved_among(
@@ -105,6 +117,8 @@ def answered_at(
         return draft.answered_at
     if draft.status == "submitted":
         deadline = answer_deadline(memo, draft, history)
+        if deadline is None:
+            return None
         return deadline if now >= deadline and agreed_at(memo, deadline) else None
     return None
 

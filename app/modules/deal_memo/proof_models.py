@@ -47,6 +47,10 @@ MAX_FILES_PER_PROOF = 10
 # cleaning job's queue; `cleaned` has had every piece of metadata removed and
 # is the only state a brand can see.
 PROOF_FILE_STATUSES: tuple[str, ...] = ("pending", "attached", "cleaned", "rejected")
+# What an upload is for, fixed when it is asked for: proof of posted work,
+# or an image shown with a draft before posting (item 27, piece 2). Each
+# joins only its own kind, so neither route's rules can be walked around.
+PROOF_FILE_PURPOSES: tuple[str, ...] = ("proof", "draft")
 PROOF_FILE_REJECTIONS: tuple[str, ...] = (
     # The stored bytes are not the ones declared (S3 should already refuse it).
     "fingerprint_mismatch",
@@ -158,7 +162,8 @@ class DeliverableProof(Base):
 
 
 class ProofFile(Base):
-    """One screenshot or photo a creator attached to a proof (D-065).
+    """One screenshot or photo a creator attached to a proof (D-065), or to a
+    draft shown before posting (item 27, piece 2).
 
     The bytes live in S3 under `storage_key`; this row is what we know about
     them. `sha256` is what the creator declared and S3 enforced on upload;
@@ -184,16 +189,25 @@ class ProofFile(Base):
             f"rejection_reason IS NULL OR rejection_reason IN {PROOF_FILE_REJECTIONS}",
             name="rejection_reason_allowed",
         ),
-        # A pending upload belongs to no proof yet; an attached or cleaned one
-        # always does, and says when it joined.
+        # A pending upload belongs to no proof or draft yet; an attached or
+        # cleaned one always belongs to one, and says when it joined.
         CheckConstraint(
-            "status <> 'pending' OR (proof_id IS NULL AND attached_at IS NULL)",
+            "status <> 'pending' "
+            "OR (proof_id IS NULL AND draft_id IS NULL AND attached_at IS NULL)",
             name="pending_is_unattached",
         ),
         CheckConstraint(
             "status NOT IN ('attached', 'cleaned') "
-            "OR (proof_id IS NOT NULL AND attached_at IS NOT NULL)",
+            "OR ((proof_id IS NOT NULL OR draft_id IS NOT NULL) AND attached_at IS NOT NULL)",
             name="attached_has_proof",
+        ),
+        # A file joins a proof or a draft, never both.
+        CheckConstraint("proof_id IS NULL OR draft_id IS NULL", name="one_parent"),
+        CheckConstraint(f"purpose IN {PROOF_FILE_PURPOSES}", name="purpose_allowed"),
+        # A file joins only what it was uploaded for.
+        CheckConstraint(
+            "(proof_id IS NULL OR purpose = 'proof') AND (draft_id IS NULL OR purpose = 'draft')",
+            name="parent_matches_purpose",
         ),
         # Cleaned exactly when the clean copy is recorded.
         CheckConstraint(
@@ -215,6 +229,8 @@ class ProofFile(Base):
         # Two files never share a place. Pending rows have neither a proof
         # nor a place, and NULLs never collide.
         UniqueConstraint("proof_id", "position"),
+        # The same on a draft; it is also the draft foreign key's index.
+        UniqueConstraint("draft_id", "position"),
         # Rejected exactly when there is a reason.
         CheckConstraint(
             "(status = 'rejected') = (rejection_reason IS NOT NULL)",
@@ -246,10 +262,20 @@ class ProofFile(Base):
         ForeignKey("deliverable_proof.id", ondelete="RESTRICT"),
         nullable=True,
     )
+    # RESTRICT: what a brand approved stays with the draft it approved. NULL
+    # means not on a draft: pending, or on a proof.
+    draft_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("content_draft.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
     # RESTRICT: who uploaded evidence is part of the evidence. Account
     # deletion (E8) will decide what happens to it, with the validation pack.
     uploader_account_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("account.id", ondelete="RESTRICT"), nullable=False
+    )
+    purpose: Mapped[str] = mapped_column(
+        String(10), nullable=False, server_default=text("'proof'")
     )
     storage_key: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
     content_type: Mapped[str] = mapped_column(String(20), nullable=False)

@@ -151,6 +151,7 @@ BODIES: dict[str, dict[str, Any]] = {
     "ChangeRequest": {"message": "Could the fee be 9,000?"},
     "RepeatCreate": {},
     "ProofUploadCreate": {"content_type": "image/png", "size_bytes": 1024, "sha256": SHA},
+    "DraftUploadCreate": {"content_type": "image/png", "size_bytes": 1024, "sha256": SHA},
     "ProofCreate": {"content_url": LINK, "format": "reel", "disclosure_confirmed": True},
     "MisreadMark": {"note": "The date it read is wrong."},
     "RevisionRequest": {"note": "Please add the product name."},
@@ -436,6 +437,7 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
         "alert_id": alert_id,
         "token_id": token_id,
         "draft_id": draft_id,
+        "review_memo_id": review_memo_id,
         "confirmation_code": confirmation_code,
         "barter_memo_id": barter_memo_id,
         "account_id": brand.account_id,
@@ -460,6 +462,9 @@ def fill(route: APIRoute, ids: dict[str, str]) -> str:
     if "/shipment" in path:
         # A shipment is a barter deal's: the world's agreed barter deal.
         path = path.replace("{memo_id}", ids["barter_memo_id"])
+    if "{draft_id}" in path:
+        # A draft is on the deal agreed with a draft review.
+        path = path.replace("{memo_id}", ids["review_memo_id"])
     if path.endswith("/pay-details"):
         # Pay details close once a payment is marked sent: an unpaid deal.
         path = path.replace("{memo_id}", ids["unpaid_memo_id"])

@@ -5602,6 +5602,17 @@
             "description": "A link to the draft itself, such as a video to watch",
             "title": "Content Url"
           },
+          "file_ids": {
+            "default": [],
+            "description": "Up to 10 finished image uploads from `POST /deal-memos/{memo_id}/drafts/uploads`, in the order to show them: stills of a Reel, carousel slides, a Story frame. A video goes in `content_url`",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "File Ids",
+            "type": "array"
+          },
           "note": {
             "anyOf": [
               {
@@ -5621,6 +5632,135 @@
         "title": "DraftCreate",
         "type": "object"
       },
+      "DraftFileSummary": {
+        "description": "An image on a draft. `cleaned` is the only state either side can open.",
+        "properties": {
+          "content_type": {
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "image/webp"
+            ],
+            "title": "Content Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "size_bytes": {
+            "description": "The cleaned copy's size once cleaned, the upload's before",
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "attached",
+              "cleaned",
+              "rejected"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "content_type",
+          "size_bytes",
+          "status"
+        ],
+        "title": "DraftFileSummary",
+        "type": "object"
+      },
+      "DraftFileView": {
+        "description": "An image on a draft, and a link to open it once it has been cleaned.",
+        "properties": {
+          "content_type": {
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "image/webp"
+            ],
+            "title": "Content Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "fingerprint_mismatch",
+                  "not_an_image",
+                  "too_many_pixels",
+                  "missing"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why a rejected image cannot be shown",
+            "title": "Rejection Reason"
+          },
+          "size_bytes": {
+            "description": "The size of what the link opens",
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "attached",
+              "cleaned",
+              "rejected"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Opens the cleaned image. Only cleaned images have one. It works for a few minutes and must not be stored: ask again for a fresh one",
+            "title": "Url"
+          },
+          "url_expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url Expires At"
+          }
+        },
+        "required": [
+          "id",
+          "content_type",
+          "size_bytes",
+          "status",
+          "rejection_reason",
+          "url",
+          "url_expires_at"
+        ],
+        "title": "DraftFileView",
+        "type": "object"
+      },
       "DraftRead": {
         "description": "A draft, as both sides see it.",
         "properties": {
@@ -5634,7 +5774,7 @@
                 "type": "null"
               }
             ],
-            "description": "While it waits: the last day the brand has to answer, in Tamil Nadu; after it, the draft approves itself. Null once answered, and once the deal has ended",
+            "description": "While it waits: the last day the brand has to answer, in Tamil Nadu; after it, the draft approves itself. Null once answered, once the deal has ended, and while its images are being cleaned (the brand's time starts once it can open them)",
             "title": "Answer By"
           },
           "answered_at": {
@@ -5704,10 +5844,31 @@
             "title": "Deal Memo Id",
             "type": "string"
           },
+          "files": {
+            "description": "The images shown with the draft, in the creator's order",
+            "items": {
+              "$ref": "#/components/schemas/DraftFileSummary"
+            },
+            "title": "Files",
+            "type": "array"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "images_ready_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When every image was cleaned or refused, so the brand could open them; the moment it was shown for a draft without images. Null while any is still being cleaned, usually under a minute: until then it cannot be approved",
+            "title": "Images Ready At"
           },
           "note": {
             "anyOf": [
@@ -5761,11 +5922,86 @@
           "approved_at",
           "answered_at",
           "auto_approved",
+          "images_ready_at",
           "created_at",
           "updated_at",
           "text_flags"
         ],
         "title": "DraftRead",
+        "type": "object"
+      },
+      "DraftUploadCreate": {
+        "additionalProperties": false,
+        "description": "The image the creator is about to upload for a draft, described first.",
+        "properties": {
+          "content_type": {
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "image/webp"
+            ],
+            "title": "Content Type",
+            "type": "string"
+          },
+          "sha256": {
+            "description": "SHA-256 of the file, lowercase hex. Storage refuses any other file",
+            "examples": [
+              "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+            ],
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size_bytes": {
+            "description": "Exact size, in bytes",
+            "maximum": 10485760.0,
+            "minimum": 1.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "content_type",
+          "size_bytes",
+          "sha256"
+        ],
+        "title": "DraftUploadCreate",
+        "type": "object"
+      },
+      "DraftUploadRead": {
+        "description": "Where and how to upload: POST every one of `fields`, then the file, to `url`.",
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Send each as a form field, unchanged, before the file itself",
+            "title": "Fields",
+            "type": "object"
+          },
+          "upload_id": {
+            "description": "Give this in `file_ids` when showing the draft",
+            "format": "uuid",
+            "title": "Upload Id",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "upload_id",
+          "url",
+          "fields",
+          "expires_at"
+        ],
+        "title": "DraftUploadRead",
         "type": "object"
       },
       "ExportFile": {
@@ -29093,7 +29329,7 @@
         ]
       },
       "post": {
-        "description": "Only on a memo whose agreed terms include `draft_review`. The brand has the memo's approval window to approve it or ask for changes; if it does not answer, the draft approves itself (D-025), never sooner than 2 whole days after it is shown. If it is shown by the date the work is due, every calendar day the brand holds it, the day it answers included, is added to that date once (`work_due_on` on the deal); a draft shown late moves nothing. Proof can be submitted once a draft is approved. One draft waits at a time; each is sealed onto the deal record by its fingerprints. Showing a draft counts as work started. Limits: 30 a minute, 200 a day.",
+        "description": "Only on a memo whose agreed terms include `draft_review`. The brand has the memo's approval window to approve it or ask for changes; if it does not answer, the draft approves itself (D-025), never sooner than 2 whole days after it is shown. If it is shown by the date the work is due, every calendar day the brand holds it, the day it answers included, is added to that date once (`work_due_on` on the deal); a draft shown late moves nothing. Images uploaded through `POST .../drafts/uploads` go in `file_ids`, and their fingerprints are sealed with the draft. Proof can be submitted once a draft is approved. One draft waits at a time; each is sealed onto the deal record by its fingerprints. Showing a draft counts as work started. Limits: 30 a minute, 200 a day.",
         "operationId": "submit_draft_api_v1_deal_memos__memo_id__drafts_post",
         "parameters": [
           {
@@ -29194,7 +29430,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "The memo is not accepted; `draft_review_not_agreed`: its terms have no draft review; or `draft_already_decided`: a draft waits or is already approved. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+            "description": "The memo is not accepted; `draft_review_not_agreed`: its terms have no draft review; `draft_already_decided`: a draft waits or is already approved; or `proof_file_not_uploaded`: an image has not finished uploading. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
           },
           "422": {
             "content": {
@@ -29205,7 +29441,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "The draft is empty, too long, or its link is not usable. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+            "description": "The draft is empty, too long, or its link is not usable; or `proof_file_not_found`: an image is not one of your unused draft uploads for this deal (image errors keep proof's codes, as both share one upload pipeline). Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
           },
           "429": {
             "content": {
@@ -29227,7 +29463,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+            "description": "File uploads are not available right now. Or: Can't guarantee this request runs only once right now. Safe to retry"
           }
         },
         "security": [
@@ -29236,6 +29472,156 @@
           }
         ],
         "summary": "Show the brand a draft before posting",
+        "tags": [
+          "drafts"
+        ]
+      }
+    },
+    "/api/v1/deal-memos/{memo_id}/drafts/uploads": {
+      "post": {
+        "description": "Describe an image (type, exact size, SHA-256) and get a signed form to upload it **straight to storage**, valid for 10 minutes. Storage refuses any file that does not match the description. Then give `upload_id` in `file_ids` when showing the draft.\n\nJPEG, PNG or WebP, up to 10 MB. Only the creator, only on an accepted memo whose terms include draft review and whose draft is not yet approved; at most 20 unfinished uploads per memo and 30 an hour per account, both counted with proof uploads. A draft upload joins only a draft. Every image is cleaned of location and hidden data before anyone can open it. A video goes in `content_url`.",
+        "operationId": "start_draft_upload_api_v1_deal_memos__memo_id__drafts_uploads_post",
+        "parameters": [
+          {
+            "description": "The memo's id",
+            "in": "path",
+            "name": "memo_id",
+            "required": true,
+            "schema": {
+              "description": "The memo's id",
+              "format": "uuid",
+              "title": "Memo Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftUploadCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftUploadRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "This account type cannot use this endpoint"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such memo or draft, or it is not yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`memo_status_conflict`: the memo is not accepted; `too_many_pending_uploads`: 20 uploads are unfinished; `draft_review_not_agreed`; or `draft_already_decided`: a draft is approved. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The type, size or fingerprint is invalid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "File uploads are not available right now. Or: Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start uploading an image for a draft",
         "tags": [
           "drafts"
         ]
@@ -29336,7 +29722,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "This draft has already been answered. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+            "description": "`draft_already_decided`: this draft has already been answered; or `draft_images_not_ready`: its images are still being cleaned, so the brand could not yet open them. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
           },
           "422": {
             "content": {
@@ -29378,6 +29764,128 @@
           }
         ],
         "summary": "Approve the draft",
+        "tags": [
+          "drafts"
+        ]
+      }
+    },
+    "/api/v1/deal-memos/{memo_id}/drafts/{draft_id}/files": {
+      "get": {
+        "description": "Every image on the draft, in the order the creator chose, each cleaned one with a link to open it, valid for 5 minutes. Only the brand and the creator on the deal can ask. An image still being cleaned has no link yet; it is usually ready within a minute. Only the cleaned copy is ever shown, to either side: the original, with its location data, is never served. Limit: 60 requests per minute.",
+        "operationId": "view_draft_files_api_v1_deal_memos__memo_id__drafts__draft_id__files_get",
+        "parameters": [
+          {
+            "description": "The memo's id",
+            "in": "path",
+            "name": "memo_id",
+            "required": true,
+            "schema": {
+              "description": "The memo's id",
+              "format": "uuid",
+              "title": "Memo Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The draft's id",
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "description": "The draft's id",
+              "format": "uuid",
+              "title": "Draft Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DraftFileView"
+                  },
+                  "title": "Response View Draft Files Api V1 Deal Memos  Memo Id  Drafts  Draft Id  Files Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "This account type cannot use this endpoint"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such memo or draft, or it is not yours"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "File uploads are not available right now"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Open the images on a draft",
         "tags": [
           "drafts"
         ]
@@ -31401,7 +31909,7 @@
     },
     "/api/v1/deal-memos/{memo_id}/proof/uploads": {
       "post": {
-        "description": "Describe a screenshot or photo (type, exact size, SHA-256) and get a signed form to upload it **straight to storage**, valid for 10 minutes. Storage refuses any file that does not match the description. Then give `upload_id` in `file_ids` when submitting proof.\n\nJPEG, PNG or WebP, up to 10 MB. Only the creator, only on an accepted memo, at most 20 unfinished uploads per memo, 30 an hour per account. Every image is cleaned of location and hidden data before a brand can see it.",
+        "description": "Describe a screenshot or photo (type, exact size, SHA-256) and get a signed form to upload it **straight to storage**, valid for 10 minutes. Storage refuses any file that does not match the description. Then give `upload_id` in `file_ids` when submitting proof.\n\nJPEG, PNG or WebP, up to 10 MB. Only the creator, only on an accepted memo, at most 20 unfinished uploads per memo, 30 an hour per account, both counted with draft uploads. A proof upload joins only a proof. Every image is cleaned of location and hidden data before a brand can see it.",
         "operationId": "start_proof_upload_api_v1_deal_memos__memo_id__proof_uploads_post",
         "parameters": [
           {
