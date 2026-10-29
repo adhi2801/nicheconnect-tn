@@ -172,7 +172,8 @@ def _drafts_to_review(
         history[earlier.deal_memo_id].append(earlier)
     items = []
     for draft, memo, campaign_id, title, handle in waiting:
-        if now >= answer_deadline(memo, draft, history[memo.id]):
+        deadline = answer_deadline(memo, draft, history[memo.id])
+        if deadline is not None and now >= deadline:
             continue  # approved by the clock; nothing left to decide
         items.append(
             AttentionItem(

@@ -135,7 +135,10 @@ KEPT: tuple[KeptKind, ...] = (
         kind="proof_file",
         tables=frozenset({"proof_file", "proof_file_reading"}),
         setting="retention_proof_file_days",
-        what="Screenshots sent as proof of work, and what was read from them.",
+        what=(
+            "Screenshots sent as proof of work, and what was read from them; and "
+            "images shown with drafts before posting, kept with their draft."
+        ),
     ),
     KeptKind(
         kind="report",

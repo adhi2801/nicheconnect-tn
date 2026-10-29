@@ -1,5 +1,8 @@
 """Proof files: asking to upload, attaching, and opening them (D-065).
 
+The same files, through the same steps, go on a draft shown before posting
+(item 27, piece 2): an upload joins exactly one proof or one draft.
+
 The order matters and is enforced, not hoped for:
 
 1. `request_upload` checks the deal and the limits, saves a `pending` row and
@@ -23,6 +26,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.storage import FileStore, UploadForm
+from app.modules.deal_memo.draft_models import ContentDraft
 from app.modules.deal_memo.exceptions import (
     MemoStatusConflict,
     ProofFileNotFound,
@@ -65,8 +69,13 @@ def request_upload(
     size_bytes: int,
     sha256: str,
     now: datetime,
+    purpose: str = "proof",
 ) -> RequestedUpload:
-    """A pending file and the signed form to upload it with."""
+    """A pending file and the signed form to upload it with.
+
+    `purpose` is fixed here: a proof upload joins only a proof and a draft
+    upload only a draft. The cap on unfinished uploads counts both.
+    """
     # The memo is locked first, so two uploads asked for at once are counted
     # one after the other and the per-deal cap holds (review audit, 4 Oct).
     db.refresh(memo, attribute_names=["status"], with_for_update=True)
@@ -87,6 +96,7 @@ def request_upload(
     file = ProofFile(
         deal_memo_id=memo.id,
         uploader_account_id=uploader_account_id,
+        purpose=purpose,
         storage_key=f"{INCOMING_PREFIX}/{uuid.uuid4().hex}",
         content_type=content_type,
         size_bytes=size_bytes,
@@ -113,16 +123,21 @@ def attach(
     db: Session,
     store: FileStore,
     memo: DealMemo,
-    proof: DeliverableProof,
     file_ids: list[uuid.UUID],
     uploader_account_id: uuid.UUID,
     now: datetime,
+    *,
+    proof: DeliverableProof | None = None,
+    draft: ContentDraft | None = None,
 ) -> list[ProofFile]:
-    """Join these uploads to the proof, in the order given. Does not commit.
+    """Join these uploads to the proof or the draft, in the order given.
 
-    The rows are locked first, so two submissions racing for the same file
-    cannot both take it.
+    Exactly one of `proof` and `draft`. Does not commit. The rows are
+    locked first, so two submissions racing for the same file cannot both
+    take it.
     """
+    if (proof is None) == (draft is None):
+        raise ValueError("attach takes exactly one of a proof and a draft")
     if not file_ids:
         return []
     found = {
@@ -134,6 +149,7 @@ def attach(
                 ProofFile.deal_memo_id == memo.id,
                 ProofFile.uploader_account_id == uploader_account_id,
                 ProofFile.status == "pending",
+                ProofFile.purpose == ("proof" if proof is not None else "draft"),
             )
             .with_for_update()
         ).all()
@@ -149,7 +165,10 @@ def attach(
         if stored is None or stored.size != file.size_bytes:
             raise ProofFileNotUploaded()
         file.status = "attached"
-        file.proof_id = proof.id
+        if proof is not None:
+            file.proof_id = proof.id
+        else:
+            file.draft_id = draft.id if draft is not None else None
         # The order given is the order shown and the order sealed (D-067).
         file.position = position
         file.attached_at = now

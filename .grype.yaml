@@ -10,17 +10,20 @@
 # Accepted risks. Each entry is ONE vulnerability in ONE exact package
 # version, never a pattern, and says why it is accepted and when it goes.
 #
-# All three below are in CPython 3.14.8 itself, the newest 3.14 release on
-# 4 October 2026 (D-072). Grype lists them as fixed, but only in 3.15; no
+# Both below are in CPython 3.14.10 itself, the newest 3.14 release on
+# 29 October 2026 (D-145). Grype lists them as fixed, but only in 3.15; no
 # 3.14 release carries the fix, so there is nothing to upgrade to on 3.14.
-# Because each entry names version 3.14.8, any change of Python brings all
-# three back into the scan to be judged again.
+# Because each entry names version 3.14.10, any change of Python brings
+# both back into the scan to be judged again.
 #
+# 3.14.10 fixed CVE-2026-114583, which failed CI on 3.14.8, and the tarfile
+# link flaw (CVE-2026-87910) this file accepted for 3.14.8.
 # 3.14.8 fixed five that this file accepted or CI caught on 3.14.7
 # (urllib.request's password manager, stringprep, zipfile, and two tarfile
 # path flaws); the upgrade from 3.12.14 had fixed six before that.
 #
-# Checked against our code on 4 October 2026: nothing in app/, scripts/,
+# Checked against our code on 4 October 2026, and again on 29 October
+# 2026 for 3.14.10: nothing in app/, scripts/,
 # alembic/ or the Dockerfile imports tarfile, tempfile or poplib, or calls
 # shutil.rmtree. That is a reading of the code, not a test. pip, which uses
 # tarfile, is removed from the image (Dockerfile), and uv installs from
@@ -28,12 +31,9 @@
 #
 # Remove each entry when a 3.14 release carries its fix.
 ignore:
-  - vulnerability: CVE-2026-87910
-    package: { name: python, version: 3.14.8, type: binary }
-    reason: "tarfile link fallback ignores one filter result; we never extract tar archives."
   - vulnerability: CVE-2025-15367
-    package: { name: python, version: 3.14.8, type: binary }
+    package: { name: python, version: 3.14.10, type: binary }
     reason: "poplib command injection; not used."
   - vulnerability: CVE-2026-12345
-    package: { name: python, version: 3.14.8, type: binary }
+    package: { name: python, version: 3.14.10, type: binary }
     reason: "tempfile.TemporaryDirectory cleanup race; we create no temporary directories."
