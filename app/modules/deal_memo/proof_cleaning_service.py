@@ -30,6 +30,7 @@ abandoned uploads.
 
 import hashlib
 import io
+import logging
 import uuid
 import warnings
 from dataclasses import dataclass
@@ -44,6 +45,8 @@ from app.modules.deal_memo import record_service as record
 from app.modules.deal_memo.draft_models import ContentDraft
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import MAX_PROOF_FILE_BYTES, ProofFile
+
+logger = logging.getLogger(__name__)
 
 CLEAN_PREFIX = "proof-files/clean"
 # 50 megapixels: above every phone photo but the rare 108 and 200 MP modes,
@@ -66,6 +69,7 @@ EXTENSIONS = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
 CLEANED = "cleaned"
 REJECTED = "rejected"
 SKIPPED = "skipped"
+FAILED = "failed"
 
 
 class Refused(Exception):
@@ -110,6 +114,12 @@ def clean_image(data: bytes, content_type: str) -> Cleaned:
         raise Refused("too_many_pixels") from None
     except UnidentifiedImageError, OSError, ValueError, SyntaxError:
         # Not an image, truncated, or corrupt: Pillow raises any of these.
+        raise Refused("not_an_image") from None
+    except Exception:
+        # Malformed metadata can make Pillow raise almost anything (a KeyError
+        # or TypeError from EXIF, an EOFError). Such a file can never be shown,
+        # so it is refused, never retried: retried, it would block the queue
+        # and keep its draft unready (second review of item 27, 29 Oct 2026).
         raise Refused("not_an_image") from None
 
     image.thumbnail((MAX_SIDE, MAX_SIDE))
@@ -226,8 +236,10 @@ def _mark_draft_ready(db: Session, file: ProofFile, now: datetime) -> None:
         )
     )
     if not waiting:
-        draft.images_ready_at = now
-        draft.updated_at = now
+        # A run's time is its scheduled minute, which can be a moment before
+        # the draft it finds was shown; ready is never before shown.
+        draft.images_ready_at = max(now, draft.created_at)
+        draft.updated_at = max(now, draft.updated_at)
 
 
 @dataclass(frozen=True)
@@ -235,6 +247,7 @@ class CleaningRun:
     cleaned: int
     rejected: int
     skipped: int
+    failed: int = 0
 
 
 def clean_attached(
@@ -254,9 +267,19 @@ def clean_attached(
         ).all()
     )
     db.rollback()
-    outcomes = [clean_one(db, store, file_id, now) for file_id in queue]
+    outcomes = []
+    for file_id in queue:
+        try:
+            outcomes.append(clean_one(db, store, file_id, now))
+        except Exception:
+            # Storage unreachable, a database error: not the file's fault, so
+            # it stays queued for the next run, and the rest are cleaned now.
+            db.rollback()
+            logger.exception("proof file %s: cleaning failed, retried next run", file_id)
+            outcomes.append(FAILED)
     return CleaningRun(
         cleaned=outcomes.count(CLEANED),
         rejected=outcomes.count(REJECTED),
         skipped=outcomes.count(SKIPPED),
+        failed=outcomes.count(FAILED),
     )

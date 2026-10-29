@@ -359,7 +359,8 @@ def _lock_for_answer(db: Session, memo: DealMemo, draft: ContentDraft) -> None:
     if db.scalar(select(exists().where(DeliverableProof.deal_memo_id == memo.id))):
         db.rollback()
         raise DraftAlreadyDecided("Proof already follows the approved draft.")
-    db.refresh(draft, attribute_names=["status"], with_for_update=True)
+    # Readiness too: the cleaner may have marked it since it was first read.
+    db.refresh(draft, attribute_names=["status", "images_ready_at"], with_for_update=True)
 
 
 def list_for_memo(db: Session, memo: DealMemo, now: datetime) -> list[ContentDraft]:

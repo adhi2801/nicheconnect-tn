@@ -27,7 +27,8 @@ Data impact: every existing file is pending or on a proof, so each is a
 proof upload; every existing entry keeps its kind; every existing draft's
 images were ready when it was shown, as it has none.
 
-Downgrade: refuses while any file is on a draft, or any draft file's
+Downgrade: refuses while any file is on a draft, any upload was made for a
+draft (without `purpose` it could become proof), or any draft file's
 cleaning is sealed on a record (the record's entries can never be removed);
 otherwise it reverses each step.
 
@@ -169,14 +170,19 @@ def downgrade() -> None:
     on_drafts = bind.execute(
         sa.text("SELECT count(*) FROM proof_file WHERE draft_id IS NOT NULL")
     ).scalar_one()
+    draft_uploads = bind.execute(
+        sa.text("SELECT count(*) FROM proof_file WHERE purpose = 'draft'")
+    ).scalar_one()
     sealed = bind.execute(
         sa.text("SELECT count(*) FROM deal_record_entry WHERE kind = :kind"),
         {"kind": NEW_KIND},
     ).scalar_one()
-    if on_drafts or sealed:
+    if on_drafts or sealed or draft_uploads:
         raise RuntimeError(
-            f"{on_drafts} files are on drafts and {sealed} draft file cleanings are "
+            f"{on_drafts} files are on drafts, {draft_uploads} uploads were made for "
+            f"drafts, and {sealed} draft file cleanings are "
             "sealed on deal records. A brand approved those files with their drafts, "
+            "an upload for a draft must never become proof, "
             "and the record's entries cannot be removed at all; settle them "
             "deliberately, as the owner, if that is really intended."
         )

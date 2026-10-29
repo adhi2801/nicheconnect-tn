@@ -340,7 +340,7 @@ def _png(colour: tuple[int, int, int]) -> bytes:
     return out.getvalue()
 
 
-@pytest.mark.parametrize("outcome", ["cleaned", "rejected"])
+@pytest.mark.parametrize("outcome", ["cleaned", "rejected", "mixed"])
 def test_two_images_finished_at_once_leave_the_draft_ready(
     reviewed_deal, slow_writes, outcome
 ):
@@ -370,7 +370,9 @@ def test_two_images_finished_at_once_leave_the_draft_ready(
         file_ids = []
         for colour in ((10, 20, 30), (40, 50, 60)):
             data = (
-                _png(colour) if outcome == "cleaned" else b"not an image %d" % colour[0]
+                _png(colour)
+                if outcome == "cleaned" or (outcome == "mixed" and colour[0] == 10)
+                else b"not an image %d" % colour[0]
             )
             requested = proof_file_service.request_upload(
                 session,
@@ -405,7 +407,8 @@ def test_two_images_finished_at_once_leave_the_draft_ready(
     try:
         results = run_together([clean(file_ids[0]), clean(file_ids[1])])
 
-        assert results == [outcome, outcome], results
+        expected = {"cleaned": ["cleaned"] * 2, "rejected": ["rejected"] * 2}
+        assert sorted(results) == expected.get(outcome, ["cleaned", "rejected"]), results
         with SessionLocal() as session:
             assert session.get_one(ContentDraft, draft_id).images_ready_at == NOW
     finally:

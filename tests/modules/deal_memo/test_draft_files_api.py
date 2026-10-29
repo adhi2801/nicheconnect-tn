@@ -736,3 +736,107 @@ def test_the_listed_size_is_the_cleaned_copys_once_cleaned(
     [listed] = client.get(drafts_url(memo_id), headers=creator.headers).json()
 
     assert listed["files"][0]["size_bytes"] == row.clean_size_bytes
+
+
+# --- found by the second independent review (29 October 2026) -----------------------------
+
+
+def test_an_image_pillow_chokes_on_is_refused_and_the_draft_becomes_ready(
+    client, db, clock, creator, memo_id, monkeypatch
+):
+    """Malformed metadata can make Pillow raise anything; retried, such a file would
+    block the queue and keep its draft unready for ever."""
+
+    def choke(image):
+        raise TypeError("a malformed EXIF tag")
+
+    draft = shown(client, creator, memo_id, [uploaded(client, clock, creator, memo_id)])
+    monkeypatch.setattr(cleaning.ImageOps, "exif_transpose", choke)
+
+    run = cleaning.clean_attached(db, storage.memory_store(), clock.now)
+
+    assert (run.rejected, run.failed) == (1, 0)
+    row = db.get_one(ContentDraft, uuid.UUID(draft["id"]))
+    db.refresh(row)
+    assert row.images_ready_at == clock.now
+
+
+def test_a_file_storage_fails_on_never_stops_the_rest(
+    client, db, clock, creator, memo_id, monkeypatch
+):
+    first = uploaded(client, clock, creator, memo_id)
+    clock.advance(timedelta(seconds=1))
+    second = uploaded(client, clock, creator, memo_id, png((7, 7, 7)))
+    shown(client, creator, memo_id, [first, second])
+    broken_key = db.get_one(ProofFile, uuid.UUID(first)).storage_key
+    real_read = storage.MemoryFileStore.read
+
+    def flaky(self, key, *args, **kwargs):
+        if key == broken_key:
+            raise ConnectionError("storage unreachable")
+        return real_read(self, key, *args, **kwargs)
+
+    monkeypatch.setattr(storage.MemoryFileStore, "read", flaky)
+
+    run = cleaning.clean_attached(db, storage.memory_store(), clock.now)
+
+    assert (run.cleaned, run.failed) == (1, 1)
+    assert (
+        db.get_one(ProofFile, uuid.UUID(first)).status == "attached"
+    )  # retried next run
+
+
+def test_a_run_scheduled_before_the_draft_was_shown_marks_it_ready_when_shown(
+    client, db, clock, creator, memo_id
+):
+    draft = shown(client, creator, memo_id, [uploaded(client, clock, creator, memo_id)])
+
+    run = cleaning.clean_attached(
+        db, storage.memory_store(), clock.now - timedelta(seconds=30)
+    )
+
+    assert run.cleaned == 1
+    row = db.get_one(ContentDraft, uuid.UUID(draft["id"]))
+    db.refresh(row)
+    assert row.images_ready_at == row.created_at
+
+
+def test_an_answer_reads_readiness_again_under_its_lock(
+    client, db, clock, creator, memo_id
+):
+    """Marked ready by the cleaner after the brand's request first read the draft."""
+    from sqlalchemy import update
+
+    from app.modules.deal_memo import draft_service
+    from app.modules.deal_memo.models import DealMemo
+
+    draft_id = shown(
+        client, creator, memo_id, [uploaded(client, clock, creator, memo_id)]
+    )["id"]
+    memo = db.get_one(DealMemo, uuid.UUID(memo_id))
+    draft = db.get_one(ContentDraft, uuid.UUID(draft_id))
+    assert draft.images_ready_at is None
+    db.execute(
+        update(ContentDraft)
+        .where(ContentDraft.id == draft.id)
+        .values(images_ready_at=clock.now)
+        .execution_options(synchronize_session=False)
+    )
+
+    approved = draft_service.approve_draft(db, memo, draft, clock.now)
+
+    assert approved.status == "approved"
+
+
+def test_images_cleaned_after_the_deal_is_cancelled_still_open(
+    client, db, clock, brand, creator, memo_id
+):
+    draft = shown(client, creator, memo_id, [uploaded(client, clock, creator, memo_id)])
+    client.post(f"{MEMOS_URL}/{memo_id}/cancel", headers=brand.headers)
+    clean(db, clock)
+
+    for user in (brand, creator):
+        [file] = files_of(client, user, memo_id, draft["id"]).json()
+        assert (file["status"], bool(file["url"])) == ("cleaned", True)
+    [entry] = entries(db, memo_id, "draft_file_cleaned")
+    assert entry.facts["draft_id"] == draft["id"]

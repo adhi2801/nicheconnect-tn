@@ -697,3 +697,21 @@ def test_draft_image_cleanings_on_the_deal_record(client, db, clock):
     db.flush()
 
     assert f"{before + 1} draft file cleanings are sealed" in refusal(db, "2d1e67a96a45")
+
+
+def test_uploads_waiting_for_a_draft(client, db, clock):
+    """Without `purpose`, an upload made for a draft could become proof."""
+    before = count(db, "SELECT count(*) FROM proof_file WHERE purpose = 'draft'")
+    creator = creator_user(db, clock)
+    memo_id = accepted_memo(client, brand_user(db, clock), creator, draft_review=True)
+    db.execute(
+        text(
+            "INSERT INTO proof_file (deal_memo_id, uploader_account_id, storage_key,"
+            " content_type, size_bytes, sha256, purpose)"
+            " VALUES (:m, :a, 'proof-files/waiting', 'image/png', 1, repeat('a', 64),"
+            " 'draft')"
+        ),
+        {"m": memo_id, "a": creator.account_id},
+    )
+
+    assert f"{before + 1} uploads were made for drafts" in refusal(db, "2d1e67a96a45")
