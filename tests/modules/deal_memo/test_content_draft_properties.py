@@ -57,6 +57,7 @@ def draft(at: datetime, status: str = "submitted", round_: int = 1) -> ContentDr
         body="The caption.",
         status=status,
         created_at=at,
+        images_ready_at=at,  # no images: ready when shown (item 27, piece 2)
         approved_at=at if status == "approved" else None,
         answered_at=at + timedelta(hours=3) if answered else None,
         changes_note="Add the ad label." if status == "changes_requested" else None,
@@ -85,6 +86,29 @@ def test_approval_by_the_clock_never_comes_undone(at, window, later):
     assert is_approved(m, d, [d], deadline)
     assert is_approved(m, d, [d], deadline + timedelta(minutes=later))
     assert not is_approved(m, d, [d], deadline - timedelta(microseconds=1))
+
+
+@given(at=minutes, window=windows, later=st.integers(min_value=0, max_value=10**6))
+def test_images_still_being_cleaned_are_never_approved_by_the_clock(at, window, later):
+    """Item 27, piece 2: however long a stalled cleaner takes, nothing approves."""
+    d = draft(START + timedelta(minutes=at))
+    d.images_ready_at = None
+
+    assert answer_deadline(memo(window), d, [d]) is None
+    assert not is_approved(memo(window), d, [d], START + timedelta(minutes=at + later))
+
+
+@given(at=minutes, window=windows, delay=st.integers(min_value=0, max_value=60 * 24 * 40))
+def test_the_brand_always_gets_two_whole_days_after_the_images_are_ready(
+    at, window, delay
+):
+    d = draft(START + timedelta(minutes=at))
+    d.images_ready_at = d.created_at + timedelta(minutes=delay)
+
+    deadline = answer_deadline(memo(window), d, [d])
+
+    assert deadline is not None
+    assert india_date(deadline) >= india_date(d.images_ready_at) + timedelta(days=3)
 
 
 @given(at=minutes, window=windows, later=minutes)

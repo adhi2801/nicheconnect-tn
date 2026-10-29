@@ -166,9 +166,14 @@ def creator_channel(
 
 
 def due(now: datetime) -> ColumnElement[bool]:
-    """Cleaned files never read, or whose last reading failed and may be retried."""
+    """Cleaned proof files never read, or whose last reading failed and may be retried.
+
+    Only a proof's files: a draft's images (item 27, piece 2) show what will be
+    posted, not what a post achieved, so there are no results to read.
+    """
     return and_(
         ProofFile.status == "cleaned",
+        ProofFile.proof_id.is_not(None),
         or_(
             ProofFileReading.id.is_(None),
             and_(

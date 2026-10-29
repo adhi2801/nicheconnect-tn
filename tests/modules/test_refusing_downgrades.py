@@ -68,6 +68,7 @@ REFUSING = {
     "a2a642dc46be": "feedback on finished deals, and their sealed record entries",
     "2de4ccbd813c": "assistants' tokens, working or not",
     "bbddb2e7bb0d": "memos sealed with terms version 3, drafts, and their sealed entries",
+    "2d1e67a96a45": "images on drafts, and their sealed cleanings",
 }
 
 
@@ -662,3 +663,37 @@ def test_drafts_and_terms_version_three(client, db, clock):
     assert f"{before + 1} memos sealed with terms version 3" in refusal(
         db, "bbddb2e7bb0d"
     )
+
+
+def test_images_on_drafts(client, db, clock):
+    from app.modules.deal_memo.draft_models import ContentDraft
+
+    before = count(db, "SELECT count(*) FROM proof_file WHERE draft_id IS NOT NULL")
+    creator = creator_user(db, clock)
+    memo_id = accepted_memo(client, brand_user(db, clock), creator, draft_review=True)
+    draft = ContentDraft(deal_memo_id=uuid.UUID(memo_id), round=1, body="The caption.")
+    db.add(draft)
+    db.flush()
+    db.execute(
+        text(
+            "INSERT INTO proof_file (deal_memo_id, uploader_account_id, storage_key,"
+            " content_type, size_bytes, sha256, status, purpose, draft_id, position,"
+            " attached_at) VALUES (:m, :a, 'proof-files/test', 'image/png', 1,"
+            " repeat('a', 64), 'attached', 'draft', :d, 0, now())"
+        ),
+        {"m": memo_id, "a": creator.account_id, "d": draft.id},
+    )
+
+    assert f"{before + 1} files are on drafts" in refusal(db, "2d1e67a96a45")
+
+
+def test_draft_image_cleanings_on_the_deal_record(client, db, clock):
+    kind = "draft_file_cleaned"
+    before = count(db, f"SELECT count(*) FROM deal_record_entry WHERE kind = '{kind}'")  # noqa: S608 - a fixed kind
+    memo_id = accepted_memo(client, brand_user(db, clock), creator_user(db, clock))
+    memo = db.get(DealMemo, uuid.UUID(memo_id))
+    assert memo is not None
+    record_service.append(db, memo, kind=kind, actor_role="system", now=clock.now)
+    db.flush()
+
+    assert f"{before + 1} draft file cleanings are sealed" in refusal(db, "2d1e67a96a45")

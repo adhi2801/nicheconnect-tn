@@ -59,3 +59,18 @@ def rate_limit[Endpoint: Callable[..., Any]](
         limiter.limit(value) if key is None else limiter.limit(value, key_func=key)
     )
     return decorator
+
+
+def shared_rate_limit[Endpoint: Callable[..., Any]](
+    value: str, *, scope: str, key: Callable[[Request], str] | None = None
+) -> Callable[[Endpoint], Endpoint]:
+    """One limit counted across every route that names the same `scope`.
+
+    For one action reached by more than one route: a person's file uploads,
+    for proof and for drafts, share one hourly count, so a second route never
+    doubles what the first allows (item 27, piece 2).
+    """
+    decorator: Callable[[Endpoint], Endpoint] = limiter.shared_limit(
+        value, scope=scope, key_func=key
+    )
+    return decorator

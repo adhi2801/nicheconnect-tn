@@ -36,11 +36,12 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from PIL import Image, ImageOps, UnidentifiedImageError
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.storage import FileStore
 from app.modules.deal_memo import record_service as record
+from app.modules.deal_memo.draft_models import ContentDraft
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import MAX_PROOF_FILE_BYTES, ProofFile
 
@@ -155,6 +156,7 @@ def clean_one(db: Session, store: FileStore, file_id: uuid.UUID, now: datetime) 
         file.status = REJECTED
         file.rejection_reason = refusal.reason
         file.updated_at = now
+        _mark_draft_ready(db, file, now)
         db.commit()
         # A file that will never be shown is not kept.
         if refusal.reason != "missing":
@@ -172,15 +174,22 @@ def clean_one(db: Session, store: FileStore, file_id: uuid.UUID, now: datetime) 
     memo = db.get(DealMemo, file.deal_memo_id)
     if memo is None:  # pragma: no cover - RESTRICT makes this impossible
         raise RuntimeError(f"proof file {file.id} has no deal memo")
+    # A draft's image is sealed under its own kind, naming its draft, so the
+    # record says which was shown before posting and which was proof.
+    on_draft = file.draft_id is not None
     record.append(
         db,
         memo,
-        kind="proof_file_cleaned",
+        kind="draft_file_cleaned" if on_draft else "proof_file_cleaned",
         actor_role="system",
         now=now,
         facts={
             "file_id": str(file.id),
-            "proof_id": str(file.proof_id),
+            **(
+                {"draft_id": str(file.draft_id)}
+                if on_draft
+                else {"proof_id": str(file.proof_id)}
+            ),
             "content_type": file.content_type,
             # As uploaded, and as the brand will see it.
             "sha256": file.sha256,
@@ -188,9 +197,37 @@ def clean_one(db: Session, store: FileStore, file_id: uuid.UUID, now: datetime) 
             "clean_size_bytes": len(cleaned.data),
         },
     )
+    _mark_draft_ready(db, file, now)
     db.commit()
     store.delete(file.storage_key)
     return CLEANED
+
+
+def _mark_draft_ready(db: Session, file: ProofFile, now: datetime) -> None:
+    """Once a draft's last image is cleaned or refused, the brand can open what
+    there is, and its clock starts (item 27, piece 2). Does not commit.
+
+    The draft's row is locked first, so two of its images finished at the
+    same moment are counted one after the other: each sees the other's
+    outcome once it is committed, and the last one marks the draft.
+    """
+    if file.draft_id is None:
+        return
+    draft = db.scalars(
+        select(ContentDraft).where(ContentDraft.id == file.draft_id).with_for_update()
+    ).one()
+    if draft.images_ready_at is not None:
+        return
+    waiting = db.scalar(
+        select(func.count(ProofFile.id)).where(
+            ProofFile.draft_id == draft.id,
+            ProofFile.id != file.id,
+            ProofFile.status == "attached",
+        )
+    )
+    if not waiting:
+        draft.images_ready_at = now
+        draft.updated_at = now
 
 
 @dataclass(frozen=True)

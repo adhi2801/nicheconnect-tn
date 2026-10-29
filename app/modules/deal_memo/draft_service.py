@@ -9,7 +9,10 @@ cannot hold the creator up. Proof waits for an approved draft
 what was approved can be held up against what was posted.
 
 Each draft and each answer is sealed onto the deal record by its
-fingerprints; the record never holds the words themselves. Approval by the
+fingerprints; the record never holds the words themselves. A draft may carry
+images (piece 2), uploaded and cleaned exactly as proof files are (D-065):
+their fingerprints are sealed with the draft, and a brand only ever opens
+the cleaned copies. Approval by the
 clock needs no job: it is settled whenever a draft is read or acted on, as
 proof's is.
 """
@@ -22,18 +25,22 @@ from typing import Any
 from sqlalchemy import exists, inspect, select
 from sqlalchemy.orm import Session
 
+from app.core.errors import DomainError
 from app.core.export import MAX_ROWS_PER_SECTION, ExportedSection, allow, build_section
+from app.core.storage import FileStore
+from app.modules.deal_memo import proof_file_service
 from app.modules.deal_memo import record_service as record
 from app.modules.deal_memo.draft_models import ContentDraft
 from app.modules.deal_memo.draft_rules import agreed_at, answer_deadline, approved_among
 from app.modules.deal_memo.exceptions import (
     DraftAlreadyDecided,
+    DraftImagesNotReady,
     DraftNotFound,
     DraftReviewNotAgreed,
     MemoStatusConflict,
 )
 from app.modules.deal_memo.models import DealMemo
-from app.modules.deal_memo.proof_models import DeliverableProof
+from app.modules.deal_memo.proof_models import DeliverableProof, ProofFile
 from app.modules.deal_memo.service import _notify_other_side, memos_for_account
 
 EXPORTED_TABLES = frozenset({"content_draft"})
@@ -50,18 +57,84 @@ def drafts_of(db: Session, memo: DealMemo) -> list[ContentDraft]:
     )
 
 
+def files_by_draft(
+    db: Session, drafts: Sequence[ContentDraft]
+) -> dict[uuid.UUID, list[ProofFile]]:
+    """Each draft's images, in the order the creator chose. One query for them all."""
+    found: dict[uuid.UUID, list[ProofFile]] = {draft.id: [] for draft in drafts}
+    if found:
+        for file in db.scalars(
+            select(ProofFile)
+            .where(ProofFile.draft_id.in_(list(found)))
+            .order_by(ProofFile.draft_id, ProofFile.position)
+        ).all():
+            if file.draft_id is not None:
+                found[file.draft_id].append(file)
+    return found
+
+
+def request_upload(
+    db: Session,
+    store: FileStore,
+    memo: DealMemo,
+    uploader_account_id: uuid.UUID,
+    *,
+    content_type: str,
+    size_bytes: int,
+    sha256: str,
+    now: datetime,
+) -> proof_file_service.RequestedUpload:
+    """A pending image for a draft, and the signed form to upload it. Commits.
+
+    Only where a draft can still be shown: the terms include draft review
+    and no draft is approved yet. Raises DraftReviewNotAgreed and
+    DraftAlreadyDecided; the upload's own rules (an accepted memo, the cap on
+    unfinished uploads) are proof's, in `proof_file_service.request_upload`,
+    which locks the memo. Showing the draft checks all of this again under
+    the lock, so an upload asked for at the moment a draft is approved can
+    never join it.
+    """
+    if not memo.draft_review:
+        raise DraftReviewNotAgreed()
+    if approved_among(memo, drafts_of(db, memo), now) is not None:
+        db.rollback()
+        raise DraftAlreadyDecided("A draft is already approved; post the work.")
+    return proof_file_service.request_upload(
+        db,
+        store,
+        memo,
+        uploader_account_id,
+        content_type=content_type,
+        size_bytes=size_bytes,
+        sha256=sha256,
+        now=now,
+        purpose="draft",
+    )
+
+
 def submit_draft(
-    db: Session, memo: DealMemo, fields: dict[str, Any], now: datetime
+    db: Session,
+    memo: DealMemo,
+    fields: dict[str, Any],
+    now: datetime,
+    *,
+    store: FileStore | None = None,
+    file_ids: Sequence[uuid.UUID] = (),
+    uploader_account_id: uuid.UUID | None = None,
 ) -> ContentDraft:
-    """Show the brand a draft. Commits.
+    """Show the brand a draft, with any images already uploaded. Commits.
 
     The memo's row is locked and read again first, so two drafts at once
     cannot both find nothing waiting. A draft is work, so it marks that
     work has started, as proof does (D-026). Raises MemoStatusConflict
     unless the memo is accepted, DraftReviewNotAgreed when its terms have
     no draft review, and DraftAlreadyDecided while one waits or once one is
-    approved.
+    approved; and, for images, ProofFileNotFound for one that is not this
+    creator's pending upload on this deal and ProofFileNotUploaded for one
+    that never finished uploading.
     """
+    if file_ids and (store is None or uploader_account_id is None):
+        raise ValueError("images need the store and the uploader")
     db.scalars(
         select(DealMemo)
         .where(DealMemo.id == memo.id)
@@ -92,6 +165,18 @@ def submit_draft(
     )
     db.add(draft)
     db.flush()  # the record names the draft, so it needs its id
+    files: list[ProofFile] = []
+    if file_ids and store is not None and uploader_account_id is not None:
+        try:
+            files = proof_file_service.attach(
+                db, store, memo, list(file_ids), uploader_account_id, now, draft=draft
+            )
+        except DomainError:
+            db.rollback()
+            raise
+    # Ready at once without images; with them, once the cleaner has been
+    # through every one (proof_cleaning_service).
+    draft.images_ready_at = None if files else now
     record.append(
         db,
         memo,
@@ -106,6 +191,9 @@ def submit_draft(
                 record.fingerprint(draft.content_url) if draft.content_url else None
             ),
             "note_sha256": record.fingerprint(draft.note) if draft.note else None,
+            # Only when there are images, so a draft without any is sealed
+            # exactly as before piece 2.
+            **({"files": proof_file_service.record_facts(files)} if files else {}),
         },
     )
     if memo.work_started_at is None:
@@ -142,8 +230,8 @@ def settle_if_overdue(
     deadline = answer_deadline(
         memo, draft, history if history is not None else drafts_of(db, memo)
     )
-    if now < deadline or not agreed_at(memo, deadline):
-        return draft
+    if deadline is None or now < deadline or not agreed_at(memo, deadline):
+        return draft  # no clock yet while its images are being cleaned
     db.scalars(
         select(DealMemo)
         .where(DealMemo.id == memo.id)
@@ -182,14 +270,19 @@ def approve_draft(
 ) -> ContentDraft:
     """The brand approves the draft. Commits.
 
-    Raises MemoStatusConflict once the deal is no longer agreed, and
-    DraftAlreadyDecided once the draft is answered.
+    Raises MemoStatusConflict once the deal is no longer agreed,
+    DraftAlreadyDecided once the draft is answered, and
+    DraftImagesNotReady while any of its images is still being cleaned:
+    nothing is approved that the brand could not open.
     """
     _lock_for_answer(db, memo, draft)
     settle_if_overdue(db, memo, draft, now)
     if draft.status != "submitted":
         db.rollback()
         raise DraftAlreadyDecided()
+    if draft.images_ready_at is None:
+        db.rollback()
+        raise DraftImagesNotReady()
     draft.status = "approved"
     draft.approved_at = now
     draft.answered_at = now
@@ -312,6 +405,7 @@ EXPORT_FIELDS = allow(
     "approved_at",
     "answered_at",
     "auto_approved",
+    "images_ready_at",
     "created_at",
     "updated_at",
 )

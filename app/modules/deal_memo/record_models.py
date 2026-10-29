@@ -79,6 +79,8 @@ RECORD_KINDS: tuple[str, ...] = (
     "draft_approved",
     "draft_auto_approved",
     "draft_changes_requested",
+    # An image on a draft was cleaned, as a proof file is (item 27, piece 2).
+    "draft_file_cleaned",
 )
 # "system" is us acting on the deal's own rules, such as approving work at the
 # end of the review window (D-025) or opening the payment record it causes.
