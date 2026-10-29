@@ -248,3 +248,173 @@ def test_the_clock_never_approves_a_draft_on_a_deal_cancelled_meanwhile(reviewed
 
     assert status == "submitted"
     assert "draft_auto_approved" not in kinds
+
+
+def test_four_drafts_at_once_claiming_one_image_leave_it_on_one(
+    reviewed_deal, slow_writes
+):
+    """Item 27, piece 2: the memo's lock keeps one draft, and the image joins it.
+
+    The losers are refused by the memo's lock before they reach the image,
+    so this proves the draft's own rule holds with images, not the image
+    rows' lock; that one is proved by the cleaner race below.
+    """
+    import hashlib
+
+    from sqlalchemy import delete
+
+    from app.core import storage
+    from app.modules.auth.models.creator import Creator
+    from app.modules.campaigns.models import Application
+    from app.modules.deal_memo import proof_file_service
+    from app.modules.deal_memo.proof_models import ProofFile
+
+    data = b"a still from the reel"
+    with SessionLocal() as session:
+        memo = session.get_one(DealMemo, reviewed_deal)
+        uploader = session.scalars(
+            select(Creator.account_id)
+            .join(Application, Application.creator_id == Creator.id)
+            .where(Application.id == memo.application_id)
+        ).one()
+        requested = proof_file_service.request_upload(
+            session,
+            storage.memory_store(),
+            memo,
+            uploader,
+            content_type="image/png",
+            size_bytes=len(data),
+            sha256=hashlib.sha256(data).hexdigest(),
+            now=NOW,
+            purpose="draft",
+        )
+        file_id = requested.file.id
+    storage.memory_store().receive(
+        requested.form.fields["key"], data, content_type="image/png", now=NOW
+    )
+
+    def show_with_image(session):
+        memo = session.get_one(DealMemo, reviewed_deal)
+        return draft_service.submit_draft(
+            session,
+            memo,
+            {"body": "The caption."},
+            NOW,
+            store=storage.memory_store(),
+            file_ids=[file_id],
+            uploader_account_id=uploader,
+        )
+
+    try:
+        results = run_together([show_with_image] * 4)
+
+        landed = [r for r in results if isinstance(r, ContentDraft)]
+        assert len(landed) == 1, results
+        assert all(isinstance(r, ContentDraft | DraftAlreadyDecided) for r in results), (
+            results
+        )
+        with SessionLocal() as session:
+            file = session.get_one(ProofFile, file_id)
+            assert (file.status, file.draft_id) == ("attached", landed[0].id)
+            memo = session.get_one(DealMemo, reviewed_deal)
+            entries = record_service.entries_for(session, memo.id)
+            assert record_service.verify(memo, entries).intact
+            [shown] = [e for e in entries if e.kind == "draft_submitted"]
+            assert [f["file_id"] for f in shown.facts["files"]] == [str(file_id)]
+    finally:
+        with SessionLocal() as session:
+            session.execute(
+                delete(ProofFile).where(ProofFile.deal_memo_id == reviewed_deal)
+            )
+            session.commit()
+        storage.memory_store().clear()
+
+
+def _png(colour: tuple[int, int, int]) -> bytes:
+    import io
+
+    from PIL import Image
+
+    out = io.BytesIO()
+    Image.new("RGB", (30, 20), colour).save(out, "PNG")
+    return out.getvalue()
+
+
+@pytest.mark.parametrize("outcome", ["cleaned", "rejected", "mixed"])
+def test_two_images_finished_at_once_leave_the_draft_ready(
+    reviewed_deal, slow_writes, outcome
+):
+    """Each cleaner sees the other's image still waiting, unless the draft is
+    locked first: then the second waits for the first and marks the draft.
+
+    Two refused images matter most: refusing seals nothing on the record, so
+    the memo's lock never serialises them, and only the draft's lock does."""
+    import hashlib
+
+    from sqlalchemy import delete
+
+    from app.core import storage
+    from app.modules.auth.models.creator import Creator
+    from app.modules.campaigns.models import Application
+    from app.modules.deal_memo import proof_cleaning_service, proof_file_service
+    from app.modules.deal_memo.proof_models import ProofFile
+
+    store = storage.memory_store()
+    with SessionLocal() as session:
+        memo = session.get_one(DealMemo, reviewed_deal)
+        uploader = session.scalars(
+            select(Creator.account_id)
+            .join(Application, Application.creator_id == Creator.id)
+            .where(Application.id == memo.application_id)
+        ).one()
+        file_ids = []
+        for colour in ((10, 20, 30), (40, 50, 60)):
+            data = (
+                _png(colour)
+                if outcome == "cleaned" or (outcome == "mixed" and colour[0] == 10)
+                else b"not an image %d" % colour[0]
+            )
+            requested = proof_file_service.request_upload(
+                session,
+                store,
+                session.get_one(DealMemo, reviewed_deal),
+                uploader,
+                content_type="image/png",
+                size_bytes=len(data),
+                sha256=hashlib.sha256(data).hexdigest(),
+                now=NOW,
+                purpose="draft",
+            )
+            store.receive(
+                requested.form.fields["key"], data, content_type="image/png", now=NOW
+            )
+            file_ids.append(requested.file.id)
+        draft_id = draft_service.submit_draft(
+            session,
+            session.get_one(DealMemo, reviewed_deal),
+            {"body": "The caption."},
+            NOW,
+            store=store,
+            file_ids=file_ids,
+            uploader_account_id=uploader,
+        ).id
+
+    def clean(file_id):
+        return lambda session: proof_cleaning_service.clean_one(
+            session, store, file_id, NOW
+        )
+
+    try:
+        results = run_together([clean(file_ids[0]), clean(file_ids[1])])
+
+        expected = {"cleaned": ["cleaned"] * 2, "rejected": ["rejected"] * 2}
+        assert sorted(results) == expected.get(outcome, ["cleaned", "rejected"]), results
+        with SessionLocal() as session:
+            assert session.get_one(ContentDraft, draft_id).images_ready_at == NOW
+    finally:
+        with SessionLocal() as session:
+            session.execute(
+                delete(ProofFile).where(ProofFile.deal_memo_id == reviewed_deal)
+            )
+            session.commit()
+        store.clear()

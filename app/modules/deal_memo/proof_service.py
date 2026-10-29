@@ -106,7 +106,7 @@ def submit_proof(
     if file_ids and store is not None and uploader_account_id is not None:
         try:
             files = proof_file_service.attach(
-                db, store, memo, proof, list(file_ids), uploader_account_id, now
+                db, store, memo, list(file_ids), uploader_account_id, now, proof=proof
             )
         except DomainError:
             db.rollback()

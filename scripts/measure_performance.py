@@ -13,6 +13,8 @@ record cannot be deleted once written (D-057).
 """
 
 import argparse
+import hashlib
+import io
 import pathlib
 import statistics
 import sys
@@ -27,6 +29,7 @@ from contextlib import nullcontext
 from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
+from PIL import Image
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
@@ -55,6 +58,7 @@ from app.modules.auth.tokens import (
     hash_otp_code,
 )
 from app.modules.campaigns.models import Campaign
+from app.modules.deal_memo import proof_cleaning_service
 from app.modules.me import data_export_service, phone_change_service
 from app.modules.payment_status.service import MAX_BULK_MARK_PAID
 
@@ -147,6 +151,9 @@ def measure_writes(
 
     1. `deals` whole deals, from a new campaign to a confirmed payment, with
        a dispute opened, added to and closed on each payment on the way.
+    1b. `deals` deals agreed with a draft review (item 27): two images uploaded
+       for each of two drafts, each draft shown, listed, cleaned and its images
+       opened; the first sent back, the second approved.
     2. `BULK_ROUNDS` bank bulk transfers of `BULK_ROWS` deals each, through
        the bulk mark-paid.
     3. `deals` rounds of rate card writes, by a creator made for the run:
@@ -275,6 +282,47 @@ def measure_writes(
                 raise SystemExit(f"calendar.ics: {calendar.status_code}")
         return str(memo)
 
+    def reviewed_deal() -> str:
+        """An accepted deal whose terms include a draft review; untimed setup."""
+        campaign = write(
+            None,
+            "/api/v1/campaigns",
+            brand_headers,
+            {
+                "title": "Pongal sweets launch",
+                "description": "One reel featuring our new sweet box.",
+                "campaign_type": "paid",
+                "budget_min_paise": 500_000,
+                "budget_max_paise": 1_500_000,
+                "cities": ["Madurai"],
+                "niches": ["food"],
+                "deliverables": "1 Instagram reel",
+            },
+        )["id"]
+        write(None, f"/api/v1/campaigns/{campaign}/publish", brand_headers)
+        application = write(
+            None,
+            f"/api/v1/campaigns/{campaign}/applications",
+            creator_headers,
+            {"pitch": "I cover food in Madurai for local families, in Tamil."},
+        )["id"]
+        for action in ("shortlist", "accept"):
+            write(None, f"/api/v1/applications/{application}/{action}", brand_headers)
+        memo = write(
+            None,
+            f"{memos}/for-application/{application}",
+            brand_headers,
+            {
+                "deliverables": "1 Instagram reel.",
+                "fee_amount_paise": 800_000,
+                "content_due_on": due_on,
+                "draft_review": True,
+            },
+        )["id"]
+        write(None, f"{memos}/{memo}/send", brand_headers)
+        write(None, f"{memos}/{memo}/accept", creator_headers)
+        return str(memo)
+
     try:
         # 1. Whole deals, with a dispute on each payment.
         for _ in range(deals):
@@ -308,6 +356,66 @@ def measure_writes(
                 "POST /deal-memos/{id}/payment/confirm",
                 f"{memos}/{memo}/payment/confirm",
                 creator_headers,
+            )
+
+        # 1b. Drafts with images (item 27): a deal agreed with a draft
+        # review, two images uploaded through the store's form, the draft
+        # shown with them, listed, cleaned and opened, sent back, shown
+        # again and approved.
+        image = io.BytesIO()
+        Image.new("RGB", (1080, 1350), (180, 90, 40)).save(image, "PNG")
+        still = image.getvalue()
+        described = {
+            "content_type": "image/png",
+            "size_bytes": len(still),
+            "sha256": hashlib.sha256(still).hexdigest(),
+        }
+        for _ in range(deals):
+            memo = reviewed_deal()
+            drafts = f"{memos}/{memo}/drafts"
+            shown_ids: list[str] = []
+            for _round in range(2):
+                file_ids = []
+                for _image in range(2):
+                    form = write(
+                        "POST /deal-memos/{id}/drafts/uploads",
+                        f"{drafts}/uploads",
+                        creator_headers,
+                        described,
+                    )
+                    get_file_store().receive(  # type: ignore[attr-defined]
+                        form["fields"]["key"], still, content_type="image/png", now=now
+                    )
+                    file_ids.append(form["upload_id"])
+                draft = write(
+                    "POST /deal-memos/{id}/drafts (2 images)",
+                    drafts,
+                    creator_headers,
+                    {
+                        "body": "Pongal at home, the Madurai way. #ad",
+                        "file_ids": file_ids,
+                    },
+                )["id"]
+                shown_ids.append(draft)
+                write("GET /deal-memos/{id}/drafts", drafts, brand_headers, method="GET")
+                proof_cleaning_service.clean_attached(db, get_file_store(), now)
+                write(
+                    "GET /deal-memos/{id}/drafts/{id}/files",
+                    f"{drafts}/{draft}/files",
+                    brand_headers,
+                    method="GET",
+                )
+                if _round == 0:
+                    write(
+                        "POST /deal-memos/{id}/drafts/{id}/request-changes",
+                        f"{drafts}/{draft}/request-changes",
+                        brand_headers,
+                        {"note": "Add the ad label to the first frame."},
+                    )
+            write(
+                "POST /deal-memos/{id}/drafts/{id}/approve",
+                f"{drafts}/{shown_ids[-1]}/approve",
+                brand_headers,
             )
 
         # 2. Bank bulk transfers: set up untimed, only the bulk call is timed.

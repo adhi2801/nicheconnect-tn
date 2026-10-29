@@ -217,6 +217,13 @@ class DraftAlreadyDecided(DomainError):
     title = "This draft has already been answered"
 
 
+class DraftImagesNotReady(DomainError):
+    # Nothing is approved that the brand could not yet open (item 27, piece 2).
+    status_code = HTTPStatus.CONFLICT
+    code = "draft_images_not_ready"
+    title = "This draft's images are still being cleaned; try again in a minute"
+
+
 class DraftReviewNotAgreed(DomainError):
     # The memo's agreed terms decide it; it cannot be switched on mid-deal.
     status_code = HTTPStatus.CONFLICT

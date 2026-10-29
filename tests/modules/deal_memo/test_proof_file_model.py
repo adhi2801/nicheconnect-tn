@@ -11,6 +11,7 @@ import uuid
 import pytest
 from sqlalchemy.exc import IntegrityError
 
+from app.modules.deal_memo.draft_models import ContentDraft
 from app.modules.deal_memo.proof_models import (
     MAX_PROOF_FILE_BYTES,
     DeliverableProof,
@@ -316,3 +317,102 @@ def test_both_sides_of_the_deal_get_the_files_in_their_export(db, memo, uploader
         # Our internal addresses stay internal.
         assert "storage_key" not in exported
         assert "clean_key" not in exported
+
+
+# --- images on drafts (item 27, piece 2) -------------------------------------------------
+
+
+def a_draft(db, memo) -> ContentDraft:
+    draft = ContentDraft(
+        deal_memo_id=memo.id,
+        round=1,
+        body="The caption.",
+        created_at=FIXED_NOW,
+        updated_at=FIXED_NOW,
+    )
+    db.add(draft)
+    db.flush()
+    return draft
+
+
+def on_draft(memo, uploader, draft, position: int = 0, **overrides) -> ProofFile:
+    fields = {
+        "status": "attached",
+        "purpose": "draft",
+        "draft_id": draft.id,
+        "position": position,
+        "attached_at": FIXED_NOW,
+    }
+    fields.update(overrides)
+    return a_file(memo, uploader, **fields)
+
+
+def test_an_attached_file_may_belong_to_a_draft(db, memo, uploader):
+    row = on_draft(memo, uploader, a_draft(db, memo))
+    db.add(row)
+    db.flush()
+
+
+def test_a_file_never_belongs_to_a_proof_and_a_draft(db, memo, uploader):
+    refused(
+        db,
+        on_draft(memo, uploader, a_draft(db, memo), proof_id=a_proof(db, memo).id),
+        "ck_proof_file_one_parent",
+    )
+
+
+def test_a_pending_upload_cannot_already_belong_to_a_draft(db, memo, uploader):
+    refused(
+        db,
+        a_file(memo, uploader, purpose="draft", draft_id=a_draft(db, memo).id),
+        "ck_proof_file_pending_is_unattached",
+    )
+
+
+def test_two_files_never_share_a_place_on_a_draft(db, memo, uploader):
+    draft = a_draft(db, memo)
+    db.add(on_draft(memo, uploader, draft))
+    db.flush()
+
+    refused(db, on_draft(memo, uploader, draft), "uq_proof_file_draft_id")
+
+
+def test_a_draft_with_files_cannot_be_deleted(db, memo, uploader):
+    """RESTRICT: what a brand approved stays with the draft it approved."""
+    draft = a_draft(db, memo)
+    db.add(on_draft(memo, uploader, draft))
+    db.flush()
+
+    db.delete(draft)
+    with pytest.raises(IntegrityError) as exc_info:
+        db.flush()
+    assert "fk_proof_file_draft_id_content_draft" in str(exc_info.value)
+    db.rollback()
+
+
+def test_an_unknown_purpose_is_refused(db, memo, uploader):
+    refused(db, a_file(memo, uploader, purpose="gift"), "ck_proof_file_purpose_allowed")
+
+
+def test_a_proof_upload_never_sits_on_a_draft(db, memo, uploader):
+    refused(
+        db,
+        on_draft(memo, uploader, a_draft(db, memo), purpose="proof"),
+        "ck_proof_file_parent_matches_purpose",
+    )
+
+
+def test_a_draft_upload_never_sits_on_a_proof(db, memo, uploader):
+    refused(
+        db,
+        a_file(
+            memo,
+            uploader,
+            purpose="draft",
+            status="attached",
+            proof_id=a_proof(db, memo).id,
+            position=0,
+            attached_at=FIXED_NOW,
+        ),
+        "ck_proof_file_parent_matches_purpose",
+    )

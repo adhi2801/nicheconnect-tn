@@ -134,6 +134,8 @@ PROOF_FILE_EXPORT_FIELDS = allow(
     "id",
     "deal_memo_id",
     "proof_id",
+    "draft_id",
+    "purpose",
     "position",
     "content_type",
     "size_bytes",
@@ -759,7 +761,8 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
             "proof_files",
             table="proof_file",
             purpose=(
-                "Screenshots and photos filed as proof on those deals: type, "
+                "Screenshots and photos filed as proof on those deals, and "
+                "images shown with drafts before posting: type, "
                 "size and fingerprints, the declared one and the cleaned copy's "
                 "after location and other hidden data were removed. The files "
                 "themselves are opened in the app."
