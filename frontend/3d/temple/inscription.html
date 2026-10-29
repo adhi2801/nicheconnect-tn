@@ -1,0 +1,17 @@
+<!doctype html><meta charset="utf-8">
+<style>
+html,body{margin:0;background:#000}
+.strip{width:max-content;padding:0 24px;height:256px;display:flex;align-items:center;white-space:nowrap;overflow:hidden;
+  font-family:"Nirmala UI","Latha","Noto Sans Tamil",sans-serif;font-size:118px;font-weight:600;color:#fff;letter-spacing:6px}
+.sep{display:inline-block;margin:0 48px;opacity:.9}
+</style>
+<div class="strip" id="s"></div>
+<script>
+// Kural 120 (Tamil text as given by Tamil Wikisource), and the old Tamil clerical signs:
+// day, month, year, credit, rupee - the language of a ledger.
+const kural = "வாணிகஞ் செய்வார்க்கு வாணிகம் பேணிப் பிறவும் தமபோற் செயின்";
+const ledger = "௳ ௴ ௵ ௷ ௹";
+let html = "";
+for (let i = 0; i < 1; i++) html += kural + '<span class="sep">' + ledger + '</span>';
+document.getElementById('s').innerHTML = html;
+</script>
