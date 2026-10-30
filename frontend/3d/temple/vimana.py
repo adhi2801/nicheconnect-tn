@@ -324,9 +324,9 @@ def place_instances(units):
     for unit, (x, y, z), sc_, rot in INSTANCES:
         # one design per tier, the same on all four sides, as on a real tower
         design = (
-            f"{unit}{int(round(z * 4)) % 3}"
+            f"{unit}{round(z * 4) % 3}"
             if PART is None
-            else f"{unit}{int(round(x / 3.2)) + 1}"
+            else f"{unit}{round(x / 3.2) + 1}"
         )
         for key, me in units[design]:
             ob = bpy.data.objects.new(f"{unit}_{key}", me)
