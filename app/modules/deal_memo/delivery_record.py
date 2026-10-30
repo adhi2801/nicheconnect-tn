@@ -41,7 +41,11 @@ from app.core.clock import india_date
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.draft_models import ContentDraft
-from app.modules.deal_memo.draft_rules import delivery_due_on, due_and_late_days
+from app.modules.deal_memo.draft_rules import (
+    agreed_at,
+    delivery_due_on,
+    due_and_late_days,
+)
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof
 from app.modules.deal_memo.review_clock import approval_deadline
@@ -111,7 +115,11 @@ def is_approved(
     """
     if proof.status == "approved":
         return True
-    return proof.status == "submitted" and now >= approval_deadline(memo, proof, history)
+    if proof.status != "submitted":
+        return False
+    deadline = approval_deadline(memo, proof, history)
+    # never on a deal that had ended before the window closed (D-146)
+    return now >= deadline and agreed_at(memo, deadline)
 
 
 def classify(

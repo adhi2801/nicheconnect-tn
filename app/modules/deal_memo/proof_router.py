@@ -574,7 +574,7 @@ def mark_reading_misread(
     ),
     responses={
         **_COMMON_ERRORS,
-        409: problem_doc("This proof has already been reviewed"),
+        409: problem_doc("This proof has already been reviewed, or the deal has ended"),
     },
 )
 @rate_limit(WRITE_LIMIT)
@@ -599,7 +599,7 @@ def approve_proof(
     ),
     responses={
         **_COMMON_ERRORS,
-        409: problem_doc("This proof has already been reviewed"),
+        409: problem_doc("This proof has already been reviewed, or the deal has ended"),
         422: problem_doc("The note is missing or too short"),
     },
 )

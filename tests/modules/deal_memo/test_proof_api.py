@@ -68,8 +68,11 @@ def test_submitting_marks_that_work_has_started(client, db, clock):
     submit(client, creator, memo_id)
 
     assert db.get(DealMemo, memo_id).work_started_at is not None
-    cancelled = client.post(f"{MEMOS_URL}/{memo_id}/cancel", headers=brand.headers).json()
-    assert cancelled["cancellation_kind"] == "cancelled_by_brand"
+    # A brand cannot cancel while the proof waits (D-147); the creator can.
+    cancelled = client.post(
+        f"{MEMOS_URL}/{memo_id}/withdraw", headers=creator.headers
+    ).json()
+    assert cancelled["cancellation_kind"] == "cancelled_by_creator"
 
 
 def test_only_one_submission_waits_for_review(client, db, clock):

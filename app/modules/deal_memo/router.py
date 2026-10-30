@@ -255,7 +255,9 @@ cancel_memo_as_brand = _brand_move(
     "Cancel the memo (brand)",
     (
         "Ends the deal. Before any work is submitted this is recorded as "
-        "withdrawn_early and does not count against the brand; afterwards it does."
+        "withdrawn_early and does not count against the brand; afterwards it does. "
+        "While proof waits inside its review window the brand answers it first, "
+        "approving it or asking for a fix (409 `proof_awaiting_answer`, D-147)."
     ),
 )
 
