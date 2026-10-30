@@ -3926,7 +3926,8 @@ def hero_stage():
             ):
                 v = nd.inputs["B"].default_value
                 if v[0] > 1.0:
-                    nd.inputs["B"].default_value = (0.98, 0.8, 0.62, 1)
+                    # golden brown, as the granite reads at Thanjavur in low sun (pass 12)
+                    nd.inputs["B"].default_value = (1.16, 0.82, 0.5, 1)
     # a thousand monsoons: long dark streaks run down from every ledge, patina
     # gathers in broad clouds, and the stone is never one even tone
     for key in ("stone", "carve", "wall", "mono", "dome"):
