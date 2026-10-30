@@ -171,38 +171,79 @@ def settle_if_overdue(
     Called whenever a submission is read or acted on, so the outcome never
     depends on a scheduled job having run. Pass `history` when the memo's
     submissions are already loaded; otherwise they are read here.
+
+    Only if the deal was still agreed at the deadline: a proof left waiting
+    when the deal was cancelled is never approved by the clock (D-146, as
+    for drafts, D-140). That is decided first, on the memo as read, so a
+    refused approval takes no lock and costs no query.
+
+    Then the memo and the proof are locked, in that order (`_lock_for_answer`,
+    the order every move on a deal takes), and both are read again before
+    anything is written: a revision request or an approval that landed
+    meanwhile is never overwritten by a stale copy, and a payment is never
+    opened for proof that was sent back. Reading again replaces the memo's
+    and the proof's loaded values, so a caller flushes its own changes to
+    either first.
     """
     if proof.status != "submitted":
         return proof
     deadline = approval_deadline(
         memo, proof, history if history is not None else _history(db, memo)
     )
-    if now >= deadline:
-        proof.status = "approved"
-        proof.approved_at = deadline
-        proof.auto_approved = True
-        proof.updated_at = now
-        # Took effect at the deadline; recorded now, when it was noticed. The
-        # record shows both rather than pretending we saw it at the time.
-        record.append(
-            db,
-            memo,
-            kind="proof_auto_approved",
-            actor_role="system",
-            now=now,
-            occurred_at=proof.approved_at,
-            facts={"proof_id": str(proof.id)},
-        )
-        _notify_other_side(
-            db, memo, to="creator", notification_type="proof_auto_approved", now=now
-        )
-        # Approval is what starts the payment clock (D-027). Opened here, in
-        # the same transaction, so a memo can never be approved without the
-        # payment it is owed existing.
-        payments.open_on_approval(db, memo, approved_at=proof.approved_at, now=now)
-        db.commit()
-        db.refresh(proof)
+    if now < deadline or not draft_rules.agreed_at(memo, deadline):
+        return proof
+    _lock_for_answer(db, memo, proof)
+    if proof.status != "submitted" or not draft_rules.agreed_at(memo, deadline):
+        return proof
+    proof.status = "approved"
+    proof.approved_at = deadline
+    proof.auto_approved = True
+    proof.updated_at = now
+    # Took effect at the deadline; recorded now, when it was noticed. The
+    # record shows both rather than pretending we saw it at the time.
+    record.append(
+        db,
+        memo,
+        kind="proof_auto_approved",
+        actor_role="system",
+        now=now,
+        occurred_at=proof.approved_at,
+        facts={"proof_id": str(proof.id)},
+    )
+    _notify_other_side(
+        db, memo, to="creator", notification_type="proof_auto_approved", now=now
+    )
+    # Approval is what starts the payment clock (D-027). Opened here, in
+    # the same transaction, so a memo can never be approved without the
+    # payment it is owed existing.
+    payments.open_on_approval(db, memo, approved_at=proof.approved_at, now=now)
+    db.commit()
+    db.refresh(proof)
     return proof
+
+
+def _lock_for_answer(db: Session, memo: DealMemo, proof: DeliverableProof) -> None:
+    """Lock the memo, then the proof, and read both again.
+
+    One order for every move on a submission (the clock, an approval, a
+    revision request), the order submitting proof, giving feedback and the
+    draft service already take, so no two of them can deadlock.
+    """
+    db.scalars(
+        select(DealMemo)
+        .where(DealMemo.id == memo.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).one()
+    db.refresh(proof, with_for_update=True)
+
+
+def _still_agreed(db: Session, memo: DealMemo) -> None:
+    """Raise MemoStatusConflict once the deal has ended: proof on a cancelled
+    deal is never answered, so no payment opens on it (D-146)."""
+    if memo.status != "accepted":
+        db.rollback()
+        raise MemoStatusConflict("Only proof on an agreed deal can be answered.")
 
 
 def approve_proof(
@@ -213,11 +254,12 @@ def approve_proof(
     # pass it, and the last write would silently win (review audit, 4 Oct).
     # Approval opens the payment clock, so approving while changes are being
     # requested would leave a payment running on proof sent back.
-    db.refresh(proof, attribute_names=["status"], with_for_update=True)
+    _lock_for_answer(db, memo, proof)
     settle_if_overdue(db, memo, proof, now)
     if proof.status != "submitted":
         db.rollback()
         raise ProofAlreadyDecided()
+    _still_agreed(db, memo)
 
     proof.status = "approved"
     proof.approved_at = now
@@ -245,11 +287,12 @@ def request_revision(
     """The brand asks for a change, which lets the creator submit again."""
     # Locked and read again before the check: two moves at once would both
     # pass it, and the last write would silently win (review audit, 4 Oct).
-    db.refresh(proof, attribute_names=["status"], with_for_update=True)
+    _lock_for_answer(db, memo, proof)
     settle_if_overdue(db, memo, proof, now)
     if proof.status != "submitted":
         db.rollback()
         raise ProofAlreadyDecided()
+    _still_agreed(db, memo)
 
     proof.status = "revision_requested"
     proof.revision_note = note

@@ -32152,7 +32152,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "This proof has already been reviewed. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+            "description": "This proof has already been reviewed, or the deal has ended. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
           },
           "422": {
             "content": {
@@ -32610,7 +32610,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "This proof has already been reviewed. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+            "description": "This proof has already been reviewed, or the deal has ended. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
           },
           "422": {
             "content": {
