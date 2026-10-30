@@ -1672,7 +1672,8 @@ def taranga_outline(L, depth_root, depth_tip, rolls=3):
         s = L - (L - 0.28) * i / steps
         f = (L - s) / (L - 0.28)
         base = depth_tip + (depth_root - depth_tip) * f
-        roll = 0.06 * abs(math.sin(math.pi * rolls * f))
+        # each roll a full round bulge, as the Cholas cut them (pass 13: deeper, rounder)
+        roll = 0.11 * abs(math.sin(math.pi * rolls * f)) ** 0.6
         under.append((s, -(base + roll)))
     return top + under + [(0.0, -depth_root - 0.02)]
 
@@ -1834,6 +1835,23 @@ def pillar(x, y, h=4.6, seed=0, w=0.36):
                 n=8,
                 phase=math.pi / 8,
             )
+            # a garland hanging from the waist on each facet: two loops of stone beads
+            for fct in range(8):
+                ang = math.pi / 8 + 2 * math.pi * fct / 8
+                ca, sa = math.cos(ang), math.sin(ang)
+                ta, tb = -sa, ca
+                rr_ = w * 0.84 * math.cos(math.pi / 8) + 0.012
+                for gi in range(9):
+                    t = gi / 8
+                    u = (t - 0.5) * w * 0.55
+                    dz = -0.11 * math.sin(math.pi * t) - 0.02
+                    bead(
+                        K,
+                        x + ca * rr_ + ta * u,
+                        y + sa * rr_ + tb * u,
+                        z + hh * 0.5 + dz,
+                        0.011,
+                    )
             # the waist: a fillet with a ring of beads
             loft(
                 K,
@@ -1912,14 +1930,14 @@ def pillar(x, y, h=4.6, seed=0, w=0.36):
     box(K, x, y, z + 0.03, w * 1.5, w * 1.5, 0.2)
     z += 0.23
     # --- the wave bracket, four arms, each with its flat central band
-    arm = w * 2.8
+    arm = w * 2.3
     for ax, ay in ((1, 0), (-1, 0), (0, 1), (0, -1)):
         prism(
             K,
             (x, y, z + bracket_h),
             (ax, ay, 0),
             (-ay, ax, 0),
-            taranga_outline(arm, bracket_h, bracket_h * 0.38),
+            taranga_outline(arm, bracket_h, bracket_h * 0.42, rolls=4),
             w * 0.62,
         )
         for sgn in (-1, 1):
@@ -2147,7 +2165,7 @@ def kuthu_vilakku(x, y, z0, h=1.55):
 
 if not HERO:
     # in front of the pillar, where the hall camera sees it (pass 8 fault)
-    kuthu_vilakku(-2.6, -106.8, 0.068)
+    kuthu_vilakku(-1.5, -106.2, 0.068)
 
 
 if not HERO:
