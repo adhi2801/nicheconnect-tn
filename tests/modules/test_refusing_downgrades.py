@@ -69,6 +69,7 @@ REFUSING = {
     "2de4ccbd813c": "assistants' tokens, working or not",
     "bbddb2e7bb0d": "memos sealed with terms version 3, drafts, and their sealed entries",
     "2d1e67a96a45": "images on drafts, and their sealed cleanings",
+    "6de6ca38de81": "brand team memberships and invites, live or ended",
 }
 
 
@@ -715,3 +716,26 @@ def test_uploads_waiting_for_a_draft(client, db, clock):
     )
 
     assert f"{before + 1} uploads were made for drafts" in refusal(db, "2d1e67a96a45")
+
+
+
+def test_brand_teams(db, clock):
+    from app.modules.auth.models.brand import Brand
+    from app.modules.auth.models.brand_team import BrandMember
+
+    owner, member = brand_user(db, clock), brand_user(db, clock)
+    brand = db.query(Brand).filter_by(account_id=owner.account_id).one()
+    before = count(db, "SELECT count(*) FROM brand_member")
+    db.add(
+        BrandMember(
+            brand_id=brand.id,
+            account_id=member.account_id,
+            role="campaigns",
+            first_name="Ravi",
+            created_at=clock.now,
+            updated_at=clock.now,
+        )
+    )
+    db.flush()
+
+    assert f"{before + 1} team memberships" in refusal(db, "6de6ca38de81")

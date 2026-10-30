@@ -75,6 +75,10 @@ NotificationType = Literal[
     "draft_approved",
     "draft_auto_approved",
     "draft_changes_requested",
+    "team_invite_received",
+    "team_joined",
+    "team_role_changed",
+    "team_removed",
 ]
 
 ensure_same_values("NotificationType", NotificationType, NOTIFICATION_TYPES)

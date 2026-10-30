@@ -34,6 +34,7 @@ from app.modules.auth import step_up_service as step_ups
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.brand import Brand
+from app.modules.auth.models.brand_team import BrandMember
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.models.totp_factor import TotpFactor
 from app.modules.campaigns import alert_service as campaign_alerts
@@ -62,6 +63,10 @@ from app.modules.safety import takedown_service as takedowns
 
 # Bumped whenever the shape of the file changes, so a reader can tell which
 # version it is looking at.
+BRAND_MEMBER_EXPORT_FIELDS = allow(
+    "id", "brand_id", "role", "first_name", "created_at", "removed_at"
+)
+
 SCHEMA_VERSION = 1
 
 # Tables this module answers for. Every other table is claimed by the module
@@ -83,12 +88,21 @@ EXPORTED_TABLES = frozenset(
         "report",
         # The exports asked for (D-111): times and sizes, never the file.
         "data_export",
+        # The brands a person acts for, in which role, under which first
+        # name (D-148).
+        "brand_member",
     }
 )
 
 # Things we hold that are deliberately left out, and why. Printed in the file
 # itself: a person is entitled to know what exists, not only what we hand over.
 NOT_EXPORTED: dict[str, str] = {
+    "brand_invite": (
+        "Invitations to join a brand's team. We keep only a keyed hash of the "
+        "invited phone number, never the number, so an invitation cannot be "
+        "matched to you until you sign in; the teams you joined are in this "
+        "file."
+    ),
     "connection_attempt": (
         "A sign-in to Instagram or YouTube in flight: a hash of a random value "
         "and a sealed one-time key, working once for 10 minutes. Random numbers, "
@@ -299,6 +313,28 @@ def _account_sections(db: Session, account: Account) -> list[ExportedSection]:
                 purpose="Your business details, shown to creators you work with.",
                 objects=[brand],
                 fields=BRAND_EXPORT_FIELDS,
+            )
+        )
+
+    memberships = list(
+        db.scalars(
+            select(BrandMember)
+            .where(BrandMember.account_id == account.id)
+            .order_by(BrandMember.created_at, BrandMember.id)
+            .limit(MAX_ROWS_PER_SECTION + 1)
+        ).all()
+    )
+    if memberships:
+        sections.append(
+            build_section(
+                "brand_teams",
+                table="brand_member",
+                purpose=(
+                    "The brands you act for, your role in each, and the first "
+                    "name creators see beside the brand's when you act."
+                ),
+                objects=memberships,
+                fields=BRAND_MEMBER_EXPORT_FIELDS,
             )
         )
 

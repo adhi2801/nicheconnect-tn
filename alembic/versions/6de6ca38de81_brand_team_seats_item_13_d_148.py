@@ -1,0 +1,194 @@
+"""brand team seats (item 13, D-148)
+
+Approved by Adhi on 30 October 2026 (D-148; docs/PROPOSAL_TEAM_SEATS.md):
+four roles, campaign managers and up approve proof, creators see the acting
+person's first name, one person may act for several brands. This migration:
+
+- creates `brand_member` (everyone but the owner, who stays
+  `brand.account_id`) and `brand_invite`, both new and empty, so their checks
+  are made whole. ON DELETE: CASCADE from the brand (a team means nothing
+  without it) and from a member's account (the membership is their own);
+  SET NULL for who invited or accepted, which outlives that account. A
+  removed member's row stays, `removed_at` set, so who acted on old deals
+  stays known; one live membership per brand and person, and one open
+  invite per brand and number, by partial unique indexes. Each foreign key
+  has an index led by it (the partial indexes cannot count, since they
+  leave out more than NULLs). An invite keeps only a keyed hash of the
+  number, never the number;
+- widens the step-up actions, on step-up and passkey challenges, with
+  `change_team` (making someone an admin, or removing anyone, needs a code
+  bound to that exact change), and the notification types with the four
+  team notices. They say who can act for a business, so they are urgent and
+  the types a person may mute are unchanged. Each check is swapped NOT VALID
+  and validated after the transaction.
+
+Data impact: none on existing rows; every brand keeps its owner as before.
+
+Downgrade: refuses while any membership or invite exists, live or ended:
+each is the record of who could act for a business. Otherwise it removes
+the new action's waiting codes and the notices, and reverses each step.
+
+Revision ID: 6de6ca38de81
+Revises: 2d1e67a96a45
+Create Date: 2026-10-30 15:40:45.039671
+
+"""
+
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+
+
+# revision identifiers, used by Alembic.
+revision: str = "6de6ca38de81"
+down_revision: Union[str, None] = "2d1e67a96a45"
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+ACTION = "change_team"
+NOTICES = ("team_invite_received", "team_joined", "team_role_changed", "team_removed")
+
+# Frozen here, rather than read from the models, so this migration means the
+# same thing forever.
+OLD_ACTIONS = (
+    "set_upi_id",
+    "download_export",
+    "log_out_everywhere",
+    "change_phone",
+    "add_passkey",
+    "remove_passkey",
+    "passkey_only",
+    "end_session",
+    "delete_account",
+    "create_agent_token",
+)
+NEW_ACTIONS = OLD_ACTIONS + (ACTION,)
+OLD_TYPES = (
+    "application_received", "application_withdrawn", "memo_accepted", "memo_declined",
+    "memo_change_requested", "proof_submitted", "invitation_accepted", "invitation_declined",
+    "application_shortlisted", "application_accepted", "application_rejected", "memo_sent",
+    "proof_approved", "proof_auto_approved", "proof_revision_requested", "payment_marked_paid",
+    "invitation_received", "invitation_withdrawn", "memo_cancelled", "payment_confirmed",
+    "report_resolved", "report_received", "report_due_soon", "report_overdue",
+    "content_withheld", "content_restored", "admin_signed_in", "admin_second_factor_refused",
+    "admin_second_factor_changed", "upi_change_pending", "upi_change_cancelled", "data_exported",
+    "logged_out_everywhere", "phone_change_requested", "phone_change_cancelled", "phone_changed",
+    "phone_change_failed", "data_export_ready", "data_export_failed", "passkey_added",
+    "passkey_removed", "passkey_reset_requested", "passkey_reset_cancelled",
+    "passkey_only_changed", "session_ended", "deletion_requested", "deletion_cancelled",
+    "deletion_held_by_deals", "offer_received", "offer_accepted", "offer_declined",
+    "offer_withdrawn", "note_added", "campaign_alert", "product_shipped", "product_received",
+    "connection_expired", "feedback_received", "agent_token_created", "draft_submitted",
+    "draft_approved", "draft_auto_approved", "draft_changes_requested",
+)
+STEP_UP_ACTION_CHECK = "ck_step_up_challenge_action_allowed"
+PASSKEY_ACTION_CHECK = "ck_passkey_challenge_action_allowed"
+TYPE_CHECK = "ck_notification_type_allowed"
+
+
+def _swap(table: str, check: str, condition: str) -> None:
+    """Replace a check, NOT VALID, then validate after the transaction."""
+    op.execute(f"ALTER TABLE {table} DROP CONSTRAINT {check}")
+    op.execute(f"ALTER TABLE {table} ADD CONSTRAINT {check} CHECK ({condition}) NOT VALID")
+    with op.get_context().autocommit_block():
+        op.execute(f"ALTER TABLE {table} VALIDATE CONSTRAINT {check}")
+
+
+def _action_lists(values: tuple[str, ...]) -> None:
+    _swap("step_up_challenge", STEP_UP_ACTION_CHECK, f"action IN {values}")
+    _swap(
+        "passkey_challenge",
+        PASSKEY_ACTION_CHECK,
+        f"action IS NULL OR action IN {values}",
+    )
+
+
+def upgrade() -> None:
+    # ### commands auto generated by Alembic - please adjust! ###
+    op.create_table('brand_invite',
+    sa.Column('id', sa.UUID(), server_default=sa.text('uuidv7()'), nullable=False),
+    sa.Column('brand_id', sa.UUID(), nullable=False),
+    sa.Column('role', sa.String(length=16), nullable=False),
+    sa.Column('first_name', sa.String(length=40), nullable=False),
+    sa.Column('phone_hash', sa.String(length=64), nullable=False),
+    sa.Column('invited_by_account_id', sa.UUID(), nullable=True),
+    sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('accepted_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('accepted_by_account_id', sa.UUID(), nullable=True),
+    sa.Column('declined_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('revoked_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.CheckConstraint("char_length(first_name) BETWEEN 1 AND 40 AND first_name = btrim(first_name) AND first_name !~ '[[:cntrl:]]'", name=op.f('ck_brand_invite_first_name_shape')),
+    sa.CheckConstraint("expires_at > created_at AND expires_at <= created_at + interval '7 days'", name=op.f('ck_brand_invite_lifetime_within_limit')),
+    sa.CheckConstraint("phone_hash ~ '^[0-9a-f]{64}$'", name=op.f('ck_brand_invite_phone_hash_format')),
+    sa.CheckConstraint("role IN ('admin', 'campaigns', 'finance')", name=op.f('ck_brand_invite_role_allowed')),
+    sa.CheckConstraint('accepted_by_account_id IS NULL OR accepted_at IS NOT NULL', name=op.f('ck_brand_invite_accepted_by_only_when_accepted')),
+    sa.CheckConstraint('num_nonnulls(accepted_at, declined_at, revoked_at) <= 1', name=op.f('ck_brand_invite_ends_once')),
+    sa.ForeignKeyConstraint(['accepted_by_account_id'], ['account.id'], name=op.f('fk_brand_invite_accepted_by_account_id_account'), ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['brand_id'], ['brand.id'], name=op.f('fk_brand_invite_brand_id_brand'), ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['invited_by_account_id'], ['account.id'], name=op.f('fk_brand_invite_invited_by_account_id_account'), ondelete='SET NULL'),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_brand_invite'))
+    )
+    op.create_index('ix_brand_invite_accepted_by_account_id', 'brand_invite', ['accepted_by_account_id'], unique=False)
+    op.create_index('ix_brand_invite_brand_id_created_at', 'brand_invite', ['brand_id', 'created_at', 'id'], unique=False)
+    op.create_index('ix_brand_invite_invited_by_account_id', 'brand_invite', ['invited_by_account_id'], unique=False)
+    op.create_index('ix_brand_invite_phone_hash', 'brand_invite', ['phone_hash'], unique=False)
+    op.create_index('uq_brand_invite_open', 'brand_invite', ['brand_id', 'phone_hash'], unique=True, postgresql_where=sa.text('accepted_at IS NULL AND declined_at IS NULL AND revoked_at IS NULL'))
+    op.create_table('brand_member',
+    sa.Column('id', sa.UUID(), server_default=sa.text('uuidv7()'), nullable=False),
+    sa.Column('brand_id', sa.UUID(), nullable=False),
+    sa.Column('account_id', sa.UUID(), nullable=False),
+    sa.Column('role', sa.String(length=16), nullable=False),
+    sa.Column('first_name', sa.String(length=40), nullable=False),
+    sa.Column('invited_by_account_id', sa.UUID(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('removed_at', sa.DateTime(timezone=True), nullable=True),
+    sa.CheckConstraint("char_length(first_name) BETWEEN 1 AND 40 AND first_name = btrim(first_name) AND first_name !~ '[[:cntrl:]]'", name=op.f('ck_brand_member_first_name_shape')),
+    sa.CheckConstraint("role IN ('admin', 'campaigns', 'finance')", name=op.f('ck_brand_member_role_allowed')),
+    sa.CheckConstraint('removed_at IS NULL OR removed_at >= created_at', name=op.f('ck_brand_member_removed_after_joined')),
+    sa.ForeignKeyConstraint(['account_id'], ['account.id'], name=op.f('fk_brand_member_account_id_account'), ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['brand_id'], ['brand.id'], name=op.f('fk_brand_member_brand_id_brand'), ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['invited_by_account_id'], ['account.id'], name=op.f('fk_brand_member_invited_by_account_id_account'), ondelete='SET NULL'),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_brand_member'))
+    )
+    op.create_index('ix_brand_member_account_id_created_at', 'brand_member', ['account_id', 'created_at', 'id'], unique=False)
+    op.create_index('ix_brand_member_brand_id_created_at', 'brand_member', ['brand_id', 'created_at', 'id'], unique=False)
+    op.create_index('ix_brand_member_invited_by_account_id', 'brand_member', ['invited_by_account_id'], unique=False)
+    op.create_index('uq_brand_member_live', 'brand_member', ['brand_id', 'account_id'], unique=True, postgresql_where=sa.text('removed_at IS NULL'))
+    # ### end Alembic commands ###
+    _action_lists(NEW_ACTIONS)
+    _swap("notification", TYPE_CHECK, f"notification_type IN {OLD_TYPES + NOTICES}")
+
+
+def downgrade() -> None:
+    bind = op.get_bind()
+    members = bind.execute(sa.text("SELECT count(*) FROM brand_member")).scalar_one()
+    invites = bind.execute(sa.text("SELECT count(*) FROM brand_invite")).scalar_one()
+    if members or invites:
+        raise RuntimeError(
+            f"{members} team memberships and {invites} team invites exist, live or "
+            "ended. Each is the record of who could act for a business, and a "
+            "live one would stop without anyone being told; settle them "
+            "deliberately, as the owner, if that is really intended."
+        )
+    notices = ", ".join(f"'{notice}'" for notice in NOTICES)
+    op.execute(f"DELETE FROM notification WHERE notification_type IN ({notices})")
+    op.execute(f"DELETE FROM step_up_challenge WHERE action = '{ACTION}'")
+    op.execute(f"DELETE FROM passkey_challenge WHERE action = '{ACTION}'")
+    _swap("notification", TYPE_CHECK, f"notification_type IN {OLD_TYPES}")
+    _action_lists(OLD_ACTIONS)
+    op.drop_index('uq_brand_member_live', table_name='brand_member', postgresql_where=sa.text('removed_at IS NULL'))
+    op.drop_index('ix_brand_member_invited_by_account_id', table_name='brand_member')
+    op.drop_index('ix_brand_member_brand_id_created_at', table_name='brand_member')
+    op.drop_index('ix_brand_member_account_id_created_at', table_name='brand_member')
+    op.drop_table('brand_member')
+    op.drop_index('uq_brand_invite_open', table_name='brand_invite', postgresql_where=sa.text('accepted_at IS NULL AND declined_at IS NULL AND revoked_at IS NULL'))
+    op.drop_index('ix_brand_invite_phone_hash', table_name='brand_invite')
+    op.drop_index('ix_brand_invite_invited_by_account_id', table_name='brand_invite')
+    op.drop_index('ix_brand_invite_brand_id_created_at', table_name='brand_invite')
+    op.drop_index('ix_brand_invite_accepted_by_account_id', table_name='brand_invite')
+    op.drop_table('brand_invite')
+    # ### end Alembic commands ###
