@@ -600,7 +600,7 @@ def base_ornament(half, z0):
             pass
 
 
-def panel_relief(cx, cy, z, R, side, depth=0.12, key="carve"):
+def panel_relief(cx, cy, z, R, side, depth=0.12, key="carve", variant=0):
     """A carved kudu medallion: a horseshoe arch (kudu), a second within it, and a water pot
     (kalasa) raised at its heart, the pot the pillar's own capital is shaped from. The kudu frames
     openings across the whole tower, so the panels speak its language. Never a lotus (rule 6),
@@ -633,6 +633,40 @@ def panel_relief(cx, cy, z, R, side, depth=0.12, key="carve"):
         [R * 0.07, R * 0.05, R * 0.012],
         n=8,
     )
+    if variant == 1:
+        # nested arches: a third horseshoe, and a ring of beads at the heart
+        horseshoe(R * 0.5, depth * 0.4, R * 0.04)
+        for i in range(10):
+            a = 2 * math.pi * i / 10
+            bx, by, bz = P(
+                R * 0.2 * math.cos(a), R * 0.05 + R * 0.2 * math.sin(a), depth * 0.3
+            )
+            loft(
+                key,
+                bx,
+                by,
+                [(0.002, bz - R * 0.04), (R * 0.04, bz), (0.002, bz + R * 0.04)],
+                e=2,
+                n=8,
+            )
+        return
+    if variant == 2:
+        # a pair of creeper scrolls (kodi), mirrored, rising from a short stem
+        for sgn in (-1, 1):
+            pts = []
+            for i in range(40):
+                t = i / 39
+                ang = 3.6 * t
+                rad = R * (0.05 + 0.5 * (1 - t))
+                pts.append(
+                    P(
+                        sgn * (R * 0.06 + rad * math.sin(ang) * 0.9),
+                        -R * 0.45 + R * 0.9 * t + rad * (1 - math.cos(ang)) * 0.25,
+                        depth * 0.4,
+                    )
+                )
+            tube(key, pts, [R * 0.05 * (1 - 0.6 * i / 39) for i in range(40)], n=6)
+        return
     # the pot: a vertical lathe, set half into the stone so only its front stands out
     vx, vy, _ = P(0, 0, depth * 0.05)
     k = R * 0.42
@@ -1722,6 +1756,10 @@ def pillar(x, y, h=4.6, seed=0, w=0.36):
     capital_h, bracket_h = 1.25, 0.42
     shaft = h - z - capital_h - bracket_h
     plan = (("sq", 0.26), ("oct", 0.16), ("sq", 0.22), ("oct", 0.16), ("sq", 0.20))
+    # no two pillars alike: hand-cut blocks differ by a few centimetres
+    plan = tuple((kind, share * rnd.uniform(0.94, 1.06)) for kind, share in plan)
+    total = sum(share for _, share in plan)
+    plan = tuple((kind, share / total) for kind, share in plan)
     for k, (kind, share) in enumerate(plan):
         hh = shaft * share
         if kind == "sq":
@@ -1776,6 +1814,7 @@ def pillar(x, y, h=4.6, seed=0, w=0.36):
                     side,
                     depth=0.05,
                     key=K,
+                    variant=(seed + k // 2 + side) % 3,
                 )
         else:
             # chamfered: the corners cut back from the square, stopped with triangles
@@ -3071,7 +3110,7 @@ def mat_granite(name, warm=1.0):
     sn = N.new("ShaderNodeTexNoise")
     sn.inputs["Scale"].default_value = 2.5
     L.new(sx.outputs["Vector"], sn.inputs["Vector"])
-    streak = ramp(sn.outputs["Fac"], [(0.55, (1, 1, 1)), (0.75, (0.88, 0.87, 0.85))])
+    streak = ramp(sn.outputs["Fac"], [(0.5, (1, 1, 1)), (0.78, (0.66, 0.64, 0.6))])
     col = mix(col, streak, 1.0, "MULTIPLY")
     # edges worn smooth and a little lighter by centuries of hands and feet
     bev = N.new("ShaderNodeBevel")
