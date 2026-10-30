@@ -52,7 +52,7 @@ Each part says what world-class means here, our choice, and how it is proven. **
 | 7 | Material and light | Granite, bronze and raised-gold recipes (`TAMIL_DESIGN_ROOTS.md` 12.5, 12.6, 12.9); one light source per scene; fine grain on signature moments only | Founder review of each material against references |
 | 8 | Layout | A 12-column grid, an 8-point spacing scale, a reading width; bento tiles sized by importance, never all equal; air on marketing pages, density in the app | Visual regression at 360 px and desktop |
 | 9 | Dark mode | Both themes from the same tokens; temple dusk is the natural dark theme | Contrast CI in both themes |
-| 10 | Ornament budget | Kolam and thoranam only at thresholds: one on the landing page (the join), none in the app except the seal. **The seal is not a kolam**: it is the deal's own fingerprint drawn as a guilloché engraving (section 5.2) | A count in review: one ornament per screen at most |
+| 10 | Ornament budget | **Adhi, 30 October 2026:** "kolam can also be there but not too much", for example as a border, half at an end. So: **half a kolam at an edge, as a threshold mark** (a section's end, the join), never a whole kolam in the middle of content and never wallpaper; **drawn by kolam rules in code from the deal's own record** (one unbroken line around a grid of dots, `TAMIL_DESIGN_ROOTS.md` 12.12), so it is ours and never clip art; **one per page at most**, in the warm gold line colour; the thoranam only at the join. **The seal stays the signature**, and it is not a kolam: the deal's fingerprint as a guilloché (section 5.2) | A count in review: one ornament per screen at most |
 
 ### B. Design system
 
