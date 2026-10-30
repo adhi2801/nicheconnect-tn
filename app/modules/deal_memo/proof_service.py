@@ -175,7 +175,8 @@ def settle_if_overdue(
     Only if the deal was still agreed at the deadline: a proof left waiting
     when the deal was cancelled is never approved by the clock (D-146, as
     for drafts, D-140). That is decided first, on the memo as read, so a
-    refused approval takes no lock and costs no query.
+    refused approval takes no lock (and no query at all when `history` is
+    passed).
 
     Then the memo and the proof are locked, in that order (`_lock_for_answer`,
     the order every move on a deal takes), and both are read again before

@@ -89,6 +89,10 @@ class DealStage:
     # calendar day the brand held a draft (D-140). Left out of equality
     # so a stage compares as a stage; tests assert it on its own.
     work_due_on: date | None = field(default=None, compare=False)
+    # A cancelled paid deal whose proof was approved before it ended, by the
+    # brand or by the clock, and whose payment is not yet confirmed: it ended,
+    # but money is still owed, so it holds account deletion (D-147).
+    money_owed: bool = False
 
 
 def _latest(proofs: list[DeliverableProof]) -> DeliverableProof | None:
@@ -124,7 +128,12 @@ def stage_of(
     if memo.status == "declined":
         return at(DECLINED, None)
     if memo.status == "cancelled":
-        return at(CANCELLED, None)
+        owed = (
+            bool(memo.fee_amount_paise)
+            and any(is_approved(memo, proof, proofs, now) for proof in proofs)
+            and (payment is None or payment.confirmed_at is None)
+        )
+        return DealStage(CANCELLED, None, has_open_dispute, due_on, money_owed=owed)
 
     # Accepted from here on.
     if any(is_approved(memo, proof, proofs, now) for proof in proofs):

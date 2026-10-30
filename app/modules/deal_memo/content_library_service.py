@@ -148,6 +148,8 @@ def _settle_overdue(db: Session, brand: Brand, now: datetime) -> None:
             .join(Application, Application.id == DealMemo.application_id)
             .join(Campaign, Campaign.id == Application.campaign_id)
             .where(Campaign.brand_id == brand.id, DeliverableProof.status == "submitted")
+            # one order, so two reads by the same brand lock their memos alike
+            .order_by(DealMemo.id)
         ).all()
     )
     if not waiting:

@@ -6,6 +6,9 @@ at the moment the window closed could leave the proof both sent back and approve
 with a payment opened for work that was sent back. It now locks the proof and reads
 it again, as an answer does, and approves only a deal still agreed at the deadline.
 
+Deals cancelled while proof waits are withdrawn by the creator here: a brand may
+not cancel while proof waits inside its window (D-147).
+
 Real, committed connections, like the other concurrency tests; every write is held
 open (`slow_writes`) so the race happens on every run.
 """
@@ -157,7 +160,7 @@ def test_a_deal_cancelled_before_the_deadline_is_never_approved_by_the_clock(
             session.get_one(DealMemo, committed_memo),
             "cancelled",
             deadline - timedelta(hours=1),
-            actor="brand",
+            actor="creator",
         )
         session.commit()
     with SessionLocal() as session:
@@ -219,7 +222,7 @@ def test_a_cancellation_after_the_deal_was_read_still_stops_the_clock(
                 brand.get_one(DealMemo, committed_memo),
                 "cancelled",
                 deadline - timedelta(hours=1),
-                actor="brand",
+                actor="creator",
             )
             brand.commit()
         proof_service.settle_if_overdue(
@@ -324,7 +327,7 @@ def test_proof_on_a_cancelled_deal_is_never_answered(
             session.get_one(DealMemo, committed_memo),
             "cancelled",
             deadline - timedelta(hours=1),
-            actor="brand",
+            actor="creator",
         )
         session.commit()
     with SessionLocal() as session, pytest.raises(MemoStatusConflict):
@@ -359,7 +362,7 @@ def test_the_delivery_record_agrees_a_deal_cancelled_before_the_deadline_was_not
             session.get_one(DealMemo, committed_memo),
             "cancelled",
             deadline - timedelta(hours=1),
-            actor="brand",
+            actor="creator",
         )
         session.commit()
     with SessionLocal() as session:
@@ -381,7 +384,7 @@ def test_a_refused_clock_takes_no_lock(committed_memo, waiting_proof):
             session.get_one(DealMemo, committed_memo),
             "cancelled",
             deadline - timedelta(hours=1),
-            actor="brand",
+            actor="creator",
         )
         session.commit()
     reader = SessionLocal()

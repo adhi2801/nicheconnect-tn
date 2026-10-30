@@ -28954,7 +28954,7 @@
     },
     "/api/v1/deal-memos/{memo_id}/cancel": {
       "post": {
-        "description": "Ends the deal. Before any work is submitted this is recorded as withdrawn_early and does not count against the brand; afterwards it does.",
+        "description": "Ends the deal. Before any work is submitted this is recorded as withdrawn_early and does not count against the brand; afterwards it does. While proof waits inside its review window the brand answers it first, approving it or asking for a fix (409 `proof_awaiting_answer`, D-147).",
         "operationId": "memo_cancel_api_v1_deal_memos__memo_id__cancel_post",
         "parameters": [
           {
