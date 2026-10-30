@@ -12,7 +12,7 @@ from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.deal_memo import calendar_ics, calendar_service
-from app.modules.deal_memo.dependencies import visible_memo_for_account
+from app.modules.deal_memo.dependencies import party_memo
 
 READ_LIMIT = "60 per minute"
 
@@ -52,7 +52,7 @@ def deal_calendar(
     now: Annotated[datetime, Depends(get_now)],
 ) -> Response:
     """Either party. Anyone else gets 404, so ids cannot be walked."""
-    memo = visible_memo_for_account(db, memo_id, account.id, account.role)
+    memo = party_memo(db, request, memo_id, account)
     name, events = calendar_service.deal_dates(db, memo, now)
     return Response(
         content=calendar_ics.calendar(name, events, stamp=now),

@@ -23,7 +23,7 @@ from app.modules.deal_memo import proof_file_service
 from app.modules.deal_memo.dependencies import (
     BrandMemo,
     CreatorMemo,
-    visible_memo_for_account,
+    party_memo,
 )
 from app.modules.deal_memo.draft_models import (
     BODY_MAX_LENGTH,
@@ -419,7 +419,7 @@ def list_drafts(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> list[DraftRead]:
-    memo = visible_memo_for_account(db, memo_id, account.id, account.role)
+    memo = party_memo(db, request, memo_id, account)
     drafts = service.list_for_memo(db, memo, now)
     files = service.files_by_draft(db, drafts)
     return [_read(memo, draft, drafts, files[draft.id]) for draft in drafts]
@@ -449,7 +449,7 @@ def view_draft_files(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> list[DraftFileView]:
-    memo = visible_memo_for_account(db, memo_id, account.id, account.role)
+    memo = party_memo(db, request, memo_id, account)
     draft = service.get_for_memo(db, memo, draft_id, now)
     files = service.files_by_draft(db, [draft])[draft.id]
     # Asked for only when something can be opened.

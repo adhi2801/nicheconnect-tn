@@ -378,3 +378,41 @@ def test_the_record_names_the_team_member_who_acted(client, db, clock, owner):
 
     assert approver(approve(member)) == member.account_id
     assert approver(approve(owner)) == owner.account_id
+
+
+def test_a_deal_note_follows_the_role_and_names_who_wrote_it(client, db, clock, owner):
+    """Routes either side may call reach a member through the deal itself (D-148)."""
+    from app.modules.deal_memo.record_models import DealRecordEntry
+
+    manager = join(client, db, clock, owner, "campaigns", name="Ravi")
+    finance = join(client, db, clock, owner, "finance", name="Meena")
+    memo_id = accepted_memo(client, owner, make_creator(db, clock))
+    url = f"{MEMOS_URL}/{memo_id}/notes"
+
+    written = client.post(
+        url, json={"body": "Shooting on Friday."}, headers=manager.headers
+    )
+    assert written.status_code == 201, written.text
+    problem(
+        client.post(url, json={"body": "Paid soon."}, headers=finance.headers),
+        403,
+        "brand_role_not_allowed",
+    )
+    assert client.get(url, headers=finance.headers).status_code == 200
+    sealed = db.scalar(
+        select(DealRecordEntry.actor_account_id).where(
+            DealRecordEntry.deal_memo_id == memo_id, DealRecordEntry.kind == "note_added"
+        )
+    )
+    assert sealed == manager.account_id
+
+
+def test_a_stranger_brand_member_never_reaches_the_deal(client, db, clock, owner):
+    memo_id = accepted_memo(client, owner, make_creator(db, clock))
+    outsider = join(client, db, clock, brand_user(db, clock), "admin")
+
+    problem(
+        client.get(f"{MEMOS_URL}/{memo_id}/notes", headers=outsider.headers),
+        404,
+        "memo_not_found",
+    )

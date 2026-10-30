@@ -89,3 +89,27 @@ def parse_brand_header(value: str | None) -> uuid.UUID | None:
         return uuid.UUID(value.strip())
     except ValueError as exc:
         raise BrandNotFound() from exc
+
+
+def role_in(db: Session, account: Account, brand_id: uuid.UUID) -> str | None:
+    """The account's role in a brand named by an object (a deal, an application),
+    or None when it is not theirs, or its owner is suspended or has left.
+
+    For routes that reach a brand through the object they name, not the
+    Brand-Id header: the object says which brand. Two queries at most.
+    """
+    brand = db.get(Brand, brand_id)
+    if brand is None:
+        return None
+    if brand.account_id == account.id:
+        return "owner"
+    role = db.scalar(
+        select(BrandMember.role).where(
+            BrandMember.brand_id == brand_id,
+            BrandMember.account_id == account.id,
+            BrandMember.removed_at.is_(None),
+        )
+    )
+    if role is None or not _owner_is_open(db, brand):
+        return None
+    return role
