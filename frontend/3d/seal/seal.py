@@ -17,6 +17,7 @@ Run:
   blender -b --factory-startup --python seal.py -- out.png 1600 1600 128 [fp=a3f977c1]
 """
 
+import itertools
 import math
 import os
 import sys
@@ -97,7 +98,7 @@ def revolve(profile, segs=256):
                 for i in range(segs)
             ]
         )
-    for a, c in zip(rings, rings[1:], strict=False):
+    for a, c in itertools.pairwise(rings):
         if len(a) == 1 and len(c) == 1:
             continue
         for i in range(segs):
