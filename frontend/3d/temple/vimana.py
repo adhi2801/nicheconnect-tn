@@ -36,7 +36,10 @@ addon_utils.enable("cycles", default_set=True)
 for o in list(bpy.data.objects):
     bpy.data.objects.remove(o, do_unlink=True)
 
-MESHES = {k: bmesh.new() for k in ("stone", "gold", "niche", "floor", "wall", "carve")}
+MESHES = {
+    k: bmesh.new()
+    for k in ("stone", "gold", "niche", "floor", "wall", "carve", "mono", "dome")
+}
 
 
 # ---------- geometry helpers ----------
@@ -139,7 +142,7 @@ def shala(cx, cy, z0, s, along_x, side=None):
     INSTANCES.append(("shala", (cx, cy, z0), s, rot))
 
 
-def _unit_kuta():
+def _unit_kuta(v=0):
     """A kuta at unit size: moulded plinth, pilastered cell with a framed arch on each face,
     curved cornice, neck, a square dome carrying four small arches, and a finial."""
     loft(
@@ -194,25 +197,60 @@ def _unit_kuta():
         n=32,
     )
     loft("stone", 0, 0, [(0.3, 0.68), (0.3, 0.75), (0.34, 0.77)], e=40, n=32)
+    # three designs: a squared dome, a round one with a taller crown, an
+    # octagonal one; real towers alternate them tier by tier
+    rise = (0.4, 0.48, 0.36)[v]
     dome = [
-        (0.38 * math.cos(t) + 0.001, 0.77 + 0.4 * math.sin(t))
+        (0.38 * math.cos(t) + 0.001, 0.77 + rise * math.sin(t))
         for t in [i * math.pi / 2 / 9 for i in range(10)]
     ]
-    loft("stone", 0, 0, dome, e=3.2, n=40)
-    for side in range(4):
-        nrm = [(0, -1), (1, 0), (0, 1), (-1, 0)][side]
-        nasika(nrm[0] * 0.34, nrm[1] * 0.34, 0.8, 0.11, 0.12, side, thick=0.02, out=0.05)
     loft(
         "stone",
         0,
         0,
-        [(0.07, 1.16), (0.09, 1.2), (0.05, 1.25), (0.07, 1.3), (0.01, 1.4)],
-        e=2,
-        n=14,
+        dome,
+        e=(3.2, 2.0, 2.0)[v],
+        n=(40, 40, 8)[v],
+        phase=(0.0, 0.0, math.pi / 8)[v],
     )
+    if v == 1:
+        # a ring of beads where the dome meets its neck
+        for i in range(16):
+            a16 = 2 * math.pi * i / 16
+            loft(
+                "stone",
+                0.36 * math.cos(a16),
+                0.36 * math.sin(a16),
+                [(0.005, 0.765), (0.03, 0.78), (0.005, 0.8)],
+                e=2,
+                n=8,
+            )
+    for side in range(4):
+        nrm = [(0, -1), (1, 0), (0, 1), (-1, 0)][side]
+        nasika(nrm[0] * 0.34, nrm[1] * 0.34, 0.8, 0.11, 0.12, side, thick=0.02, out=0.05)
+    zt = 0.77 + rise
+    finials = (
+        [
+            (0.07, zt - 0.01),
+            (0.09, zt + 0.03),
+            (0.05, zt + 0.08),
+            (0.07, zt + 0.13),
+            (0.01, zt + 0.23),
+        ],
+        [
+            (0.06, zt - 0.01),
+            (0.1, zt + 0.06),
+            (0.04, zt + 0.12),
+            (0.06, zt + 0.16),
+            (0.03, zt + 0.22),
+            (0.01, zt + 0.32),
+        ],
+        [(0.08, zt - 0.01), (0.08, zt + 0.04), (0.11, zt + 0.07), (0.01, zt + 0.17)],
+    )[v]
+    loft("stone", 0, 0, finials, e=2, n=14)
 
 
-def _unit_shala():
+def _unit_shala(v=0):
     """A shala at unit size, long along x, outer face toward -y: plinth, pilastered body, cornice,
     a barrel vault with arched gable ends, a great kudu arch on the outer face, three finials."""
     hl, hw = 0.9, 0.42
@@ -225,7 +263,7 @@ def _unit_shala():
     box("niche", 0, -(hw + 0.01), 0.18, 0.22, 0.01, 0.26)
     box("stone", 0, 0, 0.55, hl * 1.08, hw * 1.12, 0.07)
     box("stone", 0, 0, 0.62, hl * 1.02, hw * 1.04, 0.04)
-    barrel("stone", 0, 0, 0.66, hl * 0.98, hw * 0.95, True)
+    barrel("stone", 0, 0, 0.66, hl * 0.98, hw * (0.95, 1.08, 0.86)[v], True)
     for sx, sd in ((-1, 3), (1, 1)):
         nasika(sx * hl * 0.99, 0, 0.66, hw * 0.75, hw * 0.95, sd, thick=0.03, out=0.06)
     for sd in (0, 2):
@@ -239,7 +277,7 @@ def _unit_shala():
             thick=0.04,
             out=0.1,
         )
-    for k in (-0.6, 0, 0.6):
+    for k in ((-0.6, 0, 0.6), (-0.66, -0.22, 0.22, 0.66), (0,))[v]:
         loft(
             "stone",
             k * hl,
@@ -258,10 +296,12 @@ def _unit_shala():
 def build_units():
     """Build each pavilion once, in detail, as its own mesh."""
     units = {}
-    for name, fn in (("kuta", _unit_kuta), ("shala", _unit_shala)):
+    for name, fn, v in [(f"kuta{v}", _unit_kuta, v) for v in range(3)] + [
+        (f"shala{v}", _unit_shala, v) for v in range(3)
+    ]:
         saved = (MESHES["stone"], MESHES["niche"])
         MESHES["stone"], MESHES["niche"] = bmesh.new(), bmesh.new()
-        fn()
+        fn(v)
         meshes = []
         for key in ("stone", "niche"):
             bm = MESHES[key]
@@ -282,7 +322,13 @@ def place_instances(units):
     col = bpy.data.collections.new("pavilions")
     bpy.context.scene.collection.children.link(col)
     for unit, (x, y, z), sc_, rot in INSTANCES:
-        for key, me in units[unit]:
+        # one design per tier, the same on all four sides, as on a real tower
+        design = (
+            f"{unit}{int(round(z * 4)) % 3}"
+            if PART is None
+            else f"{unit}{int(round(x / 3.2)) + 1}"
+        )
+        for key, me in units[design]:
             ob = bpy.data.objects.new(f"{unit}_{key}", me)
             ob.location = (x, y, z)
             ob.scale = (sc_, sc_, sc_)
@@ -800,151 +846,272 @@ def build():
         z = prastara(0, 0, z + h_t, half_t - 0.9, k)
         hara(0, 0, z - 0.15, half_t - 0.1, 2.0 - f * 0.75)
         z += 0.25
-    # griva, shikhara with four great nasika arches, and the kalasa
-    gh = 3.1
-    loft("stone", 0, 0, [(4.55, z), (4.55, z + gh)], e=2, n=8, phase=math.pi / 8)
-    for k in range(8):
-        a = 2 * math.pi * k / 8
-        loft(
-            "stone",
-            4.25 * math.cos(a),
-            4.25 * math.sin(a),
-            [(0.22, z + 0.2), (0.22, z + gh - 0.2)],
-            e=40,
-            n=8,
-        )
-    z += gh
+    # on the real tower the crown stands on a platform wider than the top tier
+    return crown(z, (half - 1.4 - (tiers - 1) * 0.62) * 1.35)
+
+
+def crown(z, T):
+    """The crown on a top tier of half width T, standing at height z: platform, neck,
+    brim, lattice dome, crests and kalasa, as on the real tower. Returns the top height."""
+    # ---- the crown, as on the real tower (photographed references, 29 Oct 2026) ----
+    # the platform, with a moulded edge
+    box("stone", 0, 0, z, T + 0.1, T + 0.1, 0.45)
     loft(
         "stone",
         0,
         0,
-        [(5.2, z), (5.5, z + 0.3), (5.4, z + 0.6)],
-        e=2,
-        n=8,
-        phase=math.pi / 8,
+        [
+            (T + 0.1, z + 0.45),
+            (T + 0.28, z + 0.55),
+            (T + 0.2, z + 0.68),
+            (T - 0.1, z + 0.72),
+        ],
+        e=40,
+        n=64,
     )
-    z += 0.6
-    dome = [
-        (5.0 * math.cos(a) * (1 + 0.08 * math.sin(a)) + 0.01, z + 5.2 * math.sin(a))
-        for a in [i * math.pi / 2 / 14 for i in range(15)]
-    ]
-    loft("stone", 0, 0, [(r * 1.08, zz) for r, zz in dome], e=2, n=8, phase=math.pi / 8)
-    for ang in range(4):
-        a = ang * math.pi / 2
-        dx, dy = math.cos(a), math.sin(a)
-        arch = []
-        # a horseshoe arch standing out from the dome face
-        for i in range(17):
-            th = math.pi * i / 16
-            arch.append((2.3 * math.cos(th), 2.7 * math.sin(th)))
-        bm = MESHES["stone"]
-        outer, inner = [], []
-        for u, w in arch:
-            for r, lst in ((1.0, outer), (0.72, inner)):
-                p = Vector((-dy * u * r, dx * u * r, z + 0.6 + w * r)) + Vector(
-                    (dx, dy, 0)
-                ) * (4.55 - 0.15 * w)
-                lst.append(bm.verts.new(p))
-        for i in range(16):
-            bm.faces.new((outer[i], outer[i + 1], inner[i + 1], inner[i]))
-        # depth: the arch's band stands 0.45 m proud of the dome, its soffit too
-        out_o = [bm.verts.new(v.co + Vector((dx, dy, 0)) * 0.45) for v in outer]
-        out_i = [bm.verts.new(v.co + Vector((dx, dy, 0)) * 0.45) for v in inner]
-        for i in range(16):
-            bm.faces.new((out_o[i], out_o[i + 1], out_i[i + 1], out_i[i]))
-            bm.faces.new((outer[i], outer[i + 1], out_o[i + 1], out_o[i]))
-            bm.faces.new((inner[i + 1], inner[i], out_i[i], out_i[i + 1]))
-        # the shadowed niche the arch frames
-        cx_, cy_ = dx * (4.55 - 0.05), dy * (4.55 - 0.05)
-        niche_pts = [
-            Vector((-dy * u * 0.7, dx * u * 0.7, z + 0.6 + w * 0.7))
-            + Vector((cx_, cy_, 0))
-            for u, w in arch
-        ]
-        nb = MESHES["niche"]
-        nv = [nb.verts.new(q) for q in niche_pts]
-        nb.faces.new(nv)
-        # its crowning finial (stupi) above the arch
-        tip = Vector((dx * 4.75, dy * 4.75, z + 0.6 + 2.7 + 0.1))
+    z += 0.72
+    # plain blocks at the corners, where the real tower has seated bulls (rule 1)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            box("stone", sx * (T - 0.55), sy * (T - 0.55), z, 0.42, 0.42, 0.75)
+            loft(
+                "stone",
+                sx * (T - 0.55),
+                sy * (T - 0.55),
+                [(0.5, z + 0.75), (0.56, z + 0.85), (0.4, z + 0.95), (0.05, z + 1.25)],
+                e=6,
+                n=24,
+            )
+    # the neck: a short drum, rounded square, a niche between pilasters on each side
+    r_neck = T * 0.8
+    neck = 1.25
+    loft(
+        "stone",
+        0,
+        0,
+        [
+            (r_neck + 0.2, z),
+            (r_neck, z + 0.2),
+            (r_neck, z + neck - 0.12),
+            (r_neck + 0.16, z + neck),
+        ],
+        e=6,
+        n=64,
+    )
+    for side in range(4):
+        nrm = [(0, -1), (1, 0), (0, 1), (-1, 0)][side]
+        tan = (-nrm[1], nrm[0])
+        box(
+            "niche",
+            nrm[0] * (r_neck - 0.04),
+            nrm[1] * (r_neck - 0.04),
+            z + 0.35,
+            0.55 if nrm[1] else 0.08,
+            0.55 if nrm[0] else 0.08,
+            neck - 0.75,
+        )
+        for d in (-1, 1):
+            box(
+                "stone",
+                tan[0] * d * 0.78 + nrm[0] * r_neck,
+                tan[1] * d * 0.78 + nrm[1] * r_neck,
+                z + 0.2,
+                0.12 if nrm[1] else 0.09,
+                0.12 if nrm[0] else 0.09,
+                neck - 0.32,
+            )
+    z += neck
+    # the brim: a broad flaring cornice, wider than the dome, its edge hanging down
+    B = T * 1.12
+    # thick, its edge curving down like a drip-moulding (kapota)
+    loft(
+        "stone",
+        0,
+        0,
+        [
+            (r_neck + 0.16, z - 0.35),
+            (T * 0.98, z - 0.05),
+            (B * 0.96, z + 0.3),
+            (B, z + 0.55),
+            (B * 1.01, z + 0.8),
+            (B * 0.97, z + 0.98),
+            (T * 1.02, z + 1.08),
+            (T * 0.94, z + 1.14),
+        ],
+        e=5,
+        n=72,
+    )
+    # the brim carved as on the real crown: round medallions all along its outer face,
+    # a row of beads at its lip, and a second, finer row where it meets the dome
+    for i in range(48):
+        a48 = 2 * math.pi * (i + 0.5) / 48
+        c48, s48 = math.cos(a48), math.sin(a48)
+        # the brim is a rounded square (e=5): find its face along this direction
+        rr = B * 1.0 / (abs(c48) ** 5 + abs(s48) ** 5) ** (1 / 5)
+        mx, my = c48 * (rr + 0.04), s48 * (rr + 0.04)
         loft(
             "stone",
-            tip.x,
-            tip.y,
+            mx,
+            my,
             [
-                (0.01, tip.z),
-                (0.22, tip.z + 0.1),
-                (0.26, tip.z + 0.35),
-                (0.12, tip.z + 0.6),
-                (0.01, tip.z + 0.85),
+                (0.01, z + 0.5),
+                (0.2, z + 0.56),
+                (0.26, z + 0.7),
+                (0.2, z + 0.84),
+                (0.01, z + 0.9),
             ],
             e=2,
-            n=12,
+            n=14,
         )
-    # ribs on the eight edges of the octagonal dome, following its curve
-    for k8 in range(8):
-        a8 = math.pi / 8 + k8 * math.pi / 4
-        rib = [
-            Vector(
-                (
-                    r * 1.08 * math.cos(a8) / math.cos(math.pi / 8) * 1.0,
-                    r * 1.08 * math.sin(a8) / math.cos(math.pi / 8) * 1.0,
-                    zz,
-                )
-            )
-            for r, zz in dome
-        ]
-        tube(
+    for i in range(96):
+        a96 = 2 * math.pi * i / 96
+        c96, s96 = math.cos(a96), math.sin(a96)
+        rr = B * 0.97 / (abs(c96) ** 5 + abs(s96) ** 5) ** (1 / 5)
+        loft(
             "stone",
-            rib,
-            [0.2 * (1 - 0.6 * i / (len(rib) - 1)) + 0.05 for i in range(len(rib))],
+            c96 * rr,
+            s96 * rr,
+            [(0.01, z + 0.93), (0.08, z + 0.97), (0.09, z + 1.02), (0.01, z + 1.07)],
+            e=2,
             n=8,
         )
-    # a garland of round beads at the dome's foot
     for i in range(72):
         a72 = 2 * math.pi * i / 72
-        rr = 5.62
+        rr = T * 0.97
         loft(
             "stone",
-            rr * math.cos(a72),
-            rr * math.sin(a72),
+            math.cos(a72) * rr,
+            math.sin(a72) * rr,
+            [(0.01, z + 1.1), (0.1, z + 1.15), (0.11, z + 1.22), (0.01, z + 1.28)],
+            e=2,
+            n=8,
+        )
+    z += 1.14
+    # the dome: rounded, a little squat, carved all over in a diamond lattice
+    Rd = T * 0.98
+    Hd = T * 1.0
+    dome = [
+        (Rd * math.cos(a) + 0.01, z + Hd * math.sin(a))
+        for a in [i * math.pi / 2 / 18 for i in range(19)]
+    ]
+    loft("dome", 0, 0, dome, e=2, n=96)
+    # round medallions set into the lattice, between the crests
+    for i in range(8):
+        a8 = math.pi / 8 + i * math.pi / 4
+        el = 0.36
+        cx_, cy_ = (
+            Rd * math.cos(el) * math.cos(a8) * 1.0,
+            Rd * math.cos(el) * math.sin(a8) * 1.0,
+        )
+        cz_ = z + Hd * math.sin(el)
+        loft(
+            "dome",
+            cx_ * 1.03,
+            cy_ * 1.03,
             [
-                (0.01, z - 0.02),
-                (0.17, z + 0.1),
-                (0.2, z + 0.22),
-                (0.15, z + 0.34),
-                (0.01, z + 0.44),
+                (0.01, cz_ - 0.36),
+                (0.3, cz_ - 0.24),
+                (0.36, cz_),
+                (0.3, cz_ + 0.24),
+                (0.01, cz_ + 0.36),
             ],
             e=2,
-            n=10,
+            n=20,
+            aspect=1.0,
         )
-    z += 5.2
-    # mouldings under the kalasa: a lotus-free stepped ring, then the gold
-    loft(
-        "stone",
-        0,
-        0,
-        [(1.7, z - 0.35), (1.85, z - 0.2), (1.6, z - 0.05), (1.45, z + 0.0)],
-        e=2,
-        n=32,
-    )
+    # the four great crests: fans standing on the brim at the cardinal points, their rims
+    # finely scalloped like feathers, leaning back against the dome, a rounded crest on top
+    Fr = T * 0.5
+    lean = 0.42  # how far back the top leans, per metre of height
+
+    def crest_layer(rad, scal, lobes, thick, fwd, key, dvec, pvec, base_z):
+        """One layer of a crest: a fan outline extruded through its thickness, sheared back."""
+        bm_ = MESHES[key]
+        outline = [(-rad, 0.0)]
+        for i in range(97):
+            th = math.pi * i / 96
+            rr = rad * (1 + scal * abs(math.cos(lobes * th / 2)) - scal)
+            outline.append((-rr * math.cos(th), rr * math.sin(th) * 1.12))
+        outline.append((rad, 0.0))
+        rings_ = []
+        for sgn in (-1, 1):
+            rings_.append(
+                [
+                    bm_.verts.new(
+                        dvec * (fwd - lean * h + sgn * thick / 2)
+                        + pvec * s
+                        + Vector((0, 0, base_z + h))
+                    )
+                    for s, h in outline
+                ]
+            )
+        bm_.faces.new(rings_[0][::-1])
+        bm_.faces.new(rings_[1])
+        for i in range(len(outline)):
+            j = (i + 1) % len(outline)
+            bm_.faces.new((rings_[0][i], rings_[0][j], rings_[1][j], rings_[1][i]))
+
+    for ang in range(4):
+        a = ang * math.pi / 2
+        dvec, pvec = (
+            Vector((math.cos(a), math.sin(a), 0)),
+            Vector((-math.sin(a), math.cos(a), 0)),
+        )
+        base_z = z - 0.2
+        crest_layer(Fr, 0.06, 30, 0.3, Rd * 1.04, "stone", dvec, pvec, base_z)
+        crest_layer(
+            Fr * 0.8, 0.05, 24, 0.24, Rd * 1.04 + 0.24, "stone", dvec, pvec, base_z
+        )
+        crest_layer(
+            Fr * 0.6, 0.04, 18, 0.18, Rd * 1.04 + 0.42, "stone", dvec, pvec, base_z
+        )
+        crest_layer(
+            Fr * 0.36, 0.0, 2, 0.05, Rd * 1.04 + 0.53, "niche", dvec, pvec, base_z
+        )
+        # the rounded crest at the top, in place of the carved face
+        h_top = Fr * 1.12
+        c = dvec * (Rd * 1.04 - lean * h_top + 0.15) + Vector((0, 0, base_z + h_top))
+        loft(
+            "stone",
+            c.x,
+            c.y,
+            [
+                (0.01, c.z - 0.15),
+                (0.34, c.z),
+                (0.4, c.z + 0.25),
+                (0.3, c.z + 0.5),
+                (0.12, c.z + 0.68),
+                (0.01, c.z + 0.75),
+            ],
+            e=2,
+            n=20,
+        )
+    z += Hd
+    # the kalasa, gold: a round pot, a neck ring, a flared disc, a pointed flame
     k = [
-        (1.2, z - 0.2),
-        (1.25, z + 0.1),
-        (0.9, z + 0.25),
-        (1.05, z + 0.5),
-        (1.2, z + 0.9),
-        (1.05, z + 1.35),
-        (0.55, z + 1.6),
-        (0.6, z + 1.8),
-        (0.32, z + 2.0),
-        (0.42, z + 2.4),
-        (0.3, z + 2.8),
-        (0.12, z + 3.2),
-        (0.18, z + 3.4),
-        (0.01, z + 3.9),
+        (0.55, z - 0.05),
+        (0.78, z + 0.05),
+        (0.64, z + 0.18),
+        (0.72, z + 0.3),
+        (1.02, z + 0.62),
+        (1.12, z + 0.95),
+        (1.0, z + 1.3),
+        (0.6, z + 1.55),
+        (0.4, z + 1.64),
+        (0.52, z + 1.74),
+        (0.34, z + 1.86),
+        (0.3, z + 1.98),
+        (0.78, z + 2.08),
+        (0.74, z + 2.16),
+        (0.3, z + 2.2),
+        (0.36, z + 2.34),
+        (0.42, z + 2.68),
+        (0.32, z + 3.05),
+        (0.16, z + 3.42),
+        (0.01, z + 3.8),
     ]
-    loft("gold", 0, 0, k, e=2, n=48)
-    return z + 3.9
+    loft("gold", 0, 0, k, e=2, n=64)
+    return z + 3.8
 
 
 def courtyard():
@@ -1747,7 +1914,23 @@ def pavilion(cx, cy, nx=4, ny=4, sp=3.3):
     return top_z
 
 
-top = build()
+PART = next((a.split("=", 1)[1] for a in argv if a.startswith("part=")), None)
+if PART is None:
+    top = build()
+elif PART == "crown":
+    top = crown(0.0, 3.76)
+elif PART in ("kuta", "shala"):
+    for v in range(3):
+        (kuta if PART == "kuta" else shala)(
+            (v - 1) * 3.2, 0.0, 0.0, 1.6, *([] if PART == "kuta" else [True])
+        )
+    top = 2.4
+elif PART == "pillar":
+    top = pillar(0.0, 0.0, 6.6)
+else:
+    raise SystemExit(f"unknown part {PART}")
+if PART is not None:
+    HERO = True
 if not HERO:
     birds()
     HALL_TOP = pavilion(0.0, -115.0)
@@ -2545,6 +2728,30 @@ def mat_scan(
         img("nor_gl.jpg", True),
         img("Rough.jpg", True),
     )
+    # break the repeat: the same scan, scaled and turned, faded in by a soft mask
+    mp2 = N.new("ShaderNodeMapping")
+    mp2.inputs["Scale"].default_value = (s * 0.71, s * 0.71, s * 0.71)
+    mp2.inputs["Rotation"].default_value = (0.0, 0.0, math.radians(90))
+    mp2.inputs["Location"].default_value = (0.37, 0.61, 0.13)
+    L.new(addv.outputs["Vector"], mp2.inputs["Vector"])
+    dif2 = N.new("ShaderNodeTexImage")
+    dif2.projection = "BOX"
+    dif2.projection_blend = blend
+    dif2.image = dif.image
+    L.new(mp2.outputs["Vector"], dif2.inputs["Vector"])
+    tmask = N.new("ShaderNodeTexNoise")
+    tmask.inputs["Scale"].default_value = 0.09
+    tmask.inputs["Detail"].default_value = 2
+    L.new(addv.outputs["Vector"], tmask.inputs["Vector"])
+    tmr = N.new("ShaderNodeMapRange")
+    tmr.inputs["From Min"].default_value = 0.42
+    tmr.inputs["From Max"].default_value = 0.58
+    L.new(tmask.outputs["Fac"], tmr.inputs["Value"])
+    dmix = N.new("ShaderNodeMix")
+    dmix.data_type = "RGBA"
+    L.new(tmr.outputs["Result"], dmix.inputs["Factor"])
+    L.new(dif.outputs["Color"], dmix.inputs["A"])
+    L.new(dif2.outputs["Color"], dmix.inputs["B"])
     col = N.new("ShaderNodeMix")
     col.data_type = "RGBA"
     col.blend_type = "MULTIPLY"
@@ -2552,7 +2759,7 @@ def mat_scan(
     bc = N.new("ShaderNodeBrightContrast")
     bc.inputs["Bright"].default_value = 0.04
     bc.inputs["Contrast"].default_value = -0.28
-    L.new(dif.outputs["Color"], bc.inputs["Color"])
+    L.new(dmix.outputs["Result"], bc.inputs["Color"])
     L.new(bc.outputs["Color"], col.inputs["A"])
     col.inputs["B"].default_value = (*tint, 1)
     last = col.outputs["Result"]
@@ -2918,6 +3125,65 @@ def toned(m, attr):
     return m
 
 
+def lattice(m):
+    """Carve a diamond lattice into a dome's material: two families of grooves running
+    diagonally across longitude and height, as on the real crown."""
+    N, L = m.node_tree.nodes, m.node_tree.links
+    b = N["Principled BSDF"]
+    geo = N.new("ShaderNodeNewGeometry")
+    sep = N.new("ShaderNodeSeparateXYZ")
+    L.new(geo.outputs["Position"], sep.inputs["Vector"])
+    lon = N.new("ShaderNodeMath")
+    lon.operation = "ARCTAN2"
+    L.new(sep.outputs["Y"], lon.inputs[0])
+    L.new(sep.outputs["X"], lon.inputs[1])
+    grooves = []
+    for sgn in (1.0, -1.0):
+        a_ = N.new("ShaderNodeMath")
+        a_.operation = "MULTIPLY"
+        a_.inputs[1].default_value = 36.0
+        L.new(lon.outputs["Value"], a_.inputs[0])
+        b_ = N.new("ShaderNodeMath")
+        b_.operation = "MULTIPLY_ADD"
+        b_.inputs[1].default_value = 3.1 * sgn
+        L.new(sep.outputs["Z"], b_.inputs[0])
+        L.new(a_.outputs["Value"], b_.inputs[2])
+        s_ = N.new("ShaderNodeMath")
+        s_.operation = "SINE"
+        L.new(b_.outputs["Value"], s_.inputs[0])
+        ab = N.new("ShaderNodeMath")
+        ab.operation = "ABSOLUTE"
+        L.new(s_.outputs["Value"], ab.inputs[0])
+        grooves.append(ab)
+    mn = N.new("ShaderNodeMath")
+    mn.operation = "MINIMUM"
+    L.new(grooves[0].outputs["Value"], mn.inputs[0])
+    L.new(grooves[1].outputs["Value"], mn.inputs[1])
+    edge = N.new("ShaderNodeMapRange")
+    edge.inputs["From Min"].default_value = 0.0
+    edge.inputs["From Max"].default_value = 0.35
+    L.new(mn.outputs["Value"], edge.inputs["Value"])
+    bump = N.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value = 0.8
+    bump.inputs["Distance"].default_value = 0.05
+    L.new(edge.outputs["Result"], bump.inputs["Height"])
+    if b.inputs["Normal"].is_linked:
+        L.new(b.inputs["Normal"].links[0].from_socket, bump.inputs["Normal"])
+    L.new(bump.outputs["Normal"], b.inputs["Normal"])
+    shade = N.new("ShaderNodeMapRange")
+    shade.inputs["To Min"].default_value = 0.62
+    shade.inputs["To Max"].default_value = 1.0
+    L.new(edge.outputs["Result"], shade.inputs["Value"])
+    mx = N.new("ShaderNodeMix")
+    mx.data_type = "RGBA"
+    mx.blend_type = "MULTIPLY"
+    mx.inputs["Factor"].default_value = 1.0
+    L.new(b.inputs["Base Color"].links[0].from_socket, mx.inputs["A"])
+    L.new(shade.outputs["Result"], mx.inputs["B"])
+    L.new(mx.outputs["Result"], b.inputs["Base Color"])
+    return m
+
+
 def mat_inscription():
     import os
 
@@ -2968,6 +3234,22 @@ MATS = {
     ),
     "inscr": mat_inscription(),
     "pstone": mat_granite("pstone"),
+    "dome": lattice(
+        mat_scan(
+            "dome",
+            "large_sandstone_blocks",
+            26.0,
+            tint=((1.45, 1.14, 0.8) if GRADE == "gold" else (1.34, 1.12, 0.86)),
+            normal_strength=0.4,
+        )
+    ),
+    "mono": mat_scan(
+        "mono",
+        "large_sandstone_blocks",
+        26.0,
+        tint=((1.45, 1.14, 0.8) if GRADE == "gold" else (1.34, 1.12, 0.86)),
+        normal_strength=0.5,
+    ),
     "rice": mat_simple("rice", (0.5, 0.48, 0.45), 0.98),
     "bird": mat_simple("bird", (0.05, 0.045, 0.04), 0.8),
     "leaf": mat_leaf(),
@@ -3057,7 +3339,7 @@ for key, bm in MESHES.items():
     me.materials.append(MATS[key])
     for p in me.polygons:
         p.use_smooth = key != "pave"
-    if key in ("stone", "wall", "pstone"):
+    if key in ("stone", "wall", "pstone", "mono"):
         bv = ob.modifiers.new("bevel", "BEVEL")
         bv.width = 0.035
         bv.segments = 2
@@ -3531,7 +3813,7 @@ def hero_stage():
         ):
             bpy.data.objects.remove(ob, do_unlink=True)
     # the stone as it is at Thanjavur: a warm weathered granite, not pale sand
-    for key in ("stone", "carve", "wall"):
+    for key in ("stone", "carve", "wall", "mono", "dome"):
         for nd in MATS[key].node_tree.nodes:
             if (
                 nd.bl_idname == "ShaderNodeMix"
@@ -3543,7 +3825,7 @@ def hero_stage():
                     nd.inputs["B"].default_value = (0.98, 0.8, 0.62, 1)
     # a thousand monsoons: long dark streaks run down from every ledge, patina
     # gathers in broad clouds, and the stone is never one even tone
-    for key in ("stone", "carve", "wall"):
+    for key in ("stone", "carve", "wall", "mono", "dome"):
         nt_ = MATS[key].node_tree
         N_, L_ = nt_.nodes, nt_.links
         b_ = N_["Principled BSDF"]
@@ -3641,6 +3923,19 @@ def hero_stage():
     tgt = Vector((0.0, 0.0, top * 0.47))
     cam.rotation_quaternion = (tgt - cam.location).to_track_quat("-Z", "Y")
     cam_data.lens = 105
+    if PART is not None:
+        size = {"crown": 16.0, "kuta": 9.0, "shala": 9.0, "pillar": 9.0}[PART]
+        dist_p = size * 2.3
+        cam.location = (dist_p * math.sin(o), -dist_p * math.cos(o), top * 0.35)
+        tgt = Vector((0.0, 0.0, top * 0.5))
+        cam.rotation_quaternion = (tgt - cam.location).to_track_quat("-Z", "Y")
+        cam_data.lens = 50
+        cam_data.shift_y = 0.0
+    if len(argv) > 4 and argv[4] == "crown":
+        tgt = Vector((0.0, 0.0, top - 7.5))
+        cam.rotation_quaternion = (tgt - cam.location).to_track_quat("-Z", "Y")
+        cam_data.lens = 900
+        cam_data.shift_y = 0.0
     cam_data.clip_end = 6000.0
     cam_data.shift_y = 0.04
     cam_data.dof.use_dof = False
