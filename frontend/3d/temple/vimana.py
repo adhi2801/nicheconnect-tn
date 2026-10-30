@@ -13,6 +13,7 @@ Run: blender -b --factory-startup --python vimana.py -- <out.png> [width height 
 import contextlib
 import itertools
 import math
+import random
 import os
 import sys
 
@@ -1642,126 +1643,257 @@ def taranga_outline(L, depth_root, depth_tip, rolls=3):
     return top + under + [(0.0, -depth_root - 0.02)]
 
 
-def pillar(x, y, h=4.6, seed=0):
-    """A Chola-style granite pillar, after the hall pillars of Thanjavur and Darasuram: a moulded
-    plinth, square blocks (saduram) alternating with chamfered octagonal sections (kattu), each
-    block carved in a sunk frame, a capital of vase (kalasa), neck (tadi), dish (kumbha) and abacus
-    (palagai), and a wave bracket (taranga potika) in four directions."""
+def bead(key, x, y, z, rad):
+    """One small stone bead: the unit of the bead rows (malai) Chola carvers ran along mouldings."""
+    loft(
+        key,
+        x,
+        y,
+        [
+            (0.002, z - rad),
+            (rad * 0.7, z - rad * 0.7),
+            (rad, z),
+            (rad * 0.7, z + rad * 0.7),
+            (0.002, z + rad),
+        ],
+        e=2,
+        n=8,
+    )
+
+
+def bead_square(key, cx, cy, half, z, rad, step):
+    """A row of beads around a square course, corner to corner."""
+    n = max(2, round(2 * half / step))
+    for side in range(4):
+        for i in range(n):
+            u = -half + 2 * half * i / n
+            x, y = ((u, -half), (half, u), (-u, half), (-half, -u))[side]
+            bead(key, cx + x, cy + y, z, rad)
+
+
+def bead_ring(key, cx, cy, r, z, rad, count):
+    """A ring of beads around a round or octagonal section."""
+    for i in range(count):
+        a = 2 * math.pi * i / count
+        bead(key, cx + r * math.cos(a), cy + r * math.sin(a), z, rad)
+
+
+def pillar(x, y, h=4.6, seed=0, w=0.36):
+    """A Chola granite pillar, after the hall pillars of Thanjavur and Darasuram, detailed part by
+    part from the base up (pass 10, 30 October 2026):
+
+    - a base (upapitha): a slab, a rounded moulding (kumuda), a recessed neck with a bead row
+      (kantha) and a top band (pattika);
+    - the shaft: square blocks (saduram) alternating with chamfered octagonal sections (kattu); each
+      block a raised frame with a bead border around a kudu medallion, banded at both edges; each
+      octagon stopped with triangles and ringed with beads at its waist;
+    - the capital: a ribbed pot (kalasa), a neck (tadi), a dish (kumbha) ribbed with gadroons, never
+      petals (no lotus, rule 6), and a thick abacus (palagai) with a bead row beneath;
+    - the bracket (potika): the wave rolls (taranga) on four arms, each with its flat central
+      band (patta), as the Cholas cut them.
+
+    Every size follows the half-width `w`, so the proportion holds at any size."""
     K = "pstone"
-    box(K, x, y, 0, 0.62, 0.62, 0.32)
+    rnd = random.Random(seed)  # noqa: S311 - carving variation, not security
+    # --- the base
+    box(K, x, y, 0.0, w * 1.55, w * 1.55, 0.12)
     loft(
         K,
         x,
         y,
         [
-            (0.56, 0.32),
-            (0.56, 0.42),
-            (0.5, 0.47),
-            (0.58, 0.56),
-            (0.6, 0.62),
-            (0.56, 0.7),
-            (0.47, 0.76),
-            (0.47, 0.8),
+            (w * 1.46, 0.12),
+            (w * 1.46, 0.18),
+            (w * 1.36, 0.21),
+            (w * 1.44, 0.27),
+            (w * 1.47, 0.32),
+            (w * 1.42, 0.37),
+            (w * 1.26, 0.40),
+            (w * 1.26, 0.47),
+            (w * 1.38, 0.50),
+            (w * 1.38, 0.57),
+            (w * 1.18, 0.60),
         ],
         e=40,
-        n=40,
+        n=48,
     )
-    z = 0.8
-    kz = (h - 1.9) / 3.15
-    plan = (("sq", 0.75), ("oct", 0.5), ("sq", 0.7), ("oct", 0.5), ("sq", 0.7))
-    for k, (kind, hh) in enumerate(plan):
-        hh *= kz
+    bead_square(K, x, y, w * 1.28, 0.435, 0.022, 0.085)
+    z = 0.60
+    capital_h, bracket_h = 1.25, 0.42
+    shaft = h - z - capital_h - bracket_h
+    plan = (("sq", 0.26), ("oct", 0.16), ("sq", 0.22), ("oct", 0.16), ("sq", 0.20))
+    for k, (kind, share) in enumerate(plan):
+        hh = shaft * share
         if kind == "sq":
-            box(K, x, y, z, 0.42, 0.42, hh)
+            box(K, x, y, z, w, w, hh)
+            # a thin projecting band, beaded, at both edges of the block
+            for zb in (z, z + hh - 0.035):
+                box(K, x, y, zb, w + 0.02, w + 0.02, 0.035)
+            bead_square(K, x, y, w + 0.025, z + 0.06, 0.016, 0.07)
+            bead_square(K, x, y, w + 0.025, z + hh - 0.06, 0.016, 0.07)
             for side in range(4):
                 nrm = [(0, -1), (1, 0), (0, 1), (-1, 0)][side]
                 tan = (-nrm[1], nrm[0])
-                fx, fy = x + nrm[0] * 0.42, y + nrm[1] * 0.42
-                # the sunk frame: four raised fillets around a panel
+                fx, fy = x + nrm[0] * w, y + nrm[1] * w
+                m, fw = w * 0.86, 0.035
+                top, bot = z + hh - 0.12, z + 0.12
+                # the raised frame around the sunk panel
                 for u0, u1, w0, w1 in (
-                    (-0.36, 0.36, 0.05, 0.1),
-                    (-0.36, 0.36, hh - 0.1, hh - 0.05),
-                    (-0.36, -0.31, 0.1, hh - 0.1),
-                    (0.31, 0.36, 0.1, hh - 0.1),
+                    (-m, m, bot, bot + fw),
+                    (-m, m, top - fw, top),
+                    (-m, -m + fw, bot, top),
+                    (m - fw, m, bot, top),
                 ):
-                    cu, cw = (u0 + u1) / 2, (w0 + w1) / 2
-                    hu, hw = (u1 - u0) / 2, (w1 - w0) / 2
+                    cu, hu = (u0 + u1) / 2, (u1 - u0) / 2
                     box(
                         K,
                         fx + tan[0] * cu + nrm[0] * 0.012,
                         fy + tan[1] * cu + nrm[1] * 0.012,
-                        z + cw - hw,
+                        w0,
                         abs(tan[0]) * hu + abs(nrm[0]) * 0.014,
                         abs(tan[1]) * hu + abs(nrm[1]) * 0.014,
-                        2 * hw,
+                        w1 - w0,
                     )
-                # a kudu medallion on every block, larger on the middle one
+                # a bead border just inside the frame, top and bottom
+                inner = m - fw - 0.03
+                nb = max(4, round(2 * inner / 0.06))
+                for i in range(nb + 1):
+                    u = -inner + 2 * inner * i / nb
+                    for zz in (bot + fw + 0.03, top - fw - 0.03):
+                        bead(
+                            K,
+                            fx + tan[0] * u + nrm[0] * 0.012,
+                            fy + tan[1] * u + nrm[1] * 0.012,
+                            zz,
+                            0.012,
+                        )
+                # the medallion, centred, larger on the middle block
                 panel_relief(
-                    fx, fy, z + hh / 2, 0.25 if k == 2 else 0.2, side, depth=0.04, key=K
+                    fx,
+                    fy,
+                    z + hh / 2,
+                    (0.62 if k == 2 else 0.54) * w,
+                    side,
+                    depth=0.05,
+                    key=K,
                 )
         else:
-            # chamfered: the corners cut back from the square, stopped with a little triangle
+            # chamfered: the corners cut back from the square, stopped with triangles
             loft(
                 K,
                 x,
                 y,
                 [
-                    (0.42, z),
-                    (0.4, z + 0.04),
-                    (0.35, z + 0.1),
-                    (0.35, z + hh - 0.1),
-                    (0.4, z + hh - 0.04),
-                    (0.42, z + hh),
+                    (w, z),
+                    (w * 0.95, z + 0.05),
+                    (w * 0.84, z + 0.13),
+                    (w * 0.84, z + hh - 0.13),
+                    (w * 0.95, z + hh - 0.05),
+                    (w, z + hh),
                 ],
                 e=2,
                 n=8,
                 phase=math.pi / 8,
             )
+            # the waist: a fillet with a ring of beads
             loft(
                 K,
                 x,
                 y,
-                [(0.37, z + hh * 0.48), (0.39, z + hh * 0.5), (0.37, z + hh * 0.52)],
+                [
+                    (w * 0.86, z + hh * 0.47),
+                    (w * 0.9, z + hh * 0.5),
+                    (w * 0.86, z + hh * 0.53),
+                ],
                 e=2,
-                n=8,
-                phase=math.pi / 8,
+                n=32,
             )
+            bead_ring(K, x, y, w * 0.9, z + hh * 0.5, 0.014, 28 + rnd.randrange(0, 4))
         z += hh
-    # the capital
+    # --- the capital: the ribbed pot
     loft(
         K,
         x,
         y,
         [
-            (0.3, z),
-            (0.27, z + 0.08),
-            (0.27, z + 0.12),
-            (0.34, z + 0.22),
-            (0.4, z + 0.32),
-            (0.4, z + 0.38),
-            (0.3, z + 0.44),
-            (0.24, z + 0.5),
-            (0.24, z + 0.54),
-            (0.42, z + 0.66),
-            (0.5, z + 0.72),
+            (w * 0.72, z),
+            (w * 0.66, z + 0.10),
+            (w * 0.66, z + 0.16),
+            (w * 0.84, z + 0.30),
+            (w * 0.98, z + 0.44),
+            (w * 0.98, z + 0.52),
+            (w * 0.74, z + 0.62),
         ],
-        e=2.2,
-        n=40,
+        e=2,
+        n=48,
     )
-    z += 0.72
-    box(K, x, y, z, 0.58, 0.58, 0.13)
-    z += 0.13
-    # the wave bracket, four arms
+    for i in range(16):
+        a = 2 * math.pi * i / 16
+        c, sn = math.cos(a), math.sin(a)
+        tube(
+            K,
+            [
+                (x + c * w * 0.68, y + sn * w * 0.68, z + 0.16),
+                (x + c * w * 0.88, y + sn * w * 0.88, z + 0.31),
+                (x + c * w * 0.99, y + sn * w * 0.99, z + 0.46),
+                (x + c * w * 0.76, y + sn * w * 0.76, z + 0.61),
+            ],
+            [0.012, 0.018, 0.018, 0.01],
+            n=6,
+        )
+    z += 0.62
+    # the neck
+    loft(K, x, y, [(w * 0.58, z), (w * 0.56, z + 0.1), (w * 0.6, z + 0.14)], e=2, n=40)
+    z += 0.14
+    # the dish, ribbed with gadroons
+    loft(
+        K,
+        x,
+        y,
+        [(w * 0.62, z), (w * 0.86, z + 0.1), (w * 1.12, z + 0.2), (w * 1.24, z + 0.26)],
+        e=2,
+        n=48,
+    )
+    for i in range(24):
+        a = 2 * math.pi * i / 24
+        c, sn = math.cos(a), math.sin(a)
+        tube(
+            K,
+            [
+                (x + c * w * 0.64, y + sn * w * 0.64, z + 0.01),
+                (x + c * w * 0.92, y + sn * w * 0.92, z + 0.12),
+                (x + c * w * 1.2, y + sn * w * 1.2, z + 0.24),
+            ],
+            [0.012, 0.016, 0.01],
+            n=6,
+        )
+    z += 0.26
+    # the abacus, with a bead row beneath
+    bead_square(K, x, y, w * 1.42, z + 0.02, 0.018, 0.08)
+    box(K, x, y, z + 0.03, w * 1.5, w * 1.5, 0.2)
+    z += 0.23
+    # --- the wave bracket, four arms, each with its flat central band
+    arm = w * 2.8
     for ax, ay in ((1, 0), (-1, 0), (0, 1), (0, -1)):
         prism(
             K,
-            (x, y, z + 0.34),
+            (x, y, z + bracket_h),
             (ax, ay, 0),
             (-ay, ax, 0),
-            taranga_outline(1.0, 0.34, 0.13),
-            0.24,
+            taranga_outline(arm, bracket_h, bracket_h * 0.38),
+            w * 0.62,
         )
-    return z + 0.34
+        for sgn in (-1, 1):
+            box(
+                K,
+                x + ax * arm * 0.5 + (-ay) * sgn * (w * 0.62 + 0.008),
+                y + ay * arm * 0.5 + ax * sgn * (w * 0.62 + 0.008),
+                z + bracket_h * 0.42,
+                abs(ax) * arm * 0.45 + abs(ay) * 0.012,
+                abs(ay) * arm * 0.45 + abs(ax) * 0.012,
+                bracket_h * 0.16,
+            )
+    return z + bracket_h
 
 
 def pavilion(cx, cy, nx=4, ny=4, sp=3.3):
@@ -3275,7 +3407,9 @@ wl = world.node_tree.links
 sky = wn.new("ShaderNodeTexSky")
 sky.sky_type = "MULTIPLE_SCATTERING"
 SUN_EL, SUN_ROT = (
-    (math.radians(12), math.radians(252))
+    # low behind the camera, to its left: the tower's face and the pillars catch raking
+    # dusk light (pass 10; at 252 degrees the sun stood behind the tower and the view went flat)
+    (math.radians(12), math.radians(330))
     if (len(argv) > 4 and argv[4] == "hall")
     else (math.radians(16), math.radians(307))
 )
