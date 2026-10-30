@@ -9,13 +9,13 @@ The landing page's opening scene: a Thanjavur-style temple courtyard, made in Bl
 The anatomy follows `docs/research/FRONTEND_RESEARCH_2026.md` (B5) and `docs/research/TAMIL_DESIGN_ROOTS.md` (section 12):
 
 - **The base:** a moulded base (upapitha and adhishthana) with a rounded kumuda moulding and bead bands. It carries a carved Tamil inscription, as the real temple's base carries Rajaraja's records: Kural 120 and the old Tamil ledger signs for day, month, year, credit and rupee (`docs/research/LANDING_CULTURE_FIT.md`, Part D).
-- **The walls:** two storeys built as Dravidian walls are, with a recessed core, projecting bays and real recessed niches. Each niche holds a carved kolam panel (never a lotus, never a deity). Kumbha-panjara pilasters stand between the niches, and kudu arches crown the openings.
+- **The walls:** two storeys built as Dravidian walls are, with a recessed core, projecting bays and real recessed niches. Each niche holds a carved kudu medallion: a horseshoe arch within an arch around a raised water pot (never a lotus, D-143; never a kolam, 30 October; never a deity). Kumbha-panjara pilasters stand between the niches, and kudu arches crown the openings.
 - **The tower:** thirteen receding tiers, each ringed by detailed pavilions (kuta and shala). Each pavilion is modelled once and repeated about 360 times, so the detail costs little memory.
 - **The crown:** an octagonal neck and an octagonal domed crown with ribs on its eight edges and a bead garland at its foot, the four great arches standing proud with shadowed niches and small finials, and the gold kalasa: the only gold on the tower.
 - **The courtyard:**
-  - a pillared hall with Chola-style granite pillars: square blocks in sunk frames carrying kolam knots and diamonds, chamfered octagonal sections, a vase capital and a wave bracket (taranga potika); brass lamps hang between them and a five-flame standing lamp (kuthu vilakku) stands at its edge;
+  - a pillared hall with Chola-style granite pillars: square blocks in sunk frames each carrying a kudu medallion, chamfered octagonal sections, a vase capital and a wave bracket (taranga potika); brass lamps hang between them and a five-flame standing lamp (kuthu vilakku) stands at its edge;
   - the long hall in front of the tower;
-  - a lamp pillar, rows of small oil lamps, and a rice-flour kolam on the paving;
+  - a lamp pillar and rows of small oil lamps;
   - coconut palms, and banana plants whose leaves tear along their veins;
   - dressed stone paving laid in courses, each slab its own tone and level; after rain (`--wet`) water stands in the low places and reflects the floodlit tower.
 - **Materials:** granite made, not scanned, for the pillars (grains of biotite, quartz and feldspar, patina, tooling, worn edges); CC0 scans from Poly Haven elsewhere, with real displacement near the camera, weathering (lichen on upward faces, drip streaks, worn edges) and a CC0 sky used for lighting only. The sky the camera sees is made.
@@ -44,6 +44,24 @@ python fetch_assets.py --4k
 - `--wet` for paving after rain, and `--hero` for the vimana alone on its dark stage.
 
 On a 4 GB GTX 1650 a 1600 x 900 frame takes about 5 to 8 minutes. The script uses CUDA when it finds an NVIDIA card. On a Mac, Blender's own Metal GPU rendering is set in its preferences.
+
+## The bar: "no weakness" (Adhi, 30 October 2026)
+
+A render ships to the page only when every line holds, judged at 4K and at the size it is shown, side by side with a reference of the real temple from the same angle:
+
+1. **Proportions from a source:** about 66 m tall, a near-cubic two-storey base, thirteen stepped storeys in a straight pyramid; any other figure cites where it comes from.
+2. **Nothing repeats where the eye can see it:** no pavilion, panel or texture tile visible twice in one frame unaltered.
+3. **Every surface has age:** colour variation, darker weathering streaks where water runs, worn arrises, grime in recesses; no flat single-tone stone.
+4. **Carving reads as hand-cut** at the closest camera: crisp undercuts and shadow, no blocky primitives.
+5. **The light has a source:** a low dusk sun or lamps, never flat fill; shadows fall the way that source says.
+6. **Scale is legible:** people, lamps and doorways at their real sizes.
+7. **The rules hold:** no lotus, no saffron or orange (D-143); no kolam; no deity or ritual (rule 1); nothing a photograph (D-142).
+8. **Founder's judgement:** Adhi (and Harish) judge it better than the reference set and the previous pass.
+
+## Known weaknesses (30 October 2026)
+
+- **The hall is far below the tower:** its light reads as flat grey day, its pillars fill the frame without enough carving to hold the eye, and the standing lamp is not visible from the hall camera. Pass 9 replaced every kolam panel with a kudu medallion and removed the paving kolams.
+- **Textures:** the walls, paving, bark and grass use CC0 scans from Poly Haven, and the sky light is a CC0 capture. `frontend.md` 8a says "never stock"; whether CC0 material scans count is a founder decision. The pillars' granite is made, not scanned.
 
 ## Known weaknesses (29 October 2026)
 

@@ -599,141 +599,61 @@ def base_ornament(half, z0):
             pass
 
 
-def lotus_relief(cx, cy, z, R, side, depth=0.12, petals=None, key="carve"):
-    """(Kept name for call sites.) A carved kolam panel: a raised ring holding a 3 x 3 grid of
-    pulli dots, set in a square frame. Geometric, not floral (rule 6: no lotus)."""
-    bm = MESHES[key]
+def panel_relief(cx, cy, z, R, side, depth=0.12, key="carve"):
+    """A carved kudu medallion: a horseshoe arch (kudu), a second within it, and a water pot
+    (kalasa) raised at its heart, the pot the pillar's own capital is shaped from. The kudu frames
+    openings across the whole tower, so the panels speak its language. Never a lotus (rule 6),
+    never a kolam, never a deity (rule 1)."""
     nrm = [(0, -1), (1, 0), (0, 1), (-1, 0)][side]
     tan = (-nrm[1], nrm[0])
 
     def P(u, w, d):
         return (cx + tan[0] * u + nrm[0] * d, cy + tan[1] * u + nrm[1] * d, z + w)
 
-    def ring(r_out, r_in, d0, d1, n=64):
-        o0 = [
-            bm.verts.new(
-                P(
-                    r_out * math.cos(2 * math.pi * i / n),
-                    r_out * math.sin(2 * math.pi * i / n),
-                    d0,
-                )
-            )
-            for i in range(n)
-        ]
-        o1 = [
-            bm.verts.new(
-                P(
-                    r_out * math.cos(2 * math.pi * i / n),
-                    r_out * math.sin(2 * math.pi * i / n),
-                    d1,
-                )
-            )
-            for i in range(n)
-        ]
-        i1 = [
-            bm.verts.new(
-                P(
-                    r_in * math.cos(2 * math.pi * i / n),
-                    r_in * math.sin(2 * math.pi * i / n),
-                    d1,
-                )
-            )
-            for i in range(n)
-        ]
-        i0 = [
-            bm.verts.new(
-                P(
-                    r_in * math.cos(2 * math.pi * i / n),
-                    r_in * math.sin(2 * math.pi * i / n),
-                    d0,
-                )
-            )
-            for i in range(n)
-        ]
-        for i in range(n):
-            j = (i + 1) % n
-            bm.faces.new((o0[i], o0[j], o1[j], o1[i]))
-            bm.faces.new((o1[i], o1[j], i1[j], i1[i]))
-            bm.faces.new((i1[i], i1[j], i0[j], i0[i]))
+    def horseshoe(r, d, thick):
+        # a little past a half circle, standing on two short legs: the kudu's outline
+        pts = [P(r * 0.92, -r * 0.55, d)]
+        for i in range(29):
+            th = -0.22 + (math.pi + 0.44) * i / 28
+            pts.append(P(r * math.cos(th), r * 0.15 + r * 0.92 * math.sin(th), d))
+        pts.append(P(-r * 0.92, -r * 0.55, d))
+        tube(key, pts, [thick] * len(pts), n=8)
 
-    def dome(u, w, r, d0, h, n=16):
-        base = [
-            bm.verts.new(
-                P(
-                    u + r * math.cos(2 * math.pi * i / n),
-                    w + r * math.sin(2 * math.pi * i / n),
-                    d0,
-                )
-            )
-            for i in range(n)
-        ]
-        mid = [
-            bm.verts.new(
-                P(
-                    u + r * 0.7 * math.cos(2 * math.pi * i / n),
-                    w + r * 0.7 * math.sin(2 * math.pi * i / n),
-                    d0 + h * 0.75,
-                )
-            )
-            for i in range(n)
-        ]
-        tip = bm.verts.new(P(u, w, d0 + h))
-        for i in range(n):
-            j = (i + 1) % n
-            bm.faces.new((base[i], base[j], mid[j], mid[i]))
-            bm.faces.new((mid[i], mid[j], tip))
-
-    # square frame
-    f = R * 1.05
-    for u0, w0, u1, w1 in (
-        (-f, f * 0.86, f, f),
-        (-f, -f, f, -f * 0.86),
-        (-f, -f, -f * 0.86, f),
-        (f * 0.86, -f, f, f),
-    ):
-        q = [
-            bm.verts.new(P(u, w, d))
-            for d in (0.0, depth)
-            for (u, w) in ((u0, w0), (u1, w0), (u1, w1), (u0, w1))
-        ]
-        for fc in (
-            (0, 1, 2, 3),
-            (4, 7, 6, 5),
-            (0, 4, 5, 1),
-            (1, 5, 6, 2),
-            (2, 6, 7, 3),
-            (3, 7, 4, 0),
-        ):
-            bm.faces.new([q[k] for k in fc])
-    variants = [
-        (3, 2, 0.5),
-        (2, 3, 0.25),
-        (3, 4, 0.3),
-        (4, 3, 0.15),
-        (1, 2, 0.5),
-        (5, 4, 0.2),
-        (2, 1, 0.25),
-        (3, 1, 0.5),
-    ]
-    vk = int(abs(cx * 7.3 + cy * 3.1 + z * 11.7)) % len(variants)
-    a, b, ph = variants[vk]
-    pts = []
-    for i in range(361):
-        t = 2 * math.pi * i / 360
-        pts.append(
-            P(
-                R * 0.74 * math.sin(a * t + ph * math.pi),
-                R * 0.74 * math.sin(b * t),
-                depth * 0.9,
-            )
-        )
-    tube(key, pts, [R * 0.045] * len(pts), n=6)
-    # the pulli dots the line loops around, where it allows: a grid matched to the knot
-    for gu in range(-(a - 1), a, 2) if a > 1 else [0]:
-        for gw in range(-(b - 1), b, 2) if b > 1 else [0]:
-            dome(gu * R * 0.74 / a, gw * R * 0.74 / b, R * 0.06, 0.0, depth * 1.3)
-    if vk % 3 == 0:
-        ring(R * 0.92, R * 0.84, 0.0, depth * 0.8)
+    horseshoe(R, depth * 0.55, R * 0.075)
+    horseshoe(R * 0.74, depth * 0.45, R * 0.05)
+    # the finial at the arch's crown, a small spade of stone
+    tube(
+        key,
+        [
+            P(0, R * 1.0, depth * 0.5),
+            P(0, R * 1.16, depth * 0.55),
+            P(0, R * 1.28, depth * 0.4),
+        ],
+        [R * 0.07, R * 0.05, R * 0.012],
+        n=8,
+    )
+    # the pot: a vertical lathe, set half into the stone so only its front stands out
+    vx, vy, _ = P(0, 0, depth * 0.05)
+    k = R * 0.42
+    loft(
+        key,
+        vx,
+        vy,
+        [
+            (k * 0.30, z - k * 1.05),
+            (k * 0.62, z - k * 0.85),
+            (k * 0.80, z - k * 0.40),
+            (k * 0.74, z + k * 0.05),
+            (k * 0.36, z + k * 0.35),
+            (k * 0.30, z + k * 0.48),
+            (k * 0.48, z + k * 0.58),
+            (k * 0.20, z + k * 0.62),
+            (k * 0.08, z + k * 0.95),
+            (0.004, z + k * 1.05),
+        ],
+        e=2,
+        n=24,
+    )
 
 
 def storey(half, z0, h, niche_count, pil_step):
@@ -771,9 +691,9 @@ def storey(half, z0, h, niche_count, pil_step):
                 place(u + s * (wn + jw), 0.8, 0.14, 0.06, z0 + h * 0.08, h * 0.62)
                 place(u + s * (wn + jw), 0.82, 0.24, 0.1, z0 + h * 0.66, h * 0.05)
                 place(u + s * (wn + jw), 0.84, 0.34, 0.12, z0 + h * 0.71, h * 0.03)
-            # the carved lotus at the back of the recess, and the kudu arch over the opening
+            # the carved kudu medallion at the back of the recess, and the kudu arch over the opening
             px, py = tan[0] * u + nrm[0] * core, tan[1] * u + nrm[1] * core
-            lotus_relief(px, py, z0 + h * 0.43, wn * 0.62, side)
+            panel_relief(px, py, z0 + h * 0.43, wn * 0.62, side)
             nasika(
                 tan[0] * u + nrm[0] * (core + 0.75),
                 tan[1] * u + nrm[1] * (core + 0.75),
@@ -1164,13 +1084,13 @@ def mandapa(x0, x1, hy):
     for i in range(int(2 * hx / 5.0)):
         u = min(x0, x1) + 2.5 + i * 5.0
         for sy, side in ((-1, 0), (1, 2)):
-            # a framed panel: jamb pilasters with capitals, a carved lotus, a kudu arch above
+            # a framed panel: jamb pilasters with capitals, a kudu medallion, a kudu arch above
             for d in (-1, 1):
                 box("stone", u + d * 1.25, sy * (hy + 0.3), z + 0.5, 0.22, 0.3, 4.6)
                 box("stone", u + d * 1.25, sy * (hy + 0.35), z + 5.1, 0.36, 0.36, 0.25)
             box("stone", u, sy * (hy + 0.3), z + 0.3, 1.5, 0.32, 0.25)
             box("stone", u, sy * (hy + 0.32), z + 5.35, 1.6, 0.34, 0.3)
-            lotus_relief(u, sy * hy, z + 2.9, 0.75, side)
+            panel_relief(u, sy * hy, z + 2.9, 0.75, side)
             nasika(u, sy * (hy + 0.35), z + 5.7, 1.1, 1.3, side, out=0.2)
     z += wall_h
     for d, h in ((0.3, 0.3), (0.8, 0.35), (1.2, 0.35), (1.0, 0.25), (0.4, 0.4)):
@@ -1775,20 +1695,10 @@ def pillar(x, y, h=4.6, seed=0):
                         abs(tan[1]) * hu + abs(nrm[1]) * 0.014,
                         2 * hw,
                     )
-                if k == 2:
-                    lotus_relief(fx, fy, z + hh / 2, 0.24, side, depth=0.035, key=K)
-                else:
-                    # a diamond within a diamond: the geometric fill of the outer blocks
-                    for r in (0.24, 0.15):
-                        pts = [
-                            (
-                                fx + tan[0] * u + nrm[0] * 0.03,
-                                fy + tan[1] * u + nrm[1] * 0.03,
-                                z + hh / 2 + w,
-                            )
-                            for (u, w) in ((0, r), (r, 0), (0, -r), (-r, 0), (0, r))
-                        ]
-                        tube(K, pts, [0.018] * 5, n=6)
+                # a kudu medallion on every block, larger on the middle one
+                panel_relief(
+                    fx, fy, z + hh / 2, 0.25 if k == 2 else 0.2, side, depth=0.04, key=K
+                )
         else:
             # chamfered: the corners cut back from the square, stopped with a little triangle
             loft(
@@ -2065,7 +1975,8 @@ def kuthu_vilakku(x, y, z0, h=1.55):
 
 
 if not HERO:
-    kuthu_vilakku(-2.7, -106.6, 0.068)
+    # in front of the pillar, where the hall camera sees it (pass 8 fault)
+    kuthu_vilakku(-2.6, -106.8, 0.068)
 
 
 if not HERO:
@@ -2112,27 +2023,7 @@ def lamp_row(x0, x1, y, z, step):
 MESHES["rice"] = bmesh.new()
 
 
-def ground_kolam(cx, cy, z, size, a=5, b=4, ph=0.5):
-    pts = [
-        (cx + size * math.sin(a * t + ph * math.pi), cy + size * math.sin(b * t), z)
-        for t in [2 * math.pi * i / 900 for i in range(901)]
-    ]
-    tube("rice", pts, [0.011] * len(pts), n=5)
-    for i in range(-(a - 1), a, 2):
-        for j in range(-(b - 1), b, 2):
-            loft(
-                "rice",
-                cx + i * size / a,
-                cy + j * size / b,
-                [(0.035, z - 0.005), (0.03, z + 0.008)],
-                e=2,
-                n=10,
-            )
-
-
 if not HERO:
-    ground_kolam(0.0, -101.6, 0.075, 2.3, a=3, b=2, ph=0.5)
-    ground_kolam(0.0, -21.5, 0.075, 1.8, a=4, b=3, ph=0.25)
     lamp_row(-6.0, 6.0, -105.2, 0.4, 1.0)  # the front step of the hall
     lamp_row(-13.0, 13.0, -18.4, 0.35, 1.3)  # along the temple's base
     grounds()
@@ -3727,7 +3618,8 @@ if GRADE == "blue":
             sc.collection.objects.link(fo)
     for x, y, z in HANGING:
         hl = bpy.data.lights.new("hang", "POINT")
-        hl.energy = 4.0
+        # five flames a lamp: kept low so the granite keeps its grain (pass 8 fault)
+        hl.energy = 2.0
         hl.color = (1.0, 0.68, 0.38)
         hl.shadow_soft_size = 0.03
         ho = bpy.data.objects.new("hang", hl)
