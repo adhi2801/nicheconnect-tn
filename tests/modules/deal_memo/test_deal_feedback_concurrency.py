@@ -8,6 +8,7 @@ chain, and one side answering twice at once keeps exactly one answer.
 
 import threading
 from collections.abc import Callable, Iterator
+from datetime import timedelta
 from typing import Any
 
 import pytest
@@ -89,6 +90,24 @@ def finished_barter(committed_application) -> Iterator[Any]:
         session.commit()
 
 
+@pytest.fixture
+def barter_waiting_on_the_clock(finished_barter) -> Any:
+    """The same deal, but its proof still waits and its 7-day window has just
+    closed: the first read approves it by the clock, and that commits."""
+    with SessionLocal() as session:
+        session.execute(
+            update(DeliverableProof)
+            .where(DeliverableProof.deal_memo_id == finished_barter)
+            .values(
+                status="submitted",
+                approved_at=None,
+                created_at=NOW - timedelta(days=9),
+            )
+        )
+        session.commit()
+    return finished_barter
+
+
 def answer(memo_id, side: str) -> Callable[[Any], Any]:
     def work(session):
         memo = session.get_one(DealMemo, memo_id)
@@ -120,3 +139,27 @@ def test_one_side_twice_at_once_keeps_one_answer(finished_barter, slow_writes):
             select(DealFeedback).where(DealFeedback.deal_memo_id == finished_barter)
         ).all()
     assert len(kept) == 1
+
+
+def test_one_side_twice_as_the_clock_approves_keeps_one_answer(
+    barter_waiting_on_the_clock, slow_writes
+):
+    """The clock's approval commits mid-answer; the lock is taken again after it,
+    so the second answer is refused, never a unique-key error (a 500)."""
+    results = run_together([answer(barter_waiting_on_the_clock, "brand")] * 3)
+
+    assert sum(isinstance(r, DealFeedback) for r in results) == 1, results
+    assert all(isinstance(r, DealFeedback | FeedbackClosed) for r in results), results
+    with SessionLocal() as session:
+        kept = session.scalars(
+            select(DealFeedback).where(
+                DealFeedback.deal_memo_id == barter_waiting_on_the_clock
+            )
+        ).all()
+        proof = session.scalars(
+            select(DeliverableProof).where(
+                DeliverableProof.deal_memo_id == barter_waiting_on_the_clock
+            )
+        ).one()
+    assert len(kept) == 1
+    assert (proof.status, proof.auto_approved) == ("approved", True)
