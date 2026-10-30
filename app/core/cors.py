@@ -45,6 +45,9 @@ ALLOWED_REQUEST_HEADERS = (
     # The code a risky change carries (item 82): auth.step_up_service's
     # STEP_UP_HEADER, written here because the core imports no module.
     "Step-Up-Code",
+    # The brand acted for, for someone in more than one (D-148): auth.brand_access's
+    # BRAND_HEADER, written here for the same reason.
+    "Brand-Id",
 )
 
 EXPOSED_RESPONSE_HEADERS = (

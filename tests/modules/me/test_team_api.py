@@ -342,3 +342,39 @@ def test_a_creator_has_no_team(client, db, clock):
 
 def test_the_team_needs_a_login(client):
     assert client.get(TEAM).status_code == 401
+
+
+def test_the_record_names_the_team_member_who_acted(client, db, clock, owner):
+    """A campaign manager's approval is sealed as theirs, never the owner's (D-148)."""
+    from app.modules.deal_memo.record_models import DealRecordEntry
+
+    member = join(client, db, clock, owner, "campaigns")
+
+    def approve(by: User) -> str:
+        creator = make_creator(db, clock)
+        memo_id = accepted_memo(client, owner, creator)
+        proof = client.post(
+            f"{MEMOS_URL}/{memo_id}/proof",
+            json={
+                "content_url": "https://www.instagram.com/reel/abc123/",
+                "format": "reel",
+                "disclosure_confirmed": True,
+            },
+            headers=creator.headers,
+        ).json()["id"]
+        done = client.post(
+            f"{MEMOS_URL}/{memo_id}/proof/{proof}/approve", headers=by.headers
+        )
+        assert done.status_code == 200, done.text
+        return memo_id
+
+    def approver(memo_id: str):
+        return db.scalar(
+            select(DealRecordEntry.actor_account_id).where(
+                DealRecordEntry.deal_memo_id == memo_id,
+                DealRecordEntry.kind == "proof_approved",
+            )
+        )
+
+    assert approver(approve(member)) == member.account_id
+    assert approver(approve(owner)) == owner.account_id

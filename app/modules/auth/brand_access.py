@@ -27,6 +27,9 @@ from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.brand_team import BrandMember
 
 BRAND_HEADER = "Brand-Id"
+# The key, on a request's database session, of the account acting for the
+# brand in that request: the deal record names it (D-148).
+ACTING_ACCOUNT = "acting_brand_account_id"
 
 
 @dataclass(frozen=True)

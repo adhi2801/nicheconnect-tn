@@ -49,6 +49,9 @@ def get_current_brand_access(
     path = getattr(route, "path", request.url.path)
     if not brand_acts.may(access.role, request.method, path):
         raise BrandRoleNotAllowed()
+    # Who is acting, for the deal record to name (D-148): the request's own
+    # session carries it, so an entry sealed in this request names this person.
+    db.info[brand_access.ACTING_ACCOUNT] = account.id
     return access
 
 
