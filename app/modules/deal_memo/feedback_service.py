@@ -143,6 +143,11 @@ def give(
     """Answer once, seal it, tell the other side. Commits. Raises FeedbackClosed."""
     db.refresh(memo, attribute_names=["status"], with_for_update=True)
     done = finished_at(db, memo, now)
+    # Reading the proof can approve it by the clock, and that commits, which
+    # lets the lock go; take it again before checking for an earlier answer,
+    # or two answers at once would both pass and the second would fail on
+    # the unique key with a 500 (D-147 review).
+    db.refresh(memo, attribute_names=["status"], with_for_update=True)
     answered = db.scalar(
         select(DealFeedback.id).where(
             DealFeedback.deal_memo_id == memo.id, DealFeedback.author_side == side
