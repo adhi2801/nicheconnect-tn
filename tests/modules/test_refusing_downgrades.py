@@ -718,7 +718,6 @@ def test_uploads_waiting_for_a_draft(client, db, clock):
     assert f"{before + 1} uploads were made for drafts" in refusal(db, "2d1e67a96a45")
 
 
-
 def test_brand_teams(db, clock):
     from app.modules.auth.models.brand import Brand
     from app.modules.auth.models.brand_team import BrandMember
