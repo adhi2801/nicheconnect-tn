@@ -13,8 +13,8 @@ Run: blender -b --factory-startup --python vimana.py -- <out.png> [width height 
 import contextlib
 import itertools
 import math
-import random
 import os
+import random
 import sys
 
 import addon_utils
