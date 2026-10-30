@@ -3,24 +3,54 @@
 import uuid
 from typing import Annotated
 
-from fastapi import Depends, Path
+from fastapi import Depends, Header, Path, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.modules.auth import brand_access, brand_acts
 from app.modules.auth.dependencies import CurrentAccount, CurrentBrand, CurrentCreator
+from app.modules.auth.exceptions import BrandRoleNotAllowed
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
-from app.modules.campaigns.exceptions import ApplicationNotFound, CampaignNotFound
+from app.modules.campaigns.exceptions import (
+    ApplicationNotFound,
+    BrandProfileRequired,
+    CampaignNotFound,
+)
 from app.modules.campaigns.models import Application, Campaign
-from app.modules.campaigns.service import get_brand_for_account, get_creator_for_account
+from app.modules.campaigns.service import get_creator_for_account
 
 
 def get_current_brand_profile(
-    account: CurrentBrand, db: Annotated[Session, Depends(get_db)]
+    request: Request,
+    account: CurrentBrand,
+    db: Annotated[Session, Depends(get_db)],
+    brand_id: Annotated[
+        str | None,
+        Header(
+            alias=brand_access.BRAND_HEADER,
+            description=(
+                "The brand to act for, for someone in more than one (D-148). "
+                "Leave it out to act for your own brand, or your only one."
+            ),
+        ),
+    ] = None,
 ) -> Brand:
-    """The signed-in brand's profile, or 409 if they have not created one."""
-    return get_brand_for_account(db, account.id)
+    """The brand the signed-in account acts for, in a role allowed this route.
+
+    409 if it has no brand at all; 404 for a brand named but not theirs; 403
+    when their role does not hold this route's act (`auth.brand_acts`). The
+    owner of a brand passes every check, as before teams existed.
+    """
+    access = brand_access.resolve(db, account, brand_access.parse_brand_header(brand_id))
+    if access is None:
+        raise BrandProfileRequired()
+    route = request.scope.get("route")
+    path = getattr(route, "path", request.url.path)
+    if not brand_acts.may(access.role, request.method, path):
+        raise BrandRoleNotAllowed()
+    return access.brand
 
 
 CurrentBrandProfile = Annotated[Brand, Depends(get_current_brand_profile)]

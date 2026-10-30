@@ -301,3 +301,25 @@ class AgentScopeMissing(DomainError):
     status_code = HTTPStatus.FORBIDDEN
     code = "agent_scope_missing"
     title = "This assistant's token does not allow this. Do it in the app yourself"
+
+
+class BrandNotFound(DomainError):
+    # Item 13, D-148: a brand the account neither owns nor belongs to, named in
+    # the Brand-Id header. 404, never 403, so membership is never revealed.
+    status_code = HTTPStatus.NOT_FOUND
+    code = "brand_not_found"
+    title = "You do not act for that brand"
+
+
+class BrandChoiceNeeded(DomainError):
+    # Someone in several brands, and none their own, must say which one.
+    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
+    code = "brand_choice_needed"
+    title = "Choose the brand you are acting for (the Brand-Id header)"
+
+
+class BrandRoleNotAllowed(DomainError):
+    # A member whose role does not hold this act (`auth.brand_acts`).
+    status_code = HTTPStatus.FORBIDDEN
+    code = "brand_role_not_allowed"
+    title = "Your role in this brand does not allow this. Ask its owner or an admin"
