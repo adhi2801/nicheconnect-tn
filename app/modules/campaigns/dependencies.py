@@ -22,6 +22,41 @@ from app.modules.campaigns.models import Application, Campaign
 from app.modules.campaigns.service import get_creator_for_account
 
 
+def get_current_brand_access(
+    request: Request,
+    account: CurrentBrand,
+    db: Annotated[Session, Depends(get_db)],
+    brand_id: Annotated[
+        str | None,
+        Header(
+            alias=brand_access.BRAND_HEADER,
+            description=(
+                "The brand to act for, for someone in more than one (D-148). "
+                "Leave it out to act for your own brand, or your only one."
+            ),
+        ),
+    ] = None,
+) -> brand_access.BrandAccess:
+    """The brand the signed-in account acts for and its role there, allowed this route.
+
+    409 if it has no brand at all; 404 for a brand named but not theirs; 403
+    when their role does not hold this route's act (`auth.brand_acts`).
+    """
+    access = brand_access.resolve(db, account, brand_access.parse_brand_header(brand_id))
+    if access is None:
+        raise BrandProfileRequired()
+    route = request.scope.get("route")
+    path = getattr(route, "path", request.url.path)
+    if not brand_acts.may(access.role, request.method, path):
+        raise BrandRoleNotAllowed()
+    return access
+
+
+CurrentBrandAccess = Annotated[
+    brand_access.BrandAccess, Depends(get_current_brand_access)
+]
+
+
 def get_current_brand_profile(
     request: Request,
     account: CurrentBrand,
@@ -43,14 +78,7 @@ def get_current_brand_profile(
     when their role does not hold this route's act (`auth.brand_acts`). The
     owner of a brand passes every check, as before teams existed.
     """
-    access = brand_access.resolve(db, account, brand_access.parse_brand_header(brand_id))
-    if access is None:
-        raise BrandProfileRequired()
-    route = request.scope.get("route")
-    path = getattr(route, "path", request.url.path)
-    if not brand_acts.may(access.role, request.method, path):
-        raise BrandRoleNotAllowed()
-    return access.brand
+    return get_current_brand_access(request, account, db, brand_id).brand
 
 
 CurrentBrandProfile = Annotated[Brand, Depends(get_current_brand_profile)]

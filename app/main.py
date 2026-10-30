@@ -68,6 +68,7 @@ from app.modules.me.phone_change_router import router as phone_change_router
 from app.modules.me.session_list_router import router as session_list_router
 from app.modules.me.session_router import router as session_router
 from app.modules.me.step_up_router import router as step_up_router
+from app.modules.me.team_router import router as team_router
 from app.modules.notifications.preference_router import (
     router as notification_preferences_router,
 )
@@ -160,6 +161,7 @@ app.include_router(auth_router)
 app.include_router(session_router)
 app.include_router(session_list_router)
 app.include_router(agent_token_router)
+app.include_router(team_router)
 app.include_router(step_up_router)
 app.include_router(phone_change_router)
 app.include_router(account_deletion_router)

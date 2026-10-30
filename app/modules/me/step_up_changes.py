@@ -27,6 +27,7 @@ from app.modules.me.step_up_schemas import (
     StepUpForPasskeyRemoval,
     StepUpForPhone,
     StepUpForSession,
+    StepUpForTeamChange,
     StepUpForUpiId,
     StepUpIn,
 )
@@ -68,6 +69,9 @@ def value_of(
     if isinstance(change, StepUpForAgentToken):
         agent_token_changes.ensure_may_have_tokens(account)
         return agent_tokens.scopes_value(list(change.scopes))
+    if isinstance(change, StepUpForTeamChange):
+        # Who may make the change is checked when it is made, under the brand's lock.
+        return change.change
     if isinstance(change, StepUpForPasskeyOnly):
         passkey_changes.ensure_may_have_passkeys(account)
         return "on" if change.enabled else "off"

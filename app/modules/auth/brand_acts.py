@@ -105,8 +105,14 @@ ACT_ROUTES: Final[dict[str, frozenset[Route]]] = {
             ("DELETE", "/api/v1/brands/me/domain"),
         }
     ),
-    # The team routes join these lists as they are built (piece 1).
-    "team": frozenset(),
+    "team": frozenset(
+        {
+            ("POST", "/api/v1/brands/me/team/invites"),
+            ("DELETE", "/api/v1/brands/me/team/invites/{invite_id}"),
+            ("PATCH", "/api/v1/brands/me/team/members/{member_id}"),
+            ("DELETE", "/api/v1/brands/me/team/members/{member_id}"),
+        }
+    ),
     "ownership": frozenset(),
 }
 
