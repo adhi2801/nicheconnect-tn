@@ -1,0 +1,150 @@
+/* The fold: one deal, played on a folding phone as you scroll.
+   Scroll is the playhead (forward plays, back rewinds). The frame is held
+   with CSS sticky, so nothing jumps when a phone's address bar resizes.
+   Complete at rest and without JavaScript: every chapter is plain text in
+   the page, and the phone is an extra, never the only way to read it
+   (frontend.md 8b, 8c). */
+
+.fold {
+  --fold-ink: #f6ead2;
+  --fold-muted: #cbbda5;
+  --fold-stage: #07080d;
+  --fold-gold: #d8b25a;
+  --fold-chapters: 6;
+  position: relative;
+  color: var(--fold-ink);
+  background: var(--fold-stage);
+  isolation: isolate;
+}
+/* Cream page to dark stage and back, so the stage reads as a room you enter. */
+.fold::before,
+.fold::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  height: 22vh;
+  pointer-events: none;
+  z-index: 1;
+}
+.fold::before { top: -1px; background: linear-gradient(var(--bg), transparent); }
+.fold::after { bottom: -1px; background: linear-gradient(transparent, var(--bg)); }
+
+.fold-track { position: relative; height: calc(var(--fold-chapters) * 95svh + 100svh); }
+.fold-frame {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: hidden;
+  /* Courtyard light at dusk: one warm lamp glow from above, cool night
+     around it (TAMIL_DESIGN_ROOTS sections 8 and 12.13). Never orange or
+     saffron as a field (rule 6): the warm is lamp-cream at low strength. */
+  background:
+    radial-gradient(60% 55% at 68% 42%, rgba(243, 217, 164, .13), transparent 70%),
+    radial-gradient(90% 70% at 50% 110%, rgba(40, 52, 92, .45), transparent 70%),
+    var(--fold-stage);
+}
+.fold-gl { position: absolute; inset: 0; }
+.fold-gl canvas { display: block; width: 100%; height: 100%; }
+
+.fold-copy {
+  position: absolute;
+  z-index: 2;
+  left: max(16px, calc((100vw - var(--content)) / 2));
+  top: 50%;
+  translate: 0 -50%;
+  width: min(400px, 34vw);
+}
+.fold .eyebrow { color: var(--fold-gold); }
+.fold-copy h2 { margin: 12px 0 28px; color: var(--fold-ink); }
+.fold-chapters { list-style: none; margin: 0; padding: 0; display: grid; }
+.fold-chapters li { grid-area: 1 / 1; transition: opacity .45s var(--ease), translate .45s var(--ease); }
+.fold-chapters .k {
+  display: block;
+  font: 500 12px/16px var(--font-mono);
+  letter-spacing: .08em;
+  color: var(--fold-gold);
+  margin-bottom: 8px;
+}
+.fold-chapters h3 {
+  margin: 0 0 10px;
+  font: 700 clamp(1.35rem, 2.1vw, 1.75rem)/1.15 var(--font-ui-display);
+  letter-spacing: -.015em;
+  color: var(--fold-ink);
+}
+.fold-chapters p { margin: 0; font-size: 17px; line-height: 1.55; color: var(--fold-muted); }
+
+/* With the film running, one chapter shows at a time; the rest stay in the
+   page for screen readers and search, only faded. */
+.fold.live .fold-chapters li { opacity: 0; translate: 0 14px; }
+.fold.live .fold-chapters li.on { opacity: 1; translate: 0 0; }
+
+.fold-hud {
+  position: absolute;
+  z-index: 2;
+  left: max(16px, calc((100vw - var(--content)) / 2));
+  right: max(16px, calc((100vw - var(--content)) / 2));
+  bottom: 28px;
+  display: none;
+  align-items: center;
+  gap: 16px;
+  font: 500 12px/16px var(--font-mono);
+  color: var(--fold-muted);
+}
+.fold.live .fold-hud { display: flex; }
+.fold-hud .tc { min-width: 7.5ch; color: var(--fold-ink); font-variant-numeric: tabular-nums; }
+.fold-scrub { position: relative; flex: 1; display: flex; gap: 6px; }
+.fold-scrub button {
+  flex: 1;
+  height: 48px; /* touch target; the visible bar is the ::before */
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  position: relative;
+}
+.fold-scrub button::before {
+  content: "";
+  position: absolute;
+  inset: 22px 0;
+  border-radius: 2px;
+  background: rgba(246, 234, 210, .18);
+}
+.fold-scrub button i {
+  position: absolute;
+  inset: 22px auto 22px 0;
+  width: calc(var(--fill, 0) * 100%);
+  border-radius: 2px;
+  background: var(--fold-ink);
+}
+.fold-scrub button:focus-visible { outline: 2px solid var(--fold-gold); outline-offset: 2px; border-radius: 4px; }
+.fold-hud .name { min-width: 14ch; text-align: right; color: var(--fold-ink); }
+.fold .sample { position: absolute; z-index: 2; top: 88px; right: max(16px, calc((100vw - var(--content)) / 2)); background: rgba(246, 234, 210, .12); color: var(--fold-ink); }
+
+/* The still: no WebGL, a weak phone, or reduce motion. The same screens,
+   drawn flat, with every chapter listed. */
+.fold.still .fold-track { height: auto; }
+.fold.still .fold-frame { position: relative; height: auto; padding: 22vh 0 22vh; display: grid; gap: 40px; }
+.fold.still .fold-copy { position: static; translate: none; width: min(640px, 100% - 32px); margin-inline: auto; }
+.fold.still .fold-chapters { gap: 28px; }
+.fold.still .fold-chapters li { grid-area: auto; }
+.fold-poster { display: none; }
+.fold.still .fold-poster {
+  display: block;
+  width: min(760px, 100% - 32px);
+  margin-inline: auto;
+  border-radius: 34px;
+  padding: 10px;
+  background: linear-gradient(145deg, #4a5160, #1d2230 45%, #3a4150);
+  box-shadow: 0 40px 90px rgba(0, 0, 0, .55);
+}
+.fold.still .fold-poster canvas { display: block; width: 100%; height: auto; border-radius: 26px; }
+
+/* Portrait phones: the phone above, the words below. */
+@media (max-width: 767px), (max-aspect-ratio: 9/10) {
+  .fold-copy { left: 16px; right: 16px; top: auto; bottom: 96px; translate: none; width: auto; }
+  .fold-copy h2 { font-size: 1.6rem; margin: 6px 0 14px; }
+  .fold-chapters p { font-size: 15px; }
+  .fold-hud { bottom: 16px; right: 104px; } /* clear of the page's 3D switch */
+  .fold-hud .name { display: none; }
+  .fold .sample { top: 72px; }
+}
