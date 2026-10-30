@@ -72,6 +72,7 @@ Dated reports, the decision log and the papers in `decided/` are records: they k
 | `PERFORMANCE.md` | Measured response times against the budgets |
 | `REVIEW_FINDINGS.md` | Every automated review finding, and what became of it |
 | `API_CONTRACT_FINDINGS.md` | What fuzzing the API against its contract found |
+| `PROPOSAL_TEAM_SEATS.md` | **Approved 30 October 2026 (D-148), being built.** Team seats for brands: four roles, invites by a hashed number, the `Brand-Id` header for agencies, one access check denied by default, the STRIDE table and the build in two pieces |
 | `FRONTEND_BLUEPRINT_MAPPING.md` | The original blueprint's screens, mapped to the API |
 | `DEAL_RECORD_VERIFY.md` | How anyone can check a deal record's seals themselves (public-facing) |
 | `DESIGN_DIRECTION.md` | The first design brief ("Modern Tamil"), written before English only (D-054). Read through D-141's rule, a SaaS product first with a Tamil soul; the roots are `research/TAMIL_DESIGN_ROOTS.md` |

@@ -1896,3 +1896,15 @@ Newest entries at the bottom.
   3. From the same review: the content library reads waiting submissions in memo order, so two reads by one brand lock alike; the settle docstring and D-146 now say "no lock", not "no query", for a refused approval when the submissions are not passed in.
   4. Proven by `tests/modules/deal_memo/test_cancel_with_proof_api.py` (8 cases); each of five rules broken on purpose and caught: no guard, a guard ignoring the window, deletion ignoring money owed, money owed on barter, money owed after confirmation.
   5. Still open from the review, not done here: the content library's lazy reloads after a commit when one read approves proof (performance, Low); `feedback_service.give` losing its memo lock when the clock commits (an older race that can return a 500, Low); a deterministic version of the lock-order test; whether the clock should notify the creator on a deal cancelled after its deadline (a product call).
+
+## D-148: Team seats for brands: four roles, campaign managers approve proof, first names shown, agencies switch brands
+- Date: 2026-10-30
+- Approved by: Adhi, in this session, choosing the recommended option to each of four questions after the proposal. **Not reviewed by the other founder** (D-051).
+- Context: `BACKEND_COMPLETE.md` item 13. A brand is one account today (`brand.account_id`, unique), so staff share the owner's login and the record cannot say who acted. It changes the account model, so it comes before the frontend builds around one-person brands.
+- Options considered: roles: A) owner, admin, campaign manager, finance; B) owner, admin, member; C) not now. Who approves proof: A) campaign manager and up; B) owner and admin only. What creators see: A) the acting person's first name; B) the brand's name only. Agencies: A) one person in several brands, choosing which they act for; B) later.
+- Chosen: A for all four.
+- Reason: roles follow the real jobs in a Tamil Nadu business and keep money apart from campaigns (Upwork's finance admin); the person running a campaign judges its work, and a slow owner would only let the clock approve; a named person builds trust; agencies run much of influencer marketing in India, and a brand switch is cheaper now than retrofitted.
+- Consequences / follow-ups:
+  1. The design and the build plan are `docs/PROPOSAL_TEAM_SEATS.md`: the owner stays `brand.account_id`; others in `brand_member`; invites keep only a keyed hash of the number and send no message; the brand acted for travels in a `Brand-Id` header; one place resolves access and lists every brand write route under an act, denied by default.
+  2. Gates: database (two tables), security (access), architecture (the access check). Built in two pieces on `feature/team-seats`.
+  3. A Confirm item for the validation pack: that a team member's act binds the business (`legal.md` section 3.10).
