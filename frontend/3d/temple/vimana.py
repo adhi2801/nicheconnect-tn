@@ -3935,7 +3935,7 @@ def hero_stage():
         ):
             bpy.data.objects.remove(ob, do_unlink=True)
     # the stone as it is at Thanjavur: a warm weathered granite, not pale sand
-    for key in ("stone", "carve", "wall", "mono", "dome"):
+    for key in ("stone", "carve", "wall", "mono", "dome", "inscr"):
         for nd in MATS[key].node_tree.nodes:
             if (
                 nd.bl_idname == "ShaderNodeMix"
@@ -3948,7 +3948,7 @@ def hero_stage():
                     nd.inputs["B"].default_value = (1.16, 0.82, 0.5, 1)
     # a thousand monsoons: long dark streaks run down from every ledge, patina
     # gathers in broad clouds, and the stone is never one even tone
-    for key in ("stone", "carve", "wall", "mono", "dome"):
+    for key in ("stone", "carve", "wall", "mono", "dome", "inscr"):
         nt_ = MATS[key].node_tree
         N_, L_ = nt_.nodes, nt_.links
         b_ = N_["Principled BSDF"]
