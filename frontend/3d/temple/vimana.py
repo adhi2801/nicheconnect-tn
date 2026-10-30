@@ -2895,10 +2895,10 @@ def mat_scan(
         dn.inputs["Detail"].default_value = 2
         L.new(mapd.outputs["Vector"], dn.inputs["Vector"])
         dr = N.new("ShaderNodeMapRange")
-        dr.inputs["From Min"].default_value = 0.55
-        dr.inputs["From Max"].default_value = 0.75
+        dr.inputs["From Min"].default_value = 0.5
+        dr.inputs["From Max"].default_value = 0.76
         dr.inputs["To Min"].default_value = 1.0
-        dr.inputs["To Max"].default_value = 0.76
+        dr.inputs["To Max"].default_value = 0.55
         L.new(dn.outputs["Fac"], dr.inputs["Value"])
         f2b = N.new("ShaderNodeMath")
         f2b.operation = "MULTIPLY"
@@ -2916,6 +2916,46 @@ def mat_scan(
         L.new(f2.outputs["Value"], g.inputs["B"])
         last = g.outputs["Result"]
     if weather:
+        # pass 12: the age of a thousand monsoons at the scale of the whole tower, and
+        # each course its own stone, as blocks from different beds of the quarry are
+        geo3 = N.new("ShaderNodeNewGeometry")
+        big = N.new("ShaderNodeTexNoise")
+        big.inputs["Scale"].default_value = 0.06
+        big.inputs["Detail"].default_value = 3
+        L.new(geo3.outputs["Position"], big.inputs["Vector"])
+        bigr = N.new("ShaderNodeMapRange")
+        bigr.inputs["From Min"].default_value = 0.35
+        bigr.inputs["From Max"].default_value = 0.65
+        bigr.inputs["To Min"].default_value = 0.62
+        bigr.inputs["To Max"].default_value = 1.0
+        L.new(big.outputs["Fac"], bigr.inputs["Value"])
+        sepz = N.new("ShaderNodeSeparateXYZ")
+        L.new(geo3.outputs["Position"], sepz.inputs["Vector"])
+        course = N.new("ShaderNodeMath")
+        course.operation = "DIVIDE"
+        course.inputs[1].default_value = 0.95
+        L.new(sepz.outputs["Z"], course.inputs[0])
+        fl = N.new("ShaderNodeMath")
+        fl.operation = "FLOOR"
+        L.new(course.outputs["Value"], fl.inputs[0])
+        wn_ = N.new("ShaderNodeTexWhiteNoise")
+        wn_.noise_dimensions = "1D"
+        L.new(fl.outputs["Value"], wn_.inputs["W"])
+        tone = N.new("ShaderNodeMapRange")
+        tone.inputs["To Min"].default_value = 0.86
+        tone.inputs["To Max"].default_value = 1.08
+        L.new(wn_.outputs["Value"], tone.inputs["Value"])
+        age = N.new("ShaderNodeMath")
+        age.operation = "MULTIPLY"
+        L.new(bigr.outputs["Result"], age.inputs[0])
+        L.new(tone.outputs["Result"], age.inputs[1])
+        aged = N.new("ShaderNodeMix")
+        aged.data_type = "RGBA"
+        aged.blend_type = "MULTIPLY"
+        aged.inputs["Factor"].default_value = 1.0
+        L.new(last, aged.inputs["A"])
+        L.new(age.outputs["Value"], aged.inputs["B"])
+        last = aged.outputs["Result"]
         bev = N.new("ShaderNodeBevel")
         bev.samples = 6
         bev.inputs["Radius"].default_value = 0.035
@@ -3335,7 +3375,8 @@ MATS = {
         "large_sandstone_blocks",
         3.4,
         displace=0.07,
-        tint=((1.45, 1.14, 0.8) if GRADE == "gold" else (1.34, 1.12, 0.86)),
+        # the Brihadeeswarar's granite is warm, a golden brown, never cool grey (pass 12)
+        tint=((1.55, 1.12, 0.7) if GRADE == "gold" or HERO else (1.42, 1.1, 0.78)),
         normal_strength=1.15,
     ),
     "wall": mat_scan(

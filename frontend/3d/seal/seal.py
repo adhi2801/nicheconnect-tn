@@ -182,9 +182,8 @@ RIM_R = 0.905
 n = 256
 sp.points.add(n - 1)
 for i, p in enumerate(sp.points):
-    a = (
-        -2 * math.pi * i / n + math.pi / 2
-    )  # clockwise from the top, so it reads left to right
+    # clockwise from the top; with the letters flipped (below), it reads left to right
+    a = -2 * math.pi * i / n + math.pi / 2
     p.co = (RIM_R * math.cos(a), RIM_R * math.sin(a), 0, 1)
 sp.use_cyclic_u = True
 path = bpy.data.objects.new("rimpath", circle)
@@ -194,8 +193,8 @@ sc.collection.objects.link(path)
 txt = bpy.data.curves.new("rimtext", "FONT")
 txt.font = font
 fp_spaced = f"{FP[:4]} {FP[4:]}"
-txt.body = f"{DATE}     ·     {fp_spaced}     ·     " * 2
-txt.size = 0.062
+txt.body = f"{DATE}   ·   {fp_spaced}   ·   " * 3
+txt.size = 0.072
 txt.extrude = 0.004
 txt.align_x = "LEFT"
 txt.space_character = 1.12
@@ -206,6 +205,8 @@ cm = text.modifiers.new("onrim", "CURVE")
 cm.object = path
 cm.deform_axis = "POS_X"
 text.parent = path
+# the curve lays the letters face down, so read from above they were mirrored: flip them back
+text.scale.x = -1
 text.location = (0, -0.022, 0)
 
 
@@ -226,8 +227,8 @@ def bronze():
     L.new(rough.outputs["Result"], bsdf.inputs["Roughness"])
     # the cast colour, a little uneven
     base = N.new("ShaderNodeValToRGB")
-    base.color_ramp.elements[0].color = (0.42, 0.25, 0.12, 1)
-    base.color_ramp.elements[1].color = (0.62, 0.40, 0.21, 1)
+    base.color_ramp.elements[0].color = (0.22, 0.12, 0.055, 1)
+    base.color_ramp.elements[1].color = (0.40, 0.23, 0.11, 1)
     L.new(noise.outputs["Fac"], base.inputs["Fac"])
     # patina in the hollows: dark, faintly green, where hands never reach
     ao = N.new("ShaderNodeAmbientOcclusion")
@@ -239,7 +240,7 @@ def bronze():
     inv = N.new("ShaderNodeMapRange")
     inv.inputs["From Min"].default_value = 0.55
     inv.inputs["From Max"].default_value = 1.0
-    inv.inputs["To Min"].default_value = 0.85
+    inv.inputs["To Min"].default_value = 1.0
     inv.inputs["To Max"].default_value = 0.0
     L.new(ao.outputs["AO"], inv.inputs["Value"])
     L.new(inv.outputs["Result"], pat.inputs["Factor"])
@@ -258,8 +259,8 @@ def gold():
     N, L = nt.nodes, nt.links
     bsdf = N["Principled BSDF"]
     bsdf.inputs["Metallic"].default_value = 1.0
-    bsdf.inputs["Base Color"].default_value = (1.0, 0.74, 0.32, 1)
-    bsdf.inputs["Roughness"].default_value = 0.2
+    bsdf.inputs["Base Color"].default_value = (1.0, 0.80, 0.38, 1)
+    bsdf.inputs["Roughness"].default_value = 0.16
     # a faintly hammered surface, as gold leaf pressed by hand
     vor = N.new("ShaderNodeTexVoronoi")
     vor.inputs["Scale"].default_value = 260.0
@@ -319,6 +320,8 @@ cam = bpy.data.objects.new("cam", cam_d)
 sc.collection.objects.link(cam)
 sc.camera = cam
 cam.location = (0.0, -4.1, 3.0)
+if "top" in argv:  # straight down, to read the rim
+    cam.location = (0.0, 0.0001, 5.2)
 cam.rotation_mode = "QUATERNION"
 cam.rotation_quaternion = (Vector((0, 0.05, 0.12)) - cam.location).to_track_quat(
     "-Z", "Y"
