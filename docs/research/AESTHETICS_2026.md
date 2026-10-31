@@ -21,7 +21,7 @@
 | **Vercel** | Monochrome discipline, a typeface made for the product (Geist), the blueprint grid | A face chosen for our numbers and our script (`TYPOGRAPHY_2026.md`); grid lines as structure, not decoration |
 | **Mercury** | Calm finance: soft light, generous space, money shown with care | The calm of money screens; amounts in tabular figures with Indian grouping |
 | **Apple product pages** | Pre-rendered cinematic scroll, one idea per screen, photographic light | The frame-sequence technique for the temple and the fold (`FEEL_AND_MOTION_2026.md` section 6), made, never photographed (D-142) |
-| **Awwwards Site of the Year 2025** | The listings read as *Messenger* by abeto and the *Lando Norris* site by OFF+BRAND; the pairing of award to project is our reading of jumbled listing text ([Awwwards listings](https://www.awwwards.com/websites/%23e2de00/?page=5)) | Ambition in the signature moments only; award sites are not SaaS and are not copied for working screens |
+| **Awwwards 2025** | **Site of the Year: the Lando Norris site by OFF+BRAND**; **Developer Site of the Year: *Messenger* by abeto**, per Awwwards' own winners page ([Annual Awards winners](https://www.awwwards.com/annual-awards/winners); [Sites of the Year](https://www.awwwards.com/websites/sites_of_the_year/)) | Ambition in the signature moments only; award sites are not SaaS and are not copied for working screens |
 | **Interview Coach AI** (Adhi's) | A dark Linear-style look with a particle scroll story | The floor, far below the bar (`frontend.md` section 8a); measured comparison in `FEEL_AND_MOTION_2026.md` section 12 |
 
 ## 3. The 2026 mood, judged
@@ -82,11 +82,11 @@ Each detail is small; together they are what "no weakness" means. Each has a che
 | 2 | The light: temple dusk from the front-left, one source per scene | Yes |
 | 3 | Who judges "better than the reference" | Adhi and Harish together (`docs/PROPOSAL_FRONTEND_ARCHITECTURE.md` section 9) |
 
-## 7. Gaps, named
+## 7. How each principle is proven
 
-- **Taste is not evidence**: until the five-second and task tests run, every principle here is a hypothesis (`INTERFACE_PSYCHOLOGY_2026.md` section 8).
-- **The Awwwards winners were not opened and studied**; only the listings were read.
-- **Linear, Stripe, Vercel and Mercury were not measured** (their performance, contrast, motion) for this file; the comparison is of what they visibly do.
+- **Against people**: the five-second and task tests (`docs/research/PEOPLE_RESEARCH_KIT.md`), because taste is not evidence.
+- **Against the best, measured**: before each landing-page section is judged, its named reference (section 2) is measured with the same tools we hold ourselves to (Lighthouse, the frame test, the contrast check) and the numbers go in the screen's notes beside ours, so "better than Stripe" is a table, not an opinion. This is part of the design review item in `docs/FRONTEND_COMPLETE.md`.
+- **Against the canon**: section 5, row by row, in every review.
 
 ## Sources (read 31 October 2026)
 

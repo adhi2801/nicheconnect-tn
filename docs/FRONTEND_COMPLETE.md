@@ -18,6 +18,8 @@
 | Interface styles: glass and every "morphism" | `docs/research/UI_STYLES_2026.md` |
 | Typography | `docs/research/TYPOGRAPHY_2026.md` |
 | The futurist frontend | `docs/research/FUTURIST_FRONTEND_2026.md` |
+| The test bench: phones and laptop | `docs/research/REFERENCE_DEVICES_2026.md` |
+| Research with people, ready to run | `docs/research/PEOPLE_RESEARCH_KIT.md` |
 | Tamil roots of every visual choice | `docs/research/TAMIL_DESIGN_ROOTS.md` |
 | The landing page judged against our people | `docs/research/LANDING_CULTURE_FIT.md` |
 | The prototype audit and sixteen areas of research | `docs/research/FRONTEND_RESEARCH_2026.md` |
@@ -63,7 +65,8 @@ It does **not** mean:
 - **Nothing is built to the bar on `main` yet.** The merged web app (pull request #78) is a first version: its screens and components are counted as *Started*, to be rebuilt, not patched (`frontend.md`, "Gaps, named").
 - **"On a branch"** is the design-foundations work (OKLCH tokens, the contrast gate over 112 pairs, both themes, the token pipeline), on `feature/design-foundations`, not merged.
 - **Started 3D** is the temple and seal renders on `feature/temple-study`, below the bar by their own notes.
-- **No item has been tested with people.** Section 8 is where that starts.
+- **No item has been tested with people yet.** Section 8 is where that starts, and `docs/research/PEOPLE_RESEARCH_KIT.md` makes each session ready to run.
+- **The research behind every area is checked against primary sources** (31 October 2026): browser support from MDN's browser-compat-data, fonts from their own files, springs from Google's Compose source, studies from their original papers. What only people, the founders or outside parties can settle is an item below with its owner, never an open question.
 
 ## 3. How an item is counted and proven
 
@@ -98,7 +101,7 @@ Each is a founder's choice, recorded in `docs/DECISIONS.md` before the work it s
 | F11 | **Scene engine**: GSAP for pinned signature scenes, Motion for the rest | Frame test run; decision entry | Dependency | Open |
 | F12 | **3D stack**: three.js WebGPU renderer with WebGL 2, plain or through React Three Fiber | Decision entry (`FRONTEND_RESEARCH_2026.md` B5) | Dependency | Open |
 | F13 | **The byte budgets**: per frame-sequence scene, per 3D scene, fonts per page | Set by benchmark on the budget Android | Decision | Open |
-| F14 | **The reference phones and laptop**, bought, by current Indian sales in the ₹9,000 to ₹17,000 band | Bought and listed (`frontend.md` section 3) | Decision | Open |
+| F14 | **The reference phones and laptop**: a Galaxy A07, a Galaxy A17 or A27, a second-hand iPhone 11 or SE (2nd generation), a founder's laptop | Bought, as `docs/research/REFERENCE_DEVICES_2026.md` section 2 recommends | Decision | Open |
 | F15 | **The typefaces**: interface sans, display, mono, Tamil companion | Tests in `docs/research/TYPOGRAPHY_2026.md` section 7 run; decision entry | Decision | Open |
 | F16 | **Analytics tool**, privacy-respecting, events tied to success measures | Decision entry (`frontend.md` section 13) | Dependency | Open |
 | F17 | **Which offline actions queue** in the apps | Decision entry (`frontend.md` section 5) | Decision | Open |
@@ -232,15 +235,15 @@ Each is done when it has every state (default, hover, pressed, focused, disabled
 
 ## 8. Experience and research with people
 
-Research: `docs/research/INTERFACE_PSYCHOLOGY_2026.md`, `docs/PSYCHOLOGY_AND_TRUST.md`, `docs/standards/ux.md`. Every item here is about people, so its proof is a written result in `docs/research/`.
+Research: `docs/research/INTERFACE_PSYCHOLOGY_2026.md`, `docs/PSYCHOLOGY_AND_TRUST.md`, `docs/standards/ux.md`. Every item here is about people, so its proof is a written result in `docs/research/`. The founders run them; `docs/research/PEOPLE_RESEARCH_KIT.md` holds the scripts, numbers and write-up format.
 
 | # | Item | Done when (the proof) | Gate | Status |
 |---|---|---|---|---|
-| F124 | **Five conversations per side** before a flow is final (the Mom Test) | Ten write-ups in `docs/research/` (`docs/standards/ux.md` section 2) | — | Open |
-| F125 | **Five-second tests** of the landing opening and both Today screens | Written results; changes made | — | Open |
-| F126 | **Task tests** of each core journey, completion and errors measured | Written results per journey | — | Open |
-| F127 | **The colour test** (accent, trust and clarity) | Written result (`COLOUR_PSYCHOLOGY_2026.md` section 8) | — | Open |
-| F128 | **Sessions with people who use assistive technology** | Written result (`frontend.md` section 6) | — | Open |
+| F124 | **Five conversations per side** before a flow is final (the Mom Test) | Ten write-ups (kit section 3; `docs/standards/ux.md` section 2) | — | Open |
+| F125 | **Five-second tests** of the landing opening and both Today screens, 10 brand owners and 10 creators | Pass marks met (kit section 4) | — | Open |
+| F126 | **Task tests** of each core journey, completion and errors measured | 90% completion, no critical confusion (kit section 6) | — | Open |
+| F127 | **The colour test** (accent, trust and clarity) | Written result (kit section 5) | — | Open |
+| F128 | **Sessions with people who use assistive technology** | Every blocker fixed (kit section 7) | — | Open |
 | F129 | **Site map as the temple**: gateway, hall, courtyards, sanctum | Tree test with both roles | — | Open |
 | F130 | **Navigation**: web sidebar and ⌘K, phone bottom tabs, depth of three taps at most | Tree test; end-to-end depth check | — | Started |
 | F131 | **Onboarding**: a creator's first application in under five minutes | Timed in task tests | — | Open |

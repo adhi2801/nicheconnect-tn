@@ -78,12 +78,12 @@ The question is open between burgundy (the prototype, Tamil roots) and green (Ha
 | 3 | A CI test of state colours under colour-vision simulations | Yes |
 | 4 | APCA computed alongside WCAG, WCAG as the gate | Yes |
 
-## 10. Gaps, named
+## 10. What the literature cannot settle, and how we settle it
 
-- **No Tamil Nadu user has seen either accent.** Everything here is desk research.
-- **No measured colours from real objects yet** (silk, kumkum, bronze, granite), as `TAMIL_DESIGN_ROOTS.md` section 7 asks.
-- **Colour-vision prevalence** comes from regional samples, not a Tamil Nadu study.
-- **Kosova's review** is conceptual, not a meta-analysis; no meta-analysis of colour and website trust was found.
+- **How Tamil Nadu's brand owners and creators read each accent**: the colour test in `docs/research/PEOPLE_RESEARCH_KIT.md` section 5, run by the founders.
+- **The exact colours of real objects** (silk, kumkum, bronze, granite): photographed under daylight with a colour checker, as `TAMIL_DESIGN_ROOTS.md` section 7 asks; an item in `docs/FRONTEND_COMPLETE.md` (materials in 2D).
+- **Colour-vision prevalence in Tamil Nadu itself**: no study exists; the regional figures in section 5 agree on the order of magnitude, and the simulation test in CI protects everyone regardless of the exact share.
+- **No meta-analysis of colour and website trust exists**; the 128-year review and the saturation studies are the strongest evidence there is, and section 2's rule rests on them.
 
 ## Sources (read 31 October 2026)
 

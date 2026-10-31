@@ -19,8 +19,20 @@ One family per role, at most three families in total, so the page stays fluent (
 
 ## 2. The interface sans: candidates
 
-- **Inter**: widely called the default UI face, built for screens and legible at small sizes; has tabular figures and a display optical size closest to SF Pro Display for headlines ([fontalternatives](https://fontalternatives.com/alternatives/sf-pro-display/for/ui/); [Design Monks](https://www.designmonks.co/blog/best-fonts-for-ui-design)). Its ubiquity is its weakness: it is the face of a thousand templates.
-- **Geist** (Vercel): variable, OFL 1.1 licence, positioned for developer tools and SaaS, more technical than SF Pro ([fontalternatives](https://fontalternatives.com/alternatives/sf-pro-display/)). Tabular-figure support was not confirmed by any source and must be checked in the font file.
+**Measured from the font files themselves** (Google Fonts' repository, read with fontTools on 31 October 2026), not from articles:
+
+| Face | Variable axes | Tabular figures (`tnum`) | ₹ sign | Tamil | Licence (from the file) |
+|---|---|---|---|---|---|
+| **Inter** | optical size 14–32, weight 100–900 | Yes | Yes | No | SIL OFL 1.1 |
+| **Geist** | weight 100–900 | Yes | Yes | No | SIL OFL 1.1 |
+| **Geist Mono** | weight 100–900 | Not needed: every figure is one width | Yes | No | SIL OFL 1.1 |
+| **Fraunces** (display) | optical size 9–144, weight 100–900, softness, "wonk" | No (display only, so not needed) | Yes | No | SIL OFL 1.1 |
+| **Noto Sans Tamil** | weight 100–900, width 62.5–100 | No | Yes | Yes | SIL OFL 1.1 |
+| **Anek Tamil** | weight 100–800, width 75–125 | Yes | Yes | Yes | SIL OFL 1.1 |
+| **Mukta Malar** (Ek Type) | None: seven static weights, 200–800 | Not checked: static only | — | Yes | OFL ([Google Fonts metadata](https://raw.githubusercontent.com/google/fonts/main/ofl/muktamalar/METADATA.pb)) |
+
+- **Inter**: widely called the default UI face, built for screens and legible at small sizes; its optical-size axis is what makes it closest to SF Pro Display for headlines ([fontalternatives](https://fontalternatives.com/alternatives/sf-pro-display/for/ui/); [Design Monks](https://www.designmonks.co/blog/best-fonts-for-ui-design)). Its ubiquity is its weakness: it is the face of a thousand templates.
+- **Geist** (Vercel): positioned for developer tools and SaaS, more technical than SF Pro ([fontalternatives](https://fontalternatives.com/alternatives/sf-pro-display/)); six stylistic sets for character; no optical-size axis.
 - **SF Pro**: Apple's licence does not allow self-hosting on a website; only `system-ui` reaches it on Apple devices ([inspoai](https://www.inspoai.io/blogs/sf-pro-font-alternatives)).
 - **Others named**: DM Sans, Source Sans 3, Noto Sans, Roboto (Android's own).
 
@@ -34,15 +46,15 @@ One family per role, at most three families in total, so the page stays fluent (
 
 ## 4. Tamil
 
-- **Noto Sans Tamil**: variable (weight 100 to 900 and width), OFL 1.1 ([Fontsource](https://fontsource.org/fonts/noto-sans-tamil/about)). Already used for the seal's rim inscription (the seal scene in frontend/3d/seal, on branch feature/temple-study, not yet merged).
-- **Anek Tamil**: variable with a width axis, mostly OFL 1.1 ([Fontsource](https://cdn.jsdelivr.net/npm/@fontsource-variable/anek-tamil@5.3.0/README.md)).
-- Mukta Malar was named but not confirmed by any source found.
-- **Rule.** The interface sans is chosen with a Tamil companion whose x-height and weight match, so a second language arrives without a redesign (`frontend.md` section 7). Tamil numerals and ledger signs, when used as ornament, follow `docs/research/LANDING_CULTURE_FIT.md`.
+- **Noto Sans Tamil**: variable weight and width ([Fontsource](https://fontsource.org/fonts/noto-sans-tamil/about)); already used for the seal's rim inscription (the seal scene in frontend/3d/seal, on branch feature/temple-study, not yet merged); no tabular figures, so Latin figures come from the interface sans.
+- **Anek Tamil**: variable weight and width, **with tabular figures**, designed as a multi-script family with Latin built in ([Fontsource](https://cdn.jsdelivr.net/npm/@fontsource-variable/anek-tamil@5.3.0/README.md)).
+- **Mukta Malar**: OFL, by Ek Type, static weights only (table above).
+- **Rule.** The interface sans is chosen with a Tamil companion whose x-height and weight match, so a second language arrives without a redesign (`frontend.md` section 7). Anek Tamil is the strongest companion on the measurements above (variable, tabular, Latin and Tamil designed together). Tamil numerals and ledger signs, when used as ornament, follow `docs/research/LANDING_CULTURE_FIT.md`.
 
 ## 5. The rules that make type look expensive
 
 - **Numbers**: tabular figures (`font-variant-numeric: tabular-nums`) in every column of numbers; Indian grouping and IST dates through `Intl` with `en-IN`, never by hand (`frontend.md` section 7).
-- **Line breaking**: `text-wrap: balance` for headings (Chrome and Edge 114, Firefox 121, Safari 17.5) and `text-wrap: pretty` for paragraphs (Chrome 117, Safari 26; not Firefox as of early 2026), both as enhancements ([savvy.co.il](https://savvy.co.il/en/blog/css/css-text-wrap-pretty-balance/); [LogRocket](https://blog.logrocket.com/css-text-wrap-balance-vs-text-wrap-pretty/)). Balance only short blocks: it costs layout time.
+- **Line breaking**: `text-wrap: balance` for headings (Chrome 114, Firefox 121, Safari 17.5) and `text-wrap: pretty` for paragraphs (Chrome 117, Safari 26; **not Firefox**), the latter as an enhancement (MDN browser-compat-data, read 31 October 2026; [LogRocket](https://blog.logrocket.com/css-text-wrap-balance-vs-text-wrap-pretty/)). Balance only short blocks: it costs layout time.
 - **Optical size**: variable fonts with an `opsz` axis set it automatically by size (`font-optical-sizing: auto`), so small text opens up and large text tightens ([web.dev: variable fonts](https://web.dev/articles/variable-fonts)).
 - **Measure**: body lines of about 60 to 75 characters on desktop; headings tracked slightly tighter as they grow.
 - **Loading**: self-hosted, subset to the characters we use, preloaded, with metric-matched fallbacks (`size-adjust`) so nothing shifts (`frontend.md` section 4).
@@ -62,15 +74,14 @@ One family per role, at most three families in total, so the page stays fluent (
 |---|---|---|
 | 1 | The interface sans | After the three-face test in section 2 |
 | 2 | The display face | After a test of Fraunces and one inscriptional face, on the landing page's opening |
-| 3 | The Tamil companion | Noto Sans Tamil, already in use, unless the test shows a better match |
+| 3 | The Tamil companion | Anek Tamil for the product (variable, tabular, Latin and Tamil designed together); Noto Sans Tamil stays on the seal |
 | 4 | The mono face | Chosen with the interface sans, for matching metrics |
 | 5 | The font byte budget per page | Set on the budget Android |
 
-## 8. Gaps, named
+## 8. What is checked, and what the test decides
 
-- **No face has been tested** with our screens, our numbers or our people.
-- **Tabular figures and Tamil coverage** of each candidate must be checked in the font files, not taken from articles.
-- **Licences** must be read for each face before it is used in the apps, share images and 3D scenes.
+- **Checked in the files**: axes, tabular figures, the ₹ sign, Tamil coverage and the licence of every candidate (section 2's table). All are SIL OFL 1.1, which allows use in the website, the apps, share images and 3D scenes, with the licence shipped alongside.
+- **Decided by the test in section 2**: which face reads our amounts and dates best on the budget Android, which carries Colyv's character at heading sizes, and the byte cost after subsetting.
 
 ## Sources (read 31 October 2026)
 

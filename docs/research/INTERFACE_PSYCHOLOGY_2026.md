@@ -2,7 +2,7 @@
 
 **For:** whoever designs a screen, a flow or the landing page. **Version 1, 31 October 2026**, from web searches made that day. It covers the **interface**: first impressions, beauty and usability, waiting, memory of an experience, effort and choice. **Why people will trust Colyv at all, and the line we never cross** (no dark patterns, no manufactured urgency, facts over opinions) is `docs/PSYCHOLOGY_AND_TRUST.md`; this file builds on it and never overrides it.
 
-**How strong the evidence is.** Each finding says how it was tested. Several famous "laws of UX" rest on one old study or on folklore; those are marked, and none is used as the only reason for a rule. Nothing here was tested with Tamil brand owners or creators (`docs/research/README.md`).
+**How strong the evidence is.** Each finding says how it was tested and cites its original paper. Several famous "laws of UX" rest on one old study or on folklore (the 400 ms "Doherty threshold" is one); those are marked, and none is used as the only reason for a rule. Testing with Tamil brand owners and creators is section 8, run with `docs/research/PEOPLE_RESEARCH_KIT.md`.
 
 ---
 
@@ -43,22 +43,20 @@ The limits (0.1 s, 1 s, 10 s), the mixed evidence on skeletons and the labor ill
 
 ## 5. Progress pulls people forward
 
-- **The goal-gradient effect** (Kivetz, Urminsky and Zheng, Journal of Marketing Research, 2006) found people speed up as a goal nears. It was not re-read for this file; practitioner write-ups (Uber's ride flow) apply it with operational transparency, without controlled evidence ([Laws of UX summary](https://lawsofux.com/peak-end-rule/)).
+- **The goal-gradient effect**: Kivetz, Urminsky and Zheng, "The Goal-Gradient Hypothesis Resurrected", *Journal of Marketing Research* 43 (February 2006), 39–58. On a café's buy-ten-get-one card, the time between purchases shrank by about 20% from the first stamp to the last; a 12-stamp card with two stamps given free was completed faster than a plain 10-stamp card, an **illusion** of progress; after the reward, the pace reset ([Columbia Business School](https://business.columbia.edu/faculty/research/goal-gradient-hypothesis-resurrected-purchase-acceleration-illusionary-goal); [paper](https://business.columbia.edu/sites/default/files-efs/pubfiles/1200/goalgradient.pdf); [Chicago Booth Review](https://www.chicagobooth.edu/review/going-goal)).
 
-**Rule.** Every deal shows its stage on one stepper with whose move it is (the backend already answers `stage` and `waiting_on`); onboarding shows "step n of 2". Progress is shown truthfully: never a bar that starts half full to make people feel closer than they are (`PSYCHOLOGY_AND_TRUST.md` section 2).
+**Rule.** Every deal shows its stage on one stepper with whose move it is (the backend already answers `stage` and `waiting_on`); onboarding shows "step n of 2". Progress is shown truthfully: **Kivetz's free stamps work, and we refuse them**: never a bar that starts half full to make people feel closer than they are (`PSYCHOLOGY_AND_TRUST.md` section 2).
 
 ## 6. Effort, choice and attention
 
-These are long-established in human-computer interaction and were not re-researched for this file; they are applied conservatively.
-
-- **Fitts's law** (1954): the time to hit a target grows with its distance and shrinks with its size. → Primary actions are large and within thumb reach on phones (bottom of the screen); targets are at least 48 dp (`frontend.md` section 6).
-- **Hick's law**: choosing takes longer as options grow. → One primary action per screen; secondary actions in a menu; campaign creation in four short steps (`frontend/design/screen-plan.md`).
+- **Fitts's law**: movement time to a target grows with its distance relative to its width (Fitts, "The information capacity of the human motor system in controlling the amplitude of movement", *Journal of Experimental Psychology* 47(6), 1954, 381–391; [summary](https://en.wikipedia.org/wiki/Fitts%27s_law)). → Primary actions are large and within thumb reach on phones (bottom of the screen); targets are at least 48 dp (`frontend.md` section 6).
+- **Hick's law**: decision time rises with the logarithm of the number of equally likely choices (Hick, *Quarterly Journal of Experimental Psychology* 4(1), 1952, 11–26; Hyman, *Journal of Experimental Psychology* 45(3), 1953, 188–196). Its known limits: it does not hold for searching an unordered list, which grows linearly, nor for very familiar choices ([summary with the limits](https://en.wikipedia.org/wiki/Hick%27s_law)). → One primary action per screen; secondary actions in a menu; campaign creation in four short steps (`frontend/design/screen-plan.md`); long lists are searchable and sorted, never scanned.
 - **Defaults are decisions**: most people keep them. → Every default is the option that protects the person who did not change it (the memo's defaults favour neither side; notifications default to what is urgent), never the one that suits us.
 - **Cognitive load**: people hold a few things in mind at once. → The agreed terms are always one tap away during the work (screen plan, C7 the deal pass), so nobody has to remember them.
 
 ## 7. Emotion without manipulation
 
-- Don Norman's three levels (visceral: how it looks; behavioural: how it works; reflective: what it says about me) are a useful checklist for each screen. The book was not re-read for this file.
+- **Don Norman's three levels**, from *Emotional Design: Why We Love (or Hate) Everyday Things* (Basic Books, 2004), developed with Andrew Ortony and William Revelle: **visceral** (the immediate response to appearance), **behavioural** (the pleasure and effectiveness of use) and **reflective** (what it says about me), working at once, not in sequence ([jnd.org](https://jnd.org/emotional-design-why-we-love-or-hate-everyday-things/); [NPTEL lecture](https://archive.nptel.ac.in/content/storage2/courses/109104075/lecture40/40_6.htm)). → Every screen review asks all three: does it look right at a glance, does it work, and would a brand owner be proud to show it to a client?
 - **The line**: emotion comes from craft and truth (a beautiful seal on a real record), never from pressure. No countdowns that are not real deadlines, no "3 brands are viewing this creator", no confirmshaming. The thirteen banned dark patterns are checked before every release (`docs/standards/legal.md` section 3, `frontend.md` section 7).
 
 ## 8. How each rule is tested
@@ -72,11 +70,9 @@ These are long-established in human-computer interaction and were not re-researc
 | Progress | Every journey's stepper checked against the backend's `stage` in end-to-end tests |
 | Dark patterns | The release checklist (`docs/standards/legal.md` section 3) |
 
-## 9. Gaps, named
+## 9. What only our own people can settle
 
-- **No research with our people yet**; every rule is a hypothesis until section 8's tests run.
-- **Several classics (Fitts, Hick, Norman, Kivetz) were not re-read today**; they are applied only where they agree with common sense and the screen plan.
-- **Cultural fit**: almost all the studies are Western or East Asian; Reinecke's 2014 work shows preferences move with country, so Tamil Nadu's must be measured.
+Every finding above is checked against its original paper or its authors' institution. What no paper can settle is how **Tamil Nadu's** brand owners and creators respond: almost all the studies are Western or East Asian, and Reinecke's 2014 work shows preferences move with country. Section 8's tests settle it, run with `docs/research/PEOPLE_RESEARCH_KIT.md`.
 
 ## Sources (read 31 October 2026)
 

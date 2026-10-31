@@ -4,7 +4,7 @@
 
 **Why it exists.** Adhi, 31 October 2026: the frontend must be "smooth as butter and billion times better in all aspects" than his Interview Coach site, which has scroll animations. "Smooth" is a feeling, but it has physical causes that tools can measure. This file names them, says what the best sites do, and turns each into a rule with a test.
 
-**How strong the evidence is.** The physics of frames and the browser's rendering pipeline are documented by Chrome and WebKit engineers: strong. Response-time limits rest on decades-old research restated by Nielsen in 2024: strong for the 0.1 s limit, weaker for the rest. Most "how Apple does it" material is community reverse-engineering, not Apple's own word: labelled as such below. No source measured our users; that is section 12.
+**How strong the evidence is.** The physics of frames and the browser's rendering pipeline are documented by Chrome and WebKit engineers; browser support is read from MDN's browser-compat-data; springs from Google's and Apple's own sources: strong. Response-time limits rest on decades-old research restated by Nielsen in 2024: strong for the 0.1 s limit, weaker for the rest. Apple does not publish how its product pages animate, so section 6 uses the community-documented method and our frame test proves it on our scenes. How it feels to our people is settled by `docs/research/PEOPLE_RESEARCH_KIT.md`.
 
 ---
 
@@ -14,7 +14,7 @@
 - **Chrome defines it the same way.** Its graphics metrics count dropped frames as the share of expected screen updates that were not delivered during an interaction, and jank as a change in throughput between consecutive frames ([Chromium graphics metrics](https://chromium.googlesource.com/chromium/src/+/refs/heads/main/docs/speed/graphics_metrics_definitions.md)). Chrome's team proposed "percent dropped frames" as a smoothness metric, averaged and as a worst one-second window ([web.dev, older article](https://web.dev/articles/smoothness)).
 - **The browser itself is getting smoother.** Google reports Chrome on Android cut janky scrolls by 48% between 2023 and 2026 ([Google, July 2026](https://blog.google/chromium/smoother-scrolling-how-we-halved-scroll-jank-in-chrome-on-android/)). The browser's own scroll is now the smoothest thing on a page; anything that replaces it starts behind.
 - **The two properties that are almost free.** Only `transform` and `opacity` can be animated by the compositor alone, without layout or paint on the main thread. Animating anything else (width, top, margin, box-shadow) re-runs layout or paint every frame, and on a budget phone that is where frames are lost ([web.dev: compositor-only properties](https://web.dev/articles/stick-to-compositor-only-properties-and-manage-layer-count); [Shopify performance guidance](https://shopify.dev/docs/storefronts/themes/best-practices/performance/use-transform-for-animations)). Each promoted layer costs memory, so promotion is targeted, not blanket.
-- **120 Hz is not the default everywhere.** Safari renders pages near 60 fps by default even on ProMotion iPhones, iPads and Macs; a hidden feature flag lifts it (reported since Safari 26.3), and a WebKit bug report says apps that show web pages inside a WKWebView stay capped at 60 fps ([iGeeksBlog](https://www.igeeksblog.com/this-hidden-safari-setting-unlocks-120hz-scrolling/); [WebKit bug 294338](https://www2.webkit.org/show_bug.cgi?id=294338)). Secondary sources; not confirmed in Apple's documentation.
+- **120 Hz is not the default everywhere.** Safari renders pages near 60 fps by default on ProMotion iPhones, iPads and Macs, behind a setting ("Prefer Page Rendering Updates Near 60fps") that people can turn off; apps that show web pages inside a WKWebView stay capped at 60 Hz with no public way out. WebKit's own tracker records this: bug 294338, open since 11 June 2025, last updated 17 September 2026, asks for a public API to lift the WKWebView cap; a WebKit engineer notes an internal preference exists ([WebKit bug 294338](https://bugs.webkit.org/show_bug.cgi?id=294338); [iGeeksBlog on the Safari setting](https://www.igeeksblog.com/this-hidden-safari-setting-unlocks-120hz-scrolling/)).
 
 **What this means for Colyv.**
 1. **Design for 60, let 120 happen.** Every animation is built to hold 60 fps on the budget Android reference phone; on a 120 Hz screen the browser simply gets more frames.
@@ -37,30 +37,39 @@
 ## 3. Motion physics: springs and curves
 
 - **Apple's model.** Since WWDC23 Apple describes a spring by two numbers, **duration** and **bounce** (−1 to 1). Bounce 0 is the general-purpose default; around 0.15 hardly feels bouncy; around 0.3 is noticeable; the session notes advise caution with durations much above about 0.4 s for interface elements. Springs keep motion continuous when a gesture hands over velocity, which eased curves cannot ([WWDC23 "Animate with springs" notes](https://wwdcnotes.com/notes/wwdc23/10158); [UIKit API](https://developer.apple.com/documentation/uikit/uiview/animate(springduration:bounce:initialspringvelocity:delay:options:animations:completion:))).
-- **Google's model.** Material 3 Expressive uses **springs for spatial movement** (position, size, shape) and **duration-and-easing pairs for effects** (opacity, colour), with effects never overshooting. Published third-party packages give spatial stiffness around 380 with damping between 0.73 and 1.0: the values disagree, so ours are set from the official Compose `MotionScheme` source before they become tokens ([motor](https://pub.dev/documentation/motor/latest/); [material_expressive](https://pub.dev/documentation/material_expressive/0.7.0/); [M3EMotion](https://pub.dev/documentation/material_3_expressive/1.0.3/foundations_m3e_motion/M3EMotion-class.html)).
+- **Google's model.** Material 3 uses **springs for spatial movement** (position, size, shape) and **springs that never overshoot for effects** (opacity, colour). The values, read from Google's own Compose source (`ExpressiveMotionTokens` and `StandardMotionTokens`, androidx main branch, 31 October 2026):
+
+| Spring | Expressive: damping, stiffness | Standard: damping, stiffness |
+|---|---|---|
+| Spatial, fast | 0.6, 800 | 0.9, 1400 |
+| Spatial, default | 0.8, 380 | 0.9, 700 |
+| Spatial, slow | 0.8, 200 | 0.9, 300 |
+| Effects, fast / default / slow | 1.0 (no overshoot); 3800 / 1600 / 800 | the same |
+
+  Sources: [ExpressiveMotionTokens.kt](https://raw.githubusercontent.com/androidx/androidx/androidx-main/compose/material3/material3/src/commonMain/kotlin/androidx/compose/material3/tokens/ExpressiveMotionTokens.kt); [StandardMotionTokens.kt](https://raw.githubusercontent.com/androidx/androidx/androidx-main/compose/material3/material3/src/commonMain/kotlin/androidx/compose/material3/tokens/StandardMotionTokens.kt). Third-party packages that quoted other damping values were wrong.
 
 **Colyv's motion tokens** (to be tuned on the reference phones):
-- **Spatial** (anything that moves or resizes): springs in Apple's terms. `snappy` 0.25 s, bounce 0; `smooth` 0.35 s, bounce 0; `lively` 0.4 s, bounce 0.15, only for the few joyful moments (a deal agreed). Dragged things keep the finger's velocity.
-- **Effects** (opacity, colour, blur): eased durations from `frontend.md` section 8c, never overshooting.
+- **Spatial** (anything that moves or resizes): working screens use Google's **standard** springs (damping 0.9: settled, no visible bounce); the few joyful moments (a deal agreed) use the **expressive** default (0.8, 380). Expressed in Apple's terms for the web and iOS: `snappy` about 0.25 s, bounce 0; `smooth` about 0.35 s, bounce 0; `lively` about 0.4 s, bounce 0.15. Dragged things keep the finger's velocity.
+- **Effects** (opacity, colour, blur): critically damped (1.0), so they never overshoot, or the eased durations in `frontend.md` section 8c.
 - **Signature moments** (the seal closing, the fold): authored timelines, 400 to 800 ms, one per page.
 - **Nothing loops** except a loading state, and every movement ends in a still pose (the temple's karanas, `docs/research/TAMIL_DESIGN_ROOTS.md`).
 
 ## 4. Scroll: never hijack it
 
-- **CSS scroll-driven animations** tie an animation to scroll position in CSS, running off the main thread: Chrome since 115, Safari 26; Firefox has it behind a preference, and it is an Interop 2026 focus area, so all engines are working towards it ([web.dev: Interop 2026](https://web.dev/blog/interop-2026); [WebKit: Interop 2026](https://webkit.org/blog/17818/announcing-interop-2026/); [Mozilla Connect](https://connect.mozilla.org/t5/ideas/implement-css-scroll-driven-animations-animation-timeline/idc-p/116613)).
+- **CSS scroll-driven animations** tie an animation to scroll position in CSS, running off the main thread: **Chrome 115, Safari 26 and Firefox 159**, so every engine now ships them (MDN browser-compat-data, `css.properties.animation-timeline`, read 31 October 2026: [BCD](https://github.com/mdn/browser-compat-data/blob/main/css/properties/animation-timeline.json)); they were an Interop 2026 focus area ([web.dev: Interop 2026](https://web.dev/blog/interop-2026)). Forum posts saying Firefox kept them behind a flag are out of date.
 - **Libraries.** Motion's `scroll()` can run on the browser's native scroll timeline; GSAP's ScrollTrigger measures and updates every frame but is the most capable for pinned, scrubbed scenes. Motion's own site claims its scroll features at about 0.5 to 2.5 KB against about 12 KB for ScrollTrigger; that is the vendor's claim, and no independent frame-time benchmark was found ([Motion: migrating from GSAP](https://motion.dev/docs/migrate-from-gsap-to-motion); [OpenReplay comparison](https://blog.openreplay.com/motion-vs-gsap/)).
 - **Smooth-scroll libraries** (Lenis and others) re-time the page's scroll for a gliding feel. Lenis says it wraps the browser's own scroll, so sticky positioning, anchors and accessibility keep working; no measured comparison with native scroll on interaction latency was found ([Lenis README](https://github.com/darkroomengineering/lenis/blob/main/README.md)). Its own docs warn that checking nested scroll areas on every event costs performance.
 
 **Rules for Colyv.**
 1. **Native scroll by default, everywhere.** It is the smoothest thing the browser has (section 1), it respects every person's settings, and it is what Android users' thumbs expect.
-2. **Scroll-linked effects in CSS first** (`animation-timeline`), with Motion's `scroll()` as the fallback for Firefox; GSAP only for the pinned signature scenes, if they need it. **(decision: GSAP for the scenes, after the frame test in section 10)**
+2. **Scroll-linked effects in CSS** (`animation-timeline`), in every engine; Motion's `scroll()` only for older browser versions; GSAP only for the pinned signature scenes, if they need it. **(decision: GSAP for the scenes, after the frame test in section 10)**
 3. **A smooth-scroll library only if it wins a measured test** on the reference phones and laptop (frame drops and input latency against native), only on the landing page, and never on touch screens or with reduce motion on. **(decision)**
 4. **No section pins the scroll for more than about two and a half screens** (`docs/PROPOSAL_FRONTEND_ARCHITECTURE.md` part 22, the fold prototype's lesson). Scroll never moves sideways on its own, and never snaps unless the content is a set of pages.
 
 ## 5. Moving between screens
 
-- **Same-page View Transitions** reached Baseline through Interop 2025; **cross-page** ones work in Chrome 126 and Safari 18.2 with one line of CSS, not yet in Firefox, and are an Interop 2026 focus ([Chrome: cross-document](https://developer.chrome.com/docs/web-platform/view-transitions/cross-document); [web.dev: Interop 2026](https://web.dev/blog/interop-2026)).
-- **React's `<ViewTransition>` became stable in React 19.3** (9 September 2026); it animates updates made inside a transition, such as a framework navigation ([React 19.3](https://react.dev/blog/2026/09/09/react-19-3)).
+- **Same-page View Transitions** (`document.startViewTransition`): Chrome 111, Safari 18, Firefox 144. **Cross-page** ones (`@view-transition`): Chrome 126 and Safari 18.2, **not Firefox** (MDN browser-compat-data, read 31 October 2026; [BCD: @view-transition](https://github.com/mdn/browser-compat-data/blob/main/css/at-rules/view-transition.json)); an Interop 2026 focus ([web.dev](https://web.dev/blog/interop-2026)).
+- **React's `<ViewTransition>` is stable in React 19.3** (9 September 2026): "in 19.3 it's stable and ready to use"; "currently, `<ViewTransition>` only works in the DOM" ([React 19.3, read in full](https://react.dev/blog/2026/09/09/react-19-3)). The same release adds `addTransitionType`, so going forward and going back can animate differently, and Suspense reveals that animate when content arrives.
 
 **Rules for Colyv.** Moving into a deal, a memo or a Passport animates the card into the page it opens (a shared element), so a person never loses their place. Browsers without support get a clean cut, which is complete in itself. Reduce motion turns every transition into a short fade.
 
@@ -73,10 +82,11 @@
 
 ## 7. Live 3D, where it earns its place
 
-- **WebGPU** ships in Chrome and Edge, in Chrome on Android 12 and later, and in Safari 26 on iOS and macOS; Firefox has it on Windows and Apple-silicon Macs, with Linux and Android still pre-release as of August 2026 ([web.dev](https://web.dev/blog/webgpu-supported-major-browsers); [Wikipedia: WebGPU](https://en.wikipedia.org/wiki/WebGPU)). Three.js's WebGPU renderer is imported from `three/webgpu`; sources disagree on whether it is production-ready ([three.js manual](https://threejs.org/manual/en/webgpurenderer)).
+- **WebGPU** ships in Chrome and Edge, in Chrome on Android (121 and later), and in Safari 26; Firefox 141 has it partly on desktop and **not on Android** (MDN browser-compat-data `api.GPU`, read 31 October 2026; [web.dev](https://web.dev/blog/webgpu-supported-major-browsers)).
+- **Three.js's own manual** calls `WebGPURenderer` "still in an experimental state although its maturity level has been greatly improved"; it falls back to a WebGL 2 backend when WebGPU is missing; `WebGLRenderer` "is still maintained and the recommended choice for pure WebGL 2 applications"; custom `ShaderMaterial`, `onBeforeCompile` and `EffectComposer` are not supported on the WebGPU renderer ([three.js manual](https://threejs.org/manual/en/webgpurenderer)).
 - **Always-on GPU effects cost battery.** Stripe's homepage gradient is a small WebGL program; the only evidence on its cost is one forum complaint about battery drain, which is anecdotal ([GSAP forum](https://gsap.com/community/forums/topic/24837-animating-gradients/)).
 
-**Rules.** Live 3D only where a person interacts (turning the seal, perhaps); a WebGL 2 path always; rendering paused off screen, in a hidden tab, and when idle; quality chosen by device class (memory, Save-Data, frame time in the first second), never one size for all.
+**Rules.** Live 3D only where a person interacts (turning the seal, perhaps); a WebGL 2 path always, which the WebGPU renderer's own fallback gives; no custom shader material that the WebGPU renderer cannot run (node materials instead); rendering paused off screen, in a hidden tab, and when idle; quality chosen by device class (memory, Save-Data, frame time in the first second), never one size for all.
 
 ## 8. Characters and illustrated motion
 
@@ -95,7 +105,7 @@
 ## 10. How we measure it (the tests)
 
 - **In the lab, on every pull request:** a Playwright test records a performance trace (Chrome DevTools Protocol) while it scrolls the landing page and runs each signature scene on a throttled CPU profile; it counts expected against presented frames, as Chrome's own trackers do ([Chromium: investigating jank](https://chromium.googlesource.com/chromium/src/+/refs/heads/main/docs/speed/debug-janks.md)), and **fails above 1% dropped frames or any frame over 50 ms**.
-- **In the field:** the web-vitals library's attribution build reports Interaction to Next Paint with Long Animation Frame entries, which name the script behind a slow interaction; Long Animation Frames are in Chrome from 123, and other engines' support was not confirmed ([web.dev: slow interactions in the field](https://web.dev/find-slow-interactions-in-the-field/); [Chrome: LoAF](https://developer.chrome.com/docs/web-platform/long-animation-frames)).
+- **In the field:** the web-vitals library's attribution build reports Interaction to Next Paint with Long Animation Frame entries, which name the script behind a slow interaction; Long Animation Frames are in **Chrome 123 and Chromium browsers only**; Firefox and Safari do not have them (MDN browser-compat-data, read 31 October 2026), so field attribution covers Android Chrome, which is most of our users ([web.dev: slow interactions in the field](https://web.dev/find-slow-interactions-in-the-field/); [Chrome: LoAF](https://developer.chrome.com/docs/web-platform/long-animation-frames)).
 - **On the phones:** the same journeys on the reference devices, with the platforms' frame tools, every release.
 - **A test that the test works:** a deliberately bad animation (animating `top`) is committed to a fixture page and must fail the frame check, as backend rules are broken on purpose.
 
@@ -130,13 +140,16 @@ Interview Coach AI is Adhi's own site and the floor, not the bar (`frontend.md` 
 | 5 | The byte budget per frame-sequence scene | Set by the reference-phone benchmark |
 | 6 | Rive or 3D for the thalaiyatti bommai | After the doll is bought and photographed |
 
-## 14. Gaps, named
+## 14. Checked against primary sources, and what only a test can settle
 
-- **No one has felt any of this yet.** Every number is a starting point to tune with people on real phones (`docs/research/README.md`).
-- **The reference phones are not bought.** Until they are, the lab profile stands in for them.
-- **Apple's own technique is not documented**; section 6 rests on community practice.
-- **No independent benchmark** compares GSAP, Motion and CSS scroll timelines, or Lenis against native scroll; section 10's test will be the first we trust.
-- **Firefox** lags on scroll timelines, cross-page transitions and Long Animation Frames; every rule above degrades to a complete, still page there.
+**Checked on 31 October 2026 against primary sources:** browser support from MDN's browser-compat-data (scroll timelines, both kinds of View Transition, WebGPU, Long Animation Frames); React 19.3 from react.dev; Material's springs from Google's Compose source; three.js from its own manual.
+
+**Settled only by our own tests, each an item in `docs/FRONTEND_COMPLETE.md`:**
+- **How it feels to our people**: the task and five-second tests, run with the kit in `docs/research/PEOPLE_RESEARCH_KIT.md`.
+- **The real numbers on real phones**: the reference bench, chosen in `docs/research/REFERENCE_DEVICES_2026.md`.
+- **GSAP against Motion against CSS, and native scroll against a smooth-scroll library**: no independent benchmark exists anywhere, so section 10's frame test is how we decide.
+- **Apple's own technique** is not published; section 6 uses the community-documented method, which our frame test then proves or rejects on our scenes.
+- **Firefox** lacks cross-page transitions and Long Animation Frames; every rule above degrades there to a complete, still page.
 
 ## Sources (read 31 October 2026)
 

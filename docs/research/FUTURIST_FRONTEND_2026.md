@@ -8,7 +8,7 @@
 - **Watch**: promising, not ready; each has an adopt-when trigger.
 - **Refuse**: hype, or wrong for Colyv, with the reason.
 
-Browser-support figures below come partly from secondary sources and are to be confirmed against MDN and caniuse before each is built.
+**Every browser-support figure below is read from MDN's browser-compat-data** (the data behind MDN and caniuse; [repository](https://github.com/mdn/browser-compat-data)), on 31 October 2026, and re-read when its item is built.
 
 ---
 
@@ -17,9 +17,11 @@ Browser-support figures below come partly from secondary sources and are to be c
 | Capability | State (sources) | What Colyv does with it |
 |---|---|---|
 | **React 19.3 `<ViewTransition>`** | Stable since 9 September 2026, DOM only ([React 19.3](https://react.dev/blog/2026/09/09/react-19-3)) | Cards that open into their page: a deal, a memo, a Passport |
-| **Same-page View Transitions** | Baseline through Interop 2025 ([web.dev: Interop 2026](https://web.dev/blog/interop-2026)) | Tab switches, filters, the deal board's columns |
+| **Same-page View Transitions** | Chrome 111, Firefox 144, Safari 18 | Tab switches, filters, the deal board's columns |
+| **CSS scroll-driven animations** | Chrome 115, Firefox 159, Safari 26: every engine | Scroll reveals off the main thread (`docs/research/FEEL_AND_MOTION_2026.md` section 4) |
+| **Anchor positioning** | Chrome 125, Firefox 147, Safari 26: every engine | Popovers and menus that stay attached to their trigger, without a positioning library |
 | **Next.js 16** with Turbopack the default and the React Compiler stable (opt-in) | Released 21 October 2025; 16.3 adds build caching ([Next.js 16](https://nextjs.org/blog/next-16); [Next.js 16.3](https://nextjs.org/blog/next-16-3-turbopack)) | The website's framework (`frontend.md` section 2); the compiler switched on after a measured test |
-| **Popover API** | Baseline in 2025 ([Chrome: I/O 2025 recap](https://developer.chrome.com/blog/new-in-web-ui-io-2025-recap)) | Menus, tooltips and the command menu without a positioning library |
+| **Popover API** | Chrome 114, Firefox 125, Safari 17 | Menus, tooltips and the command menu without a positioning library |
 | **OKLCH colour** | CSS Color 4, about 96% of browsers by one count ([frontend checklist](https://frontendchecklist.io/rules/css/color-oklch)) | The whole token system (`docs/research/COLOUR_PSYCHOLOGY_2026.md` section 6) |
 | **`text-wrap: balance`** | Chrome, Edge, Firefox 121, Safari 17.5 | Every heading (`docs/research/TYPOGRAPHY_2026.md` section 5) |
 | **WebGPU with a WebGL 2 path** | Chrome, Edge, Chrome on Android 12+, Safari 26; Firefox partial ([web.dev](https://web.dev/blog/webgpu-supported-major-browsers)) | Live 3D only where people interact (`docs/research/FEEL_AND_MOTION_2026.md` section 7) |
@@ -31,15 +33,13 @@ Browser-support figures below come partly from secondary sources and are to be c
 
 | Capability | State | What Colyv does, and the fallback |
 |---|---|---|
-| **CSS scroll-driven animations** | Chrome 115, Safari 26; Firefox behind a flag; Interop 2026 | Scroll reveals off the main thread; Motion's `scroll()` elsewhere |
-| **Cross-page View Transitions** | Chrome 126, Safari 18.2; not Firefox; Interop 2026 ([Chrome](https://developer.chrome.com/docs/web-platform/view-transitions/cross-document)) | Public pages (landing, Passport, city) glide between each other; a cut elsewhere |
-| **Anchor positioning** | Chrome 125; Safari 26 and Firefox 147 by one translated source; an Interop 2026 carry-over | Popovers that stay attached to their trigger; Floating UI fallback if needed |
-| **Customizable `<select>`** (`appearance: base-select`) | Chrome; a normal select elsewhere ([Chrome: I/O 2025 recap](https://developer.chrome.com/blog/new-in-web-ui-io-2025-recap)) | Our styled select where supported, the native one elsewhere: both accessible |
+| **Cross-page View Transitions** (`@view-transition`) | Chrome 126, Safari 18.2; **not Firefox** ([Chrome](https://developer.chrome.com/docs/web-platform/view-transitions/cross-document)) | Public pages (landing, Passport, city) glide between each other; a clean cut in Firefox |
+| **Customizable `<select>`** (`appearance: base-select`) | Chrome 135, Safari 27; Firefox 149 behind a flag | Our styled select where supported, the native one elsewhere: both accessible |
 | **`text-wrap: pretty`** | Chrome 117, Safari 26; not Firefox | Paragraphs without orphans |
-| **`corner-shape: squircle`** | Chrome and Edge 139, Chrome on Android; not Safari or Firefox ([caniuse](https://caniuse.com/mdn-css_properties_corner-shape)) | Continuous-curve corners; plain radius elsewhere |
-| **Speculation Rules (prerender)** | Chromium; Safari and Firefox ignore them; Next.js prefetches by default ([MDN](https://developer.mozilla.org/ja/docs/Web/API/Speculation_Rules_API); [Sentry](https://blog.sentry.io/less-than-100ms-e-commerce-instant-loads-with-speculation-rules-api)) | Public pages prerendered on hover intent: the next page appears instantly |
-| **`prefers-reduced-transparency`** | Partial support | Glass becomes solid for people who ask (`docs/research/UI_STYLES_2026.md` section 2.1) |
-| **Device-aware quality** (Device Memory, Save-Data, first-second frame time) | Chromium for Device Memory | "Adaptive grandeur": the temple sequence at full resolution on a strong phone, the still poster on a weak one |
+| **`corner-shape: squircle`** | Chrome 139; Firefox and Safari in preview builds only | Continuous-curve corners; plain radius elsewhere |
+| **Speculation Rules (prerender)** | Chrome 109; Safari 26.2 behind a flag; Firefox preview only; Next.js prefetches by default ([Sentry](https://blog.sentry.io/less-than-100ms-e-commerce-instant-loads-with-speculation-rules-api)) | Public pages prerendered on intent in Chrome, which is most of our users |
+| **`prefers-reduced-transparency`** | Chrome 118; Firefox behind a flag; not Safari | Glass becomes solid for people who ask; our own "solid surfaces" setting covers the rest (`docs/research/UI_STYLES_2026.md` section 5.1) |
+| **Device-aware quality** (`navigator.deviceMemory` Chrome 63 only; Save-Data; first-second frame time everywhere) | Device Memory in Chrome only | "Adaptive grandeur": the first-second frame time works in every browser, Device Memory refines it in Chrome |
 
 ## 3. Watch, with the trigger that moves each to "use"
 
@@ -85,11 +85,11 @@ Against the competitors in `docs/COMPETITIVE_LANDSCAPE.md`, the futurist pieces 
 | 4 | Speculation Rules on public pages | Yes, measured |
 | 5 | "Ask Colyv" only in the constrained form | Yes, when its backend exists |
 
-## 7. Gaps, named
+## 7. How this file stays true
 
-- **Support tables move monthly**; every "state" above is re-checked against MDN and caniuse when its item is built.
-- **No competitor audit was made for this file**; "no one was found" means in `docs/COMPETITIVE_LANDSCAPE.md`'s research, not a new survey.
-- **Generative UI sources are mostly vendors.**
+- **Support moves monthly**: each row is re-read from MDN's browser-compat-data when its item is built, and this file updated in the same change.
+- **"No competitor was found to have it"** rests on `docs/COMPETITIVE_LANDSCAPE.md`'s research; each claim in section 5 is re-checked against the competitors' current apps before it is said in public (`docs/standards/legal.md` section 1).
+- **Generative UI**: the sources are mostly vendors, which is why it sits on "Watch" with a trigger, not on "Use".
 
 ## Sources (read 31 October 2026)
 
