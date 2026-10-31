@@ -1,4 +1,4 @@
-# Interface styles for Colyv: what to take, what to refuse (29 October 2026)
+# Interface styles for Colyv: what to take, what to refuse (29 October 2026; version 2, 31 October 2026, adds section 5)
 
 **What this is.** Adhi asked (29 October 2026) which of the current interface styles (glassmorphism, Liquid Glass, neumorphism, claymorphism, bento grids, neo-brutalism, aurora gradients and the rest) Colyv should use, after deep research. This file judges each against what Colyv is: a SaaS product people trust with their work and income, with a Tamil soul (`TAMIL_DESIGN_ROOTS.md` rule 0), used mostly on Android phones in Tamil Nadu (`docs/standards/frontend.md` section 4).
 
@@ -88,7 +88,35 @@
 
 ---
 
-## Sources (read 29 October 2026)
+## 5. Version 2 (31 October 2026): what changed, and the styles version 1 left out
+
+Adhi asked again (31 October) for research on glass "or what morphism", among a fuller research set (`docs/FRONTEND_COMPLETE.md`). New findings, read that day:
+
+### 5.1 Liquid Glass, a year on
+
+- **NN/g's verdict** (Raluca Budiu, October 2025): "Liquid Glass Is Cracked, and Usability Suffers in iOS 26": text over images loses contrast, and Apple put spectacle ahead of usability ([NN/g](https://www.nngroup.com/articles/liquid-glass/)).
+- **Apple walked it back in steps**: iOS 26.1 added a **Tinted** option that raises opacity and contrast (or **Clear** for more transparency); iOS 26.2 let people choose **Glass or Solid** for the Lock Screen clock; Reduce Transparency still blurs backgrounds for legibility ([MacRumors: 26.1](https://www.macrumors.com/how-to/ios-26-1-reduce-liquid-glass-effects/); [BGR: 26.2](https://www.bgr.com/2070522/ios-26-2-fixed-liquid-glass-new-settings-options/); [MacRumors: user criticism](https://www.macrumors.com/2025/09/17/ios-26-liquid-glass-critiques/)).
+- **The cost on phones is real but unmeasured in public**: one rule of thumb says 3 to 5 simultaneous blurs is what phones handle well, with no measurement behind it; Compose's Haze library warns that frame time alone hides the GPU cost ([OpenReplay](https://blog.openreplay.com/creating-blurred-backgrounds-css-backdrop-filter/); [Haze: performance](https://chrisbanes.github.io/haze/dev/performance/)).
+
+**What this confirms.** Version 1's rule stands and is now Apple's own lesson: glass on the navigation layer only, a solid version always available, and the person's choice respected. **Added:** at most two blurred surfaces on screen at once (the header and one sheet), and our own setting for "solid surfaces" in the app, as Apple added one.
+
+### 5.2 The other styles, judged
+
+| Style | What it is | Verdict for Colyv |
+|---|---|---|
+| **Skeuomorphism, the 2026 hybrid** | Flat structure with grain, embossed pressed states and soft physical light, not iOS 6 leather ([techsnostalgia](https://techsnostalgia.com/skeuomorphism-vs-flat-design-2026-comeback/); [Lollypop](https://lollypop.design/blog/2026/february/top-ui-trends-2026/)) | **Yes, as "material realism"**: already our signature (section 2.4) |
+| **Tactile maximalism** ("squishy" jelly buttons) | Bouncy, toy-like surfaces ([dailyaiworld](https://dailyaiworld.com/post/squishy-uishy-ui-why-tactile-maximalism-is-winning-in-2026)) | **No**: claymorphism's cousin; wrong for money |
+| **Calm interfaces** | Less decoration, more clarity on working screens ([Envato](https://elements.envato.com/learn/ux-ui-design-trends)) | **Yes, on every working screen** |
+| **Spatial depth** (visionOS-style layered planes) | Interfaces as stacked lit layers | **Only as elevation tokens**: three levels, one light (`docs/research/AESTHETICS_2026.md` section 5) |
+| **Chrome and Y2K metal** | Liquid metal type, iridescence | **No**: no root in our materials; bronze and raised gold already carry metal with meaning |
+| **Dark luxury** (black and gold) | Premium-brand cliché | **No as a style**; temple dusk is our dark theme, gold stays rare |
+| **Grain and noise** | Film texture | **Yes, subtle** (section 1) |
+| **AI-native glitch** | Visible prompts, glitch, "machine-craft" ([Krumzi](https://www.krumzi.com/blog/12-graphic-design-trends-shaping-2026-and-how-ai-is-changing-the-game)) | **No**: our visuals are made with written rights (D-142) |
+| **Squircle corners** | Apple-like continuous curves, now in CSS (`corner-shape`) in Chromium | **Yes, as an enhancement** (`docs/research/FUTURIST_FRONTEND_2026.md` section 2) |
+
+---
+
+## Sources (read 29 October 2026; section 5's are linked inline and were read 31 October 2026)
 
 - Nielsen Norman Group, "Glassmorphism: Definition and Best Practices": https://www.nngroup.com/articles/glassmorphism/
 - Nielsen Norman Group, "Neobrutalism": https://www.nngroup.com/articles/neobrutalism/
