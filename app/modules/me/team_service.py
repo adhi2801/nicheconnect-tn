@@ -48,6 +48,7 @@ from app.modules.auth.models.brand_team import (
     BrandMember,
 )
 from app.modules.auth.team_invites import hash_invited_phone
+from app.modules.deal_memo import unfinished
 from app.modules.me.exceptions import (
     AlreadyOnTeam,
     CannotTakeBrand,
@@ -456,7 +457,9 @@ def hand_over(
     owns one at most) and their account must stand: a suspended or departing
     owner would close the brand to everyone. The brand's blocks and takedowns
     move with it, since each is read through its owner's account. Both sides
-    are told, by a notice nobody can mute. Returns the former owner's access,
+    are told, by a notice nobody can mute, and so is every creator with a deal
+    still unfinished with the brand (D-151), in the same transaction, so a
+    hand-over never happens unannounced. Returns the former owner's access,
     as an admin. Raises TeamChangeNotAllowed, TeamMemberNotFound,
     LoginTooRecent, OwnsABrand, CannotTakeBrand, and what
     step_up_service.consume raises.
@@ -522,6 +525,26 @@ def hand_over(
             now=now,
             details={"brand_name": brand.name, "role": role},
         )
+    notifications.record_many(
+        db,
+        notification_type="brand_changed_hands",
+        now=now,
+        to=[
+            (
+                creator_account,
+                {
+                    "brand_id": str(brand.id),
+                    "brand_name": brand.name,
+                    "unfinished_deals": open_deals,
+                    # The name is read from it when the notice is (D-150).
+                    notifications.NEW_OWNER_MEMBER: str(member.id),
+                },
+            )
+            for creator_account, open_deals in unfinished.creators_waiting_on(
+                db, now, brand.id
+            ).items()
+        ],
+    )
     db.commit()
     return BrandAccess(brand, "admin", former.id)
 

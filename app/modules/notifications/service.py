@@ -16,7 +16,7 @@ import uuid
 from datetime import datetime
 from typing import Any, cast
 
-from sqlalchemy import CursorResult, func, select, update
+from sqlalchemy import CursorResult, func, insert, select, update
 from sqlalchemy import delete as sa_delete
 from sqlalchemy.orm import Session
 
@@ -42,6 +42,14 @@ EXPORTED_TABLES = frozenset({"notification"})
 
 # Where a notice keeps the team member who acted (D-148): their membership.
 ACTING_MEMBER = "acting_member_id"
+# Where a hand-over notice keeps the brand's new owner (D-151): the
+# membership they held until that moment.
+NEW_OWNER_MEMBER = "new_owner_member_id"
+# Each kept membership, and the key its first name is shown under.
+_NAMED: dict[str, str] = {
+    ACTING_MEMBER: "acting_first_name",
+    NEW_OWNER_MEMBER: "new_owner_first_name",
+}
 
 EXPORT_FIELDS = allow(
     "id",
@@ -101,20 +109,62 @@ def record(
             )
             .order_by(BrandMember.created_at, BrandMember.id)
         ).all()
-        for member_account, brand_id, brand_name in team:
-            if acting is not None and member_account == acting.account_id:
-                continue
-            _add(
-                db,
-                member_account,
-                notification_type,
-                now,
-                campaign_id,
-                application_id,
+        record_many(
+            db,
+            notification_type=notification_type,
+            now=now,
+            campaign_id=campaign_id,
+            application_id=application_id,
+            to=[
                 # Someone in several brands needs to know which one it is for.
-                {**shown, "for_brand_id": str(brand_id), "for_brand_name": brand_name},
-            )
+                (
+                    member_account,
+                    {
+                        **shown,
+                        "for_brand_id": str(brand_id),
+                        "for_brand_name": brand_name,
+                    },
+                )
+                for member_account, brand_id, brand_name in team
+                if acting is None or member_account != acting.account_id
+            ],
+        )
     return notification
+
+
+def record_many(
+    db: Session,
+    *,
+    notification_type: str,
+    now: datetime,
+    to: list[tuple[uuid.UUID, dict[str, Any]]],
+    campaign_id: uuid.UUID | None = None,
+    application_id: uuid.UUID | None = None,
+) -> None:
+    """One notice of a kind to each of many accounts, in one statement.
+
+    For a fan-out (a brand's team, every creator waiting on a brand): the
+    ORM writes one INSERT per row when the database makes the ids, so this
+    writes the rows itself. Copies nobody else, names nobody. The caller
+    commits.
+    """
+    if not to:
+        return
+    db.execute(
+        insert(Notification),
+        [
+            {
+                "account_id": account_id,
+                "notification_type": notification_type,
+                "campaign_id": campaign_id,
+                "application_id": application_id,
+                "details": details,
+                "created_at": now,
+                "updated_at": now,
+            }
+            for account_id, details in to
+        ],
+    )
 
 
 def readable_details(db: Session, rows: list[Notification]) -> list[dict[str, Any]]:
@@ -124,7 +174,7 @@ def readable_details(db: Session, rows: list[Notification]) -> list[dict[str, An
     membership, whether or not they are still on the team; a membership
     erased with its account names nobody.
     """
-    members = {row.details[ACTING_MEMBER] for row in rows if ACTING_MEMBER in row.details}
+    members = {row.details[key] for row in rows for key in _NAMED if key in row.details}
     names: dict[str, str] = {}
     if members:
         names = {
@@ -137,10 +187,11 @@ def readable_details(db: Session, rows: list[Notification]) -> list[dict[str, An
         }
     shown = []
     for row in rows:
-        details = {k: v for k, v in row.details.items() if k != ACTING_MEMBER}
-        name = names.get(row.details.get(ACTING_MEMBER, ""))
-        if name is not None:
-            details["acting_first_name"] = name
+        details = {k: v for k, v in row.details.items() if k not in _NAMED}
+        for key, shown_as in _NAMED.items():
+            name = names.get(row.details.get(key, ""))
+            if name is not None:
+                details[shown_as] = name
         shown.append(details)
     return shown
 

@@ -79,6 +79,7 @@ NotificationType = Literal[
     "team_joined",
     "team_role_changed",
     "team_removed",
+    "brand_changed_hands",
 ]
 
 ensure_same_values("NotificationType", NotificationType, NOTIFICATION_TYPES)
@@ -102,7 +103,10 @@ class NotificationRead(BaseModel):
             "creator's notice of a person's act; `for_brand_id` and "
             "`for_brand_name` on a team member's copy of a brand's notice; "
             "`role` on `team_role_changed` is the new role, `owner` when the "
-            "brand was handed to you. Unknown keys may appear: ignore them"
+            "brand was handed to you. On `brand_changed_hands`: `brand_id`, "
+            "`brand_name`, `unfinished_deals` (how many of yours with it are "
+            "still open) and `new_owner_first_name`. Unknown keys may appear: "
+            "ignore them"
         )
     )
     read_at: datetime | None

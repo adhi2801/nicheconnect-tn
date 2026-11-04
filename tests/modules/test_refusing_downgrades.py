@@ -70,6 +70,7 @@ REFUSING = {
     "bbddb2e7bb0d": "memos sealed with terms version 3, drafts, and their sealed entries",
     "2d1e67a96a45": "images on drafts, and their sealed cleanings",
     "6de6ca38de81": "brand team memberships and invites, live or ended",
+    "7ac9c63d532e": "notices telling creators a brand changed hands",
 }
 
 
@@ -738,3 +739,25 @@ def test_brand_teams(db, clock):
     db.flush()
 
     assert f"{before + 1} team memberships" in refusal(db, "6de6ca38de81")
+
+
+def test_brand_changed_hands_notices(db, clock):
+    from app.modules.notifications.models import Notification
+
+    creator = creator_user(db, clock)
+    before = count(
+        db,
+        "SELECT count(*) FROM notification WHERE notification_type = 'brand_changed_hands'",
+    )
+    db.add(
+        Notification(
+            account_id=creator.account_id,
+            notification_type="brand_changed_hands",
+            details={"brand_name": "Acme"},
+            created_at=clock.now,
+            updated_at=clock.now,
+        )
+    )
+    db.flush()
+
+    assert f"{before + 1} creators were told" in refusal(db, "7ac9c63d532e")

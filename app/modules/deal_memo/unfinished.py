@@ -17,6 +17,7 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo import stage
 from app.modules.deal_memo.models import DealMemo
@@ -55,3 +56,26 @@ def unfinished_deals(
         ),
         key=str,
     )
+
+
+def creators_waiting_on(
+    db: Session, now: datetime, brand_id: uuid.UUID
+) -> dict[uuid.UUID, int]:
+    """Each creator account with a deal unfinished with this brand, and how many.
+
+    For telling them when the brand changes hands (D-151). Five queries at
+    most, however many deals.
+    """
+    memos = unfinished_deals(db, now, brand_id=brand_id)
+    if not memos:
+        return {}
+    waiting: dict[uuid.UUID, int] = {}
+    for account_id in db.scalars(
+        select(Creator.account_id)
+        .select_from(DealMemo)
+        .join(Application, Application.id == DealMemo.application_id)
+        .join(Creator, Creator.id == Application.creator_id)
+        .where(DealMemo.id.in_(memos))
+    ):
+        waiting[account_id] = waiting.get(account_id, 0) + 1
+    return waiting
