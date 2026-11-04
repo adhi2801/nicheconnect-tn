@@ -1935,3 +1935,16 @@ Newest entries at the bottom.
   4. Both owners are told by `team_role_changed`, which nobody can mute.
   5. A creator is shown a member's first name only on a notice of that person's own act (`auth.brand_acts.NAMED_TO_CREATORS`); the notice keeps the membership's id and the name is read when the notice is, so erasing the member erases it.
   6. Adhi also chose, in the same answer, to tell creators with an unfinished deal when a brand changes hands, as the next build: its own proposal, with a migration for the new notification type.
+
+## D-151: Creators with an unfinished deal are told when a brand changes hands
+- Date: 2026-11-04
+- Approved by: Adhi, in this session: "Yes, as the next build (Recommended)", then "dont ask me ... do it yourself" for how. **Not reviewed by the other founder** (D-051).
+- Context: since D-148 and D-150 a brand can be handed to a member of its team; its deals, payment record and blocks go with it, but a creator mid-deal had no way to know the account on the other side had a new holder. The independent review of piece 2 named it (finding 13).
+- Options considered: A) a new unmutable notice to each creator with an unfinished deal, one per creator, with the count and the new owner's first name read live; B) not now.
+- Chosen: A.
+- Reason: the creator always knows who holds the business's account on a deal in progress; unfinished as D-122 and D-147 define it, so one rule decides both deletion holds and who is told.
+- Consequences / follow-ups:
+  1. `brand_changed_hands`, urgent (nobody can mute it); a migration widens the allowed notification types; its downgrade refuses while any such notice exists.
+  2. Sent in the hand-over's own transaction, so a refused hand-over tells nobody.
+  3. Fan-outs (this notice, and a brand's team copies) are written in one statement; the ORM had written one per row.
+  4. The design is `docs/decided/PROPOSAL_HAND_OVER_NOTICE.md`.

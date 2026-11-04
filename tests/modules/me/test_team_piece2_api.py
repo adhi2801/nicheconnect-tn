@@ -753,3 +753,46 @@ def test_a_member_s_name_goes_only_to_creators(db, clock, owner):
         select(Notification.details).where(Notification.account_id == owner.account_id)
     )
     assert "acting_member_id" not in details
+
+
+def test_copying_to_a_whole_team_costs_no_statement_per_member(db, clock):
+    """Twelve members' copies are written as one statement, as two members' are."""
+    from app.modules.notifications import service as notifications
+    from tests.query_counts import count_queries
+
+    def statements(members: int) -> int:
+        brand_owner = brand_user(db, clock)
+        brand = db.scalars(
+            select(Brand).where(Brand.account_id == brand_owner.account_id)
+        ).one()
+        for _ in range(members):
+            db.add(
+                BrandMember(
+                    brand_id=brand.id,
+                    account_id=team.create_account(db, "brand").id,
+                    role="campaigns",
+                    first_name="Ravi",
+                    created_at=clock.now,
+                    updated_at=clock.now,
+                )
+            )
+        db.flush()
+        with count_queries() as run:
+            notifications.record(
+                db,
+                account_id=brand_owner.account_id,
+                notification_type="application_received",
+                now=clock.now,
+                details={},
+            )
+            db.flush()
+        copies = db.scalars(
+            select(Notification.account_id).where(
+                Notification.notification_type == "application_received",
+                Notification.details["for_brand_id"].astext == str(brand.id),
+            )
+        ).all()
+        assert len(copies) == members
+        return len(run)
+
+    assert statements(2) == statements(12)
