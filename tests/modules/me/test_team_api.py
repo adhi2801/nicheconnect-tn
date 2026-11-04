@@ -486,3 +486,239 @@ def test_a_brand_sends_twenty_invites_a_day_however_many_send_them(
     problem(send(owner), 429, "team_invites_daily_limit")
     clock.advance(timedelta(days=1, seconds=1))
     assert send(owner).status_code == 201
+
+
+def test_nobody_already_acting_for_the_brand_is_invited_again(client, db, clock, owner):
+    member, phone = person(db, clock)
+    made = client.post(
+        INVITES,
+        json={"phone": phone, "role": "finance", "first_name": "Meena"},
+        headers=owner.headers,
+    ).json()["id"]
+    client.post(f"{MY_INVITES}/{made}/accept", json={}, headers=member.headers)
+    owner_phone = db.get_one(Account, owner.account_id).phone
+
+    for number in (phone, owner_phone):
+        problem(
+            client.post(
+                INVITES,
+                json={"phone": number, "role": "campaigns", "first_name": "Ravi"},
+                headers=owner.headers,
+            ),
+            409,
+            "already_on_team",
+        )
+
+
+def test_a_lapsed_invite_makes_room_for_a_new_one(client, db, clock, owner):
+    invited, phone = person(db, clock)
+    body = {"phone": phone, "role": "finance", "first_name": "Meena"}
+    lapsed = client.post(INVITES, json=body, headers=owner.headers).json()["id"]
+    clock.advance(timedelta(days=7, seconds=1))
+
+    fresh = client.post(INVITES, json=body, headers=owner.headers)
+
+    assert fresh.status_code == 201, fresh.text
+    assert db.get_one(BrandInvite, lapsed).revoked_at == clock.now
+    assert [i["id"] for i in client.get(MY_INVITES, headers=invited.headers).json()] == [
+        fresh.json()["id"]
+    ]
+
+
+def test_a_taken_back_invite_is_gone_and_cannot_be_taken_back_twice(
+    client, db, clock, owner
+):
+    invited, phone = person(db, clock)
+    made = client.post(
+        INVITES,
+        json={"phone": phone, "role": "finance", "first_name": "Meena"},
+        headers=owner.headers,
+    ).json()["id"]
+    url = f"{INVITES}/{made}"
+
+    assert client.delete(url, headers=owner.headers).status_code == 204
+    assert client.get(TEAM, headers=owner.headers).json()["invites"] == []
+    assert client.get(MY_INVITES, headers=invited.headers).json() == []
+    problem(client.delete(url, headers=owner.headers), 404, "team_invite_not_found")
+    problem(
+        client.post(f"{MY_INVITES}/{made}/accept", json={}, headers=invited.headers),
+        404,
+        "team_invite_not_found",
+    )
+
+
+def test_another_brand_never_takes_back_this_brand_s_invite(client, db, clock, owner):
+    _, phone = person(db, clock)
+    made = client.post(
+        INVITES,
+        json={"phone": phone, "role": "finance", "first_name": "Meena"},
+        headers=owner.headers,
+    ).json()["id"]
+
+    problem(
+        client.delete(f"{INVITES}/{made}", headers=brand_user(db, clock).headers),
+        404,
+        "team_invite_not_found",
+    )
+    assert db.get_one(BrandInvite, made).revoked_at is None
+
+
+def test_an_unknown_invite_is_not_found_to_accept_or_decline(client, db, clock):
+    invited, _ = person(db, clock)
+    unknown = "00000000-0000-4000-8000-000000000000"
+
+    problem(
+        client.post(f"{MY_INVITES}/{unknown}/accept", json={}, headers=invited.headers),
+        404,
+        "team_invite_not_found",
+    )
+    problem(
+        client.post(f"{MY_INVITES}/{unknown}/decline", headers=invited.headers),
+        404,
+        "team_invite_not_found",
+    )
+
+
+def test_someone_already_on_the_team_cannot_join_it_twice(client, db, clock, owner):
+    """A second open invite to a member's number, as a race could leave one."""
+    from app.modules.auth.models.brand_team import INVITE_LIFETIME
+    from app.modules.auth.team_invites import hash_invited_phone
+
+    member = join(client, db, clock, owner, "finance")
+    brand_id = db.scalar(select(Brand.id).where(Brand.account_id == owner.account_id))
+    second = BrandInvite(
+        brand_id=brand_id,
+        role="campaigns",
+        first_name="Ravi",
+        phone_hash=hash_invited_phone(db.get_one(Account, member.account_id).phone),
+        invited_by_account_id=owner.account_id,
+        expires_at=clock.now + INVITE_LIFETIME,
+        created_at=clock.now,
+        updated_at=clock.now,
+    )
+    db.add(second)
+    db.flush()
+
+    problem(
+        client.post(f"{MY_INVITES}/{second.id}/accept", json={}, headers=member.headers),
+        409,
+        "already_on_team",
+    )
+
+
+def test_an_admin_moves_a_member_between_campaigns_and_finance(client, db, clock, owner):
+    admin = join(client, db, clock, owner, "admin")
+    member = join(client, db, clock, owner, "campaigns")
+    url = f"{TEAM}/members/{member.member_id}"  # type: ignore[attr-defined]
+
+    changed = client.patch(url, json={"role": "finance"}, headers=admin.headers)
+
+    assert changed.status_code == 200, changed.text
+    assert changed.json()["role"] == "finance"
+    assert client.get(TEAM, headers=member.headers).json()["your_role"] == "finance"
+    kinds = [
+        n["notification_type"]
+        for n in client.get("/api/v1/notifications", headers=member.headers).json()[
+            "items"
+        ]
+    ]
+    assert "team_role_changed" in kinds
+    same = client.patch(url, json={"role": "finance"}, headers=admin.headers)
+    assert same.status_code == 200 and same.json()["role"] == "finance"
+
+
+def test_only_the_owner_makes_a_member_an_admin_and_only_with_a_code(
+    client, db, clock, owner
+):
+    admin = join(client, db, clock, owner, "admin")
+    member = join(client, db, clock, owner, "finance")
+    mid = member.member_id  # type: ignore[attr-defined]
+    url = f"{TEAM}/members/{mid}"
+    body = {"role": "admin"}
+
+    problem(
+        client.patch(
+            url,
+            json=body,
+            headers=with_code(
+                client, admin.headers, "change_team", change=f"role:{mid}:admin"
+            ),
+        ),
+        403,
+        "team_change_not_allowed",
+    )
+    problem(client.patch(url, json=body, headers=owner.headers), 401, "step_up_required")
+    promoted = client.patch(
+        url,
+        json=body,
+        headers=with_code(
+            client, owner.headers, "change_team", change=f"role:{mid}:admin"
+        ),
+    )
+    assert promoted.status_code == 200, promoted.text
+    assert client.get(TEAM, headers=member.headers).json()["your_role"] == "admin"
+
+
+def test_an_admin_never_changes_an_admin_s_role(client, db, clock, owner):
+    first = join(client, db, clock, owner, "admin", name="Asha")
+    second = join(client, db, clock, owner, "admin", name="Bala")
+
+    problem(
+        client.patch(
+            f"{TEAM}/members/{second.member_id}",  # type: ignore[attr-defined]
+            json={"role": "finance"},
+            headers=first.headers,
+        ),
+        403,
+        "team_change_not_allowed",
+    )
+
+
+def test_changing_someone_not_on_the_team_is_not_found(client, db, clock, owner):
+    outsider = join(client, db, clock, brand_user(db, clock), "finance")
+
+    problem(
+        client.patch(
+            f"{TEAM}/members/{outsider.member_id}",  # type: ignore[attr-defined]
+            json={"role": "campaigns"},
+            headers=owner.headers,
+        ),
+        404,
+        "team_member_not_found",
+    )
+
+
+def test_leaving_a_brand_you_are_not_in_is_not_found(client, db, clock, owner):
+    stranger, _ = person(db, clock)
+    brand_id = db.scalar(select(Brand.id).where(Brand.account_id == owner.account_id))
+
+    for url in (
+        f"/api/v1/me/teams/{brand_id}",
+        "/api/v1/me/teams/00000000-0000-4000-8000-000000000000",
+    ):
+        problem(
+            client.delete(url, headers=stranger.headers), 404, "team_member_not_found"
+        )
+
+
+def test_a_creator_never_sees_or_accepts_an_invite_to_their_number(
+    client, db, clock, owner
+):
+    """A creator account on the invited number is not the brand account invited."""
+    creator = make_creator(db, clock)
+    made = client.post(
+        INVITES,
+        json={
+            "phone": db.get_one(Account, creator.account_id).phone,
+            "role": "finance",
+            "first_name": "Meena",
+        },
+        headers=owner.headers,
+    ).json()["id"]
+
+    problem(
+        client.post(f"{MY_INVITES}/{made}/accept", json={}, headers=creator.headers),
+        404,
+        "team_invite_not_found",
+    )
+    assert client.get(MY_INVITES, headers=creator.headers).json() == []
