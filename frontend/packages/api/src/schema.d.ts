@@ -2812,6 +2812,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What is switched on
+         * @description Which built features are on now, and for each the problem `code` its routes answer while it is off, so a screen can hide what is off and show it the moment it is switched on, with no app release. The same for everyone; no login. Cached for 5 minutes. Limit: 60 a minute.
+         */
+        get: operations["features_api_v1_features_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/agent-tokens": {
         parameters: {
             query?: never;
@@ -5093,6 +5113,13 @@ export interface components {
              * Format: uuid
              */
             brand_id: string;
+            /**
+             * Brand Name
+             * @description The brand's name, as it signs its campaigns: the first thing a creator asks of one. Show `brand_name_flag` beside it when set, and the verified domain where there is one
+             * @default
+             * @example Thendral Sweets
+             */
+            brand_name: string;
             /** @description Set when the brand's name looks like a protected brand's and the brand has not verified that brand's domain, or mixes look-alike letters (item 75). Show it beside the brand's name: "looks like Nykaa; nykaa.com is not verified by this account". Such a brand cannot publish a new campaign; one already open keeps this warning */
             brand_name_flag?: components["schemas"]["BrandNameFlagRead"] | null;
             /** Budget Max Paise */
@@ -6576,6 +6603,36 @@ export interface components {
             reason: string;
         };
         /**
+         * FeatureRead
+         * @description One feature: whether it is on, and what its routes answer while it is off.
+         */
+        FeatureRead: {
+            /**
+             * Off Code
+             * @description The problem `code` this feature's routes answer while it is off; null when it has no route of its own to call
+             * @example connections_unavailable
+             */
+            off_code: string | null;
+            /** On */
+            on: boolean;
+        };
+        /**
+         * FeaturesRead
+         * @description Every feature that can be switched off. Unknown keys may appear: ignore them.
+         */
+        FeaturesRead: {
+            /** @description Connecting Instagram and YouTube (item 29): on once Meta and Google approve the apps and the connect notice exists */
+            connected_accounts: components["schemas"]["FeatureRead"];
+            /** @description Signing in and proving changes with a passkey (item 79): on once the domain exists */
+            passkeys: components["schemas"]["FeatureRead"];
+            /** @description Published Passports offered to search engines (item 85): on once the publish notice says so */
+            passport_indexing: components["schemas"]["FeatureRead"];
+            /** @description Reach and views read from proof screenshots (D-070), behind its validation pack question */
+            results_from_proof: components["schemas"]["FeatureRead"];
+            /** @description A creator adding a UPI ID, and the pay link brands open from it (D-085): on once its notice exists. Until then brands pay by bank transfer */
+            upi_ids: components["schemas"]["FeatureRead"];
+        };
+        /**
          * FeedbackFiguresRead
          * @description What the other sides of someone's finished deals said, once revealed.
          */
@@ -7286,6 +7343,12 @@ export interface components {
             application_id: string;
             /** Approval Window Days */
             approval_window_days: number;
+            /**
+             * Campaign Title
+             * @description The campaign the deal is on, so a row can say which deal it is
+             * @example Pongal sweets launch
+             */
+            campaign_title: string;
             /** Cancellation Fee Paise */
             cancellation_fee_paise: number;
             /** Cancellation Kind */
@@ -7299,6 +7362,12 @@ export interface components {
             change_request_message: string | null;
             /** Content Due On */
             content_due_on: string | null;
+            /**
+             * Counterparty Name
+             * @description The other side, as the reader knows them: a brand reads the creator's handle, a creator reads the brand's name. Someone who deleted their account keeps the placeholder their profile was given
+             * @example Thendral Sweets
+             */
+            counterparty_name: string;
             /**
              * Created At
              * Format: date-time
@@ -24864,6 +24933,47 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    features_api_v1_features_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeaturesRead"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
