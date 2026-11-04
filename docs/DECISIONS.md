@@ -1974,3 +1974,14 @@ Newest entries at the bottom.
   2. `frontend/scripts/export_landing.py` makes the WebP frames (640, 960, 1280) and the seal (640, 960) from the renders.
   3. Measured on 4 November 2026 in Edge through Playwright, on Lighthouse's mobile profile (slow 4G, a 4x slower CPU, 390 x 844), median of 7: LCP 1,764 ms (budget 2,000; the worst run 2,084), the headline being the largest paint; CLS 0.000. Two changes got it there from 2,316 ms: the stylesheet inlined into the HTML (`inlineCss`), and the app-only monospace face no longer preloaded. JavaScript is 139 KB, over the 50 KB frontend.md sets for public pages: most of it is the framework's baseline, a gap named, not closed.
   4. Owed: Lighthouse and a visual check in CI (running Lighthouse here was refused by the session's permissions), the seal rim's Tamil read by a Tamil reader, people on the page (LANDING_CULTURE_FIT.md Part B), and live 3D once its byte budget is decided.
+
+## D-157: CI reads the landing page without JavaScript
+- Date: 2026-11-04
+- Approved by: Adhi, in this session: "nothing should fail ... do it yourself", the frontend gates of D-152 to be filled in. **Not reviewed by the other founder** (D-051).
+- Context: frontend.md section 8d requires the public pages to read without a script; nothing checked it once the landing page existed (D-155).
+- Options considered: A) serve the production build in CI and fetch the home page as plain HTML, every heading from the message catalogue required; B) a browser test with script disabled.
+- Chosen: A.
+- Reason: no browser download in CI, seconds to run, and it is exactly what a search engine or link preview receives.
+- Consequences / follow-ups:
+  1. `frontend/scripts/check-no-js.mjs`, run by the frontend job after the build; shown failing on a page without those words.
+  2. Each new public page adds its words to the check in the same change.
