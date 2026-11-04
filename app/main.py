@@ -9,6 +9,7 @@ from app.core.body_limit import BodyLimitMiddleware
 from app.core.config import settings
 from app.core.error_tracking import init_error_tracking
 from app.core.errors import problem_doc, problem_response, register_error_handlers
+from app.core.features import router as features_router
 from app.core.health import HealthRead, ReadinessRead, run_readiness_checks
 from app.core.idempotent_route import set_identity_resolver
 from app.core.load_shedding import LoadSheddingMiddleware
@@ -157,6 +158,7 @@ if tracer_provider is not None:
     instrument_engine(engine, tracer_provider)
 
 app.include_router(security_txt_router)
+app.include_router(features_router)
 app.include_router(auth_router)
 app.include_router(session_router)
 app.include_router(session_list_router)

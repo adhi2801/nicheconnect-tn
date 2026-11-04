@@ -250,6 +250,8 @@ Each is in `docs/api/openapi.json`; the screens should use them rather than work
 - **A deal's dates in the phone's calendar** (item 69): `GET /api/v1/deal-memos/{id}/calendar.ics`, offered as "Add to calendar" on the deal screen; adding it again updates the same events.
 - **A reporter sees what became of each report** (item 102): `GET /api/v1/reports/mine`, and a `report_resolved` notification.
 - **A campaign's report a brand can hand on** (item 47): JSON and CSV.
+- **Who a campaign is from, and which deal a row is** (R1, D-153): `brand_name` on every campaign read; `campaign_title` and `counterparty_name` on every memo, on the list and on one (a brand reads the creator's handle, a creator the brand's name). A deal card needs no second call.
+- **What is switched on** (R6, D-153): `GET /api/v1/features`, public and cached for 5 minutes: each feature that can be off, whether it is on, and the problem code its routes answer while it is off. Hide what is off from it, never from a constant in the app, so switching a feature on needs no release.
 
 ## Gaps, named
 

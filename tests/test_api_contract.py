@@ -21,6 +21,10 @@ from tests import openapi_snapshot
 # Every operation needs a login except these, each for a stated reason.
 PUBLIC = {
     ("GET", "/healthz"): "a deployment platform's liveness probe",
+    ("GET", "/api/v1/features"): (
+        "what the product can do now, the same for everyone, so the website "
+        "can hide what is off before anyone signs in (R6)"
+    ),
     ("GET", "/readyz"): "a deployment platform's readiness probe",
     (
         "GET",

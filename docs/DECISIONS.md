@@ -1935,3 +1935,15 @@ Newest entries at the bottom.
   4. Both owners are told by `team_role_changed`, which nobody can mute.
   5. A creator is shown a member's first name only on a notice of that person's own act (`auth.brand_acts.NAMED_TO_CREATORS`); the notice keeps the membership's id and the name is read when the notice is, so erasing the member erases it.
   6. Adhi also chose, in the same answer, to tell creators with an unfinished deal when a brand changes hands, as the next build: its own proposal, with a migration for the new notification type.
+
+## D-153: Brand names on campaigns, names on deals, and a features route (R1, R6)
+- Date: 2026-11-04
+- Approved by: Adhi, in this session: "do it yourself", "nothing should fail", wanting the frontend's requests met ("we have tons of work"). **Not reviewed by the other founder** (D-051), whose track wrote the requests.
+- Context: `docs/PROPOSAL_FRONTEND_API_REQUESTS.md` R1 and R6, needed by about 10 November: a creator could not see which brand a campaign is from, a deal card could not say which deal it is, and no screen could tell which features are switched off.
+- Options considered: R1 A) the names in the responses; B) a call per row. R6 A) a route; B) constants in each app.
+- Chosen: A for both, as the proposal recommended.
+- Reason: one call per screen (ux.md section 7); a feature switched on without a store release.
+- Consequences / follow-ups:
+  1. `CampaignRead.brand_name`, read by the look-alike name check's own query, so a campaign page costs no extra query. A brand's name was already shown on payments and attention; it is now on every campaign a creator can read.
+  2. `MemoWithStageRead.campaign_title` and `counterparty_name`, one query for the page.
+  3. `GET /api/v1/features`, public, each feature read from the very setting its routes follow, its off code held to the module's own exception by a test.
