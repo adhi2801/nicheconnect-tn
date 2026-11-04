@@ -1962,6 +1962,30 @@ Newest entries at the bottom.
   3. The attention test reads every kind from the contract, so a new kind fails it until the app handles it.
   4. What `frontend.md` section 12 still owes (Lighthouse, accessibility, no-JavaScript rendering, visual regression, pseudo-locale, banned words, dependency audit) is listed there and added to the same job as each lands.
 
+## D-153: Brand names on campaigns, names on deals, and a features route (R1, R6)
+- Date: 2026-11-04
+- Approved by: Adhi, in this session: "do it yourself", "nothing should fail", wanting the frontend's requests met ("we have tons of work"). **Not reviewed by the other founder** (D-051), whose track wrote the requests.
+- Context: `docs/PROPOSAL_FRONTEND_API_REQUESTS.md` R1 and R6, needed by about 10 November: a creator could not see which brand a campaign is from, a deal card could not say which deal it is, and no screen could tell which features are switched off.
+- Options considered: R1 A) the names in the responses; B) a call per row. R6 A) a route; B) constants in each app.
+- Chosen: A for both, as the proposal recommended.
+- Reason: one call per screen (ux.md section 7); a feature switched on without a store release.
+- Consequences / follow-ups:
+  1. `CampaignRead.brand_name`, read by the look-alike name check's own query, so a campaign page costs no extra query. A brand's name was already shown on payments and attention; it is now on every campaign a creator can read.
+  2. `MemoWithStageRead.campaign_title` and `counterparty_name`, one query for the page.
+  3. `GET /api/v1/features`, public, each feature read from the very setting its routes follow, its off code held to the module's own exception by a test.
+
+## D-154: Who applied, in one call (R2)
+- Date: 2026-11-04
+- Approved by: Adhi, in this session: "do it yourself" for the frontend's requests. **Not reviewed by the other founder** (D-051).
+- Context: `docs/PROPOSAL_FRONTEND_API_REQUESTS.md` R2: a brand's board drew each applicant with a call to their media kit, twenty calls a page, and no campaign said how many had applied.
+- Options considered: A) embed a creator summary in the brand's applicant list, and a count on the brand's campaign list; B) no change.
+- Chosen: A, as the proposal recommended.
+- Reason: one call per screen (ux.md section 7).
+- Consequences / follow-ups:
+  1. `BrandApplicationRead.creator`: handle, name, city, niches and the delivery record, the facts a saved list already shows (D-129), never contact details; on the brand's own campaign only (`OwnedCampaign`).
+  2. `CampaignRead.applicant_count` on the brand's own list: applied or said yes, never an invitation waiting, declined or withdrawn; null everywhere else, so no creator reads how many compete.
+  3. Fixed costs per page, proven not to grow: the applicant list's cap rises from 6 to 8 queries, the brand's campaign list's from 6 to 7.
+
 ## D-155: The landing page, first version: the temple turned by scroll from Blender frames
 - Date: 2026-11-04
 - Approved by: Adhi, in this session: progress on "the landing page stuff ... the blender thing", "do it yourself". **Not reviewed by the other founder** (D-051), whose track owns frontend design research.
@@ -1974,3 +1998,17 @@ Newest entries at the bottom.
   2. `frontend/scripts/export_landing.py` makes the WebP frames (640, 960, 1280) and the seal (640, 960) from the renders.
   3. Measured on 4 November 2026 in Edge through Playwright, on Lighthouse's mobile profile (slow 4G, a 4x slower CPU, 390 x 844), median of 7: LCP 1,764 ms (budget 2,000; the worst run 2,084), the headline being the largest paint; CLS 0.000. Two changes got it there from 2,316 ms: the stylesheet inlined into the HTML (`inlineCss`), and the app-only monospace face no longer preloaded. JavaScript is 139 KB, over the 50 KB frontend.md sets for public pages: most of it is the framework's baseline, a gap named, not closed.
   4. Owed: Lighthouse and a visual check in CI (running Lighthouse here was refused by the session's permissions), the seal rim's Tamil read by a Tamil reader, people on the page (LANDING_CULTURE_FIT.md Part B), and live 3D once its byte budget is decided.
+
+## D-156: A campaign brief drafted from a brand's own words, by a job, switched off until the validation pack
+- Date: 2026-11-04
+- Approved by: Adhi, in this session: "big progress in backend", "do it yourself". **Not reviewed by the other founder** (D-051).
+- Context: `BACKEND_COMPLETE.md` item 40. A brand that knows what it wants but not how to write it as a brief is a common reason a campaign is never published. CLAUDE.md section 3 forbids a request waiting on an outside call.
+- Options considered: A) a request that stores the words and a job that drafts them, read back later; B) a request that calls the model and waits; C) not now.
+- Chosen: A.
+- Reason: B breaks section 3 and ties a person's request to an outside service's speed. A follows the proof reader (D-070): a job, a daily ceiling, no network call inside a transaction, a fake in every test.
+- Consequences / follow-ups:
+  1. `campaign_brief_draft` (one migration): the words, the drafted fields or why not, and the tokens it cost; kept a week; three waiting per brand; owners, admins and campaign managers ask, the whole team reads.
+  2. Claude Opus 5.5 at low effort, structured output checked against a campaign's own limits; only what the brand's words support is filled in. Server-side refusal fallbacks are on (`fallbacks: "default"`).
+  3. Off (`BRIEF_DRAFTING_ENABLED`) until the validation pack confirms a brand's words may go to Anthropic outside India and the notice beside the box exists (legal.md section 3.1). `GET /api/v1/features` says so.
+  4. The design: `docs/decided/PROPOSAL_BRIEF_DRAFTS.md`.
+

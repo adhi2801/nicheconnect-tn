@@ -1132,6 +1132,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/brief-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask for a campaign brief drafted from your own words
+         * @description A few sentences in; a draft of the campaign's title, description, deliverables, type, niches, cities and budget back, usually within a minute, at the `Location` given. Only what your words support is filled in: nothing is invented. The draft creates nothing; prefill the new-campaign form with it, edit, and create the campaign as usual. Owners, admins and campaign managers. Switched off until `GET /api/v1/features` says `brief_drafting` is on. Limits: 5 a minute, 30 a day.
+         */
+        post: operations["ask_api_v1_brief_drafts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/brief-drafts/{brief_draft_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read a drafted brief
+         * @description `waiting` until the draft is written, then `ready` with its fields, or `failed`. Anyone on the brand's team may read it. Kept a week. Limit: 60 a minute.
+         */
+        get: operations["read_api_v1_brief_drafts__brief_draft_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/campaigns": {
         parameters: {
             query?: never;
@@ -1233,7 +1273,7 @@ export interface paths {
         };
         /**
          * List applications to my campaign
-         * @description Applications to one of the signed-in brand's campaigns, newest first.
+         * @description Applications to one of the signed-in brand's campaigns, newest first, each with its `creator`: name, handle, city, niches and how they deliver, so the board needs no call per applicant. Never a phone number or contact detail.
          */
         get: operations["list_campaign_applications_api_v1_campaigns__campaign_id__applications_get"];
         put?: never;
@@ -2812,6 +2852,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What is switched on
+         * @description Which built features are on now, and for each the problem `code` its routes answer while it is off, so a screen can hide what is off and show it the moment it is switched on, with no app release. The same for everyone; no login. Cached for 5 minutes. Limit: 60 a minute.
+         */
+        get: operations["features_api_v1_features_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/agent-tokens": {
         parameters: {
             query?: never;
@@ -4221,6 +4281,27 @@ export interface components {
             scopes: ("deals:read" | "campaigns:read" | "applications:write" | "notes:write" | "alerts:write")[];
         };
         /**
+         * ApplicantRead
+         * @description The creator behind an application: enough to decide, without opening each one.
+         */
+        ApplicantRead: {
+            /** City */
+            city: string;
+            /**
+             * Creator Id
+             * Format: uuid
+             */
+            creator_id: string;
+            /** @description What happened on their deals with any brand, not reviews; null shares mean not enough to say, never zero */
+            delivery: components["schemas"]["CreatorDeliveryRead"];
+            /** Display Name */
+            display_name: string;
+            /** Handle */
+            handle: string;
+            /** Niches */
+            niches: string[];
+        };
+        /**
          * ApplicationCountsRead
          * @description How many applications are in each status. Every status, zeros included.
          */
@@ -4663,6 +4744,93 @@ export interface components {
              */
             name: string;
         };
+        /**
+         * BrandApplicationRead
+         * @description An application to one of your campaigns, with who sent it.
+         */
+        BrandApplicationRead: {
+            /**
+             * Agreed Amount Paise
+             * @description The figure both sides agreed through an offer, in paise. It pre-fills the memo's fee; the memo is still the contract. Null when none was agreed
+             */
+            agreed_amount_paise: number | null;
+            /**
+             * Campaign Id
+             * Format: uuid
+             */
+            campaign_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            creator: components["schemas"]["ApplicantRead"];
+            /**
+             * Creator Id
+             * Format: uuid
+             */
+            creator_id: string;
+            /**
+             * Currency
+             * @default INR
+             * @constant
+             */
+            currency: "INR";
+            /** Decline Reason */
+            decline_reason: ("timing" | "budget" | "not_a_fit" | "other") | null;
+            /**
+             * First Answered At
+             * @description When the brand first shortlisted, accepted or rejected this application. Null while it waits, on invitations, and on answers given before 12 October 2026, when it was first kept
+             */
+            first_answered_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Invitation Note */
+            invitation_note: string | null;
+            /** @description A counter-offer waiting for an answer (item 44): the side that did not make it accepts, declines or answers with its own at `/api/v1/applications/{id}/offers`. While one waits, the application cannot be accepted */
+            open_offer: components["schemas"]["OfferRead"] | null;
+            /**
+             * Origin
+             * @enum {string}
+             */
+            origin: "applied" | "invited";
+            /**
+             * Pitch
+             * @description Null for an invitation
+             */
+            pitch: string | null;
+            /** Quoted Amount Paise */
+            quoted_amount_paise: number | null;
+            /** Rejection Note */
+            rejection_note: string | null;
+            /** Rejection Reason */
+            rejection_reason: ("budget_mismatch" | "audience_mismatch" | "timing" | "chose_another_creator" | "incomplete_profile" | "other") | null;
+            /** Repeat Of Application Id */
+            repeat_of_application_id: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "submitted" | "shortlisted" | "accepted" | "rejected" | "withdrawn" | "invited" | "declined";
+            /**
+             * Status Changed At
+             * Format: date-time
+             */
+            status_changed_at: string;
+            /**
+             * Text Flags
+             * @description Warnings on the free text above, worked out on every read: a request for money from a creator, or contact details before a deal is agreed (item 60). Show each beside its field; never hide the text
+             */
+            readonly text_flags: components["schemas"]["FieldFlag"][];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** BrandDomainClaim */
         BrandDomainClaim: {
             /**
@@ -4882,6 +5050,77 @@ export interface components {
             work_reviewed: components["schemas"]["ResponseTimeRead"];
         };
         /**
+         * BriefDraftCreate
+         * @description What the brand wants, in its own words.
+         */
+        BriefDraftCreate: {
+            /**
+             * Idea
+             * @description A few sentences: the product, who it is for, what you want made, and any budget or city
+             * @example Our new millet laddu box for Pongal. Two reels from Madurai food creators, Rs 8,000 each.
+             */
+            idea: string;
+        };
+        /**
+         * BriefDraftRead
+         * @description A draft, as the brand's team sees it.
+         */
+        BriefDraftRead: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            draft: components["schemas"]["BriefFieldsRead"] | null;
+            /**
+             * Failure
+             * @description Why it could not be drafted, when `failed`: ask again in other words
+             * @example refusal
+             */
+            failure: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Idea */
+            idea: string;
+            /**
+             * Status
+             * @description `waiting` while it is written (usually within a minute), `ready` with `draft`, or `failed`
+             * @enum {string}
+             */
+            status: "waiting" | "ready" | "failed";
+        };
+        /**
+         * BriefFieldsRead
+         * @description The drafted fields, ready to prefill the new-campaign form. Only what the brand's words supported.
+         */
+        BriefFieldsRead: {
+            /** Budget Max Paise */
+            budget_max_paise: number | null;
+            /** Budget Min Paise */
+            budget_min_paise: number | null;
+            /**
+             * Campaign Type
+             * @description Null when the words did not say
+             */
+            campaign_type: ("paid" | "barter" | "commission" | "local_business") | null;
+            /**
+             * Cities
+             * @description Only cities the brand named; empty when it named none
+             */
+            cities: string[];
+            /** Deliverables */
+            deliverables: string;
+            /** Description */
+            description: string;
+            /** Niches */
+            niches: ("food" | "fashion" | "beauty" | "tech" | "travel" | "fitness" | "education" | "entertainment" | "finance" | "lifestyle")[];
+            /** Title */
+            title: string;
+        };
+        /**
          * BulkMarkPaidRead
          * @description Every row's result, in the order the rows were sent.
          */
@@ -5086,6 +5325,11 @@ export interface components {
          * @description A campaign as the API returns it.
          */
         CampaignRead: {
+            /**
+             * Applicant Count
+             * @description How many creators came forward: applied, or said yes to an invitation, whatever you decided since. On your own campaign list only; null everywhere else
+             */
+            applicant_count?: number | null;
             /** Applications Close On */
             applications_close_on: string | null;
             /**
@@ -5093,6 +5337,13 @@ export interface components {
              * Format: uuid
              */
             brand_id: string;
+            /**
+             * Brand Name
+             * @description The brand's name, as it signs its campaigns: the first thing a creator asks of one. Show `brand_name_flag` beside it when set, and the verified domain where there is one
+             * @default
+             * @example Thendral Sweets
+             */
+            brand_name: string;
             /** @description Set when the brand's name looks like a protected brand's and the brand has not verified that brand's domain, or mixes look-alike letters (item 75). Show it beside the brand's name: "looks like Nykaa; nykaa.com is not verified by this account". Such a brand cannot publish a new campaign; one already open keeps this warning */
             brand_name_flag?: components["schemas"]["BrandNameFlagRead"] | null;
             /** Budget Max Paise */
@@ -6576,6 +6827,38 @@ export interface components {
             reason: string;
         };
         /**
+         * FeatureRead
+         * @description One feature: whether it is on, and what its routes answer while it is off.
+         */
+        FeatureRead: {
+            /**
+             * Off Code
+             * @description The problem `code` this feature's routes answer while it is off; null when it has no route of its own to call
+             * @example connections_unavailable
+             */
+            off_code: string | null;
+            /** On */
+            on: boolean;
+        };
+        /**
+         * FeaturesRead
+         * @description Every feature that can be switched off. Unknown keys may appear: ignore them.
+         */
+        FeaturesRead: {
+            /** @description A campaign brief drafted from a brand's own words (item 40), behind its validation pack question */
+            brief_drafting: components["schemas"]["FeatureRead"];
+            /** @description Connecting Instagram and YouTube (item 29): on once Meta and Google approve the apps and the connect notice exists */
+            connected_accounts: components["schemas"]["FeatureRead"];
+            /** @description Signing in and proving changes with a passkey (item 79): on once the domain exists */
+            passkeys: components["schemas"]["FeatureRead"];
+            /** @description Published Passports offered to search engines (item 85): on once the publish notice says so */
+            passport_indexing: components["schemas"]["FeatureRead"];
+            /** @description Reach and views read from proof screenshots (D-070), behind its validation pack question */
+            results_from_proof: components["schemas"]["FeatureRead"];
+            /** @description A creator adding a UPI ID, and the pay link brands open from it (D-085): on once its notice exists. Until then brands pay by bank transfer */
+            upi_ids: components["schemas"]["FeatureRead"];
+        };
+        /**
          * FeedbackFiguresRead
          * @description What the other sides of someone's finished deals said, once revealed.
          */
@@ -7286,6 +7569,12 @@ export interface components {
             application_id: string;
             /** Approval Window Days */
             approval_window_days: number;
+            /**
+             * Campaign Title
+             * @description The campaign the deal is on, so a row can say which deal it is
+             * @example Pongal sweets launch
+             */
+            campaign_title: string;
             /** Cancellation Fee Paise */
             cancellation_fee_paise: number;
             /** Cancellation Kind */
@@ -7299,6 +7588,12 @@ export interface components {
             change_request_message: string | null;
             /** Content Due On */
             content_due_on: string | null;
+            /**
+             * Counterparty Name
+             * @description The other side, as the reader knows them: a brand reads the creator's handle, a creator reads the brand's name. Someone who deleted their account keeps the placeholder their profile was given
+             * @example Thendral Sweets
+             */
+            counterparty_name: string;
             /**
              * Created At
              * Format: date-time
@@ -7887,6 +8182,16 @@ export interface components {
         Page_BlockRead_: {
             /** Items */
             items: components["schemas"]["BlockRead"][];
+            /**
+             * Next Cursor
+             * @description Pass as ?cursor= to get the next page
+             */
+            next_cursor?: string | null;
+        };
+        /** Page[BrandApplicationRead] */
+        Page_BrandApplicationRead_: {
+            /** Items */
+            items: components["schemas"]["BrandApplicationRead"][];
             /**
              * Next Cursor
              * @description Pass as ?cursor= to get the next page
@@ -15646,6 +15951,210 @@ export interface operations {
             };
         };
     };
+    ask_api_v1_brief_drafts_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BriefDraftCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BriefDraftRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `role_not_allowed`: not a brand account; or `brand_role_not_allowed`: your role does not run campaigns */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brand_not_found`: the Brand-Id header names a brand you are not in */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brief_drafts_waiting`: three of your brand's drafts are still being written; or `brand_profile_required`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The idea is under 20 or over 1,500 characters; or `brand_choice_needed`. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brief_drafting_unavailable`: drafting is not switched on yet. Or: Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    read_api_v1_brief_drafts__brief_draft_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
+            path: {
+                /** @description The draft's id */
+                brief_draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BriefDraftRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `role_not_allowed`: not a brand account; or `brand_role_not_allowed`: your role does not run campaigns */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brief_draft_not_found`, or `brand_not_found` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brand_profile_required`: you have no brand yet */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     list_my_campaigns_api_v1_campaigns_get: {
         parameters: {
             query?: {
@@ -16208,7 +16717,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Page_ApplicationRead_"];
+                    "application/json": components["schemas"]["Page_BrandApplicationRead_"];
                 };
             };
             /** @description No access token, or it is invalid or expired */
@@ -24864,6 +25373,47 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    features_api_v1_features_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeaturesRead"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };

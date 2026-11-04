@@ -931,6 +931,49 @@
         "title": "AgentTokenRead",
         "type": "object"
       },
+      "ApplicantRead": {
+        "description": "The creator behind an application: enough to decide, without opening each one.",
+        "properties": {
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "creator_id": {
+            "format": "uuid",
+            "title": "Creator Id",
+            "type": "string"
+          },
+          "delivery": {
+            "$ref": "#/components/schemas/CreatorDeliveryRead",
+            "description": "What happened on their deals with any brand, not reviews; null shares mean not enough to say, never zero"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "handle": {
+            "title": "Handle",
+            "type": "string"
+          },
+          "niches": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Niches",
+            "type": "array"
+          }
+        },
+        "required": [
+          "creator_id",
+          "handle",
+          "display_name",
+          "city",
+          "niches",
+          "delivery"
+        ],
+        "title": "ApplicantRead",
+        "type": "object"
+      },
       "ApplicationCountsRead": {
         "description": "How many applications are in each status. Every status, zeros included.",
         "properties": {
@@ -1998,6 +2041,233 @@
         "title": "BlockRead",
         "type": "object"
       },
+      "BrandApplicationRead": {
+        "description": "An application to one of your campaigns, with who sent it.",
+        "properties": {
+          "agreed_amount_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The figure both sides agreed through an offer, in paise. It pre-fills the memo's fee; the memo is still the contract. Null when none was agreed",
+            "title": "Agreed Amount Paise"
+          },
+          "campaign_id": {
+            "format": "uuid",
+            "title": "Campaign Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "creator": {
+            "$ref": "#/components/schemas/ApplicantRead"
+          },
+          "creator_id": {
+            "format": "uuid",
+            "title": "Creator Id",
+            "type": "string"
+          },
+          "currency": {
+            "const": "INR",
+            "default": "INR",
+            "title": "Currency",
+            "type": "string"
+          },
+          "decline_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "timing",
+                  "budget",
+                  "not_a_fit",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decline Reason"
+          },
+          "first_answered_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the brand first shortlisted, accepted or rejected this application. Null while it waits, on invitations, and on answers given before 12 October 2026, when it was first kept",
+            "title": "First Answered At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "invitation_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invitation Note"
+          },
+          "open_offer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OfferRead"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A counter-offer waiting for an answer (item 44): the side that did not make it accepts, declines or answers with its own at `/api/v1/applications/{id}/offers`. While one waits, the application cannot be accepted"
+          },
+          "origin": {
+            "enum": [
+              "applied",
+              "invited"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "pitch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for an invitation",
+            "title": "Pitch"
+          },
+          "quoted_amount_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quoted Amount Paise"
+          },
+          "rejection_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Note"
+          },
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "budget_mismatch",
+                  "audience_mismatch",
+                  "timing",
+                  "chose_another_creator",
+                  "incomplete_profile",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Reason"
+          },
+          "repeat_of_application_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repeat Of Application Id"
+          },
+          "status": {
+            "enum": [
+              "submitted",
+              "shortlisted",
+              "accepted",
+              "rejected",
+              "withdrawn",
+              "invited",
+              "declined"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "status_changed_at": {
+            "format": "date-time",
+            "title": "Status Changed At",
+            "type": "string"
+          },
+          "text_flags": {
+            "description": "Warnings on the free text above, worked out on every read: a request for money from a creator, or contact details before a deal is agreed (item 60). Show each beside its field; never hide the text",
+            "items": {
+              "$ref": "#/components/schemas/FieldFlag"
+            },
+            "readOnly": true,
+            "title": "Text Flags",
+            "type": "array"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "campaign_id",
+          "creator_id",
+          "origin",
+          "pitch",
+          "invitation_note",
+          "repeat_of_application_id",
+          "quoted_amount_paise",
+          "status",
+          "rejection_reason",
+          "rejection_note",
+          "decline_reason",
+          "status_changed_at",
+          "first_answered_at",
+          "created_at",
+          "updated_at",
+          "open_offer",
+          "agreed_amount_paise",
+          "creator",
+          "text_flags"
+        ],
+        "title": "BrandApplicationRead",
+        "type": "object"
+      },
       "BrandDomainClaim": {
         "additionalProperties": false,
         "properties": {
@@ -2457,6 +2727,187 @@
           "work_reviewed"
         ],
         "title": "BrandResponseTimesRead",
+        "type": "object"
+      },
+      "BriefDraftCreate": {
+        "additionalProperties": false,
+        "description": "What the brand wants, in its own words.",
+        "properties": {
+          "idea": {
+            "description": "A few sentences: the product, who it is for, what you want made, and any budget or city",
+            "examples": [
+              "Our new millet laddu box for Pongal. Two reels from Madurai food creators, Rs 8,000 each."
+            ],
+            "maxLength": 1500,
+            "minLength": 20,
+            "title": "Idea",
+            "type": "string"
+          }
+        },
+        "required": [
+          "idea"
+        ],
+        "title": "BriefDraftCreate",
+        "type": "object"
+      },
+      "BriefDraftRead": {
+        "description": "A draft, as the brand's team sees it.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BriefFieldsRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why it could not be drafted, when `failed`: ask again in other words",
+            "examples": [
+              "refusal"
+            ],
+            "title": "Failure"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "idea": {
+            "title": "Idea",
+            "type": "string"
+          },
+          "status": {
+            "description": "`waiting` while it is written (usually within a minute), `ready` with `draft`, or `failed`",
+            "enum": [
+              "waiting",
+              "ready",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "idea",
+          "draft",
+          "failure",
+          "created_at"
+        ],
+        "title": "BriefDraftRead",
+        "type": "object"
+      },
+      "BriefFieldsRead": {
+        "description": "The drafted fields, ready to prefill the new-campaign form. Only what the brand's words supported.",
+        "properties": {
+          "budget_max_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Max Paise"
+          },
+          "budget_min_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Min Paise"
+          },
+          "campaign_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "paid",
+                  "barter",
+                  "commission",
+                  "local_business"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when the words did not say",
+            "title": "Campaign Type"
+          },
+          "cities": {
+            "description": "Only cities the brand named; empty when it named none",
+            "items": {
+              "type": "string"
+            },
+            "title": "Cities",
+            "type": "array"
+          },
+          "deliverables": {
+            "title": "Deliverables",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "niches": {
+            "items": {
+              "enum": [
+                "food",
+                "fashion",
+                "beauty",
+                "tech",
+                "travel",
+                "fitness",
+                "education",
+                "entertainment",
+                "finance",
+                "lifestyle"
+              ],
+              "type": "string"
+            },
+            "title": "Niches",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "description",
+          "deliverables",
+          "campaign_type",
+          "niches",
+          "cities",
+          "budget_min_paise",
+          "budget_max_paise"
+        ],
+        "title": "BriefFieldsRead",
         "type": "object"
       },
       "BulkMarkPaidRead": {
@@ -3003,6 +3454,18 @@
       "CampaignRead": {
         "description": "A campaign as the API returns it.",
         "properties": {
+          "applicant_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How many creators came forward: applied, or said yes to an invitation, whatever you decided since. On your own campaign list only; null everywhere else",
+            "title": "Applicant Count"
+          },
           "applications_close_on": {
             "anyOf": [
               {
@@ -3018,6 +3481,15 @@
           "brand_id": {
             "format": "uuid",
             "title": "Brand Id",
+            "type": "string"
+          },
+          "brand_name": {
+            "default": "",
+            "description": "The brand's name, as it signs its campaigns: the first thing a creator asks of one. Show `brand_name_flag` beside it when set, and the verified domain where there is one",
+            "examples": [
+              "Thendral Sweets"
+            ],
+            "title": "Brand Name",
             "type": "string"
           },
           "brand_name_flag": {
@@ -6149,6 +6621,76 @@
         "title": "ExportNotIncluded",
         "type": "object"
       },
+      "FeatureRead": {
+        "additionalProperties": false,
+        "description": "One feature: whether it is on, and what its routes answer while it is off.",
+        "properties": {
+          "off_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The problem `code` this feature's routes answer while it is off; null when it has no route of its own to call",
+            "examples": [
+              "connections_unavailable"
+            ],
+            "title": "Off Code"
+          },
+          "on": {
+            "title": "On",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "on",
+          "off_code"
+        ],
+        "title": "FeatureRead",
+        "type": "object"
+      },
+      "FeaturesRead": {
+        "description": "Every feature that can be switched off. Unknown keys may appear: ignore them.",
+        "properties": {
+          "brief_drafting": {
+            "$ref": "#/components/schemas/FeatureRead",
+            "description": "A campaign brief drafted from a brand's own words (item 40), behind its validation pack question"
+          },
+          "connected_accounts": {
+            "$ref": "#/components/schemas/FeatureRead",
+            "description": "Connecting Instagram and YouTube (item 29): on once Meta and Google approve the apps and the connect notice exists"
+          },
+          "passkeys": {
+            "$ref": "#/components/schemas/FeatureRead",
+            "description": "Signing in and proving changes with a passkey (item 79): on once the domain exists"
+          },
+          "passport_indexing": {
+            "$ref": "#/components/schemas/FeatureRead",
+            "description": "Published Passports offered to search engines (item 85): on once the publish notice says so"
+          },
+          "results_from_proof": {
+            "$ref": "#/components/schemas/FeatureRead",
+            "description": "Reach and views read from proof screenshots (D-070), behind its validation pack question"
+          },
+          "upi_ids": {
+            "$ref": "#/components/schemas/FeatureRead",
+            "description": "A creator adding a UPI ID, and the pay link brands open from it (D-085): on once its notice exists. Until then brands pay by bank transfer"
+          }
+        },
+        "required": [
+          "passkeys",
+          "connected_accounts",
+          "upi_ids",
+          "passport_indexing",
+          "results_from_proof",
+          "brief_drafting"
+        ],
+        "title": "FeaturesRead",
+        "type": "object"
+      },
       "FeedbackFiguresRead": {
         "description": "What the other sides of someone's finished deals said, once revealed.",
         "properties": {
@@ -7727,6 +8269,14 @@
             "title": "Approval Window Days",
             "type": "integer"
           },
+          "campaign_title": {
+            "description": "The campaign the deal is on, so a row can say which deal it is",
+            "examples": [
+              "Pongal sweets launch"
+            ],
+            "title": "Campaign Title",
+            "type": "string"
+          },
           "cancellation_fee_paise": {
             "title": "Cancellation Fee Paise",
             "type": "integer"
@@ -7782,6 +8332,14 @@
               }
             ],
             "title": "Content Due On"
+          },
+          "counterparty_name": {
+            "description": "The other side, as the reader knows them: a brand reads the creator's handle, a creator reads the brand's name. Someone who deleted their account keeps the placeholder their profile was given",
+            "examples": [
+              "Thendral Sweets"
+            ],
+            "title": "Counterparty Name",
+            "type": "string"
           },
           "created_at": {
             "format": "date-time",
@@ -8001,6 +8559,8 @@
           "agreed_amount_paise",
           "stage",
           "waiting_on",
+          "campaign_title",
+          "counterparty_name",
           "has_open_dispute",
           "work_due_on",
           "text_flags"
@@ -9517,6 +10077,34 @@
           "items"
         ],
         "title": "Page[BlockRead]",
+        "type": "object"
+      },
+      "Page_BrandApplicationRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BrandApplicationRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as ?cursor= to get the next page",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[BrandApplicationRead]",
         "type": "object"
       },
       "Page_CampaignRead_": {
@@ -22408,6 +22996,304 @@
         ]
       }
     },
+    "/api/v1/brief-drafts": {
+      "post": {
+        "description": "A few sentences in; a draft of the campaign's title, description, deliverables, type, niches, cities and budget back, usually within a minute, at the `Location` given. Only what your words support is filled in: nothing is invented. The draft creates nothing; prefill the new-campaign form with it, edit, and create the campaign as usual. Owners, admins and campaign managers. Switched off until `GET /api/v1/features` says `brief_drafting` is on. Limits: 5 a minute, 30 a day.",
+        "operationId": "ask_api_v1_brief_drafts_post",
+        "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BriefDraftCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BriefDraftRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`role_not_allowed`: not a brand account; or `brand_role_not_allowed`: your role does not run campaigns"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_not_found`: the Brand-Id header names a brand you are not in"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brief_drafts_waiting`: three of your brand's drafts are still being written; or `brand_profile_required`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The idea is under 20 or over 1,500 characters; or `brand_choice_needed`. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brief_drafting_unavailable`: drafting is not switched on yet. Or: Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ask for a campaign brief drafted from your own words",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/api/v1/brief-drafts/{brief_draft_id}": {
+      "get": {
+        "description": "`waiting` until the draft is written, then `ready` with its fields, or `failed`. Anyone on the brand's team may read it. Kept a week. Limit: 60 a minute.",
+        "operationId": "read_api_v1_brief_drafts__brief_draft_id__get",
+        "parameters": [
+          {
+            "description": "The draft's id",
+            "in": "path",
+            "name": "brief_draft_id",
+            "required": true,
+            "schema": {
+              "description": "The draft's id",
+              "format": "uuid",
+              "title": "Brief Draft Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BriefDraftRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`role_not_allowed`: not a brand account; or `brand_role_not_allowed`: your role does not run campaigns"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brief_draft_not_found`, or `brand_not_found`"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_profile_required`: you have no brand yet"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read a drafted brief",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
     "/api/v1/campaigns": {
       "get": {
         "description": "Every campaign owned by the signed-in brand, newest first.",
@@ -23317,7 +24203,7 @@
     },
     "/api/v1/campaigns/{campaign_id}/applications": {
       "get": {
-        "description": "Applications to one of the signed-in brand's campaigns, newest first.",
+        "description": "Applications to one of the signed-in brand's campaigns, newest first, each with its `creator`: name, handle, city, niches and how they deliver, so the board needs no call per applicant. Never a phone number or contact detail.",
         "operationId": "list_campaign_applications_api_v1_campaigns__campaign_id__applications_get",
         "parameters": [
           {
@@ -23413,7 +24299,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Page_ApplicationRead_"
+                  "$ref": "#/components/schemas/Page_BrandApplicationRead_"
                 }
               }
             },
@@ -36018,6 +36904,57 @@
         "summary": "Withdraw from an accepted deal (creator)",
         "tags": [
           "deal memos"
+        ]
+      }
+    },
+    "/api/v1/features": {
+      "get": {
+        "description": "Which built features are on now, and for each the problem `code` its routes answer while it is off, so a screen can hide what is off and show it the moment it is switched on, with no app release. The same for everyone; no login. Cached for 5 minutes. Limit: 60 a minute.",
+        "operationId": "features_api_v1_features_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeaturesRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "summary": "What is switched on",
+        "tags": [
+          "public"
         ]
       }
     },

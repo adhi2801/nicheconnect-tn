@@ -61,6 +61,8 @@ ACT_ROUTES: Final[dict[str, frozenset[Route]]] = {
             ("POST", "/api/v1/applications/{application_id}/offers/{offer_id}/decline"),
             ("DELETE", "/api/v1/applications/{application_id}/offers/{offer_id}"),
             ("POST", "/api/v1/creator-lists"),
+            # A brief drafted from the brand's words (item 40, D-156).
+            ("POST", "/api/v1/brief-drafts"),
             ("PATCH", "/api/v1/creator-lists/{list_id}"),
             ("DELETE", "/api/v1/creator-lists/{list_id}"),
             ("PUT", "/api/v1/creator-lists/{list_id}/creators/{creator_id}"),

@@ -9,6 +9,7 @@ from app.core.body_limit import BodyLimitMiddleware
 from app.core.config import settings
 from app.core.error_tracking import init_error_tracking
 from app.core.errors import problem_doc, problem_response, register_error_handlers
+from app.core.features import router as features_router
 from app.core.health import HealthRead, ReadinessRead, run_readiness_checks
 from app.core.idempotent_route import set_identity_resolver
 from app.core.load_shedding import LoadSheddingMiddleware
@@ -34,6 +35,7 @@ from app.modules.auth.passkey_router import router as passkey_login_router
 from app.modules.auth.router import router as auth_router
 from app.modules.campaigns.alert_router import router as campaign_alerts_router
 from app.modules.campaigns.application_router import router as applications_router
+from app.modules.campaigns.brief_router import router as brief_drafts_router
 from app.modules.campaigns.invitation_router import router as invitations_router
 from app.modules.campaigns.offer_router import router as offers_router
 from app.modules.campaigns.report_router import router as campaign_report_router
@@ -157,6 +159,7 @@ if tracer_provider is not None:
     instrument_engine(engine, tracer_provider)
 
 app.include_router(security_txt_router)
+app.include_router(features_router)
 app.include_router(auth_router)
 app.include_router(session_router)
 app.include_router(session_list_router)
@@ -204,6 +207,7 @@ app.include_router(attribution_router)
 app.include_router(media_kit_router)
 app.include_router(rate_guidance_router)
 app.include_router(campaigns_router)
+app.include_router(brief_drafts_router)
 app.include_router(campaign_report_router)
 app.include_router(applications_router)
 app.include_router(invitations_router)
