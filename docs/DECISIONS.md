@@ -1921,6 +1921,34 @@ Newest entries at the bottom.
   2. Removed when a 3.14 release carries the fix, by the upgrade it triggers (D-047).
   3. Checked locally before pushing: Grype 0.119.0 with `.grype.yaml` passes on the API image built from `main`.
 
+## D-150: Handing a brand over: an old enough login, a standing taker, the brand's blocks and takedowns with it, both told, names read live
+- Date: 2026-11-04
+- Approved by: Adhi, in this session: "Approve all five (Recommended)", after seeing the five changes the independent review of item 13 piece 2 led to. **Not reviewed by the other founder** (D-051).
+- Context: D-148 approved handing a brand over with a step-up code. The independent review of piece 2 found that a SIM swapper or a stolen session could use it to make a short takeover of the owner's account the brand's for good (no login age, no wait, effective at once), and four smaller faults the design did not cover.
+- Options considered: A) the five changes below; B) the five, plus a 24-hour wait before a hand-over takes effect, cancellable by the owner (a new pending state, so a migration); C) discuss first.
+- Chosen: A.
+- Reason: each is stricter than D-148 and closes a fault the review found, using rules the product already has: the week-old login of D-109 (or a passkey, D-113), notices nobody can mute, and the brand's records following the brand.
+- Consequences / follow-ups:
+  1. A hand-over needs a login at least 7 days old unless the owner has a passkey (`login_too_recent`, 403).
+  2. A member whose account is suspended or being deleted cannot take the brand (`cannot_take_brand`, 409), read under a lock a deletion request or a suspension waits on.
+  3. The brand's blocks move to the new owner in place, keeping their ids and dates, and its takedowns move too; the admin log keeps who was told before.
+  4. Both owners are told by `team_role_changed`, which nobody can mute.
+  5. A creator is shown a member's first name only on a notice of that person's own act (`auth.brand_acts.NAMED_TO_CREATORS`); the notice keeps the membership's id and the name is read when the notice is, so erasing the member erases it.
+  6. Adhi also chose, in the same answer, to tell creators with an unfinished deal when a brand changes hands, as the next build: its own proposal, with a migration for the new notification type.
+
+## D-151: Creators with an unfinished deal are told when a brand changes hands
+- Date: 2026-11-04
+- Approved by: Adhi, in this session: "Yes, as the next build (Recommended)", then "dont ask me ... do it yourself" for how. **Not reviewed by the other founder** (D-051).
+- Context: since D-148 and D-150 a brand can be handed to a member of its team; its deals, payment record and blocks go with it, but a creator mid-deal had no way to know the account on the other side had a new holder. The independent review of piece 2 named it (finding 13).
+- Options considered: A) a new unmutable notice to each creator with an unfinished deal, one per creator, with the count and the new owner's first name read live; B) not now.
+- Chosen: A.
+- Reason: the creator always knows who holds the business's account on a deal in progress; unfinished as D-122 and D-147 define it, so one rule decides both deletion holds and who is told.
+- Consequences / follow-ups:
+  1. `brand_changed_hands`, urgent (nobody can mute it); a migration widens the allowed notification types; its downgrade refuses while any such notice exists.
+  2. Sent in the hand-over's own transaction, so a refused hand-over tells nobody.
+  3. Fan-outs (this notice, and a brand's team copies) are written in one statement; the ORM had written one per row.
+  4. The design is `docs/decided/PROPOSAL_HAND_OVER_NOTICE.md`.
+
 ## D-152: CI checks the frontend
 - Date: 2026-11-04
 - Approved by: Adhi, in this session: "nothing should fail ... do it yourself ... merge it yourself", asking for world-class work across the backend and the landing page without being asked each step. **Not reviewed by the other founder** (D-051).

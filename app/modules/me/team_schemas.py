@@ -62,6 +62,24 @@ class TeamInviteAccept(BaseModel):
     )
 
 
+class TeamOwnershipHandOver(BaseModel):
+    """Handing the brand to a member: who takes it, and the name you will act by."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    member_id: uuid.UUID = Field(description="The live team member who becomes the owner")
+    your_first_name: str = Field(
+        min_length=1,
+        max_length=FIRST_NAME_MAX_LENGTH,
+        pattern=FIRST_NAME_PATTERN,
+        description=(
+            "You stay on the team as an admin; this is the first name creators "
+            "will see beside the brand's when you act"
+        ),
+        examples=["Adhi"],
+    )
+
+
 class TeamRoleChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

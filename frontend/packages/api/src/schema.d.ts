@@ -1032,6 +1032,26 @@ export interface paths {
         patch: operations["change_role_api_v1_brands_me_team_members__member_id__patch"];
         trace?: never;
     };
+    "/api/v1/brands/me/team/ownership": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Hand the brand to a team member
+         * @description Makes a live member the brand's owner, at once; you stay on the team as an admin, under the first name you give, and they are told in the app. The brand's campaigns, deals, records and blocks all go with it. The owner's alone, and needs **a code** for `change_team` with the value `ownership:<member_id>`, from a login at least a week old unless you have a passkey, so someone who took over your account a moment ago cannot take the brand. The member must own no brand of their own. You are both told, in notices nobody can mute. Answers the team as you now see it. Limits: 5 a minute, 10 a day.
+         */
+        post: operations["hand_over_api_v1_brands_me_team_ownership_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/brands/{brand_id}/feedback": {
         parameters: {
             query?: never;
@@ -2865,13 +2885,13 @@ export interface paths {
         };
         /**
          * My blocks
-         * @description Everyone you blocked, newest first. Never who blocked you.
+         * @description Everyone you blocked, newest first; on a brand's team, everyone the brand blocked. Never who blocked you.
          */
         get: operations["list_blocks_api_v1_me_blocks_get"];
         put?: never;
         /**
          * Block a brand or a creator
-         * @description A creator blocks a brand (`brand_id`, from any of its campaigns); a brand blocks a creator (`creator_id`, from search or matches). From then on, in both directions, no invitation, repeat or application can start, and neither appears in the other's search, suggestions or campaign discovery. Deals already agreed carry on: a block cannot undo a contract. **The other side is never told**, and anything they try reads as not found. Blocking twice is one block.
+         * @description A creator blocks a brand (`brand_id`, from any of its campaigns); a brand blocks a creator (`creator_id`, from search or matches). From then on, in both directions, no invitation, repeat or application can start, and neither appears in the other's search, suggestions or campaign discovery. Deals already agreed carry on: a block cannot undo a contract. **The other side is never told**, and anything they try reads as not found. Blocking twice is one block. Someone on a brand's team blocks for the whole brand (owner, admin and campaign manager; send `Brand-Id` if you are in more than one).
          */
         post: operations["block_api_v1_me_blocks_post"];
         delete?: never;
@@ -2892,7 +2912,7 @@ export interface paths {
         post?: never;
         /**
          * Unblock
-         * @description Removes one of your blocks. The other side is not told.
+         * @description Removes one of your blocks, or, on a brand's team, one of the brand's. The other side is not told.
          */
         delete: operations["unblock_api_v1_me_blocks__block_id__delete"];
         options?: never;
@@ -5829,6 +5849,12 @@ export interface components {
              */
             actor_account_sha256: string | null;
             /**
+             * Actor First Name
+             * @description The first name of the brand's team member who acted, shown beside the brand's name (D-148). Null for the brand's owner, whose brand's name stands for them, for the creator, and for `system`. Not part of the seal: it is the name the team knows them by today
+             * @example Ravi
+             */
+            actor_first_name: string | null;
+            /**
              * Actor Role
              * @description `system` is the deal's own rules acting, such as approval at the deadline
              * @enum {string}
@@ -7521,7 +7547,7 @@ export interface components {
              * Muted Types
              * @description Kept in the app only, never sent. Urgent types are refused.
              */
-            muted_types: ("application_received" | "application_withdrawn" | "application_shortlisted" | "application_accepted" | "application_rejected" | "memo_sent" | "memo_accepted" | "memo_declined" | "memo_change_requested" | "memo_cancelled" | "proof_submitted" | "proof_approved" | "proof_auto_approved" | "proof_revision_requested" | "payment_marked_paid" | "payment_confirmed" | "invitation_received" | "invitation_accepted" | "invitation_declined" | "invitation_withdrawn" | "report_resolved" | "report_received" | "report_due_soon" | "report_overdue" | "content_withheld" | "content_restored" | "admin_signed_in" | "admin_second_factor_refused" | "admin_second_factor_changed" | "upi_change_pending" | "upi_change_cancelled" | "data_exported" | "logged_out_everywhere" | "phone_change_requested" | "phone_change_cancelled" | "phone_changed" | "phone_change_failed" | "data_export_ready" | "data_export_failed" | "passkey_added" | "passkey_removed" | "passkey_reset_requested" | "passkey_reset_cancelled" | "passkey_only_changed" | "session_ended" | "deletion_requested" | "deletion_cancelled" | "deletion_held_by_deals" | "offer_received" | "offer_accepted" | "offer_declined" | "offer_withdrawn" | "note_added" | "campaign_alert" | "product_shipped" | "product_received" | "connection_expired" | "feedback_received" | "agent_token_created" | "draft_submitted" | "draft_approved" | "draft_auto_approved" | "draft_changes_requested" | "team_invite_received" | "team_joined" | "team_role_changed" | "team_removed")[];
+            muted_types: ("application_received" | "application_withdrawn" | "application_shortlisted" | "application_accepted" | "application_rejected" | "memo_sent" | "memo_accepted" | "memo_declined" | "memo_change_requested" | "memo_cancelled" | "proof_submitted" | "proof_approved" | "proof_auto_approved" | "proof_revision_requested" | "payment_marked_paid" | "payment_confirmed" | "invitation_received" | "invitation_accepted" | "invitation_declined" | "invitation_withdrawn" | "report_resolved" | "report_received" | "report_due_soon" | "report_overdue" | "content_withheld" | "content_restored" | "admin_signed_in" | "admin_second_factor_refused" | "admin_second_factor_changed" | "upi_change_pending" | "upi_change_cancelled" | "data_exported" | "logged_out_everywhere" | "phone_change_requested" | "phone_change_cancelled" | "phone_changed" | "phone_change_failed" | "data_export_ready" | "data_export_failed" | "passkey_added" | "passkey_removed" | "passkey_reset_requested" | "passkey_reset_cancelled" | "passkey_only_changed" | "session_ended" | "deletion_requested" | "deletion_cancelled" | "deletion_held_by_deals" | "offer_received" | "offer_accepted" | "offer_declined" | "offer_withdrawn" | "note_added" | "campaign_alert" | "product_shipped" | "product_received" | "connection_expired" | "feedback_received" | "agent_token_created" | "draft_submitted" | "draft_approved" | "draft_auto_approved" | "draft_changes_requested" | "team_invite_received" | "team_joined" | "team_role_changed" | "team_removed" | "brand_changed_hands")[];
             /**
              * Quiet From
              * @description A time of day in Tamil Nadu, to the minute (`22:00`). Both ends or neither; a window may cross midnight.
@@ -7545,7 +7571,7 @@ export interface components {
          */
         NotificationPreferencesRead: {
             /** Always Sent */
-            always_sent: ("application_received" | "application_withdrawn" | "application_shortlisted" | "application_accepted" | "application_rejected" | "memo_sent" | "memo_accepted" | "memo_declined" | "memo_change_requested" | "memo_cancelled" | "proof_submitted" | "proof_approved" | "proof_auto_approved" | "proof_revision_requested" | "payment_marked_paid" | "payment_confirmed" | "invitation_received" | "invitation_accepted" | "invitation_declined" | "invitation_withdrawn" | "report_resolved" | "report_received" | "report_due_soon" | "report_overdue" | "content_withheld" | "content_restored" | "admin_signed_in" | "admin_second_factor_refused" | "admin_second_factor_changed" | "upi_change_pending" | "upi_change_cancelled" | "data_exported" | "logged_out_everywhere" | "phone_change_requested" | "phone_change_cancelled" | "phone_changed" | "phone_change_failed" | "data_export_ready" | "data_export_failed" | "passkey_added" | "passkey_removed" | "passkey_reset_requested" | "passkey_reset_cancelled" | "passkey_only_changed" | "session_ended" | "deletion_requested" | "deletion_cancelled" | "deletion_held_by_deals" | "offer_received" | "offer_accepted" | "offer_declined" | "offer_withdrawn" | "note_added" | "campaign_alert" | "product_shipped" | "product_received" | "connection_expired" | "feedback_received" | "agent_token_created" | "draft_submitted" | "draft_approved" | "draft_auto_approved" | "draft_changes_requested" | "team_invite_received" | "team_joined" | "team_role_changed" | "team_removed")[];
+            always_sent: ("application_received" | "application_withdrawn" | "application_shortlisted" | "application_accepted" | "application_rejected" | "memo_sent" | "memo_accepted" | "memo_declined" | "memo_change_requested" | "memo_cancelled" | "proof_submitted" | "proof_approved" | "proof_auto_approved" | "proof_revision_requested" | "payment_marked_paid" | "payment_confirmed" | "invitation_received" | "invitation_accepted" | "invitation_declined" | "invitation_withdrawn" | "report_resolved" | "report_received" | "report_due_soon" | "report_overdue" | "content_withheld" | "content_restored" | "admin_signed_in" | "admin_second_factor_refused" | "admin_second_factor_changed" | "upi_change_pending" | "upi_change_cancelled" | "data_exported" | "logged_out_everywhere" | "phone_change_requested" | "phone_change_cancelled" | "phone_changed" | "phone_change_failed" | "data_export_ready" | "data_export_failed" | "passkey_added" | "passkey_removed" | "passkey_reset_requested" | "passkey_reset_cancelled" | "passkey_only_changed" | "session_ended" | "deletion_requested" | "deletion_cancelled" | "deletion_held_by_deals" | "offer_received" | "offer_accepted" | "offer_declined" | "offer_withdrawn" | "note_added" | "campaign_alert" | "product_shipped" | "product_received" | "connection_expired" | "feedback_received" | "agent_token_created" | "draft_submitted" | "draft_approved" | "draft_auto_approved" | "draft_changes_requested" | "team_invite_received" | "team_joined" | "team_role_changed" | "team_removed" | "brand_changed_hands")[];
             /**
              * Digest
              * @enum {string}
@@ -7559,7 +7585,7 @@ export interface components {
              */
             is_default: boolean;
             /** Muted Types */
-            muted_types: ("application_received" | "application_withdrawn" | "application_shortlisted" | "application_accepted" | "application_rejected" | "memo_sent" | "memo_accepted" | "memo_declined" | "memo_change_requested" | "memo_cancelled" | "proof_submitted" | "proof_approved" | "proof_auto_approved" | "proof_revision_requested" | "payment_marked_paid" | "payment_confirmed" | "invitation_received" | "invitation_accepted" | "invitation_declined" | "invitation_withdrawn" | "report_resolved" | "report_received" | "report_due_soon" | "report_overdue" | "content_withheld" | "content_restored" | "admin_signed_in" | "admin_second_factor_refused" | "admin_second_factor_changed" | "upi_change_pending" | "upi_change_cancelled" | "data_exported" | "logged_out_everywhere" | "phone_change_requested" | "phone_change_cancelled" | "phone_changed" | "phone_change_failed" | "data_export_ready" | "data_export_failed" | "passkey_added" | "passkey_removed" | "passkey_reset_requested" | "passkey_reset_cancelled" | "passkey_only_changed" | "session_ended" | "deletion_requested" | "deletion_cancelled" | "deletion_held_by_deals" | "offer_received" | "offer_accepted" | "offer_declined" | "offer_withdrawn" | "note_added" | "campaign_alert" | "product_shipped" | "product_received" | "connection_expired" | "feedback_received" | "agent_token_created" | "draft_submitted" | "draft_approved" | "draft_auto_approved" | "draft_changes_requested" | "team_invite_received" | "team_joined" | "team_role_changed" | "team_removed")[];
+            muted_types: ("application_received" | "application_withdrawn" | "application_shortlisted" | "application_accepted" | "application_rejected" | "memo_sent" | "memo_accepted" | "memo_declined" | "memo_change_requested" | "memo_cancelled" | "proof_submitted" | "proof_approved" | "proof_auto_approved" | "proof_revision_requested" | "payment_marked_paid" | "payment_confirmed" | "invitation_received" | "invitation_accepted" | "invitation_declined" | "invitation_withdrawn" | "report_resolved" | "report_received" | "report_due_soon" | "report_overdue" | "content_withheld" | "content_restored" | "admin_signed_in" | "admin_second_factor_refused" | "admin_second_factor_changed" | "upi_change_pending" | "upi_change_cancelled" | "data_exported" | "logged_out_everywhere" | "phone_change_requested" | "phone_change_cancelled" | "phone_changed" | "phone_change_failed" | "data_export_ready" | "data_export_failed" | "passkey_added" | "passkey_removed" | "passkey_reset_requested" | "passkey_reset_cancelled" | "passkey_only_changed" | "session_ended" | "deletion_requested" | "deletion_cancelled" | "deletion_held_by_deals" | "offer_received" | "offer_accepted" | "offer_declined" | "offer_withdrawn" | "note_added" | "campaign_alert" | "product_shipped" | "product_received" | "connection_expired" | "feedback_received" | "agent_token_created" | "draft_submitted" | "draft_approved" | "draft_auto_approved" | "draft_changes_requested" | "team_invite_received" | "team_joined" | "team_role_changed" | "team_removed" | "brand_changed_hands")[];
             /**
              * Quiet From
              * @description HH:MM, Tamil Nadu time
@@ -7588,7 +7614,10 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
-            /** Details */
+            /**
+             * Details
+             * @description Values to render the wording with, by type: a campaign title, the other side's handle. On a brand team (D-148): `acting_first_name`, the first name of the brand's team member who did it, on a creator's notice of a person's act; `for_brand_id` and `for_brand_name` on a team member's copy of a brand's notice; `role` on `team_role_changed` is the new role, `owner` when the brand was handed to you. On `brand_changed_hands`: `brand_id`, `brand_name`, `unfinished_deals` (how many of yours with it are still open) and `new_owner_first_name`. Unknown keys may appear: ignore them
+             */
             details: {
                 [key: string]: unknown;
             };
@@ -7601,7 +7630,7 @@ export interface components {
              * Notification Type
              * @enum {string}
              */
-            notification_type: "application_received" | "application_withdrawn" | "application_shortlisted" | "application_accepted" | "application_rejected" | "memo_sent" | "memo_accepted" | "memo_declined" | "memo_change_requested" | "memo_cancelled" | "proof_submitted" | "proof_approved" | "proof_auto_approved" | "proof_revision_requested" | "payment_marked_paid" | "payment_confirmed" | "invitation_received" | "invitation_accepted" | "invitation_declined" | "invitation_withdrawn" | "report_resolved" | "report_received" | "report_due_soon" | "report_overdue" | "content_withheld" | "content_restored" | "admin_signed_in" | "admin_second_factor_refused" | "admin_second_factor_changed" | "upi_change_pending" | "upi_change_cancelled" | "data_exported" | "logged_out_everywhere" | "phone_change_requested" | "phone_change_cancelled" | "phone_changed" | "phone_change_failed" | "data_export_ready" | "data_export_failed" | "passkey_added" | "passkey_removed" | "passkey_reset_requested" | "passkey_reset_cancelled" | "passkey_only_changed" | "session_ended" | "deletion_requested" | "deletion_cancelled" | "deletion_held_by_deals" | "offer_received" | "offer_accepted" | "offer_declined" | "offer_withdrawn" | "note_added" | "campaign_alert" | "product_shipped" | "product_received" | "connection_expired" | "feedback_received" | "agent_token_created" | "draft_submitted" | "draft_approved" | "draft_auto_approved" | "draft_changes_requested" | "team_invite_received" | "team_joined" | "team_role_changed" | "team_removed";
+            notification_type: "application_received" | "application_withdrawn" | "application_shortlisted" | "application_accepted" | "application_rejected" | "memo_sent" | "memo_accepted" | "memo_declined" | "memo_change_requested" | "memo_cancelled" | "proof_submitted" | "proof_approved" | "proof_auto_approved" | "proof_revision_requested" | "payment_marked_paid" | "payment_confirmed" | "invitation_received" | "invitation_accepted" | "invitation_declined" | "invitation_withdrawn" | "report_resolved" | "report_received" | "report_due_soon" | "report_overdue" | "content_withheld" | "content_restored" | "admin_signed_in" | "admin_second_factor_refused" | "admin_second_factor_changed" | "upi_change_pending" | "upi_change_cancelled" | "data_exported" | "logged_out_everywhere" | "phone_change_requested" | "phone_change_cancelled" | "phone_changed" | "phone_change_failed" | "data_export_ready" | "data_export_failed" | "passkey_added" | "passkey_removed" | "passkey_reset_requested" | "passkey_reset_cancelled" | "passkey_only_changed" | "session_ended" | "deletion_requested" | "deletion_cancelled" | "deletion_held_by_deals" | "offer_received" | "offer_accepted" | "offer_declined" | "offer_withdrawn" | "note_added" | "campaign_alert" | "product_shipped" | "product_received" | "connection_expired" | "feedback_received" | "agent_token_created" | "draft_submitted" | "draft_approved" | "draft_auto_approved" | "draft_changes_requested" | "team_invite_received" | "team_joined" | "team_role_changed" | "team_removed" | "brand_changed_hands";
             /** Read At */
             read_at: string | null;
         };
@@ -9951,7 +9980,7 @@ export interface components {
             action: "change_team";
             /**
              * Change
-             * @description `invite:<phone>:admin`, `role:<member_id>:<role>` or `remove:<member_id>`
+             * @description `invite:<phone>:admin`, `role:<member_id>:<role>`, `remove:<member_id>` or `ownership:<member_id>`
              * @example remove:01a18d27-7fe3-7120-b479-70f1aa7fb324
              */
             change: string;
@@ -10233,6 +10262,24 @@ export interface components {
              * @enum {string}
              */
             role: "admin" | "campaigns" | "finance";
+        };
+        /**
+         * TeamOwnershipHandOver
+         * @description Handing the brand to a member: who takes it, and the name you will act by.
+         */
+        TeamOwnershipHandOver: {
+            /**
+             * Member Id
+             * Format: uuid
+             * @description The live team member who becomes the owner
+             */
+            member_id: string;
+            /**
+             * Your First Name
+             * @description You stay on the team as an admin; this is the first name creators will see beside the brand's when you act
+             * @example Adhi
+             */
+            your_first_name: string;
         };
         /** TeamRead */
         TeamRead: {
@@ -15148,6 +15195,117 @@ export interface operations {
                 };
             };
             /** @description `brand_profile_required`: you have no brand yet. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brand_choice_needed`, or the body is not usable. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    hand_over_api_v1_brands_me_team_ownership_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`. */
+                "Step-Up-Code"?: string | null;
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamOwnershipHandOver"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamRead"];
+                };
+            };
+            /** @description The code is wrong, expired, used, or for another change */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No access token, or it is invalid or expired; or `step_up_required` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brand_role_not_allowed`: only the owner hands the brand over; or `login_too_recent`: your login is under a week old (see Retry-After) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `team_member_not_found`, or `brand_not_found` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `owns_a_brand`: they already own one; `cannot_take_brand`: their account cannot take it over now; or `brand_profile_required`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -25033,7 +25191,10 @@ export interface operations {
                 limit?: number;
                 cursor?: string | null;
             };
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -25058,7 +25219,17 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description A query parameter or the cursor is invalid */
+            /** @description `brand_not_found`: the Brand-Id header names a brand you are not in */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A query parameter or the cursor is invalid; or `brand_choice_needed` */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -25095,6 +25266,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -25135,7 +25308,17 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Nobody with that id you could block */
+            /** @description `brand_role_not_allowed`: your role in the brand does not reach creators */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Nobody with that id you could block, or `brand_not_found`: the Brand-Id header names a brand you are not in */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -25155,7 +25338,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description Give brand_id or creator_id, exactly one. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            /** @description Give brand_id or creator_id, exactly one; or `brand_choice_needed`. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -25190,7 +25373,10 @@ export interface operations {
     unblock_api_v1_me_blocks__block_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path: {
                 /** @description The block's id */
                 block_id: string;
@@ -25216,7 +25402,17 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description No such block, or it is not yours */
+            /** @description `brand_role_not_allowed`: your role in the brand does not reach creators */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such block, or it is not yours; or `brand_not_found` */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -25226,13 +25422,14 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description The request is not valid; `errors` names each field and why */
+            /** @description The block id is not a valid id; or `brand_choice_needed` */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
                 };
             };
             /** @description Too many requests; see the Retry-After header */

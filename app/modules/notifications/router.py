@@ -70,7 +70,12 @@ def list_notifications(
         db, account.id, limit=limit, cursor=cursor, unread_only=unread_only
     )
     return Page[NotificationRead](
-        items=[NotificationRead.model_validate(row) for row in result.rows],
+        items=[
+            NotificationRead.model_validate(row).model_copy(update={"details": shown})
+            for row, shown in zip(
+                result.rows, service.readable_details(db, result.rows), strict=True
+            )
+        ],
         next_cursor=result.next_cursor,
     )
 
@@ -105,7 +110,9 @@ def mark_read(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> NotificationRead:
-    return NotificationRead.model_validate(service.mark_read(db, notification, now))
+    marked = service.mark_read(db, notification, now)
+    [shown] = service.readable_details(db, [marked])
+    return NotificationRead.model_validate(marked).model_copy(update={"details": shown})
 
 
 @router.post(

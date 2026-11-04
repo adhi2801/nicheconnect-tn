@@ -29,7 +29,10 @@ from app.core.errors import _leaf_routes
 from app.core.rate_limit import limiter
 from app.main import app
 from app.modules.auth.brand_acts import ACT_ROUTES, ACTS, ROLE_ACTS, act_for, may
-from app.modules.auth.brand_dependencies import find_brand_access
+from app.modules.auth.brand_dependencies import (
+    find_brand_access,
+    find_brand_access_of_any,
+)
 from app.modules.auth.dependencies import CurrentBrand
 from app.modules.auth.models.brand_team import BRAND_ROLES, BrandMember
 from app.modules.campaigns.dependencies import get_acting_brand, get_visible_application
@@ -40,7 +43,12 @@ from tests.modules.test_stranger_routes import BODIES, QUERY, fill
 Route = tuple[str, str]
 
 # Dependencies that reach a brand through the one check.
-BRAND_CHECKS = {find_brand_access, get_acting_brand, get_visible_application}
+BRAND_CHECKS = {
+    find_brand_access,
+    find_brand_access_of_any,
+    get_acting_brand,
+    get_visible_application,
+}
 # Route bodies that reach a deal's brand through the one check
 # (`deal_memo.dependencies.party_memo`, and disputes' wrapper of it).
 BRAND_CALLS = ("party_memo(", "_memo_and_payment(")
@@ -48,8 +56,9 @@ BRAND_CALLS = ("party_memo(", "_memo_and_payment(")
 PERSONAL: dict[Route, str] = {
     ("POST", "/api/v1/brands/me"): "making a brand of your own: it is no one else's yet",
 }
-# Brand write routes that stay the owner's alone, each with why. None yet:
-# ownership hand-over and deleting the account arrive in piece 2.
+# Brand write routes that stay the owner's alone, each with why. None: the
+# hand-over is listed under the `ownership` act, which only the owner holds,
+# and deleting the account is the account's own (`me`), never the brand's.
 OWNER_ALONE: dict[Route, str] = {}
 MEMBER_ROLES = tuple(role for role in BRAND_ROLES if role != "owner")
 # Reads whose answer is the reader's own as well as the brand's.
@@ -134,9 +143,9 @@ def test_every_brand_account_route_acts_for_a_brand_or_is_personal():
     assert skipped == PERSONAL.keys()
 
 
-def test_every_act_names_routes_but_ownership():
+def test_every_act_names_routes():
     assert set(ACT_ROUTES) == set(ACTS)
-    assert all(ACT_ROUTES[act] for act in ACTS if act != "ownership")
+    assert all(ACT_ROUTES[act] for act in ACTS)
 
 
 # --- every role against every route -----------------------------------------------------
@@ -162,7 +171,7 @@ def test_every_role_reads_everything_of_its_brand(role):
 
 
 def test_the_roles_are_as_decided():
-    """D-148's table (docs/PROPOSAL_TEAM_SEATS.md 4.4), word for word."""
+    """D-148's table (docs/decided/PROPOSAL_TEAM_SEATS.md 4.4), word for word."""
     decided = {
         "owner": set(ACTS),
         "admin": set(ACTS) - {"ownership"},
