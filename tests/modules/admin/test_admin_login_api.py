@@ -716,8 +716,10 @@ def test_a_malformed_ticket_is_refused(client, ticket):
 
 @pytest.mark.parametrize("url", [LOGIN, SET_UP])
 def test_both_routes_are_rate_limited(client, url):
+    # A number of its own: the per-phone guessing cap lives in the database,
+    # so a fixed number would be refused by codes committed elsewhere first.
     body = {
-        "phone": "+919876543210",
+        "phone": fake_phone(),
         "code": "123456",
         "authenticator_code": "123456",
         "ticket": "example_ticket_not_a_real_one_01",
