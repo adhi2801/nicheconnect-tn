@@ -16,15 +16,14 @@ from sqlalchemy.orm import Session
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns import offer_service as offers
 from app.modules.campaigns.applicant_schemas import ApplicantRead, BrandApplicationRead
-from app.modules.campaigns.models import APPLICATION_STATUSES, Application
+from app.modules.campaigns.models import Application
 from app.modules.deal_memo import delivery_record
 from app.modules.deal_memo.schemas import to_delivery_read
 
 # Those who came forward and are the brand's to decide on, or were decided
 # on: never an invitation still waiting, one declined, or one withdrawn.
+# Each one an allowed status: `test_applicant_summary_api.py` holds them to APPLICATION_STATUSES.
 APPLICANT_STATUSES = ("submitted", "shortlisted", "accepted", "rejected")
-if not set(APPLICANT_STATUSES) <= set(APPLICATION_STATUSES):
-    raise RuntimeError("APPLICANT_STATUSES names a status applications cannot have")
 
 
 def read_for_brand(

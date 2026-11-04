@@ -102,3 +102,29 @@ def test_another_brand_never_lists_the_applicants(client, db, clock):
     )
 
     assert other.status_code == 404
+
+
+def test_the_counted_statuses_are_ones_an_application_can_have():
+    from app.modules.campaigns.applicant_service import APPLICANT_STATUSES
+    from app.modules.campaigns.models import APPLICATION_STATUSES
+
+    assert set(APPLICANT_STATUSES) <= set(APPLICATION_STATUSES)
+
+
+def test_nothing_to_list_costs_nothing(db, clock):
+    from app.modules.campaigns import applicant_service
+
+    assert applicant_service.read_for_brand(db, [], clock.now) == []
+    assert applicant_service.applicant_counts(db, []) == {}
+
+
+def test_a_campaign_nobody_applied_to_lists_no_one(client, db, clock):
+    brand = brand_user(db, clock)
+    campaign_id = open_campaign(client, brand)
+
+    listed = client.get(
+        f"{CAMPAIGNS_URL}/{campaign_id}/applications", headers=brand.headers
+    )
+
+    assert listed.status_code == 200, listed.text
+    assert listed.json()["items"] == []
