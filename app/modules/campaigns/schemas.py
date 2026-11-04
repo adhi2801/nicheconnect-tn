@@ -185,6 +185,15 @@ class CampaignRead(BaseModel):
 
     id: uuid.UUID
     brand_id: uuid.UUID
+    brand_name: str = Field(
+        default="",
+        description=(
+            "The brand's name, as it signs its campaigns: the first thing a "
+            "creator asks of one. Show `brand_name_flag` beside it when set, "
+            "and the verified domain where there is one"
+        ),
+        examples=["Thendral Sweets"],
+    )
     title: str
     description: str
     campaign_type: CampaignType

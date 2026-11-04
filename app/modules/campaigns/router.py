@@ -45,16 +45,19 @@ Cursor = Annotated[str | None, Query(description="From a previous page's next_cu
 
 
 def _reads(db: Session, campaigns: list[Campaign]) -> list[CampaignRead]:
-    """Each campaign with its brand's verified domain and any look-alike name warning.
+    """Each campaign with its brand's name, verified domain and any look-alike
+    name warning.
 
     Two queries for the page, however long: the domains (item 74), then the
-    brands' names beside every verified brand's (item 75).
+    brands' names beside every verified brand's (item 75), which gives the
+    names shown too.
     """
     domains = service.verified_domains_for(db, campaigns)
-    name_flags = service.brand_name_flags_for(db, campaigns)
+    names, name_flags = service.brand_names_and_flags_for(db, campaigns)
     return [
         CampaignRead.model_validate(campaign).model_copy(
             update={
+                "brand_name": names.get(campaign.brand_id, ""),
                 "verified_domain": domains.get(campaign.brand_id),
                 "brand_name_flag": name_flags.get(campaign.brand_id),
             }

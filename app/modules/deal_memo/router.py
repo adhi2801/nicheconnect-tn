@@ -65,12 +65,18 @@ def _read(db: Session, memo: DealMemo) -> MemoRead:
     return to_memo_read(memo, service.agreed_amount(db, memo))
 
 
-def _page(db: Session, result: Slice[DealMemo], now: datetime) -> Page[MemoWithStageRead]:
-    # Every row's stage in a fixed number of queries, never one per row.
+def _page(
+    db: Session, result: Slice[DealMemo], now: datetime, reader: str
+) -> Page[MemoWithStageRead]:
+    # Every row's stage, figure and names in a fixed number of queries, never one per row.
     stages = stages_for(db, result.rows, now)
     agreed = service.agreed_amounts(db, result.rows)
+    names = service.names_for(db, result.rows, reader)
     return Page[MemoWithStageRead](
-        items=[with_stage(row, stages[row.id], agreed[row.id]) for row in result.rows],
+        items=[
+            with_stage(row, stages[row.id], agreed[row.id], names[row.id])
+            for row in result.rows
+        ],
         next_cursor=result.next_cursor,
     )
 
@@ -156,7 +162,7 @@ def list_my_memos(
             status=memo_status,
             campaign_id=campaign_id,
         )
-    return _page(db, result, now)
+    return _page(db, result, now, "brand" if brand is not None else "creator")
 
 
 @router.get(
@@ -179,8 +185,12 @@ def read_memo(
     now: datetime = Depends(get_now),
 ) -> MemoWithStageRead:
     memo = party_memo(db, request, memo_id, account)
+    reader = "brand" if account.role == "brand" else "creator"
     return with_stage(
-        memo, stages_for(db, [memo], now)[memo.id], service.agreed_amount(db, memo)
+        memo,
+        stages_for(db, [memo], now)[memo.id],
+        service.agreed_amount(db, memo),
+        service.names_for(db, [memo], reader)[memo.id],
     )
 
 

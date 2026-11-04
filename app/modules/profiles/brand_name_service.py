@@ -27,7 +27,17 @@ from app.modules.profiles.exceptions import BrandNameNeedsDomain
 def flags_for(
     db: Session, brand_ids: Iterable[uuid.UUID], *, ignore_clearance: bool = False
 ) -> dict[uuid.UUID, NameFlag]:
-    """Each flagged brand among `brand_ids`, with what its name resembles. One query.
+    """Each flagged brand among `brand_ids`, with what its name resembles. One query."""
+    return names_and_flags_for(db, brand_ids, ignore_clearance=ignore_clearance)[1]
+
+
+def names_and_flags_for(
+    db: Session, brand_ids: Iterable[uuid.UUID], *, ignore_clearance: bool = False
+) -> tuple[dict[uuid.UUID, str], dict[uuid.UUID, NameFlag]]:
+    """Each of `brand_ids`' names, and each flagged one's look-alike flag. One query.
+
+    The names come with the flags for nothing: the flag's query reads them
+    anyway, so a campaign page shows who each brand is at no extra cost.
 
     The one query reads the brands asked about and every brand with a
     verified domain, each with that domain, so a page of any length costs the
@@ -36,7 +46,7 @@ def flags_for(
     """
     wanted = set(brand_ids)
     if not wanted:
-        return {}
+        return {}, {}
     rows = (
         db.execute(
             select(Brand.id, Brand.name, Brand.name_cleared, BrandDomain.domain)
@@ -68,7 +78,8 @@ def flags_for(
         flag = brand_names.flag_for(name, own_domain.get(brand_id), protected)
         if flag is not None:
             flags[brand_id] = flag
-    return flags
+    every_name = {brand_id: name for brand_id, name, _, _ in rows if brand_id in wanted}
+    return every_name, flags
 
 
 @dataclass(frozen=True)
