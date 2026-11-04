@@ -163,6 +163,15 @@ class Settings(BaseSettings):
     # The most screenshots read in any 24 hours: a ceiling on the bill if
     # something loops. The job stops at it; no request ever waits on it.
     proof_reading_daily_limit: int = Field(default=300, ge=1, le=10_000)
+    # A campaign brief drafted from a brand's own words (item 40, D-156). Off
+    # until the validation pack confirms a brand's text may go to a processor
+    # outside India (legal.md section 3.1). On, it needs the key, checked at
+    # startup. The ceiling is on drafts made in any 24 hours, a cap on the bill.
+    brief_drafting_enabled: bool = False
+    brief_drafter_model: str = Field(
+        default="claude-opus-5-5", pattern=r"^claude-[a-z0-9]+(-[a-z0-9]+)*$"
+    )
+    brief_drafting_daily_limit: int = Field(default=200, ge=1, le=10_000)
     # Error tracking (D-074). Unset means off, which is right for local and
     # test. A DSN only lets a program send errors in, never read them, which
     # is why Sentry treats it as public; it is still a setting, never code.
@@ -307,6 +316,18 @@ class Settings(BaseSettings):
     @property
     def passkey_origin_list(self) -> tuple[str, ...]:
         return split_origins(self.passkey_origins)
+
+    @model_validator(mode="after")
+    def brief_drafting_is_usable(self) -> Settings:
+        """Drafting switched on without a key fails at startup, not per draft."""
+        if not self.brief_drafting_enabled:
+            return self
+        key = self.anthropic_api_key.get_secret_value() if self.anthropic_api_key else ""
+        if not key or key.startswith(PLACEHOLDER_PREFIX):
+            raise ValueError(
+                "brief_drafting_enabled is on, so ANTHROPIC_API_KEY must be set"
+            )
+        return self
 
     @model_validator(mode="after")
     def proof_reading_is_usable(self) -> Settings:

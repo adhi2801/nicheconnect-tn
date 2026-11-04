@@ -1985,3 +1985,16 @@ Newest entries at the bottom.
   1. `BrandApplicationRead.creator`: handle, name, city, niches and the delivery record, the facts a saved list already shows (D-129), never contact details; on the brand's own campaign only (`OwnedCampaign`).
   2. `CampaignRead.applicant_count` on the brand's own list: applied or said yes, never an invitation waiting, declined or withdrawn; null everywhere else, so no creator reads how many compete.
   3. Fixed costs per page, proven not to grow: the applicant list's cap rises from 6 to 8 queries, the brand's campaign list's from 6 to 7.
+
+## D-156: A campaign brief drafted from a brand's own words, by a job, switched off until the validation pack
+- Date: 2026-11-04
+- Approved by: Adhi, in this session: "big progress in backend", "do it yourself". **Not reviewed by the other founder** (D-051).
+- Context: `BACKEND_COMPLETE.md` item 40. A brand that knows what it wants but not how to write it as a brief is a common reason a campaign is never published. CLAUDE.md section 3 forbids a request waiting on an outside call.
+- Options considered: A) a request that stores the words and a job that drafts them, read back later; B) a request that calls the model and waits; C) not now.
+- Chosen: A.
+- Reason: B breaks section 3 and ties a person's request to an outside service's speed. A follows the proof reader (D-070): a job, a daily ceiling, no network call inside a transaction, a fake in every test.
+- Consequences / follow-ups:
+  1. `campaign_brief_draft` (one migration): the words, the drafted fields or why not, and the tokens it cost; kept a week; three waiting per brand; owners, admins and campaign managers ask, the whole team reads.
+  2. Claude Opus 5.5 at low effort, structured output checked against a campaign's own limits; only what the brand's words support is filled in. Server-side refusal fallbacks are on (`fallbacks: "default"`).
+  3. Off (`BRIEF_DRAFTING_ENABLED`) until the validation pack confirms a brand's words may go to Anthropic outside India and the notice beside the box exists (legal.md section 3.1). `GET /api/v1/features` says so.
+  4. The design: `docs/decided/PROPOSAL_BRIEF_DRAFTS.md`.

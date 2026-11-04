@@ -1132,6 +1132,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/brief-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask for a campaign brief drafted from your own words
+         * @description A few sentences in; a draft of the campaign's title, description, deliverables, type, niches, cities and budget back, usually within a minute, at the `Location` given. Only what your words support is filled in: nothing is invented. The draft creates nothing; prefill the new-campaign form with it, edit, and create the campaign as usual. Owners, admins and campaign managers. Switched off until `GET /api/v1/features` says `brief_drafting` is on. Limits: 5 a minute, 30 a day.
+         */
+        post: operations["ask_api_v1_brief_drafts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/brief-drafts/{brief_draft_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read a drafted brief
+         * @description `waiting` until the draft is written, then `ready` with its fields, or `failed`. Anyone on the brand's team may read it. Kept a week. Limit: 60 a minute.
+         */
+        get: operations["read_api_v1_brief_drafts__brief_draft_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/campaigns": {
         parameters: {
             query?: never;
@@ -5010,6 +5050,77 @@ export interface components {
             work_reviewed: components["schemas"]["ResponseTimeRead"];
         };
         /**
+         * BriefDraftCreate
+         * @description What the brand wants, in its own words.
+         */
+        BriefDraftCreate: {
+            /**
+             * Idea
+             * @description A few sentences: the product, who it is for, what you want made, and any budget or city
+             * @example Our new millet laddu box for Pongal. Two reels from Madurai food creators, Rs 8,000 each.
+             */
+            idea: string;
+        };
+        /**
+         * BriefDraftRead
+         * @description A draft, as the brand's team sees it.
+         */
+        BriefDraftRead: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            draft: components["schemas"]["BriefFieldsRead"] | null;
+            /**
+             * Failure
+             * @description Why it could not be drafted, when `failed`: ask again in other words
+             * @example refusal
+             */
+            failure: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Idea */
+            idea: string;
+            /**
+             * Status
+             * @description `waiting` while it is written (usually within a minute), `ready` with `draft`, or `failed`
+             * @enum {string}
+             */
+            status: "waiting" | "ready" | "failed";
+        };
+        /**
+         * BriefFieldsRead
+         * @description The drafted fields, ready to prefill the new-campaign form. Only what the brand's words supported.
+         */
+        BriefFieldsRead: {
+            /** Budget Max Paise */
+            budget_max_paise: number | null;
+            /** Budget Min Paise */
+            budget_min_paise: number | null;
+            /**
+             * Campaign Type
+             * @description Null when the words did not say
+             */
+            campaign_type: ("paid" | "barter" | "commission" | "local_business") | null;
+            /**
+             * Cities
+             * @description Only cities the brand named; empty when it named none
+             */
+            cities: string[];
+            /** Deliverables */
+            deliverables: string;
+            /** Description */
+            description: string;
+            /** Niches */
+            niches: ("food" | "fashion" | "beauty" | "tech" | "travel" | "fitness" | "education" | "entertainment" | "finance" | "lifestyle")[];
+            /** Title */
+            title: string;
+        };
+        /**
          * BulkMarkPaidRead
          * @description Every row's result, in the order the rows were sent.
          */
@@ -6734,6 +6845,8 @@ export interface components {
          * @description Every feature that can be switched off. Unknown keys may appear: ignore them.
          */
         FeaturesRead: {
+            /** @description A campaign brief drafted from a brand's own words (item 40), behind its validation pack question */
+            brief_drafting: components["schemas"]["FeatureRead"];
             /** @description Connecting Instagram and YouTube (item 29): on once Meta and Google approve the apps and the connect notice exists */
             connected_accounts: components["schemas"]["FeatureRead"];
             /** @description Signing in and proving changes with a passkey (item 79): on once the domain exists */
@@ -15813,6 +15926,210 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ask_api_v1_brief_drafts_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BriefDraftCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BriefDraftRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `role_not_allowed`: not a brand account; or `brand_role_not_allowed`: your role does not run campaigns */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brand_not_found`: the Brand-Id header names a brand you are not in */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brief_drafts_waiting`: three of your brand's drafts are still being written; or `brand_profile_required`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The idea is under 20 or over 1,500 characters; or `brand_choice_needed`. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brief_drafting_unavailable`: drafting is not switched on yet. Or: Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    read_api_v1_brief_drafts__brief_draft_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
+            path: {
+                /** @description The draft's id */
+                brief_draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BriefDraftRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `role_not_allowed`: not a brand account; or `brand_role_not_allowed`: your role does not run campaigns */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brief_draft_not_found`, or `brand_not_found` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brand_profile_required`: you have no brand yet */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Too many requests; see the Retry-After header */

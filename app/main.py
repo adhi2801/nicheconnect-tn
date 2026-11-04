@@ -35,6 +35,7 @@ from app.modules.auth.passkey_router import router as passkey_login_router
 from app.modules.auth.router import router as auth_router
 from app.modules.campaigns.alert_router import router as campaign_alerts_router
 from app.modules.campaigns.application_router import router as applications_router
+from app.modules.campaigns.brief_router import router as brief_drafts_router
 from app.modules.campaigns.invitation_router import router as invitations_router
 from app.modules.campaigns.offer_router import router as offers_router
 from app.modules.campaigns.report_router import router as campaign_report_router
@@ -206,6 +207,7 @@ app.include_router(attribution_router)
 app.include_router(media_kit_router)
 app.include_router(rate_guidance_router)
 app.include_router(campaigns_router)
+app.include_router(brief_drafts_router)
 app.include_router(campaign_report_router)
 app.include_router(applications_router)
 app.include_router(invitations_router)

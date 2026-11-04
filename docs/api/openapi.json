@@ -2729,6 +2729,187 @@
         "title": "BrandResponseTimesRead",
         "type": "object"
       },
+      "BriefDraftCreate": {
+        "additionalProperties": false,
+        "description": "What the brand wants, in its own words.",
+        "properties": {
+          "idea": {
+            "description": "A few sentences: the product, who it is for, what you want made, and any budget or city",
+            "examples": [
+              "Our new millet laddu box for Pongal. Two reels from Madurai food creators, Rs 8,000 each."
+            ],
+            "maxLength": 1500,
+            "minLength": 20,
+            "title": "Idea",
+            "type": "string"
+          }
+        },
+        "required": [
+          "idea"
+        ],
+        "title": "BriefDraftCreate",
+        "type": "object"
+      },
+      "BriefDraftRead": {
+        "description": "A draft, as the brand's team sees it.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BriefFieldsRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why it could not be drafted, when `failed`: ask again in other words",
+            "examples": [
+              "refusal"
+            ],
+            "title": "Failure"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "idea": {
+            "title": "Idea",
+            "type": "string"
+          },
+          "status": {
+            "description": "`waiting` while it is written (usually within a minute), `ready` with `draft`, or `failed`",
+            "enum": [
+              "waiting",
+              "ready",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "idea",
+          "draft",
+          "failure",
+          "created_at"
+        ],
+        "title": "BriefDraftRead",
+        "type": "object"
+      },
+      "BriefFieldsRead": {
+        "description": "The drafted fields, ready to prefill the new-campaign form. Only what the brand's words supported.",
+        "properties": {
+          "budget_max_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Max Paise"
+          },
+          "budget_min_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Min Paise"
+          },
+          "campaign_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "paid",
+                  "barter",
+                  "commission",
+                  "local_business"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when the words did not say",
+            "title": "Campaign Type"
+          },
+          "cities": {
+            "description": "Only cities the brand named; empty when it named none",
+            "items": {
+              "type": "string"
+            },
+            "title": "Cities",
+            "type": "array"
+          },
+          "deliverables": {
+            "title": "Deliverables",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "niches": {
+            "items": {
+              "enum": [
+                "food",
+                "fashion",
+                "beauty",
+                "tech",
+                "travel",
+                "fitness",
+                "education",
+                "entertainment",
+                "finance",
+                "lifestyle"
+              ],
+              "type": "string"
+            },
+            "title": "Niches",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "description",
+          "deliverables",
+          "campaign_type",
+          "niches",
+          "cities",
+          "budget_min_paise",
+          "budget_max_paise"
+        ],
+        "title": "BriefFieldsRead",
+        "type": "object"
+      },
       "BulkMarkPaidRead": {
         "description": "Every row's result, in the order the rows were sent.",
         "properties": {
@@ -6474,6 +6655,10 @@
       "FeaturesRead": {
         "description": "Every feature that can be switched off. Unknown keys may appear: ignore them.",
         "properties": {
+          "brief_drafting": {
+            "$ref": "#/components/schemas/FeatureRead",
+            "description": "A campaign brief drafted from a brand's own words (item 40), behind its validation pack question"
+          },
           "connected_accounts": {
             "$ref": "#/components/schemas/FeatureRead",
             "description": "Connecting Instagram and YouTube (item 29): on once Meta and Google approve the apps and the connect notice exists"
@@ -6500,7 +6685,8 @@
           "connected_accounts",
           "upi_ids",
           "passport_indexing",
-          "results_from_proof"
+          "results_from_proof",
+          "brief_drafting"
         ],
         "title": "FeaturesRead",
         "type": "object"
@@ -22807,6 +22993,304 @@
         "summary": "How long this brand takes to decide on work",
         "tags": [
           "reliability"
+        ]
+      }
+    },
+    "/api/v1/brief-drafts": {
+      "post": {
+        "description": "A few sentences in; a draft of the campaign's title, description, deliverables, type, niches, cities and budget back, usually within a minute, at the `Location` given. Only what your words support is filled in: nothing is invented. The draft creates nothing; prefill the new-campaign form with it, edit, and create the campaign as usual. Owners, admins and campaign managers. Switched off until `GET /api/v1/features` says `brief_drafting` is on. Limits: 5 a minute, 30 a day.",
+        "operationId": "ask_api_v1_brief_drafts_post",
+        "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BriefDraftCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BriefDraftRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`role_not_allowed`: not a brand account; or `brand_role_not_allowed`: your role does not run campaigns"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_not_found`: the Brand-Id header names a brand you are not in"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brief_drafts_waiting`: three of your brand's drafts are still being written; or `brand_profile_required`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The idea is under 20 or over 1,500 characters; or `brand_choice_needed`. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brief_drafting_unavailable`: drafting is not switched on yet. Or: Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ask for a campaign brief drafted from your own words",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/api/v1/brief-drafts/{brief_draft_id}": {
+      "get": {
+        "description": "`waiting` until the draft is written, then `ready` with its fields, or `failed`. Anyone on the brand's team may read it. Kept a week. Limit: 60 a minute.",
+        "operationId": "read_api_v1_brief_drafts__brief_draft_id__get",
+        "parameters": [
+          {
+            "description": "The draft's id",
+            "in": "path",
+            "name": "brief_draft_id",
+            "required": true,
+            "schema": {
+              "description": "The draft's id",
+              "format": "uuid",
+              "title": "Brief Draft Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BriefDraftRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`role_not_allowed`: not a brand account; or `brand_role_not_allowed`: your role does not run campaigns"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brief_draft_not_found`, or `brand_not_found`"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_profile_required`: you have no brand yet"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read a drafted brief",
+        "tags": [
+          "campaigns"
         ]
       }
     },

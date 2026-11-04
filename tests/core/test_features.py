@@ -37,6 +37,7 @@ def test_it_needs_no_login_and_is_cached_for_five_minutes(client):
         "upi_ids",
         "passport_indexing",
         "results_from_proof",
+        "brief_drafting",
     }
 
 

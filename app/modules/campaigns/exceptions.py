@@ -167,3 +167,24 @@ class CampaignAlertExists(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "campaign_alert_exists"
     title = "You already have an alert with these terms"
+
+
+class BriefDraftNotFound(DomainError):
+    # Item 40, D-156: not this brand's, or past its week.
+    status_code = HTTPStatus.NOT_FOUND
+    code = "brief_draft_not_found"
+    title = "No such draft for your brand"
+
+
+class BriefDraftsWaiting(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "brief_drafts_waiting"
+    title = "Three of your brand's drafts are still being written; ask again once one is ready"
+
+
+class BriefDraftingOff(DomainError):
+    # Switched off until the validation pack confirms a brand's words may go
+    # to a processor outside India (legal.md section 3.1).
+    status_code = HTTPStatus.SERVICE_UNAVAILABLE
+    code = "brief_drafting_unavailable"
+    title = "Drafting a brief is not switched on yet"

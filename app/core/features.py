@@ -68,6 +68,12 @@ class FeaturesRead(BaseModel):
     results_from_proof: FeatureRead = Field(
         description="Reach and views read from proof screenshots (D-070), behind its validation pack question"
     )
+    brief_drafting: FeatureRead = Field(
+        description=(
+            "A campaign brief drafted from a brand's own words (item 40), behind its "
+            "validation pack question"
+        )
+    )
 
 
 def current() -> FeaturesRead:
@@ -88,6 +94,10 @@ def current() -> FeaturesRead:
         results_from_proof=FeatureRead(
             on=settings.proof_reading_enabled and settings.anthropic_api_key is not None,
             off_code=None,
+        ),
+        brief_drafting=FeatureRead(
+            on=settings.brief_drafting_enabled and settings.anthropic_api_key is not None,
+            off_code="brief_drafting_unavailable",
         ),
     )
 
