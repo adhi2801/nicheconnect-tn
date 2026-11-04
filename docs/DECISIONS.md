@@ -1908,3 +1908,16 @@ Newest entries at the bottom.
   1. The design and the build plan are `docs/PROPOSAL_TEAM_SEATS.md`: the owner stays `brand.account_id`; others in `brand_member`; invites keep only a keyed hash of the number and send no message; the brand acted for travels in a `Brand-Id` header; one place resolves access and lists every brand write route under an act, denied by default.
   2. Gates: database (two tables), security (access), architecture (the access check). Built in two pieces on `feature/team-seats`.
   3. A Confirm item for the validation pack: that a team member's act binds the business (`legal.md` section 3.10).
+
+## D-149: Accept CVE-2026-103995 for exactly CPython 3.14.10 until a 3.14 release fixes it
+- Date: 2026-10-31
+- Approved by: Adhi, in this session: "Accept for 3.14.10 (Recommended)". **Not reviewed by the other founder** (D-051).
+- Context: CI's image gate (`--only-fixed`) failed on every branch, `main` included, from 31 October 2026: CVE-2026-103995 (published 27 October 2026) in CPython 3.14.10's `http.client`, which accepted signs, whitespace and `0x` in Content-Length and chunk sizes, so a hostile server could split a response. Rated Low (CVSS 4.0: 2.0) by most databases, 7.3 by one. Grype lists the fix only in 3.16.0; no 3.14 or 3.15 release carries it, so there is nothing to upgrade to (D-047's rule takes security fixes at once when they exist).
+- Options considered: A) accept it for exactly 3.14.10 in `.grype.yaml`; B) leave CI red until CPython backports the fix, blocking every merge.
+- Chosen: A.
+- Reason: the flaw needs a hostile HTTP server. Our code reaches `http.client` only through urllib3, for boto3 (S3 proof files) and Sentry, both over TLS with verified certificates to AWS and Sentry; every call we write ourselves (MSG91, Meta, DNS checks, timestamp authorities) uses httpx2, which parses responses itself. That is a reading of the code (`app/`), not a test.
+- Consequences / follow-ups:
+  1. `.grype.yaml` gains one entry for exactly `python` 3.14.10, beside the two accepted under D-145; any change of Python brings all three back into the scan.
+  2. Removed when a 3.14 release carries the fix, by the upgrade it triggers (D-047).
+  3. Checked locally before pushing: Grype 0.119.0 with `.grype.yaml` passes on the API image built from `main`.
+
