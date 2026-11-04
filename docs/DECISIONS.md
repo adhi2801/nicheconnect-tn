@@ -1961,3 +1961,15 @@ Newest entries at the bottom.
   2. A backend change to the contract now regenerates `frontend/packages/api/src/schema.d.ts` in the same change (`pnpm api:types`), or the frontend job fails.
   3. The attention test reads every kind from the contract, so a new kind fails it until the app handles it.
   4. What `frontend.md` section 12 still owes (Lighthouse, accessibility, no-JavaScript rendering, visual regression, pseudo-locale, banned words, dependency audit) is listed there and added to the same job as each lands.
+
+## D-155: The landing page, first version: the temple turned by scroll from Blender frames
+- Date: 2026-11-04
+- Approved by: Adhi, in this session: progress on "the landing page stuff ... the blender thing", "do it yourself". **Not reviewed by the other founder** (D-051), whose track owns frontend design research.
+- Context: the home page was a placeholder. The hero direction Adhi chose on 29 October (the vimana alone on a dark stage, turning as the reader scrolls) had a 48-frame turn rendered before passes 9 to 13; it was rendered again with the current tower. `LANDING_CULTURE_FIT.md` had judged the sections.
+- Options considered: A) pre-rendered Blender frames scrubbed on a canvas; B) the live 3D stack of frontend.md 8b (React Three Fiber, WebGPU), whose byte budget is still an open decision.
+- Chosen: A, for this first version.
+- Reason: the same made-in-Blender tower (D-142) at 334 KB for the whole turn on a phone and about 20 KB for the first frame, the page's largest paint; no 3D runtime, so a public page ships almost no JavaScript; readable with no script, still under reduced motion.
+- Consequences / follow-ups:
+  1. `apps/web/src/app/page.tsx`: the turning hero, how a deal works in five steps marked with Tamil numerals, the record with the bronze seal, the money promise, both sides, the way in. Every word in `messages/en.json`, each claim checked against what the backend does.
+  2. `frontend/scripts/export_landing.py` makes the WebP frames (640, 960, 1280) and the seal (640, 960) from the renders.
+  3. Owed: Lighthouse and a visual check in CI, the seal rim's Tamil read by a Tamil reader, people on the page (LANDING_CULTURE_FIT.md Part B), and live 3D once its byte budget is decided.

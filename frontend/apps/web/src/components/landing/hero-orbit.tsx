@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { ORBIT_FRAMES, frameAt, frameSrc, progressThrough, widthFor } from "@/lib/orbit";
 
 // The temple turns as the reader scrolls (frontend.md 8b). The first frame is a plain image the server sends, so the
 // page paints and reads without any script; only after it has painted, and only for people who have not asked for
 // less motion, the other frames load in the background and a canvas takes over. No animation library: a public page
 // ships almost no JavaScript (frontend.md section 4).
-export function HeroOrbit({ alt, children }: { alt: string; children: React.ReactNode }) {
+export function HeroOrbit({ alt, children }: { alt: string; children: ReactNode }) {
   const stage = useRef<HTMLElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
 
@@ -85,6 +85,7 @@ export function HeroOrbit({ alt, children }: { alt: string; children: React.Reac
     <section ref={stage} className="landing-stage relative h-[260svh]" aria-labelledby="landing-title">
       <div className="sticky top-0 h-svh overflow-hidden">
         {/* The still: the page's largest paint, and all a reader without script or with reduced motion sees. */}
+        {/* eslint-disable-next-line @next/next/no-img-element -- pre-sized WebP from export_landing.py; no optimiser to run */}
         <img
           src={frameSrc(0, 1280)}
           srcSet={`${frameSrc(0, 640)} 640w, ${frameSrc(0, 960)} 960w, ${frameSrc(0, 1280)} 1280w`}
@@ -94,9 +95,9 @@ export function HeroOrbit({ alt, children }: { alt: string; children: React.Reac
           alt={alt}
           fetchPriority="high"
           decoding="async"
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover lg:translate-x-[16%]"
         />
-        <canvas ref={canvas} aria-hidden className="landing-orbit absolute inset-0 h-full w-full" />
+        <canvas ref={canvas} aria-hidden className="landing-orbit absolute inset-0 h-full w-full lg:translate-x-[16%]" />
         <div className="landing-veil absolute inset-0" aria-hidden />
         <div className="relative mx-auto flex h-full max-w-6xl flex-col justify-end px-6 pb-16 sm:pb-24">{children}</div>
       </div>

@@ -84,3 +84,35 @@ body {
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
+
+/* The landing page's stage (frontend.md 8b). Not a theme token on purpose: it must match the pixels of the rendered
+   frames (sampled from frontend/3d/temple's hero renders, near-black with a warm glow), whatever the theme is. */
+.landing-stage {
+  --stage: #050302;
+  --stage-ink: #f4ede3;
+  --stage-muted: #c9bfb1;
+  background: var(--stage);
+  color: var(--stage-ink);
+}
+
+/* The canvas fades in over the still only once its first frame is drawn, so the swap is never seen. */
+.landing-orbit {
+  opacity: 0;
+  transition: opacity var(--m-base) var(--m-ease);
+}
+.landing-orbit[data-ready="true"] {
+  opacity: 1;
+}
+
+/* A shade under the words, never over the tower: legible text on any frame. */
+.landing-veil {
+  background:
+    linear-gradient(to top, rgb(5 3 2 / 0.92) 0%, rgb(5 3 2 / 0.55) 30%, rgb(5 3 2 / 0) 58%),
+    linear-gradient(to right, rgb(5 3 2 / 0.55) 0%, rgb(5 3 2 / 0) 45%);
+}
+
+/* Tamil numerals mark the steps (LANDING_CULTURE_FIT.md Part D): the script's own digits, set by a system Tamil face. */
+.tamil-numeral {
+  font-family: "Noto Sans Tamil", "Nirmala UI", "Tamil Sangam MN", "Latha", sans-serif;
+  font-feature-settings: normal;
+}
