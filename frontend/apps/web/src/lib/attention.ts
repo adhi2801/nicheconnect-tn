@@ -33,7 +33,8 @@ export const toneOf = (kind: Kind): Row["tone"] => (SECURITY.includes(kind) ? "s
 function dueFor(item: AttentionItem): Row["due"] {
   const { days_left: days, due_on: dueOn, kind } = item;
   if (days === null || days === undefined || !dueOn) return null;
-  const group = kind === "review_proof" ? "approves" : TAKES_EFFECT.includes(kind) ? "effective" : "due";
+  // Work and drafts under review approve themselves at their deadline (D-025, D-140).
+  const group = kind === "review_proof" || kind === "review_draft" ? "approves" : TAKES_EFFECT.includes(kind) ? "effective" : "due";
   if (days < 0) return { key: (-days === 1 ? "attention.due.late.one" : "attention.due.late.other") as MessageKey, vars: { days: -days }, tone: "late" };
   if (days === 0) return { key: `attention.${group}.today` as MessageKey, vars: {}, tone: "soon" };
   if (days === 1) return { key: `attention.${group}.tomorrow` as MessageKey, vars: {}, tone: "soon" };
@@ -48,6 +49,7 @@ export function hrefFor(item: AttentionItem): string {
     case "respond_to_dispute": return memo ? `/app/deals/${memo}/dispute` : "/app/deals";
     case "answer_memo": case "deliver_work": case "resubmit_work": case "confirm_payment": case "payment_overdue":
     case "revise_memo": case "review_proof": case "pay_creator":
+    case "review_draft": case "show_draft": case "revise_draft":
       return memo ? `/app/deals/${memo}` : "/app/deals";
     case "review_applications": return item.campaign_id ? `/app/campaigns/${item.campaign_id}` : "/app/campaigns";
     case "draft_memo": return item.application_id ? `/app/applications/${item.application_id}/memo` : "/app/deals";
@@ -75,7 +77,7 @@ export function toRow(item: AttentionItem, role: Role): Row {
   const context = [counterparty, item.campaign_title].filter(Boolean).join(" · ") || null;
   const hasFixedContext = kind === "new_sign_in" || TAKES_EFFECT.includes(kind);
   return {
-    id: [kind, item.memo_id, item.application_id, item.campaign_id, item.proof_id, item.session_id].filter(Boolean).join(":"),
+    id: [kind, item.memo_id, item.application_id, item.campaign_id, item.proof_id, item.draft_id, item.session_id].filter(Boolean).join(":"),
     kind,
     tone: toneOf(kind),
     titleKey,

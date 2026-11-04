@@ -1,9 +1,18 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import en from "../messages/en.json" with { type: "json" };
 import { deviceWords, toRow, type AttentionItem, type Kind } from "./attention.ts";
 
-const ALL_KINDS: Kind[] = ["respond_to_dispute", "pay_creator", "review_proof", "revise_memo", "draft_memo", "review_applications", "fix_domain_record", "domain_lapsed", "domain_claim_expired", "confirm_payment", "payment_overdue", "resubmit_work", "deliver_work", "answer_memo", "answer_invitation", "upi_change_pending", "phone_change_pending", "deletion_pending", "new_sign_in"];
+// Every kind the API can send, read from the committed contract rather than listed by hand, so a kind the
+// backend adds fails here until this app gives it words, a button and a place to go.
+const contract = JSON.parse(readFileSync(new URL("../../../../../docs/api/openapi.json", import.meta.url), "utf8"));
+const ALL_KINDS: Kind[] = contract.components.schemas.AttentionItemRead.properties.kind.enum;
+
+test("the contract's kinds are read, not an empty list", () => {
+  assert.ok(ALL_KINDS.length >= 20, `${ALL_KINDS.length} kinds`);
+  assert.ok(ALL_KINDS.includes("review_draft"));
+});
 
 const base = (kind: Kind, extra: Partial<AttentionItem> = {}): AttentionItem => ({
   kind, memo_id: "11111111-1111-1111-1111-111111111111", application_id: "22222222-2222-2222-2222-222222222222", campaign_id: "33333333-3333-3333-3333-333333333333",

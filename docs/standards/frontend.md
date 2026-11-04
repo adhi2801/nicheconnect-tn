@@ -214,6 +214,8 @@ Coverage floor: **90% of the shared core**, measured, never estimated; a high nu
 
 **A pull request merges only when all of these pass**: format, lint and type check; unit, component, contract and end-to-end tests; bundle and download-size budgets; the 3D asset budget (section 8b); Lighthouse budgets; the render-without-JavaScript check (section 8d); visual regression at phone and desktop widths, light and dark; automated accessibility, with motion on and off; the pseudo-locale check; the banned-words check; the dependency audit.
 
+**Running in CI today** (the `frontend` job of `.github/workflows/ci.yml`, since 4 November 2026, D-152): the lockfile installs exactly; the design tokens are rebuilt and must match what is committed, and every one of their 112 text and background pairs must meet its contrast floor; the API types are regenerated from `docs/api/openapi.json` and must match; lint; the unit tests; and the production build, which type-checks every page. **Still owed, in this order:** a format check, component and end-to-end tests in CI, the render-without-JavaScript check, automated accessibility, Lighthouse and bundle budgets, the 3D asset budget, visual regression, the pseudo-locale check, the banned-words check over the message catalogue, the dependency audit and licence check. Each is added to the same job when it lands, and this list shrinks with it.
+
 **Releases:**
 
 - **Staged rollouts** for the apps (1%, then 10%, 50%, 100%), each step held until crash-free sessions and ANR rate meet section 4.
@@ -255,7 +257,7 @@ Each is in `docs/api/openapi.json`; the screens should use them rather than work
 
 | Gap | Acting on it |
 |---|---|
-| The first code in `frontend/` (pull request #78) was written before this bar was raised and meets few of its gates: no measured budgets, no visual regression, a placeholder home page | Rebuilt screen by screen to this file; the CI gates in section 12 come first, before features pile up |
+| The first code in `frontend/` (pull request #78) was written before this bar was raised and meets few of its gates: no measured budgets, no visual regression, a placeholder home page | Rebuilt screen by screen to this file; the CI gates in section 12 come first, before features pile up. The first six run since 4 November 2026 (section 12); turning them on found the API types 5,400 lines behind the contract and three attention kinds (a draft to show, to change, to review) with no words or link, all fixed the same day |
 | The 3D byte budget and the splat viewer are not chosen yet | A benchmark on the budget Android reference phone, before the first scene |
 | Four choices are still open: the API client generator, the lint tool, the login provider, the deep-link provider | Decided with a decision entry when frontend work starts (section 2) |
 | The platform plan (D-046: both roles on all three clients) awaits Erode Harish | His confirmation, relayed by Adhi |

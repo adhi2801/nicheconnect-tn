@@ -1948,3 +1948,16 @@ Newest entries at the bottom.
   2. Sent in the hand-over's own transaction, so a refused hand-over tells nobody.
   3. Fan-outs (this notice, and a brand's team copies) are written in one statement; the ORM had written one per row.
   4. The design is `docs/decided/PROPOSAL_HAND_OVER_NOTICE.md`.
+
+## D-152: CI checks the frontend
+- Date: 2026-11-04
+- Approved by: Adhi, in this session: "nothing should fail ... do it yourself ... merge it yourself", asking for world-class work across the backend and the landing page without being asked each step. **Not reviewed by the other founder** (D-051).
+- Context: nothing under `frontend/` ran in CI. Turning the checks on found the API types the screens build against 5,400 lines behind `docs/api/openapi.json`, and three attention kinds (`show_draft`, `revise_draft`, `review_draft`, from D-140) the web app gave no words or link, a gap its test missed because it listed the kinds by hand.
+- Options considered: A) a `frontend` job in `ci.yml`, Node installed from its release by version and checksum, as Gitleaks and OpenTofu are; B) a separate workflow; C) a third-party setup action.
+- Chosen: A.
+- Reason: one workflow, one place to read every gate; no third-party action to trust; its own job, so a frontend failure never hides a backend one.
+- Consequences / follow-ups:
+  1. The job: the lockfile installed exactly, the tokens rebuilt and matched with their 112 contrast pairs, the API types regenerated and matched, lint, unit tests, the production build.
+  2. A backend change to the contract now regenerates `frontend/packages/api/src/schema.d.ts` in the same change (`pnpm api:types`), or the frontend job fails.
+  3. The attention test reads every kind from the contract, so a new kind fails it until the app handles it.
+  4. What `frontend.md` section 12 still owes (Lighthouse, accessibility, no-JavaScript rendering, visual regression, pseudo-locale, banned words, dependency audit) is listed there and added to the same job as each lands.
