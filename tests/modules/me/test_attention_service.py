@@ -66,7 +66,7 @@ def test_the_list_is_cut_at_the_cap_and_the_counts_still_cover_everything(
     monkeypatch.setattr(attention_service.payments, "for_brand", lambda *a: many)
     monkeypatch.setattr(attention_service.disputes, "for_brand", lambda *a: [])
 
-    result = attention_service.for_account(db, account, FIXED_NOW)
+    result = attention_service.for_account(db, account, brand, FIXED_NOW)
 
     assert len(result.items) == MAX_ITEMS
     assert result.total == MAX_ITEMS + 10

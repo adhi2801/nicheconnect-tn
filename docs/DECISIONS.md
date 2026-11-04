@@ -1869,3 +1869,55 @@ Newest entries at the bottom.
   1. `.python-version` is 3.14.10; the Dockerfile's Python and uv images are pinned by digest (`python:3.14.10-slim-trixie@sha256:3cabfd7d…`, `ghcr.io/astral-sh/uv:0.13.6@sha256:af22a52f…`); CI and the mutation workflow install uv 0.13.6.
   2. 3.14.10 also fixes the tarfile flaw `.grype.yaml` accepted for 3.14.8, so that entry is gone. The two still fixed only in 3.15 (poplib, `tempfile.TemporaryDirectory`) are accepted again, for exactly 3.14.10, after checking once more that nothing in `app/`, `scripts/`, `alembic/` or the Dockerfile uses them.
   3. Checked locally before pushing: the image builds, reports Python 3.14.10, and Grype 0.119.0 with `.grype.yaml` passes.
+
+## D-146: Proof approved by the clock reads the proof again under a lock, and only on a deal still agreed
+- Date: 2026-10-29
+- Approved by: Adhi, in this session: "Yes, fix it (Recommended)", to the proposal to fix `proof_service.settle_if_overdue` as D-140 fixed drafts. **Not reviewed by the other founder** (D-051).
+- Context: the second review of item 27 (D-140, consequence 8) noticed that proof's approval by the clock (D-025) wrote on the proof as it had been read, without a lock. A brand asking for a revision at the moment the window closed could leave the proof both sent back and approved, with a payment opened for it (D-027); and a proof left waiting on a deal cancelled before the deadline could still be approved by the clock.
+- Options considered: A) lock the proof and read it and the deal again before writing, approving only a deal still agreed at the deadline; B) leave it.
+- Chosen: A.
+- Reason: a payment must never be opened for work that was sent back, and the clock must never answer for a deal that had already ended.
+- Consequences / follow-ups:
+  1. `settle_if_overdue` first checks, on the memo as read, that the deadline has passed and `draft_rules.agreed_at` holds at it; otherwise it returns at once, with no lock (and no query when the caller passes the memo's submissions). Only then does it lock the memo, then the proof (`_lock_for_answer`), read both whole rows again, and approve if the proof still waits and the deal was still agreed at the deadline. **One lock order for every move on a submission, memo before proof**, the order submitting proof, giving feedback and the draft clock already take. The independent review found that the first version locked the proof first, which could deadlock with feedback (memo first); that is the fix here.
+  2. Approving or asking for a revision on proof of a deal that is no longer agreed is refused (409 `memo_status_conflict`), so no payment opens on a cancelled deal; `delivery_record.is_approved` applies the same rule, so the deal report never shows such proof as approved. The content library reads every waiting deal's submissions in one query, so proof waiting on cancelled deals costs no query each.
+  3. No table, column, endpoint or dependency changed. The only new API answer is that 409 on a cancelled deal.
+  4. Proven by `tests/modules/deal_memo/test_proof_clock_concurrency.py` on real committed connections: a stale copy never approves proof sent back; the clock and a revision, or the clock and an approval, at the deadline leave exactly one answer, the payment open exactly when approved; a move that locks the deal first never deadlocks with the clock; a deal cancelled before the deadline is never approved by the clock, nor one cancelled after the deal was read, and its proof is never answered; a deal cancelled after the deadline was still approved at it; the delivery record agrees; a refused clock takes no lock. `test_content_library_api.py` proves cancelled deals with proof waiting cost no query each.
+
+## D-147: A brand answers proof before it may cancel, and money owed on a cancelled deal holds account deletion
+- Date: 2026-10-30
+- Approved by: Adhi, in this session: "Yes, build both (Recommended)". **Not reviewed by the other founder** (D-051).
+- Context: the independent review of D-146 found that, with the clock refusing deals cancelled before the deadline, a brand could cancel while proof of posted work waited and never owe the payment ("take the goods and vanish", `docs/standards/trust-and-safety.md`). It also found an older gap: a deal cancelled after its proof was approved counted as finished, so a brand could delete its account with money still owed, against the promise that a brand cannot leave while a deal is unpaid (D-122).
+- Options considered: Gap 1: A) block the brand's cancellation while proof waits inside its window; B) let the clock still approve proof on a brand-cancelled deal; C) leave it. Gap 2: A) hold deletion while money is owed on a cancelled deal; B) record the gap for later.
+- Chosen: A for both.
+- Reason: proof is evidence of work already posted; a creator is never left unpaid for it, and a brand cannot leave Colyv owing a creator.
+- Consequences / follow-ups:
+  1. A brand's cancellation of an agreed deal is refused with 409 `proof_awaiting_answer` while any proof waits inside its review window. It answers first: approves, or asks for a fix. Once the window has closed the clock has approved the proof, so the cancellation goes through and the payment stays owed. The creator may still withdraw at any time.
+  2. `DealStage.money_owed`: a cancelled paid deal whose proof was approved before it ended (by the brand or the clock, `delivery_record.is_approved`) and whose payment the creator has not confirmed. `unfinished_deals` counts it, so account deletion is held for both sides until the creator confirms the money arrived. A barter deal owes nothing. The stage shown on screens is unchanged (still cancelled).
+  3. From the same review: the content library reads waiting submissions in memo order, so two reads by one brand lock alike; the settle docstring and D-146 now say "no lock", not "no query", for a refused approval when the submissions are not passed in.
+  4. Proven by `tests/modules/deal_memo/test_cancel_with_proof_api.py` (8 cases); each of five rules broken on purpose and caught: no guard, a guard ignoring the window, deletion ignoring money owed, money owed on barter, money owed after confirmation.
+  5. Still open from the review, not done here: the content library's lazy reloads after a commit when one read approves proof (performance, Low); `feedback_service.give` losing its memo lock when the clock commits (an older race that can return a 500, Low); a deterministic version of the lock-order test; whether the clock should notify the creator on a deal cancelled after its deadline (a product call).
+
+## D-148: Team seats for brands: four roles, campaign managers approve proof, first names shown, agencies switch brands
+- Date: 2026-10-30
+- Approved by: Adhi, in this session, choosing the recommended option to each of four questions after the proposal. **Not reviewed by the other founder** (D-051).
+- Context: `BACKEND_COMPLETE.md` item 13. A brand is one account today (`brand.account_id`, unique), so staff share the owner's login and the record cannot say who acted. It changes the account model, so it comes before the frontend builds around one-person brands.
+- Options considered: roles: A) owner, admin, campaign manager, finance; B) owner, admin, member; C) not now. Who approves proof: A) campaign manager and up; B) owner and admin only. What creators see: A) the acting person's first name; B) the brand's name only. Agencies: A) one person in several brands, choosing which they act for; B) later.
+- Chosen: A for all four.
+- Reason: roles follow the real jobs in a Tamil Nadu business and keep money apart from campaigns (Upwork's finance admin); the person running a campaign judges its work, and a slow owner would only let the clock approve; a named person builds trust; agencies run much of influencer marketing in India, and a brand switch is cheaper now than retrofitted.
+- Consequences / follow-ups:
+  1. The design and the build plan are `docs/PROPOSAL_TEAM_SEATS.md`: the owner stays `brand.account_id`; others in `brand_member`; invites keep only a keyed hash of the number and send no message; the brand acted for travels in a `Brand-Id` header; one place resolves access and lists every brand write route under an act, denied by default.
+  2. Gates: database (two tables), security (access), architecture (the access check). Built in two pieces on `feature/team-seats`.
+  3. A Confirm item for the validation pack: that a team member's act binds the business (`legal.md` section 3.10).
+
+## D-149: Accept CVE-2026-103995 for exactly CPython 3.14.10 until a 3.14 release fixes it
+- Date: 2026-10-31
+- Approved by: Adhi, in this session: "Accept for 3.14.10 (Recommended)". **Not reviewed by the other founder** (D-051).
+- Context: CI's image gate (`--only-fixed`) failed on every branch, `main` included, from 31 October 2026: CVE-2026-103995 (published 27 October 2026) in CPython 3.14.10's `http.client`, which accepted signs, whitespace and `0x` in Content-Length and chunk sizes, so a hostile server could split a response. Rated Low (CVSS 4.0: 2.0) by most databases, 7.3 by one. Grype lists the fix only in 3.16.0; no 3.14 or 3.15 release carries it, so there is nothing to upgrade to (D-047's rule takes security fixes at once when they exist).
+- Options considered: A) accept it for exactly 3.14.10 in `.grype.yaml`; B) leave CI red until CPython backports the fix, blocking every merge.
+- Chosen: A.
+- Reason: the flaw needs a hostile HTTP server. Our code reaches `http.client` only through urllib3, for boto3 (S3 proof files) and Sentry, both over TLS with verified certificates to AWS and Sentry; every call we write ourselves (MSG91, Meta, DNS checks, timestamp authorities) uses httpx2, which parses responses itself. That is a reading of the code (`app/`), not a test.
+- Consequences / follow-ups:
+  1. `.grype.yaml` gains one entry for exactly `python` 3.14.10, beside the two accepted under D-145; any change of Python brings all three back into the scan.
+  2. Removed when a 3.14 release carries the fix, by the upgrade it triggers (D-047).
+  3. Checked locally before pushing: Grype 0.119.0 with `.grype.yaml` passes on the API image built from `main`.
+

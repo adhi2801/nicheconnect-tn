@@ -1,11 +1,10 @@
 """A brand's domain over HTTP (item 74, D-106). Rules in brand_domain_service.
 
-Only the brand itself, under /me with no id, so no one can reach another
-brand's claim. Creators see the verified facts on campaigns and on the
-brand's payment record instead.
+Only the brand itself (its owner and team, D-148), under /me with no id, so
+no one can reach another brand's claim. Creators see the verified facts on
+campaigns and on the brand's payment record instead.
 """
 
-import uuid
 from datetime import datetime
 from typing import Annotated
 
@@ -16,10 +15,9 @@ from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
-from app.modules.auth.dependencies import CurrentBrand, get_now
-from app.modules.auth.models.brand import Brand
+from app.modules.auth.dependencies import get_now
 from app.modules.profiles import brand_domain_service as service
-from app.modules.profiles import profile_service as profiles
+from app.modules.profiles.dependencies import ActingBrandProfile
 from app.modules.profiles.schemas import (
     BrandDomainClaim,
     BrandDomainRead,
@@ -45,10 +43,6 @@ _ERRORS: ResponseDocs = {
 }
 
 
-def _brand(db: Session, account_id: uuid.UUID) -> Brand:
-    return profiles.get_profile(db, Brand, account_id)
-
-
 @router.post(
     "",
     status_code=status.HTTP_201_CREATED,
@@ -72,11 +66,11 @@ def claim_domain(
     request: Request,
     response: Response,
     body: BrandDomainClaim,
-    account: CurrentBrand,
+    brand: ActingBrandProfile,
     db: Annotated[Session, Depends(get_db)],
     now: Annotated[datetime, Depends(get_now)],
 ) -> BrandDomainRead:
-    claimed = service.claim(db, _brand(db, account.id), body.domain, now)
+    claimed = service.claim(db, brand, body.domain, now)
     response.headers["Location"] = PATH
     return to_brand_domain_read(claimed)
 
@@ -94,10 +88,10 @@ def claim_domain(
 @rate_limit(READ_LIMIT)
 def read_domain(
     request: Request,
-    account: CurrentBrand,
+    brand: ActingBrandProfile,
     db: Annotated[Session, Depends(get_db)],
 ) -> BrandDomainRead:
-    return to_brand_domain_read(service.get_mine(db, _brand(db, account.id)))
+    return to_brand_domain_read(service.get_mine(db, brand))
 
 
 @router.post(
@@ -120,11 +114,11 @@ def read_domain(
 @rate_limit(CHECK_LIMIT)
 def check_domain(
     request: Request,
-    account: CurrentBrand,
+    brand: ActingBrandProfile,
     db: Annotated[Session, Depends(get_db)],
     now: Annotated[datetime, Depends(get_now)],
 ) -> BrandDomainRead:
-    return to_brand_domain_read(service.request_check(db, _brand(db, account.id), now))
+    return to_brand_domain_read(service.request_check(db, brand, now))
 
 
 @router.delete(
@@ -137,8 +131,8 @@ def check_domain(
 @rate_limit(CLAIM_LIMIT)
 def withdraw_domain(
     request: Request,
-    account: CurrentBrand,
+    brand: ActingBrandProfile,
     db: Annotated[Session, Depends(get_db)],
 ) -> Response:
-    service.withdraw(db, _brand(db, account.id))
+    service.withdraw(db, brand)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

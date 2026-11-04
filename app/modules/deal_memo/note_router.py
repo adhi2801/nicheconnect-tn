@@ -13,7 +13,7 @@ from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.deal_memo import note_service as service
-from app.modules.deal_memo.dependencies import MemoId, visible_memo_for_account
+from app.modules.deal_memo.dependencies import MemoId, party_memo
 from app.modules.deal_memo.schemas import NoteCreate, NoteRead
 
 READ_LIMIT = "60 per minute"
@@ -58,7 +58,7 @@ def list_notes(
     cursor: Cursor = None,
     db: Session = Depends(get_db),
 ) -> Page[NoteRead]:
-    memo = visible_memo_for_account(db, memo_id, account.id, account.role)
+    memo = party_memo(db, request, memo_id, account)
     result = service.page(db, memo, limit=limit, cursor=cursor)
     return Page[NoteRead](
         items=[NoteRead.model_validate(note) for note in result.rows],
@@ -94,7 +94,7 @@ def write_note(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> NoteRead:
-    memo = visible_memo_for_account(db, memo_id, account.id, account.role)
+    memo = party_memo(db, request, memo_id, account)
     note = service.add(db, memo, account.role, body.body, now)
     response.headers["Location"] = f"/api/v1/deal-memos/{memo.id}/notes"
     return NoteRead.model_validate(note)

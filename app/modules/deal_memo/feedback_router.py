@@ -16,7 +16,7 @@ from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.auth.exceptions import ProfileNotFound, RoleNotAllowed
 from app.modules.deal_memo import delivery_record
 from app.modules.deal_memo import feedback_service as service
-from app.modules.deal_memo.dependencies import MemoId, visible_memo_for_account
+from app.modules.deal_memo.dependencies import MemoId, party_memo
 from app.modules.deal_memo.feedback_service import FeedbackView, Figures, NoteAbout
 from app.modules.deal_memo.schemas import (
     DealFeedbackRead,
@@ -82,7 +82,7 @@ def read_feedback(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> DealFeedbackRead:
-    memo = visible_memo_for_account(db, memo_id, account.id, account.role)
+    memo = party_memo(db, request, memo_id, account)
     return _view(service.view(db, memo, account.role, now))
 
 
@@ -116,7 +116,7 @@ def give_feedback(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> DealFeedbackRead:
-    memo = visible_memo_for_account(db, memo_id, account.id, account.role)
+    memo = party_memo(db, request, memo_id, account)
     scores = {"brief": body.brief, "reliability": body.reliability, "easy": body.easy}
     service.give(db, memo, account.role, scores, body.note, now)
     response.headers["Location"] = f"/api/v1/deal-memos/{memo.id}/feedback"

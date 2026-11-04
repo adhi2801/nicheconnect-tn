@@ -30,7 +30,7 @@ Nothing here commits.
 import secrets
 from datetime import datetime
 
-from sqlalchemy import delete, exists, select
+from sqlalchemy import delete, exists, or_, select
 from sqlalchemy.orm import Session
 
 from app.modules.auth.models.account import Account
@@ -39,6 +39,7 @@ from app.modules.auth.models.agent_token import AgentToken
 from app.modules.auth.models.attribution import AccountAttribution, InviteCode
 from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.brand import Brand
+from app.modules.auth.models.brand_team import BrandInvite, BrandMember
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.models.device_token import DeviceToken
 from app.modules.auth.models.otp_challenge import OtpChallenge
@@ -111,6 +112,16 @@ def erase_for_account(db: Session, account: Account) -> None:
         delete(AccountAttribution).where(AccountAttribution.account_id == account_id)
     )
     db.execute(delete(InviteCode).where(InviteCode.account_id == account_id))
+    # Teams (D-148): the person's own memberships, with the first name
+    # creators saw; and, when an owner leaves, their brand's team and its
+    # open invites, since nobody is left to act for it.
+    owned = select(Brand.id).where(Brand.account_id == account_id)
+    db.execute(
+        delete(BrandMember).where(
+            or_(BrandMember.account_id == account_id, BrandMember.brand_id.in_(owned))
+        )
+    )
+    db.execute(delete(BrandInvite).where(BrandInvite.brand_id.in_(owned)))
 
 
 def lock_profile(db: Session, account: Account) -> Brand | Creator | None:

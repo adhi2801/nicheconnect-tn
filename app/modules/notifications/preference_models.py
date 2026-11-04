@@ -79,6 +79,12 @@ URGENT_TYPES: tuple[str, ...] = (
     # proof's do.
     "draft_submitted",
     "draft_changes_requested",
+    # Who can act for a business, and who can no longer (item 13, D-148):
+    # someone taking over an account could add themselves, so it is told.
+    "team_invite_received",
+    "team_joined",
+    "team_role_changed",
+    "team_removed",
 )
 MUTABLE_TYPES: tuple[str, ...] = tuple(
     kind for kind in NOTIFICATION_TYPES if kind not in URGENT_TYPES

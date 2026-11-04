@@ -37,6 +37,9 @@ ERASED: frozenset[str] = frozenset(
         "totp_factor",
         "account_attribution",
         "invite_code",
+        # Teams (D-148): a person's memberships; an owner's team and invites.
+        "brand_member",
+        "brand_invite",
         # notifications
         "notification",
         "notification_preference",

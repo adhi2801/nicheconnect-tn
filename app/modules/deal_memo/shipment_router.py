@@ -15,7 +15,7 @@ from app.modules.deal_memo.dependencies import (
     BrandMemo,
     CreatorMemo,
     MemoId,
-    visible_memo_for_account,
+    party_memo,
 )
 from app.modules.deal_memo.schemas import ShipmentIn, ShipmentRead
 
@@ -58,7 +58,7 @@ def read_shipment(
     account: CurrentAccount,
     db: Session = Depends(get_db),
 ) -> ShipmentRead:
-    memo = visible_memo_for_account(db, memo_id, account.id, account.role)
+    memo = party_memo(db, request, memo_id, account)
     return ShipmentRead.model_validate(service.of(db, memo))
 
 

@@ -26,7 +26,7 @@ from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.deal_memo.dependencies import (
     BrandMemo,
     CreatorMemo,
-    visible_memo_for_account,
+    party_memo,
 )
 from app.modules.disputes import service as disputes
 from app.modules.payment_status import service
@@ -94,7 +94,7 @@ def read_payment(
     now: Annotated[datetime, Depends(get_now)],
 ) -> PaymentRead:
     """Either party may read it. Nobody else can."""
-    memo = visible_memo_for_account(db, memo_id, account.id, account.role)
+    memo = party_memo(db, request, memo_id, account)
     payment = _payment_or_404(db, memo.id)
     today = india_date(now)
     return to_read(payment, today, has_open_dispute=_disputed(db, payment, today))

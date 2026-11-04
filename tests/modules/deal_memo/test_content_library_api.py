@@ -14,6 +14,7 @@ import pytest
 from app.core.clock import india_date
 from app.modules.deal_memo.content_library_router import READ_LIMIT
 from app.modules.deal_memo.content_rights import rights_state
+from app.modules.deal_memo.models import DealMemo
 from tests.deal_flow import LINK, MEMOS_URL, User, accepted_memo, brand_user, creator_user
 from tests.query_counts import queries_for
 
@@ -173,6 +174,27 @@ def test_a_long_page_costs_the_same_queries_as_a_short_one(client, db, clock):
     assert queries_for(client, URL, long.headers) == queries_for(
         client, URL, short.headers
     )
+
+
+def test_deals_cancelled_with_proof_waiting_cost_no_query_each(client, db, clock):
+    """Proof left waiting on a cancelled deal is never approved (D-146), so it
+    waits for good; reading the library must not pay for each one, every time."""
+    one, many = brand_user(db, clock), brand_user(db, clock)
+    for brand, deals in ((one, 1), (many, 6)):
+        for _ in range(deals):
+            memo_id, _ = submitted(
+                client, brand, creator_user(db, clock), usage_rights_days=30
+            )
+            memo = db.get_one(DealMemo, memo_id)
+            memo.status = "cancelled"
+            memo.cancellation_kind = "cancelled_by_brand"
+            memo.cancelled_at = clock.now
+    db.commit()
+    clock.advance(timedelta(days=8))  # every review window has closed
+    library(client, one)  # the first read after a commit opens the test's savepoint
+
+    assert library(client, many)["items"] == []
+    assert queries_for(client, URL, many.headers) == queries_for(client, URL, one.headers)
 
 
 def test_creators_keep_no_library(client, db, clock):

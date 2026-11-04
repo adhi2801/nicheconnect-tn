@@ -4,7 +4,9 @@ Deleting an account mid-deal would leave the other side without the person
 they were working with, and would let a brand delete itself to avoid paying
 (D-122, choice 1A, as Upwork requires closing contracts first). A deal is
 finished when its stage (`stage.stage_of`) is finished, declined or
-cancelled and no dispute about its payment is open. A draft or a memo
+cancelled, no dispute about its payment is open, and no money is owed on
+it: a deal cancelled after its proof was approved still owes its payment
+until the creator confirms it arrived (D-147). A draft or a memo
 waiting for an answer counts as unfinished: someone is waiting on it, and
 either side can cancel or decline it in one step.
 """
@@ -47,7 +49,9 @@ def unfinished_deals(
         (
             memo.id
             for memo in memos
-            if stages[memo.id].stage not in DONE or stages[memo.id].has_open_dispute
+            if stages[memo.id].stage not in DONE
+            or stages[memo.id].has_open_dispute
+            or stages[memo.id].money_owed
         ),
         key=str,
     )

@@ -13,6 +13,7 @@ settled before a page is read, and the library never depends on whether
 anyone happened to look at the deal.
 """
 
+import uuid
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
@@ -58,8 +59,11 @@ def page(
 ) -> Slice[LibraryItem]:
     """The brand's approved posts, latest approved first, in keyset pages.
 
-    Two queries a page, whatever its size, once nothing is overdue: one for
-    submissions waiting past their window, one for the page.
+    Two queries a page, whatever its size, once nothing waits: one for
+    submissions still waiting, one for the page. Three while any wait, the
+    third reading their deals' submissions at once; proof waiting on a deal
+    cancelled before its window closed waits for good (D-146), and costs no
+    query of its own.
     """
     _settle_overdue(db, brand, now)
     today = india_date(now)
@@ -144,10 +148,21 @@ def _settle_overdue(db: Session, brand: Brand, now: datetime) -> None:
             .join(Application, Application.id == DealMemo.application_id)
             .join(Campaign, Campaign.id == Application.campaign_id)
             .where(Campaign.brand_id == brand.id, DeliverableProof.status == "submitted")
+            # one order, so two reads by the same brand lock their memos alike
+            .order_by(DealMemo.id)
         ).all()
     )
+    if not waiting:
+        return
+    histories: dict[uuid.UUID, list[DeliverableProof]] = {}
+    for earlier in db.scalars(
+        select(DeliverableProof).where(
+            DeliverableProof.deal_memo_id.in_({memo.id for _, memo in waiting})
+        )
+    ):
+        histories.setdefault(earlier.deal_memo_id, []).append(earlier)
     for proof, memo in waiting:
-        proof_service.settle_if_overdue(db, memo, proof, now)
+        proof_service.settle_if_overdue(db, memo, proof, now, history=histories[memo.id])
 
 
 def _approved_at(proof: DeliverableProof) -> datetime:

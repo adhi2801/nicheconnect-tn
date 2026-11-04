@@ -23,7 +23,8 @@ from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
-from app.modules.campaigns.service import get_brand_for_account, get_creator_for_account
+from app.modules.campaigns.dependencies import ActingBrand
+from app.modules.campaigns.service import get_creator_for_account
 from app.modules.disputes import service as disputes
 from app.modules.payment_status import listing
 from app.modules.payment_status.exceptions import NotAPaymentParty
@@ -61,9 +62,9 @@ _ERRORS: ResponseDocs = {
 }
 
 
-def _party(db: Session, account: Account) -> Brand | Creator:
-    if account.role == "brand":
-        return get_brand_for_account(db, account.id)
+def _party(db: Session, account: Account, brand: Brand | None) -> Brand | Creator:
+    if brand is not None:
+        return brand
     if account.role == "creator":
         return get_creator_for_account(db, account.id)
     raise NotAPaymentParty()
@@ -84,6 +85,7 @@ def _party(db: Session, account: Account) -> Brand | Creator:
 def list_my_payments(
     request: Request,
     account: CurrentAccount,
+    brand: ActingBrand,
     db: Annotated[Session, Depends(get_db)],
     now: Annotated[datetime, Depends(get_now)],
     view: ViewFilter = None,
@@ -91,7 +93,7 @@ def list_my_payments(
     cursor: Cursor = None,
 ) -> Page[PaymentListItem]:
     result = listing.list_payments(
-        db, _party(db, account), view=view, limit=limit, cursor=cursor
+        db, _party(db, account, brand), view=view, limit=limit, cursor=cursor
     )
     today = india_date(now)
     disputed = disputes.open_payment_ids(
@@ -121,8 +123,9 @@ def list_my_payments(
 def my_payment_totals(
     request: Request,
     account: CurrentAccount,
+    brand: ActingBrand,
     db: Annotated[Session, Depends(get_db)],
     now: Annotated[datetime, Depends(get_now)],
 ) -> PaymentTotalsRead:
     today = india_date(now)
-    return to_totals_read(listing.totals(db, _party(db, account), today), today)
+    return to_totals_read(listing.totals(db, _party(db, account, brand), today), today)
