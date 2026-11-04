@@ -130,6 +130,9 @@ REASON = "The payment was marked sent on 8 September but nothing has reached my 
 
 # A valid body for every route that takes one, so a refusal is never a 422.
 BODIES: dict[str, dict[str, Any]] = {
+    "BriefDraftCreate": {
+        "idea": "Our new millet laddu box for Pongal, from Madurai food creators."
+    },
     "TeamRoleChange": {"role": "finance"},
     "TeamInviteAccept": {},
     "PackageUpdate": {"price_paise": 900_000},
@@ -440,8 +443,20 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
     create_checkpoint(db, india_date(clock.now) + timedelta(days=1))
     db.flush()
 
+    # A brief draft of brand A's (item 40), made directly: drafting is off in tests.
+    brief_draft_id = str(
+        one(
+            "INSERT INTO campaign_brief_draft (brand_id, requested_by_account_id, idea, status)"
+            " VALUES (:b, :a, :i, 'waiting') RETURNING id",
+            b=brand_id,
+            a=brand.account_id,
+            i="Our new millet laddu box for Pongal, from Madurai food creators.",
+        )
+    )
+
     ids = {
         "memo_id": memo_id,
+        "brief_draft_id": brief_draft_id,
         "application_id": application_id,
         "campaign_id": campaign_id,
         "creator_id": creator_id,

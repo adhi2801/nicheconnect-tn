@@ -56,6 +56,7 @@ ERASED: frozenset[str] = frozenset(
         "connection_attempt",
         # campaigns
         "campaign_alert",
+        "campaign_brief_draft",
         # matching
         "creator_embedding",
         "creator_list",

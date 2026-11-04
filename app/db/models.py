@@ -26,6 +26,7 @@ from app.modules.campaigns.alert_models import (  # noqa: F401
     CampaignAlert,
     CampaignAlertSend,
 )
+from app.modules.campaigns.brief_models import CampaignBriefDraft  # noqa: F401
 from app.modules.campaigns.deliverable_models import CampaignDeliverable  # noqa: F401
 from app.modules.campaigns.models import (
     Application,  # noqa: F401

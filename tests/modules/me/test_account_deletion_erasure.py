@@ -42,6 +42,7 @@ from app.modules.auth.models.step_up_challenge import StepUpChallenge
 from app.modules.auth.models.totp_factor import TotpFactor
 from app.modules.auth.sender import FakeOtpSender, get_otp_sender
 from app.modules.campaigns.alert_models import CampaignAlert
+from app.modules.campaigns.brief_models import CampaignBriefDraft
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.matching.creator_list_models import CreatorList, CreatorListEntry
 from app.modules.matching.models import EMBEDDING_DIMENSIONS, CreatorEmbedding
@@ -337,7 +338,23 @@ def fill(db: Session, who: Person, other: Person, clock: Clock) -> set[str]:
                 updated_at=now,
             )
         )
-        tables |= {"brand_domain", "creator_list", "brand_member", "brand_invite"}
+        # A brief the brand asked to have drafted (item 40, D-156).
+        db.add(
+            CampaignBriefDraft(
+                brand_id=who.profile_id,
+                requested_by_account_id=who.account_id,
+                idea="Our millet laddu box for Pongal, two reels from Madurai.",
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        tables |= {
+            "brand_domain",
+            "creator_list",
+            "brand_member",
+            "brand_invite",
+            "campaign_brief_draft",
+        }
     db.flush()
     return tables
 

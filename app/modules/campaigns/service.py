@@ -164,15 +164,20 @@ def verified_domains_for(
     return {brand_id: to_verified_domain_read(row) for brand_id, row in found.items()}
 
 
-def brand_name_flags_for(
+def brand_names_and_flags_for(
     db: Session, campaigns: list[Campaign]
-) -> dict[uuid.UUID, BrandNameFlagRead]:
-    """Each flagged brand's look-alike name warning (item 75), for these campaigns.
+) -> tuple[dict[uuid.UUID, str], dict[uuid.UUID, BrandNameFlagRead]]:
+    """Each brand's name, and each flagged brand's look-alike warning (item 75),
+    for these campaigns, by brand id.
 
-    One query however many campaigns (`brand_name_service.flags_for`).
+    One query however many campaigns (`brand_name_service.names_and_flags_for`).
     """
-    found = brand_name_service.flags_for(db, {c.brand_id for c in campaigns})
-    return {brand_id: to_brand_name_flag_read(flag) for brand_id, flag in found.items()}
+    names, found = brand_name_service.names_and_flags_for(
+        db, {c.brand_id for c in campaigns}
+    )
+    return names, {
+        brand_id: to_brand_name_flag_read(flag) for brand_id, flag in found.items()
+    }
 
 
 def create_campaign(

@@ -38,6 +38,7 @@ from app.modules.auth.models.brand_team import BrandMember
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.models.totp_factor import TotpFactor
 from app.modules.campaigns import alert_service as campaign_alerts
+from app.modules.campaigns import brief_service as brief_drafts
 from app.modules.campaigns import offer_service as quote_offers
 from app.modules.campaigns import service as campaigns
 from app.modules.deal_memo import draft_service as content_drafts
@@ -478,6 +479,7 @@ def collect_sections(
         *campaigns.export_for_account(db, account.id),
         *quote_offers.export_for_account(db, account.id),
         *campaign_alerts.export_for_account(db, account.id),
+        *brief_drafts.export_for_account(db, account.id),
         *deal_notes.export_for_account(db, account.id),
         *deal_memos.export_for_account(db, account.id),
         *shipments.export_for_account(db, account.id),
@@ -559,6 +561,7 @@ def exported_tables() -> frozenset[str]:
         | campaigns.EXPORTED_TABLES
         | quote_offers.EXPORTED_TABLES
         | campaign_alerts.EXPORTED_TABLES
+        | brief_drafts.EXPORTED_TABLES
         | deal_notes.EXPORTED_TABLES
         | deal_memos.EXPORTED_TABLES
         | shipments.EXPORTED_TABLES

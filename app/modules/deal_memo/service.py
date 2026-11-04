@@ -861,5 +861,30 @@ def agreed_amounts(db: Session, memos: list[DealMemo]) -> dict[uuid.UUID, int | 
     return {memo.id: summaries[memo.application_id].agreed_amount_paise for memo in memos}
 
 
+def names_for(
+    db: Session, memos: list[DealMemo], reader: str
+) -> dict[uuid.UUID, tuple[str, str]]:
+    """Each memo's campaign title and the other side's name, for a `reader`
+    on the brand's side ("brand") or the creator's. One query for all.
+
+    A brand knows a creator by their handle, a creator a brand by its name,
+    as the attention list and the payments list already show them.
+    """
+    if not memos:
+        return {}
+    rows = db.execute(
+        select(DealMemo.id, Campaign.title, Brand.name, Creator.handle)
+        .join(Application, Application.id == DealMemo.application_id)
+        .join(Campaign, Campaign.id == Application.campaign_id)
+        .join(Brand, Brand.id == Campaign.brand_id)
+        .join(Creator, Creator.id == Application.creator_id)
+        .where(DealMemo.id.in_([memo.id for memo in memos]))
+    ).all()
+    return {
+        memo_id: (title, handle if reader == "brand" else brand_name)
+        for memo_id, title, brand_name, handle in rows
+    }
+
+
 def agreed_amount(db: Session, memo: DealMemo) -> int | None:
     return agreed_amounts(db, [memo])[memo.id]
