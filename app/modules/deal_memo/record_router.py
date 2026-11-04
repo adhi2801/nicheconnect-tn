@@ -65,6 +65,7 @@ def read_deal_record(
     memo = party_memo(db, request, memo_id, account)
     entries = record_service.entries_for(db, memo.id)
     check = record_service.verify(memo, entries)
+    names = record_service.actor_first_names(db, memo, entries)
     return DealRecordRead(
         deal_memo_id=memo.id,
         intact=check.intact,
@@ -79,6 +80,9 @@ def read_deal_record(
                 kind=e.kind,
                 actor_role=e.actor_role,
                 actor_account_sha256=record_service.actor_fingerprint(e.actor_account_id),
+                actor_first_name=names.get(e.actor_account_id)
+                if e.actor_role == "brand" and e.actor_account_id
+                else None,
                 occurred_at=record_service.timestamp(e.occurred_at),
                 recorded_at=record_service.timestamp(e.recorded_at),
                 facts=e.facts,

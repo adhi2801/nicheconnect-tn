@@ -407,6 +407,15 @@ class DealRecordEntryRead(BaseModel):
             "own account id to recognise your entries; null for `system`"
         )
     )
+    actor_first_name: str | None = Field(
+        description=(
+            "The first name of the brand's team member who acted, shown beside "
+            "the brand's name (D-148). Null for the brand's owner, whose brand's "
+            "name stands for them, for the creator, and for `system`. Not part "
+            "of the seal: it is the name the team knows them by today"
+        ),
+        examples=["Ravi"],
+    )
     # Strings, in exactly the spelling the seal was computed over (UTC, to
     # the microsecond, ending in Z), so the seals can be checked from this
     # JSON alone. The API's usual spelling drops the microseconds.

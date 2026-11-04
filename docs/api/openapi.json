@@ -4734,6 +4734,21 @@
             "description": "SHA-256 of the acting account's id, part of the seal. Hash your own account id to recognise your entries; null for `system`",
             "title": "Actor Account Sha256"
           },
+          "actor_first_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The first name of the brand's team member who acted, shown beside the brand's name (D-148). Null for the brand's owner, whose brand's name stands for them, for the creator, and for `system`. Not part of the seal: it is the name the team knows them by today",
+            "examples": [
+              "Ravi"
+            ],
+            "title": "Actor First Name"
+          },
           "actor_role": {
             "description": "`system` is the deal's own rules acting, such as approval at the deadline",
             "enum": [
@@ -4789,6 +4804,7 @@
           "kind",
           "actor_role",
           "actor_account_sha256",
+          "actor_first_name",
           "occurred_at",
           "recorded_at",
           "facts",
@@ -8689,6 +8705,7 @@
           },
           "details": {
             "additionalProperties": true,
+            "description": "Values to render the wording with, by type: a campaign title, the other side's handle. On a brand team (D-148): `acting_first_name`, the first name of the brand's team member who did it, on a creator's notice of a person's act; `for_brand_id` and `for_brand_name` on a team member's copy of a brand's notice; `role` on `team_role_changed` is the new role, `owner` when the brand was handed to you. Unknown keys may appear: ignore them",
             "title": "Details",
             "type": "object"
           },
@@ -13860,11 +13877,11 @@
             "type": "string"
           },
           "change": {
-            "description": "`invite:<phone>:admin`, `role:<member_id>:<role>` or `remove:<member_id>`",
+            "description": "`invite:<phone>:admin`, `role:<member_id>:<role>`, `remove:<member_id>` or `ownership:<member_id>`",
             "examples": [
               "remove:01a18d27-7fe3-7120-b479-70f1aa7fb324"
             ],
-            "pattern": "^(invite:\\+91[6-9][0-9]{9}:admin|role:[0-9a-f-]{36}:(admin|campaigns|finance)|remove:[0-9a-f-]{36})$",
+            "pattern": "^(invite:\\+91[6-9][0-9]{9}:admin|role:[0-9a-f-]{36}:(admin|campaigns|finance)|remove:[0-9a-f-]{36}|ownership:[0-9a-f-]{36})$",
             "title": "Change",
             "type": "string"
           }
@@ -14419,6 +14436,35 @@
           "created_at"
         ],
         "title": "TeamMemberRead",
+        "type": "object"
+      },
+      "TeamOwnershipHandOver": {
+        "additionalProperties": false,
+        "description": "Handing the brand to a member: who takes it, and the name you will act by.",
+        "properties": {
+          "member_id": {
+            "description": "The live team member who becomes the owner",
+            "format": "uuid",
+            "title": "Member Id",
+            "type": "string"
+          },
+          "your_first_name": {
+            "description": "You stay on the team as an admin; this is the first name creators will see beside the brand's when you act",
+            "examples": [
+              "Adhi"
+            ],
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^[^\\x00-\\x1f\\x7f]+$",
+            "title": "Your First Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "member_id",
+          "your_first_name"
+        ],
+        "title": "TeamOwnershipHandOver",
         "type": "object"
       },
       "TeamRead": {
@@ -21735,6 +21781,182 @@
           }
         ],
         "summary": "Change a member's role",
+        "tags": [
+          "team"
+        ]
+      }
+    },
+    "/api/v1/brands/me/team/ownership": {
+      "post": {
+        "description": "Makes a live member the brand's owner, at once; you stay on the team as an admin, under the first name you give, and they are told in the app. The brand's campaigns, deals, records and blocks all go with it. The owner's alone, and needs **a code** for `change_team` with the value `ownership:<member_id>`, from a login at least a week old unless you have a passkey, so someone who took over your account a moment ago cannot take the brand. The member must own no brand of their own. You are both told, in notices nobody can mute. Answers the team as you now see it. Limits: 5 a minute, 10 a day.",
+        "operationId": "hand_over_api_v1_brands_me_team_ownership_post",
+        "parameters": [
+          {
+            "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+            "in": "header",
+            "name": "Step-Up-Code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9]{6}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+              "title": "Step-Up-Code"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamOwnershipHandOver"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The code is wrong, expired, used, or for another change"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired; or `step_up_required`"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_role_not_allowed`: only the owner hands the brand over; or `login_too_recent`: your login is under a week old (see Retry-After)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`team_member_not_found`, or `brand_not_found`"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`owns_a_brand`: they already own one; `cannot_take_brand`: their account cannot take it over now; or `brand_profile_required`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_choice_needed`, or the body is not usable. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Hand the brand to a team member",
         "tags": [
           "team"
         ]
@@ -36260,7 +36482,7 @@
     },
     "/api/v1/me/blocks": {
       "get": {
-        "description": "Everyone you blocked, newest first. Never who blocked you.",
+        "description": "Everyone you blocked, newest first; on a brand's team, everyone the brand blocked. Never who blocked you.",
         "operationId": "list_blocks_api_v1_me_blocks_get",
         "parameters": [
           {
@@ -36290,6 +36512,24 @@
               ],
               "title": "Cursor"
             }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
           }
         ],
         "responses": {
@@ -36314,6 +36554,17 @@
             },
             "description": "No access token, or it is invalid or expired"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_not_found`: the Brand-Id header names a brand you are not in"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -36323,7 +36574,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "A query parameter or the cursor is invalid"
+            "description": "A query parameter or the cursor is invalid; or `brand_choice_needed`"
           },
           "429": {
             "content": {
@@ -36366,9 +36617,27 @@
         ]
       },
       "post": {
-        "description": "A creator blocks a brand (`brand_id`, from any of its campaigns); a brand blocks a creator (`creator_id`, from search or matches). From then on, in both directions, no invitation, repeat or application can start, and neither appears in the other's search, suggestions or campaign discovery. Deals already agreed carry on: a block cannot undo a contract. **The other side is never told**, and anything they try reads as not found. Blocking twice is one block.",
+        "description": "A creator blocks a brand (`brand_id`, from any of its campaigns); a brand blocks a creator (`creator_id`, from search or matches). From then on, in both directions, no invitation, repeat or application can start, and neither appears in the other's search, suggestions or campaign discovery. Deals already agreed carry on: a block cannot undo a contract. **The other side is never told**, and anything they try reads as not found. Blocking twice is one block. Someone on a brand's team blocks for the whole brand (owner, admin and campaign manager; send `Brand-Id` if you are in more than one).",
         "operationId": "block_api_v1_me_blocks_post",
         "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
           {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
@@ -36424,6 +36693,17 @@
             },
             "description": "No access token, or it is invalid or expired"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_role_not_allowed`: your role in the brand does not reach creators"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -36433,7 +36713,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "Nobody with that id you could block"
+            "description": "Nobody with that id you could block, or `brand_not_found`: the Brand-Id header names a brand you are not in"
           },
           "409": {
             "content": {
@@ -36455,7 +36735,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "Give brand_id or creator_id, exactly one. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+            "description": "Give brand_id or creator_id, exactly one; or `brand_choice_needed`. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
           },
           "429": {
             "content": {
@@ -36493,7 +36773,7 @@
     },
     "/api/v1/me/blocks/{block_id}": {
       "delete": {
-        "description": "Removes one of your blocks. The other side is not told.",
+        "description": "Removes one of your blocks, or, on a brand's team, one of the brand's. The other side is not told.",
         "operationId": "unblock_api_v1_me_blocks__block_id__delete",
         "parameters": [
           {
@@ -36506,6 +36786,24 @@
               "format": "uuid",
               "title": "Block Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
             }
           }
         ],
@@ -36524,6 +36822,17 @@
             },
             "description": "No access token, or it is invalid or expired"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_role_not_allowed`: your role in the brand does not reach creators"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -36533,17 +36842,18 @@
               },
               "application/problem+json": {}
             },
-            "description": "No such block, or it is not yours"
+            "description": "No such block, or it is not yours; or `brand_not_found`"
           },
           "422": {
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
-              }
+              },
+              "application/problem+json": {}
             },
-            "description": "The request is not valid; `errors` names each field and why"
+            "description": "The block id is not a valid id; or `brand_choice_needed`"
           },
           "429": {
             "content": {

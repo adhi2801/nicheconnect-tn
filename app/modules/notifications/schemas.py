@@ -94,7 +94,17 @@ class NotificationRead(BaseModel):
     notification_type: NotificationType
     campaign_id: uuid.UUID | None
     application_id: uuid.UUID | None
-    details: dict[str, Any]
+    details: dict[str, Any] = Field(
+        description=(
+            "Values to render the wording with, by type: a campaign title, the "
+            "other side's handle. On a brand team (D-148): `acting_first_name`, "
+            "the first name of the brand's team member who did it, on a "
+            "creator's notice of a person's act; `for_brand_id` and "
+            "`for_brand_name` on a team member's copy of a brand's notice; "
+            "`role` on `team_role_changed` is the new role, `owner` when the "
+            "brand was handed to you. Unknown keys may appear: ignore them"
+        )
+    )
     read_at: datetime | None
     created_at: datetime
 

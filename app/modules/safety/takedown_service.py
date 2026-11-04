@@ -10,9 +10,10 @@ Placing and lifting takedowns is the admins' (admin/takedown_service.py).
 """
 
 import uuid
+from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core.export import MAX_ROWS_PER_SECTION, ExportedSection, allow, build_section
@@ -90,3 +91,17 @@ def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSecti
             extra=order_details,
         )
     ]
+
+
+def move_owner(db: Session, old: uuid.UUID, new: uuid.UUID, now: datetime) -> None:
+    """On handing a brand over (D-148): its takedowns, to its new owner. Never commits.
+
+    An account that owned a brand owns only that one, so each of its
+    takedowns is of the brand or its campaigns. The new owner then sees them
+    and is told when one is lifted; the admin log keeps who was told before.
+    """
+    db.execute(
+        update(Takedown)
+        .where(Takedown.owner_account_id == old)
+        .values(owner_account_id=new, updated_at=now)
+    )

@@ -20,7 +20,7 @@ from app.modules.auth.models.brand_team import BRAND_ROLES
 
 Route = tuple[str, str]
 
-# The acts, in the words of docs/PROPOSAL_TEAM_SEATS.md section 4.4.
+# The acts, in the words of docs/decided/PROPOSAL_TEAM_SEATS.md section 4.4.
 ACTS: Final[tuple[str, ...]] = (
     "campaigns",
     "deals",
@@ -65,6 +65,10 @@ ACT_ROUTES: Final[dict[str, frozenset[Route]]] = {
             ("DELETE", "/api/v1/creator-lists/{list_id}"),
             ("PUT", "/api/v1/creator-lists/{list_id}/creators/{creator_id}"),
             ("DELETE", "/api/v1/creator-lists/{list_id}/creators/{creator_id}"),
+            # A block is the brand's (D-148 piece 2): it stops the whole brand
+            # reaching a creator, so it is for those who reach creators.
+            ("POST", "/api/v1/me/blocks"),
+            ("DELETE", "/api/v1/me/blocks/{block_id}"),
         }
     ),
     "deals": frozenset(
@@ -113,7 +117,7 @@ ACT_ROUTES: Final[dict[str, frozenset[Route]]] = {
             ("DELETE", "/api/v1/brands/me/team/members/{member_id}"),
         }
     ),
-    "ownership": frozenset(),
+    "ownership": frozenset({("POST", "/api/v1/brands/me/team/ownership")}),
 }
 
 # Every listed route, and the act it needs.
@@ -122,6 +126,72 @@ _ACT_OF: Final[dict[Route, str]] = {
 }
 if len(_ACT_OF) != sum(len(routes) for routes in ACT_ROUTES.values()):
     raise RuntimeError("A brand route is listed under two acts; each needs exactly one")
+
+
+# Who on a team hears what (D-148 piece 2): a notice to a brand's owner about
+# one of these is copied to every live member whose role holds its act, so
+# each person hears of the work they do and no more. A notice not listed
+# (a session, a passkey, a deletion, the team itself) is the owner's own.
+NOTICE_ACTS: Final[dict[str, str]] = {
+    "application_received": "campaigns",
+    "application_withdrawn": "campaigns",
+    "invitation_accepted": "campaigns",
+    "invitation_declined": "campaigns",
+    "offer_received": "campaigns",
+    "offer_accepted": "campaigns",
+    "offer_declined": "campaigns",
+    "offer_withdrawn": "campaigns",
+    "memo_accepted": "deals",
+    "memo_declined": "deals",
+    "memo_change_requested": "deals",
+    "memo_cancelled": "deals",
+    "note_added": "deals",
+    "product_received": "deals",
+    "feedback_received": "deals",
+    "proof_submitted": "proof",
+    "draft_submitted": "proof",
+    "payment_confirmed": "payments",
+    "content_withheld": "profile",
+    "content_restored": "profile",
+}
+if not set(NOTICE_ACTS.values()) <= set(ACTS):
+    raise RuntimeError("A notice is copied for an act that does not exist (D-148)")
+
+# The notices to a creator that are one person's act for the brand, so the
+# creator is shown that member's first name (D-148). Denied by default: a
+# notice of the deal's own rules (approved by the clock), of matching (an
+# alert) or of anything a job does names nobody, even when it fires inside
+# a member's request.
+NAMED_TO_CREATORS: Final[frozenset[str]] = frozenset(
+    {
+        "application_shortlisted",
+        "application_accepted",
+        "application_rejected",
+        "invitation_received",
+        "invitation_withdrawn",
+        "offer_received",
+        "offer_accepted",
+        "offer_declined",
+        "offer_withdrawn",
+        "memo_sent",
+        "memo_cancelled",
+        "note_added",
+        "product_shipped",
+        "proof_approved",
+        "proof_revision_requested",
+        "draft_approved",
+        "draft_changes_requested",
+        "payment_marked_paid",
+    }
+)
+
+
+def roles_hearing(notification_type: str) -> frozenset[str]:
+    """The member roles a brand's notice of this type is copied to; none if unlisted."""
+    act = NOTICE_ACTS.get(notification_type)
+    if act is None:
+        return frozenset()
+    return frozenset(r for r, acts in ROLE_ACTS.items() if act in acts and r != "owner")
 
 
 def act_for(method: str, path: str) -> str | None:

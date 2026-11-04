@@ -1,6 +1,6 @@
 """Team seats for brands: inviting, joining, roles and leaving (item 13, D-148).
 
-The rules (docs/PROPOSAL_TEAM_SEATS.md):
+The rules (docs/decided/PROPOSAL_TEAM_SEATS.md):
 
 - the owner and admins invite; only the owner invites or makes an admin,
   with a step-up code bound to that exact change;
@@ -14,11 +14,16 @@ The rules (docs/PROPOSAL_TEAM_SEATS.md):
 - removing anyone needs a step-up code; an admin never removes an admin;
 - a member may leave at any time, with no code;
 - the team is read by everyone in it, with first names and roles, never a
-  phone number.
+  phone number;
+- the owner alone hands the brand to a live member who owns no brand, with
+  a code bound to that member, and stays on as an admin (piece 2).
 
-Every change takes the brand's row lock first, the order every team path
-takes, so two changes to one team run one at a time. A refusal raises
-without writing anything; the request's end releases the lock.
+Every change takes the brand's row lock, so two changes to one team run
+one at a time. A change that needs a code spends it first, before that lock:
+the phone's lock, then the brand's, the order an erasure takes them in, so
+two of the owner's changes at once never wait on each other in a circle.
+What was checked before the lock is checked again under it. A refusal
+raises without writing anything; the request's end releases the lock.
 """
 
 import uuid
@@ -26,10 +31,13 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.modules.auth import login_age
 from app.modules.auth import step_up_service as step_ups
 from app.modules.auth.brand_access import BrandAccess
+from app.modules.auth.exceptions import StepUpRequired
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.brand_team import (
@@ -42,6 +50,8 @@ from app.modules.auth.models.brand_team import (
 from app.modules.auth.team_invites import hash_invited_phone
 from app.modules.me.exceptions import (
     AlreadyOnTeam,
+    CannotTakeBrand,
+    OwnsABrand,
     TeamChangeNotAllowed,
     TeamFull,
     TeamInviteExists,
@@ -50,6 +60,8 @@ from app.modules.me.exceptions import (
     TeamMemberNotFound,
 )
 from app.modules.notifications import service as notifications
+from app.modules.safety import block_service as blocks
+from app.modules.safety import takedown_service as takedowns
 
 
 @dataclass(frozen=True)
@@ -336,6 +348,16 @@ def change_role(
     needs a code bound to exactly this change. Raises TeamMemberNotFound,
     TeamChangeNotAllowed, and what step_up_service.consume raises.
     """
+    member = _member(db, access.brand.id, member_id)
+    if member.role == role:
+        return member
+    with_code = "admin" in (role, member.role)
+    if with_code:
+        if access.role != "owner":
+            raise TeamChangeNotAllowed()
+        step_ups.consume(
+            db, actor, "change_team", f"role:{member_id}:{role}", step_up_code, now
+        )
     _lock_brand(db, access.brand.id)
     member = _member(db, access.brand.id, member_id)
     if member.role == role:
@@ -343,10 +365,9 @@ def change_role(
     if "admin" in (role, member.role):
         if access.role != "owner":
             raise TeamChangeNotAllowed()
-        step_ups.consume(
-            db, actor, "change_team", f"role:{member_id}:{role}", step_up_code, now
-        )
-        member = _member(db, access.brand.id, member_id)
+        if not with_code:
+            # They became an admin a moment ago: changing them now needs a code.
+            raise StepUpRequired()
     member.role = role
     member.updated_at = now
     notifications.record(
@@ -374,12 +395,14 @@ def remove(
     admin. Raises TeamMemberNotFound, TeamChangeNotAllowed, and what
     step_up_service.consume raises.
     """
-    _lock_brand(db, access.brand.id)
     member = _member(db, access.brand.id, member_id)
     if member.role == "admin" and access.role != "owner":
         raise TeamChangeNotAllowed()
     step_ups.consume(db, actor, "change_team", f"remove:{member_id}", step_up_code, now)
+    _lock_brand(db, access.brand.id)
     member = _member(db, access.brand.id, member_id)
+    if member.role == "admin" and access.role != "owner":
+        raise TeamChangeNotAllowed()
     member.removed_at = now
     member.updated_at = now
     notifications.record(
@@ -412,3 +435,99 @@ def leave(db: Session, account: Account, brand_id: uuid.UUID, now: datetime) -> 
     member.removed_at = now
     member.updated_at = now
     db.commit()
+
+
+def hand_over(
+    db: Session,
+    access: BrandAccess,
+    owner: Account,
+    member_id: uuid.UUID,
+    your_first_name: str,
+    step_up_code: str | None,
+    authenticated_at: datetime | None,
+    now: datetime,
+) -> BrandAccess:
+    """Make a live member the brand's owner; the owner stays on as an admin. Commits.
+
+    The owner's alone, from a login at least a week old unless they have a
+    passkey (D-109: a SIM swapper's login never is, so a short takeover of
+    the owner's account cannot become the brand's for good), with a code
+    bound to exactly that member. The member must own no brand (an account
+    owns one at most) and their account must stand: a suspended or departing
+    owner would close the brand to everyone. The brand's blocks and takedowns
+    move with it, since each is read through its owner's account. Both sides
+    are told, by a notice nobody can mute. Returns the former owner's access,
+    as an admin. Raises TeamChangeNotAllowed, TeamMemberNotFound,
+    LoginTooRecent, OwnsABrand, CannotTakeBrand, and what
+    step_up_service.consume raises.
+    """
+    if access.role != "owner":
+        raise TeamChangeNotAllowed()
+    # Not found before a code is spent on it.
+    _member(db, access.brand.id, member_id)
+    login_age.ensure_established_unless_passkey(db, owner.id, authenticated_at, now)
+    step_ups.consume(
+        db, owner, "change_team", f"ownership:{member_id}", step_up_code, now
+    )
+    brand = _lock_brand(db, access.brand.id)
+    if brand.account_id != owner.id:
+        raise TeamChangeNotAllowed()
+    member = _member(db, brand.id, member_id)
+    # Under a lock a deletion request or a suspension waits on, and read
+    # afresh: one committed a moment ago is seen, and one asked now waits.
+    taker = db.scalars(
+        select(Account)
+        .where(Account.id == member.account_id)
+        .with_for_update(read=True)
+        .execution_options(populate_existing=True)
+    ).first()
+    if taker is None or (
+        taker.suspended_at is not None
+        or taker.deleted_at is not None
+        or taker.deletion_requested_at is not None
+    ):
+        raise CannotTakeBrand()
+    member.removed_at = now
+    member.updated_at = now
+    db.flush()
+    brand.account_id = taker.id
+    brand.updated_at = now
+    try:
+        db.flush()
+    except IntegrityError as exc:
+        db.rollback()
+        # They own a brand already, or took one a moment ago: the unique index
+        # on brand.account_id is the one check, so a race cannot slip past it.
+        if _constraint(exc) == "uq_brand_account_id":
+            raise OwnsABrand() from exc
+        raise
+    former = BrandMember(
+        brand_id=brand.id,
+        account_id=owner.id,
+        role="admin",
+        first_name=your_first_name,
+        invited_by_account_id=taker.id,
+        created_at=now,
+        updated_at=now,
+    )
+    db.add(former)
+    blocks.move_brand_blocks(db, owner.id, taker.id, now)
+    takedowns.move_owner(db, owner.id, taker.id, now)
+    db.flush()
+    for account_id, role in ((taker.id, "owner"), (owner.id, "admin")):
+        notifications.record(
+            db,
+            account_id=account_id,
+            notification_type="team_role_changed",
+            now=now,
+            details={"brand_name": brand.name, "role": role},
+        )
+    db.commit()
+    return BrandAccess(brand, "admin", former.id)
+
+
+def _constraint(exc: IntegrityError) -> str | None:
+    """The name of the constraint a database refusal names, if it names one."""
+    diag = getattr(exc.orig, "diag", None)
+    name = getattr(diag, "constraint_name", None)
+    return name if isinstance(name, str) else None

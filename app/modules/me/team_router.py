@@ -15,6 +15,7 @@ from app.modules.auth.brand_access import BrandAccess
 from app.modules.auth.dependencies import (
     CurrentAccount,
     CurrentBrand,
+    LoginTime,
     StepUpCode,
     get_now,
 )
@@ -26,6 +27,7 @@ from app.modules.me.team_schemas import (
     TeamInviteCreate,
     TeamInviteRead,
     TeamMemberRead,
+    TeamOwnershipHandOver,
     TeamRead,
     TeamRoleChange,
 )
@@ -36,6 +38,8 @@ READ_LIMIT = "60 per minute"
 # rule 2), and one per brand in the service, whoever on the team sends them.
 INVITE_LIMIT = "10 per minute;20 per day"
 CHANGE_LIMIT = "30 per minute"
+# Handing a brand over is rare and tells the new owner: a daily ceiling too.
+OWNERSHIP_LIMIT = "5 per minute;10 per day"
 
 router = APIRouter(tags=["team"], route_class=IdempotentRoute)
 
@@ -221,6 +225,62 @@ def remove_member(
 ) -> Response:
     service.remove(db, access, account, member_id, step_up_code, now)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/api/v1/brands/me/team/ownership",
+    response_model=TeamRead,
+    summary="Hand the brand to a team member",
+    description=(
+        "Makes a live member the brand's owner, at once; you stay on the team as "
+        "an admin, under the first name you give, and they are told in the app. "
+        "The brand's campaigns, deals, records and blocks all go with it. The "
+        "owner's alone, and needs **a code** for `change_team` with the value "
+        "`ownership:<member_id>`, from a login at least a week old unless you "
+        "have a passkey, so someone who took over your account a moment ago "
+        "cannot take the brand. The member must own no brand of their own. You "
+        "are both told, in notices nobody can mute. Answers the team as you now "
+        "see it. Limits: 5 a minute, 10 a day."
+    ),
+    responses={
+        **_BRAND,
+        403: problem_doc(
+            "`brand_role_not_allowed`: only the owner hands the brand over; or "
+            "`login_too_recent`: your login is under a week old (see Retry-After)"
+        ),
+        400: problem_doc("The code is wrong, expired, used, or for another change"),
+        401: problem_doc(
+            "No access token, or it is invalid or expired; or `step_up_required`"
+        ),
+        404: problem_doc("`team_member_not_found`, or `brand_not_found`"),
+        409: problem_doc(
+            "`owns_a_brand`: they already own one; `cannot_take_brand`: their "
+            "account cannot take it over now; or `brand_profile_required`"
+        ),
+    },
+)
+@rate_limit(OWNERSHIP_LIMIT)
+def hand_over(
+    request: Request,
+    body: TeamOwnershipHandOver,
+    access: CurrentBrandAccess,
+    account: CurrentBrand,
+    logged_in_at: LoginTime,
+    db: Annotated[Session, Depends(get_db)],
+    now: Annotated[datetime, Depends(get_now)],
+    step_up_code: StepUpCode = None,
+) -> TeamRead:
+    after = service.hand_over(
+        db,
+        access,
+        account,
+        body.member_id,
+        body.your_first_name,
+        step_up_code,
+        logged_in_at,
+        now,
+    )
+    return _team(after, db, now)
 
 
 @router.get(
