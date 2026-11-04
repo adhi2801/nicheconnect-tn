@@ -948,6 +948,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/brands/me/team": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My brand's team
+         * @description Who acts for the brand, in which role, and the invites still open: first names and roles, never a phone number. Everyone in the brand may read it. Limit: 60 a minute.
+         */
+        get: operations["read_team_api_v1_brands_me_team_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/brands/me/team/invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Invite someone to the team
+         * @description Invites a phone number to act for the brand in a role, for 7 days. We send no message to the number: tell the person, and the invite appears when that number signs in as a brand. We keep only a keyed hash of the number. An `admin` invite is the owner's alone and needs **a code**: ask at `POST /api/v1/me/step-up` with `change_team` and the value `invite:<phone>:admin`, then send it in `Step-Up-Code`. Owners and admins only. Limits: 10 a minute and 20 a day for each person, and 20 a day for the brand however many of its team send them.
+         */
+        post: operations["invite_api_v1_brands_me_team_invites_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/brands/me/team/invites/{invite_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Take back an invite
+         * @description Ends an open invite at once. Owners and admins only. Limit: 30 a minute.
+         */
+        delete: operations["revoke_invite_api_v1_brands_me_team_invites__invite_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/brands/me/team/members/{member_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove someone from the team
+         * @description They can no longer act for the brand, from their next request; they are told in the app. Needs **a code** for `change_team` with the value `remove:<member_id>`. An admin never removes an admin. Owners and admins only. Limit: 30 a minute.
+         */
+        delete: operations["remove_member_api_v1_brands_me_team_members__member_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Change a member's role
+         * @description Gives a member another role; they are told in the app. Making someone an admin, or changing an admin, is the owner's alone and needs **a code** for `change_team` with the value `role:<member_id>:<role>`. Owners and admins only. Limit: 30 a minute.
+         */
+        patch: operations["change_role_api_v1_brands_me_team_members__member_id__patch"];
+        trace?: never;
+    };
     "/api/v1/brands/{brand_id}/feedback": {
         parameters: {
             query?: never;
@@ -2069,7 +2153,7 @@ export interface paths {
         };
         /**
          * The deal's agreed dates, as a calendar file
-         * @description An iCalendar file (RFC 5545) to add to any phone or desktop calendar: the content due date, the moment submitted work approves itself while it waits, and the payment due date while unconfirmed, each with a reminder a day before. Only an accepted deal has dates; any other gives an empty calendar. Adding it again updates the same events. The brand and the creator of this deal only.
+         * @description An iCalendar file (RFC 5545) to add to any phone or desktop calendar: the content due date (moved by the days the brand held a draft), the moment a waiting draft or submitted work approves itself, and the payment due date while unconfirmed, each with a reminder a day before. Only an accepted deal has dates; any other gives an empty calendar. Adding it again updates the same events. The brand and the creator of this deal only.
          */
         get: operations["deal_calendar_api_v1_deal_memos__memo_id__calendar_ics_get"];
         put?: never;
@@ -2091,7 +2175,7 @@ export interface paths {
         put?: never;
         /**
          * Cancel the memo (brand)
-         * @description Ends the deal. Before any work is submitted this is recorded as withdrawn_early and does not count against the brand; afterwards it does.
+         * @description Ends the deal. Before any work is submitted this is recorded as withdrawn_early and does not count against the brand; afterwards it does. While proof waits inside its review window the brand answers it first, approving it or asking for a fix (409 `proof_awaiting_answer`, D-147).
          */
         post: operations["memo_cancel_api_v1_deal_memos__memo_id__cancel_post"];
         delete?: never;
@@ -2114,6 +2198,112 @@ export interface paths {
          * @description Says no to these terms. This is final; the brand can start a new memo.
          */
         post: operations["memo_decline_api_v1_deal_memos__memo_id__decline_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deal-memos/{memo_id}/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The drafts shown on a deal
+         * @description Both sides see the same drafts, newest first. A draft whose window has passed is settled as approved by the clock when read. Every draft gives the brand at least 2 whole days, however late it is shown. Limit: 60 requests per minute.
+         */
+        get: operations["list_drafts_api_v1_deal_memos__memo_id__drafts_get"];
+        put?: never;
+        /**
+         * Show the brand a draft before posting
+         * @description Only on a memo whose agreed terms include `draft_review`. The brand has the memo's approval window to approve it or ask for changes; if it does not answer, the draft approves itself (D-025), never sooner than 2 whole days after it is shown. If it is shown by the date the work is due, every calendar day the brand holds it, the day it answers included, is added to that date once (`work_due_on` on the deal); a draft shown late moves nothing. Images uploaded through `POST .../drafts/uploads` go in `file_ids`, and their fingerprints are sealed with the draft. Proof can be submitted once a draft is approved. One draft waits at a time; each is sealed onto the deal record by its fingerprints. Showing a draft counts as work started. Limits: 30 a minute, 200 a day.
+         */
+        post: operations["submit_draft_api_v1_deal_memos__memo_id__drafts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deal-memos/{memo_id}/drafts/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start uploading an image for a draft
+         * @description Describe an image (type, exact size, SHA-256) and get a signed form to upload it **straight to storage**, valid for 10 minutes. Storage refuses any file that does not match the description. Then give `upload_id` in `file_ids` when showing the draft.
+         *
+         *     JPEG, PNG or WebP, up to 10 MB. Only the creator, only on an accepted memo whose terms include draft review and whose draft is not yet approved; at most 20 unfinished uploads per memo and 30 an hour per account, both counted with proof uploads. A draft upload joins only a draft. Every image is cleaned of location and hidden data before anyone can open it. A video goes in `content_url`.
+         */
+        post: operations["start_draft_upload_api_v1_deal_memos__memo_id__drafts_uploads_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deal-memos/{memo_id}/drafts/{draft_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve the draft
+         * @description The brand approves what will be posted, and the creator may post and submit proof. Limits: 30 a minute, 200 a day.
+         */
+        post: operations["approve_draft_api_v1_deal_memos__memo_id__drafts__draft_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deal-memos/{memo_id}/drafts/{draft_id}/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Open the images on a draft
+         * @description Every image on the draft, in the order the creator chose, each cleaned one with a link to open it, valid for 5 minutes. Only the brand and the creator on the deal can ask. An image still being cleaned has no link yet; it is usually ready within a minute. Only the cleaned copy is ever shown, to either side: the original, with its location data, is never served. Limit: 60 requests per minute.
+         */
+        get: operations["view_draft_files_api_v1_deal_memos__memo_id__drafts__draft_id__files_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deal-memos/{memo_id}/drafts/{draft_id}/request-changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask for changes to the draft
+         * @description Sends it back with a reason, so the creator can show a new draft. Only the first request restarts the approval window (D-025). Limits: 30 a minute, 200 a day.
+         */
+        post: operations["request_changes_api_v1_deal_memos__memo_id__drafts__draft_id__request_changes_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2349,7 +2539,7 @@ export interface paths {
          * Start uploading a proof file
          * @description Describe a screenshot or photo (type, exact size, SHA-256) and get a signed form to upload it **straight to storage**, valid for 10 minutes. Storage refuses any file that does not match the description. Then give `upload_id` in `file_ids` when submitting proof.
          *
-         *     JPEG, PNG or WebP, up to 10 MB. Only the creator, only on an accepted memo, at most 20 unfinished uploads per memo, 30 an hour per account. Every image is cleaned of location and hidden data before a brand can see it.
+         *     JPEG, PNG or WebP, up to 10 MB. Only the creator, only on an accepted memo, at most 20 unfinished uploads per memo, 30 an hour per account, both counted with draft uploads. A proof upload joins only a proof. Every image is cleaned of location and hidden data before a brand can see it.
          */
         post: operations["start_proof_upload_api_v1_deal_memos__memo_id__proof_uploads_post"];
         delete?: never;
@@ -3201,6 +3391,86 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/team-invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Invites to my number
+         * @description Open invites to the signed-in brand account's own number, oldest first; a short list, since each lapses in 7 days. Limit: 60 a minute.
+         */
+        get: operations["my_invites_api_v1_me_team_invites_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/team-invites/{invite_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Join a brand's team
+         * @description Accepts an invite to your own number: you act for that brand in its role. Optionally give the first name creators will see. The owner and admins are told. Limit: 30 a minute.
+         */
+        post: operations["accept_invite_api_v1_me_team_invites__invite_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/team-invites/{invite_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Say no to an invite
+         * @description Ends an invite to your own number. Limit: 30 a minute.
+         */
+        post: operations["decline_invite_api_v1_me_team_invites__invite_id__decline_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/teams/{brand_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Leave a brand's team
+         * @description Stop acting for a brand you belong to, at once, with no code. The brand's owner cannot leave their own brand this way. Limit: 30 a minute.
+         */
+        delete: operations["leave_team_api_v1_me_teams__brand_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -4239,6 +4509,11 @@ export interface components {
              */
             domain?: string | null;
             /**
+             * Draft Id
+             * @description For review_draft: the draft waiting (item 27)
+             */
+            draft_id?: string | null;
+            /**
              * Due On
              * @description The Tamil Nadu date it is due by; null when nothing sets a date
              */
@@ -4247,7 +4522,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "respond_to_dispute" | "pay_creator" | "review_proof" | "revise_memo" | "draft_memo" | "review_applications" | "fix_domain_record" | "domain_lapsed" | "domain_claim_expired" | "confirm_payment" | "payment_overdue" | "resubmit_work" | "deliver_work" | "answer_memo" | "answer_invitation" | "upi_change_pending" | "phone_change_pending" | "deletion_pending" | "new_sign_in";
+            kind: "respond_to_dispute" | "pay_creator" | "review_proof" | "review_draft" | "revise_memo" | "draft_memo" | "review_applications" | "fix_domain_record" | "domain_lapsed" | "domain_claim_expired" | "confirm_payment" | "payment_overdue" | "resubmit_work" | "deliver_work" | "show_draft" | "revise_draft" | "answer_memo" | "answer_invitation" | "upi_change_pending" | "phone_change_pending" | "deletion_pending" | "new_sign_in";
             /** Memo Id */
             memo_id: string | null;
             /** Proof Id */
@@ -4959,6 +5234,17 @@ export interface components {
             message: string;
         };
         /**
+         * ChangesRequest
+         * @description What the brand wants changed, so the creator can show a new draft.
+         */
+        ChangesRequest: {
+            /**
+             * Note
+             * @example Please say the box is for 6 people, and add the ad label.
+             */
+            note: string;
+        };
+        /**
          * ChannelRead
          * @description A channel as its owner and signed-in brands see it.
          *
@@ -5225,7 +5511,7 @@ export interface components {
             creator_id: string;
             /**
              * Currently Overdue
-             * @description Deals past their agreed date with nothing delivered yet
+             * @description Deals past the date their work was due by (the agreed date, moved by the brand's time on drafts shown in time, D-140) with nothing delivered yet
              */
             currently_overdue: number;
             /**
@@ -5237,12 +5523,12 @@ export interface components {
             deals_delivered: number;
             /**
              * Deals Not Delivered
-             * @description Cancelled by the creator after work had started, or nothing delivered 14 days after the agreed date
+             * @description Cancelled by the creator after work had started, or nothing delivered 14 days after the date it was due by (the agreed date, moved by the brand's time on drafts shown in time; the 14 days grow by its time on late drafts, D-140)
              */
             deals_not_delivered: number;
             /**
              * Delivered On Time Share
-             * @description Share of completed deals delivered by the agreed date, judged by the first submission. Null below three completed deals
+             * @description Share of completed deals delivered by the date their work was due by (the agreed date, moved by the brand's time on drafts shown in time, D-140), judged by the first submission. Null below three completed deals
              */
             delivered_on_time_share: number | null;
             /**
@@ -5707,6 +5993,11 @@ export interface components {
             declined: number;
             /** Draft */
             draft: number;
+            /**
+             * Draft Review
+             * @description Deals whose draft is waiting or being changed (item 27)
+             */
+            draft_review: number;
             /** Finished */
             finished: number;
             /** In Progress */
@@ -5975,6 +6266,222 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /**
+         * DraftCreate
+         * @description What the creator shows the brand before posting.
+         */
+        DraftCreate: {
+            /**
+             * Body
+             * @description The caption or the script, as it will be posted
+             * @example Pongal at home, the Madurai way. Our new sweet box, ad. #pongal
+             */
+            body: string;
+            /**
+             * Content Url
+             * @description A link to the draft itself, such as a video to watch
+             */
+            content_url?: string | null;
+            /**
+             * File Ids
+             * @description Up to 10 finished image uploads from `POST /deal-memos/{memo_id}/drafts/uploads`, in the order to show them: stills of a Reel, carousel slides, a Story frame. A video goes in `content_url`
+             * @default []
+             */
+            file_ids: string[];
+            /** Note */
+            note?: string | null;
+        };
+        /**
+         * DraftFileSummary
+         * @description An image on a draft. `cleaned` is the only state either side can open.
+         */
+        DraftFileSummary: {
+            /**
+             * Content Type
+             * @enum {string}
+             */
+            content_type: "image/jpeg" | "image/png" | "image/webp";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Size Bytes
+             * @description The cleaned copy's size once cleaned, the upload's before
+             */
+            size_bytes: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "attached" | "cleaned" | "rejected";
+        };
+        /**
+         * DraftFileView
+         * @description An image on a draft, and a link to open it once it has been cleaned.
+         */
+        DraftFileView: {
+            /**
+             * Content Type
+             * @enum {string}
+             */
+            content_type: "image/jpeg" | "image/png" | "image/webp";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Rejection Reason
+             * @description Why a rejected image cannot be shown
+             */
+            rejection_reason: ("fingerprint_mismatch" | "not_an_image" | "too_many_pixels" | "missing") | null;
+            /**
+             * Size Bytes
+             * @description The size of what the link opens
+             */
+            size_bytes: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "attached" | "cleaned" | "rejected";
+            /**
+             * Url
+             * @description Opens the cleaned image. Only cleaned images have one. It works for a few minutes and must not be stored: ask again for a fresh one
+             */
+            url: string | null;
+            /** Url Expires At */
+            url_expires_at: string | null;
+        };
+        /**
+         * DraftRead
+         * @description A draft, as both sides see it.
+         */
+        DraftRead: {
+            /**
+             * Answer By
+             * @description While it waits: the last day the brand has to answer, in Tamil Nadu; after it, the draft approves itself. Null once answered, once the deal has ended, and while its images are being cleaned (the brand's time starts once it can open them)
+             */
+            answer_by?: string | null;
+            /**
+             * Answered At
+             * @description When the brand answered, or the clock did; null while it waits
+             */
+            answered_at: string | null;
+            /** Approved At */
+            approved_at: string | null;
+            /**
+             * Auto Approved
+             * @description Approved because the brand did not answer in time (D-025)
+             */
+            auto_approved: boolean;
+            /** Body */
+            body: string;
+            /**
+             * Changes Note
+             * @description What the brand asked to change
+             */
+            changes_note: string | null;
+            /** Content Url */
+            content_url: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Deal Memo Id
+             * Format: uuid
+             */
+            deal_memo_id: string;
+            /**
+             * Files
+             * @description The images shown with the draft, in the creator's order
+             */
+            files?: components["schemas"]["DraftFileSummary"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Images Ready At
+             * @description When every image was cleaned or refused, so the brand could open them; the moment it was shown for a draft without images. Null while any is still being cleaned, usually under a minute: until then it cannot be approved
+             */
+            images_ready_at: string | null;
+            /** Note */
+            note: string | null;
+            /**
+             * Round
+             * @description Which attempt this is, from 1
+             */
+            round: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "submitted" | "approved" | "changes_requested";
+            /**
+             * Text Flags
+             * @description Warnings on the brand's note, worked out on every read: a request for money (item 60). Show each beside its field; never hide the text
+             */
+            readonly text_flags: components["schemas"]["FieldFlag"][];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * DraftUploadCreate
+         * @description The image the creator is about to upload for a draft, described first.
+         */
+        DraftUploadCreate: {
+            /**
+             * Content Type
+             * @enum {string}
+             */
+            content_type: "image/jpeg" | "image/png" | "image/webp";
+            /**
+             * Sha256
+             * @description SHA-256 of the file, lowercase hex. Storage refuses any other file
+             * @example 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
+             */
+            sha256: string;
+            /**
+             * Size Bytes
+             * @description Exact size, in bytes
+             */
+            size_bytes: number;
+        };
+        /**
+         * DraftUploadRead
+         * @description Where and how to upload: POST every one of `fields`, then the file, to `url`.
+         */
+        DraftUploadRead: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Fields
+             * @description Send each as a form field, unchanged, before the file itself
+             */
+            fields: {
+                [key: string]: string;
+            };
+            /**
+             * Upload Id
+             * Format: uuid
+             * @description Give this in `file_ids` when showing the draft
+             */
+            upload_id: string;
+            /** Url */
+            url: string;
         };
         /**
          * ExportFile
@@ -6584,6 +7091,12 @@ export interface components {
              * @default true
              */
             disclosure_required: boolean;
+            /**
+             * Draft Review
+             * @description The creator shows a draft (`POST .../drafts`) before posting, and proof waits for it to be approved; the brand has the approval window to answer, and silence approves (item 27)
+             * @default false
+             */
+            draft_review: boolean;
             /** Extra Terms */
             extra_terms?: string | null;
             /** Fee Amount Paise */
@@ -6653,6 +7166,11 @@ export interface components {
             deliverables: string;
             /** Disclosure Required */
             disclosure_required: boolean;
+            /**
+             * Draft Review
+             * @description A draft is shown and approved before proof (item 27); sealed with the terms from 27 October 2026, false on every memo before
+             */
+            draft_review: boolean;
             /** Extra Terms */
             extra_terms: string | null;
             /** Fee Amount Paise */
@@ -6705,6 +7223,8 @@ export interface components {
             deliverables?: string | null;
             /** Disclosure Required */
             disclosure_required?: boolean | null;
+            /** Draft Review */
+            draft_review?: boolean | null;
             /** Extra Terms */
             extra_terms?: string | null;
             /** Fee Amount Paise */
@@ -6720,7 +7240,8 @@ export interface components {
          *
          *     Worked out from the memo, its proof and its payment as of the request,
          *     never stored. The five stages a deal passes through are `memo_sent`,
-         *     `agreed`, `in_progress`, `payment`, `finished`; `draft`, `declined` and
+         *     `agreed`, `in_progress`, `payment`, `finished`, with `draft_review`
+         *     between `agreed` and `in_progress` on a deal agreed with one (item 27); `draft`, `declined` and
          *     `cancelled` sit outside them. A barter deal is `finished` once its work
          *     is approved; a paid one only when the creator confirms the money arrived.
          */
@@ -6777,6 +7298,11 @@ export interface components {
             deliverables: string;
             /** Disclosure Required */
             disclosure_required: boolean;
+            /**
+             * Draft Review
+             * @description A draft is shown and approved before proof (item 27); sealed with the terms from 27 October 2026, false on every memo before
+             */
+            draft_review: boolean;
             /** Extra Terms */
             extra_terms: string | null;
             /** Fee Amount Paise */
@@ -6798,7 +7324,7 @@ export interface components {
              * Stage
              * @enum {string}
              */
-            stage: "draft" | "memo_sent" | "agreed" | "in_progress" | "payment" | "finished" | "declined" | "cancelled";
+            stage: "draft" | "memo_sent" | "agreed" | "draft_review" | "in_progress" | "payment" | "finished" | "declined" | "cancelled";
             /**
              * Status
              * @enum {string}
@@ -6821,6 +7347,11 @@ export interface components {
              * @description The side whose move it is; null once the deal has ended
              */
             waiting_on: ("brand" | "creator") | null;
+            /**
+             * Work Due On
+             * @description The date the work is due by: `content_due_on`, moved a day for every distinct calendar day, in Tamil Nadu, the brand held a draft shown in time, from the day it was shown to the day it answered, both included (D-140), never past a cancellation; a draft shown after the date moves nothing. Show this as the due date; it equals `content_due_on` on a deal without a draft review. Null when no date was agreed
+             */
+            work_due_on: string | null;
             /** Work Started At */
             work_started_at: string | null;
         };
@@ -6842,6 +7373,36 @@ export interface components {
              * @example Reach is 31,040, not 31,400.
              */
             note: string;
+        };
+        /**
+         * MyTeamInviteRead
+         * @description An invite to your own number, waiting for your answer.
+         */
+        MyTeamInviteRead: {
+            /**
+             * Brand Id
+             * Format: uuid
+             */
+            brand_id: string;
+            /** Brand Name */
+            brand_name: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** First Name */
+            first_name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "admin" | "campaigns" | "finance";
         };
         /** NameClearanceIn */
         NameClearanceIn: {
@@ -6960,7 +7521,7 @@ export interface components {
              * Muted Types
              * @description Kept in the app only, never sent. Urgent types are refused.
              */
-            muted_types: ("application_received" | "application_withdrawn" | "application_shortlisted" | "application_accepted" | "application_rejected" | "memo_sent" | "memo_accepted" | "memo_declined" | "memo_change_requested" | "memo_cancelled" | "proof_submitted" | "proof_approved" | "proof_auto_approved" | "proof_revision_requested" | "payment_marked_paid" | "payment_confirmed" | "invitation_received" | "invitation_accepted" | "invitation_declined" | "invitation_withdrawn" | "report_resolved" | "report_received" | "report_due_soon" | "report_overdue" | "content_withheld" | "content_restored" | "admin_signed_in" | "admin_second_factor_refused" | "admin_second_factor_changed" | "upi_change_pending" | "upi_change_cancelled" | "data_exported" | "logged_out_everywhere" | "phone_change_requested" | "phone_change_cancelled" | "phone_changed" | "phone_change_failed" | "data_export_ready" | "data_export_failed" | "passkey_added" | "passkey_removed" | "passkey_reset_requested" | "passkey_reset_cancelled" | "passkey_only_changed" | "session_ended" | "deletion_requested" | "deletion_cancelled" | "deletion_held_by_deals" | "offer_received" | "offer_accepted" | "offer_declined" | "offer_withdrawn" | "note_added" | "campaign_alert" | "product_shipped" | "product_received" | "connection_expired" | "feedback_received" | "agent_token_created")[];
+            muted_types: ("application_received" | "application_withdrawn" | "application_shortlisted" | "application_accepted" | "application_rejected" | "memo_sent" | "memo_accepted" | "memo_declined" | "memo_change_requested" | "memo_cancelled" | "proof_submitted" | "proof_approved" | "proof_auto_approved" | "proof_revision_requested" | "payment_marked_paid" | "payment_confirmed" | "invitation_received" | "invitation_accepted" | "invitation_declined" | "invitation_withdrawn" | "report_resolved" | "report_received" | "report_due_soon" | "report_overdue" | "content_withheld" | "content_restored" | "admin_signed_in" | "admin_second_factor_refused" | "admin_second_factor_changed" | "upi_change_pending" | "upi_change_cancelled" | "data_exported" | "logged_out_everywhere" | "phone_change_requested" | "phone_change_cancelled" | "phone_changed" | "phone_change_failed" | "data_export_ready" | "data_export_failed" | "passkey_added" | "passkey_removed" | "passkey_reset_requested" | "passkey_reset_cancelled" | "passkey_only_changed" | "session_ended" | "deletion_requested" | "deletion_cancelled" | "deletion_held_by_deals" | "offer_received" | "offer_accepted" | "offer_declined" | "offer_withdrawn" | "note_added" | "campaign_alert" | "product_shipped" | "product_received" | "connection_expired" | "feedback_received" | "agent_token_created" | "draft_submitted" | "draft_approved" | "draft_auto_approved" | "draft_changes_requested" | "team_invite_received" | "team_joined" | "team_role_changed" | "team_removed")[];
             /**
              * Quiet From
              * @description A time of day in Tamil Nadu, to the minute (`22:00`). Both ends or neither; a window may cross midnight.
@@ -6984,7 +7545,7 @@ export interface components {
          */
         NotificationPreferencesRead: {
             /** Always Sent */
-            always_sent: ("application_received" | "application_withdrawn" | "application_shortlisted" | "application_accepted" | "application_rejected" | "memo_sent" | "memo_accepted" | "memo_declined" | "memo_change_requested" | "memo_cancelled" | "proof_submitted" | "proof_approved" | "proof_auto_approved" | "proof_revision_requested" | "payment_marked_paid" | "payment_confirmed" | "invitation_received" | "invitation_accepted" | "invitation_declined" | "invitation_withdrawn" | "report_resolved" | "report_received" | "report_due_soon" | "report_overdue" | "content_withheld" | "content_restored" | "admin_signed_in" | "admin_second_factor_refused" | "admin_second_factor_changed" | "upi_change_pending" | "upi_change_cancelled" | "data_exported" | "logged_out_everywhere" | "phone_change_requested" | "phone_change_cancelled" | "phone_changed" | "phone_change_failed" | "data_export_ready" | "data_export_failed" | "passkey_added" | "passkey_removed" | "passkey_reset_requested" | "passkey_reset_cancelled" | "passkey_only_changed" | "session_ended" | "deletion_requested" | "deletion_cancelled" | "deletion_held_by_deals" | "offer_received" | "offer_accepted" | "offer_declined" | "offer_withdrawn" | "note_added" | "campaign_alert" | "product_shipped" | "product_received" | "connection_expired" | "feedback_received" | "agent_token_created")[];
+            always_sent: ("application_received" | "application_withdrawn" | "application_shortlisted" | "application_accepted" | "application_rejected" | "memo_sent" | "memo_accepted" | "memo_declined" | "memo_change_requested" | "memo_cancelled" | "proof_submitted" | "proof_approved" | "proof_auto_approved" | "proof_revision_requested" | "payment_marked_paid" | "payment_confirmed" | "invitation_received" | "invitation_accepted" | "invitation_declined" | "invitation_withdrawn" | "report_resolved" | "report_received" | "report_due_soon" | "report_overdue" | "content_withheld" | "content_restored" | "admin_signed_in" | "admin_second_factor_refused" | "admin_second_factor_changed" | "upi_change_pending" | "upi_change_cancelled" | "data_exported" | "logged_out_everywhere" | "phone_change_requested" | "phone_change_cancelled" | "phone_changed" | "phone_change_failed" | "data_export_ready" | "data_export_failed" | "passkey_added" | "passkey_removed" | "passkey_reset_requested" | "passkey_reset_cancelled" | "passkey_only_changed" | "session_ended" | "deletion_requested" | "deletion_cancelled" | "deletion_held_by_deals" | "offer_received" | "offer_accepted" | "offer_declined" | "offer_withdrawn" | "note_added" | "campaign_alert" | "product_shipped" | "product_received" | "connection_expired" | "feedback_received" | "agent_token_created" | "draft_submitted" | "draft_approved" | "draft_auto_approved" | "draft_changes_requested" | "team_invite_received" | "team_joined" | "team_role_changed" | "team_removed")[];
             /**
              * Digest
              * @enum {string}
@@ -6998,7 +7559,7 @@ export interface components {
              */
             is_default: boolean;
             /** Muted Types */
-            muted_types: ("application_received" | "application_withdrawn" | "application_shortlisted" | "application_accepted" | "application_rejected" | "memo_sent" | "memo_accepted" | "memo_declined" | "memo_change_requested" | "memo_cancelled" | "proof_submitted" | "proof_approved" | "proof_auto_approved" | "proof_revision_requested" | "payment_marked_paid" | "payment_confirmed" | "invitation_received" | "invitation_accepted" | "invitation_declined" | "invitation_withdrawn" | "report_resolved" | "report_received" | "report_due_soon" | "report_overdue" | "content_withheld" | "content_restored" | "admin_signed_in" | "admin_second_factor_refused" | "admin_second_factor_changed" | "upi_change_pending" | "upi_change_cancelled" | "data_exported" | "logged_out_everywhere" | "phone_change_requested" | "phone_change_cancelled" | "phone_changed" | "phone_change_failed" | "data_export_ready" | "data_export_failed" | "passkey_added" | "passkey_removed" | "passkey_reset_requested" | "passkey_reset_cancelled" | "passkey_only_changed" | "session_ended" | "deletion_requested" | "deletion_cancelled" | "deletion_held_by_deals" | "offer_received" | "offer_accepted" | "offer_declined" | "offer_withdrawn" | "note_added" | "campaign_alert" | "product_shipped" | "product_received" | "connection_expired" | "feedback_received" | "agent_token_created")[];
+            muted_types: ("application_received" | "application_withdrawn" | "application_shortlisted" | "application_accepted" | "application_rejected" | "memo_sent" | "memo_accepted" | "memo_declined" | "memo_change_requested" | "memo_cancelled" | "proof_submitted" | "proof_approved" | "proof_auto_approved" | "proof_revision_requested" | "payment_marked_paid" | "payment_confirmed" | "invitation_received" | "invitation_accepted" | "invitation_declined" | "invitation_withdrawn" | "report_resolved" | "report_received" | "report_due_soon" | "report_overdue" | "content_withheld" | "content_restored" | "admin_signed_in" | "admin_second_factor_refused" | "admin_second_factor_changed" | "upi_change_pending" | "upi_change_cancelled" | "data_exported" | "logged_out_everywhere" | "phone_change_requested" | "phone_change_cancelled" | "phone_changed" | "phone_change_failed" | "data_export_ready" | "data_export_failed" | "passkey_added" | "passkey_removed" | "passkey_reset_requested" | "passkey_reset_cancelled" | "passkey_only_changed" | "session_ended" | "deletion_requested" | "deletion_cancelled" | "deletion_held_by_deals" | "offer_received" | "offer_accepted" | "offer_declined" | "offer_withdrawn" | "note_added" | "campaign_alert" | "product_shipped" | "product_received" | "connection_expired" | "feedback_received" | "agent_token_created" | "draft_submitted" | "draft_approved" | "draft_auto_approved" | "draft_changes_requested" | "team_invite_received" | "team_joined" | "team_role_changed" | "team_removed")[];
             /**
              * Quiet From
              * @description HH:MM, Tamil Nadu time
@@ -7040,7 +7601,7 @@ export interface components {
              * Notification Type
              * @enum {string}
              */
-            notification_type: "application_received" | "application_withdrawn" | "application_shortlisted" | "application_accepted" | "application_rejected" | "memo_sent" | "memo_accepted" | "memo_declined" | "memo_change_requested" | "memo_cancelled" | "proof_submitted" | "proof_approved" | "proof_auto_approved" | "proof_revision_requested" | "payment_marked_paid" | "payment_confirmed" | "invitation_received" | "invitation_accepted" | "invitation_declined" | "invitation_withdrawn" | "report_resolved" | "report_received" | "report_due_soon" | "report_overdue" | "content_withheld" | "content_restored" | "admin_signed_in" | "admin_second_factor_refused" | "admin_second_factor_changed" | "upi_change_pending" | "upi_change_cancelled" | "data_exported" | "logged_out_everywhere" | "phone_change_requested" | "phone_change_cancelled" | "phone_changed" | "phone_change_failed" | "data_export_ready" | "data_export_failed" | "passkey_added" | "passkey_removed" | "passkey_reset_requested" | "passkey_reset_cancelled" | "passkey_only_changed" | "session_ended" | "deletion_requested" | "deletion_cancelled" | "deletion_held_by_deals" | "offer_received" | "offer_accepted" | "offer_declined" | "offer_withdrawn" | "note_added" | "campaign_alert" | "product_shipped" | "product_received" | "connection_expired" | "feedback_received" | "agent_token_created";
+            notification_type: "application_received" | "application_withdrawn" | "application_shortlisted" | "application_accepted" | "application_rejected" | "memo_sent" | "memo_accepted" | "memo_declined" | "memo_change_requested" | "memo_cancelled" | "proof_submitted" | "proof_approved" | "proof_auto_approved" | "proof_revision_requested" | "payment_marked_paid" | "payment_confirmed" | "invitation_received" | "invitation_accepted" | "invitation_declined" | "invitation_withdrawn" | "report_resolved" | "report_received" | "report_due_soon" | "report_overdue" | "content_withheld" | "content_restored" | "admin_signed_in" | "admin_second_factor_refused" | "admin_second_factor_changed" | "upi_change_pending" | "upi_change_cancelled" | "data_exported" | "logged_out_everywhere" | "phone_change_requested" | "phone_change_cancelled" | "phone_changed" | "phone_change_failed" | "data_export_ready" | "data_export_failed" | "passkey_added" | "passkey_removed" | "passkey_reset_requested" | "passkey_reset_cancelled" | "passkey_only_changed" | "session_ended" | "deletion_requested" | "deletion_cancelled" | "deletion_held_by_deals" | "offer_received" | "offer_accepted" | "offer_declined" | "offer_withdrawn" | "note_added" | "campaign_alert" | "product_shipped" | "product_received" | "connection_expired" | "feedback_received" | "agent_token_created" | "draft_submitted" | "draft_approved" | "draft_auto_approved" | "draft_changes_requested" | "team_invite_received" | "team_joined" | "team_role_changed" | "team_removed";
             /** Read At */
             read_at: string | null;
         };
@@ -8615,7 +9176,10 @@ export interface components {
              * @description When the work was approved; by the clock, the day its review window ended (D-025)
              */
             approved_on: string | null;
-            /** Content Due On */
+            /**
+             * Content Due On
+             * @description The date agreed in the memo
+             */
             content_due_on: string | null;
             /**
              * Content Url
@@ -8638,7 +9202,7 @@ export interface components {
             deliverables: string;
             /**
              * Delivered On Time
-             * @description First sent on or before the agreed date. Null with no work sent yet, or no date agreed
+             * @description First sent on or before the date the work was due by: the agreed date, moved by the brand's time on drafts (D-140). Null with no work sent yet, or no date agreed
              */
             delivered_on_time: boolean | null;
             /**
@@ -8687,9 +9251,14 @@ export interface components {
              * @description Where the deal stands as of the report (D-076). Clients ignore values they do not know
              * @enum {string}
              */
-            stage: "draft" | "memo_sent" | "agreed" | "in_progress" | "payment" | "finished" | "declined" | "cancelled";
+            stage: "draft" | "memo_sent" | "agreed" | "draft_review" | "in_progress" | "payment" | "finished" | "declined" | "cancelled";
             /** Waiting On */
             waiting_on: ("brand" | "creator") | null;
+            /**
+             * Work Due On
+             * @description The date the work is due by, as of the report: the agreed date, moved a day for every distinct calendar day the brand held a draft shown in time, its answer day included (D-140). Delivered work is judged on time against it as it stood when the work was first sent
+             */
+            work_due_on: string | null;
         };
         /**
          * ReportNumbersRead
@@ -9240,7 +9809,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "set_upi_id" | "download_export" | "log_out_everywhere" | "change_phone" | "add_passkey" | "remove_passkey" | "passkey_only" | "end_session" | "delete_account" | "create_agent_token";
+            action: "set_upi_id" | "download_export" | "log_out_everywhere" | "change_phone" | "add_passkey" | "remove_passkey" | "passkey_only" | "end_session" | "delete_account" | "create_agent_token" | "change_team";
             /**
              * Expires In Seconds
              * @description How long the code, or the passkey's challenge, works; null for an authenticator code
@@ -9371,6 +9940,23 @@ export interface components {
             session_id: string;
         };
         /**
+         * StepUpForTeamChange
+         * @description A code for one exact change to a brand's team (item 13, D-148).
+         */
+        StepUpForTeamChange: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "change_team";
+            /**
+             * Change
+             * @description `invite:<phone>:admin`, `role:<member_id>:<role>` or `remove:<member_id>`
+             * @example remove:01a18d27-7fe3-7120-b479-70f1aa7fb324
+             */
+            change: string;
+        };
+        /**
          * StepUpForUpiId
          * @description A code to set one exact UPI ID: it cannot set any other.
          */
@@ -9396,7 +9982,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "set_upi_id" | "download_export" | "log_out_everywhere" | "change_phone" | "add_passkey" | "remove_passkey" | "passkey_only" | "end_session" | "delete_account" | "create_agent_token";
+            action: "set_upi_id" | "download_export" | "log_out_everywhere" | "change_phone" | "add_passkey" | "remove_passkey" | "passkey_only" | "end_session" | "delete_account" | "create_agent_token" | "change_team";
             /**
              * Code
              * @description Send it in the `Step-Up-Code` header with the change itself
@@ -9415,7 +10001,7 @@ export interface components {
          */
         StepUpPasskeyIn: {
             /** Change */
-            change: components["schemas"]["StepUpForUpiId"] | components["schemas"]["StepUpForPhone"] | components["schemas"]["StepUpForExport"] | components["schemas"]["StepUpForAccount"] | components["schemas"]["StepUpForPasskeyRemoval"] | components["schemas"]["StepUpForPasskeyOnly"] | components["schemas"]["StepUpForSession"] | components["schemas"]["StepUpForAgentToken"];
+            change: components["schemas"]["StepUpForUpiId"] | components["schemas"]["StepUpForPhone"] | components["schemas"]["StepUpForExport"] | components["schemas"]["StepUpForAccount"] | components["schemas"]["StepUpForPasskeyRemoval"] | components["schemas"]["StepUpForPasskeyOnly"] | components["schemas"]["StepUpForSession"] | components["schemas"]["StepUpForAgentToken"] | components["schemas"]["StepUpForTeamChange"];
             /**
              * Credential
              * @description The passkey's answer, exactly as `navigator.credentials` (or the phone's credential manager) gives it, in WebAuthn's JSON form
@@ -9564,6 +10150,122 @@ export interface components {
              * Format: date-time
              */
             withheld_at: string;
+        };
+        /**
+         * TeamInviteAccept
+         * @description Joining: optionally, the first name you want creators to see.
+         */
+        TeamInviteAccept: {
+            /**
+             * First Name
+             * @description Leave it out to keep the name the inviter gave
+             */
+            first_name?: string | null;
+        };
+        /**
+         * TeamInviteCreate
+         * @description Someone to invite: their number, the role they will hold, the name you know them by.
+         */
+        TeamInviteCreate: {
+            /**
+             * First Name
+             * @description Shown to creators beside the brand's name when they act
+             * @example Ravi
+             */
+            first_name: string;
+            /**
+             * Phone
+             * @description Indian mobile number, stored as +91XXXXXXXXXX. Send it in that form. Spaces, dashes and brackets, and a leading +91, 91 or 0, are also accepted and normalised away.
+             * @example +919876543210
+             */
+            phone: string;
+            /**
+             * Role
+             * @description `campaigns`: campaigns, applicants, memos and approving work. `finance`: marking payments and disputes. `admin`: all of that and the team, invited by the owner alone, with a step-up code
+             * @enum {string}
+             */
+            role: "admin" | "campaigns" | "finance";
+        };
+        /**
+         * TeamInviteRead
+         * @description An invite as the brand sees it: never the number.
+         */
+        TeamInviteRead: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** First Name */
+            first_name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "admin" | "campaigns" | "finance";
+        };
+        /** TeamMemberRead */
+        TeamMemberRead: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** First Name */
+            first_name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "admin" | "campaigns" | "finance";
+        };
+        /** TeamRead */
+        TeamRead: {
+            /**
+             * Brand Id
+             * Format: uuid
+             */
+            brand_id: string;
+            /** Brand Name */
+            brand_name: string;
+            /**
+             * Invites
+             * @description Invites still open, oldest first
+             */
+            invites: components["schemas"]["TeamInviteRead"][];
+            /**
+             * Members
+             * @description At most 20, the owner not counted
+             */
+            members: components["schemas"]["TeamMemberRead"][];
+            /**
+             * Your Role
+             * @enum {string}
+             */
+            your_role: "owner" | "admin" | "campaigns" | "finance";
+        };
+        /** TeamRoleChange */
+        TeamRoleChange: {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "admin" | "campaigns" | "finance";
         };
         /** UnreadCount */
         UnreadCount: {
@@ -11187,6 +11889,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -11969,6 +12673,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -12078,6 +12784,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -12280,6 +12988,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -13126,7 +13836,10 @@ export interface operations {
     read_brand_profile_api_v1_brands_me_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -13169,6 +13882,15 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Too many requests; see the Retry-After header */
@@ -13294,6 +14016,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -13406,7 +14130,10 @@ export interface operations {
                 /** @description Only posts whose usage window stands so; any when left out */
                 rights_state?: ("active" | "lapsing" | "lapsed" | "not_agreed") | null;
             };
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -13477,7 +14204,10 @@ export interface operations {
     read_domain_api_v1_brands_me_domain_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -13559,6 +14289,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -13664,7 +14396,10 @@ export interface operations {
     withdraw_domain_api_v1_brands_me_domain_delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -13744,6 +14479,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -13837,6 +14574,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -13898,6 +14637,527 @@ export interface operations {
                 };
             };
             /** @description Not 1 to 25 rows, a deal memo listed twice, or a method or reference that is not usable. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    read_team_api_v1_brands_me_team_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `role_not_allowed`: not a brand account; `brand_role_not_allowed`: your role does not include the team; or `team_change_not_allowed`: only the owner makes or changes an admin, and an admin never removes one */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brand_not_found`: the Brand-Id header names a brand you are not in */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brand_profile_required`: you have no brand yet */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brand_choice_needed`, or the body is not usable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    invite_api_v1_brands_me_team_invites_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`. */
+                "Step-Up-Code"?: string | null;
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamInviteCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamInviteRead"];
+                };
+            };
+            /** @description The code is wrong, expired, used, or for another change */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `role_not_allowed`: not a brand account; `brand_role_not_allowed`: your role does not include the team; or `team_change_not_allowed`: only the owner makes or changes an admin, and an admin never removes one */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brand_not_found`: the Brand-Id header names a brand you are not in */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `team_invite_exists`, `already_on_team`, or `brand_profile_required`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brand_choice_needed`, or the body is not usable. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests (see the Retry-After header), or `team_invites_daily_limit`: the brand sent 20 in the last day */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    revoke_invite_api_v1_brands_me_team_invites__invite_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
+            path: {
+                /** @description The invite's id */
+                invite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `role_not_allowed`: not a brand account; `brand_role_not_allowed`: your role does not include the team; or `team_change_not_allowed`: only the owner makes or changes an admin, and an admin never removes one */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `team_invite_not_found`, or `brand_not_found` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brand_profile_required`: you have no brand yet */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brand_choice_needed`, or the body is not usable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    remove_member_api_v1_brands_me_team_members__member_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`. */
+                "Step-Up-Code"?: string | null;
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
+            path: {
+                /** @description The team member's id */
+                member_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The code is wrong, expired, used, or for another change */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No access token, or it is invalid or expired; or `step_up_required` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `role_not_allowed`: not a brand account; `brand_role_not_allowed`: your role does not include the team; or `team_change_not_allowed`: only the owner makes or changes an admin, and an admin never removes one */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `team_member_not_found`, or `brand_not_found` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brand_profile_required`: you have no brand yet */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brand_choice_needed`, or the body is not usable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    change_role_api_v1_brands_me_team_members__member_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`. */
+                "Step-Up-Code"?: string | null;
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The team member's id */
+                member_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamRoleChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamMemberRead"];
+                };
+            };
+            /** @description The code is wrong, expired, used, or for another change */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `role_not_allowed`: not a brand account; `brand_role_not_allowed`: your role does not include the team; or `team_change_not_allowed`: only the owner makes or changes an admin, and an admin never removes one */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `team_member_not_found`, or `brand_not_found` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brand_profile_required`: you have no brand yet. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `brand_choice_needed`, or the body is not usable. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -14237,7 +15497,10 @@ export interface operations {
                 /** @description From a previous page's next_cursor */
                 cursor?: string | null;
             };
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -14319,6 +15582,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -14651,6 +15916,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -14765,7 +16032,10 @@ export interface operations {
                 /** @description From a previous page's next_cursor */
                 cursor?: string | null;
             };
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path: {
                 /** @description The campaign's id */
                 campaign_id: string;
@@ -14978,6 +16248,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -15074,6 +16346,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -15170,6 +16444,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -15291,7 +16567,10 @@ export interface operations {
                 /** @description How many creators to suggest */
                 limit?: number;
             };
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path: {
                 /** @description The campaign's id */
                 campaign_id: string;
@@ -15386,6 +16665,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -15481,7 +16762,10 @@ export interface operations {
     campaign_report_api_v1_campaigns__campaign_id__report_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path: {
                 /** @description The campaign's id */
                 campaign_id: string;
@@ -15575,7 +16859,10 @@ export interface operations {
     campaign_report_csv_api_v1_campaigns__campaign_id__report_csv_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path: {
                 /** @description The campaign's id */
                 campaign_id: string;
@@ -15669,7 +16956,10 @@ export interface operations {
     campaign_summary_api_v1_campaigns__campaign_id__summary_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path: {
                 /** @description The campaign's id */
                 campaign_id: string;
@@ -15870,7 +17160,10 @@ export interface operations {
     list_my_lists_api_v1_creator_lists_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -15905,6 +17198,15 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
             /** @description Too many requests; see the Retry-After header */
             429: {
                 headers: {
@@ -15932,6 +17234,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -16027,7 +17331,10 @@ export interface operations {
     remove_a_list_api_v1_creator_lists__list_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path: {
                 /** @description The list's id */
                 list_id: string;
@@ -16109,6 +17416,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -16222,7 +17531,10 @@ export interface operations {
                 /** @description From a previous page's next_cursor */
                 cursor?: string | null;
             };
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path: {
                 /** @description The list's id */
                 list_id: string;
@@ -16306,7 +17618,10 @@ export interface operations {
     save_a_creator_api_v1_creator_lists__list_id__creators__creator_id__put: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path: {
                 /** @description The list's id */
                 list_id: string;
@@ -16399,7 +17714,10 @@ export interface operations {
     take_a_creator_off_api_v1_creator_lists__list_id__creators__creator_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path: {
                 /** @description The list's id */
                 list_id: string;
@@ -16498,7 +17816,10 @@ export interface operations {
                 limit?: number;
                 cursor?: string | null;
             };
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -16706,7 +18027,10 @@ export interface operations {
                 /** @description From a previous page's next_cursor */
                 cursor?: string | null;
             };
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -19321,6 +20645,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -19437,7 +20763,10 @@ export interface operations {
                 /** @description From a previous page's next_cursor */
                 cursor?: string | null;
             };
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -19591,6 +20920,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -19870,6 +21201,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -20027,6 +21360,604 @@ export interface operations {
                 };
             };
             /** @description The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    list_drafts_api_v1_deal_memos__memo_id__drafts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The memo's id */
+                memo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftRead"][];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description This account type cannot use this endpoint */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such memo or draft, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    submit_draft_api_v1_deal_memos__memo_id__drafts_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The memo's id */
+                memo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description This account type cannot use this endpoint */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such memo or draft, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The memo is not accepted; `draft_review_not_agreed`: its terms have no draft review; `draft_already_decided`: a draft waits or is already approved; or `proof_file_not_uploaded`: an image has not finished uploading. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The draft is empty, too long, or its link is not usable; or `proof_file_not_found`: an image is not one of your unused draft uploads for this deal (image errors keep proof's codes, as both share one upload pipeline). Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description File uploads are not available right now. Or: Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    start_draft_upload_api_v1_deal_memos__memo_id__drafts_uploads_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The memo's id */
+                memo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftUploadCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftUploadRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description This account type cannot use this endpoint */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such memo or draft, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `memo_status_conflict`: the memo is not accepted; `too_many_pending_uploads`: 20 uploads are unfinished; `draft_review_not_agreed`; or `draft_already_decided`: a draft is approved. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The type, size or fingerprint is invalid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description File uploads are not available right now. Or: Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    approve_draft_api_v1_deal_memos__memo_id__drafts__draft_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The draft's id */
+                draft_id: string;
+                /** @description The memo's id */
+                memo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description This account type cannot use this endpoint */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such memo or draft, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `draft_already_decided`: this draft has already been answered; or `draft_images_not_ready`: its images are still being cleaned, so the brand could not yet open them. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    view_draft_files_api_v1_deal_memos__memo_id__drafts__draft_id__files_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The memo's id */
+                memo_id: string;
+                /** @description The draft's id */
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftFileView"][];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description This account type cannot use this endpoint */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such memo or draft, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description File uploads are not available right now */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    request_changes_api_v1_deal_memos__memo_id__drafts__draft_id__request_changes_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The draft's id */
+                draft_id: string;
+                /** @description The memo's id */
+                memo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangesRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description This account type cannot use this endpoint */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such memo or draft, or it is not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description This draft has already been answered. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The note is missing or too short. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -21001,6 +22932,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -21109,7 +23042,10 @@ export interface operations {
     read_pay_details_api_v1_deal_memos__memo_id__payment_pay_details_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path: {
                 /** @description The memo's id */
                 memo_id: string;
@@ -21504,6 +23440,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -21556,7 +23494,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description This proof has already been reviewed. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            /** @description This proof has already been reviewed, or the deal has ended. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -21799,6 +23737,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -21864,7 +23804,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description This proof has already been reviewed. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            /** @description This proof has already been reviewed, or the deal has ended. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -22071,6 +24011,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -22299,6 +24241,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
                 /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
                 "Idempotency-Key"?: string;
             };
@@ -22467,7 +24411,10 @@ export interface operations {
     record_shipment_api_v1_deal_memos__memo_id__shipment_put: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path: {
                 /** @description The memo's id */
                 memo_id: string;
@@ -23010,7 +24957,10 @@ export interface operations {
     read_my_attention_api_v1_me_attention_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -23043,6 +24993,15 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Too many requests; see the Retry-After header */
@@ -25483,7 +27442,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["StepUpForUpiId"] | components["schemas"]["StepUpForPhone"] | components["schemas"]["StepUpForExport"] | components["schemas"]["StepUpForAccount"] | components["schemas"]["StepUpForPasskeyRemoval"] | components["schemas"]["StepUpForPasskeyOnly"] | components["schemas"]["StepUpForSession"] | components["schemas"]["StepUpForAgentToken"];
+                "application/json": components["schemas"]["StepUpForUpiId"] | components["schemas"]["StepUpForPhone"] | components["schemas"]["StepUpForExport"] | components["schemas"]["StepUpForAccount"] | components["schemas"]["StepUpForPasskeyRemoval"] | components["schemas"]["StepUpForPasskeyOnly"] | components["schemas"]["StepUpForSession"] | components["schemas"]["StepUpForAgentToken"] | components["schemas"]["StepUpForTeamChange"];
             };
         };
         responses: {
@@ -25713,6 +27672,311 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    my_invites_api_v1_me_team_invites_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyTeamInviteRead"][];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    accept_invite_api_v1_me_team_invites__invite_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The invite's id */
+                invite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamInviteAccept"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamMemberRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `team_invite_not_found` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `already_on_team`, or `team_full` (20 besides the owner). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The first name is not usable. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    decline_invite_api_v1_me_team_invites__invite_id__decline_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The invite's id */
+                invite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `team_invite_not_found` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    leave_team_api_v1_me_teams__brand_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The brand's id */
+                brand_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `team_member_not_found` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Too many requests; see the Retry-After header */
@@ -26025,7 +28289,10 @@ export interface operations {
                 /** @description From a previous page's next_cursor */
                 cursor?: string | null;
             };
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -26106,7 +28373,10 @@ export interface operations {
     my_payment_totals_api_v1_payments_mine_totals_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -26151,6 +28421,15 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
             /** @description Too many requests; see the Retry-After header */
             429: {
                 headers: {
@@ -26183,7 +28462,10 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/x-www-form-urlencoded": string;
+                "application/x-www-form-urlencoded": {
+                    /** @description `<signature>.<payload>`, signed by Meta */
+                    signed_request: string;
+                };
             };
         };
         responses: {
@@ -26204,15 +28486,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
-                };
-            };
-            /** @description The request is not valid; `errors` names each field and why */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Too many requests; see the Retry-After header */
@@ -26308,7 +28581,10 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/x-www-form-urlencoded": string;
+                "application/x-www-form-urlencoded": {
+                    /** @description `<signature>.<payload>`, signed by Meta */
+                    signed_request: string;
+                };
             };
         };
         responses: {
@@ -26327,15 +28603,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
-                };
-            };
-            /** @description The request is not valid; `errors` names each field and why */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Too many requests; see the Retry-After header */
