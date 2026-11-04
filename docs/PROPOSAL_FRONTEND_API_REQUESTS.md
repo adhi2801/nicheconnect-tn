@@ -1,6 +1,6 @@
 # Proposal: six API requests from the frontend
 
-**Status, 4 November 2026:** R1 and R6 approved (Adhi: "do it yourself", D-153) and built on `feature/campaign-names`; R3 built as item 27 (D-140, D-144). R2, R4 and R5 still open. **Originally:** Proposed. Written 28 October 2026 by the design and frontend side (Erode Harish's track, with Claude), for Adhi.
+**Status, 4 November 2026:** R1 and R6 approved (Adhi: "do it yourself", D-153) and built on `feature/campaign-names`; R2 likewise (D-154), on `feature/applicant-summary`; R3 built as item 27 (D-140, D-144). R4 and R5 still open: R4 waits on the validation pack's consent wording, R5 on a decision for after launch, as this file recommends. **Originally:** Proposed. Written 28 October 2026 by the design and frontend side (Erode Harish's track, with Claude), for Adhi.
 
 **What this is.** `frontend/design/screen-plan.md` plans every screen against the API on `main` at `0b2ea3d` (203 operations). Most of what the frontend first thought was missing is already built: the deal `stage` and `waiting_on`, the payments list and totals, deliverables as a list, account deletion, phone registration. Six things are still missing. They are listed in the order the frontend needs them. Each has a fallback, so none blocks the frontend; the fallbacks cost quality, and R1 costs the most.
 

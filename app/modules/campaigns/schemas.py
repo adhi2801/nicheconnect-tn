@@ -217,6 +217,14 @@ class CampaignRead(BaseModel):
             "name claims: show the domain itself, never only a badge"
         ),
     )
+    applicant_count: int | None = Field(
+        default=None,
+        description=(
+            "How many creators came forward: applied, or said yes to an "
+            "invitation, whatever you decided since. On your own campaign "
+            "list only; null everywhere else"
+        ),
+    )
     brand_name_flag: BrandNameFlagRead | None = Field(
         default=None,
         description=(

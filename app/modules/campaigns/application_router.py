@@ -19,8 +19,9 @@ from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page, Slice
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import get_now
-from app.modules.campaigns import feedback, service
+from app.modules.campaigns import applicant_service, feedback, service
 from app.modules.campaigns import offer_service as offers
+from app.modules.campaigns.applicant_schemas import BrandApplicationRead
 from app.modules.campaigns.dependencies import (
     BrandApplication,
     CreatorApplication,
@@ -108,9 +109,14 @@ def apply_to_campaign(
 
 @router.get(
     "/campaigns/{campaign_id}/applications",
-    response_model=Page[ApplicationRead],
+    response_model=Page[BrandApplicationRead],
     summary="List applications to my campaign",
-    description="Applications to one of the signed-in brand's campaigns, newest first.",
+    description=(
+        "Applications to one of the signed-in brand's campaigns, newest first, "
+        "each with its `creator`: name, handle, city, niches and how they "
+        "deliver, so the board needs no call per applicant. Never a phone "
+        "number or contact detail."
+    ),
     responses={
         **_COMMON_ERRORS,
         404: problem_doc("No such campaign, or it is not yours"),
@@ -126,12 +132,14 @@ def list_campaign_applications(
     limit: Limit = DEFAULT_LIMIT,
     cursor: Cursor = None,
     db: Session = Depends(get_db),
-) -> Page[ApplicationRead]:
-    return _page(
-        db,
-        service.list_campaign_applications(
-            db, campaign, limit=limit, cursor=cursor, status=application_status
-        ),
+    now: datetime = Depends(get_now),
+) -> Page[BrandApplicationRead]:
+    result = service.list_campaign_applications(
+        db, campaign, limit=limit, cursor=cursor, status=application_status
+    )
+    return Page[BrandApplicationRead](
+        items=applicant_service.read_for_brand(db, list(result.rows), now),
+        next_cursor=result.next_cursor,
     )
 
 

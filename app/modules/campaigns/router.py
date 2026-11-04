@@ -15,7 +15,7 @@ from app.core.rate_limit import rate_limit
 from app.core.taxonomy import Niche
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
-from app.modules.campaigns import service
+from app.modules.campaigns import applicant_service, service
 from app.modules.campaigns.dependencies import CurrentBrandProfile, OwnedCampaign
 from app.modules.campaigns.models import Campaign
 from app.modules.campaigns.schemas import (
@@ -129,11 +129,16 @@ def list_my_campaigns(
     cursor: Cursor = None,
     db: Session = Depends(get_db),
 ) -> Page[CampaignRead]:
-    return _page(
-        db,
-        service.list_brand_campaigns(
-            db, brand, limit=limit, cursor=cursor, status=campaign_status
-        ),
+    result = service.list_brand_campaigns(
+        db, brand, limit=limit, cursor=cursor, status=campaign_status
+    )
+    page = _page(db, result)
+    counts = applicant_service.applicant_counts(db, [c.id for c in page.items])
+    return Page[CampaignRead](
+        items=[
+            c.model_copy(update={"applicant_count": counts[c.id]}) for c in page.items
+        ],
+        next_cursor=page.next_cursor,
     )
 
 

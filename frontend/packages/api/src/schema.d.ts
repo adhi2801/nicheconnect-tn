@@ -1233,7 +1233,7 @@ export interface paths {
         };
         /**
          * List applications to my campaign
-         * @description Applications to one of the signed-in brand's campaigns, newest first.
+         * @description Applications to one of the signed-in brand's campaigns, newest first, each with its `creator`: name, handle, city, niches and how they deliver, so the board needs no call per applicant. Never a phone number or contact detail.
          */
         get: operations["list_campaign_applications_api_v1_campaigns__campaign_id__applications_get"];
         put?: never;
@@ -4241,6 +4241,27 @@ export interface components {
             scopes: ("deals:read" | "campaigns:read" | "applications:write" | "notes:write" | "alerts:write")[];
         };
         /**
+         * ApplicantRead
+         * @description The creator behind an application: enough to decide, without opening each one.
+         */
+        ApplicantRead: {
+            /** City */
+            city: string;
+            /**
+             * Creator Id
+             * Format: uuid
+             */
+            creator_id: string;
+            /** @description What happened on their deals with any brand, not reviews; null shares mean not enough to say, never zero */
+            delivery: components["schemas"]["CreatorDeliveryRead"];
+            /** Display Name */
+            display_name: string;
+            /** Handle */
+            handle: string;
+            /** Niches */
+            niches: string[];
+        };
+        /**
          * ApplicationCountsRead
          * @description How many applications are in each status. Every status, zeros included.
          */
@@ -4683,6 +4704,93 @@ export interface components {
              */
             name: string;
         };
+        /**
+         * BrandApplicationRead
+         * @description An application to one of your campaigns, with who sent it.
+         */
+        BrandApplicationRead: {
+            /**
+             * Agreed Amount Paise
+             * @description The figure both sides agreed through an offer, in paise. It pre-fills the memo's fee; the memo is still the contract. Null when none was agreed
+             */
+            agreed_amount_paise: number | null;
+            /**
+             * Campaign Id
+             * Format: uuid
+             */
+            campaign_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            creator: components["schemas"]["ApplicantRead"];
+            /**
+             * Creator Id
+             * Format: uuid
+             */
+            creator_id: string;
+            /**
+             * Currency
+             * @default INR
+             * @constant
+             */
+            currency: "INR";
+            /** Decline Reason */
+            decline_reason: ("timing" | "budget" | "not_a_fit" | "other") | null;
+            /**
+             * First Answered At
+             * @description When the brand first shortlisted, accepted or rejected this application. Null while it waits, on invitations, and on answers given before 12 October 2026, when it was first kept
+             */
+            first_answered_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Invitation Note */
+            invitation_note: string | null;
+            /** @description A counter-offer waiting for an answer (item 44): the side that did not make it accepts, declines or answers with its own at `/api/v1/applications/{id}/offers`. While one waits, the application cannot be accepted */
+            open_offer: components["schemas"]["OfferRead"] | null;
+            /**
+             * Origin
+             * @enum {string}
+             */
+            origin: "applied" | "invited";
+            /**
+             * Pitch
+             * @description Null for an invitation
+             */
+            pitch: string | null;
+            /** Quoted Amount Paise */
+            quoted_amount_paise: number | null;
+            /** Rejection Note */
+            rejection_note: string | null;
+            /** Rejection Reason */
+            rejection_reason: ("budget_mismatch" | "audience_mismatch" | "timing" | "chose_another_creator" | "incomplete_profile" | "other") | null;
+            /** Repeat Of Application Id */
+            repeat_of_application_id: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "submitted" | "shortlisted" | "accepted" | "rejected" | "withdrawn" | "invited" | "declined";
+            /**
+             * Status Changed At
+             * Format: date-time
+             */
+            status_changed_at: string;
+            /**
+             * Text Flags
+             * @description Warnings on the free text above, worked out on every read: a request for money from a creator, or contact details before a deal is agreed (item 60). Show each beside its field; never hide the text
+             */
+            readonly text_flags: components["schemas"]["FieldFlag"][];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** BrandDomainClaim */
         BrandDomainClaim: {
             /**
@@ -5106,6 +5214,11 @@ export interface components {
          * @description A campaign as the API returns it.
          */
         CampaignRead: {
+            /**
+             * Applicant Count
+             * @description How many creators came forward: applied, or said yes to an invitation, whatever you decided since. On your own campaign list only; null everywhere else
+             */
+            applicant_count?: number | null;
             /** Applications Close On */
             applications_close_on: string | null;
             /**
@@ -7956,6 +8069,16 @@ export interface components {
         Page_BlockRead_: {
             /** Items */
             items: components["schemas"]["BlockRead"][];
+            /**
+             * Next Cursor
+             * @description Pass as ?cursor= to get the next page
+             */
+            next_cursor?: string | null;
+        };
+        /** Page[BrandApplicationRead] */
+        Page_BrandApplicationRead_: {
+            /** Items */
+            items: components["schemas"]["BrandApplicationRead"][];
             /**
              * Next Cursor
              * @description Pass as ?cursor= to get the next page
@@ -16277,7 +16400,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Page_ApplicationRead_"];
+                    "application/json": components["schemas"]["Page_BrandApplicationRead_"];
                 };
             };
             /** @description No access token, or it is invalid or expired */

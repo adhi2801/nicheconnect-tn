@@ -931,6 +931,49 @@
         "title": "AgentTokenRead",
         "type": "object"
       },
+      "ApplicantRead": {
+        "description": "The creator behind an application: enough to decide, without opening each one.",
+        "properties": {
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "creator_id": {
+            "format": "uuid",
+            "title": "Creator Id",
+            "type": "string"
+          },
+          "delivery": {
+            "$ref": "#/components/schemas/CreatorDeliveryRead",
+            "description": "What happened on their deals with any brand, not reviews; null shares mean not enough to say, never zero"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "handle": {
+            "title": "Handle",
+            "type": "string"
+          },
+          "niches": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Niches",
+            "type": "array"
+          }
+        },
+        "required": [
+          "creator_id",
+          "handle",
+          "display_name",
+          "city",
+          "niches",
+          "delivery"
+        ],
+        "title": "ApplicantRead",
+        "type": "object"
+      },
       "ApplicationCountsRead": {
         "description": "How many applications are in each status. Every status, zeros included.",
         "properties": {
@@ -1998,6 +2041,233 @@
         "title": "BlockRead",
         "type": "object"
       },
+      "BrandApplicationRead": {
+        "description": "An application to one of your campaigns, with who sent it.",
+        "properties": {
+          "agreed_amount_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The figure both sides agreed through an offer, in paise. It pre-fills the memo's fee; the memo is still the contract. Null when none was agreed",
+            "title": "Agreed Amount Paise"
+          },
+          "campaign_id": {
+            "format": "uuid",
+            "title": "Campaign Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "creator": {
+            "$ref": "#/components/schemas/ApplicantRead"
+          },
+          "creator_id": {
+            "format": "uuid",
+            "title": "Creator Id",
+            "type": "string"
+          },
+          "currency": {
+            "const": "INR",
+            "default": "INR",
+            "title": "Currency",
+            "type": "string"
+          },
+          "decline_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "timing",
+                  "budget",
+                  "not_a_fit",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decline Reason"
+          },
+          "first_answered_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the brand first shortlisted, accepted or rejected this application. Null while it waits, on invitations, and on answers given before 12 October 2026, when it was first kept",
+            "title": "First Answered At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "invitation_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invitation Note"
+          },
+          "open_offer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OfferRead"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A counter-offer waiting for an answer (item 44): the side that did not make it accepts, declines or answers with its own at `/api/v1/applications/{id}/offers`. While one waits, the application cannot be accepted"
+          },
+          "origin": {
+            "enum": [
+              "applied",
+              "invited"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "pitch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for an invitation",
+            "title": "Pitch"
+          },
+          "quoted_amount_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quoted Amount Paise"
+          },
+          "rejection_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Note"
+          },
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "budget_mismatch",
+                  "audience_mismatch",
+                  "timing",
+                  "chose_another_creator",
+                  "incomplete_profile",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Reason"
+          },
+          "repeat_of_application_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repeat Of Application Id"
+          },
+          "status": {
+            "enum": [
+              "submitted",
+              "shortlisted",
+              "accepted",
+              "rejected",
+              "withdrawn",
+              "invited",
+              "declined"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "status_changed_at": {
+            "format": "date-time",
+            "title": "Status Changed At",
+            "type": "string"
+          },
+          "text_flags": {
+            "description": "Warnings on the free text above, worked out on every read: a request for money from a creator, or contact details before a deal is agreed (item 60). Show each beside its field; never hide the text",
+            "items": {
+              "$ref": "#/components/schemas/FieldFlag"
+            },
+            "readOnly": true,
+            "title": "Text Flags",
+            "type": "array"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "campaign_id",
+          "creator_id",
+          "origin",
+          "pitch",
+          "invitation_note",
+          "repeat_of_application_id",
+          "quoted_amount_paise",
+          "status",
+          "rejection_reason",
+          "rejection_note",
+          "decline_reason",
+          "status_changed_at",
+          "first_answered_at",
+          "created_at",
+          "updated_at",
+          "open_offer",
+          "agreed_amount_paise",
+          "creator",
+          "text_flags"
+        ],
+        "title": "BrandApplicationRead",
+        "type": "object"
+      },
       "BrandDomainClaim": {
         "additionalProperties": false,
         "properties": {
@@ -3003,6 +3273,18 @@
       "CampaignRead": {
         "description": "A campaign as the API returns it.",
         "properties": {
+          "applicant_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How many creators came forward: applied, or said yes to an invitation, whatever you decided since. On your own campaign list only; null everywhere else",
+            "title": "Applicant Count"
+          },
           "applications_close_on": {
             "anyOf": [
               {
@@ -9609,6 +9891,34 @@
           "items"
         ],
         "title": "Page[BlockRead]",
+        "type": "object"
+      },
+      "Page_BrandApplicationRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BrandApplicationRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as ?cursor= to get the next page",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[BrandApplicationRead]",
         "type": "object"
       },
       "Page_CampaignRead_": {
@@ -23409,7 +23719,7 @@
     },
     "/api/v1/campaigns/{campaign_id}/applications": {
       "get": {
-        "description": "Applications to one of the signed-in brand's campaigns, newest first.",
+        "description": "Applications to one of the signed-in brand's campaigns, newest first, each with its `creator`: name, handle, city, niches and how they deliver, so the board needs no call per applicant. Never a phone number or contact detail.",
         "operationId": "list_campaign_applications_api_v1_campaigns__campaign_id__applications_get",
         "parameters": [
           {
@@ -23505,7 +23815,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Page_ApplicationRead_"
+                  "$ref": "#/components/schemas/Page_BrandApplicationRead_"
                 }
               }
             },

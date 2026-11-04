@@ -120,8 +120,8 @@ def test_my_campaigns_query_count_does_not_grow_with_rows(client, db):
 
     assert with_three == with_twenty
     # Account, brand profile, then the list, and every row's deliverables in
-    # one query (D-127).
-    assert with_twenty <= 6
+    # one query (D-127); every row's applicant count in one more (R2, D-154).
+    assert with_twenty <= 7
 
 
 def test_application_list_query_count_does_not_grow_with_rows(client, db):
@@ -161,7 +161,9 @@ def test_application_list_query_count_does_not_grow_with_rows(client, db):
     with_twenty = queries_for(client, url, headers)
 
     assert with_three == with_twenty
-    assert with_twenty <= 6
+    # The page and its offers, then who applied: the creators in one query and
+    # their delivery records in one more (R2, D-154), however many apply.
+    assert with_twenty <= 8
 
 
 def test_reading_one_campaign_is_a_handful_of_queries(client, db):

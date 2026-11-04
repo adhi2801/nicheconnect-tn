@@ -1973,3 +1973,15 @@ Newest entries at the bottom.
   1. `CampaignRead.brand_name`, read by the look-alike name check's own query, so a campaign page costs no extra query. A brand's name was already shown on payments and attention; it is now on every campaign a creator can read.
   2. `MemoWithStageRead.campaign_title` and `counterparty_name`, one query for the page.
   3. `GET /api/v1/features`, public, each feature read from the very setting its routes follow, its off code held to the module's own exception by a test.
+
+## D-154: Who applied, in one call (R2)
+- Date: 2026-11-04
+- Approved by: Adhi, in this session: "do it yourself" for the frontend's requests. **Not reviewed by the other founder** (D-051).
+- Context: `docs/PROPOSAL_FRONTEND_API_REQUESTS.md` R2: a brand's board drew each applicant with a call to their media kit, twenty calls a page, and no campaign said how many had applied.
+- Options considered: A) embed a creator summary in the brand's applicant list, and a count on the brand's campaign list; B) no change.
+- Chosen: A, as the proposal recommended.
+- Reason: one call per screen (ux.md section 7).
+- Consequences / follow-ups:
+  1. `BrandApplicationRead.creator`: handle, name, city, niches and the delivery record, the facts a saved list already shows (D-129), never contact details; on the brand's own campaign only (`OwnedCampaign`).
+  2. `CampaignRead.applicant_count` on the brand's own list: applied or said yes, never an invitation waiting, declined or withdrawn; null everywhere else, so no creator reads how many compete.
+  3. Fixed costs per page, proven not to grow: the applicant list's cap rises from 6 to 8 queries, the brand's campaign list's from 6 to 7.
