@@ -390,5 +390,91 @@
       "previous": "Earlier stages",
       "next": "Later stages"
     }
+  },
+  "landing": {
+    "nav": {
+      "signIn": "Sign in",
+      "start": "Start a deal",
+      "brand": "Colyv"
+    },
+    "hero": {
+      "eyebrow": "For Tamil Nadu's brands and creators",
+      "title": "Every brand and creator deal, on the record.",
+      "lede": "Agree the terms, deliver the work and settle the payment in one record neither side can rewrite. Brands pay creators directly; Colyv never holds the money.",
+      "cta": "Start a deal",
+      "secondary": "See how a deal works",
+      "imageAlt": "A Chola-style granite temple tower, carved tier upon tier, standing on a dark stage. A thousand years old, and still standing."
+    },
+    "steps": {
+      "eyebrow": "How a deal works",
+      "title": "Five steps, each one written down.",
+      "lede": "A deal moves forward only when the side whose turn it is acts. Both of you always see where it stands and who it is waiting on.",
+      "items": {
+        "1": {
+          "title": "The brand sends the terms",
+          "body": "Fee, deliverables, dates and usage rights, in a memo the creator can accept, decline or ask to change."
+        },
+        "2": {
+          "title": "Both sides agree",
+          "body": "Once the creator accepts, the terms are fixed. Nobody can quietly edit what was agreed."
+        },
+        "3": {
+          "title": "The work is made",
+          "body": "Where the terms ask for it, the creator shows a draft first. Then they post, and send the live link."
+        },
+        "4": {
+          "title": "The work is approved",
+          "body": "The brand approves it or asks for changes. If the brand stays silent past the agreed window, it is approved for them, so work is never held hostage."
+        },
+        "5": {
+          "title": "The creator is paid",
+          "body": "The brand pays the creator directly and marks it paid. Only the creator can confirm the money arrived."
+        }
+      }
+    },
+    "record": {
+      "eyebrow": "The record",
+      "title": "Sealed, step by step.",
+      "lede": "Every step of a deal is sealed to the one before it, so a changed or missing entry shows. Each day, two independent timestamp authorities sign over that day's records.",
+      "points": {
+        "1": "Both sides read the same record, and either can check it themselves.",
+        "2": "Terms, links and notes appear as fingerprints, never as text anyone can alter.",
+        "3": "A dispute sits on the record too, with each side's account, never our verdict."
+      },
+      "imageAlt": "A cast-bronze seal with a woven guilloché pattern and Tamil lettering around its rim."
+    },
+    "money": {
+      "eyebrow": "The money",
+      "title": "We never touch your money.",
+      "body": "Brands pay creators straight from their own bank, by UPI or transfer. Colyv records that the payment was made and when it arrived. It never receives, holds or moves a rupee."
+    },
+    "sides": {
+      "eyebrow": "One place, two sides",
+      "brands": {
+        "title": "For brands",
+        "points": {
+          "1": "Find creators by city, niche and price, and see how each one has delivered before.",
+          "2": "Send terms, approve work and mark payments from one board, with your team in their own roles.",
+          "3": "Build a payment record creators can see before they work with you."
+        }
+      },
+      "creators": {
+        "title": "For creators",
+        "points": {
+          "1": "See who is hiring, what they pay and how quickly they have paid before.",
+          "2": "Every deal's terms, dates and payment in one place, with what is due next first on your screen.",
+          "3": "A delivery record that is yours, built from what happened, not from reviews."
+        }
+      }
+    },
+    "closing": {
+      "title": "Your next deal, on the record.",
+      "body": "Sign in with your phone number. Brands and creators each see their own side.",
+      "cta": "Start a deal"
+    },
+    "footer": {
+      "line": "Made in Tamil Nadu. Colyv records deals; brands pay creators directly.",
+      "rights": "© {year} Colyv"
+    }
   }
 }
