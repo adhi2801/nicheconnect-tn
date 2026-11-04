@@ -106,6 +106,12 @@ class TeamFull(DomainError):
     title = "This brand's team is full (20 people besides the owner)"
 
 
+class TeamInvitesDailyLimit(DomainError):
+    status_code = HTTPStatus.TOO_MANY_REQUESTS
+    code = "team_invites_daily_limit"
+    title = "This brand has sent 20 invites in the last day; try again tomorrow"
+
+
 class TeamChangeNotAllowed(DomainError):
     # Only the owner makes or changes an admin; an admin never removes one.
     status_code = HTTPStatus.FORBIDDEN

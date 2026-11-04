@@ -25,7 +25,8 @@ from app.core.export import (
     build_section,
 )
 from app.core.pagination import Slice, build_slice, older_than_cursor
-from app.modules.auth import sides
+from app.modules.auth import brand_access, sides
+from app.modules.auth.models.account import Account
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import brand_is_active, brand_is_unavailable
@@ -36,7 +37,6 @@ from app.modules.campaigns.exceptions import (
     AlreadyApplied,
     ApplicationsClosed,
     ApplicationStatusConflict,
-    BrandProfileRequired,
     CampaignNotEditable,
     CampaignNotFound,
     CampaignNotOpen,
@@ -128,10 +128,11 @@ EDITABLE_WHILE_OPEN = frozenset(
 
 
 def get_visible_campaign(
-    db: Session, campaign_id: uuid.UUID, account_id: uuid.UUID
+    db: Session, campaign_id: uuid.UUID, account: Account
 ) -> Campaign:
-    """A campaign this account may read: its owner sees it in any status,
-    everyone else only while it is open and not withheld (item 52).
+    """A campaign this account may read: its brand's owner and team (D-148)
+    see it in any status, everyone else only while it is open and not
+    withheld (item 52).
 
     Raises CampaignNotFound for another brand's campaign that is not open,
     never 403, so drafts stay private; and ContentWithheld (451) for an open
@@ -141,14 +142,14 @@ def get_visible_campaign(
     if campaign is None:
         raise CampaignNotFound()
     withheld = campaign_is_withheld(db, campaign.id, campaign.brand_id)
-    if campaign.status != "open" or withheld:
-        owner_account_id = db.scalar(
-            select(Brand.account_id).where(Brand.id == campaign.brand_id)
-        )
-        if owner_account_id != account_id:
-            if campaign.status != "open":
-                raise CampaignNotFound()
-            raise ContentWithheld()
+    # Only now asked whether the reader is of the brand: an open campaign,
+    # the common case, costs no query for it.
+    if (campaign.status != "open" or withheld) and brand_access.role_in(
+        db, account, campaign.brand_id
+    ) is None:
+        if campaign.status != "open":
+            raise CampaignNotFound()
+        raise ContentWithheld()
     return campaign
 
 
@@ -172,17 +173,6 @@ def brand_name_flags_for(
     """
     found = brand_name_service.flags_for(db, {c.brand_id for c in campaigns})
     return {brand_id: to_brand_name_flag_read(flag) for brand_id, flag in found.items()}
-
-
-def get_brand_for_account(db: Session, account_id: uuid.UUID) -> Brand:
-    """The brand profile of a signed-in brand account.
-
-    Raises BrandProfileRequired when the account has not created one yet.
-    """
-    brand = db.scalars(select(Brand).where(Brand.account_id == account_id)).first()
-    if brand is None:
-        raise BrandProfileRequired()
-    return brand
 
 
 def create_campaign(

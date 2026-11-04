@@ -6,6 +6,8 @@ The rules (docs/PROPOSAL_TEAM_SEATS.md):
   with a step-up code bound to that exact change;
 - an invite keeps only a keyed hash of the number, and no message is sent
   to it; a brand account already holding the number is told in the app;
+- at most 20 invites a brand in any 24 hours, whoever on the team sends
+  them, counted under the brand's lock;
 - only the invited number accepts, within 7 days; at most 20 live members
   a brand, counted under the brand's lock, so two accepting at once cannot
   pass it together;
@@ -21,7 +23,7 @@ without writing anything; the request's end releases the lock.
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -32,6 +34,7 @@ from app.modules.auth.models.account import Account
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.brand_team import (
     INVITE_LIFETIME,
+    MAX_INVITES_PER_DAY,
     MAX_TEAM_MEMBERS,
     BrandInvite,
     BrandMember,
@@ -43,6 +46,7 @@ from app.modules.me.exceptions import (
     TeamFull,
     TeamInviteExists,
     TeamInviteNotFound,
+    TeamInvitesDailyLimit,
     TeamMemberNotFound,
 )
 from app.modules.notifications import service as notifications
@@ -128,6 +132,14 @@ def invite(
             db, inviter, "change_team", f"invite:{phone}:admin", step_up_code, now
         )
     brand = _lock_brand(db, access.brand.id)
+    sent_today = db.scalar(
+        select(func.count()).where(
+            BrandInvite.brand_id == brand.id,
+            BrandInvite.created_at > now - timedelta(days=1),
+        )
+    )
+    if (sent_today or 0) >= MAX_INVITES_PER_DAY:
+        raise TeamInvitesDailyLimit()
     owner = db.get(Account, brand.account_id)
     holders = list(
         db.scalars(select(Account).where(Account.phone == phone, Account.role == "brand"))

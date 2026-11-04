@@ -19,7 +19,7 @@ from app.modules.deal_memo import (
     record_service,
     shipment_service,
 )
-from app.modules.deal_memo.dependencies import visible_memo_for_account
+from app.modules.deal_memo.dependencies import party_memo
 from app.modules.deal_memo.exceptions import CheckpointNotFound
 from app.modules.deal_memo.schemas import (
     CheckpointTimestampRead,
@@ -62,7 +62,7 @@ def read_deal_record(
     db: Annotated[Session, Depends(get_db)],
 ) -> DealRecordRead:
     """Either party. Anyone else gets 404, so ids cannot be walked."""
-    memo = visible_memo_for_account(db, memo_id, account.id, account.role)
+    memo = party_memo(db, request, memo_id, account)
     entries = record_service.entries_for(db, memo.id)
     check = record_service.verify(memo, entries)
     return DealRecordRead(
@@ -123,7 +123,7 @@ def read_deal_record_proof(
     ] = None,
 ) -> DealRecordProofRead:
     """Either party. Anyone else gets 404, so ids cannot be walked."""
-    memo = visible_memo_for_account(db, memo_id, account.id, account.role)
+    memo = party_memo(db, request, memo_id, account)
     checkpoint = (
         anchor_service.checkpoint_for(db, day)
         if day is not None

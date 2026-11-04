@@ -12,6 +12,7 @@ from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
 from app.core.rate_limit import rate_limit
 from app.core.taxonomy import Niche
 from app.db.session import get_db
+from app.modules.auth.brand_dependencies import MaybeBrandAccess
 from app.modules.auth.dependencies import CurrentBrand, get_now
 from app.modules.auth.exceptions import InvalidSearch
 from app.modules.auth.schemas import ChannelPlatform, PackageFormat
@@ -56,6 +57,7 @@ _ERRORS: ResponseDocs = {
 def search_creators(
     request: Request,
     account: CurrentBrand,
+    access: MaybeBrandAccess,
     db: Annotated[Session, Depends(get_db)],
     q: Annotated[
         str | None,
@@ -88,6 +90,9 @@ def search_creators(
         and min_followers > max_followers
     ):
         raise InvalidSearch("min_followers is larger than max_followers.")
+    # Blocks are the brand's (D-148): a team member searches as the brand,
+    # so a creator who blocked it, or whom it blocked, stays out of sight.
+    viewer = account.id if access is None else access.brand.account_id
     result = service.search_creators(
         db,
         service.CreatorSearch(
@@ -100,7 +105,7 @@ def search_creators(
             max_price_paise=max_price_paise,
             package_format=format,
             available_on=available_on,
-            viewer_account_id=account.id,
+            viewer_account_id=viewer,
         ),
         limit=limit,
         cursor=cursor,

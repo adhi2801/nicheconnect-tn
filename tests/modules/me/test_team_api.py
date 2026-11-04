@@ -14,10 +14,16 @@ from sqlalchemy import select
 
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.brand import Brand
-from app.modules.auth.models.brand_team import MAX_TEAM_MEMBERS, BrandInvite, BrandMember
+from app.modules.auth.models.brand_team import (
+    MAX_INVITES_PER_DAY,
+    MAX_TEAM_MEMBERS,
+    BrandInvite,
+    BrandMember,
+)
+from app.modules.auth.models.creator import Creator
 from tests.deal_flow import MEMOS_URL, PAYMENT_REFERENCE, User, accepted_memo, brand_user
 from tests.deal_flow import creator_user as make_creator
-from tests.factories import create_account
+from tests.factories import create_account, unique_test_phone
 from tests.step_up import with_code
 
 TEAM = "/api/v1/brands/me/team"
@@ -416,3 +422,67 @@ def test_a_stranger_brand_member_never_reaches_the_deal(client, db, clock, owner
         404,
         "memo_not_found",
     )
+
+
+def test_a_member_never_finds_a_creator_who_blocked_the_brand(client, db, clock, owner):
+    """Search hides blocks either way (item 59); a member searches as the brand."""
+    creator = make_creator(db, clock)
+    published = client.post(
+        "/api/v1/creators/me/passport/publish", headers=creator.headers
+    )
+    assert published.status_code == 200, published.text
+    handle = db.scalar(
+        select(Creator.handle).where(Creator.account_id == creator.account_id)
+    )
+    brand_id = db.scalar(select(Brand.id).where(Brand.account_id == owner.account_id))
+    member = join(client, db, clock, owner, "campaigns")
+
+    def found(user: User) -> list[str]:
+        page = client.get("/api/v1/creators", params={"q": handle}, headers=user.headers)
+        assert page.status_code == 200, page.text
+        return [row["handle"] for row in page.json()["items"]]
+
+    assert found(member) == [handle]
+    blocked = client.post(
+        "/api/v1/me/blocks", json={"brand_id": str(brand_id)}, headers=creator.headers
+    )
+    assert blocked.status_code == 201, blocked.text
+
+    assert found(owner) == []
+    assert found(member) == []
+
+
+def test_a_member_reads_the_brand_s_draft_campaign_and_a_stranger_does_not(
+    client, db, clock, owner
+):
+    """A draft is private to the brand (security.md section 2): its team included."""
+    draft = client.post(CAMPAIGNS, json=CAMPAIGN, headers=owner.headers)
+    assert draft.status_code == 201, draft.text
+    url = f"{CAMPAIGNS}/{draft.json()['id']}"
+    member = join(client, db, clock, owner, "finance")
+    outsider = join(client, db, clock, brand_user(db, clock), "admin")
+
+    assert client.get(url, headers=member.headers).status_code == 200
+    problem(client.get(url, headers=outsider.headers), 404, "campaign_not_found")
+
+
+def test_a_brand_sends_twenty_invites_a_day_however_many_send_them(
+    client, db, clock, owner, unlimited
+):
+    """The ceiling is the brand's (D-148): an admin's invites count with the owner's."""
+    admin = join(client, db, clock, owner, "admin")  # the brand's first invite
+
+    def send(user: User):
+        return client.post(
+            INVITES,
+            json={"phone": unique_test_phone(), "role": "finance", "first_name": "Meena"},
+            headers=user.headers,
+        )
+
+    for n in range(MAX_INVITES_PER_DAY - 1):
+        assert send(owner if n % 2 else admin).status_code == 201
+
+    problem(send(admin), 429, "team_invites_daily_limit")
+    problem(send(owner), 429, "team_invites_daily_limit")
+    clock.advance(timedelta(days=1, seconds=1))
+    assert send(owner).status_code == 201

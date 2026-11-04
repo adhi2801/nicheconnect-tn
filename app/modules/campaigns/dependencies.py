@@ -3,14 +3,19 @@
 import uuid
 from typing import Annotated
 
-from fastapi import Depends, Header, Path, Request
+from fastapi import Depends, Path, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.modules.auth import brand_access, brand_acts
-from app.modules.auth.dependencies import CurrentAccount, CurrentBrand, CurrentCreator
-from app.modules.auth.exceptions import BrandRoleNotAllowed
+from app.modules.auth import brand_access
+from app.modules.auth.brand_dependencies import (
+    BrandIdHeader,
+    MaybeBrandAccess,
+    acts_for_brand_of,
+    find_brand_access,
+)
+from app.modules.auth.dependencies import CurrentAccount, CurrentCreator
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.exceptions import (
@@ -22,36 +27,14 @@ from app.modules.campaigns.models import Application, Campaign
 from app.modules.campaigns.service import get_creator_for_account
 
 
-def get_current_brand_access(
-    request: Request,
-    account: CurrentBrand,
-    db: Annotated[Session, Depends(get_db)],
-    brand_id: Annotated[
-        str | None,
-        Header(
-            alias=brand_access.BRAND_HEADER,
-            description=(
-                "The brand to act for, for someone in more than one (D-148). "
-                "Leave it out to act for your own brand, or your only one."
-            ),
-        ),
-    ] = None,
-) -> brand_access.BrandAccess:
+def get_current_brand_access(access: MaybeBrandAccess) -> brand_access.BrandAccess:
     """The brand the signed-in account acts for and its role there, allowed this route.
 
     409 if it has no brand at all; 404 for a brand named but not theirs; 403
     when their role does not hold this route's act (`auth.brand_acts`).
     """
-    access = brand_access.resolve(db, account, brand_access.parse_brand_header(brand_id))
     if access is None:
         raise BrandProfileRequired()
-    route = request.scope.get("route")
-    path = getattr(route, "path", request.url.path)
-    if not brand_acts.may(access.role, request.method, path):
-        raise BrandRoleNotAllowed()
-    # Who is acting, for the deal record to name (D-148): the request's own
-    # session carries it, so an entry sealed in this request names this person.
-    db.info[brand_access.ACTING_ACCOUNT] = account.id
     return access
 
 
@@ -60,31 +43,38 @@ CurrentBrandAccess = Annotated[
 ]
 
 
-def get_current_brand_profile(
-    request: Request,
-    account: CurrentBrand,
-    db: Annotated[Session, Depends(get_db)],
-    brand_id: Annotated[
-        str | None,
-        Header(
-            alias=brand_access.BRAND_HEADER,
-            description=(
-                "The brand to act for, for someone in more than one (D-148). "
-                "Leave it out to act for your own brand, or your only one."
-            ),
-        ),
-    ] = None,
-) -> Brand:
+def get_current_brand_profile(access: CurrentBrandAccess) -> Brand:
     """The brand the signed-in account acts for, in a role allowed this route.
 
-    409 if it has no brand at all; 404 for a brand named but not theirs; 403
-    when their role does not hold this route's act (`auth.brand_acts`). The
-    owner of a brand passes every check, as before teams existed.
+    The owner of a brand passes every check, as before teams existed.
     """
-    return get_current_brand_access(request, account, db, brand_id).brand
+    return access.brand
 
 
 CurrentBrandProfile = Annotated[Brand, Depends(get_current_brand_profile)]
+
+
+def get_acting_brand(
+    request: Request,
+    account: CurrentAccount,
+    db: Annotated[Session, Depends(get_db)],
+    brand_id: BrandIdHeader = None,
+) -> Brand | None:
+    """For a route either side may call: the brand a brand account acts for.
+
+    None for any other account, which the route then serves as its own side.
+    For a brand account, the same check as `CurrentBrandAccess`: 409 with no
+    brand at all, 404 for a brand named but not theirs, and the route's act
+    for a write.
+    """
+    if account.role != "brand":
+        return None
+    return get_current_brand_access(
+        find_brand_access(request, account, db, brand_id)
+    ).brand
+
+
+ActingBrand = Annotated[Brand | None, Depends(get_acting_brand)]
 
 
 def get_owned_campaign(
@@ -119,14 +109,17 @@ CurrentCreatorProfile = Annotated[Creator, Depends(get_current_creator_profile)]
 
 
 def get_visible_application(
+    request: Request,
     application_id: Annotated[uuid.UUID, Path(description="The application's id")],
     account: CurrentAccount,
     db: Annotated[Session, Depends(get_db)],
 ) -> Application:
-    """An application the signed-in account may see.
+    """An application the signed-in account is a party to.
 
-    Visible to the creator who sent it and to the brand that owns the
-    campaign. Anyone else gets 404, never 403, so its existence stays private.
+    The creator who sent it, and on the brand side the owner or any live
+    member of the campaign's brand (D-148), in a role that must allow this
+    route's act. Anyone else gets 404, never 403, so its existence stays
+    private.
     """
     application = db.get(Application, application_id)
     if application is None:
@@ -138,13 +131,11 @@ def get_visible_application(
         ).first()
         if creator is not None and application.creator_id == creator.id:
             return application
-    else:
-        owner_account_id = db.scalar(
-            select(Brand.account_id)
-            .join(Campaign, Campaign.brand_id == Brand.id)
-            .where(Campaign.id == application.campaign_id)
+    elif account.role == "brand":
+        brand_id = db.scalar(
+            select(Campaign.brand_id).where(Campaign.id == application.campaign_id)
         )
-        if owner_account_id == account.id:
+        if acts_for_brand_of(db, request, account, brand_id):
             return application
     raise ApplicationNotFound()
 

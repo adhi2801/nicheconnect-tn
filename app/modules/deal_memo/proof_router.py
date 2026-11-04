@@ -26,7 +26,7 @@ from app.modules.deal_memo import (
 from app.modules.deal_memo.dependencies import (
     BrandMemo,
     CreatorMemo,
-    visible_memo_for_account,
+    party_memo,
 )
 from app.modules.deal_memo.proof_models import (
     MAX_FILES_PER_PROOF,
@@ -470,7 +470,7 @@ def list_proof(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> list[ProofRead]:
-    memo = visible_memo_for_account(db, memo_id, account.id, account.role)
+    memo = party_memo(db, request, memo_id, account)
     return [
         ProofRead.model_validate(proof)
         for proof in proof_service.list_for_memo(db, memo, now)
@@ -504,7 +504,7 @@ def view_proof_files(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> list[ProofFileView]:
-    memo = visible_memo_for_account(db, memo_id, account.id, account.role)
+    memo = party_memo(db, request, memo_id, account)
     proof = proof_service.get_for_memo(db, memo, proof_id, now)
     files = list(proof.files)
     readings = proof_reading_service.shown_readings(db, [file.id for file in files])

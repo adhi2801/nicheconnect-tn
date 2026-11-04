@@ -19,6 +19,7 @@ from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.profiles import brand_name_service
 from app.modules.profiles import profile_service as profiles
+from app.modules.profiles.dependencies import ActingBrandProfile
 from app.modules.profiles.schemas import (
     BrandProfileCreate,
     BrandProfileRead,
@@ -103,10 +104,10 @@ def _brand_read(db: Session, profile: Brand) -> BrandProfileRead:
 @rate_limit(READ_LIMIT)
 def read_brand_profile(
     request: Request,
-    account: CurrentBrand,
+    brand: ActingBrandProfile,
     db: Session = Depends(get_db),
 ) -> BrandProfileRead:
-    return _brand_read(db, profiles.get_profile(db, Brand, account.id))
+    return _brand_read(db, brand)
 
 
 @brand_router.patch(
@@ -128,13 +129,12 @@ def read_brand_profile(
 def update_brand_profile(
     request: Request,
     body: BrandProfileUpdate,
-    account: CurrentBrand,
+    brand: ActingBrandProfile,
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> BrandProfileRead:
-    profile = profiles.get_profile(db, Brand, account.id)
     changes = body.model_dump(exclude_unset=True)
-    return _brand_read(db, profiles.update_profile(db, profile, changes, now))
+    return _brand_read(db, profiles.update_profile(db, brand, changes, now))
 
 
 @creator_router.post(

@@ -78,6 +78,13 @@ Everyone in a brand reads everything of that brand. Removing anyone, and making 
 
 **Piece 2:** the first name on the record's reads and the creator's notifications; who on a team is notified of what; the data export and account deletion for members; handing ownership over; the agent-scope and attention views; the docs (`BACKEND_COMPLETE.md`, `security.md`, `trust-and-safety.md`, `legal.md`, the OpenAPI snapshot).
 
+**Piece 1 as built (31 October 2026, not yet reviewed or merged):**
+- One check, in `auth/brand_dependencies.py`, so every module above `auth` reaches a brand the same way: `find_brand_access` by the `Brand-Id` header, and `acts_for_brand_of` for a route whose deal or application names the brand. Campaigns answer 409 with no brand at all, the brand's own profile 404, as before.
+- Moved onto it: every brand loader, the saved lists, "more like my best", my payments, my memos, attention, every deal read and dispute (`party_memo` replaced `visible_memo_for_account`), applications and offers, a draft campaign's read, the brand profile and its domain. `get_brand_for_account` is gone. Search filters blocks by the brand's owner, as saved lists already did, so a member never finds a creator who blocked the brand; blocks of the brand's own are piece 2.
+- **Corrected on the way:** the daily ceiling was per inviting person, not per brand as 4.2 says, so a brand with admins could send more than 20 a day. It is now counted per brand under the brand's lock (`team_invites_daily_limit`, 429), and the per-person limit stays.
+- Left on the owner's account on purpose: the data export and erasure (piece 2 gives members their own), admin views of an account, and who is notified (piece 2).
+- Proven: `tests/modules/auth/test_brand_acts.py` (every brand route found by walking the app; every write listed or the owner's alone; every listed route really checked; every role against every act; the stranger test's real world walked as each member role and as a member of another brand), `tests/modules/me/test_team_concurrency.py` (the cap, one invite accepted at once, the day's ceiling), and the team API tests. Nine rules broken on purpose, each caught.
+
 **Inventory of what moves** (30 October 2026, read from the running app): about 30 brand write routes resolve the brand through `get_current_brand_profile`, `get_owned_campaign`, `get_owned_application` and `get_brand_memo`; many more act on the signed-in account and look the brand up inside a service (feedback, notes, offers, disputes, payments, reports, memo reads, `visible_memo_for_account`, `get_visible_application`, `offer_service`, `deal_memo.service`, `campaigns.service`, `suspension`, `erasure`, `admin_service`). Each moves onto `brand_access`.
 
 ## 6. Rollback

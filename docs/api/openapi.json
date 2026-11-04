@@ -19720,6 +19720,26 @@
       "get": {
         "description": "The signed-in brand's own profile, as the brand entered it. 404 until the profile has been created.",
         "operationId": "read_brand_profile_api_v1_brands_me_get",
+        "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -19763,6 +19783,16 @@
               "application/problem+json": {}
             },
             "description": "The profile has not been created yet"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
           },
           "429": {
             "content": {
@@ -19808,6 +19838,24 @@
         "description": "Changes the fields sent and leaves the rest as they are. An email another brand already uses is refused with 409.",
         "operationId": "update_brand_profile_api_v1_brands_me_patch",
         "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
           {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
@@ -20235,6 +20283,26 @@
       "delete": {
         "description": "Creators stop seeing the domain at once.",
         "operationId": "withdraw_domain_api_v1_brands_me_domain_delete",
+        "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          }
+        ],
         "responses": {
           "204": {
             "description": "Successful Response"
@@ -20326,6 +20394,26 @@
       "get": {
         "description": "The record to publish, and what the last check found. Only you see this; creators see the domain once it is verified.",
         "operationId": "read_domain_api_v1_brands_me_domain_get",
+        "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -20425,6 +20513,24 @@
         "description": "Returns a TXT record to add at your DNS host: `record_name` and `record_value`. Then ask for a check. The token is good for 7 days. Claiming again, the same domain or another, replaces the claim with a new token, and a verified domain stops showing until the new one is found. Creators are shown the domain itself and when it was registered, never a verdict on the brand.",
         "operationId": "claim_domain_api_v1_brands_me_domain_post",
         "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
           {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
@@ -20563,6 +20669,24 @@
         "description": "Accepted at once, and checked within a minute: Cloudflare's and Google's resolvers must both see the record. Read the claim again for the result, or see it in `GET /api/v1/me/attention`. A verified domain is also checked every day; three days in a row without the record, and it lapses. Limit: 10 a day.",
         "operationId": "check_domain_api_v1_brands_me_domain_check_post",
         "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
           {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
@@ -20954,7 +21078,7 @@
     },
     "/api/v1/brands/me/team/invites": {
       "post": {
-        "description": "Invites a phone number to act for the brand in a role, for 7 days. We send no message to the number: tell the person, and the invite appears when that number signs in as a brand. We keep only a keyed hash of the number. An `admin` invite is the owner's alone and needs **a code**: ask at `POST /api/v1/me/step-up` with `change_team` and the value `invite:<phone>:admin`, then send it in `Step-Up-Code`. Owners and admins only. Limits: 10 a minute, 20 a day.",
+        "description": "Invites a phone number to act for the brand in a role, for 7 days. We send no message to the number: tell the person, and the invite appears when that number signs in as a brand. We keep only a keyed hash of the number. An `admin` invite is the owner's alone and needs **a code**: ask at `POST /api/v1/me/step-up` with `change_team` and the value `invite:<phone>:admin`, then send it in `Step-Up-Code`. Owners and admins only. Limits: 10 a minute and 20 a day for each person, and 20 a day for the brand however many of its team send them.",
         "operationId": "invite_api_v1_brands_me_team_invites_post",
         "parameters": [
           {
@@ -21103,7 +21227,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "Too many requests; see the Retry-After header"
+            "description": "Too many requests (see the Retry-After header), or `team_invites_daily_limit`: the brand sent 20 in the last day"
           },
           "503": {
             "content": {
@@ -24714,6 +24838,26 @@
       "get": {
         "description": "Every list you saved, newest first, each with how many of its creators you can find today. Whole, not paged: at most 50. Lists are yours alone; no creator is told they are on one.",
         "operationId": "list_my_lists_api_v1_creator_lists_get",
+        "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -24750,6 +24894,16 @@
               "application/problem+json": {}
             },
             "description": "Only brands keep creator lists"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
           },
           "429": {
             "content": {
@@ -24795,6 +24949,24 @@
         "description": "A new, empty list with a name of your own. At most 50 lists.",
         "operationId": "start_a_list_api_v1_creator_lists_post",
         "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
           {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
@@ -24933,6 +25105,24 @@
               "title": "List Id",
               "type": "string"
             }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
           }
         ],
         "responses": {
@@ -25036,6 +25226,24 @@
               "format": "uuid",
               "title": "List Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
             }
           },
           {
@@ -25219,6 +25427,24 @@
               "description": "From a previous page's next_cursor",
               "title": "Cursor"
             }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
           }
         ],
         "responses": {
@@ -25345,6 +25571,24 @@
               "title": "Creator Id",
               "type": "string"
             }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
           }
         ],
         "responses": {
@@ -25460,6 +25704,24 @@
               "format": "uuid",
               "title": "Creator Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
             }
           }
         ],
@@ -25781,6 +26043,24 @@
                 }
               ],
               "title": "Cursor"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
             }
           }
         ],
@@ -26125,6 +26405,24 @@
               ],
               "description": "From a previous page's next_cursor",
               "title": "Cursor"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
             }
           }
         ],
@@ -29814,6 +30112,24 @@
               ],
               "description": "From a previous page's next_cursor",
               "title": "Cursor"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
             }
           }
         ],
@@ -35838,6 +36154,26 @@
       "get": {
         "description": "Everything waiting on the signed-in brand or creator, the most urgent first: any `new_sign_in` (a session signed in during the last 7 days, other than this one: if it was not you, end it at `DELETE /api/v1/me/sessions/{session_id}`), then overdue, then soonest due, then anything without a date. For a brand: applications to review, memos to draft or revise, proof to review before it approves itself, creators to pay, and disputes to answer. For a creator: memos to answer, work to deliver or redo, payments to confirm, payments owed past their date, and disputes to answer. Worked out from the records each time, so an item disappears the moment it is done. Items carry a `kind` code and the facts; the wording belongs to the app. At most 50 items; `counts` and `total` always cover everything, except that at most 50 new sign-ins are counted.",
         "operationId": "read_my_attention_api_v1_me_attention_get",
+        "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -35870,6 +36206,16 @@
               "application/problem+json": {}
             },
             "description": "The profile has not been created yet"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
           },
           "429": {
             "content": {
@@ -40521,6 +40867,24 @@
               "description": "From a previous page's next_cursor",
               "title": "Cursor"
             }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
           }
         ],
         "responses": {
@@ -40623,6 +40987,26 @@
       "get": {
         "description": "How many payments, and how much, are to pay, overdue, awaiting confirmation and finished, across all the caller's deals. Overdue is always returned, zero included.",
         "operationId": "my_payment_totals_api_v1_payments_mine_totals_get",
+        "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -40666,6 +41050,16 @@
               "application/problem+json": {}
             },
             "description": "The profile has not been created yet"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
           },
           "429": {
             "content": {

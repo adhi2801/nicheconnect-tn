@@ -33,7 +33,7 @@ from app.modules.me.team_schemas import (
 READ_LIMIT = "60 per minute"
 # An invite can lead to a notice to someone else's account: a daily ceiling
 # per account, as everything that reaches another person has (trust-and-safety
-# rule 2).
+# rule 2), and one per brand in the service, whoever on the team sends them.
 INVITE_LIMIT = "10 per minute;20 per day"
 CHANGE_LIMIT = "30 per minute"
 
@@ -104,11 +104,16 @@ def read_team(
         "An `admin` invite is the owner's alone and needs **a code**: ask at "
         "`POST /api/v1/me/step-up` with `change_team` and the value "
         "`invite:<phone>:admin`, then send it in `Step-Up-Code`. Owners and admins "
-        "only. Limits: 10 a minute, 20 a day."
+        "only. Limits: 10 a minute and 20 a day for each person, and 20 a day "
+        "for the brand however many of its team send them."
     ),
     responses={
         **_BRAND,
         400: problem_doc("The code is wrong, expired, used, or for another change"),
+        429: problem_doc(
+            "Too many requests (see the Retry-After header), or "
+            "`team_invites_daily_limit`: the brand sent 20 in the last day"
+        ),
         409: problem_doc(
             "`team_invite_exists`, `already_on_team`, or `brand_profile_required`"
         ),

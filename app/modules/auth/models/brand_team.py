@@ -20,6 +20,9 @@ BRAND_ROLES: tuple[str, ...] = ("owner", *TEAM_ROLES)
 MAX_TEAM_MEMBERS = 20
 # An invite not answered in this long lapses.
 INVITE_LIFETIME = timedelta(days=7)
+# Invites a brand may send in any 24 hours, however many of its team send
+# them (D-148; trust-and-safety.md rule 2).
+MAX_INVITES_PER_DAY = 20
 FIRST_NAME_MAX_LENGTH = 40
 PHONE_HASH_PATTERN = r"^[0-9a-f]{64}$"
 
