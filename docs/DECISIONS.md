@@ -1986,6 +1986,19 @@ Newest entries at the bottom.
   2. `CampaignRead.applicant_count` on the brand's own list: applied or said yes, never an invitation waiting, declined or withdrawn; null everywhere else, so no creator reads how many compete.
   3. Fixed costs per page, proven not to grow: the applicant list's cap rises from 6 to 8 queries, the brand's campaign list's from 6 to 7.
 
+## D-155: The landing page, first version: the temple turned by scroll from Blender frames
+- Date: 2026-11-04
+- Approved by: Adhi, in this session: progress on "the landing page stuff ... the blender thing", "do it yourself". **Not reviewed by the other founder** (D-051), whose track owns frontend design research.
+- Context: the home page was a placeholder. The hero direction Adhi chose on 29 October (the vimana alone on a dark stage, turning as the reader scrolls) had a 48-frame turn rendered before passes 9 to 13; it was rendered again with the current tower. `LANDING_CULTURE_FIT.md` had judged the sections.
+- Options considered: A) pre-rendered Blender frames scrubbed on a canvas; B) the live 3D stack of frontend.md 8b (React Three Fiber, WebGPU), whose byte budget is still an open decision.
+- Chosen: A, for this first version.
+- Reason: the same made-in-Blender tower (D-142) at 334 KB for the whole turn on a phone and about 20 KB for the first frame, the page's largest paint; no 3D runtime, so a public page ships almost no JavaScript; readable with no script, still under reduced motion.
+- Consequences / follow-ups:
+  1. `apps/web/src/app/page.tsx`: the turning hero, how a deal works in five steps marked with Tamil numerals, the record with the bronze seal, the money promise, both sides, the way in. Every word in `messages/en.json`, each claim checked against what the backend does.
+  2. `frontend/scripts/export_landing.py` makes the WebP frames (640, 960, 1280) and the seal (640, 960) from the renders.
+  3. Measured on 4 November 2026 in Edge through Playwright, on Lighthouse's mobile profile (slow 4G, a 4x slower CPU, 390 x 844), median of 7: LCP 1,764 ms (budget 2,000; the worst run 2,084), the headline being the largest paint; CLS 0.000. Two changes got it there from 2,316 ms: the stylesheet inlined into the HTML (`inlineCss`), and the app-only monospace face no longer preloaded. JavaScript is 139 KB, over the 50 KB frontend.md sets for public pages: most of it is the framework's baseline, a gap named, not closed.
+  4. Owed: Lighthouse and a visual check in CI (running Lighthouse here was refused by the session's permissions), the seal rim's Tamil read by a Tamil reader, people on the page (LANDING_CULTURE_FIT.md Part B), and live 3D once its byte budget is decided.
+
 ## D-156: A campaign brief drafted from a brand's own words, by a job, switched off until the validation pack
 - Date: 2026-11-04
 - Approved by: Adhi, in this session: "big progress in backend", "do it yourself". **Not reviewed by the other founder** (D-051).
@@ -1998,3 +2011,4 @@ Newest entries at the bottom.
   2. Claude Opus 5.5 at low effort, structured output checked against a campaign's own limits; only what the brand's words support is filled in. Server-side refusal fallbacks are on (`fallbacks: "default"`).
   3. Off (`BRIEF_DRAFTING_ENABLED`) until the validation pack confirms a brand's words may go to Anthropic outside India and the notice beside the box exists (legal.md section 3.1). `GET /api/v1/features` says so.
   4. The design: `docs/decided/PROPOSAL_BRIEF_DRAFTS.md`.
+

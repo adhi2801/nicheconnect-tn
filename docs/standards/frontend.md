@@ -261,7 +261,7 @@ Each is in `docs/api/openapi.json`; the screens should use them rather than work
 
 | Gap | Acting on it |
 |---|---|
-| The first code in `frontend/` (pull request #78) was written before this bar was raised and meets few of its gates: no measured budgets, no visual regression, a placeholder home page | Rebuilt screen by screen to this file; the CI gates in section 12 come first, before features pile up. The first six run since 4 November 2026 (section 12); turning them on found the API types 5,400 lines behind the contract and three attention kinds (a draft to show, to change, to review) with no words or link, all fixed the same day |
+| The first code in `frontend/` (pull request #78) was written before this bar was raised and meets few of its gates: no measured budgets, no visual regression. The home page is the landing page since 4 November 2026 (D-155), its Lighthouse and visual checks still owed | Rebuilt screen by screen to this file; the CI gates in section 12 come first, before features pile up. The first six run since 4 November 2026 (section 12); turning them on found the API types 5,400 lines behind the contract and three attention kinds (a draft to show, to change, to review) with no words or link, all fixed the same day |
 | The 3D byte budget and the splat viewer are not chosen yet | A benchmark on the budget Android reference phone, before the first scene |
 | Four choices are still open: the API client generator, the lint tool, the login provider, the deep-link provider | Decided with a decision entry when frontend work starts (section 2) |
 | The platform plan (D-046: both roles on all three clients) awaits Erode Harish | His confirmation, relayed by Adhi |

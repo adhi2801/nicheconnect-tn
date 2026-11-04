@@ -1,18 +1,23 @@
-// Foundation placeholder. The real entry decides between sign-in and the role's home (creator or brand).
+import { HeroOrbit } from "@/components/landing/hero-orbit";
+import { Closing, HeroText, Money, Record, SiteHeader, Sides, Steps } from "@/components/landing/sections";
+import { t } from "@/lib/messages";
+
+// The landing page (D-141): the turning temple, then what a deal is, the record, the money promise, both sides, and the
+// way in. Server-rendered and readable with no script; only the hero's turn runs in the browser.
 export default function Home() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center gap-6 px-6">
-      <p className="text-sm font-semibold uppercase tracking-widest text-muted">Colyv web</p>
-      <h1 className="text-4xl font-semibold tracking-tight">One website. Creators and brands each see their own.</h1>
-      <p className="text-lg text-muted">Foundation only: shared tokens, a typed API client, and the build. Screens come next.</p>
-      <div className="rounded-xl border border-line bg-surface p-6">
-        <p className="text-sm text-muted">Token check</p>
-        <div className="mt-3 flex gap-3">
-          <span className="rounded-lg bg-accent px-4 py-2 text-on-accent">Accent</span>
-          <span className="rounded-lg px-4 py-2 text-ink" style={{ background: "linear-gradient(135deg, var(--c-glance-gold-from), var(--c-glance-gold-to))" }}>Gold</span>
-          <span className="rounded-lg px-4 py-2 text-ink" style={{ background: "linear-gradient(135deg, var(--c-glance-clay-from), var(--c-glance-clay-to))" }}>Clay</span>
-        </div>
+    <main>
+      <div className="landing-stage relative">
+        <SiteHeader />
+        <HeroOrbit alt={t("landing.hero.imageAlt")}>
+          <HeroText />
+        </HeroOrbit>
       </div>
+      <Steps />
+      <Record />
+      <Money />
+      <Sides />
+      <Closing />
     </main>
   );
 }
