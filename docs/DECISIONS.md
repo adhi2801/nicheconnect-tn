@@ -2012,3 +2012,14 @@ Newest entries at the bottom.
   3. Off (`BRIEF_DRAFTING_ENABLED`) until the validation pack confirms a brand's words may go to Anthropic outside India and the notice beside the box exists (legal.md section 3.1). `GET /api/v1/features` says so.
   4. The design: `docs/decided/PROPOSAL_BRIEF_DRAFTS.md`.
 
+## D-157: CI reads the landing page without JavaScript
+- Date: 2026-11-04
+- Approved by: Adhi, in this session: "nothing should fail ... do it yourself", the frontend gates of D-152 to be filled in. **Not reviewed by the other founder** (D-051).
+- Context: frontend.md section 8d requires the public pages to read without a script; nothing checked it once the landing page existed (D-155).
+- Options considered: A) serve the production build in CI and fetch the home page as plain HTML, every heading from the message catalogue required; B) a browser test with script disabled.
+- Chosen: A.
+- Reason: no browser download in CI, seconds to run, and it is exactly what a search engine or link preview receives.
+- Consequences / follow-ups:
+  1. `frontend/scripts/check-no-js.mjs`, run by the frontend job after the build; shown failing on a page without those words.
+  2. Each new public page adds its words to the check in the same change.
+

@@ -532,6 +532,20 @@ jobs:
       - name: Build
         run: pnpm --filter web build
 
+      # frontend.md section 8d: the landing page's words are in the HTML the
+      # server sends, before any script runs, as a search engine, a link
+      # preview or a phone on a slow link meets it. The production build is
+      # served and fetched as plain HTML; the words are read from the
+      # message catalogue, so the check cannot drift from the page.
+      - name: The landing page reads without JavaScript
+        run: |
+          pnpm --filter web exec next start -p 3100 > "$RUNNER_TEMP/web.log" 2>&1 &
+          for _ in $(seq 1 30); do
+            curl -sf -o /dev/null http://127.0.0.1:3100/ && break
+            sleep 1
+          done
+          node scripts/check-no-js.mjs http://127.0.0.1:3100/
+
   # SECURITY.md and /.well-known/security.txt send researchers to GitHub's
   # private vulnerability reporting. Switched off, that link leads nowhere
   # and a report has nowhere private to go, so CI checks the setting itself
