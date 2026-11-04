@@ -59,6 +59,7 @@ from app.modules.matching.creator_list_router import router as creator_lists_rou
 from app.modules.matching.router import router as matching_router
 from app.modules.matching.search_router import router as search_router
 from app.modules.matching.similar_router import router as similar_router
+from app.modules.matching.words_router import router as words_router
 from app.modules.me.account_deletion_router import router as account_deletion_router
 from app.modules.me.agent_token_router import router as agent_token_router
 from app.modules.me.attention_router import router as attention_router
@@ -189,6 +190,7 @@ app.include_router(block_router)
 app.include_router(takedown_router)
 app.include_router(similar_router)
 app.include_router(search_router)
+app.include_router(words_router)
 app.include_router(creator_lists_router)
 app.include_router(campaign_alerts_router)
 app.include_router(shipment_router)
