@@ -3,13 +3,20 @@
 Creating a notification never sends anything by itself. Delivery (WhatsApp
 alerts, D-022) is a separate step that reads these rows, so a failure to
 deliver can never lose the record or break the action that caused it.
+
+A brand is a team (D-148 piece 2): a notice to a brand's owner about the
+work is copied to each live member whose role holds that work's act
+(`auth.brand_acts.NOTICE_ACTS`), never to whoever on the team did it; and a
+creator told of a member's act is shown that member's first name. The
+notice keeps the membership's id, never the name: the name is read when the
+notice is (`readable_details`), so erasing a member erases it everywhere.
 """
 
 import uuid
 from datetime import datetime
 from typing import Any, cast
 
-from sqlalchemy import CursorResult, func, select, update
+from sqlalchemy import CursorResult, func, insert, select, update
 from sqlalchemy import delete as sa_delete
 from sqlalchemy.orm import Session
 
@@ -20,6 +27,10 @@ from app.core.export import (
     build_section,
 )
 from app.core.pagination import Slice, build_slice, older_than_cursor
+from app.modules.auth import brand_access, brand_acts
+from app.modules.auth.models.account import Account
+from app.modules.auth.models.brand import Brand
+from app.modules.auth.models.brand_team import BrandMember
 from app.modules.notifications.exceptions import NotificationNotFound
 from app.modules.notifications.models import Notification
 from app.modules.notifications.preference_models import NotificationPreference
@@ -28,6 +39,17 @@ from app.modules.notifications.preference_models import NotificationPreference
 # tests/modules/me/test_export_api.py reads this, so a new table here
 # cannot be left out of an export by accident.
 EXPORTED_TABLES = frozenset({"notification"})
+
+# Where a notice keeps the team member who acted (D-148): their membership.
+ACTING_MEMBER = "acting_member_id"
+# Where a hand-over notice keeps the brand's new owner (D-151): the
+# membership they held until that moment.
+NEW_OWNER_MEMBER = "new_owner_member_id"
+# Each kept membership, and the key its first name is shown under.
+_NAMED: dict[str, str] = {
+    ACTING_MEMBER: "acting_first_name",
+    NEW_OWNER_MEMBER: "new_owner_first_name",
+}
 
 EXPORT_FIELDS = allow(
     "id",
@@ -51,13 +73,144 @@ def record(
     application_id: uuid.UUID | None = None,
     details: dict[str, Any] | None = None,
 ) -> Notification:
-    """Add a notification. The caller commits, as part of its own work."""
+    """Add a notification, and its copies to the brand's team. The caller
+    commits, as part of its own work.
+
+    At most two queries more, and only when a member acts or the notice is
+    one a team hears: who the recipient is, and the team.
+    """
+    shown = dict(details or {})
+    acting = brand_access.acting(db)
+    if (
+        acting is not None
+        and acting.member_id is not None
+        and notification_type in brand_acts.NAMED_TO_CREATORS
+        and account_id != acting.account_id
+    ):
+        recipient = db.get(Account, account_id)
+        if recipient is not None and recipient.role == "creator":
+            shown[ACTING_MEMBER] = str(acting.member_id)
+    notification = _add(
+        db, account_id, notification_type, now, campaign_id, application_id, shown
+    )
+    roles = brand_acts.roles_hearing(notification_type)
+    if roles:
+        team = db.execute(
+            select(BrandMember.account_id, Brand.id, Brand.name)
+            .join(Brand, Brand.id == BrandMember.brand_id)
+            .join(Account, Account.id == BrandMember.account_id)
+            .where(
+                Brand.account_id == account_id,
+                BrandMember.removed_at.is_(None),
+                BrandMember.role.in_(roles),
+                # A suspended or departed member acts for nobody, so hears nothing.
+                Account.suspended_at.is_(None),
+                Account.deleted_at.is_(None),
+            )
+            .order_by(BrandMember.created_at, BrandMember.id)
+        ).all()
+        record_many(
+            db,
+            notification_type=notification_type,
+            now=now,
+            campaign_id=campaign_id,
+            application_id=application_id,
+            to=[
+                # Someone in several brands needs to know which one it is for.
+                (
+                    member_account,
+                    {
+                        **shown,
+                        "for_brand_id": str(brand_id),
+                        "for_brand_name": brand_name,
+                    },
+                )
+                for member_account, brand_id, brand_name in team
+                if acting is None or member_account != acting.account_id
+            ],
+        )
+    return notification
+
+
+def record_many(
+    db: Session,
+    *,
+    notification_type: str,
+    now: datetime,
+    to: list[tuple[uuid.UUID, dict[str, Any]]],
+    campaign_id: uuid.UUID | None = None,
+    application_id: uuid.UUID | None = None,
+) -> None:
+    """One notice of a kind to each of many accounts, in one statement.
+
+    For a fan-out (a brand's team, every creator waiting on a brand): the
+    ORM writes one INSERT per row when the database makes the ids, so this
+    writes the rows itself. Copies nobody else, names nobody. The caller
+    commits.
+    """
+    if not to:
+        return
+    db.execute(
+        insert(Notification),
+        [
+            {
+                "account_id": account_id,
+                "notification_type": notification_type,
+                "campaign_id": campaign_id,
+                "application_id": application_id,
+                "details": details,
+                "created_at": now,
+                "updated_at": now,
+            }
+            for account_id, details in to
+        ],
+    )
+
+
+def readable_details(db: Session, rows: list[Notification]) -> list[dict[str, Any]]:
+    """Each notification's details as its reader sees them, in one query at most.
+
+    A member's act names them by their first name, read now from their
+    membership, whether or not they are still on the team; a membership
+    erased with its account names nobody.
+    """
+    members = {row.details[key] for row in rows for key in _NAMED if key in row.details}
+    names: dict[str, str] = {}
+    if members:
+        names = {
+            str(member_id): first_name
+            for member_id, first_name in db.execute(
+                select(BrandMember.id, BrandMember.first_name).where(
+                    BrandMember.id.in_([uuid.UUID(m) for m in members])
+                )
+            ).all()
+        }
+    shown = []
+    for row in rows:
+        details = {k: v for k, v in row.details.items() if k not in _NAMED}
+        for key, shown_as in _NAMED.items():
+            name = names.get(row.details.get(key, ""))
+            if name is not None:
+                details[shown_as] = name
+        shown.append(details)
+    return shown
+
+
+def _add(
+    db: Session,
+    account_id: uuid.UUID,
+    notification_type: str,
+    now: datetime,
+    campaign_id: uuid.UUID | None,
+    application_id: uuid.UUID | None,
+    details: dict[str, Any],
+) -> Notification:
     notification = Notification(
         account_id=account_id,
         notification_type=notification_type,
         campaign_id=campaign_id,
         application_id=application_id,
-        details=details or {},
+        details=details,
         created_at=now,
         updated_at=now,
     )
@@ -152,8 +305,10 @@ def mark_all_read(db: Session, account_id: uuid.UUID, now: datetime) -> int:
 def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSection]:
     """This account's notifications, for a data export.
 
-    `details` holds only the campaign title and the other side's public
-    handle, so nothing private about anyone else travels with it.
+    `details` holds rendering values: a campaign title, the other side's
+    public handle, a brand's name, and, for a team member's act, their
+    membership's id, never their name or number, so nothing private about
+    anyone else travels with it.
     """
     rows = list(
         db.scalars(

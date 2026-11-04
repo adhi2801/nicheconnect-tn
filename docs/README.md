@@ -73,7 +73,6 @@ Dated reports, the decision log and the papers in `decided/` are records: they k
 | `PERFORMANCE.md` | Measured response times against the budgets |
 | `REVIEW_FINDINGS.md` | Every automated review finding, and what became of it |
 | `API_CONTRACT_FINDINGS.md` | What fuzzing the API against its contract found |
-| `PROPOSAL_TEAM_SEATS.md` | **Approved 30 October 2026 (D-148), being built.** Team seats for brands: four roles, invites by a hashed number, the `Brand-Id` header for agencies, one access check denied by default, the STRIDE table and the build in two pieces |
 | `PROPOSAL_FRONTEND_ARCHITECTURE.md` | **Proposed, 30 October 2026.** The whole frontend in one architecture: forty-one parts (identity, design system, motion, experience, engineering), the colour decision by a test with real users, signature scenes as pre-rendered frames, the landing page cut from 17 sections to 8, and the order of work. Read before any frontend build |
 | `FRONTEND_BLUEPRINT_MAPPING.md` | The original blueprint's screens, mapped to the API |
 | `DEAL_RECORD_VERIFY.md` | How anyone can check a deal record's seals themselves (public-facing) |

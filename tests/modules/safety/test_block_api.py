@@ -484,3 +484,84 @@ def test_no_campaign_alert_across_a_block(client, db, clock, brand, creator, blo
 
     assert alerts_to(db, creator) == []
     assert len(alerts_to(db, unblocked)) == 1
+
+
+# --- a brand's team (D-148 piece 2) -------------------------------------------------------
+
+
+def test_a_team_member_blocks_for_the_whole_brand(client, db, clock, brand, creator):
+    from tests.modules.me.test_team_api import join
+
+    manager = join(client, db, clock, brand, "campaigns")
+    _, creator_id = ids(db, brand, creator)
+    campaign_id = open_campaign(client, brand)
+
+    placed = client.post(URL, json={"creator_id": creator_id}, headers=manager.headers)
+
+    assert placed.status_code == 201, placed.text
+    assert [b["id"] for b in client.get(URL, headers=brand.headers).json()["items"]] == [
+        placed.json()["id"]
+    ]
+    applied = client.post(
+        f"{CAMPAIGNS_URL}/{campaign_id}/applications",
+        json={"pitch": PITCH},
+        headers=creator.headers,
+    )
+    assert applied.json()["code"] == "campaign_not_found"
+    removed = client.delete(f"{URL}/{placed.json()['id']}", headers=manager.headers)
+    assert removed.status_code == 204
+    assert client.get(URL, headers=brand.headers).json()["items"] == []
+
+
+def test_finance_never_blocks_for_the_brand(client, db, clock, brand, creator):
+    from tests.modules.me.test_team_api import join
+
+    finance = join(client, db, clock, brand, "finance")
+    _, creator_id = ids(db, brand, creator)
+    placed = client.post(URL, json={"creator_id": creator_id}, headers=brand.headers)
+
+    refused = client.post(URL, json={"creator_id": creator_id}, headers=finance.headers)
+    unblock = client.delete(f"{URL}/{placed.json()['id']}", headers=finance.headers)
+
+    assert refused.status_code == 403
+    assert refused.json()["code"] == "brand_role_not_allowed"
+    assert unblock.json()["code"] == "brand_role_not_allowed"
+    # Reading the brand's blocks is everyone's on the team.
+    assert len(client.get(URL, headers=finance.headers).json()["items"]) == 1
+
+
+def test_a_brand_s_blocks_go_with_it_to_a_new_owner(client, db, clock, brand, creator):
+    """Every block check of a brand reads its owner: a hand-over must not lift one."""
+    from tests.modules.me.test_team_api import join
+    from tests.step_up import with_code
+
+    brand_id, _ = ids(db, brand, creator)
+    blocked_by_brand = creator_user(db, clock)
+    _, other_id = ids(db, brand, blocked_by_brand)
+    client.post(URL, json={"brand_id": brand_id}, headers=creator.headers)
+    client.post(URL, json={"creator_id": other_id}, headers=brand.headers)
+    admin = join(client, db, clock, brand, "admin")
+    mid = admin.member_id  # type: ignore[attr-defined]
+
+    handed = client.post(
+        "/api/v1/brands/me/team/ownership",
+        json={"member_id": mid, "your_first_name": "Adhi"},
+        headers=with_code(
+            client, brand.headers, "change_team", change=f"ownership:{mid}"
+        ),
+    )
+
+    assert handed.status_code == 200, handed.text
+    campaign_id = open_campaign(client, admin)
+    for blocked_creator in (creator, blocked_by_brand):
+        applied = client.post(
+            f"{CAMPAIGNS_URL}/{campaign_id}/applications",
+            json={"pitch": PITCH},
+            headers=blocked_creator.headers,
+        )
+        assert applied.json()["code"] == "campaign_not_found"
+    [kept] = client.get(URL, headers=admin.headers).json()["items"]
+    assert kept["creator_id"] == other_id
+    assert [
+        b["brand_id"] for b in client.get(URL, headers=creator.headers).json()["items"]
+    ] == [brand_id]

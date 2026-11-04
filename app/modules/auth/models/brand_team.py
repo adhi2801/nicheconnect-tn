@@ -8,7 +8,7 @@ from sqlalchemy.sql import func
 
 from app.db.base import Base
 
-# Team seats for brands (item 13, D-148; docs/PROPOSAL_TEAM_SEATS.md).
+# Team seats for brands (item 13, D-148; docs/decided/PROPOSAL_TEAM_SEATS.md).
 #
 # The owner is `brand.account_id`, never a row here: ownership is stored
 # once. Everyone else who acts for a brand has a `brand_member` row with one

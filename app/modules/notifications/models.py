@@ -132,6 +132,10 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     "team_joined",
     "team_role_changed",
     "team_removed",
+    # To each creator with a deal still unfinished with a brand, when the
+    # brand is handed to a new owner (D-151): the deal carries on, and the
+    # creator knows who now holds the business's account.
+    "brand_changed_hands",
 )
 MAX_DETAILS_LENGTH = 2000
 

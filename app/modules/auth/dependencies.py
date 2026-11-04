@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import DomainError
 from app.db.session import get_db
-from app.modules.auth import agent_scopes, agent_tokens, sessions
+from app.modules.auth import agent_scopes, agent_tokens, brand_access, sessions
 from app.modules.auth.exceptions import (
     AccountSuspended,
     AdminNotFound,
@@ -80,6 +80,8 @@ def _authenticate(
     now: datetime,
 ) -> tuple[Account, AccessTokenClaims]:
     """The account and the token's claims, for the checks that read both."""
+    # Nobody acts for a brand until this request's own access check says so.
+    brand_access.forget_acting(db)
     if credentials is None or not credentials.credentials:
         raise InvalidToken(headers=UNAUTHENTICATED_HEADERS)
     if agent_tokens.is_agent_token(credentials.credentials):

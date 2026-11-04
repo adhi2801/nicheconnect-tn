@@ -34,8 +34,9 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.modules.auth.brand_access import ACTING_ACCOUNT
+from app.modules.auth import brand_access
 from app.modules.auth.models.brand import Brand
+from app.modules.auth.models.brand_team import BrandMember
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.models import DealMemo
@@ -231,9 +232,9 @@ def append(
     brand_account, creator_account = _party_account_ids(db, memo)
     # The brand side names who acted (D-148): a team member acting in this
     # request, else the owner, as before teams (a job, or the owner's request).
-    acting = db.info.get(ACTING_ACCOUNT)
+    acting = brand_access.acting(db)
     accounts = {
-        "brand": acting if isinstance(acting, uuid.UUID) else brand_account,
+        "brand": acting.account_id if acting is not None else brand_account,
         "creator": creator_account,
         "system": None,
     }
@@ -290,6 +291,39 @@ def terms_facts(memo: DealMemo) -> dict[str, Any]:
 
 
 # --- reading and checking ---------------------------------------------------
+
+
+def actor_first_names(
+    db: Session, memo: DealMemo, entries: list[DealRecordEntry]
+) -> dict[uuid.UUID, str]:
+    """The first name of each team member who acted on the brand's side (D-148).
+
+    Read when the record is, not sealed: the seal names the account, and the
+    name is how the brand's team knows that person today. The brand's owner
+    has none, since the brand's own name stands for them; a member who left
+    keeps theirs, so who acted on an old deal stays known. One query.
+    """
+    actors = {
+        e.actor_account_id
+        for e in entries
+        if e.actor_role == "brand" and e.actor_account_id is not None
+    }
+    if not actors:
+        return {}
+    rows = db.execute(
+        select(BrandMember.account_id, BrandMember.first_name)
+        .join(Brand, Brand.id == BrandMember.brand_id)
+        .join(Campaign, Campaign.brand_id == Brand.id)
+        .join(Application, Application.campaign_id == Campaign.id)
+        .where(
+            Application.id == memo.application_id,
+            BrandMember.account_id.in_(actors),
+            BrandMember.account_id != Brand.account_id,
+        )
+        # The newest membership last, so it is the one kept.
+        .order_by(BrandMember.created_at, BrandMember.id)
+    ).all()
+    return {account_id: first_name for account_id, first_name in rows}
 
 
 def entries_for(db: Session, memo_id: uuid.UUID) -> list[DealRecordEntry]:
