@@ -199,7 +199,7 @@ def read_campaign(
     account: CurrentAccount,
     db: Session = Depends(get_db),
 ) -> CampaignRead:
-    campaign = service.get_visible_campaign(db, campaign_id, account.id)
+    campaign = service.get_visible_campaign(db, campaign_id, account)
     return _read(db, campaign)
 
 

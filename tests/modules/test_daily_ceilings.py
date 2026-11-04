@@ -35,6 +35,7 @@ REACH = (
     "app.modules.matching.router.list_matches_for_campaign",
     "app.modules.matching.router.list_campaigns_for_me",
     "app.modules.payment_status.upi_router.read_pay_details",
+    "app.modules.me.team_router.invite",
 )
 
 

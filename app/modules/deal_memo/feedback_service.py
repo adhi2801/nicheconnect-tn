@@ -12,7 +12,7 @@ the other side, not the profile figures, not the notes list, not even the
 other side's export. A person always sees their own.
 
 Threat model: only the deal's two parties give or read a deal's feedback
-(`dependencies.visible_memo_for_account`, 404 to anyone else); notes are
+(`dependencies.party_memo`, 404 to anyone else); notes are
 plain text, a brand's flagged for fee requests; 50 answers a day per
 account; a pumped record built with one partner reads as one partner
 (`counterparties`); nothing can be edited or removed, so nothing can be

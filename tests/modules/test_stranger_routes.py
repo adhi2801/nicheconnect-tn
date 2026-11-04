@@ -34,7 +34,9 @@ from app.core.clock import india_date
 from app.core.errors import _leaf_routes
 from app.core.rate_limit import limiter
 from app.main import app
+from app.modules.auth.models.brand_team import BrandInvite, BrandMember
 from app.modules.auth.models.passkey import Passkey
+from app.modules.auth.team_invites import hash_invited_phone
 from app.modules.deal_memo.anchor_service import create_checkpoint
 from tests.deal_flow import (
     CAMPAIGNS_URL,
@@ -128,6 +130,8 @@ REASON = "The payment was marked sent on 8 September but nothing has reached my 
 
 # A valid body for every route that takes one, so a refusal is never a 422.
 BODIES: dict[str, dict[str, Any]] = {
+    "TeamRoleChange": {"role": "finance"},
+    "TeamInviteAccept": {},
     "PackageUpdate": {"price_paise": 900_000},
     "SuspendIn": {"reason": "fraud", "note": "Checking a report."},
     "RestoreIn": {"note": "Checked: a mistake."},
@@ -409,6 +413,29 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
         f"{MEMOS_URL}/{unpaid_memo_id}/proof/{unpaid_proof}/approve",
         headers=brand.headers,
     )
+    # Brand A's team (D-148): one member who joined, and one invite still open.
+    team_mate = brand_user(db, clock)
+    member = BrandMember(
+        brand_id=brand_id,
+        account_id=team_mate.account_id,
+        role="campaigns",
+        first_name="Ravi",
+        created_at=clock.now,
+        updated_at=clock.now,
+    )
+    team_invite = BrandInvite(
+        brand_id=brand_id,
+        role="finance",
+        first_name="Meena",
+        phone_hash=hash_invited_phone("+919000000999"),
+        expires_at=clock.now + timedelta(days=7),
+        created_at=clock.now,
+        updated_at=clock.now,
+    )
+    db.add_all([member, team_invite])
+    db.flush()
+    member_id, invite_id = member.id, team_invite.id
+
     # The next day's checkpoint covers both deals, for the record's proof.
     create_checkpoint(db, india_date(clock.now) + timedelta(days=1))
     db.flush()
@@ -436,6 +463,8 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
         "list_id": list_id,
         "alert_id": alert_id,
         "token_id": token_id,
+        "member_id": member_id,
+        "invite_id": invite_id,
         "draft_id": draft_id,
         "review_memo_id": review_memo_id,
         "confirmation_code": confirmation_code,

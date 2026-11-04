@@ -34,6 +34,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.modules.auth.brand_access import ACTING_ACCOUNT
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.models import Application, Campaign
@@ -228,7 +229,14 @@ def append(
     """
     db.execute(select(DealMemo.id).where(DealMemo.id == memo.id).with_for_update())
     brand_account, creator_account = _party_account_ids(db, memo)
-    accounts = {"brand": brand_account, "creator": creator_account, "system": None}
+    # The brand side names who acted (D-148): a team member acting in this
+    # request, else the owner, as before teams (a job, or the owner's request).
+    acting = db.info.get(ACTING_ACCOUNT)
+    accounts = {
+        "brand": acting if isinstance(acting, uuid.UUID) else brand_account,
+        "creator": creator_account,
+        "system": None,
+    }
 
     previous = _last_entry(db, memo.id)
     if previous is None and (kind != "memo_sent" or memo.revision_count > 0):

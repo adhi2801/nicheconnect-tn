@@ -72,6 +72,7 @@ StepUpAction = Literal[
     "end_session",
     "delete_account",
     "create_agent_token",
+    "change_team",
 ]
 StepUpMethod = Literal["phone_code", "authenticator", "passkey"]
 # The request header a risky change carries its code in.
@@ -89,6 +90,8 @@ ACTION_ROLES: dict[str, tuple[str, ...]] = {
     "delete_account": ("brand", "creator"),
     # No admin token exists (D-138): an admin's every act is their own.
     "create_agent_token": ("brand", "creator"),
+    # Only brands have teams (D-148).
+    "change_team": ("brand",),
 }
 
 EXPORTED_TABLES = frozenset({"step_up_challenge"})

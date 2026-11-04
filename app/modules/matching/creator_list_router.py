@@ -13,8 +13,8 @@ from app.core.idempotent_route import IdempotentRoute
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
-from app.modules.auth.dependencies import CurrentBrand, get_now
-from app.modules.campaigns.service import get_brand_for_account
+from app.modules.auth.dependencies import get_now
+from app.modules.campaigns.dependencies import CurrentBrandProfile
 from app.modules.deal_memo.schemas import to_delivery_read
 from app.modules.matching import creator_list_service as service
 from app.modules.matching import search_service
@@ -68,9 +68,8 @@ def _read(found: CreatorList, creators: int) -> CreatorListRead:
 )
 @rate_limit(READ_LIMIT)
 def list_my_lists(
-    request: Request, account: CurrentBrand, db: Session = Depends(get_db)
+    request: Request, brand: CurrentBrandProfile, db: Session = Depends(get_db)
 ) -> list[CreatorListRead]:
-    brand = get_brand_for_account(db, account.id)
     return [_read(found, count) for found, count in service.lists_of(db, brand)]
 
 
@@ -94,11 +93,11 @@ def start_a_list(
     request: Request,
     response: Response,
     body: CreatorListIn,
-    account: CurrentBrand,
+    brand: CurrentBrandProfile,
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> CreatorListRead:
-    created = service.create(db, get_brand_for_account(db, account.id), body.name, now)
+    created = service.create(db, brand, body.name, now)
     response.headers["Location"] = f"/api/v1/creator-lists/{created.id}/creators"
     return _read(created, 0)
 
@@ -120,11 +119,10 @@ def rename_a_list(
     request: Request,
     list_id: ListId,
     body: CreatorListIn,
-    account: CurrentBrand,
+    brand: CurrentBrandProfile,
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> CreatorListRead:
-    brand = get_brand_for_account(db, account.id)
     found = service.rename(db, service.own(db, brand, list_id), body.name, now)
     counts = {lst.id: n for lst, n in service.lists_of(db, brand)}
     return _read(found, counts.get(found.id, 0))
@@ -141,10 +139,10 @@ def rename_a_list(
 def remove_a_list(
     request: Request,
     list_id: ListId,
-    account: CurrentBrand,
+    brand: CurrentBrandProfile,
     db: Session = Depends(get_db),
 ) -> Response:
-    service.remove(db, service.own(db, get_brand_for_account(db, account.id), list_id))
+    service.remove(db, service.own(db, brand, list_id))
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -170,13 +168,12 @@ def remove_a_list(
 def creators_on_a_list(
     request: Request,
     list_id: ListId,
-    account: CurrentBrand,
+    brand: CurrentBrandProfile,
     limit: Limit = DEFAULT_LIMIT,
     cursor: Cursor = None,
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> Page[ListedCreatorRead]:
-    brand = get_brand_for_account(db, account.id)
     found = service.own(db, brand, list_id)
     result = service.creators_in(db, brand, found, now, limit=limit, cursor=cursor)
     today = india_date(now)
@@ -214,11 +211,10 @@ def save_a_creator(
     request: Request,
     list_id: ListId,
     creator_id: CreatorId,
-    account: CurrentBrand,
+    brand: CurrentBrandProfile,
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> Response:
-    brand = get_brand_for_account(db, account.id)
     service.add(db, brand, service.own(db, brand, list_id), creator_id, now)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -235,9 +231,8 @@ def take_a_creator_off(
     request: Request,
     list_id: ListId,
     creator_id: CreatorId,
-    account: CurrentBrand,
+    brand: CurrentBrandProfile,
     db: Session = Depends(get_db),
 ) -> Response:
-    brand = get_brand_for_account(db, account.id)
     service.take_out(db, service.own(db, brand, list_id), creator_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

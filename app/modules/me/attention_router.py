@@ -14,6 +14,7 @@ from app.core.errors import ResponseDocs, problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, CurrentSessionId, get_now
+from app.modules.campaigns.dependencies import ActingBrand
 from app.modules.me import attention_service
 from app.modules.me.schemas import AttentionRead, to_attention_read
 
@@ -53,8 +54,11 @@ _ERRORS: ResponseDocs = {
 def read_my_attention(
     request: Request,
     account: CurrentAccount,
+    brand: ActingBrand,
     session_id: CurrentSessionId,
     db: Annotated[Session, Depends(get_db)],
     now: Annotated[datetime, Depends(get_now)],
 ) -> AttentionRead:
-    return to_attention_read(attention_service.for_account(db, account, now, session_id))
+    return to_attention_read(
+        attention_service.for_account(db, account, brand, now, session_id)
+    )
