@@ -192,9 +192,17 @@
         "title": "Send your work",
         "cta": "Send work"
       },
+      "show_draft": {
+        "title": "Show the brand your draft before posting",
+        "cta": "Send draft"
+      },
       "resubmit_work": {
         "title": "Fix your work and send it again",
         "cta": "Resubmit work"
+      },
+      "revise_draft": {
+        "title": "Change your draft and send it again",
+        "cta": "Resubmit draft"
       },
       "confirm_payment": {
         "title": "Confirm you received the payment",
@@ -230,6 +238,10 @@
       "review_proof": {
         "title": "Review the submitted work",
         "cta": "Review work"
+      },
+      "review_draft": {
+        "title": "Review the draft before it is posted",
+        "cta": "Review draft"
       },
       "pay_creator": {
         "title": "Mark the payment as sent",
