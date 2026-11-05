@@ -49,7 +49,7 @@ class ReadPartRead(BaseModel):
     )
 
 
-class NoteRead(BaseModel):
+class SearchNoteRead(BaseModel):
     code: NoteCode = Field(
         description=(
             "Why some words were not used. `a_month_is_not_a_day`: search checks "
@@ -79,7 +79,7 @@ class SearchReadingRead(BaseModel):
         ),
         examples=[["vegan"]],
     )
-    notes: list[NoteRead] = Field(description="Why, where there is a reason")
+    notes: list[SearchNoteRead] = Field(description="Why, where there is a reason")
 
 
 def to_read(reading: Reading) -> SearchReadingRead:
@@ -101,5 +101,5 @@ def to_read(reading: Reading) -> SearchReadingRead:
             for p in reading.parts
         ],
         unread=list(reading.unread),
-        notes=[NoteRead(code=n.code, words=n.words) for n in reading.notes],
+        notes=[SearchNoteRead(code=n.code, words=n.words) for n in reading.notes],
     )

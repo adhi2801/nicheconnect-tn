@@ -50,7 +50,9 @@ RUN groupadd --system --gid 10001 app \
     && useradd --system --uid 10001 --gid app --home-dir /srv --no-create-home app
 # Debian security fixes the pinned base does not carry yet (D-068): OpenSSL
 # (9 CVEs, one High) and PCRE2 (one High), published after the base was
-# built on 19 September. Exact versions, upgrade only, so the build stays
+# built on 19 September; and APT itself (CVE-2026-109518, High: a tampered
+# mirror or proxy could get an unverified package installed, D-159).
+# Exact versions, upgrade only, so the build stays
 # reproducible. Remove this step when the base digest moves to an image
 # that already has these versions or newer; Grype will say if it is early.
 RUN apt-get update \
@@ -59,6 +61,8 @@ RUN apt-get update \
         libssl3t64=3.5.7-1~deb13u3 \
         openssl-provider-legacy=3.5.7-1~deb13u3 \
         libpcre2-8-0=10.46-1~deb13u3 \
+        apt=3.0.4 \
+        libapt-pkg7.0=3.0.4 \
     && rm -rf /var/lib/apt/lists/*
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \
