@@ -3570,7 +3570,10 @@ SUN_EL, SUN_ROT = (
 if GRADE == "gold":
     SUN_EL = math.radians(7)
 elif GRADE == "blue":
+    # 2 to 4 degrees below the horizon (LANDING_CINEMA_2026.md section 3), and set behind
+    # the tower as the journey sees it (D-164), so the afterglow sits in the frame
     SUN_EL = math.radians(-3.5)
+    SUN_ROT = math.radians(165)
 elif GRADE == "noon":
     SUN_EL = math.radians(52)
 sky.sun_elevation = SUN_EL
@@ -3629,6 +3632,10 @@ def world_clouds():
     cr = wn.new("ShaderNodeValToRGB")
     cr.color_ramp.elements[0].color = (0.46, 0.47, 0.55, 1)
     cr.color_ramp.elements[1].color = (1.55, 1.48, 1.38, 1)
+    if GRADE == "blue":
+        # after sunset a cloud is a slate shadow, its edges still catching the afterglow
+        cr.color_ramp.elements[0].color = (0.07, 0.08, 0.13, 1)
+        cr.color_ramp.elements[1].color = (0.62, 0.42, 0.36, 1)
     wl.new(shade.outputs["Fac"], cr.inputs["Fac"])
     # a pale warm band of light low on the horizon, fading into the blue above
     glow = wn.new("ShaderNodeMapRange")
@@ -3640,6 +3647,18 @@ def world_clouds():
     gramp = wn.new("ShaderNodeValToRGB")
     gramp.color_ramp.elements[0].color = (0.62, 0.7, 0.82, 1)
     gramp.color_ramp.elements[1].color = (1.05, 0.98, 0.86, 1)
+    if GRADE == "blue":
+        # the horizon warmer than the zenith, the sky's brightest band at the bottom:
+        # deep blue, a pale band, then amber, as dusk is; blue mixed straight into
+        # orange turns violet (measured 285 degrees of hue on the first try)
+        ramp = gramp.color_ramp
+        ramp.elements[0].color = (0.16, 0.2, 0.36, 1)
+        ramp.elements[1].position = 1.0
+        ramp.elements[1].color = (1.1, 0.52, 0.22, 1)
+        for pos, col in ((0.45, (0.62, 0.56, 0.52, 1)), (0.75, (1.0, 0.6, 0.3, 1))):
+            ramp.elements.new(pos).color = col
+        glow.inputs["From Max"].default_value = 0.4
+        glow.inputs["To Min"].default_value = 1.0
     wl.new(glow.outputs["Result"], gramp.inputs["Fac"])
     warm = wn.new("ShaderNodeMix")
     warm.data_type = "RGBA"
@@ -3860,7 +3879,36 @@ cam_data.dof.use_dof = True
 cam_data.dof.focus_distance = (target - cam.location).length
 cam_data.dof.aperture_fstop = 2.8
 
+
+def ground_haze():
+    """A thin haze lying on the courtyard, thinning with height: what lamp light is seen in."""
+    bpy.ops.mesh.primitive_cube_add(size=2, location=(0.0, -60.0, 7.0))
+    hz = bpy.context.object
+    hz.name = "haze"
+    hz.scale = (150.0, 95.0, 7.0)
+    m = bpy.data.materials.new("haze")
+    N, L = m.node_tree.nodes, m.node_tree.links
+    N.remove(N["Principled BSDF"])
+    tc = N.new("ShaderNodeTexCoord")
+    sep = N.new("ShaderNodeSeparateXYZ")
+    L.new(tc.outputs["Object"], sep.inputs["Vector"])
+    # object z runs -1 at the paving to +1 at 14 m: densest on the ground
+    fall = N.new("ShaderNodeMapRange")
+    fall.inputs["From Min"].default_value = -1.0
+    fall.inputs["From Max"].default_value = 0.4
+    fall.inputs["To Min"].default_value = 0.006
+    fall.inputs["To Max"].default_value = 0.0
+    L.new(sep.outputs["Z"], fall.inputs["Value"])
+    vol = N.new("ShaderNodeVolumePrincipled")
+    vol.inputs["Color"].default_value = (0.92, 0.9, 0.94, 1)
+    vol.inputs["Anisotropy"].default_value = 0.5
+    L.new(fall.outputs["Result"], vol.inputs["Density"])
+    L.new(vol.outputs["Volume"], N["Material Output"].inputs["Volume"])
+    hz.data.materials.append(m)
+
+
 if GRADE == "blue":
+    ground_haze()
     # Warm floodlights in the paving at the tower's foot, aimed up its faces:
     # each grazes the tiers, so every pavilion throws a shadow upward.
     import random as _r
@@ -3937,6 +3985,10 @@ def finishing():
         print("GLARE TYPE", e)
     gl.inputs["Threshold"].default_value = 0.85
     gl.inputs["Strength"].default_value = 0.22
+    if GRADE == "blue":
+        # lamps carry the dusk frame: each blooms as a lens would see it
+        gl.inputs["Threshold"].default_value = 1.2
+        gl.inputs["Strength"].default_value = 0.45
     gl.inputs["Size"].default_value = (
         0.6 if gl.inputs["Size"].type == "VALUE" else gl.inputs["Size"].default_value
     )
