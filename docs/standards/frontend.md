@@ -166,6 +166,12 @@ Measured, never estimated (`CLAUDE.md` section 7). **Field data** (real users) i
   4. **Stone reads as stone.** Every surface has the scanned material at its true scale, worn edges, dirt in the recesses, colour that varies block by block, and no plastic sheen. Light falls as it does at the hour named (dusk, courtyard noon), checked against the reference.
   5. **The rules hold.** No deity, no sacred figure (`docs/research/TAMIL_DESIGN_ROOTS.md` rule 1); no lotus and no saffron (rule 6); proportions from the primary source (`docs/research/FRONTEND_RESEARCH_2026.md` B5).
   6. **Judged.** A founder judges the pass better than the last one and than its named reference before its frames replace the live ones; the judgement is in the commit. A pass that breaks rule 5 is replaced at once, whatever its quality.
+  7. **A world at a real hour, not an object on a sky** (Adhi, 5 November 2026; `docs/research/LANDING_CINEMA_2026.md`). The landing's hero is the temple standing in its courtyard, seen by a person arriving:
+     - the sun's elevation is written in the commit and sits 2° to 4° below the horizon; the sky's brightest band is at the horizon and warmer than the zenith, measured in the frame;
+     - lamps are lit by blackbody colour near 1,850 K, glow through a thin ground haze and the compositor's glare, and no lamp clips without a halo;
+     - every frame has a near, a middle and a far plane; nothing in it falls below check 4;
+     - the camera travels and never zooms or cuts, and its speed through the scene is written in the commit;
+     - whatever moves (mist, flames, leaves, birds) is simulated and baked into the frames; nothing moves only to be seen (section 8c).
 - **Stack**: React Three Fiber on Three.js's WebGPU renderer with its WebGL 2 fallback; textures in KTX2, geometry compressed with meshopt, splats in a compressed format through a viewer built for phones **(decision: the viewer, after the benchmark below)**.
 - **Budgets**: no 3D starts until the page is readable and its largest content has painted (section 4); each scene's first load stays within a byte budget **(decision: the number, set from a benchmark on the budget Android reference phone before the first scene is built)**; 60 fps on the mid-range reference phone, otherwise a still poster rendered from the same scene; paused when off screen or when the tab is hidden.
 - **Never the only way to know something**: everything a scene says is also in text; reduce motion shows the still; a screen reader hears the text, not the scene.
