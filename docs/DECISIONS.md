@@ -2072,3 +2072,15 @@ Newest entries at the bottom.
   1. `GET /api/v1/campaign-templates`: 11 templates, public, cached a day, 60 a minute. Each, with a city and a budget, is created by the real route in the tests, and passes the money and contact flags.
   2. Leaderboards and creator collectives stay open in item 14.
   3. A festival added later is one entry in `festival_templates.py` and is tested by the same loop.
+
+## D-164: The landing film's journey, and a still world at rest
+- Date: 2026-11-05
+- Approved by: Adhi, in this session, choosing both recommended options after reading `docs/research/LANDING_CINEMA_2026.md` section 9. **Not reviewed by the other founder** (D-051). (The two numbers before this one are reserved for the landing's 2D art and the deal seal, recorded with that work.)
+- Context: the landing's hero becomes a film of a living world at dusk (Adhi, 5 November); it needed a camera path and a rule for what moves when nobody scrolls.
+- Options considered: journey A) the processional path, between two hall pillars, to the lit tower; B) the pillars to the tower only; C) from the air down to the path. At rest: A) still, alive only on scroll; B) a short loop of mist and flame while idle.
+- Chosen: journey A; at rest A.
+- Reason: journey A is a person arriving, in one continuous move with a near, middle and far plane throughout; C reads as a tourism film. Still at rest keeps `frontend.md` section 8c (nothing loops) and costs a phone no bytes or battery while idle.
+- Consequences / follow-ups:
+  1. One camera move, no zoom and no cut; the path is shortened or the scroll lengthened so its speed reads as walking (the shots' camera positions are 53 m apart).
+  2. Mist, flames, leaves and birds are baked into the frames and move only with scroll; reduce motion and no JavaScript show the last frame.
+  3. The frame budget (96 frames proposed) is still set by the benchmark on the budget Android (`frontend.md` section 8b).
