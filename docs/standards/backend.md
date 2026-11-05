@@ -1,12 +1,12 @@
 # Backend Standard
 
-**For:** anyone writing endpoints, services, schemas or background jobs under `app/`, read before the first file (`CLAUDE.md` section 6). **Last checked against the code: 14 October 2026**, on branch `docs/standards-bar`. Every claim below was re-checked then. Three that had stopped being true were corrected; they are listed in section 12.
+**For:** anyone writing endpoints, services, schemas or background jobs under `app/`, read before the first file (`CLAUDE.md` section 6). **Last checked against the code: 14 October 2026**, on branch `docs/standards-bar`. Every claim below was re-checked then. Three that had stopped being true were corrected; they are listed in section 12. **Section 0 added 6 November 2026**, each of its "Today" cells checked against the code that day.
 
 **The bar** is `CLAUDE.md` section 7.0: the best published practice, from Stripe's API, Google's API Improvement Proposals, Zalando's RESTful API guidelines and the IETF RFCs (sources in section 13), proven by tests rather than claimed. Each rule says what **enforces** it. A rule nothing enforces is marked *(review only)*, so the difference between a checked rule and a hope stays visible.
 
 Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md` before first use. Rules marked **(not yet used)** apply the first time the situation arises.
 
-**The ten dimensions** (`CLAUDE.md` section 5), and where this standard serves each:
+**The twelve dimensions** (`CLAUDE.md` section 5, D-139), and where this standard serves each:
 
 | Dimension | Here |
 |---|---|
@@ -20,6 +20,27 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md` befor
 | Research | Section 13 |
 | Novelty | None claimed: this is engineering practice. Our edge it serves is facts worked out, never stored (section 2) |
 | Business | A stable contract the website and both apps build against (section 2) |
+| Reliability | Overload, timeouts and retries (section 6), jobs that finish or resume (section 7), the availability target and its error budget (section 0) |
+| Maintainability | Layers (section 1), one way to do each thing (sections 2 to 5), a contract that never breaks (section 0) |
+
+---
+
+## 0. The benchmarks we beat (Adhi, 6 November 2026: "backend too need to beat the global biggest ones ... sky high")
+
+The frontend names Stripe, Linear, Vercel and Apple as its bar (`frontend.md` section 8a). The backend's bar is the same companies' engineering, as they publish it. Each row gives what the leader commits to, with its source; our bar, a number wherever one can be measured; what enforces it; and whether it holds today. A row marked **(decision)** proposes a number that binds only once a founder approves it.
+
+| Benchmark | What the leader publishes | Our bar | Enforced by | Today |
+|---|---|---|---|---|
+| **Never breaking a client** (Stripe) | Compatibility kept with every API version since 2011; versions named by date; changes packaged so old versions keep working ([Stripe, "APIs as infrastructure", 5 August 2017](https://stripe.com/blog/api-versioning)) | A published field, route or error code is never removed or changed in meaning. A breaking need gets a new route, and the old one a `Deprecation` and a `Sunset` date (RFC 9745, RFC 8594) at least **12 months** ahead **(decision)** | The committed contract (`tests/test_api_contract.py`) shows every change; an automatic breaking-change check on the contract in CI **(decision: the tool is a dependency)** | Additive only so far; the automatic check does not exist |
+| **Safe retries** (Stripe; IETF) | Idempotency keys on every POST, the first answer replayed ([Stripe docs](https://docs.stripe.com/api/idempotent_requests)) | Every write a person can repeat by tapping twice takes an `Idempotency-Key` and replays its first answer (draft-ietf-httpapi-idempotency-key-header-07) | `tests/core/test_idempotency.py` and each route's idempotency test | **Holds** |
+| **Availability** (Stripe; Google SRE) | Stripe's API stayed above **99.999%** through the 2023 Black Friday peak of 27,395 requests a second ([Stripe newsroom, 2023](https://stripe.com/newsroom/news/bfcm2023)). Google SRE: never a 100% target; an error budget, "a rate at which the SLOs can be missed"; "start with a loose target that you tighten" ([SRE book, "Service Level Objectives"](https://sre.google/sre-book/service-level-objectives/)) | **99.9%** of requests answered without a 5xx, monthly, through the pilot; **99.95%** from launch **(decision)**. A spent budget stops feature work until it is earned back | A synthetic check and the 5xx rate from traces, alerting at half the budget **(decision: hosting, items 88 and 89)** | No target was written down until now; the overload rule (section 6) already turns a freeze into a quick 503 |
+| **The tail, not the average** (Google SRE) | "a high-order percentile, such as the 99th or 99.9th, shows you a plausible worst-case value" (same chapter) | p95 at most 300 ms for reads and 500 ms for writes (section 6), and now **p99 at most 800 ms for reads and 1,200 ms for writes** at pilot scale **(decision)** | `scripts/measure_performance.py` and `scripts/load_test.py`, their numbers in `docs/PERFORMANCE.md` | p95 measured per route; p99 not yet a gate |
+| **Telling a client its limits** (GitHub; IETF) | GitHub sends `x-ratelimit-limit`, `-remaining`, `-used`, `-reset` and `-resource` on every response ([GitHub REST docs](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api)); the IETF's `RateLimit` and `RateLimit-Policy` fields are a standards-track draft, version 11 of May 2026 ([IETF](https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-ratelimit-headers-11)) | Every rate-limited response carries the draft's `RateLimit-Policy` and `RateLimit`, as idempotency already follows its own draft; `Retry-After` stays on every 429 **(decision)** | A test over every route's headers | `Retry-After` on 429 only |
+| **Security verified, not assumed** (OWASP) | ASVS 5.0.0, published 30 May 2025 ([OWASP ASVS](https://asvs.owasp.org/)) | **Level 2** on every route; **Level 3** on login, tokens, account deletion, payment status and the admin API **(decision)**; each requirement mapped to the test or file that meets it, re-checked every release | A requirement map in `docs/standards/security.md`, its gaps listed there | The OWASP API Security Top 10 (2023) is the bar today (section 13) |
+| **A build anyone can verify** (SLSA) | SLSA build levels: L1, provenance exists; L2, a hosted platform signs it; L3, a hardened platform keeps the signing secrets from build steps (version 1.2 is current; [SLSA v1.1 levels](https://slsa.dev/spec/v1.1/levels)) | **SLSA Build L2** for the API image now (provenance signed by GitHub Actions), **L3** before launch **(decision: infrastructure)** | The release job, and a verification step before every deploy | A CycloneDX SBOM per image (D-082); no signed provenance |
+| **Proven by breaking it** | Beyond what the leaders publish | Every rule shown to fail when broken; mutation testing on every rule where a silent mistake costs money or trust, its survivors falling every release (`testing.md` section 2) | The nightly mutation run and its floor (D-139) | **Holds**, its survivors named |
+
+What moves a row from **(decision)** to binding: a founder's yes, recorded in `docs/DECISIONS.md` (`CLAUDE.md` section 5), with its enforcement built in the same change.
 
 ---
 
@@ -227,7 +248,8 @@ Each link checked to exist on 14 October 2026.
 - [Stripe: idempotent requests](https://docs.stripe.com/api/idempotent_requests).
 - [OWASP API Security Top 10, 2023](https://owasp.org/API-Security/editions/2023/en/0x11-t10/): mass assignment (API3) and the rest.
 - [W3C Trace Context](https://www.w3.org/TR/trace-context/) and [OpenTelemetry HTTP span conventions](https://opentelemetry.io/docs/specs/semconv/http/http-spans/).
-- [Google SRE book: Handling Overload](https://sre.google/sre-book/handling-overload/).
+- [Google SRE book: Handling Overload](https://sre.google/sre-book/handling-overload/), and [Service Level Objectives](https://sre.google/sre-book/service-level-objectives/) (read 6 November 2026).
+- Section 0, read 6 November 2026: [Stripe, "APIs as infrastructure"](https://stripe.com/blog/api-versioning) (5 August 2017); [Stripe newsroom, Black Friday and Cyber Monday 2023](https://stripe.com/newsroom/news/bfcm2023); [GitHub REST API rate limits](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api); [IETF RateLimit header fields, draft 11](https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-ratelimit-headers-11); [OWASP ASVS 5.0.0](https://asvs.owasp.org/); [SLSA build levels](https://slsa.dev/spec/v1.1/levels).
 - [The Twelve-Factor App: config](https://12factor.net/config).
 - [DBOS documentation](https://docs.dbos.dev/).
 - Module boundaries: Shopify's Packwerk and GitLab's modular monolith design, as cited in D-099.
