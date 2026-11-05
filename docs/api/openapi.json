@@ -3755,6 +3755,66 @@
         "title": "CampaignSummaryRead",
         "type": "object"
       },
+      "CampaignTemplateRead": {
+        "properties": {
+          "campaign": {
+            "$ref": "#/components/schemas/TemplateCampaignRead"
+          },
+          "key": {
+            "description": "Stable, for a link to one template",
+            "examples": [
+              "pongal"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "lead_weeks": {
+            "description": "How many weeks ahead to publish",
+            "examples": [
+              6
+            ],
+            "title": "Lead Weeks",
+            "type": "integer"
+          },
+          "months": {
+            "description": "The months it falls in, 1 to 12. Empty for a festival that follows the moon, whose dates the brand sets",
+            "examples": [
+              [
+                1
+              ]
+            ],
+            "items": {
+              "type": "integer"
+            },
+            "title": "Months",
+            "type": "array"
+          },
+          "name": {
+            "examples": [
+              "Pongal"
+            ],
+            "title": "Name",
+            "type": "string"
+          },
+          "when": {
+            "examples": [
+              "Mid-January, the first day of the Tamil month of Thai"
+            ],
+            "title": "When",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "when",
+          "months",
+          "lead_weeks",
+          "campaign"
+        ],
+        "title": "CampaignTemplateRead",
+        "type": "object"
+      },
       "CampaignUpdate": {
         "additionalProperties": false,
         "description": "Fields a brand may change. Anything left out stays as it is.",
@@ -15445,6 +15505,64 @@
         "title": "TeamRoleChange",
         "type": "object"
       },
+      "TemplateCampaignRead": {
+        "description": "The campaign the template starts: pass these to `POST /api/v1/campaigns` with\nthe brand's own `cities`, and a budget for a paid campaign.",
+        "properties": {
+          "campaign_type": {
+            "enum": [
+              "paid",
+              "barter",
+              "commission",
+              "local_business"
+            ],
+            "examples": [
+              "paid"
+            ],
+            "title": "Campaign Type",
+            "type": "string"
+          },
+          "deliverables": {
+            "title": "Deliverables",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "niches": {
+            "items": {
+              "enum": [
+                "food",
+                "fashion",
+                "beauty",
+                "tech",
+                "travel",
+                "fitness",
+                "education",
+                "entertainment",
+                "finance",
+                "lifestyle"
+              ],
+              "type": "string"
+            },
+            "title": "Niches",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "description",
+          "campaign_type",
+          "deliverables",
+          "niches"
+        ],
+        "title": "TemplateCampaignRead",
+        "type": "object"
+      },
       "UnreadCount": {
         "properties": {
           "unread": {
@@ -23610,6 +23728,61 @@
         "summary": "Read a drafted brief",
         "tags": [
           "campaigns"
+        ]
+      }
+    },
+    "/api/v1/campaign-templates": {
+      "get": {
+        "description": "Campaigns already worded for Tamil Nadu's festivals and seasons, the soonest first from today in Tamil Nadu. Each is a starting point: add the brand's cities and, for a paid campaign, a budget, then create it with `POST /api/v1/campaigns`. A festival that follows the moon lists no months and comes last. A fixed list of 11; no login. Cached for a day. Limit: 60 a minute.",
+        "operationId": "campaign_templates_api_v1_campaign_templates_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CampaignTemplateRead"
+                  },
+                  "title": "Response Campaign Templates Api V1 Campaign Templates Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Festival campaign templates",
+        "tags": [
+          "public"
         ]
       }
     },
