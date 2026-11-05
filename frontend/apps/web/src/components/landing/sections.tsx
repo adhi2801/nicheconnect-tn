@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { StageColumn } from "@/components/deals/stage-column";
+import { EXAMPLE_BOARD } from "@/lib/landing-examples";
 import { t, type MessageKey } from "@/lib/messages";
 
 // The landing page below the hero (LANDING_CULTURE_FIT.md, the sections judged "keep"). Server components only: they
@@ -61,6 +63,29 @@ export function Steps() {
           </li>
         ))}
       </ol>
+    </section>
+  );
+}
+
+/** The product itself: the app's own deal board, fed three example deals, as a creator sees it. Not a picture of a screen, and
+ *  the caption says the deals are made up. */
+export function Product() {
+  const noPayments = new Map();
+  return (
+    <section aria-labelledby="product-title" className="mx-auto max-w-6xl px-6 pb-24 sm:pb-32">
+      <Eyebrow k="landing.product.eyebrow" />
+      <h2 id="product-title" className="mt-3 max-w-3xl font-display text-3xl font-semibold tracking-tight sm:text-5xl">{t("landing.product.title")}</h2>
+      <p className="mt-4 max-w-2xl text-lg leading-relaxed text-muted">{t("landing.product.lede")}</p>
+      <figure className="mt-12">
+        <div className="rounded-[2rem] bg-sunk p-4 sm:p-6">
+          <div className="grid gap-6 lg:grid-cols-3">
+            {EXAMPLE_BOARD.map(({ stage, memo }, i) => (
+              <StageColumn key={stage} stage={stage} memos={[memo]} role="creator" byMemo={noPayments} connect={i > 0} preview />
+            ))}
+          </div>
+        </div>
+        <figcaption className="mt-4 text-sm text-muted">{t("landing.product.caption")}</figcaption>
+      </figure>
     </section>
   );
 }
