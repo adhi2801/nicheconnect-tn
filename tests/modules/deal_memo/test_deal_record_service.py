@@ -488,3 +488,49 @@ def test_each_entry_names_the_account_of_the_side_that_acted(db):
 
     assert found == {"brand": brand_account, "creator": creator_account, "system": None}
     assert brand_account != creator_account
+
+
+def test_the_v3_fingerprint_adds_whether_a_draft_is_shown_first():
+    """Terms version 3 (item 27, D-140): version 2's terms, then `draft_review`.
+    Reached only through the API until the nightly mutation run (item 93)."""
+    memo = make_memo_terms()
+    memo.terms_version = 3
+    memo.deliverable_items = []
+    memo.draft_review = True
+    terms = {field: getattr(memo, field) for field in record_service.TERMS_FIELDS}
+    terms["content_due_on"] = "2026-12-31"
+    terms["deliverable_items"] = []
+    terms["draft_review"] = True
+    by_hand = hashlib.sha256(
+        json.dumps(terms, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+    assert record_service.terms_fingerprint(memo) == by_hand
+    memo.terms_version = 2
+    assert record_service.terms_fingerprint(memo) != by_hand
+
+
+def test_a_team_member_acting_for_the_brand_is_the_entry_s_actor(db):
+    """The brand side names who acted (D-148): the member, not the owner."""
+    from app.modules.auth import brand_access
+    from tests.factories import create_account
+
+    memo = make_memo(db)
+    owner, creator = record_service._party_account_ids(db, memo)
+    member = create_account(db, "brand")
+    brand_access.note_acting(
+        db,
+        brand_access.Acting(account_id=member.id, brand_id=uuid.uuid4(), member_id=None),
+    )
+    try:
+        by_member = record_service.append(
+            db, memo, kind="memo_sent", actor_role="brand", now=FIXED_NOW
+        )
+        by_creator = record_service.append(
+            db, memo, kind="memo_accepted", actor_role="creator", now=FIXED_NOW
+        )
+    finally:
+        brand_access.forget_acting(db)
+
+    assert by_member.actor_account_id == member.id != owner
+    assert by_creator.actor_account_id == creator

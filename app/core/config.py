@@ -1,3 +1,4 @@
+import json
 import re
 from typing import Literal
 from urllib.parse import urlsplit
@@ -11,6 +12,9 @@ MIN_KEY_LENGTH = 32
 # The app's own database login's password (item 97, app/db/roles.py).
 APP_DATABASE_PASSWORD = re.compile(r"[A-Za-z0-9]{32,128}")
 PLACEHOLDER_PREFIX = "change-me"
+# The features whose routes honour a rollout share (item 92, D-160). A
+# feature is added here in the same change that makes its routes check it.
+ROLLOUT_FEATURES = ("brief_drafting",)
 
 # Every environment the app knows. Anything else is a typo, and a typo must
 # stop the app rather than quietly count as one of these (D-044).
@@ -172,6 +176,11 @@ class Settings(BaseSettings):
         default="claude-opus-5-5", pattern=r"^claude-[a-z0-9]+(-[a-z0-9]+)*$"
     )
     brief_drafting_daily_limit: int = Field(default=200, ge=1, le=10_000)
+    # Gradual rollout (item 92, D-160): a switched-on feature reaching only a
+    # share of accounts, as {"brief_drafting": 10}. Unset means everyone.
+    # Only the features whose routes honour a share may be named, checked at
+    # startup with the percentages.
+    feature_rollout: dict[str, int] = Field(default_factory=dict)
     # Error tracking (D-074). Unset means off, which is right for local and
     # test. A DSN only lets a program send errors in, never read them, which
     # is why Sentry treats it as public; it is still a setting, never code.
@@ -316,6 +325,29 @@ class Settings(BaseSettings):
     @property
     def passkey_origin_list(self) -> tuple[str, ...]:
         return split_origins(self.passkey_origins)
+
+    @field_validator("feature_rollout", mode="before")
+    @classmethod
+    def rollout_from_json(cls, value: object) -> object:
+        """Read as JSON when given as text, however the setting arrives."""
+        if isinstance(value, str):
+            return json.loads(value) if value.strip() else {}
+        return value
+
+    @model_validator(mode="after")
+    def rollout_names_real_features(self) -> Settings:
+        """A share on a feature that ignores it, or outside 0 to 100, fails at startup."""
+        for name, percent in self.feature_rollout.items():
+            if name not in ROLLOUT_FEATURES:
+                raise ValueError(
+                    f"feature_rollout names {name!r}; only "
+                    f"{', '.join(ROLLOUT_FEATURES)} honour a share"
+                )
+            if not 0 <= percent <= 100:
+                raise ValueError(
+                    f"feature_rollout for {name!r} is {percent}, not 0 to 100"
+                )
+        return self
 
     @model_validator(mode="after")
     def brief_drafting_is_usable(self) -> Settings:

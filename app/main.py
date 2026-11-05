@@ -65,6 +65,7 @@ from app.modules.me.agent_token_router import router as agent_token_router
 from app.modules.me.attention_router import router as attention_router
 from app.modules.me.export_router import download_router as export_download_router
 from app.modules.me.export_router import router as export_router
+from app.modules.me.features_router import router as my_features_router
 from app.modules.me.passkey_reset_router import router as passkey_reset_router
 from app.modules.me.passkey_router import router as passkey_router
 from app.modules.me.phone_change_router import router as phone_change_router
@@ -177,6 +178,7 @@ app.include_router(brand_router)
 app.include_router(creator_router)
 # Privacy: download everything we hold about you.
 app.include_router(export_router)
+app.include_router(my_features_router)
 app.include_router(export_download_router)
 app.include_router(attention_router)
 # Public: the Creator Passport, readable without logging in.

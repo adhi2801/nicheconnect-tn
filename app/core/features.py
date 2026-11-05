@@ -13,13 +13,18 @@ problem code those routes answer while it is off, so a client that calls
 one anyway knows what it met. `tests/core/test_features.py` holds every
 code to the exception its module really raises.
 
-Public and the same for everyone: it says what the product can do, nothing
-about anyone.
+Public and the same for everyone: it says what the product can do for all,
+nothing about anyone. While a feature is being rolled out to a share of
+accounts (item 92, D-160), it says "off" here and gives the share;
+`GET /api/v1/me/features` says whether it is on for the signed-in account.
 """
+
+import uuid
 
 from fastapi import APIRouter, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core import rollout
 from app.core.config import settings
 from app.core.errors import problem_doc
 from app.core.rate_limit import rate_limit
@@ -34,7 +39,21 @@ class FeatureRead(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    on: bool
+    on: bool = Field(
+        description=(
+            "On `GET /api/v1/features`: on for everyone. On `GET /api/v1/me/features`: "
+            "on for the signed-in account"
+        )
+    )
+    share_percent: int = Field(
+        ge=0,
+        le=100,
+        description=(
+            "The share of accounts it reaches when switched on (item 92): 100 for "
+            "everyone, less while it is being rolled out"
+        ),
+        examples=[100],
+    )
     off_code: str | None = Field(
         description=(
             "The problem `code` this feature's routes answer while it is off; "
@@ -76,28 +95,55 @@ class FeaturesRead(BaseModel):
     )
 
 
-def current() -> FeaturesRead:
-    """The features as the settings switch them now."""
+def _feature(
+    name: str, switched: bool, off_code: str | None, account_id: uuid.UUID | None
+) -> FeatureRead:
+    """On for everyone (no account), or for this account, within its rollout share."""
+    percent = rollout.share(name)
+    if account_id is None:
+        on = switched and percent == rollout.BUCKETS
+    else:
+        on = switched and rollout.includes(name, account_id)
+    return FeatureRead(on=on, share_percent=percent, off_code=off_code)
+
+
+def current(account_id: uuid.UUID | None = None) -> FeaturesRead:
+    """The features as the settings switch them now: for everyone, or for one account."""
     return FeaturesRead(
-        passkeys=FeatureRead(
-            on=settings.passkey_rp_id is not None, off_code="passkeys_unavailable"
+        passkeys=_feature(
+            "passkeys",
+            settings.passkey_rp_id is not None,
+            "passkeys_unavailable",
+            account_id,
         ),
-        connected_accounts=FeatureRead(
-            on=settings.platform_connections_enabled, off_code="connections_unavailable"
+        connected_accounts=_feature(
+            "connected_accounts",
+            settings.platform_connections_enabled,
+            "connections_unavailable",
+            account_id,
         ),
-        upi_ids=FeatureRead(
-            on=settings.upi_notice_version is not None, off_code="upi_not_open_yet"
+        upi_ids=_feature(
+            "upi_ids",
+            settings.upi_notice_version is not None,
+            "upi_not_open_yet",
+            account_id,
         ),
         # Its feed answers as if nothing is published while off, never an error.
-        passport_indexing=FeatureRead(on=settings.passport_indexing, off_code=None),
-        # A job reads the screenshots; no route waits on it.
-        results_from_proof=FeatureRead(
-            on=settings.proof_reading_enabled and settings.anthropic_api_key is not None,
-            off_code=None,
+        passport_indexing=_feature(
+            "passport_indexing", settings.passport_indexing, None, account_id
         ),
-        brief_drafting=FeatureRead(
-            on=settings.brief_drafting_enabled and settings.anthropic_api_key is not None,
-            off_code="brief_drafting_unavailable",
+        # A job reads the screenshots; no route waits on it.
+        results_from_proof=_feature(
+            "results_from_proof",
+            settings.proof_reading_enabled and settings.anthropic_api_key is not None,
+            None,
+            account_id,
+        ),
+        brief_drafting=_feature(
+            "brief_drafting",
+            settings.brief_drafting_enabled and settings.anthropic_api_key is not None,
+            "brief_drafting_unavailable",
+            account_id,
         ),
     )
 
