@@ -64,6 +64,8 @@ The cause of "flat blue afternoon" is therefore one number, not the renderer. Se
 
 ## 9. Decisions this asks for
 
+**Decided 5 November 2026 (D-164):** decision 1, the three shots in that order; decision 3, still at rest. Decision 2 waits for the benchmark.
+
 1. **The journey**: the three shots in section 5, in that order, or another. *(Adhi)*
 2. **The frame budget**: how many frames and how many bytes at each width. The standard already says this is set on the budget Android before the scene is built (section 8b); the proposal to measure is 96 frames, with the first frame painted as the page's largest content. *(set by the benchmark, then Adhi)*
 3. **Life at rest**: section 8c says nothing loops. A still world at rest is the default here; a few seconds of mist drifting at rest would need 8c changed. *(Adhi; the recommendation is still at rest, alive on scroll)*
