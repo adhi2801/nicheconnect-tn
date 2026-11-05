@@ -152,7 +152,7 @@ Each area gives what is current (dated), what the best do, what it means for Col
 
 - **GSAP is now free for everyone, all plugins included** (ScrollTrigger, SplitText, Flip, MorphSVG and the rest), for commercial use too. SplitText was rewritten 50% smaller, with screen-reader support built in ([Webflow](https://webflow.com/blog/gsap-becomes-free)).
 - **Motion for React** (formerly Framer Motion) is on the 12.x line, last updated March 2026, for layout and shared-layout animation in React ([Socket](https://socket.dev/npm/package/framer-motion/overview/12.35.2); [motion.dev](https://llms.motion.dev)).
-- **CSS scroll-driven animations** are an Interop 2026 focus area. They run in CSS with no main-thread script, Chrome since 115 and Safari 26; Firefox's status is unclear ([WebKit](https://webkit.org/blog/17818/announcing-interop-2026/); [Mozilla](https://hacks.mozilla.org/2026/02/launching-interop-2026/); [Chrome](https://developer.chrome.com/docs/css-ui/scroll-driven-animations)).
+- **CSS scroll-driven animations** are an Interop 2026 focus area. They run in CSS with no main-thread script, Chrome since 115 and Safari 26; Firefox's status is unclear (settled 5 November 2026: MDN marks `animation-timeline` Baseline 2026, newly available since October 2026, `LANDING_CINEMA_2026.md` section 6) ([WebKit](https://webkit.org/blog/17818/announcing-interop-2026/); [Mozilla](https://hacks.mozilla.org/2026/02/launching-interop-2026/); [Chrome](https://developer.chrome.com/docs/css-ui/scroll-driven-animations)).
 - **Cross-document View Transitions** (animated moves between pages without a framework): Chrome 126, Safari 18.2, not yet Firefox; also an Interop 2026 area ([Chrome](https://developer.chrome.com/docs/web-platform/view-transitions/cross-document)). React 19.2 in Next.js 16 adds View Transitions inside the app.
 - **Rive or Lottie:**
   - Rive has state machines and data binding (an animation that reacts to app state), with a larger runtime.
@@ -190,7 +190,7 @@ Each area gives what is current (dated), what the best do, what it means for Col
   - At Thanjavur the crown is a single granite block of about 80 tonnes.
   - The height is given as 63.4 m from the inner courtyard floor, and popularly as 66 m.
   - "Thirteen storeys" comes from one student source only and is unverified ([Studio Matrx, July 2026](https://www.studiomatrx.org/architecture-canon/brihadeeswarar-temple-thanjavur); [Wikipedia](https://www.wikipedia.com/wiki/Brihadeeswarar); [Anantam IAS](https://anantamias.com/brihadeeswara-temple-thanjavur/)).
-  - **Owed:** a primary architectural source (an ASI publication or a measured drawing) before the model's proportions are fixed.
+  - **Owed:** a primary architectural source (an ASI publication or a measured drawing) before the model's proportions are fixed. **Partly met 6 November 2026:** Pichard's measured study (1995), through IGNCA's excerpts, fixes the courtyard and the cloister, and Balasubrahmanyam (1975) the tower's base, height and crown (`LANDING_CINEMA_2026.md` section 10). The book itself is still owed for the tier-by-tier dimensions.
 - **AI image-to-3D, for first drafts of objects.**
   - In 2026 Tripo is most praised for clean, editable topology; Rodin (Gen-2.5) for surface detail and PBR materials; Meshy for balance.
   - Hunyuan3D (up to eight input views in 3.1) and TRELLIS.2 (MIT licence, PBR up to 4K, but holes and artefacts) are the open options.
