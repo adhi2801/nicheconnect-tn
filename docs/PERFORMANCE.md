@@ -467,6 +467,17 @@ hashes instead of rebuilding the tree. That is a schema change, so it waits
 for its own decision. **Trigger:** 20,000 deals, or a measured proof p95 above
 150 ms, whichever comes first.
 
+## Added 5 November: creator search in plain words (item 64, D-158)
+
+`scripts/measure_performance.py --runs 50`, on 5 November 2026, on a scratch database seeded by `scripts/seed_dev_data.py` (150 campaigns, 785 applications, 200 creators, 958 packages), on the same laptop. The sentence read names a niche, a city, a follower range, a price, a format, a platform and a day.
+
+| Endpoint | p50 ms | p95 ms | Budget | Verdict |
+| --- | --- | --- | --- | --- |
+| `GET /creators/search-reading` | 20.4 | 28.7 | 300 | OK |
+| `GET /creators` (search, no filter), same run, for scale | 27.5 | 34.3 | 300 | OK |
+
+One query per reading, whatever the number of creators (`tests/modules/matching/test_search_words_api.py::test_one_query_however_many_creators_and_places`). The query groups every findable creator's city, so it grows with creators, not with traffic; at 10,000 creators it has not been measured. The same run found the two writes this file already names over budget in this harness: the 25-row bulk mark-paid (p95 560.6 ms) and one data export built (671.2 ms). Neither was touched by this change.
+
 ## What is not measured yet
 
 - **Everything built from 8 to 10 October 2026**:

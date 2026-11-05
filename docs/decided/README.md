@@ -16,6 +16,7 @@ Each file here was written to get a decision. The decision is recorded in `docs/
 | `PROPOSAL_UPI_PAY_LINK.md` | D-085 |
 | `PROPOSAL_TEAM_SEATS.md` | D-148 (team seats, item 13; built in two pieces, 31 October to 4 November 2026) |
 | `PROPOSAL_BRIEF_DRAFTS.md` | D-156 (a campaign brief from a few sentences, item 40, built switched off, 4 November 2026) |
+| `PROPOSAL_SEARCH_WORDS.md` | D-158 (creator search in plain words, item 64, 5 November 2026) |
 | `PROPOSAL_HAND_OVER_NOTICE.md` | D-151 (creators told when a brand changes hands, 4 November 2026) |
 | `DECISION_LOCAL_LOGIN.md` | D-059 |
 | `DECISION_NOTIFICATION_PROVIDER.md` | D-058 |

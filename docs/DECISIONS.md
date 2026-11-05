@@ -2023,3 +2023,27 @@ Newest entries at the bottom.
   1. `frontend/scripts/check-no-js.mjs`, run by the frontend job after the build; shown failing on a page without those words.
   2. Each new public page adds its words to the check in the same change.
 
+## D-158: Creator search in plain words, read by fixed rules
+- Date: 2026-11-05
+- Approved by: Adhi, in this session: "big progress in backend", "do it yourself ... dont ask me", which covers the matching gate of CLAUDE.md section 5 for this build only. **Not reviewed by the other founder** (D-051).
+- Context: `BACKEND_COMPLETE.md` item 64, listed as needing an AI dependency. A brand types what it wants; today it must translate that into seven separate filters.
+- Options considered: A) fixed rules over our own vocabulary (niches, Tamil Nadu's places, follower and price forms, days), returning search's filters and the words behind each; B) a model turning the words into filters, as item 40 drafts a brief; C) not now.
+- Chosen: A.
+- Reason: instant, free, the words never leave our servers (B is a processor outside India, the hold that keeps item 40 off), the same words always read the same way, and every filter can be shown with the words it came from. What rules cannot read is said, not guessed. B stays possible behind the same response if A's unread words show it is needed.
+- Consequences / follow-ups:
+  1. `GET /api/v1/creators/search-reading`: brands and their teams, search's rate limit, one query (the places creators the viewer could find wrote, through search's own `visible`). Nothing is stored.
+  2. A place written two ways ("Trichy", "Tiruchirappalli") is searched under the spelling most findable creators used; search matching every spelling is a follow-up.
+  3. "Free in November" is answered with a note: search checks one day. A range of days in search is a follow-up.
+  4. The reader is covered by fixed examples, property tests (any text stays within search's limits; any search written any way reads back exactly) and seventeen rules broken on purpose. It is not yet in the nightly mutation run.
+  5. The design: `docs/decided/PROPOSAL_SEARCH_WORDS.md`.
+
+## D-159: APT upgraded in the image; CVE-2026-116566 accepted on Python 3.14.10
+- Date: 2026-11-05
+- Approved by: Adhi, in this session: "nothing should fail ... do it yourself", following D-149's precedent for an unfixable Python CVE. **Not reviewed by the other founder** (D-051).
+- Context: CI's image scan began failing on 5 November on two findings published after main's last green run: APT 3.0.3 (CVE-2026-109518, High; Debian's fix is 3.0.4) and CPython 3.14.10 (CVE-2026-116566, Medium; fixed only in 3.16.0).
+- Options considered: A) APT upgraded at an exact version in the image's existing upgrade step (D-068), and the Python finding accepted with its reason; B) remove APT from the running image; C) move off Python 3.14.
+- Chosen: A.
+- Reason: A follows the two patterns already in place. B is a larger change to the image for a flaw that bites only while packages are installed, which the running app never does. C is not possible: no 3.14 release carries the fix. Our code resolves only fixed hosts or IANA's RDAP servers; a brand's domain goes to the DNS-over-HTTPS resolver as a query and must match `DOMAIN_PATTERN`, checked by the database too.
+- Consequences / follow-ups:
+  1. `Dockerfile`: `apt=3.0.4`, `libapt-pkg7.0=3.0.4`, upgrade only; removed with the others when the base digest moves.
+  2. `.grype.yaml`: one entry, exact version 3.14.10, removed when a 3.14 release carries the fix.

@@ -279,3 +279,26 @@ def test_the_contract_matches_the_committed_copy():
         "and commit it with the change: uv run python -m "
         f"tests.openapi_snapshot\nPaths: {changed}\nSchemas: {schemas}"
     )
+
+
+def test_no_two_schemas_share_a_name():
+    """The contract names each schema by its class name, so two classes with
+    one name become one schema, and the second silently replaces the first.
+    A search note named NoteRead once replaced the deal memo's notes in the
+    contract (D-158) and only the regenerated screen types showed it."""
+    import pydantic
+
+    def subclasses(cls: type) -> list[type]:
+        found = []
+        for sub in cls.__subclasses__():
+            found += [sub, *subclasses(sub)]
+        return found
+
+    modules_of: dict[str, set[str]] = {}
+    for cls in subclasses(pydantic.BaseModel):
+        if cls.__module__.startswith("app.") and "[" not in cls.__name__:
+            modules_of.setdefault(cls.__name__, set()).add(cls.__module__)
+
+    assert len(modules_of) > 100, "the app's schemas were not found"
+    shared = {name: sorted(mods) for name, mods in modules_of.items() if len(mods) > 1}
+    assert shared == {}
