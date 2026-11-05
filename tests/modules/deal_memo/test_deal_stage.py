@@ -246,3 +246,26 @@ def test_a_submitted_draft_waits_on_the_brand_and_an_approved_one_moves_the_deal
     assert (waiting.stage, waiting.waiting_on) == ("draft_review", "brand")
     assert (changes.stage, changes.waiting_on) == ("draft_review", "creator")
     assert (approved.stage, approved.waiting_on) == ("agreed", "creator")
+
+
+def test_a_deal_agreed_with_a_draft_review_and_no_draft_yet_waits_on_the_creator():
+    reviewed = memo(content_due_on=DUE, draft_review=True)
+
+    found = stage_of(reviewed, [], None, NOW, drafts=[])
+
+    assert (found.stage, found.waiting_on) == ("agreed", "creator")
+
+
+def test_the_newest_draft_decides_whose_move_it_is_in_whatever_order_drafts_come():
+    reviewed = memo(content_due_on=DUE, draft_review=True)
+    older = draft("changes_requested", days_ago=3)
+    newer = draft("submitted", days_ago=0.1)
+
+    for drafts in ([older, newer], [newer, older]):
+        found = stage_of(reviewed, [], None, NOW, drafts=drafts)
+        assert (found.stage, found.waiting_on) == ("draft_review", "brand")
+    reworked = draft("changes_requested", days_ago=0.5)
+    found = stage_of(
+        reviewed, [], None, NOW, drafts=[reworked, draft("submitted", days_ago=3)]
+    )
+    assert (found.stage, found.waiting_on) == ("draft_review", "creator")

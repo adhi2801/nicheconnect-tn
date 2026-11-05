@@ -1,3 +1,4 @@
+import json
 import re
 from typing import Literal
 from urllib.parse import urlsplit
@@ -324,6 +325,14 @@ class Settings(BaseSettings):
     @property
     def passkey_origin_list(self) -> tuple[str, ...]:
         return split_origins(self.passkey_origins)
+
+    @field_validator("feature_rollout", mode="before")
+    @classmethod
+    def rollout_from_json(cls, value: object) -> object:
+        """Read as JSON when given as text, however the setting arrives."""
+        if isinstance(value, str):
+            return json.loads(value) if value.strip() else {}
+        return value
 
     @model_validator(mode="after")
     def rollout_names_real_features(self) -> Settings:

@@ -47,11 +47,12 @@ def test_nought_reaches_nobody_and_a_hundred_everyone(monkeypatch):
     assert all(rollout.includes("brief_drafting", a) for a in accounts)
 
 
-def test_a_tenth_is_about_a_tenth():
+def test_a_tenth_is_about_a_tenth(share):
     """10,000 accounts at 10%: within 2 points, which a fair bucket misses
     about once in ten billion runs."""
+    share(10)
     accounts = [uuid.UUID(int=n * 7919 + 1) for n in range(10_000)]
-    reached = sum(rollout.bucket("brief_drafting", a) < 10 for a in accounts)
+    reached = sum(rollout.includes("brief_drafting", a) for a in accounts)
     assert 800 <= reached <= 1_200
 
 

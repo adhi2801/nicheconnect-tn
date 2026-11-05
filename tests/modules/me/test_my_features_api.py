@@ -44,12 +44,19 @@ def test_a_team_member_is_told_their_brand_s_answer(
 
     monkeypatch.setattr(settings, "brief_drafting_enabled", True)
     monkeypatch.setattr(settings, "anthropic_api_key", type(settings.secret_key)("k"))
-    owner = brand_user(db, clock)
-    member = join(client, db, clock, owner, "campaigns")
-    share(rollout.bucket("brief_drafting", owner.account_id) + 1)
+    # A pair where the share takes in the brand but not the member's own
+    # account, so only an answer given as the brand can say "on".
+    for _ in range(20):
+        owner = brand_user(db, clock)
+        member = join(client, db, clock, owner, "campaigns")
+        brand_bucket = rollout.bucket("brief_drafting", owner.account_id)
+        if rollout.bucket("brief_drafting", member.account_id) > brand_bucket:
+            break
+    share(brand_bucket + 1)
 
     found = client.get("/api/v1/me/features", headers=member.headers).json()
 
+    assert not rollout.includes("brief_drafting", member.account_id)
     assert found["brief_drafting"]["on"] is True
 
 

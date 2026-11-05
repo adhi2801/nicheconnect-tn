@@ -2047,3 +2047,16 @@ Newest entries at the bottom.
 - Consequences / follow-ups:
   1. `Dockerfile`: `apt=3.0.4`, `libapt-pkg7.0=3.0.4`, upgrade only; removed with the others when the base digest moves.
   2. `.grype.yaml`: one entry, exact version 3.14.10, removed when a 3.14 release carries the fix.
+
+## D-160: Gradual rollout of a switched-on feature, by a keyed share of accounts
+- Date: 2026-11-05
+- Approved by: Adhi, in this session: "big progress in backend ... do it yourself". **Not reviewed by the other founder** (D-051).
+- Context: `BACKEND_COMPLETE.md` item 92. Features built switched off (the brief drafter, connected accounts, UPI IDs) go from nobody to everyone in one step; large services turn a feature on for a few per cent, watch it, then widen it.
+- Options considered: A) a share per feature in the settings, each account's place a keyed hash of the feature and the account; B) a table of accounts chosen by hand; C) a third-party flag service.
+- Chosen: A.
+- Reason: no table and no new dependency; the same account stays in as the share grows, features choose their first accounts independently, and the key is the app's secret, so nobody can work out or pick who is first. B does not scale past a pilot's handful; C sends account ids to another processor.
+- Consequences / follow-ups:
+  1. `FEATURE_ROLLOUT`, for example `{"brief_drafting": 10}`; unset is everyone. Only `ROLLOUT_FEATURES` may be named, and a share outside 0 to 100 stops startup.
+  2. `GET /api/v1/features` stays the same for everyone: "on" only when on for all, with `share_percent`. `GET /api/v1/me/features` answers for the signed-in account; a team member as their brand, as the routes decide.
+  3. The brief drafter honours a share first: a brand outside it is answered `brief_drafting_unavailable`, as when it is off. Each further feature joins `ROLLOUT_FEATURES` in the change that makes its routes check it.
+  4. Changing the secret key reshuffles every share, as it ends every session; that is accepted.
