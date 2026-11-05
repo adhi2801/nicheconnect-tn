@@ -75,7 +75,7 @@ From `docs/PLATFORM_AND_TECH_PLAN.md` section 2.7 and the platform plan:
 
 | # | Item | Gate |
 |---|---|---|
-| 14 | **E5**: city leaderboards, festival campaign templates, creator collectives | A design decision |
+| 14 | **E5**: city leaderboards, festival campaign templates, creator collectives | A design decision · **Piece 1 built 5 November (D-161): festival campaign templates**: `GET /api/v1/campaign-templates`, public, 11 festivals and seasons, the soonest first in Tamil Nadu time; each prefills a campaign the create route accepts once the brand adds its cities and budget; Ramzan, which follows the moon, names no months and comes last. Leaderboards and collectives still need a design decision (trust-and-safety.md: ranking people) |
 | 15 | **E9**: public read API and webhooks for agencies | A design decision; security |
 | 16 | **Competitive gap: fake-follower screening** (`docs/COMPETITIVE_LANDSCAPE.md` section 4), built from observed reach on real deals rather than bought data | After results from proof has real data; a decision |
 | 17 | **Competitive gap: structured deal notes** that join the deal record, in place of chat | A product decision · **Built 26 October (D-128)**: `POST /api/v1/deal-memos/{memo_id}/notes` from the memo being sent until the deal ends; each note sealed onto the deal record by its fingerprint, the table append-only, `notes_unchanged` on the record |

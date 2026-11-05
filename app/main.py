@@ -40,6 +40,7 @@ from app.modules.campaigns.invitation_router import router as invitations_router
 from app.modules.campaigns.offer_router import router as offers_router
 from app.modules.campaigns.report_router import router as campaign_report_router
 from app.modules.campaigns.router import router as campaigns_router
+from app.modules.campaigns.template_router import router as campaign_templates_router
 from app.modules.deal_memo.calendar_router import router as deal_calendar_router
 from app.modules.deal_memo.content_library_router import router as content_library_router
 from app.modules.deal_memo.delivery_router import router as delivery_router
@@ -210,6 +211,7 @@ app.include_router(media_kit_router)
 app.include_router(rate_guidance_router)
 app.include_router(campaigns_router)
 app.include_router(brief_drafts_router)
+app.include_router(campaign_templates_router)
 app.include_router(campaign_report_router)
 app.include_router(applications_router)
 app.include_router(invitations_router)
