@@ -691,6 +691,47 @@ def panel_relief(cx, cy, z, R, side, depth=0.12, key="carve", variant=0):
     )
 
 
+def deity(cx, cy, z0, tall, wide, side):
+    """A standing deity in a niche: pedestal, body, shoulders, head and tall crown (kirita).
+
+    Turned from a profile, flattened front to back as a relief is, so in the
+    shadow of the niche it reads as a carved figure, not as a column.
+    """
+    R, F = wide, tall
+    profile = [
+        (0.95 * R, 0.0),
+        (0.95 * R, 0.07 * F),
+        (0.8 * R, 0.085 * F),  # the lotus pedestal
+        (0.42 * R, 0.1 * F),
+        (0.36 * R, 0.3 * F),
+        (0.4 * R, 0.44 * F),  # knees to hips, the hip flare of the tribhanga
+        (0.5 * R, 0.52 * F),
+        (0.32 * R, 0.6 * F),  # waist
+        (0.44 * R, 0.68 * F),
+        (0.62 * R, 0.75 * F),  # shoulders and the upper arms
+        (0.56 * R, 0.78 * F),
+        (0.15 * R, 0.8 * F),  # neck
+        (0.26 * R, 0.83 * F),
+        (0.28 * R, 0.88 * F),  # head
+        (0.24 * R, 0.91 * F),
+        (0.2 * R, 0.96 * F),  # the crown, tapering
+        (0.06 * R, 1.0 * F),
+    ]
+    flat = 0.55
+    if side in (0, 2):
+        loft("stone", cx, cy, [(r, z0 + z) for r, z in profile], e=2.2, n=28, aspect=flat)
+    else:
+        loft(
+            "stone",
+            cx,
+            cy,
+            [(r * flat, z0 + z) for r, z in profile],
+            e=2.2,
+            n=28,
+            aspect=1 / flat,
+        )
+
+
 def storey(half, z0, h, niche_count, pil_step):
     """A wall built as Dravidian walls are: a recessed core, projecting bays, and deep niches cut into the bays."""
     core = half - 0.75
@@ -716,27 +757,48 @@ def storey(half, z0, h, niche_count, pil_step):
             u = -core * 0.68 + 1.36 * core * (
                 i / (niche_count - 1) if niche_count > 1 else 0.5
             )
-            # the bay around the niche: jambs, sill and lintel, leaving a real recess
+            # A devakoshta, as on the Thanjavur walls: a rectangular niche with a
+            # deity, framed by pilasters, under a flat lintel and a small barrel
+            # roof (shala) whose gable carries the kudu. No arch spans the
+            # opening: Dravidian walls have none. The central bay (bhadra) is
+            # the widest and stands furthest out, so the wall has a centre.
+            centre = niche_count % 2 == 1 and i == niche_count // 2
+            w_i = wn * (1.3 if centre else 0.9)
+            out = 0.375 + (0.3 if centre else 0.0)
+            top = 0.7 if centre else 0.64
             for s in (-1, 1):
-                place(u + s * (wn + jw), 0.375, jw, 0.375, z0, h)
-            place(u, 0.375, wn, 0.375, z0, h * 0.12)
-            place(u, 0.375, wn, 0.375, z0 + h * 0.74, h * 0.26)
+                place(u + s * (w_i + jw), out, jw, out, z0, h)
+            place(u, out, w_i, out, z0, h * 0.12)
+            place(u, out, w_i, out, z0 + h * top, h * (1 - top))
             # framing pilasters on the jambs, with bracket capitals
+            d_face = 2 * out
             for s in (-1, 1):
-                place(u + s * (wn + jw), 0.8, 0.14, 0.06, z0 + h * 0.08, h * 0.62)
-                place(u + s * (wn + jw), 0.82, 0.24, 0.1, z0 + h * 0.66, h * 0.05)
-                place(u + s * (wn + jw), 0.84, 0.34, 0.12, z0 + h * 0.71, h * 0.03)
-            # the carved kudu medallion at the back of the recess, and the kudu arch over the opening
-            px, py = tan[0] * u + nrm[0] * core, tan[1] * u + nrm[1] * core
-            panel_relief(px, py, z0 + h * 0.43, wn * 0.62, side)
+                place(u + s * (w_i + jw), d_face + 0.05, 0.14, 0.06, z0 + h * 0.08, h * (top - 0.1))
+                place(u + s * (w_i + jw), d_face + 0.07, 0.24, 0.1, z0 + h * (top - 0.06), h * 0.05)
+                place(u + s * (w_i + jw), d_face + 0.09, 0.34, 0.12, z0 + h * (top - 0.01), h * 0.03)
+            # the lintel band, proud of the wall, then the shala pediment on it
+            place(u, d_face + 0.06, w_i + 0.5, 0.08, z0 + h * (top + 0.02), h * 0.06)
+            fx, fy = tan[0] * u + nrm[0] * (core + d_face - 0.1), tan[1] * u + nrm[1] * (core + d_face - 0.1)
+            barrel("stone", fx, fy, z0 + h * (top + 0.08), w_i * 0.85, 0.34 + 0.08 * centre, along_x=nrm[0] == 0)
             nasika(
-                tan[0] * u + nrm[0] * (core + 0.75),
-                tan[1] * u + nrm[1] * (core + 0.75),
-                z0 + h * 0.8,
-                wn + 0.3,
-                h * 0.2,
+                tan[0] * u + nrm[0] * (core + d_face + 0.12),
+                tan[1] * u + nrm[1] * (core + d_face + 0.12),
+                z0 + h * (top + 0.09),
+                w_i * 0.42,
+                h * 0.11,
                 side,
-                out=0.2,
+                out=0.12,
+            )
+            # the deity standing in the niche, on its pedestal
+            # it fills its niche, as the Thanjavur deities do, and stands as far
+            # forward as the bay does, so the deep central niche is not left dark
+            deity(
+                tan[0] * u + nrm[0] * (core + out * 0.8),
+                tan[1] * u + nrm[1] * (core + out * 0.8),
+                z0 + h * 0.12,
+                h * (top - 0.12) * 0.95,
+                w_i * 0.88,
+                side,
             )
             # slim pilasters on the recessed wall between bays
             if i < niche_count - 1:
