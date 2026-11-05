@@ -2063,7 +2063,7 @@ Newest entries at the bottom.
 
 ## D-164: The landing film's journey, and a still world at rest
 - Date: 2026-11-05
-- Approved by: Adhi, in this session, choosing both recommended options after reading `docs/research/LANDING_CINEMA_2026.md` section 9. **Not reviewed by the other founder** (D-051). (D-162 and D-163 are taken by the landing's 2D art and the deal seal, recorded with that work.)
+- Approved by: Adhi, in this session, choosing both recommended options after reading `docs/research/LANDING_CINEMA_2026.md` section 9. **Not reviewed by the other founder** (D-051). (The two numbers before this one are reserved for the landing's 2D art and the deal seal, recorded with that work.)
 - Context: the landing's hero becomes a film of a living world at dusk (Adhi, 5 November); it needed a camera path and a rule for what moves when nobody scrolls.
 - Options considered: journey A) the processional path, between two hall pillars, to the lit tower; B) the pillars to the tower only; C) from the air down to the path. At rest: A) still, alive only on scroll; B) a short loop of mist and flame while idle.
 - Chosen: journey A; at rest A.
