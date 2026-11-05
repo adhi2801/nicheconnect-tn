@@ -571,19 +571,26 @@ def hara(cx, cy, z0, half, s, fans=False):
     shala(cx, cy + edge, z0, s, True, 2)
     shala(cx - edge, cy, z0, s, False, 3)
     shala(cx + edge, cy, z0, s, False, 1)
+    # Between the corner and the middle, the real tiers run pavilion after pavilion
+    # (ref05, ref06): small kutas and shalas alternating, so every tier reads as a
+    # crowded ring of little shrines, never a stepped box (dusk pass, 6 November 2026).
     gap = edge - s * 1.35
-    if gap > s * 1.2:
-        m = int(gap / (s * 1.25))
+    if gap > s * 0.75:
+        m = max(1, round(gap / (s * 0.95)))
         for k in range(m):
-            u = s * 1.4 + (gap - s * 0.2) * (k + 0.5) / m
+            u = s * 1.3 + (gap - s * 0.15) * (k + 0.5) / m
+            small_shala = k % 2 == 1
             for d in (-1, 1):
-                for x, y in (
-                    (d * u, -edge),
-                    (d * u, edge),
-                    (-edge, d * u),
-                    (edge, d * u),
+                for x, y, side in (
+                    (d * u, -edge, 0),
+                    (d * u, edge, 2),
+                    (-edge, d * u, 3),
+                    (edge, d * u, 1),
                 ):
-                    kuta(cx + x, cy + y, z0, s * 0.7)
+                    if small_shala:
+                        shala(cx + x, cy + y, z0, s * 0.55, side in (0, 2), side)
+                    else:
+                        kuta(cx + x, cy + y, z0, s * 0.7)
 
 
 def adhishthana(half, z0):
@@ -3993,7 +4000,7 @@ def world_clouds():
         hs = wn.new("ShaderNodeHueSaturation")
         hs.inputs["Hue"].default_value = 0.47
         hs.inputs["Saturation"].default_value = 2.4
-        hs.inputs["Value"].default_value = 1.3
+        hs.inputs["Value"].default_value = 1.65
         wl.new(sky.outputs["Color"], hs.inputs["Color"])
         sky_col = hs.outputs["Color"]
     wl.new(sky_col, warm.inputs["A"])
@@ -4321,7 +4328,7 @@ if GRADE == "blue" and "--nohaze" not in argv:
             fl = bpy.data.lights.new("flood", "SPOT")
             # Matched to the reference at blue hour (ref06, measured 6 November 2026):
             # tower lightness 0.49 high and 0.42 low, against our 0.31 and 0.20
-            fl.energy = 7e4 * rr.uniform(0.85, 1.1) * (2.2 * 1.15 if abs(u) < 5 else 3.6)
+            fl.energy = 7e4 * rr.uniform(0.85, 1.1) * (1.6 if abs(u) < 5 else 5.0)
             fl.color = (1.0, 0.66, 0.36)
             # wide and soft-edged, so the storey is washed evenly, never pooled
             fl.spot_size = math.radians(30 if abs(u) < 5 else 62)
@@ -4341,7 +4348,7 @@ if GRADE == "blue" and "--nohaze" not in argv:
         # ground floods leave in the dark.
         for u in (-7.0, 7.0):
             hf = bpy.data.lights.new("crownflood", "SPOT")
-            hf.energy = 1.9e5 * rr.uniform(0.9, 1.05)
+            hf.energy = 1.1e5 * rr.uniform(0.9, 1.05)
             hf.color = (1.0, 0.7, 0.42)
             hf.spot_size = math.radians(16)
             hf.spot_blend = 1.0
@@ -4368,11 +4375,13 @@ if GRADE == "blue" and "--nohaze" not in argv:
             up = bpy.data.lights.new("plinthup", "AREA")
             up.shape = "RECTANGLE"
             up.size, up.size_y = 8.5, 0.3
-            up.energy = 2.2e3
+            up.energy = 3.2e3
             up.color = (1.0, 0.78, 0.55)
             uo = bpy.data.objects.new("plinthup", up)
-            uo.location = (tan[0] * u + nrm[0] * 17.2, tan[1] * u + nrm[1] * 17.2, 0.3)
-            aim_u = Vector((tan[0] * u + nrm[0] * 14.0, tan[1] * u + nrm[1] * 14.0, 12.0))
+            # on the plinth's ledge (5.4 m up, in front of the wall), as the real lamps
+            # stand: they wash the wall; from the ground they burned the plinth white
+            uo.location = (tan[0] * u + nrm[0] * 15.9, tan[1] * u + nrm[1] * 15.9, 5.55)
+            aim_u = Vector((tan[0] * u + nrm[0] * 14.6, tan[1] * u + nrm[1] * 14.6, 16.0))
             uo.rotation_mode = "QUATERNION"
             uo.rotation_quaternion = (aim_u - Vector(uo.location)).to_track_quat(
                 "-Z", "Y"
