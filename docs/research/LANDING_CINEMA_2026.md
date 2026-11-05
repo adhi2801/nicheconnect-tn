@@ -70,9 +70,37 @@ The cause of "flat blue afternoon" is therefore one number, not the renderer. Se
 2. **The frame budget**: how many frames and how many bytes at each width. The standard already says this is set on the budget Android before the scene is built (section 8b); the proposal to measure is 96 frames, with the first frame painted as the page's largest content. *(set by the benchmark, then Adhi)*
 3. **Life at rest**: section 8c says nothing loops. A still world at rest is the default here; a few seconds of mist drifting at rest would need 8c changed. *(Adhi; the recommendation is still at rest, alive on scroll)*
 
-## 10. Gaps
+## 10. The place as it is (6 November 2026)
+
+Adhi asked for the temple to look exactly like Tamil architecture, its detail and definition included. That needs the measured survey and real photographs, not memory.
+
+**The sources.**
+- **Pichard, *Tanjavur Brhadisvara: An Architectural Study*** (IGNCA and EFEO, 1995, 244 pages, line drawings): the measured study of the temple. Only IGNCA's published excerpts were read ([IGNCA, the book](https://ignca.gov.in/divisionss/kalakosa/kalasamalocana/ksetra-sampada-regional-heritage-series/tanjavur-brhadisvara-an-architectural-study-3/); [IGNCA, "Glimpses of content"](https://ignca.gov.in/?p=7350); both read 6 November 2026). The book itself is owed: its drawings give the tier-by-tier dimensions this scene still estimates.
+- **Balasubrahmanyam (1975)**, as cited in [Wikipedia, "Brihadisvara Temple, Thanjavur"](https://en.wikipedia.org/wiki/Brihadisvara_Temple,_Thanjavur) (read 6 November 2026): a secondary route to a primary source, used where Pichard's excerpts are silent.
+
+**What they give, and what the scene had wrong.**
+
+| | Source | The scene before 6 November |
+|---|---|---|
+| Courtyard | "length twice its width"; the eastern half open, the Nandi pavilion at its centre (Pichard); about 241 by 122 m (Balasubrahmanyam) | about 240 by 190 m |
+| Cloister | ground floor only, 5.61 m deep; two rows of plain square monolithic pillars, 38 cm a side, 2.02 m high, 2.96 m from the courtyard, about 1.94 m apart; the wall shows two levels of pilasters and two cornices (Pichard) | a 6.5 m wall, 90 cm posts 3.2 m apart |
+| The halls | "a low and long pillared hall" and a vestibule before the tower (Pichard); maha- and mukha-mandapa square, on the axis (Balasubrahmanyam) | the hall built on the tower's side, the tower seen side-on |
+| Tower | 30.18 m square at the base, 63.4 m high, thirteen square tiers above the walls (Balasubrahmanyam) | 29.2 m base; the height to be measured in the scene |
+| Crown | octagonal griva and shikhara on a capstone 7.77 m square; the stupi 3.81 m (Balasubrahmanyam) | round |
+| Socle | "nearly two metres" (Pichard); upapitha 1.4 m and adhishthana 3.6 m (Balasubrahmanyam; the article's own figures conflict) | to be checked |
+
+**From the photographs** (twenty, from Wikimedia Commons, kept privately with an index of each one's source and licence, section 8a):
+- the granite reads warm tan to ochre, and cream-gold under the night floodlights;
+- the central bay of each wall storey holds a tall stone lattice window, not a niche;
+- the gable of each lower tier's central pavilion is a large horseshoe arch filled with a radiating fan, edged with flame tongues;
+- the whole tower is floodlit evenly from base to crown at night, and the blue-hour sky behind it is a near pure blue.
+
+**Measured against the blue-hour reference.** Sky: hue 215°, saturation 0.99, lightness 0.31. Tower: lightness 0.49 high, 0.42 low, hue 31° to 32°. The dusk pass of 5 November measured sky saturation 0.19 and tower lightness 0.31 and 0.20: right in hue, half as bright, and grey where the real sky is blue.
+
+## 11. Gaps
 
 - No measured colour temperature for a diya; the candle's 1,800 to 1,900 K stands in.
 - Apple's current method (video or frames) is unconfirmed.
 - The film's frame time and bytes on the budget Android are not yet measured; nothing in section 6 is a measured number of ours.
+- Pichard's book itself, beyond IGNCA's excerpts: the tier-by-tier dimensions are still estimated.
 - The Morphic and svilenkovic sources are a vendor glossary and one designer's opinion; each is used only where it agrees with a stronger rule already in the standard.

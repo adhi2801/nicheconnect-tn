@@ -190,7 +190,7 @@ Each area gives what is current (dated), what the best do, what it means for Col
   - At Thanjavur the crown is a single granite block of about 80 tonnes.
   - The height is given as 63.4 m from the inner courtyard floor, and popularly as 66 m.
   - "Thirteen storeys" comes from one student source only and is unverified ([Studio Matrx, July 2026](https://www.studiomatrx.org/architecture-canon/brihadeeswarar-temple-thanjavur); [Wikipedia](https://www.wikipedia.com/wiki/Brihadeeswarar); [Anantam IAS](https://anantamias.com/brihadeeswara-temple-thanjavur/)).
-  - **Owed:** a primary architectural source (an ASI publication or a measured drawing) before the model's proportions are fixed.
+  - **Owed:** a primary architectural source (an ASI publication or a measured drawing) before the model's proportions are fixed. **Partly met 6 November 2026:** Pichard's measured study (1995), through IGNCA's excerpts, fixes the courtyard and the cloister, and Balasubrahmanyam (1975) the tower's base, height and crown (`LANDING_CINEMA_2026.md` section 10). The book itself is still owed for the tier-by-tier dimensions.
 - **AI image-to-3D, for first drafts of objects.**
   - In 2026 Tripo is most praised for clean, editable topology; Rodin (Gen-2.5) for surface detail and PBR materials; Meshy for balance.
   - Hunyuan3D (up to eight input views in 3.1) and TRELLIS.2 (MIT licence, PBR up to 4K, but holes and artefacts) are the open options.
