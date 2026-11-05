@@ -773,13 +773,45 @@ def storey(half, z0, h, niche_count, pil_step):
             # framing pilasters on the jambs, with bracket capitals
             d_face = 2 * out
             for s in (-1, 1):
-                place(u + s * (w_i + jw), d_face + 0.05, 0.14, 0.06, z0 + h * 0.08, h * (top - 0.1))
-                place(u + s * (w_i + jw), d_face + 0.07, 0.24, 0.1, z0 + h * (top - 0.06), h * 0.05)
-                place(u + s * (w_i + jw), d_face + 0.09, 0.34, 0.12, z0 + h * (top - 0.01), h * 0.03)
+                place(
+                    u + s * (w_i + jw),
+                    d_face + 0.05,
+                    0.14,
+                    0.06,
+                    z0 + h * 0.08,
+                    h * (top - 0.1),
+                )
+                place(
+                    u + s * (w_i + jw),
+                    d_face + 0.07,
+                    0.24,
+                    0.1,
+                    z0 + h * (top - 0.06),
+                    h * 0.05,
+                )
+                place(
+                    u + s * (w_i + jw),
+                    d_face + 0.09,
+                    0.34,
+                    0.12,
+                    z0 + h * (top - 0.01),
+                    h * 0.03,
+                )
             # the lintel band, proud of the wall, then the shala pediment on it
             place(u, d_face + 0.06, w_i + 0.5, 0.08, z0 + h * (top + 0.02), h * 0.06)
-            fx, fy = tan[0] * u + nrm[0] * (core + d_face - 0.1), tan[1] * u + nrm[1] * (core + d_face - 0.1)
-            barrel("stone", fx, fy, z0 + h * (top + 0.08), w_i * 0.85, 0.34 + 0.08 * centre, along_x=nrm[0] == 0)
+            fx, fy = (
+                tan[0] * u + nrm[0] * (core + d_face - 0.1),
+                tan[1] * u + nrm[1] * (core + d_face - 0.1),
+            )
+            barrel(
+                "stone",
+                fx,
+                fy,
+                z0 + h * (top + 0.08),
+                w_i * 0.85,
+                0.34 + 0.08 * centre,
+                along_x=nrm[0] == 0,
+            )
             nasika(
                 tan[0] * u + nrm[0] * (core + d_face + 0.12),
                 tan[1] * u + nrm[1] * (core + d_face + 0.12),
