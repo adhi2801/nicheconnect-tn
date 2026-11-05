@@ -37,6 +37,15 @@
 # and Sentry; our own outbound calls (MSG91, Meta, DNS checks, timestamp
 # authorities) use httpx2, whose parser is not http.client's.
 #
+# A fourth, accepted on 5 November 2026 (D-159): CVE-2026-116566,
+# socket.getaddrinfo() accepting null bytes in the host or port and
+# silently truncating there. Fixed only in 3.16.0 so far. Our use: the
+# hosts we resolve are fixed (AWS, Sentry, MSG91, Meta, the two DNS-over-
+# HTTPS resolvers, the timestamp authorities) or come from IANA's RDAP
+# list; a brand's own domain is sent to the resolver as a query, never
+# resolved by us, and must match DOMAIN_PATTERN (letters, digits, hyphens,
+# dots), which the database enforces too.
+#
 # Remove each entry when a 3.14 release carries its fix.
 ignore:
   - vulnerability: CVE-2025-15367
@@ -48,3 +57,6 @@ ignore:
   - vulnerability: CVE-2026-103995
     package: { name: python, version: 3.14.10, type: binary }
     reason: "http.client response splitting; reached only via urllib3 over verified TLS to AWS S3 and Sentry (D-149)."
+  - vulnerability: CVE-2026-116566
+    package: { name: python, version: 3.14.10, type: binary }
+    reason: "getaddrinfo null-byte truncation; we resolve only fixed hosts, and a brand domain is pattern-checked and never resolved by us (D-159)."
