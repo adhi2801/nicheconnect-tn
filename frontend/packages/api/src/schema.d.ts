@@ -1172,6 +1172,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/campaign-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Festival campaign templates
+         * @description Campaigns already worded for Tamil Nadu's festivals and seasons, the soonest first from today in Tamil Nadu. Each is a starting point: add the brand's cities and, for a paid campaign, a budget, then create it with `POST /api/v1/campaigns`. A festival that follows the moon lists no months and comes last. A fixed list of 11; no login. Cached for a day. Limit: 60 a minute.
+         */
+        get: operations["campaign_templates_api_v1_campaign_templates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/campaigns": {
         parameters: {
             query?: never;
@@ -5506,6 +5526,40 @@ export interface components {
              * @enum {string}
              */
             status: "draft" | "open" | "closed" | "cancelled";
+        };
+        /** CampaignTemplateRead */
+        CampaignTemplateRead: {
+            campaign: components["schemas"]["TemplateCampaignRead"];
+            /**
+             * Key
+             * @description Stable, for a link to one template
+             * @example pongal
+             */
+            key: string;
+            /**
+             * Lead Weeks
+             * @description How many weeks ahead to publish
+             * @example 6
+             */
+            lead_weeks: number;
+            /**
+             * Months
+             * @description The months it falls in, 1 to 12. Empty for a festival that follows the moon, whose dates the brand sets
+             * @example [
+             *       1
+             *     ]
+             */
+            months: number[];
+            /**
+             * Name
+             * @example Pongal
+             */
+            name: string;
+            /**
+             * When
+             * @example Mid-January, the first day of the Tamil month of Thai
+             */
+            when: string;
         };
         /**
          * CampaignUpdate
@@ -10785,6 +10839,27 @@ export interface components {
              * @enum {string}
              */
             role: "admin" | "campaigns" | "finance";
+        };
+        /**
+         * TemplateCampaignRead
+         * @description The campaign the template starts: pass these to `POST /api/v1/campaigns` with
+         *     the brand's own `cities`, and a budget for a paid campaign.
+         */
+        TemplateCampaignRead: {
+            /**
+             * Campaign Type
+             * @example paid
+             * @enum {string}
+             */
+            campaign_type: "paid" | "barter" | "commission" | "local_business";
+            /** Deliverables */
+            deliverables: string;
+            /** Description */
+            description: string;
+            /** Niches */
+            niches: ("food" | "fashion" | "beauty" | "tech" | "travel" | "fitness" | "education" | "entertainment" | "finance" | "lifestyle")[];
+            /** Title */
+            title: string;
         };
         /** UnreadCount */
         UnreadCount: {
@@ -16297,6 +16372,47 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    campaign_templates_api_v1_campaign_templates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignTemplateRead"][];
                 };
             };
             /** @description Too many requests; see the Retry-After header */

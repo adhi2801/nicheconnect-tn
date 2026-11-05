@@ -2060,3 +2060,15 @@ Newest entries at the bottom.
   2. `GET /api/v1/features` stays the same for everyone: "on" only when on for all, with `share_percent`. `GET /api/v1/me/features` answers for the signed-in account; a team member as their brand, as the routes decide.
   3. The brief drafter honours a share first: a brand outside it is answered `brief_drafting_unavailable`, as when it is off. Each further feature joins `ROLLOUT_FEATURES` in the change that makes its routes check it.
   4. Changing the secret key reshuffles every share, as it ends every session; that is accepted.
+
+## D-161: Festival campaign templates, item 14's first piece
+- Date: 2026-11-05
+- Approved by: Adhi, in this session: "big progress in backend ... do it yourself". **Not reviewed by the other founder** (D-051).
+- Context: `BACKEND_COMPLETE.md` item 14 (E5). Brand work in Tamil Nadu follows the festivals; a brand starting a Pongal campaign from a blank form is the slow way.
+- Options considered: A) a fixed list in code, public, each a campaign prefill, ordered by the next month it falls in; B) dated festival entries from an almanac; C) wait for the leaderboards' design decision and build all of E5 at once.
+- Chosen: A.
+- Reason: months are stable facts; exact dates vary year to year, and a wrong date in a brand's campaign is worse than none, so a festival that follows the moon (Ramzan) names no months and says so. Leaderboards rank people, which `trust-and-safety.md` treats as a decision of its own, so C would hold back the part that needs none.
+- Consequences / follow-ups:
+  1. `GET /api/v1/campaign-templates`: 11 templates, public, cached a day, 60 a minute. Each, with a city and a budget, is created by the real route in the tests, and passes the money and contact flags.
+  2. Leaderboards and creator collectives stay open in item 14.
+  3. A festival added later is one entry in `festival_templates.py` and is tested by the same loop.

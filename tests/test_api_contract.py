@@ -26,6 +26,10 @@ PUBLIC = {
         "can hide what is off before anyone signs in (R6)"
     ),
     ("GET", "/readyz"): "a deployment platform's readiness probe",
+    ("GET", "/api/v1/campaign-templates"): (
+        "festival campaign templates, the same for everyone and about no one, so "
+        "the website can show them before a brand signs in (item 14)"
+    ),
     (
         "GET",
         "/.well-known/security.txt",
