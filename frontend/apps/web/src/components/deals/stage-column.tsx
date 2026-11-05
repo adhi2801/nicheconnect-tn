@@ -3,10 +3,10 @@ import { whoFor, type BoardStage, type Memo, type Payment } from "@/lib/deals";
 import type { Role } from "@/lib/session";
 import { DealCard } from "./deal-card";
 
-type Props = { stage: BoardStage; memos: Memo[]; role: Role; byMemo: Map<string, Payment>; connect: boolean };
+type Props = { stage: BoardStage; memos: Memo[]; role: Role; byMemo: Map<string, Payment>; connect: boolean; preview?: boolean };
 
 /** One stage of the journey: a soft white panel with its deals. A dashed line joins it to the stage before. */
-export function StageColumn({ stage, memos, role, byMemo, connect }: Props) {
+export function StageColumn({ stage, memos, role, byMemo, connect, preview = false }: Props) {
   const label = t(`deals.stage.${stage}.label` as MessageKey);
   return (
     <section aria-label={`${label}, ${t(memos.length === 1 ? "deals.count.one" : "deals.count.other", { count: memos.length })}`} className="relative min-w-[15rem] flex-1 snap-start">
@@ -29,7 +29,7 @@ export function StageColumn({ stage, memos, role, byMemo, connect }: Props) {
           <p className="rounded-2xl border border-dashed border-line-strong/50 px-3 py-6 text-center text-xs text-muted">{t("deals.columnEmpty")}</p>
         ) : (
           <ul className="grid gap-2.5">
-            {memos.map((m) => <li key={m.id}><DealCard memo={m} who={whoFor(m, role, byMemo)} role={role} /></li>)}
+            {memos.map((m) => <li key={m.id}><DealCard memo={m} who={whoFor(m, role, byMemo)} role={role} preview={preview} /></li>)}
           </ul>
         )}
       </div>

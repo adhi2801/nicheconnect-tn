@@ -11,6 +11,8 @@ const expected = [
   words.hero.lede,
   words.steps.title,
   ...Object.values(words.steps.items).map((item) => item.title),
+  words.product.title,
+  words.product.caption,
   words.record.title,
   words.money.title,
   words.sides.brands.title,
