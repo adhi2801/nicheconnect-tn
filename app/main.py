@@ -9,6 +9,7 @@ from app.core.body_limit import BodyLimitMiddleware
 from app.core.config import settings
 from app.core.error_tracking import init_error_tracking
 from app.core.errors import problem_doc, problem_response, register_error_handlers
+from app.core.features import router as features_router
 from app.core.health import HealthRead, ReadinessRead, run_readiness_checks
 from app.core.idempotent_route import set_identity_resolver
 from app.core.load_shedding import LoadSheddingMiddleware
@@ -34,6 +35,7 @@ from app.modules.auth.passkey_router import router as passkey_login_router
 from app.modules.auth.router import router as auth_router
 from app.modules.campaigns.alert_router import router as campaign_alerts_router
 from app.modules.campaigns.application_router import router as applications_router
+from app.modules.campaigns.brief_router import router as brief_drafts_router
 from app.modules.campaigns.invitation_router import router as invitations_router
 from app.modules.campaigns.offer_router import router as offers_router
 from app.modules.campaigns.report_router import router as campaign_report_router
@@ -57,6 +59,7 @@ from app.modules.matching.creator_list_router import router as creator_lists_rou
 from app.modules.matching.router import router as matching_router
 from app.modules.matching.search_router import router as search_router
 from app.modules.matching.similar_router import router as similar_router
+from app.modules.matching.words_router import router as words_router
 from app.modules.me.account_deletion_router import router as account_deletion_router
 from app.modules.me.agent_token_router import router as agent_token_router
 from app.modules.me.attention_router import router as attention_router
@@ -68,6 +71,7 @@ from app.modules.me.phone_change_router import router as phone_change_router
 from app.modules.me.session_list_router import router as session_list_router
 from app.modules.me.session_router import router as session_router
 from app.modules.me.step_up_router import router as step_up_router
+from app.modules.me.team_router import router as team_router
 from app.modules.notifications.preference_router import (
     router as notification_preferences_router,
 )
@@ -156,10 +160,12 @@ if tracer_provider is not None:
     instrument_engine(engine, tracer_provider)
 
 app.include_router(security_txt_router)
+app.include_router(features_router)
 app.include_router(auth_router)
 app.include_router(session_router)
 app.include_router(session_list_router)
 app.include_router(agent_token_router)
+app.include_router(team_router)
 app.include_router(step_up_router)
 app.include_router(phone_change_router)
 app.include_router(account_deletion_router)
@@ -184,6 +190,7 @@ app.include_router(block_router)
 app.include_router(takedown_router)
 app.include_router(similar_router)
 app.include_router(search_router)
+app.include_router(words_router)
 app.include_router(creator_lists_router)
 app.include_router(campaign_alerts_router)
 app.include_router(shipment_router)
@@ -202,6 +209,7 @@ app.include_router(attribution_router)
 app.include_router(media_kit_router)
 app.include_router(rate_guidance_router)
 app.include_router(campaigns_router)
+app.include_router(brief_drafts_router)
 app.include_router(campaign_report_router)
 app.include_router(applications_router)
 app.include_router(invitations_router)

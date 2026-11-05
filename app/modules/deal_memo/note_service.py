@@ -9,7 +9,7 @@ never kept. The table refuses changes at the database (`note_models`), and
 note rewritten by someone who switched the triggers off still shows.
 
 Threat model: only the two parties reach a deal's notes
-(`dependencies.visible_memo_for_account`, 404 to anyone else); a note is
+(`dependencies.party_memo`, 404 to anyone else); a note is
 plain text with its flags worked out on read; a daily ceiling per account
 stops anyone burying the other in notes (trust-and-safety.md rule 2). An
 agreed deal carries on across a block (item 59), so its notes do too.

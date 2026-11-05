@@ -15,7 +15,7 @@ from app.core.rate_limit import rate_limit
 from app.core.taxonomy import Niche
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
-from app.modules.campaigns import service
+from app.modules.campaigns import applicant_service, service
 from app.modules.campaigns.dependencies import CurrentBrandProfile, OwnedCampaign
 from app.modules.campaigns.models import Campaign
 from app.modules.campaigns.schemas import (
@@ -45,16 +45,19 @@ Cursor = Annotated[str | None, Query(description="From a previous page's next_cu
 
 
 def _reads(db: Session, campaigns: list[Campaign]) -> list[CampaignRead]:
-    """Each campaign with its brand's verified domain and any look-alike name warning.
+    """Each campaign with its brand's name, verified domain and any look-alike
+    name warning.
 
     Two queries for the page, however long: the domains (item 74), then the
-    brands' names beside every verified brand's (item 75).
+    brands' names beside every verified brand's (item 75), which gives the
+    names shown too.
     """
     domains = service.verified_domains_for(db, campaigns)
-    name_flags = service.brand_name_flags_for(db, campaigns)
+    names, name_flags = service.brand_names_and_flags_for(db, campaigns)
     return [
         CampaignRead.model_validate(campaign).model_copy(
             update={
+                "brand_name": names.get(campaign.brand_id, ""),
                 "verified_domain": domains.get(campaign.brand_id),
                 "brand_name_flag": name_flags.get(campaign.brand_id),
             }
@@ -126,11 +129,16 @@ def list_my_campaigns(
     cursor: Cursor = None,
     db: Session = Depends(get_db),
 ) -> Page[CampaignRead]:
-    return _page(
-        db,
-        service.list_brand_campaigns(
-            db, brand, limit=limit, cursor=cursor, status=campaign_status
-        ),
+    result = service.list_brand_campaigns(
+        db, brand, limit=limit, cursor=cursor, status=campaign_status
+    )
+    page = _page(db, result)
+    counts = applicant_service.applicant_counts(db, [c.id for c in page.items])
+    return Page[CampaignRead](
+        items=[
+            c.model_copy(update={"applicant_count": counts[c.id]}) for c in page.items
+        ],
+        next_cursor=page.next_cursor,
     )
 
 
@@ -199,7 +207,7 @@ def read_campaign(
     account: CurrentAccount,
     db: Session = Depends(get_db),
 ) -> CampaignRead:
-    campaign = service.get_visible_campaign(db, campaign_id, account.id)
+    campaign = service.get_visible_campaign(db, campaign_id, account)
     return _read(db, campaign)
 
 

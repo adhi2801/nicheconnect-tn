@@ -40,6 +40,14 @@ class MemoStatusConflict(DomainError):
     title = "This memo is not in a state where that is allowed"
 
 
+class ProofAwaitingAnswer(DomainError):
+    # Proof is evidence of posted work: a brand answers it, by approving or
+    # asking for a fix, before it may end the deal (D-147).
+    status_code = HTTPStatus.CONFLICT
+    code = "proof_awaiting_answer"
+    title = "Approve the proof or ask for a fix before cancelling"
+
+
 class MemoNotEditable(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "memo_not_editable"

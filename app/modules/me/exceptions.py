@@ -72,3 +72,63 @@ class DeletionAlreadyRequested(DomainError):
         super().__init__(
             "GET /api/v1/me/deletion says when; DELETE it to keep your account."
         )
+
+
+class TeamInviteNotFound(DomainError):
+    # Item 13, D-148: an invite that is not to your number, has ended, or has
+    # lapsed. 404, never 403, so nobody learns whom a brand invited.
+    status_code = HTTPStatus.NOT_FOUND
+    code = "team_invite_not_found"
+    title = "That invitation is not for you, or it has ended"
+
+
+class TeamMemberNotFound(DomainError):
+    status_code = HTTPStatus.NOT_FOUND
+    code = "team_member_not_found"
+    title = "That person is not on this brand's team"
+
+
+class TeamInviteExists(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "team_invite_exists"
+    title = "That number already has an invitation waiting"
+
+
+class AlreadyOnTeam(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "already_on_team"
+    title = "That person already acts for this brand"
+
+
+class TeamFull(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "team_full"
+    title = "This brand's team is full (20 people besides the owner)"
+
+
+class TeamInvitesDailyLimit(DomainError):
+    status_code = HTTPStatus.TOO_MANY_REQUESTS
+    code = "team_invites_daily_limit"
+    title = "This brand has sent 20 invites in the last day; try again tomorrow"
+
+
+class OwnsABrand(DomainError):
+    # Handing a brand over (D-148 piece 2): an account owns one brand at most.
+    status_code = HTTPStatus.CONFLICT
+    code = "owns_a_brand"
+    title = "That person already owns a brand, and an account owns one at most"
+
+
+class CannotTakeBrand(DomainError):
+    # Their account is suspended, or being deleted: the brand would close with
+    # it. Why is theirs to say, not ours to tell the team.
+    status_code = HTTPStatus.CONFLICT
+    code = "cannot_take_brand"
+    title = "That person cannot take the brand over now"
+
+
+class TeamChangeNotAllowed(DomainError):
+    # Only the owner makes or changes an admin; an admin never removes one.
+    status_code = HTTPStatus.FORBIDDEN
+    code = "team_change_not_allowed"
+    title = "Only the brand's owner can make this change"

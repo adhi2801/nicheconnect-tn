@@ -286,6 +286,18 @@ class MemoWithStageRead(MemoRead):
     waiting_on: DealSide | None = Field(
         description="The side whose move it is; null once the deal has ended"
     )
+    campaign_title: str = Field(
+        description="The campaign the deal is on, so a row can say which deal it is",
+        examples=["Pongal sweets launch"],
+    )
+    counterparty_name: str = Field(
+        description=(
+            "The other side, as the reader knows them: a brand reads the "
+            "creator's handle, a creator reads the brand's name. Someone who "
+            "deleted their account keeps the placeholder their profile was given"
+        ),
+        examples=["Thendral Sweets"],
+    )
     has_open_dispute: bool
     work_due_on: date | None = Field(
         description=(
@@ -301,12 +313,18 @@ class MemoWithStageRead(MemoRead):
 
 
 def with_stage(
-    memo: DealMemo, found: DealStage, agreed_amount_paise: int | None
+    memo: DealMemo,
+    found: DealStage,
+    agreed_amount_paise: int | None,
+    names: tuple[str, str],
 ) -> MemoWithStageRead:
+    """`names` is (the campaign's title, the other side's name), from `service.names_for`."""
     return MemoWithStageRead(
         **to_memo_read(memo, agreed_amount_paise).model_dump(),
         stage=found.stage,
         waiting_on=found.waiting_on,
+        campaign_title=names[0],
+        counterparty_name=names[1],
         has_open_dispute=found.has_open_dispute,
         work_due_on=found.work_due_on,
     )
@@ -406,6 +424,15 @@ class DealRecordEntryRead(BaseModel):
             "SHA-256 of the acting account's id, part of the seal. Hash your "
             "own account id to recognise your entries; null for `system`"
         )
+    )
+    actor_first_name: str | None = Field(
+        description=(
+            "The first name of the brand's team member who acted, shown beside "
+            "the brand's name (D-148). Null for the brand's owner, whose brand's "
+            "name stands for them, for the creator, and for `system`. Not part "
+            "of the seal: it is the name the team knows them by today"
+        ),
+        examples=["Ravi"],
     )
     # Strings, in exactly the spelling the seal was computed over (UTC, to
     # the microsecond, ending in Z), so the seals can be checked from this

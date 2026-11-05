@@ -92,6 +92,33 @@ class StepUpForAgentToken(BaseModel):
     scopes: AgentScopes
 
 
+# The exact team change a code is for (D-148): an admin invite to one number,
+# one member given one role, one member removed, or the brand handed to one
+# member. A code for one cannot make another.
+TEAM_CHANGE_PATTERN = (
+    r"^(invite:\+91[6-9][0-9]{9}:admin"
+    r"|role:[0-9a-f-]{36}:(admin|campaigns|finance)"
+    r"|remove:[0-9a-f-]{36}"
+    r"|ownership:[0-9a-f-]{36})$"
+)
+
+
+class StepUpForTeamChange(BaseModel):
+    """A code for one exact change to a brand's team (item 13, D-148)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    action: Literal["change_team"]
+    change: str = Field(
+        pattern=TEAM_CHANGE_PATTERN,
+        description=(
+            "`invite:<phone>:admin`, `role:<member_id>:<role>`, `remove:<member_id>` "
+            "or `ownership:<member_id>`"
+        ),
+        examples=["remove:01a18d27-7fe3-7120-b479-70f1aa7fb324"],
+    )
+
+
 StepUpIn = Annotated[
     StepUpForUpiId
     | StepUpForPhone
@@ -100,7 +127,8 @@ StepUpIn = Annotated[
     | StepUpForPasskeyRemoval
     | StepUpForPasskeyOnly
     | StepUpForSession
-    | StepUpForAgentToken,
+    | StepUpForAgentToken
+    | StepUpForTeamChange,
     Field(discriminator="action"),
 ]
 

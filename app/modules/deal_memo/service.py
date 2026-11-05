@@ -40,11 +40,13 @@ from app.modules.deal_memo.exceptions import (
     MemoNotEditable,
     MemoStatusConflict,
     PaidMemoNeedsFee,
+    ProofAwaitingAnswer,
 )
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof, ProofFile
 from app.modules.deal_memo.proof_reading_models import ProofFileReading
 from app.modules.deal_memo.record_models import DealRecordEntry
+from app.modules.deal_memo.review_clock import approval_deadline
 from app.modules.notifications import service as notifications
 
 # Tables this module answers for in a data export (see
@@ -491,6 +493,29 @@ def _notify_other_side(
     )
 
 
+def _no_proof_waiting(db: Session, memo: DealMemo, now: datetime) -> None:
+    """Refuse a brand's cancellation while proof waits inside its window (D-147).
+
+    Proof is evidence of work already posted. Cancelling while it waited
+    would end the deal before the clock could approve it (D-146), so no
+    payment would ever be owed for it. The brand answers first: approves,
+    or asks for a fix. Once the window has closed the clock has approved the
+    proof, the cancellation goes through, and the payment stays owed.
+    The memo is already locked, so no proof can arrive meanwhile.
+    """
+    proofs = list(
+        db.scalars(
+            select(DeliverableProof).where(DeliverableProof.deal_memo_id == memo.id)
+        )
+    )
+    if any(
+        proof.status == "submitted" and now < approval_deadline(memo, proof, proofs)
+        for proof in proofs
+    ):
+        db.rollback()
+        raise ProofAwaitingAnswer()
+
+
 def change_status(
     db: Session,
     memo: DealMemo,
@@ -520,6 +545,8 @@ def change_status(
         raise MemoStatusConflict(
             f"A {actor} cannot move a {memo.status} memo to {new_status}."
         )
+    if actor == "brand" and new_status == "cancelled" and memo.status == "accepted":
+        _no_proof_waiting(db, memo, now)
 
     if new_status == "sent":
         _check_due_date(db, memo, to_send=True, now=now)
@@ -832,6 +859,31 @@ def agreed_amounts(db: Session, memos: list[DealMemo]) -> dict[uuid.UUID, int | 
     """Each memo's figure agreed through a counter-offer, in one query for all."""
     summaries = offers.summaries_for(db, [memo.application_id for memo in memos])
     return {memo.id: summaries[memo.application_id].agreed_amount_paise for memo in memos}
+
+
+def names_for(
+    db: Session, memos: list[DealMemo], reader: str
+) -> dict[uuid.UUID, tuple[str, str]]:
+    """Each memo's campaign title and the other side's name, for a `reader`
+    on the brand's side ("brand") or the creator's. One query for all.
+
+    A brand knows a creator by their handle, a creator a brand by its name,
+    as the attention list and the payments list already show them.
+    """
+    if not memos:
+        return {}
+    rows = db.execute(
+        select(DealMemo.id, Campaign.title, Brand.name, Creator.handle)
+        .join(Application, Application.id == DealMemo.application_id)
+        .join(Campaign, Campaign.id == Application.campaign_id)
+        .join(Brand, Brand.id == Campaign.brand_id)
+        .join(Creator, Creator.id == Application.creator_id)
+        .where(DealMemo.id.in_([memo.id for memo in memos]))
+    ).all()
+    return {
+        memo_id: (title, handle if reader == "brand" else brand_name)
+        for memo_id, title, brand_name, handle in rows
+    }
 
 
 def agreed_amount(db: Session, memo: DealMemo) -> int | None:

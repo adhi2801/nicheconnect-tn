@@ -14,13 +14,17 @@ from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page, Slice
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
-from app.modules.campaigns.dependencies import BrandApplication, CurrentCreatorProfile
-from app.modules.campaigns.service import get_brand_for_account, get_creator_for_account
+from app.modules.campaigns.dependencies import (
+    ActingBrand,
+    BrandApplication,
+    CurrentCreatorProfile,
+)
+from app.modules.campaigns.service import get_creator_for_account
 from app.modules.deal_memo import service
 from app.modules.deal_memo.dependencies import (
     BrandMemo,
     CreatorMemo,
-    visible_memo_for_account,
+    party_memo,
 )
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.schemas import (
@@ -61,12 +65,18 @@ def _read(db: Session, memo: DealMemo) -> MemoRead:
     return to_memo_read(memo, service.agreed_amount(db, memo))
 
 
-def _page(db: Session, result: Slice[DealMemo], now: datetime) -> Page[MemoWithStageRead]:
-    # Every row's stage in a fixed number of queries, never one per row.
+def _page(
+    db: Session, result: Slice[DealMemo], now: datetime, reader: str
+) -> Page[MemoWithStageRead]:
+    # Every row's stage, figure and names in a fixed number of queries, never one per row.
     stages = stages_for(db, result.rows, now)
     agreed = service.agreed_amounts(db, result.rows)
+    names = service.names_for(db, result.rows, reader)
     return Page[MemoWithStageRead](
-        items=[with_stage(row, stages[row.id], agreed[row.id]) for row in result.rows],
+        items=[
+            with_stage(row, stages[row.id], agreed[row.id], names[row.id])
+            for row in result.rows
+        ],
         next_cursor=result.next_cursor,
     )
 
@@ -125,6 +135,7 @@ def create_memo(
 def list_my_memos(
     request: Request,
     account: CurrentAccount,
+    brand: ActingBrand,
     memo_status: StatusFilter = None,
     campaign_id: CampaignFilter = None,
     limit: Limit = DEFAULT_LIMIT,
@@ -132,8 +143,7 @@ def list_my_memos(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> Page[MemoWithStageRead]:
-    if account.role == "brand":
-        brand = get_brand_for_account(db, account.id)
+    if brand is not None:
         result = service.list_for_brand(
             db,
             brand,
@@ -152,7 +162,7 @@ def list_my_memos(
             status=memo_status,
             campaign_id=campaign_id,
         )
-    return _page(db, result, now)
+    return _page(db, result, now, "brand" if brand is not None else "creator")
 
 
 @router.get(
@@ -174,9 +184,13 @@ def read_memo(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> MemoWithStageRead:
-    memo = visible_memo_for_account(db, memo_id, account.id, account.role)
+    memo = party_memo(db, request, memo_id, account)
+    reader = "brand" if account.role == "brand" else "creator"
     return with_stage(
-        memo, stages_for(db, [memo], now)[memo.id], service.agreed_amount(db, memo)
+        memo,
+        stages_for(db, [memo], now)[memo.id],
+        service.agreed_amount(db, memo),
+        service.names_for(db, [memo], reader)[memo.id],
     )
 
 
@@ -255,7 +269,9 @@ cancel_memo_as_brand = _brand_move(
     "Cancel the memo (brand)",
     (
         "Ends the deal. Before any work is submitted this is recorded as "
-        "withdrawn_early and does not count against the brand; afterwards it does."
+        "withdrawn_early and does not count against the brand; afterwards it does. "
+        "While proof waits inside its review window the brand answers it first, "
+        "approving it or asking for a fix (409 `proof_awaiting_answer`, D-147)."
     ),
 )
 

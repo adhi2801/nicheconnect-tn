@@ -20,8 +20,9 @@ from app.core.attention import (
 from app.core.clock import india_date
 from app.modules.auth import attention as logins
 from app.modules.auth.models.account import Account
+from app.modules.auth.models.brand import Brand
 from app.modules.campaigns import attention as campaigns
-from app.modules.campaigns.service import get_brand_for_account, get_creator_for_account
+from app.modules.campaigns.service import get_creator_for_account
 from app.modules.deal_memo import attention as deal_memos
 from app.modules.disputes import attention as disputes
 from app.modules.payment_status import attention as payments
@@ -31,19 +32,21 @@ from app.modules.profiles import attention as domains
 def for_account(
     db: Session,
     account: Account,
+    brand: Brand | None,
     now: datetime,
     current_session_id: uuid.UUID | None = None,
 ) -> AttentionList:
     """What is waiting on this account now, most urgent first.
 
-    `current_session_id` is the asking session's, left out of new sign-ins.
+    `brand` is the brand a brand account acts for (its own, or one it is on
+    the team of: D-148), resolved by the caller; `current_session_id` is the
+    asking session's, left out of new sign-ins.
 
-    Raises BrandProfileRequired or CreatorProfileRequired when the profile
-    has not been created yet, as every other signed-in endpoint does.
+    Raises CreatorProfileRequired when a creator has not made a profile yet,
+    as every other signed-in endpoint does.
     """
     today = india_date(now)
-    if account.role == "brand":
-        brand = get_brand_for_account(db, account.id)
+    if brand is not None:
         kinds = BRAND_KINDS
         found = [
             *campaigns.for_brand(db, brand.id),

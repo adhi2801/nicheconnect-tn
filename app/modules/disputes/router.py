@@ -23,7 +23,7 @@ from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.auth.models.account import Account
-from app.modules.deal_memo.dependencies import visible_memo_for_account
+from app.modules.deal_memo.dependencies import party_memo
 from app.modules.deal_memo.models import DealMemo
 from app.modules.disputes import service
 from app.modules.disputes.exceptions import NothingToRecord
@@ -64,10 +64,10 @@ _COMMON_ERRORS: ResponseDocs = {
 
 
 def _memo_and_payment(
-    db: Session, memo_id: uuid.UUID, account: Account
+    db: Session, request: Request, memo_id: uuid.UUID, account: Account
 ) -> tuple[DealMemo, PaymentStatus]:
     """The deal and its payment record, seen from whichever side is asking."""
-    memo = visible_memo_for_account(db, memo_id, account.id, account.role)
+    memo = party_memo(db, request, memo_id, account)
     payment = payments.get_for_memo(db, memo.id)
     if payment is None:
         raise PaymentRecordNotFound(
@@ -113,7 +113,7 @@ def open_dispute(
     now: Annotated[datetime, Depends(get_now)],
 ) -> DisputeRead:
     """Raise it. Either party, once per payment."""
-    _, payment = _memo_and_payment(db, memo_id, account)
+    _, payment = _memo_and_payment(db, request, memo_id, account)
     dispute = service.open_for_payment(
         db, payment.id, opened_by=account.role, reason=body.reason, now=now
     )
@@ -142,7 +142,7 @@ def read_dispute(
     now: Annotated[datetime, Depends(get_now)],
 ) -> DisputeRead:
     """Either party may read it. Nobody else can."""
-    _, payment = _memo_and_payment(db, memo_id, account)
+    _, payment = _memo_and_payment(db, request, memo_id, account)
     dispute = service.get_or_404(db, payment.id)
     return _rendered(db, dispute, india_date(now))
 
@@ -177,7 +177,7 @@ def add_entry(
     if body.note is None and body.evidence_url is None:
         raise NothingToRecord()
 
-    _, payment = _memo_and_payment(db, memo_id, account)
+    _, payment = _memo_and_payment(db, request, memo_id, account)
     dispute = service.get_or_404(db, payment.id)
     # The side that did not raise it is answering; the side that did is
     # adding to what they already said.
@@ -220,7 +220,7 @@ def close_dispute(
     now: Annotated[datetime, Depends(get_now)],
 ) -> DisputeRead:
     """Either party may close it."""
-    _, payment = _memo_and_payment(db, memo_id, account)
+    _, payment = _memo_and_payment(db, request, memo_id, account)
     dispute = service.get_or_404(db, payment.id)
     service.close(
         db,

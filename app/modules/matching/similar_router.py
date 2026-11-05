@@ -10,8 +10,8 @@ from app.core.clock import india_date
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
-from app.modules.auth.dependencies import CurrentBrand, get_now
-from app.modules.campaigns.service import get_brand_for_account
+from app.modules.auth.dependencies import get_now
+from app.modules.campaigns.dependencies import CurrentBrandProfile
 from app.modules.deal_memo.schemas import to_delivery_read
 from app.modules.matching import search_service
 from app.modules.matching import similar_service as service
@@ -58,13 +58,12 @@ _RESPONSES: ResponseDocs = {
 @rate_limit(SIMILAR_LIMIT)
 def like_my_best(
     request: Request,
-    account: CurrentBrand,
+    brand: CurrentBrandProfile,
     limit: Limit = DEFAULT_SIMILAR,
     cursor: Cursor = None,
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> SimilarPageRead:
-    brand = get_brand_for_account(db, account.id)
     result = service.page(db, brand, now, limit=limit, cursor=cursor)
     today = india_date(now)
     return SimilarPageRead(

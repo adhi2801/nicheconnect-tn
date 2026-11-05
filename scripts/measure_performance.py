@@ -27,6 +27,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from collections import defaultdict
 from contextlib import nullcontext
 from datetime import UTC, datetime, timedelta
+from urllib.parse import quote
 
 from fastapi.testclient import TestClient
 from PIL import Image
@@ -1014,6 +1015,21 @@ def main() -> int:
                 ),
                 ("GET /creators?q (words)", "?q=food"),
             )
+        ),
+        # Plain words read as filters (item 64): one grouped query over every
+        # findable creator's city, then the rules, which take no database.
+        measure(
+            client,
+            "GET /creators/search-reading",
+            "GET",
+            "/api/v1/creators/search-reading?words="
+            + quote(
+                "Café creators in Coimbatore, 5k to 20k followers, "
+                "under ₹15,000 a reel on Instagram, free on 14 December"
+            ),
+            brand_headers,
+            args.runs,
+            READ_BUDGET_MS,
         ),
     ]
     results += measure_writes(args.deals, brand_headers, creator_headers, now)

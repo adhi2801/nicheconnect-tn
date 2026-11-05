@@ -1869,3 +1869,181 @@ Newest entries at the bottom.
   1. `.python-version` is 3.14.10; the Dockerfile's Python and uv images are pinned by digest (`python:3.14.10-slim-trixie@sha256:3cabfd7d…`, `ghcr.io/astral-sh/uv:0.13.6@sha256:af22a52f…`); CI and the mutation workflow install uv 0.13.6.
   2. 3.14.10 also fixes the tarfile flaw `.grype.yaml` accepted for 3.14.8, so that entry is gone. The two still fixed only in 3.15 (poplib, `tempfile.TemporaryDirectory`) are accepted again, for exactly 3.14.10, after checking once more that nothing in `app/`, `scripts/`, `alembic/` or the Dockerfile uses them.
   3. Checked locally before pushing: the image builds, reports Python 3.14.10, and Grype 0.119.0 with `.grype.yaml` passes.
+
+## D-146: Proof approved by the clock reads the proof again under a lock, and only on a deal still agreed
+- Date: 2026-10-29
+- Approved by: Adhi, in this session: "Yes, fix it (Recommended)", to the proposal to fix `proof_service.settle_if_overdue` as D-140 fixed drafts. **Not reviewed by the other founder** (D-051).
+- Context: the second review of item 27 (D-140, consequence 8) noticed that proof's approval by the clock (D-025) wrote on the proof as it had been read, without a lock. A brand asking for a revision at the moment the window closed could leave the proof both sent back and approved, with a payment opened for it (D-027); and a proof left waiting on a deal cancelled before the deadline could still be approved by the clock.
+- Options considered: A) lock the proof and read it and the deal again before writing, approving only a deal still agreed at the deadline; B) leave it.
+- Chosen: A.
+- Reason: a payment must never be opened for work that was sent back, and the clock must never answer for a deal that had already ended.
+- Consequences / follow-ups:
+  1. `settle_if_overdue` first checks, on the memo as read, that the deadline has passed and `draft_rules.agreed_at` holds at it; otherwise it returns at once, with no lock (and no query when the caller passes the memo's submissions). Only then does it lock the memo, then the proof (`_lock_for_answer`), read both whole rows again, and approve if the proof still waits and the deal was still agreed at the deadline. **One lock order for every move on a submission, memo before proof**, the order submitting proof, giving feedback and the draft clock already take. The independent review found that the first version locked the proof first, which could deadlock with feedback (memo first); that is the fix here.
+  2. Approving or asking for a revision on proof of a deal that is no longer agreed is refused (409 `memo_status_conflict`), so no payment opens on a cancelled deal; `delivery_record.is_approved` applies the same rule, so the deal report never shows such proof as approved. The content library reads every waiting deal's submissions in one query, so proof waiting on cancelled deals costs no query each.
+  3. No table, column, endpoint or dependency changed. The only new API answer is that 409 on a cancelled deal.
+  4. Proven by `tests/modules/deal_memo/test_proof_clock_concurrency.py` on real committed connections: a stale copy never approves proof sent back; the clock and a revision, or the clock and an approval, at the deadline leave exactly one answer, the payment open exactly when approved; a move that locks the deal first never deadlocks with the clock; a deal cancelled before the deadline is never approved by the clock, nor one cancelled after the deal was read, and its proof is never answered; a deal cancelled after the deadline was still approved at it; the delivery record agrees; a refused clock takes no lock. `test_content_library_api.py` proves cancelled deals with proof waiting cost no query each.
+
+## D-147: A brand answers proof before it may cancel, and money owed on a cancelled deal holds account deletion
+- Date: 2026-10-30
+- Approved by: Adhi, in this session: "Yes, build both (Recommended)". **Not reviewed by the other founder** (D-051).
+- Context: the independent review of D-146 found that, with the clock refusing deals cancelled before the deadline, a brand could cancel while proof of posted work waited and never owe the payment ("take the goods and vanish", `docs/standards/trust-and-safety.md`). It also found an older gap: a deal cancelled after its proof was approved counted as finished, so a brand could delete its account with money still owed, against the promise that a brand cannot leave while a deal is unpaid (D-122).
+- Options considered: Gap 1: A) block the brand's cancellation while proof waits inside its window; B) let the clock still approve proof on a brand-cancelled deal; C) leave it. Gap 2: A) hold deletion while money is owed on a cancelled deal; B) record the gap for later.
+- Chosen: A for both.
+- Reason: proof is evidence of work already posted; a creator is never left unpaid for it, and a brand cannot leave Colyv owing a creator.
+- Consequences / follow-ups:
+  1. A brand's cancellation of an agreed deal is refused with 409 `proof_awaiting_answer` while any proof waits inside its review window. It answers first: approves, or asks for a fix. Once the window has closed the clock has approved the proof, so the cancellation goes through and the payment stays owed. The creator may still withdraw at any time.
+  2. `DealStage.money_owed`: a cancelled paid deal whose proof was approved before it ended (by the brand or the clock, `delivery_record.is_approved`) and whose payment the creator has not confirmed. `unfinished_deals` counts it, so account deletion is held for both sides until the creator confirms the money arrived. A barter deal owes nothing. The stage shown on screens is unchanged (still cancelled).
+  3. From the same review: the content library reads waiting submissions in memo order, so two reads by one brand lock alike; the settle docstring and D-146 now say "no lock", not "no query", for a refused approval when the submissions are not passed in.
+  4. Proven by `tests/modules/deal_memo/test_cancel_with_proof_api.py` (8 cases); each of five rules broken on purpose and caught: no guard, a guard ignoring the window, deletion ignoring money owed, money owed on barter, money owed after confirmation.
+  5. Still open from the review, not done here: the content library's lazy reloads after a commit when one read approves proof (performance, Low); `feedback_service.give` losing its memo lock when the clock commits (an older race that can return a 500, Low); a deterministic version of the lock-order test; whether the clock should notify the creator on a deal cancelled after its deadline (a product call).
+
+## D-148: Team seats for brands: four roles, campaign managers approve proof, first names shown, agencies switch brands
+- Date: 2026-10-30
+- Approved by: Adhi, in this session, choosing the recommended option to each of four questions after the proposal. **Not reviewed by the other founder** (D-051).
+- Context: `BACKEND_COMPLETE.md` item 13. A brand is one account today (`brand.account_id`, unique), so staff share the owner's login and the record cannot say who acted. It changes the account model, so it comes before the frontend builds around one-person brands.
+- Options considered: roles: A) owner, admin, campaign manager, finance; B) owner, admin, member; C) not now. Who approves proof: A) campaign manager and up; B) owner and admin only. What creators see: A) the acting person's first name; B) the brand's name only. Agencies: A) one person in several brands, choosing which they act for; B) later.
+- Chosen: A for all four.
+- Reason: roles follow the real jobs in a Tamil Nadu business and keep money apart from campaigns (Upwork's finance admin); the person running a campaign judges its work, and a slow owner would only let the clock approve; a named person builds trust; agencies run much of influencer marketing in India, and a brand switch is cheaper now than retrofitted.
+- Consequences / follow-ups:
+  1. The design and the build plan are `docs/PROPOSAL_TEAM_SEATS.md`: the owner stays `brand.account_id`; others in `brand_member`; invites keep only a keyed hash of the number and send no message; the brand acted for travels in a `Brand-Id` header; one place resolves access and lists every brand write route under an act, denied by default.
+  2. Gates: database (two tables), security (access), architecture (the access check). Built in two pieces on `feature/team-seats`.
+  3. A Confirm item for the validation pack: that a team member's act binds the business (`legal.md` section 3.10).
+
+## D-149: Accept CVE-2026-103995 for exactly CPython 3.14.10 until a 3.14 release fixes it
+- Date: 2026-10-31
+- Approved by: Adhi, in this session: "Accept for 3.14.10 (Recommended)". **Not reviewed by the other founder** (D-051).
+- Context: CI's image gate (`--only-fixed`) failed on every branch, `main` included, from 31 October 2026: CVE-2026-103995 (published 27 October 2026) in CPython 3.14.10's `http.client`, which accepted signs, whitespace and `0x` in Content-Length and chunk sizes, so a hostile server could split a response. Rated Low (CVSS 4.0: 2.0) by most databases, 7.3 by one. Grype lists the fix only in 3.16.0; no 3.14 or 3.15 release carries it, so there is nothing to upgrade to (D-047's rule takes security fixes at once when they exist).
+- Options considered: A) accept it for exactly 3.14.10 in `.grype.yaml`; B) leave CI red until CPython backports the fix, blocking every merge.
+- Chosen: A.
+- Reason: the flaw needs a hostile HTTP server. Our code reaches `http.client` only through urllib3, for boto3 (S3 proof files) and Sentry, both over TLS with verified certificates to AWS and Sentry; every call we write ourselves (MSG91, Meta, DNS checks, timestamp authorities) uses httpx2, which parses responses itself. That is a reading of the code (`app/`), not a test.
+- Consequences / follow-ups:
+  1. `.grype.yaml` gains one entry for exactly `python` 3.14.10, beside the two accepted under D-145; any change of Python brings all three back into the scan.
+  2. Removed when a 3.14 release carries the fix, by the upgrade it triggers (D-047).
+  3. Checked locally before pushing: Grype 0.119.0 with `.grype.yaml` passes on the API image built from `main`.
+
+## D-150: Handing a brand over: an old enough login, a standing taker, the brand's blocks and takedowns with it, both told, names read live
+- Date: 2026-11-04
+- Approved by: Adhi, in this session: "Approve all five (Recommended)", after seeing the five changes the independent review of item 13 piece 2 led to. **Not reviewed by the other founder** (D-051).
+- Context: D-148 approved handing a brand over with a step-up code. The independent review of piece 2 found that a SIM swapper or a stolen session could use it to make a short takeover of the owner's account the brand's for good (no login age, no wait, effective at once), and four smaller faults the design did not cover.
+- Options considered: A) the five changes below; B) the five, plus a 24-hour wait before a hand-over takes effect, cancellable by the owner (a new pending state, so a migration); C) discuss first.
+- Chosen: A.
+- Reason: each is stricter than D-148 and closes a fault the review found, using rules the product already has: the week-old login of D-109 (or a passkey, D-113), notices nobody can mute, and the brand's records following the brand.
+- Consequences / follow-ups:
+  1. A hand-over needs a login at least 7 days old unless the owner has a passkey (`login_too_recent`, 403).
+  2. A member whose account is suspended or being deleted cannot take the brand (`cannot_take_brand`, 409), read under a lock a deletion request or a suspension waits on.
+  3. The brand's blocks move to the new owner in place, keeping their ids and dates, and its takedowns move too; the admin log keeps who was told before.
+  4. Both owners are told by `team_role_changed`, which nobody can mute.
+  5. A creator is shown a member's first name only on a notice of that person's own act (`auth.brand_acts.NAMED_TO_CREATORS`); the notice keeps the membership's id and the name is read when the notice is, so erasing the member erases it.
+  6. Adhi also chose, in the same answer, to tell creators with an unfinished deal when a brand changes hands, as the next build: its own proposal, with a migration for the new notification type.
+
+## D-151: Creators with an unfinished deal are told when a brand changes hands
+- Date: 2026-11-04
+- Approved by: Adhi, in this session: "Yes, as the next build (Recommended)", then "dont ask me ... do it yourself" for how. **Not reviewed by the other founder** (D-051).
+- Context: since D-148 and D-150 a brand can be handed to a member of its team; its deals, payment record and blocks go with it, but a creator mid-deal had no way to know the account on the other side had a new holder. The independent review of piece 2 named it (finding 13).
+- Options considered: A) a new unmutable notice to each creator with an unfinished deal, one per creator, with the count and the new owner's first name read live; B) not now.
+- Chosen: A.
+- Reason: the creator always knows who holds the business's account on a deal in progress; unfinished as D-122 and D-147 define it, so one rule decides both deletion holds and who is told.
+- Consequences / follow-ups:
+  1. `brand_changed_hands`, urgent (nobody can mute it); a migration widens the allowed notification types; its downgrade refuses while any such notice exists.
+  2. Sent in the hand-over's own transaction, so a refused hand-over tells nobody.
+  3. Fan-outs (this notice, and a brand's team copies) are written in one statement; the ORM had written one per row.
+  4. The design is `docs/decided/PROPOSAL_HAND_OVER_NOTICE.md`.
+
+## D-152: CI checks the frontend
+- Date: 2026-11-04
+- Approved by: Adhi, in this session: "nothing should fail ... do it yourself ... merge it yourself", asking for world-class work across the backend and the landing page without being asked each step. **Not reviewed by the other founder** (D-051).
+- Context: nothing under `frontend/` ran in CI. Turning the checks on found the API types the screens build against 5,400 lines behind `docs/api/openapi.json`, and three attention kinds (`show_draft`, `revise_draft`, `review_draft`, from D-140) the web app gave no words or link, a gap its test missed because it listed the kinds by hand.
+- Options considered: A) a `frontend` job in `ci.yml`, Node installed from its release by version and checksum, as Gitleaks and OpenTofu are; B) a separate workflow; C) a third-party setup action.
+- Chosen: A.
+- Reason: one workflow, one place to read every gate; no third-party action to trust; its own job, so a frontend failure never hides a backend one.
+- Consequences / follow-ups:
+  1. The job: the lockfile installed exactly, the tokens rebuilt and matched with their 112 contrast pairs, the API types regenerated and matched, lint, unit tests, the production build.
+  2. A backend change to the contract now regenerates `frontend/packages/api/src/schema.d.ts` in the same change (`pnpm api:types`), or the frontend job fails.
+  3. The attention test reads every kind from the contract, so a new kind fails it until the app handles it.
+  4. What `frontend.md` section 12 still owes (Lighthouse, accessibility, no-JavaScript rendering, visual regression, pseudo-locale, banned words, dependency audit) is listed there and added to the same job as each lands.
+
+## D-153: Brand names on campaigns, names on deals, and a features route (R1, R6)
+- Date: 2026-11-04
+- Approved by: Adhi, in this session: "do it yourself", "nothing should fail", wanting the frontend's requests met ("we have tons of work"). **Not reviewed by the other founder** (D-051), whose track wrote the requests.
+- Context: `docs/PROPOSAL_FRONTEND_API_REQUESTS.md` R1 and R6, needed by about 10 November: a creator could not see which brand a campaign is from, a deal card could not say which deal it is, and no screen could tell which features are switched off.
+- Options considered: R1 A) the names in the responses; B) a call per row. R6 A) a route; B) constants in each app.
+- Chosen: A for both, as the proposal recommended.
+- Reason: one call per screen (ux.md section 7); a feature switched on without a store release.
+- Consequences / follow-ups:
+  1. `CampaignRead.brand_name`, read by the look-alike name check's own query, so a campaign page costs no extra query. A brand's name was already shown on payments and attention; it is now on every campaign a creator can read.
+  2. `MemoWithStageRead.campaign_title` and `counterparty_name`, one query for the page.
+  3. `GET /api/v1/features`, public, each feature read from the very setting its routes follow, its off code held to the module's own exception by a test.
+
+## D-154: Who applied, in one call (R2)
+- Date: 2026-11-04
+- Approved by: Adhi, in this session: "do it yourself" for the frontend's requests. **Not reviewed by the other founder** (D-051).
+- Context: `docs/PROPOSAL_FRONTEND_API_REQUESTS.md` R2: a brand's board drew each applicant with a call to their media kit, twenty calls a page, and no campaign said how many had applied.
+- Options considered: A) embed a creator summary in the brand's applicant list, and a count on the brand's campaign list; B) no change.
+- Chosen: A, as the proposal recommended.
+- Reason: one call per screen (ux.md section 7).
+- Consequences / follow-ups:
+  1. `BrandApplicationRead.creator`: handle, name, city, niches and the delivery record, the facts a saved list already shows (D-129), never contact details; on the brand's own campaign only (`OwnedCampaign`).
+  2. `CampaignRead.applicant_count` on the brand's own list: applied or said yes, never an invitation waiting, declined or withdrawn; null everywhere else, so no creator reads how many compete.
+  3. Fixed costs per page, proven not to grow: the applicant list's cap rises from 6 to 8 queries, the brand's campaign list's from 6 to 7.
+
+## D-155: The landing page, first version: the temple turned by scroll from Blender frames
+- Date: 2026-11-04
+- Approved by: Adhi, in this session: progress on "the landing page stuff ... the blender thing", "do it yourself". **Not reviewed by the other founder** (D-051), whose track owns frontend design research.
+- Context: the home page was a placeholder. The hero direction Adhi chose on 29 October (the vimana alone on a dark stage, turning as the reader scrolls) had a 48-frame turn rendered before passes 9 to 13; it was rendered again with the current tower. `LANDING_CULTURE_FIT.md` had judged the sections.
+- Options considered: A) pre-rendered Blender frames scrubbed on a canvas; B) the live 3D stack of frontend.md 8b (React Three Fiber, WebGPU), whose byte budget is still an open decision.
+- Chosen: A, for this first version.
+- Reason: the same made-in-Blender tower (D-142) at 334 KB for the whole turn on a phone and about 20 KB for the first frame, the page's largest paint; no 3D runtime, so a public page ships almost no JavaScript; readable with no script, still under reduced motion.
+- Consequences / follow-ups:
+  1. `apps/web/src/app/page.tsx`: the turning hero, how a deal works in five steps marked with Tamil numerals, the record with the bronze seal, the money promise, both sides, the way in. Every word in `messages/en.json`, each claim checked against what the backend does.
+  2. `frontend/scripts/export_landing.py` makes the WebP frames (640, 960, 1280) and the seal (640, 960) from the renders.
+  3. Measured on 4 November 2026 in Edge through Playwright, on Lighthouse's mobile profile (slow 4G, a 4x slower CPU, 390 x 844), median of 7: LCP 1,764 ms (budget 2,000; the worst run 2,084), the headline being the largest paint; CLS 0.000. Two changes got it there from 2,316 ms: the stylesheet inlined into the HTML (`inlineCss`), and the app-only monospace face no longer preloaded. JavaScript is 139 KB, over the 50 KB frontend.md sets for public pages: most of it is the framework's baseline, a gap named, not closed.
+  4. Owed: Lighthouse and a visual check in CI (running Lighthouse here was refused by the session's permissions), the seal rim's Tamil read by a Tamil reader, people on the page (LANDING_CULTURE_FIT.md Part B), and live 3D once its byte budget is decided.
+
+## D-156: A campaign brief drafted from a brand's own words, by a job, switched off until the validation pack
+- Date: 2026-11-04
+- Approved by: Adhi, in this session: "big progress in backend", "do it yourself". **Not reviewed by the other founder** (D-051).
+- Context: `BACKEND_COMPLETE.md` item 40. A brand that knows what it wants but not how to write it as a brief is a common reason a campaign is never published. CLAUDE.md section 3 forbids a request waiting on an outside call.
+- Options considered: A) a request that stores the words and a job that drafts them, read back later; B) a request that calls the model and waits; C) not now.
+- Chosen: A.
+- Reason: B breaks section 3 and ties a person's request to an outside service's speed. A follows the proof reader (D-070): a job, a daily ceiling, no network call inside a transaction, a fake in every test.
+- Consequences / follow-ups:
+  1. `campaign_brief_draft` (one migration): the words, the drafted fields or why not, and the tokens it cost; kept a week; three waiting per brand; owners, admins and campaign managers ask, the whole team reads.
+  2. Claude Opus 5.5 at low effort, structured output checked against a campaign's own limits; only what the brand's words support is filled in. Server-side refusal fallbacks are on (`fallbacks: "default"`).
+  3. Off (`BRIEF_DRAFTING_ENABLED`) until the validation pack confirms a brand's words may go to Anthropic outside India and the notice beside the box exists (legal.md section 3.1). `GET /api/v1/features` says so.
+  4. The design: `docs/decided/PROPOSAL_BRIEF_DRAFTS.md`.
+
+## D-157: CI reads the landing page without JavaScript
+- Date: 2026-11-04
+- Approved by: Adhi, in this session: "nothing should fail ... do it yourself", the frontend gates of D-152 to be filled in. **Not reviewed by the other founder** (D-051).
+- Context: frontend.md section 8d requires the public pages to read without a script; nothing checked it once the landing page existed (D-155).
+- Options considered: A) serve the production build in CI and fetch the home page as plain HTML, every heading from the message catalogue required; B) a browser test with script disabled.
+- Chosen: A.
+- Reason: no browser download in CI, seconds to run, and it is exactly what a search engine or link preview receives.
+- Consequences / follow-ups:
+  1. `frontend/scripts/check-no-js.mjs`, run by the frontend job after the build; shown failing on a page without those words.
+  2. Each new public page adds its words to the check in the same change.
+
+## D-158: Creator search in plain words, read by fixed rules
+- Date: 2026-11-05
+- Approved by: Adhi, in this session: "big progress in backend", "do it yourself ... dont ask me", which covers the matching gate of CLAUDE.md section 5 for this build only. **Not reviewed by the other founder** (D-051).
+- Context: `BACKEND_COMPLETE.md` item 64, listed as needing an AI dependency. A brand types what it wants; today it must translate that into seven separate filters.
+- Options considered: A) fixed rules over our own vocabulary (niches, Tamil Nadu's places, follower and price forms, days), returning search's filters and the words behind each; B) a model turning the words into filters, as item 40 drafts a brief; C) not now.
+- Chosen: A.
+- Reason: instant, free, the words never leave our servers (B is a processor outside India, the hold that keeps item 40 off), the same words always read the same way, and every filter can be shown with the words it came from. What rules cannot read is said, not guessed. B stays possible behind the same response if A's unread words show it is needed.
+- Consequences / follow-ups:
+  1. `GET /api/v1/creators/search-reading`: brands and their teams, search's rate limit, one query (the places creators the viewer could find wrote, through search's own `visible`). Nothing is stored.
+  2. A place written two ways ("Trichy", "Tiruchirappalli") is searched under the spelling most findable creators used; search matching every spelling is a follow-up.
+  3. "Free in November" is answered with a note: search checks one day. A range of days in search is a follow-up.
+  4. The reader is covered by fixed examples, property tests (any text stays within search's limits; any search written any way reads back exactly) and seventeen rules broken on purpose. It is not yet in the nightly mutation run.
+  5. The design: `docs/decided/PROPOSAL_SEARCH_WORDS.md`.
+
+## D-159: APT upgraded in the image; CVE-2026-116566 accepted on Python 3.14.10
+- Date: 2026-11-05
+- Approved by: Adhi, in this session: "nothing should fail ... do it yourself", following D-149's precedent for an unfixable Python CVE. **Not reviewed by the other founder** (D-051).
+- Context: CI's image scan began failing on 5 November on two findings published after main's last green run: APT 3.0.3 (CVE-2026-109518, High; Debian's fix is 3.0.4) and CPython 3.14.10 (CVE-2026-116566, Medium; fixed only in 3.16.0).
+- Options considered: A) APT upgraded at an exact version in the image's existing upgrade step (D-068), and the Python finding accepted with its reason; B) remove APT from the running image; C) move off Python 3.14.
+- Chosen: A.
+- Reason: A follows the two patterns already in place. B is a larger change to the image for a flaw that bites only while packages are installed, which the running app never does. C is not possible: no 3.14 release carries the fix. Our code resolves only fixed hosts or IANA's RDAP servers; a brand's domain goes to the DNS-over-HTTPS resolver as a query and must match `DOMAIN_PATTERN`, checked by the database too.
+- Consequences / follow-ups:
+  1. `Dockerfile`: `apt=3.0.4`, `libapt-pkg7.0=3.0.4`, upgrade only; removed with the others when the base digest moves.
+  2. `.grype.yaml`: one entry, exact version 3.14.10, removed when a 3.14 release carries the fix.

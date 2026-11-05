@@ -931,6 +931,49 @@
         "title": "AgentTokenRead",
         "type": "object"
       },
+      "ApplicantRead": {
+        "description": "The creator behind an application: enough to decide, without opening each one.",
+        "properties": {
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "creator_id": {
+            "format": "uuid",
+            "title": "Creator Id",
+            "type": "string"
+          },
+          "delivery": {
+            "$ref": "#/components/schemas/CreatorDeliveryRead",
+            "description": "What happened on their deals with any brand, not reviews; null shares mean not enough to say, never zero"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "handle": {
+            "title": "Handle",
+            "type": "string"
+          },
+          "niches": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Niches",
+            "type": "array"
+          }
+        },
+        "required": [
+          "creator_id",
+          "handle",
+          "display_name",
+          "city",
+          "niches",
+          "delivery"
+        ],
+        "title": "ApplicantRead",
+        "type": "object"
+      },
       "ApplicationCountsRead": {
         "description": "How many applications are in each status. Every status, zeros included.",
         "properties": {
@@ -1998,6 +2041,233 @@
         "title": "BlockRead",
         "type": "object"
       },
+      "BrandApplicationRead": {
+        "description": "An application to one of your campaigns, with who sent it.",
+        "properties": {
+          "agreed_amount_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The figure both sides agreed through an offer, in paise. It pre-fills the memo's fee; the memo is still the contract. Null when none was agreed",
+            "title": "Agreed Amount Paise"
+          },
+          "campaign_id": {
+            "format": "uuid",
+            "title": "Campaign Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "creator": {
+            "$ref": "#/components/schemas/ApplicantRead"
+          },
+          "creator_id": {
+            "format": "uuid",
+            "title": "Creator Id",
+            "type": "string"
+          },
+          "currency": {
+            "const": "INR",
+            "default": "INR",
+            "title": "Currency",
+            "type": "string"
+          },
+          "decline_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "timing",
+                  "budget",
+                  "not_a_fit",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decline Reason"
+          },
+          "first_answered_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the brand first shortlisted, accepted or rejected this application. Null while it waits, on invitations, and on answers given before 12 October 2026, when it was first kept",
+            "title": "First Answered At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "invitation_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invitation Note"
+          },
+          "open_offer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OfferRead"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A counter-offer waiting for an answer (item 44): the side that did not make it accepts, declines or answers with its own at `/api/v1/applications/{id}/offers`. While one waits, the application cannot be accepted"
+          },
+          "origin": {
+            "enum": [
+              "applied",
+              "invited"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "pitch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for an invitation",
+            "title": "Pitch"
+          },
+          "quoted_amount_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quoted Amount Paise"
+          },
+          "rejection_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Note"
+          },
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "budget_mismatch",
+                  "audience_mismatch",
+                  "timing",
+                  "chose_another_creator",
+                  "incomplete_profile",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Reason"
+          },
+          "repeat_of_application_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repeat Of Application Id"
+          },
+          "status": {
+            "enum": [
+              "submitted",
+              "shortlisted",
+              "accepted",
+              "rejected",
+              "withdrawn",
+              "invited",
+              "declined"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "status_changed_at": {
+            "format": "date-time",
+            "title": "Status Changed At",
+            "type": "string"
+          },
+          "text_flags": {
+            "description": "Warnings on the free text above, worked out on every read: a request for money from a creator, or contact details before a deal is agreed (item 60). Show each beside its field; never hide the text",
+            "items": {
+              "$ref": "#/components/schemas/FieldFlag"
+            },
+            "readOnly": true,
+            "title": "Text Flags",
+            "type": "array"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "campaign_id",
+          "creator_id",
+          "origin",
+          "pitch",
+          "invitation_note",
+          "repeat_of_application_id",
+          "quoted_amount_paise",
+          "status",
+          "rejection_reason",
+          "rejection_note",
+          "decline_reason",
+          "status_changed_at",
+          "first_answered_at",
+          "created_at",
+          "updated_at",
+          "open_offer",
+          "agreed_amount_paise",
+          "creator",
+          "text_flags"
+        ],
+        "title": "BrandApplicationRead",
+        "type": "object"
+      },
       "BrandDomainClaim": {
         "additionalProperties": false,
         "properties": {
@@ -2457,6 +2727,187 @@
           "work_reviewed"
         ],
         "title": "BrandResponseTimesRead",
+        "type": "object"
+      },
+      "BriefDraftCreate": {
+        "additionalProperties": false,
+        "description": "What the brand wants, in its own words.",
+        "properties": {
+          "idea": {
+            "description": "A few sentences: the product, who it is for, what you want made, and any budget or city",
+            "examples": [
+              "Our new millet laddu box for Pongal. Two reels from Madurai food creators, Rs 8,000 each."
+            ],
+            "maxLength": 1500,
+            "minLength": 20,
+            "title": "Idea",
+            "type": "string"
+          }
+        },
+        "required": [
+          "idea"
+        ],
+        "title": "BriefDraftCreate",
+        "type": "object"
+      },
+      "BriefDraftRead": {
+        "description": "A draft, as the brand's team sees it.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BriefFieldsRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why it could not be drafted, when `failed`: ask again in other words",
+            "examples": [
+              "refusal"
+            ],
+            "title": "Failure"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "idea": {
+            "title": "Idea",
+            "type": "string"
+          },
+          "status": {
+            "description": "`waiting` while it is written (usually within a minute), `ready` with `draft`, or `failed`",
+            "enum": [
+              "waiting",
+              "ready",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "idea",
+          "draft",
+          "failure",
+          "created_at"
+        ],
+        "title": "BriefDraftRead",
+        "type": "object"
+      },
+      "BriefFieldsRead": {
+        "description": "The drafted fields, ready to prefill the new-campaign form. Only what the brand's words supported.",
+        "properties": {
+          "budget_max_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Max Paise"
+          },
+          "budget_min_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Min Paise"
+          },
+          "campaign_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "paid",
+                  "barter",
+                  "commission",
+                  "local_business"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when the words did not say",
+            "title": "Campaign Type"
+          },
+          "cities": {
+            "description": "Only cities the brand named; empty when it named none",
+            "items": {
+              "type": "string"
+            },
+            "title": "Cities",
+            "type": "array"
+          },
+          "deliverables": {
+            "title": "Deliverables",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "niches": {
+            "items": {
+              "enum": [
+                "food",
+                "fashion",
+                "beauty",
+                "tech",
+                "travel",
+                "fitness",
+                "education",
+                "entertainment",
+                "finance",
+                "lifestyle"
+              ],
+              "type": "string"
+            },
+            "title": "Niches",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "description",
+          "deliverables",
+          "campaign_type",
+          "niches",
+          "cities",
+          "budget_min_paise",
+          "budget_max_paise"
+        ],
+        "title": "BriefFieldsRead",
         "type": "object"
       },
       "BulkMarkPaidRead": {
@@ -3003,6 +3454,18 @@
       "CampaignRead": {
         "description": "A campaign as the API returns it.",
         "properties": {
+          "applicant_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How many creators came forward: applied, or said yes to an invitation, whatever you decided since. On your own campaign list only; null everywhere else",
+            "title": "Applicant Count"
+          },
           "applications_close_on": {
             "anyOf": [
               {
@@ -3018,6 +3481,15 @@
           "brand_id": {
             "format": "uuid",
             "title": "Brand Id",
+            "type": "string"
+          },
+          "brand_name": {
+            "default": "",
+            "description": "The brand's name, as it signs its campaigns: the first thing a creator asks of one. Show `brand_name_flag` beside it when set, and the verified domain where there is one",
+            "examples": [
+              "Thendral Sweets"
+            ],
+            "title": "Brand Name",
             "type": "string"
           },
           "brand_name_flag": {
@@ -4734,6 +5206,21 @@
             "description": "SHA-256 of the acting account's id, part of the seal. Hash your own account id to recognise your entries; null for `system`",
             "title": "Actor Account Sha256"
           },
+          "actor_first_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The first name of the brand's team member who acted, shown beside the brand's name (D-148). Null for the brand's owner, whose brand's name stands for them, for the creator, and for `system`. Not part of the seal: it is the name the team knows them by today",
+            "examples": [
+              "Ravi"
+            ],
+            "title": "Actor First Name"
+          },
           "actor_role": {
             "description": "`system` is the deal's own rules acting, such as approval at the deadline",
             "enum": [
@@ -4789,6 +5276,7 @@
           "kind",
           "actor_role",
           "actor_account_sha256",
+          "actor_first_name",
           "occurred_at",
           "recorded_at",
           "facts",
@@ -6131,6 +6619,76 @@
           "reason"
         ],
         "title": "ExportNotIncluded",
+        "type": "object"
+      },
+      "FeatureRead": {
+        "additionalProperties": false,
+        "description": "One feature: whether it is on, and what its routes answer while it is off.",
+        "properties": {
+          "off_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The problem `code` this feature's routes answer while it is off; null when it has no route of its own to call",
+            "examples": [
+              "connections_unavailable"
+            ],
+            "title": "Off Code"
+          },
+          "on": {
+            "title": "On",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "on",
+          "off_code"
+        ],
+        "title": "FeatureRead",
+        "type": "object"
+      },
+      "FeaturesRead": {
+        "description": "Every feature that can be switched off. Unknown keys may appear: ignore them.",
+        "properties": {
+          "brief_drafting": {
+            "$ref": "#/components/schemas/FeatureRead",
+            "description": "A campaign brief drafted from a brand's own words (item 40), behind its validation pack question"
+          },
+          "connected_accounts": {
+            "$ref": "#/components/schemas/FeatureRead",
+            "description": "Connecting Instagram and YouTube (item 29): on once Meta and Google approve the apps and the connect notice exists"
+          },
+          "passkeys": {
+            "$ref": "#/components/schemas/FeatureRead",
+            "description": "Signing in and proving changes with a passkey (item 79): on once the domain exists"
+          },
+          "passport_indexing": {
+            "$ref": "#/components/schemas/FeatureRead",
+            "description": "Published Passports offered to search engines (item 85): on once the publish notice says so"
+          },
+          "results_from_proof": {
+            "$ref": "#/components/schemas/FeatureRead",
+            "description": "Reach and views read from proof screenshots (D-070), behind its validation pack question"
+          },
+          "upi_ids": {
+            "$ref": "#/components/schemas/FeatureRead",
+            "description": "A creator adding a UPI ID, and the pay link brands open from it (D-085): on once its notice exists. Until then brands pay by bank transfer"
+          }
+        },
+        "required": [
+          "passkeys",
+          "connected_accounts",
+          "upi_ids",
+          "passport_indexing",
+          "results_from_proof",
+          "brief_drafting"
+        ],
+        "title": "FeaturesRead",
         "type": "object"
       },
       "FeedbackFiguresRead": {
@@ -7711,6 +8269,14 @@
             "title": "Approval Window Days",
             "type": "integer"
           },
+          "campaign_title": {
+            "description": "The campaign the deal is on, so a row can say which deal it is",
+            "examples": [
+              "Pongal sweets launch"
+            ],
+            "title": "Campaign Title",
+            "type": "string"
+          },
           "cancellation_fee_paise": {
             "title": "Cancellation Fee Paise",
             "type": "integer"
@@ -7766,6 +8332,14 @@
               }
             ],
             "title": "Content Due On"
+          },
+          "counterparty_name": {
+            "description": "The other side, as the reader knows them: a brand reads the creator's handle, a creator reads the brand's name. Someone who deleted their account keeps the placeholder their profile was given",
+            "examples": [
+              "Thendral Sweets"
+            ],
+            "title": "Counterparty Name",
+            "type": "string"
           },
           "created_at": {
             "format": "date-time",
@@ -7985,6 +8559,8 @@
           "agreed_amount_paise",
           "stage",
           "waiting_on",
+          "campaign_title",
+          "counterparty_name",
           "has_open_dispute",
           "work_due_on",
           "text_flags"
@@ -8029,6 +8605,53 @@
           "note"
         ],
         "title": "MisreadMark",
+        "type": "object"
+      },
+      "MyTeamInviteRead": {
+        "description": "An invite to your own number, waiting for your answer.",
+        "properties": {
+          "brand_id": {
+            "format": "uuid",
+            "title": "Brand Id",
+            "type": "string"
+          },
+          "brand_name": {
+            "title": "Brand Name",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "admin",
+              "campaigns",
+              "finance"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "brand_id",
+          "brand_name",
+          "role",
+          "first_name",
+          "expires_at"
+        ],
+        "title": "MyTeamInviteRead",
         "type": "object"
       },
       "NameClearanceIn": {
@@ -8331,11 +8954,16 @@
                 "draft_submitted",
                 "draft_approved",
                 "draft_auto_approved",
-                "draft_changes_requested"
+                "draft_changes_requested",
+                "team_invite_received",
+                "team_joined",
+                "team_role_changed",
+                "team_removed",
+                "brand_changed_hands"
               ],
               "type": "string"
             },
-            "maxItems": 63,
+            "maxItems": 68,
             "title": "Muted Types",
             "type": "array"
           },
@@ -8450,7 +9078,12 @@
                 "draft_submitted",
                 "draft_approved",
                 "draft_auto_approved",
-                "draft_changes_requested"
+                "draft_changes_requested",
+                "team_invite_received",
+                "team_joined",
+                "team_role_changed",
+                "team_removed",
+                "brand_changed_hands"
               ],
               "type": "string"
             },
@@ -8539,7 +9172,12 @@
                 "draft_submitted",
                 "draft_approved",
                 "draft_auto_approved",
-                "draft_changes_requested"
+                "draft_changes_requested",
+                "team_invite_received",
+                "team_joined",
+                "team_role_changed",
+                "team_removed",
+                "brand_changed_hands"
               ],
               "type": "string"
             },
@@ -8630,6 +9268,7 @@
           },
           "details": {
             "additionalProperties": true,
+            "description": "Values to render the wording with, by type: a campaign title, the other side's handle. On a brand team (D-148): `acting_first_name`, the first name of the brand's team member who did it, on a creator's notice of a person's act; `for_brand_id` and `for_brand_name` on a team member's copy of a brand's notice; `role` on `team_role_changed` is the new role, `owner` when the brand was handed to you. On `brand_changed_hands`: `brand_id`, `brand_name`, `unfinished_deals` (how many of yours with it are still open) and `new_owner_first_name`. Unknown keys may appear: ignore them",
             "title": "Details",
             "type": "object"
           },
@@ -8702,7 +9341,12 @@
               "draft_submitted",
               "draft_approved",
               "draft_auto_approved",
-              "draft_changes_requested"
+              "draft_changes_requested",
+              "team_invite_received",
+              "team_joined",
+              "team_role_changed",
+              "team_removed",
+              "brand_changed_hands"
             ],
             "title": "Notification Type",
             "type": "string"
@@ -9433,6 +10077,34 @@
           "items"
         ],
         "title": "Page[BlockRead]",
+        "type": "object"
+      },
+      "Page_BrandApplicationRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BrandApplicationRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as ?cursor= to get the next page",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[BrandApplicationRead]",
         "type": "object"
       },
       "Page_CampaignRead_": {
@@ -11972,6 +12644,52 @@
         "title": "RateGuidanceRead",
         "type": "object"
       },
+      "ReadPartRead": {
+        "properties": {
+          "filter": {
+            "description": "The filter they became. A range gives two parts with the same words. New filters may be added: show an unknown one as its words",
+            "enum": [
+              "q",
+              "niche",
+              "city",
+              "platform",
+              "min_followers",
+              "max_followers",
+              "max_price_paise",
+              "format",
+              "available_on"
+            ],
+            "examples": [
+              "min_followers"
+            ],
+            "title": "Filter",
+            "type": "string"
+          },
+          "value": {
+            "description": "What was read, as the query parameter takes it",
+            "examples": [
+              "5000"
+            ],
+            "title": "Value",
+            "type": "string"
+          },
+          "words": {
+            "description": "The brand's own words, as written",
+            "examples": [
+              "5k to 20k followers"
+            ],
+            "title": "Words",
+            "type": "string"
+          }
+        },
+        "required": [
+          "words",
+          "filter",
+          "value"
+        ],
+        "title": "ReadPartRead",
+        "type": "object"
+      },
       "ReadinessRead": {
         "description": "Everything this process needs is reachable.",
         "properties": {
@@ -13059,6 +13777,267 @@
         "title": "SearchChannelRead",
         "type": "object"
       },
+      "SearchFiltersRead": {
+        "description": "Each is the query parameter of the same name on `GET /api/v1/creators`;\npass the ones that are not null, unchanged.",
+        "properties": {
+          "available_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A Tamil Nadu day, today or later",
+            "examples": [
+              "2026-11-14"
+            ],
+            "title": "Available On"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Spelled as most creators there wrote it",
+            "examples": [
+              "Coimbatore"
+            ],
+            "title": "City"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "post",
+                  "reel",
+                  "story",
+                  "short",
+                  "video",
+                  "live",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "reel"
+            ],
+            "title": "Format"
+          },
+          "max_followers": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              20000
+            ],
+            "title": "Max Followers"
+          },
+          "max_price_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "In paise: ₹1 is 100",
+            "examples": [
+              1000000
+            ],
+            "title": "Max Price Paise"
+          },
+          "min_followers": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              5000
+            ],
+            "title": "Min Followers"
+          },
+          "niche": {
+            "anyOf": [
+              {
+                "enum": [
+                  "food",
+                  "fashion",
+                  "beauty",
+                  "tech",
+                  "travel",
+                  "fitness",
+                  "education",
+                  "entertainment",
+                  "finance",
+                  "lifestyle"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "food"
+            ],
+            "title": "Niche"
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "enum": [
+                  "instagram",
+                  "youtube"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "instagram"
+            ],
+            "title": "Platform"
+          },
+          "q": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Words in the handle, name or bio: only what was in quotes",
+            "examples": [
+              "millet"
+            ],
+            "title": "Q"
+          }
+        },
+        "required": [
+          "q",
+          "niche",
+          "city",
+          "platform",
+          "min_followers",
+          "max_followers",
+          "max_price_paise",
+          "format",
+          "available_on"
+        ],
+        "title": "SearchFiltersRead",
+        "type": "object"
+      },
+      "SearchNoteRead": {
+        "properties": {
+          "code": {
+            "description": "Why some words were not used. `a_month_is_not_a_day`: search checks one day, so name one. `tier_needs_numbers`: \"micro\" and the like mean different sizes to different people, so give a follower range. `price_from_not_searchable`: search finds creators priced up to an amount, not from one. `free_needs_a_day`: say which day. `day_has_passed`, `not_a_real_day`, `number_out_of_range`: as named. `one_…`: search takes one of each; the first was used. New codes may be added: show an unknown one by its words alone",
+            "enum": [
+              "one_phrase",
+              "one_day",
+              "a_month_is_not_a_day",
+              "day_has_passed",
+              "not_a_real_day",
+              "free_needs_a_day",
+              "one_price",
+              "price_from_not_searchable",
+              "one_follower_range",
+              "number_out_of_range",
+              "tier_needs_numbers",
+              "one_platform",
+              "one_format",
+              "one_niche",
+              "one_city"
+            ],
+            "examples": [
+              "a_month_is_not_a_day"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "words": {
+            "examples": [
+              "free in December"
+            ],
+            "title": "Words",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "words"
+        ],
+        "title": "SearchNoteRead",
+        "type": "object"
+      },
+      "SearchReadingRead": {
+        "description": "How a brand's words were read. Short lists: the words are at most 200 characters.",
+        "properties": {
+          "filters": {
+            "$ref": "#/components/schemas/SearchFiltersRead"
+          },
+          "notes": {
+            "description": "Why, where there is a reason",
+            "items": {
+              "$ref": "#/components/schemas/SearchNoteRead"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "read_as": {
+            "description": "Which words became which filter, in the order written",
+            "items": {
+              "$ref": "#/components/schemas/ReadPartRead"
+            },
+            "title": "Read As",
+            "type": "array"
+          },
+          "unread": {
+            "description": "Words not used, as written, in order: nothing was guessed from them",
+            "examples": [
+              [
+                "vegan"
+              ]
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Unread",
+            "type": "array"
+          }
+        },
+        "required": [
+          "filters",
+          "read_as",
+          "unread",
+          "notes"
+        ],
+        "title": "SearchReadingRead",
+        "type": "object"
+      },
       "SecondFactorSetupIn": {
         "additionalProperties": false,
         "properties": {
@@ -13561,7 +14540,8 @@
               "passkey_only",
               "end_session",
               "delete_account",
-              "create_agent_token"
+              "create_agent_token",
+              "change_team"
             ],
             "title": "Action",
             "type": "string"
@@ -13786,6 +14766,32 @@
         "title": "StepUpForSession",
         "type": "object"
       },
+      "StepUpForTeamChange": {
+        "additionalProperties": false,
+        "description": "A code for one exact change to a brand's team (item 13, D-148).",
+        "properties": {
+          "action": {
+            "const": "change_team",
+            "title": "Action",
+            "type": "string"
+          },
+          "change": {
+            "description": "`invite:<phone>:admin`, `role:<member_id>:<role>`, `remove:<member_id>` or `ownership:<member_id>`",
+            "examples": [
+              "remove:01a18d27-7fe3-7120-b479-70f1aa7fb324"
+            ],
+            "pattern": "^(invite:\\+91[6-9][0-9]{9}:admin|role:[0-9a-f-]{36}:(admin|campaigns|finance)|remove:[0-9a-f-]{36}|ownership:[0-9a-f-]{36})$",
+            "title": "Change",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "change"
+        ],
+        "title": "StepUpForTeamChange",
+        "type": "object"
+      },
       "StepUpForUpiId": {
         "additionalProperties": false,
         "description": "A code to set one exact UPI ID: it cannot set any other.",
@@ -13826,7 +14832,8 @@
               "passkey_only",
               "end_session",
               "delete_account",
-              "create_agent_token"
+              "create_agent_token",
+              "change_team"
             ],
             "title": "Action",
             "type": "string"
@@ -13864,6 +14871,7 @@
               "mapping": {
                 "add_passkey": "#/components/schemas/StepUpForAccount",
                 "change_phone": "#/components/schemas/StepUpForPhone",
+                "change_team": "#/components/schemas/StepUpForTeamChange",
                 "create_agent_token": "#/components/schemas/StepUpForAgentToken",
                 "delete_account": "#/components/schemas/StepUpForAccount",
                 "download_export": "#/components/schemas/StepUpForExport",
@@ -13899,6 +14907,9 @@
               },
               {
                 "$ref": "#/components/schemas/StepUpForAgentToken"
+              },
+              {
+                "$ref": "#/components/schemas/StepUpForTeamChange"
               }
             ],
             "title": "Change"
@@ -14181,6 +15192,245 @@
           "lifted_at"
         ],
         "title": "TakedownRead",
+        "type": "object"
+      },
+      "TeamInviteAccept": {
+        "additionalProperties": false,
+        "description": "Joining: optionally, the first name you want creators to see.",
+        "properties": {
+          "first_name": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "minLength": 1,
+                "pattern": "^[^\\x00-\\x1f\\x7f]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Leave it out to keep the name the inviter gave",
+            "title": "First Name"
+          }
+        },
+        "title": "TeamInviteAccept",
+        "type": "object"
+      },
+      "TeamInviteCreate": {
+        "additionalProperties": false,
+        "description": "Someone to invite: their number, the role they will hold, the name you know them by.",
+        "properties": {
+          "first_name": {
+            "description": "Shown to creators beside the brand's name when they act",
+            "examples": [
+              "Ravi"
+            ],
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^[^\\x00-\\x1f\\x7f]+$",
+            "title": "First Name",
+            "type": "string"
+          },
+          "phone": {
+            "description": "Indian mobile number, stored as +91XXXXXXXXXX. Send it in that form. Spaces, dashes and brackets, and a leading +91, 91 or 0, are also accepted and normalised away.",
+            "examples": [
+              "+919876543210"
+            ],
+            "pattern": "^\\+91[6-9][0-9]{9}$",
+            "title": "Phone",
+            "type": "string"
+          },
+          "role": {
+            "description": "`campaigns`: campaigns, applicants, memos and approving work. `finance`: marking payments and disputes. `admin`: all of that and the team, invited by the owner alone, with a step-up code",
+            "enum": [
+              "admin",
+              "campaigns",
+              "finance"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone",
+          "role",
+          "first_name"
+        ],
+        "title": "TeamInviteCreate",
+        "type": "object"
+      },
+      "TeamInviteRead": {
+        "description": "An invite as the brand sees it: never the number.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "admin",
+              "campaigns",
+              "finance"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "first_name",
+          "expires_at",
+          "created_at"
+        ],
+        "title": "TeamInviteRead",
+        "type": "object"
+      },
+      "TeamMemberRead": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "admin",
+              "campaigns",
+              "finance"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "first_name",
+          "created_at"
+        ],
+        "title": "TeamMemberRead",
+        "type": "object"
+      },
+      "TeamOwnershipHandOver": {
+        "additionalProperties": false,
+        "description": "Handing the brand to a member: who takes it, and the name you will act by.",
+        "properties": {
+          "member_id": {
+            "description": "The live team member who becomes the owner",
+            "format": "uuid",
+            "title": "Member Id",
+            "type": "string"
+          },
+          "your_first_name": {
+            "description": "You stay on the team as an admin; this is the first name creators will see beside the brand's when you act",
+            "examples": [
+              "Adhi"
+            ],
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^[^\\x00-\\x1f\\x7f]+$",
+            "title": "Your First Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "member_id",
+          "your_first_name"
+        ],
+        "title": "TeamOwnershipHandOver",
+        "type": "object"
+      },
+      "TeamRead": {
+        "properties": {
+          "brand_id": {
+            "format": "uuid",
+            "title": "Brand Id",
+            "type": "string"
+          },
+          "brand_name": {
+            "title": "Brand Name",
+            "type": "string"
+          },
+          "invites": {
+            "description": "Invites still open, oldest first",
+            "items": {
+              "$ref": "#/components/schemas/TeamInviteRead"
+            },
+            "title": "Invites",
+            "type": "array"
+          },
+          "members": {
+            "description": "At most 20, the owner not counted",
+            "items": {
+              "$ref": "#/components/schemas/TeamMemberRead"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "your_role": {
+            "enum": [
+              "owner",
+              "admin",
+              "campaigns",
+              "finance"
+            ],
+            "title": "Your Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "brand_id",
+          "brand_name",
+          "your_role",
+          "members",
+          "invites"
+        ],
+        "title": "TeamRead",
+        "type": "object"
+      },
+      "TeamRoleChange": {
+        "additionalProperties": false,
+        "properties": {
+          "role": {
+            "enum": [
+              "admin",
+              "campaigns",
+              "finance"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role"
+        ],
+        "title": "TeamRoleChange",
         "type": "object"
       },
       "UnreadCount": {
@@ -16771,6 +18021,24 @@
             }
           },
           {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
+          {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
             "name": "Idempotency-Key",
@@ -17859,6 +19127,24 @@
             }
           },
           {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
+          {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
             "name": "Idempotency-Key",
@@ -18006,6 +19292,24 @@
               "format": "uuid",
               "title": "Application Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
             }
           },
           {
@@ -18277,6 +19581,24 @@
               "format": "uuid",
               "title": "Application Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
             }
           },
           {
@@ -19343,6 +20665,26 @@
       "get": {
         "description": "The signed-in brand's own profile, as the brand entered it. 404 until the profile has been created.",
         "operationId": "read_brand_profile_api_v1_brands_me_get",
+        "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -19386,6 +20728,16 @@
               "application/problem+json": {}
             },
             "description": "The profile has not been created yet"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
           },
           "429": {
             "content": {
@@ -19431,6 +20783,24 @@
         "description": "Changes the fields sent and leaves the rest as they are. An email another brand already uses is refused with 409.",
         "operationId": "update_brand_profile_api_v1_brands_me_patch",
         "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
           {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
@@ -19749,6 +21119,24 @@
               "description": "Only posts whose usage window stands so; any when left out",
               "title": "Rights State"
             }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
           }
         ],
         "responses": {
@@ -19840,6 +21228,26 @@
       "delete": {
         "description": "Creators stop seeing the domain at once.",
         "operationId": "withdraw_domain_api_v1_brands_me_domain_delete",
+        "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          }
+        ],
         "responses": {
           "204": {
             "description": "Successful Response"
@@ -19931,6 +21339,26 @@
       "get": {
         "description": "The record to publish, and what the last check found. Only you see this; creators see the domain once it is verified.",
         "operationId": "read_domain_api_v1_brands_me_domain_get",
+        "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -20030,6 +21458,24 @@
         "description": "Returns a TXT record to add at your DNS host: `record_name` and `record_value`. Then ask for a check. The token is good for 7 days. Claiming again, the same domain or another, replaces the claim with a new token, and a verified domain stops showing until the new one is found. Creators are shown the domain itself and when it was registered, never a verdict on the brand.",
         "operationId": "claim_domain_api_v1_brands_me_domain_post",
         "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
           {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
@@ -20169,6 +21615,24 @@
         "operationId": "check_domain_api_v1_brands_me_domain_check_post",
         "parameters": [
           {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
+          {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
             "name": "Idempotency-Key",
@@ -20286,6 +21750,24 @@
         "description": "For a brand that paid several creators at once, typically through its bank's bulk transfer: one row per deal, with the method and the reference the bank gave for that row. Each row is recorded or refused on its own, with exactly the rules of the single endpoint, and one refused row never holds back the others. The answer lists every row in the order sent: `recorded` with the payment, or `refused` with the same problem code a single request would get. Another brand's deal is refused as not found. Always 200 once the request itself is valid.",
         "operationId": "mark_paid_in_bulk_api_v1_brands_me_payments_mark_paid_post",
         "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
           {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
@@ -20405,6 +21887,977 @@
         "summary": "Mark several payments as sent",
         "tags": [
           "payment"
+        ]
+      }
+    },
+    "/api/v1/brands/me/team": {
+      "get": {
+        "description": "Who acts for the brand, in which role, and the invites still open: first names and roles, never a phone number. Everyone in the brand may read it. Limit: 60 a minute.",
+        "operationId": "read_team_api_v1_brands_me_team_get",
+        "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`role_not_allowed`: not a brand account; `brand_role_not_allowed`: your role does not include the team; or `team_change_not_allowed`: only the owner makes or changes an admin, and an admin never removes one"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_not_found`: the Brand-Id header names a brand you are not in"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_profile_required`: you have no brand yet"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_choice_needed`, or the body is not usable"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My brand's team",
+        "tags": [
+          "team"
+        ]
+      }
+    },
+    "/api/v1/brands/me/team/invites": {
+      "post": {
+        "description": "Invites a phone number to act for the brand in a role, for 7 days. We send no message to the number: tell the person, and the invite appears when that number signs in as a brand. We keep only a keyed hash of the number. An `admin` invite is the owner's alone and needs **a code**: ask at `POST /api/v1/me/step-up` with `change_team` and the value `invite:<phone>:admin`, then send it in `Step-Up-Code`. Owners and admins only. Limits: 10 a minute and 20 a day for each person, and 20 a day for the brand however many of its team send them.",
+        "operationId": "invite_api_v1_brands_me_team_invites_post",
+        "parameters": [
+          {
+            "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+            "in": "header",
+            "name": "Step-Up-Code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9]{6}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+              "title": "Step-Up-Code"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamInviteCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamInviteRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The code is wrong, expired, used, or for another change"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`role_not_allowed`: not a brand account; `brand_role_not_allowed`: your role does not include the team; or `team_change_not_allowed`: only the owner makes or changes an admin, and an admin never removes one"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_not_found`: the Brand-Id header names a brand you are not in"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`team_invite_exists`, `already_on_team`, or `brand_profile_required`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_choice_needed`, or the body is not usable. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests (see the Retry-After header), or `team_invites_daily_limit`: the brand sent 20 in the last day"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Invite someone to the team",
+        "tags": [
+          "team"
+        ]
+      }
+    },
+    "/api/v1/brands/me/team/invites/{invite_id}": {
+      "delete": {
+        "description": "Ends an open invite at once. Owners and admins only. Limit: 30 a minute.",
+        "operationId": "revoke_invite_api_v1_brands_me_team_invites__invite_id__delete",
+        "parameters": [
+          {
+            "description": "The invite's id",
+            "in": "path",
+            "name": "invite_id",
+            "required": true,
+            "schema": {
+              "description": "The invite's id",
+              "format": "uuid",
+              "title": "Invite Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`role_not_allowed`: not a brand account; `brand_role_not_allowed`: your role does not include the team; or `team_change_not_allowed`: only the owner makes or changes an admin, and an admin never removes one"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`team_invite_not_found`, or `brand_not_found`"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_profile_required`: you have no brand yet"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_choice_needed`, or the body is not usable"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Take back an invite",
+        "tags": [
+          "team"
+        ]
+      }
+    },
+    "/api/v1/brands/me/team/members/{member_id}": {
+      "delete": {
+        "description": "They can no longer act for the brand, from their next request; they are told in the app. Needs **a code** for `change_team` with the value `remove:<member_id>`. An admin never removes an admin. Owners and admins only. Limit: 30 a minute.",
+        "operationId": "remove_member_api_v1_brands_me_team_members__member_id__delete",
+        "parameters": [
+          {
+            "description": "The team member's id",
+            "in": "path",
+            "name": "member_id",
+            "required": true,
+            "schema": {
+              "description": "The team member's id",
+              "format": "uuid",
+              "title": "Member Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+            "in": "header",
+            "name": "Step-Up-Code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9]{6}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+              "title": "Step-Up-Code"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The code is wrong, expired, used, or for another change"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired; or `step_up_required`"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`role_not_allowed`: not a brand account; `brand_role_not_allowed`: your role does not include the team; or `team_change_not_allowed`: only the owner makes or changes an admin, and an admin never removes one"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`team_member_not_found`, or `brand_not_found`"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_profile_required`: you have no brand yet"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_choice_needed`, or the body is not usable"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove someone from the team",
+        "tags": [
+          "team"
+        ]
+      },
+      "patch": {
+        "description": "Gives a member another role; they are told in the app. Making someone an admin, or changing an admin, is the owner's alone and needs **a code** for `change_team` with the value `role:<member_id>:<role>`. Owners and admins only. Limit: 30 a minute.",
+        "operationId": "change_role_api_v1_brands_me_team_members__member_id__patch",
+        "parameters": [
+          {
+            "description": "The team member's id",
+            "in": "path",
+            "name": "member_id",
+            "required": true,
+            "schema": {
+              "description": "The team member's id",
+              "format": "uuid",
+              "title": "Member Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+            "in": "header",
+            "name": "Step-Up-Code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9]{6}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+              "title": "Step-Up-Code"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamRoleChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamMemberRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The code is wrong, expired, used, or for another change"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`role_not_allowed`: not a brand account; `brand_role_not_allowed`: your role does not include the team; or `team_change_not_allowed`: only the owner makes or changes an admin, and an admin never removes one"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`team_member_not_found`, or `brand_not_found`"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_profile_required`: you have no brand yet. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_choice_needed`, or the body is not usable. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Change a member's role",
+        "tags": [
+          "team"
+        ]
+      }
+    },
+    "/api/v1/brands/me/team/ownership": {
+      "post": {
+        "description": "Makes a live member the brand's owner, at once; you stay on the team as an admin, under the first name you give, and they are told in the app. The brand's campaigns, deals, records and blocks all go with it. The owner's alone, and needs **a code** for `change_team` with the value `ownership:<member_id>`, from a login at least a week old unless you have a passkey, so someone who took over your account a moment ago cannot take the brand. The member must own no brand of their own. You are both told, in notices nobody can mute. Answers the team as you now see it. Limits: 5 a minute, 10 a day.",
+        "operationId": "hand_over_api_v1_brands_me_team_ownership_post",
+        "parameters": [
+          {
+            "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+            "in": "header",
+            "name": "Step-Up-Code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9]{6}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The 6-digit code from `POST /api/v1/me/step-up` for exactly this change, or an admin's authenticator code. Without it the answer is 401 `step_up_required`.",
+              "title": "Step-Up-Code"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamOwnershipHandOver"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The code is wrong, expired, used, or for another change"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired; or `step_up_required`"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_role_not_allowed`: only the owner hands the brand over; or `login_too_recent`: your login is under a week old (see Retry-After)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`team_member_not_found`, or `brand_not_found`"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`owns_a_brand`: they already own one; `cannot_take_brand`: their account cannot take it over now; or `brand_profile_required`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_choice_needed`, or the body is not usable. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Hand the brand to a team member",
+        "tags": [
+          "team"
         ]
       }
     },
@@ -20850,6 +23303,304 @@
         ]
       }
     },
+    "/api/v1/brief-drafts": {
+      "post": {
+        "description": "A few sentences in; a draft of the campaign's title, description, deliverables, type, niches, cities and budget back, usually within a minute, at the `Location` given. Only what your words support is filled in: nothing is invented. The draft creates nothing; prefill the new-campaign form with it, edit, and create the campaign as usual. Owners, admins and campaign managers. Switched off until `GET /api/v1/features` says `brief_drafting` is on. Limits: 5 a minute, 30 a day.",
+        "operationId": "ask_api_v1_brief_drafts_post",
+        "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BriefDraftCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BriefDraftRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`role_not_allowed`: not a brand account; or `brand_role_not_allowed`: your role does not run campaigns"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_not_found`: the Brand-Id header names a brand you are not in"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brief_drafts_waiting`: three of your brand's drafts are still being written; or `brand_profile_required`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The idea is under 20 or over 1,500 characters; or `brand_choice_needed`. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brief_drafting_unavailable`: drafting is not switched on yet. Or: Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ask for a campaign brief drafted from your own words",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/api/v1/brief-drafts/{brief_draft_id}": {
+      "get": {
+        "description": "`waiting` until the draft is written, then `ready` with its fields, or `failed`. Anyone on the brand's team may read it. Kept a week. Limit: 60 a minute.",
+        "operationId": "read_api_v1_brief_drafts__brief_draft_id__get",
+        "parameters": [
+          {
+            "description": "The draft's id",
+            "in": "path",
+            "name": "brief_draft_id",
+            "required": true,
+            "schema": {
+              "description": "The draft's id",
+              "format": "uuid",
+              "title": "Brief Draft Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BriefDraftRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`role_not_allowed`: not a brand account; or `brand_role_not_allowed`: your role does not run campaigns"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brief_draft_not_found`, or `brand_not_found`"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_profile_required`: you have no brand yet"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read a drafted brief",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
     "/api/v1/campaigns": {
       "get": {
         "description": "Every campaign owned by the signed-in brand, newest first.",
@@ -20907,6 +23658,24 @@
               ],
               "description": "From a previous page's next_cursor",
               "title": "Cursor"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
             }
           }
         ],
@@ -21009,6 +23778,24 @@
         "description": "Creates a campaign owned by the signed-in brand. It starts as a draft and is not visible to creators until it is published.",
         "operationId": "create_campaign_api_v1_campaigns_post",
         "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
           {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
@@ -21571,6 +24358,24 @@
             }
           },
           {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
+          {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
             "name": "Idempotency-Key",
@@ -21705,7 +24510,7 @@
     },
     "/api/v1/campaigns/{campaign_id}/applications": {
       "get": {
-        "description": "Applications to one of the signed-in brand's campaigns, newest first.",
+        "description": "Applications to one of the signed-in brand's campaigns, newest first, each with its `creator`: name, handle, city, niches and how they deliver, so the board needs no call per applicant. Never a phone number or contact detail.",
         "operationId": "list_campaign_applications_api_v1_campaigns__campaign_id__applications_get",
         "parameters": [
           {
@@ -21776,6 +24581,24 @@
               "description": "From a previous page's next_cursor",
               "title": "Cursor"
             }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
           }
         ],
         "responses": {
@@ -21783,7 +24606,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Page_ApplicationRead_"
+                  "$ref": "#/components/schemas/Page_BrandApplicationRead_"
                 }
               }
             },
@@ -22060,6 +24883,24 @@
             }
           },
           {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
+          {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
             "name": "Idempotency-Key",
@@ -22190,6 +25031,24 @@
             }
           },
           {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
+          {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
             "name": "Idempotency-Key",
@@ -22317,6 +25176,24 @@
               "format": "uuid",
               "title": "Campaign Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
             }
           },
           {
@@ -22493,6 +25370,24 @@
               "title": "Limit",
               "type": "integer"
             }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
           }
         ],
         "responses": {
@@ -22617,6 +25512,24 @@
               "format": "uuid",
               "title": "Campaign Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
             }
           },
           {
@@ -22748,6 +25661,24 @@
               "title": "Campaign Id",
               "type": "string"
             }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
           }
         ],
         "responses": {
@@ -22873,6 +25804,24 @@
               "title": "Campaign Id",
               "type": "string"
             }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
           }
         ],
         "responses": {
@@ -22997,6 +25946,24 @@
               "format": "uuid",
               "title": "Campaign Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
             }
           }
         ],
@@ -23290,6 +26257,26 @@
       "get": {
         "description": "Every list you saved, newest first, each with how many of its creators you can find today. Whole, not paged: at most 50. Lists are yours alone; no creator is told they are on one.",
         "operationId": "list_my_lists_api_v1_creator_lists_get",
+        "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -23326,6 +26313,16 @@
               "application/problem+json": {}
             },
             "description": "Only brands keep creator lists"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
           },
           "429": {
             "content": {
@@ -23371,6 +26368,24 @@
         "description": "A new, empty list with a name of your own. At most 50 lists.",
         "operationId": "start_a_list_api_v1_creator_lists_post",
         "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
           {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
@@ -23509,6 +26524,24 @@
               "title": "List Id",
               "type": "string"
             }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
           }
         ],
         "responses": {
@@ -23612,6 +26645,24 @@
               "format": "uuid",
               "title": "List Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
             }
           },
           {
@@ -23795,6 +26846,24 @@
               "description": "From a previous page's next_cursor",
               "title": "Cursor"
             }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
           }
         ],
         "responses": {
@@ -23921,6 +26990,24 @@
               "title": "Creator Id",
               "type": "string"
             }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
           }
         ],
         "responses": {
@@ -24036,6 +27123,24 @@
               "format": "uuid",
               "title": "Creator Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
             }
           }
         ],
@@ -24357,6 +27462,24 @@
                 }
               ],
               "title": "Cursor"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
             }
           }
         ],
@@ -24701,6 +27824,24 @@
               ],
               "description": "From a previous page's next_cursor",
               "title": "Cursor"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
             }
           }
         ],
@@ -27532,6 +30673,131 @@
         ]
       }
     },
+    "/api/v1/creators/search-reading": {
+      "get": {
+        "description": "Turns a sentence such as \"café creators in Coimbatore, 5k to 20k followers, free on 14 November\" into the filters of `GET /api/v1/creators`, and says which words became which filter. Read by fixed rules, never a model: the words stay on our servers and always read the same way. What the rules cannot read comes back as `unread`, never guessed, with a note where there is a reason. Places are the ones creators you could find wrote, and Tamil Nadu's districts. Nothing is searched: pass `filters` to `GET /api/v1/creators`, which has the same rate limit. Brands only.",
+        "operationId": "read_search_words_api_v1_creators_search_reading_get",
+        "parameters": [
+          {
+            "description": "What the brand is looking for, in its own words",
+            "in": "query",
+            "name": "words",
+            "required": true,
+            "schema": {
+              "description": "What the brand is looking for, in its own words",
+              "examples": [
+                "Café creators in Coimbatore, 5k to 20k followers"
+              ],
+              "maxLength": 200,
+              "minLength": 2,
+              "title": "Words",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchReadingRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only brands search for creators"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No words, or more than 200 characters"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read a creator search written in plain words",
+        "tags": [
+          "creator search"
+        ]
+      }
+    },
     "/api/v1/creators/{creator_id}/delivery-record": {
       "get": {
         "description": "A creator's delivery record, built from what happened rather than from reviews: deals delivered, deals not delivered, and whether the work arrived by the agreed date. The shares are withheld until three deals have completed; `null` there means **not enough to say**, and must not be shown as zero. `currently_overdue` is always reported, so a new account can never hide work a brand is still waiting for. Barter deals are counted separately and never scored.",
@@ -28162,6 +31428,24 @@
             }
           },
           {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
+          {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
             "name": "Idempotency-Key",
@@ -28372,6 +31656,24 @@
               ],
               "description": "From a previous page's next_cursor",
               "title": "Cursor"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
             }
           }
         ],
@@ -28584,6 +31886,24 @@
               "format": "uuid",
               "title": "Memo Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
             }
           },
           {
@@ -28954,7 +32274,7 @@
     },
     "/api/v1/deal-memos/{memo_id}/cancel": {
       "post": {
-        "description": "Ends the deal. Before any work is submitted this is recorded as withdrawn_early and does not count against the brand; afterwards it does.",
+        "description": "Ends the deal. Before any work is submitted this is recorded as withdrawn_early and does not count against the brand; afterwards it does. While proof waits inside its review window the brand answers it first, approving it or asking for a fix (409 `proof_awaiting_answer`, D-147).",
         "operationId": "memo_cancel_api_v1_deal_memos__memo_id__cancel_post",
         "parameters": [
           {
@@ -28967,6 +32287,24 @@
               "format": "uuid",
               "title": "Memo Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
             }
           },
           {
@@ -29657,6 +32995,24 @@
             }
           },
           {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
+          {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
             "name": "Idempotency-Key",
@@ -29918,6 +33274,24 @@
               "format": "uuid",
               "title": "Memo Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
             }
           },
           {
@@ -31386,6 +34760,24 @@
             }
           },
           {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
+          {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
             "name": "Idempotency-Key",
@@ -31533,6 +34925,24 @@
               "format": "uuid",
               "title": "Memo Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
             }
           }
         ],
@@ -32087,6 +35497,24 @@
             }
           },
           {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
+          {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
             "name": "Idempotency-Key",
@@ -32152,7 +35580,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "This proof has already been reviewed. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+            "description": "This proof has already been reviewed, or the deal has ended. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
           },
           "422": {
             "content": {
@@ -32525,6 +35953,24 @@
             }
           },
           {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
+          {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
             "name": "Idempotency-Key",
@@ -32610,7 +36056,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "This proof has already been reviewed. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+            "description": "This proof has already been reviewed, or the deal has ended. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
           },
           "422": {
             "content": {
@@ -32908,6 +36354,24 @@
               "format": "uuid",
               "title": "Memo Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
             }
           },
           {
@@ -33222,6 +36686,24 @@
             }
           },
           {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
+          {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
             "name": "Idempotency-Key",
@@ -33449,6 +36931,24 @@
               "format": "uuid",
               "title": "Memo Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
             }
           }
         ],
@@ -33839,6 +37339,57 @@
         ]
       }
     },
+    "/api/v1/features": {
+      "get": {
+        "description": "Which built features are on now, and for each the problem `code` its routes answer while it is off, so a screen can hide what is off and show it the moment it is switched on, with no app release. The same for everyone; no login. Cached for 5 minutes. Limit: 60 a minute.",
+        "operationId": "features_api_v1_features_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeaturesRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "summary": "What is switched on",
+        "tags": [
+          "public"
+        ]
+      }
+    },
     "/api/v1/me/agent-tokens": {
       "get": {
         "description": "Every token of yours that still works, newest first, with its scopes, its end and when it was last used (to within a minute), never its value. Paginated: `limit` (default 20, at most 100) and `cursor`. Limit: 60 requests per minute.",
@@ -34198,6 +37749,26 @@
       "get": {
         "description": "Everything waiting on the signed-in brand or creator, the most urgent first: any `new_sign_in` (a session signed in during the last 7 days, other than this one: if it was not you, end it at `DELETE /api/v1/me/sessions/{session_id}`), then overdue, then soonest due, then anything without a date. For a brand: applications to review, memos to draft or revise, proof to review before it approves itself, creators to pay, and disputes to answer. For a creator: memos to answer, work to deliver or redo, payments to confirm, payments owed past their date, and disputes to answer. Worked out from the records each time, so an item disappears the moment it is done. Items carry a `kind` code and the facts; the wording belongs to the app. At most 50 items; `counts` and `total` always cover everything, except that at most 50 new sign-ins are counted.",
         "operationId": "read_my_attention_api_v1_me_attention_get",
+        "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -34230,6 +37801,16 @@
               "application/problem+json": {}
             },
             "description": "The profile has not been created yet"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
           },
           "429": {
             "content": {
@@ -34274,7 +37855,7 @@
     },
     "/api/v1/me/blocks": {
       "get": {
-        "description": "Everyone you blocked, newest first. Never who blocked you.",
+        "description": "Everyone you blocked, newest first; on a brand's team, everyone the brand blocked. Never who blocked you.",
         "operationId": "list_blocks_api_v1_me_blocks_get",
         "parameters": [
           {
@@ -34304,6 +37885,24 @@
               ],
               "title": "Cursor"
             }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
           }
         ],
         "responses": {
@@ -34328,6 +37927,17 @@
             },
             "description": "No access token, or it is invalid or expired"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_not_found`: the Brand-Id header names a brand you are not in"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -34337,7 +37947,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "A query parameter or the cursor is invalid"
+            "description": "A query parameter or the cursor is invalid; or `brand_choice_needed`"
           },
           "429": {
             "content": {
@@ -34380,9 +37990,27 @@
         ]
       },
       "post": {
-        "description": "A creator blocks a brand (`brand_id`, from any of its campaigns); a brand blocks a creator (`creator_id`, from search or matches). From then on, in both directions, no invitation, repeat or application can start, and neither appears in the other's search, suggestions or campaign discovery. Deals already agreed carry on: a block cannot undo a contract. **The other side is never told**, and anything they try reads as not found. Blocking twice is one block.",
+        "description": "A creator blocks a brand (`brand_id`, from any of its campaigns); a brand blocks a creator (`creator_id`, from search or matches). From then on, in both directions, no invitation, repeat or application can start, and neither appears in the other's search, suggestions or campaign discovery. Deals already agreed carry on: a block cannot undo a contract. **The other side is never told**, and anything they try reads as not found. Blocking twice is one block. Someone on a brand's team blocks for the whole brand (owner, admin and campaign manager; send `Brand-Id` if you are in more than one).",
         "operationId": "block_api_v1_me_blocks_post",
         "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          },
           {
             "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
             "in": "header",
@@ -34438,6 +38066,17 @@
             },
             "description": "No access token, or it is invalid or expired"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_role_not_allowed`: your role in the brand does not reach creators"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -34447,7 +38086,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "Nobody with that id you could block"
+            "description": "Nobody with that id you could block, or `brand_not_found`: the Brand-Id header names a brand you are not in"
           },
           "409": {
             "content": {
@@ -34469,7 +38108,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "Give brand_id or creator_id, exactly one. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+            "description": "Give brand_id or creator_id, exactly one; or `brand_choice_needed`. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
           },
           "429": {
             "content": {
@@ -34507,7 +38146,7 @@
     },
     "/api/v1/me/blocks/{block_id}": {
       "delete": {
-        "description": "Removes one of your blocks. The other side is not told.",
+        "description": "Removes one of your blocks, or, on a brand's team, one of the brand's. The other side is not told.",
         "operationId": "unblock_api_v1_me_blocks__block_id__delete",
         "parameters": [
           {
@@ -34520,6 +38159,24 @@
               "format": "uuid",
               "title": "Block Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
             }
           }
         ],
@@ -34538,6 +38195,17 @@
             },
             "description": "No access token, or it is invalid or expired"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`brand_role_not_allowed`: your role in the brand does not reach creators"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -34547,17 +38215,18 @@
               },
               "application/problem+json": {}
             },
-            "description": "No such block, or it is not yours"
+            "description": "No such block, or it is not yours; or `brand_not_found`"
           },
           "422": {
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
-              }
+              },
+              "application/problem+json": {}
             },
-            "description": "The request is not valid; `errors` names each field and why"
+            "description": "The block id is not a valid id; or `brand_choice_needed`"
           },
           "429": {
             "content": {
@@ -37608,6 +41277,7 @@
                   "mapping": {
                     "add_passkey": "#/components/schemas/StepUpForAccount",
                     "change_phone": "#/components/schemas/StepUpForPhone",
+                    "change_team": "#/components/schemas/StepUpForTeamChange",
                     "create_agent_token": "#/components/schemas/StepUpForAgentToken",
                     "delete_account": "#/components/schemas/StepUpForAccount",
                     "download_export": "#/components/schemas/StepUpForExport",
@@ -37643,6 +41313,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/StepUpForAgentToken"
+                  },
+                  {
+                    "$ref": "#/components/schemas/StepUpForTeamChange"
                   }
                 ],
                 "title": "Body"
@@ -37994,6 +41667,423 @@
         "summary": "What of mine is withheld",
         "tags": [
           "takedowns"
+        ]
+      }
+    },
+    "/api/v1/me/team-invites": {
+      "get": {
+        "description": "Open invites to the signed-in brand account's own number, oldest first; a short list, since each lapses in 7 days. Limit: 60 a minute.",
+        "operationId": "my_invites_api_v1_me_team_invites_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MyTeamInviteRead"
+                  },
+                  "title": "Response My Invites Api V1 Me Team Invites Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Invites to my number",
+        "tags": [
+          "team"
+        ]
+      }
+    },
+    "/api/v1/me/team-invites/{invite_id}/accept": {
+      "post": {
+        "description": "Accepts an invite to your own number: you act for that brand in its role. Optionally give the first name creators will see. The owner and admins are told. Limit: 30 a minute.",
+        "operationId": "accept_invite_api_v1_me_team_invites__invite_id__accept_post",
+        "parameters": [
+          {
+            "description": "The invite's id",
+            "in": "path",
+            "name": "invite_id",
+            "required": true,
+            "schema": {
+              "description": "The invite's id",
+              "format": "uuid",
+              "title": "Invite Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamInviteAccept"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamMemberRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`team_invite_not_found`"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`already_on_team`, or `team_full` (20 besides the owner). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The first name is not usable. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Join a brand's team",
+        "tags": [
+          "team"
+        ]
+      }
+    },
+    "/api/v1/me/team-invites/{invite_id}/decline": {
+      "post": {
+        "description": "Ends an invite to your own number. Limit: 30 a minute.",
+        "operationId": "decline_invite_api_v1_me_team_invites__invite_id__decline_post",
+        "parameters": [
+          {
+            "description": "The invite's id",
+            "in": "path",
+            "name": "invite_id",
+            "required": true,
+            "schema": {
+              "description": "The invite's id",
+              "format": "uuid",
+              "title": "Invite Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`team_invite_not_found`"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Say no to an invite",
+        "tags": [
+          "team"
+        ]
+      }
+    },
+    "/api/v1/me/teams/{brand_id}": {
+      "delete": {
+        "description": "Stop acting for a brand you belong to, at once, with no code. The brand's owner cannot leave their own brand this way. Limit: 30 a minute.",
+        "operationId": "leave_team_api_v1_me_teams__brand_id__delete",
+        "parameters": [
+          {
+            "description": "The brand's id",
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "description": "The brand's id",
+              "format": "uuid",
+              "title": "Brand Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`team_member_not_found`"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Leave a brand's team",
+        "tags": [
+          "team"
         ]
       }
     },
@@ -38460,6 +42550,24 @@
               "description": "From a previous page's next_cursor",
               "title": "Cursor"
             }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
           }
         ],
         "responses": {
@@ -38562,6 +42670,26 @@
       "get": {
         "description": "How many payments, and how much, are to pay, overdue, awaiting confirmation and finished, across all the caller's deals. Overdue is always returned, zero included.",
         "operationId": "my_payment_totals_api_v1_payments_mine_totals_get",
+        "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -38605,6 +42733,16 @@
               "application/problem+json": {}
             },
             "description": "The profile has not been created yet"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
           },
           "429": {
             "content": {

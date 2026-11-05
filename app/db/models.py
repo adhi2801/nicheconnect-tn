@@ -11,6 +11,7 @@ from app.modules.auth.models.attribution import (
 )
 from app.modules.auth.models.auth_session import AuthSession  # noqa: F401
 from app.modules.auth.models.brand import Brand  # noqa: F401
+from app.modules.auth.models.brand_team import BrandInvite, BrandMember  # noqa: F401
 from app.modules.auth.models.creator import Creator  # noqa: F401
 from app.modules.auth.models.device_token import DeviceToken  # noqa: F401
 from app.modules.auth.models.otp_challenge import OtpChallenge  # noqa: F401
@@ -25,6 +26,7 @@ from app.modules.campaigns.alert_models import (  # noqa: F401
     CampaignAlert,
     CampaignAlertSend,
 )
+from app.modules.campaigns.brief_models import CampaignBriefDraft  # noqa: F401
 from app.modules.campaigns.deliverable_models import CampaignDeliverable  # noqa: F401
 from app.modules.campaigns.models import (
     Application,  # noqa: F401

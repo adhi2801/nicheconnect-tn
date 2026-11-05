@@ -185,6 +185,15 @@ class CampaignRead(BaseModel):
 
     id: uuid.UUID
     brand_id: uuid.UUID
+    brand_name: str = Field(
+        default="",
+        description=(
+            "The brand's name, as it signs its campaigns: the first thing a "
+            "creator asks of one. Show `brand_name_flag` beside it when set, "
+            "and the verified domain where there is one"
+        ),
+        examples=["Thendral Sweets"],
+    )
     title: str
     description: str
     campaign_type: CampaignType
@@ -206,6 +215,14 @@ class CampaignRead(BaseModel):
             "with when it was registered (item 74). Null when it has none. It "
             "says the brand controls this domain, not that the brand is who its "
             "name claims: show the domain itself, never only a badge"
+        ),
+    )
+    applicant_count: int | None = Field(
+        default=None,
+        description=(
+            "How many creators came forward: applied, or said yes to an "
+            "invitation, whatever you decided since. On your own campaign "
+            "list only; null everywhere else"
         ),
     )
     brand_name_flag: BrandNameFlagRead | None = Field(

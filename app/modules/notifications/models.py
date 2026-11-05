@@ -125,6 +125,17 @@ NOTIFICATION_TYPES: tuple[str, ...] = (
     "draft_approved",
     "draft_auto_approved",
     "draft_changes_requested",
+    # Who acts for a brand (item 13, D-148): to a brand account whose number
+    # was invited to a team; to the owner and admins when someone joins; to a
+    # member whose role changed, or who was removed.
+    "team_invite_received",
+    "team_joined",
+    "team_role_changed",
+    "team_removed",
+    # To each creator with a deal still unfinished with a brand, when the
+    # brand is handed to a new owner (D-151): the deal carries on, and the
+    # creator knows who now holds the business's account.
+    "brand_changed_hands",
 )
 MAX_DETAILS_LENGTH = 2000
 

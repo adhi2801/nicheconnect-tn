@@ -146,6 +146,7 @@ tests/
 12. Images built and scanned; any fixable vulnerability in the API image blocks (Grype); the API image's bill of materials written (Syft). The embeddings image is built and its scan reported on every push to `main`, for pull requests, and on a branch that changes what goes into it (D-125); until then it was built for pull requests only, and merges made without one (D-101) skipped it
 13. Private vulnerability reporting switched on for the repository, since `SECURITY.md` sends researchers there (its own job, `repository-settings`)
 14. The OpenTofu files formatted and every environment valid against its locked providers (its own job, `infrastructure`, D-086)
+15. The frontend (its own job, `frontend`, D-152): the lockfile installed exactly; the design tokens rebuilt, matching what is committed, with every text and background pair at its contrast floor; the API types regenerated from `docs/api/openapi.json`, matching what is committed, so a contract change reaches the screens as a type error; lint; the web app's unit tests; its production build, which type-checks every page; and the landing page served and read as plain HTML, every heading present without a script (`frontend/scripts/check-no-js.mjs`, D-157). What `docs/standards/frontend.md` section 12 still owes is listed there
 
 Nightly, in its own workflow: **mutation testing** (`mutation.yml`, D-091). A night with more surviving mutants than accepted is a failure to fix the next day, like a red CI.
 
@@ -169,7 +170,7 @@ Every job runs on an exact runner image (`ubuntu-24.04`), never `ubuntu-latest`,
 
 | # | Gap | Risk | Acting on it |
 |---|---|---|---|
-| 1 | **`main` has no branch protection**, so a merge with a failing run is not stopped. Until 14 October, a false positive in the secret scan also stopped every run at its second step from 12 October on, unseen, so no later gate ran on GitHub | A red build can reach `main` | A founder turns on branch protection for `main`, requiring the `test`, `image`, `infrastructure` and `repository-settings` jobs |
+| 1 | **`main` has no branch protection**, so a merge with a failing run is not stopped. Until 14 October, a false positive in the secret scan also stopped every run at its second step from 12 October on, unseen, so no later gate ran on GitHub | A red build can reach `main` | A founder turns on branch protection for `main`, requiring the `test`, `image`, `infrastructure`, `frontend` and `repository-settings` jobs |
 | 2 | **Two required tests are *(review only)***: the query-count test per list and the concurrency test per "only if" rule. The stranger test per route became mechanical on 14 October (item 100) | One missed test is a missed bug, found by a user | Each gains a check when one is practical |
 | 3 | **Fuzzing gates only server errors**, and its findings file was last updated in September, with 64 operations then and 123 routes now | Contract drift the other checks would catch goes unseen | Re-run every check, update the findings, then gate what passes; a CI change, so an Infrastructure gate |
 | 4 | **Mutation testing covers eight files**; 186 mutants survived the wider run | Weak tests outside those files are invisible | Item 93 |

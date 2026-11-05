@@ -33,6 +33,7 @@ from app.modules.auth.models.agent_token import AgentToken
 from app.modules.auth.models.attribution import AccountAttribution, InviteCode
 from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.models.brand import Brand
+from app.modules.auth.models.brand_team import BrandInvite, BrandMember
 from app.modules.auth.models.creator import HANDLE_PATTERN, Creator
 from app.modules.auth.models.device_token import DeviceToken
 from app.modules.auth.models.otp_challenge import OtpChallenge
@@ -41,6 +42,7 @@ from app.modules.auth.models.step_up_challenge import StepUpChallenge
 from app.modules.auth.models.totp_factor import TotpFactor
 from app.modules.auth.sender import FakeOtpSender, get_otp_sender
 from app.modules.campaigns.alert_models import CampaignAlert
+from app.modules.campaigns.brief_models import CampaignBriefDraft
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.matching.creator_list_models import CreatorList, CreatorListEntry
 from app.modules.matching.models import EMBEDDING_DIMENSIONS, CreatorEmbedding
@@ -313,7 +315,46 @@ def fill(db: Session, who: Person, other: Person, clock: Clock) -> set[str]:
         db.add(saved)
         db.flush()
         db.add(CreatorListEntry(list_id=saved.id, creator_id=other.profile_id))
-        tables |= {"brand_domain", "creator_list"}
+        # The brand's team (D-148): a member, and an invite still open; an
+        # owner who leaves takes both with them.
+        db.add(
+            BrandMember(
+                brand_id=who.profile_id,
+                account_id=create_account(db, "brand").id,
+                role="campaigns",
+                first_name="Ravi",
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        db.add(
+            BrandInvite(
+                brand_id=who.profile_id,
+                role="finance",
+                first_name="Meena",
+                phone_hash=hex64(),
+                expires_at=now + timedelta(days=7),
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        # A brief the brand asked to have drafted (item 40, D-156).
+        db.add(
+            CampaignBriefDraft(
+                brand_id=who.profile_id,
+                requested_by_account_id=who.account_id,
+                idea="Our millet laddu box for Pongal, two reels from Madurai.",
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        tables |= {
+            "brand_domain",
+            "creator_list",
+            "brand_member",
+            "brand_invite",
+            "campaign_brief_draft",
+        }
     db.flush()
     return tables
 

@@ -5,7 +5,8 @@ import "./globals.css";
 // Self-hosted at build time by next/font, with a size-matched fallback so text does not shift as it loads.
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"], display: "swap" });
 const jakarta = Plus_Jakarta_Sans({ variable: "--font-jakarta", subsets: ["latin"], display: "swap" });
-const jetbrains = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"], display: "swap" });
+// Figures in the signed-in app only: not preloaded, so public pages do not pay for a face they never show.
+const jetbrains = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"], display: "swap", preload: false });
 
 export const metadata: Metadata = {
   title: { default: "Colyv", template: "%s · Colyv" },

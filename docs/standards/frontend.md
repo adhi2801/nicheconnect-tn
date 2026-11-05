@@ -214,6 +214,8 @@ Coverage floor: **90% of the shared core**, measured, never estimated; a high nu
 
 **A pull request merges only when all of these pass**: format, lint and type check; unit, component, contract and end-to-end tests; bundle and download-size budgets; the 3D asset budget (section 8b); Lighthouse budgets; the render-without-JavaScript check (section 8d); visual regression at phone and desktop widths, light and dark; automated accessibility, with motion on and off; the pseudo-locale check; the banned-words check; the dependency audit.
 
+**Running in CI today** (the `frontend` job of `.github/workflows/ci.yml`, since 4 November 2026, D-152): the lockfile installs exactly; the design tokens are rebuilt and must match what is committed, and every one of their 112 text and background pairs must meet its contrast floor; the API types are regenerated from `docs/api/openapi.json` and must match; lint; the unit tests; the production build, which type-checks every page; and, since D-157, the landing page read as plain HTML with every heading present, no script run (`frontend/scripts/check-no-js.mjs`). **Still owed, in this order:** a format check, component and end-to-end tests in CI, automated accessibility, Lighthouse and bundle budgets, the 3D asset budget, visual regression, the pseudo-locale check, the banned-words check over the message catalogue, the dependency audit and licence check. Each is added to the same job when it lands, and this list shrinks with it.
+
 **Releases:**
 
 - **Staged rollouts** for the apps (1%, then 10%, 50%, 100%), each step held until crash-free sessions and ANR rate meet section 4.
@@ -250,12 +252,17 @@ Each is in `docs/api/openapi.json`; the screens should use them rather than work
 - **A deal's dates in the phone's calendar** (item 69): `GET /api/v1/deal-memos/{id}/calendar.ics`, offered as "Add to calendar" on the deal screen; adding it again updates the same events.
 - **A reporter sees what became of each report** (item 102): `GET /api/v1/reports/mine`, and a `report_resolved` notification.
 - **A campaign's report a brand can hand on** (item 47): JSON and CSV.
+- **Who a campaign is from, and which deal a row is** (R1, D-153): `brand_name` on every campaign read; `campaign_title` and `counterparty_name` on every memo, on the list and on one (a brand reads the creator's handle, a creator the brand's name). A deal card needs no second call.
+- **Who applied, in one call** (R2, D-154): each application on `GET /api/v1/campaigns/{id}/applications` carries its `creator` (handle, name, city, niches, delivery record), for the campaign's brand only; the brand's own campaign list carries `applicant_count`, null everywhere else.
+- **Creator search in plain words** (item 64, D-158): one box; `GET /api/v1/creators/search-reading?words=` answers `filters`, passed unchanged to `GET /api/v1/creators`. Show each of `read_as` as a chip the brand can remove, `unread` as words not used, and each note from its `code` in the message catalogue; an unknown code shows its words alone.
+- **A campaign brief from a few sentences** (item 40, D-156): `POST /api/v1/brief-drafts` returns `202` and a `Location`; read it until `ready`, then prefill the new-campaign form with `draft`. Show the box only when `GET /api/v1/features` says `brief_drafting` is on.
+- **What is switched on** (R6, D-153): `GET /api/v1/features`, public and cached for 5 minutes: each feature that can be off, whether it is on, and the problem code its routes answer while it is off. Hide what is off from it, never from a constant in the app, so switching a feature on needs no release.
 
 ## Gaps, named
 
 | Gap | Acting on it |
 |---|---|
-| The first code in `frontend/` (pull request #78) was written before this bar was raised and meets few of its gates: no measured budgets, no visual regression, a placeholder home page | Rebuilt screen by screen to this file; the CI gates in section 12 come first, before features pile up |
+| The first code in `frontend/` (pull request #78) was written before this bar was raised and meets few of its gates: no measured budgets, no visual regression. The home page is the landing page since 4 November 2026 (D-155), its Lighthouse and visual checks still owed | Rebuilt screen by screen to this file; the CI gates in section 12 come first, before features pile up. The first six run since 4 November 2026 (section 12); turning them on found the API types 5,400 lines behind the contract and three attention kinds (a draft to show, to change, to review) with no words or link, all fixed the same day |
 | The 3D byte budget and the splat viewer are not chosen yet | A benchmark on the budget Android reference phone, before the first scene |
 | Four choices are still open: the API client generator, the lint tool, the login provider, the deep-link provider | Decided with a decision entry when frontend work starts (section 2) |
 | The platform plan (D-046: both roles on all three clients) awaits Erode Harish | His confirmation, relayed by Adhi |
