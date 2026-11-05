@@ -691,47 +691,6 @@ def panel_relief(cx, cy, z, R, side, depth=0.12, key="carve", variant=0):
     )
 
 
-def deity(cx, cy, z0, tall, wide, side):
-    """A standing deity in a niche: pedestal, body, shoulders, head and tall crown (kirita).
-
-    Turned from a profile, flattened front to back as a relief is, so in the
-    shadow of the niche it reads as a carved figure, not as a column.
-    """
-    R, F = wide, tall
-    profile = [
-        (0.95 * R, 0.0),
-        (0.95 * R, 0.07 * F),
-        (0.8 * R, 0.085 * F),  # the lotus pedestal
-        (0.42 * R, 0.1 * F),
-        (0.36 * R, 0.3 * F),
-        (0.4 * R, 0.44 * F),  # knees to hips, the hip flare of the tribhanga
-        (0.5 * R, 0.52 * F),
-        (0.32 * R, 0.6 * F),  # waist
-        (0.44 * R, 0.68 * F),
-        (0.62 * R, 0.75 * F),  # shoulders and the upper arms
-        (0.56 * R, 0.78 * F),
-        (0.15 * R, 0.8 * F),  # neck
-        (0.26 * R, 0.83 * F),
-        (0.28 * R, 0.88 * F),  # head
-        (0.24 * R, 0.91 * F),
-        (0.2 * R, 0.96 * F),  # the crown, tapering
-        (0.06 * R, 1.0 * F),
-    ]
-    flat = 0.55
-    if side in (0, 2):
-        loft("stone", cx, cy, [(r, z0 + z) for r, z in profile], e=2.2, n=28, aspect=flat)
-    else:
-        loft(
-            "stone",
-            cx,
-            cy,
-            [(r * flat, z0 + z) for r, z in profile],
-            e=2.2,
-            n=28,
-            aspect=1 / flat,
-        )
-
-
 def storey(half, z0, h, niche_count, pil_step):
     """A wall built as Dravidian walls are: a recessed core, projecting bays, and deep niches cut into the bays."""
     core = half - 0.75
@@ -757,8 +716,7 @@ def storey(half, z0, h, niche_count, pil_step):
             u = -core * 0.68 + 1.36 * core * (
                 i / (niche_count - 1) if niche_count > 1 else 0.5
             )
-            # A devakoshta, as on the Thanjavur walls: a rectangular niche with a
-            # deity, framed by pilasters, under a flat lintel and a small barrel
+            # A niche, as on the Thanjavur walls: rectangular, framed by pilasters, under a flat lintel and a small barrel
             # roof (shala) whose gable carries the kudu. No arch spans the
             # opening: Dravidian walls have none. The central bay (bhadra) is
             # the widest and stands furthest out, so the wall has a centre.
@@ -821,17 +779,21 @@ def storey(half, z0, h, niche_count, pil_step):
                 side,
                 out=0.12,
             )
-            # the deity standing in the niche, on its pedestal
-            # it fills its niche, as the Thanjavur deities do, and stands as far
-            # forward as the bay does, so the deep central niche is not left dark
-            deity(
-                tan[0] * u + nrm[0] * (core + out * 0.8),
-                tan[1] * u + nrm[1] * (core + out * 0.8),
-                z0 + h * 0.12,
-                h * (top - 0.12) * 0.95,
-                w_i * 0.88,
-                side,
-            )
+            # The niche is shallow, as Chola wall niches are, so the light
+            # reaches its back; the back is cut in three steps, each smaller
+            # and further forward, a carved field with nothing in it, never a
+            # figure (TAMIL_DESIGN_ROOTS.md rule 1).
+            back = 2 * out - 0.35
+            place(u, back / 2, w_i, back / 2, z0 + h * 0.12, h * (top - 0.12))
+            for k in range(3):
+                place(
+                    u,
+                    back + 0.03 + 0.05 * k,
+                    w_i * (0.86 - 0.17 * k),
+                    0.03,
+                    z0 + h * (0.16 + 0.035 * k),
+                    h * (top - 0.2 - 0.07 * k),
+                )
             # slim pilasters on the recessed wall between bays
             if i < niche_count - 1:
                 u2 = -core * 0.68 + 1.36 * core * ((i + 0.5) / (niche_count - 1))
