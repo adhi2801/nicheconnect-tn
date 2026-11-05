@@ -25,6 +25,15 @@ from mathutils import Vector
 argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
 QUALITY = next((a.split("=", 1)[1] for a in argv if a.startswith("quality=")), "preview")
 GRADE = next((a.split("=", 1)[1] for a in argv if a.startswith("grade=")), "morning")
+# The granite's warmth: tan to ochre by day, cream-gold under the night floods (ref05,
+# ref06). At dusk the first pass measured saturation 0.15 against the reference's 0.31.
+STONE_TINT = (
+    (1.45, 1.14, 0.8)
+    if GRADE == "gold"
+    else (1.66, 1.12, 0.55)
+    if GRADE == "blue"
+    else (1.34, 1.12, 0.86)
+)
 HERO = "--hero" in argv
 ORBIT = float(next((a.split("=", 1)[1] for a in argv if a.startswith("orbit=")), "-38"))
 OUT = argv[0] if argv else "//vimana.png"
@@ -82,6 +91,29 @@ def loft(
         bm.faces.new(list(reversed(rings[-1])) if False else rings[-1])
     if cap_bottom:
         bm.faces.new(list(reversed(rings[0])))
+
+
+def octa_loft(key, cx, cy, profile, n=64):
+    """Revolve a profile [(r, z), ...] around a regular octagon (r to the face centres),
+    n points a ring laid on its eight flat faces, so smooth shading keeps the faces flat
+    and the corners crisp. The Thanjavur griva and shikhara are octagonal (Balasubrahmanyam
+    1975, via the Wikipedia article on the temple, read 6 November 2026)."""
+    bm = MESHES[key]
+    rings = []
+    for r, z in profile:
+        row = []
+        for i in range(n):
+            t = 2 * math.pi * i / n
+            k = math.cos(math.pi / 8) / math.cos((t % (math.pi / 4)) - math.pi / 8)
+            row.append(
+                bm.verts.new((cx + r * k * math.cos(t), cy + r * k * math.sin(t), z))
+            )
+        rings.append(row)
+    for a, b in itertools.pairwise(rings):
+        for i in range(n):
+            j = (i + 1) % n
+            bm.faces.new((a[i], a[j], b[j], b[i]))
+    bm.faces.new(rings[-1])
 
 
 def box(key, cx, cy, z0, hx, hy, h):
@@ -399,6 +431,70 @@ def nasika(cx, cy, z0, w, h, side, thick=0.28, out=0.32):
     )
 
 
+def fan_kudu(cx, cy, z0, w, h, side):
+    """The great kudu of the Thanjavur tower: a horseshoe arch filled with a radiating fan
+    of ribs and edged with flame tongues, standing on the gable of a tier's central pavilion
+    (reference photographs ref05, ref06, ref08; the round fans that read from the courtyard).
+    Ornament only: no face, no figure (TAMIL_DESIGN_ROOTS.md rule 1); ribs, not petals (rule 6)."""
+    bm = MESHES["stone"]
+    nrm = [(0, -1), (1, 0), (0, 1), (-1, 0)][side]
+    tan = (-nrm[1], nrm[0])
+
+    def at(u, wz, depth):
+        return Vector(
+            (
+                cx + tan[0] * u * w + nrm[0] * depth,
+                cy + tan[1] * u * w + nrm[1] * depth,
+                z0 + wz * h,
+            )
+        )
+
+    lo, hi = -0.25, math.pi + 0.25
+    # the field behind the ribs, set back so each rib throws a shadow on it
+    hub = bm.verts.new(at(0.0, 0.08, 0.0))
+    rim = [
+        bm.verts.new(at(0.8 * math.cos(t), 0.08 + 0.8 * math.sin(t), 0.0))
+        for t in (lo + (hi - lo) * i / 24 for i in range(25))
+    ]
+    for a, b in itertools.pairwise(rim):
+        bm.faces.new((hub, b, a))
+    # the ribs, fanning from the hub, each ending in a round eye
+    for i in range(15):
+        t = lo + 0.12 + (hi - lo - 0.24) * i / 14
+        tip = at(0.72 * math.cos(t), 0.08 + 0.72 * math.sin(t), 0.1)
+        tube(
+            "stone",
+            [
+                at(0.0, 0.1, 0.05),
+                at(0.4 * math.cos(t), 0.08 + 0.4 * math.sin(t), 0.09),
+                tip,
+            ],
+            [w * 0.025, w * 0.04, w * 0.05],
+            n=6,
+        )
+        bead("stone", tip.x, tip.y, tip.z, w * 0.075)
+    # the arch itself, broad and deep
+    nasika(cx, cy, z0 + 0.08 * h, w, h, side, thick=0.2, out=0.16)
+    # flame tongues round its outer edge, leaning up toward the crown
+    for i in range(21):
+        t = lo + (hi - lo) * i / 20
+        r0, r1 = 1.0, 1.16 + 0.04 * math.sin(t)
+        lean = 0.12 * math.cos(t)
+        tube(
+            "stone",
+            [
+                at(r0 * math.cos(t), 0.08 + r0 * math.sin(t), 0.08),
+                at(
+                    r1 * math.cos(t) - lean * 0.3,
+                    0.08 + r1 * math.sin(t) + lean * 0.2,
+                    0.07,
+                ),
+            ],
+            [w * 0.045, w * 0.008],
+            n=5,
+        )
+
+
 def niches(cx, cy, z0, half, h, count):
     for side in range(4):
         for i in range(count):
@@ -460,9 +556,14 @@ def prastara(cx, cy, z0, half, k=1.0):
     return z0 + 1.85 * k
 
 
-def hara(cx, cy, z0, half, s):
-    """A ring of pavilions on the cornice: kutas at corners, a shala mid-side, panjaras between."""
+def hara(cx, cy, z0, half, s, fans=False):
+    """A ring of pavilions on the cornice: kutas at corners, a shala mid-side, panjaras between.
+    With `fans`, each central shala's outer gable carries the great fan kudu."""
     edge = half - s * 0.35
+    if fans:
+        for side, (fx, fy) in enumerate(((0, -1), (1, 0), (0, 1), (-1, 0))):
+            d = edge + 0.42 * s * 1.12 + 0.02
+            fan_kudu(cx + fx * d, cy + fy * d, z0 + 0.4 * s, 0.66 * s, 0.98 * s, side)
     for sx in (-1, 1):
         for sy in (-1, 1):
             kuta(cx + sx * edge, cy + sy * edge, z0, s)
@@ -779,21 +880,48 @@ def storey(half, z0, h, niche_count, pil_step):
                 side,
                 out=0.12,
             )
-            # The niche is shallow, as Chola wall niches are, so the light
-            # reaches its back; the back is cut in three steps, each smaller
-            # and further forward, a carved field with nothing in it, never a
-            # figure (TAMIL_DESIGN_ROOTS.md rule 1).
-            back = 2 * out - 0.35
+            # An empty niche reads by its depth: the lintel shades its top, light
+            # from below reaches only its sill, and the back is plain dressed stone
+            # with nothing in it, never a figure (TAMIL_DESIGN_ROOTS.md rule 1).
+            # Stepped raised panels in a shallow recess read as cupboard doors
+            # (dusk pass faults, 6 November 2026), so the back is set 0.6 m in.
+            back = max(0.1, 2 * out - 0.6)
             place(u, back / 2, w_i, back / 2, z0 + h * 0.12, h * (top - 0.12))
-            for k in range(3):
-                place(
-                    u,
-                    back + 0.03 + 0.05 * k,
-                    w_i * (0.86 - 0.17 * k),
-                    0.03,
-                    z0 + h * (0.16 + 0.035 * k),
-                    h * (top - 0.2 - 0.07 * k),
+            if centre:
+                # The central bay of each storey on the real tower holds a tall stone
+                # lattice window (jala), not a niche: a framed grid of square openings
+                # onto the dark passage behind (reference photographs ref05, ref06, ref12).
+                lw, lz0 = w_i * 0.62, z0 + h * 0.15
+                lh = h * (top - 0.19)
+                cols = 6
+                cell = 2 * lw / cols
+                rows = max(4, round(lh / cell))
+                bar = cell * 0.2
+                d_l = back + 0.14
+                # the dark beyond the openings
+                xd = tan[0] * u + nrm[0] * (core + back + 0.01)
+                yd = tan[1] * u + nrm[1] * (core + back + 0.01)
+                box(
+                    "niche",
+                    xd,
+                    yd,
+                    lz0,
+                    abs(tan[0]) * lw + abs(nrm[0]) * 0.01,
+                    abs(tan[1]) * lw + abs(nrm[1]) * 0.01,
+                    lh,
                 )
+                # the frame, then the bars
+                for fu, fhu, fz, fh in (
+                    (-lw - bar, bar, lz0 - bar, lh + 2 * bar),
+                    (lw + bar, bar, lz0 - bar, lh + 2 * bar),
+                    (0.0, lw + 2 * bar, lz0 - 2 * bar, 2 * bar),
+                    (0.0, lw + 2 * bar, lz0 + lh, 2 * bar),
+                ):
+                    place(u + fu, d_l, fhu, 0.16, fz, fh)
+                for c in range(1, cols):
+                    place(u - lw + c * cell, d_l, bar / 2, 0.1, lz0, lh)
+                for r in range(1, rows):
+                    place(u, d_l, lw, 0.1, lz0 + r * lh / rows - bar / 2, bar)
             # slim pilasters on the recessed wall between bays
             if i < niche_count - 1:
                 u2 = -core * 0.68 + 1.36 * core * ((i + 0.5) / (niche_count - 1))
@@ -840,7 +968,7 @@ def build():
     z = adhishthana(half, z)
     for h, nc in ((7.6, 5), (6.8, 5)):
         z = storey(half, z, h, nc, 2.1)
-        hara(0, 0, z, half + 0.4, 2.3)
+        hara(0, 0, z, half + 0.4, 2.3, fans=True)
         half -= 1.0
         z += 0.25
     # the receding talas
@@ -853,10 +981,13 @@ def build():
         box("stone", 0, 0, z, half_t - 0.3, half_t - 0.3, h_t)
         pilasters(0, 0, z, half_t - 0.2, h_t, 1.1 + f * 0.3, depth=0.14, width=0.2)
         z = prastara(0, 0, z + h_t, half_t - 0.9, k)
-        hara(0, 0, z - 0.15, half_t - 0.1, 2.0 - f * 0.75)
+        # the great fans crown the lower tiers, as they do on the real tower
+        hara(0, 0, z - 0.15, half_t - 0.1, 2.0 - f * 0.75, fans=t < 4)
         z += 0.25
     # on the real tower the crown stands on a platform wider than the top tier
-    return crown(z, (half - 1.4 - (tiers - 1) * 0.62) * 1.35)
+    # The capstone is 7.77 m square (Balasubrahmanyam 1975); 1.35 times the top tier
+    # made it 10.2 m, and from below the crown read as a slab (dusk pass, 6 November 2026).
+    return crown(z, 7.77 / 2)
 
 
 def crown(z, T):
@@ -891,10 +1022,10 @@ def crown(z, T):
                 e=6,
                 n=24,
             )
-    # the neck: a short drum, rounded square, a niche between pilasters on each side
+    # the neck: a short octagonal drum, a niche between pilasters on each cardinal face
     r_neck = T * 0.8
     neck = 1.25
-    loft(
+    octa_loft(
         "stone",
         0,
         0,
@@ -904,7 +1035,6 @@ def crown(z, T):
             (r_neck, z + neck - 0.12),
             (r_neck + 0.16, z + neck),
         ],
-        e=6,
         n=64,
     )
     for side in range(4):
@@ -996,17 +1126,18 @@ def crown(z, T):
             n=8,
         )
     z += 1.14
-    # the dome: rounded, a little squat, carved all over in a diamond lattice
+    # the dome: octagonal, a little squat, carved all over in a diamond lattice
     Rd = T * 0.98
     Hd = T * 1.0
     dome = [
         (Rd * math.cos(a) + 0.01, z + Hd * math.sin(a))
         for a in [i * math.pi / 2 / 18 for i in range(19)]
     ]
-    loft("dome", 0, 0, dome, e=2, n=96)
-    # round medallions set into the lattice, between the crests
-    for i in range(8):
-        a8 = math.pi / 8 + i * math.pi / 4
+    octa_loft("dome", 0, 0, dome, n=96)
+    # round medallions set into the lattice, one on each diagonal face, between the crests
+    # (the octagon's corners stand at odd eighths of a turn, its faces at quarter points)
+    for i in range(4):
+        a8 = math.pi / 4 + i * math.pi / 2
         el = 0.36
         cx_, cy_ = (
             Rd * math.cos(el) * math.cos(a8) * 1.0,
@@ -1123,25 +1254,77 @@ def crown(z, T):
     return z + 3.8
 
 
+# The courtyard's plan, after Pichard (Tanjavur Brhadisvara: An Architectural Study, 1995,
+# as excerpted by IGNCA, read 6 November 2026) and Balasubrahmanyam (1975): twice as long
+# as it is wide, about 241 by 122 m; the tower in the middle of the western half; the
+# eastern half open, the Nandi pavilion at its centre. In this scene east is -y: the axis
+# runs from the gateway down -y to the tower at the origin.
+YARD_W, YARD_E, YARD_X = 60.25, -180.75, 61.0
+
+
 def courtyard():
+    """The cloister (tiruchuttru maligai), after Pichard: a gallery 5.61 m deep on the ground
+    floor only, two rows of plain square monolithic pillars 38 cm a side, 2.02 m high on a
+    raised floor, 2.96 m from the courtyard, about 1.94 m apart; the enclosure wall behind
+    shows two levels of pilasters and two cornices, for an upper storey never built."""
     box("floor", 0, 0, -0.3, 260, 260, 0.3)
-    # a cloister on three sides: a low wall with a colonnade in front
-    for cx, cy, hx, hy in ((0, 95, 120, 1.2), (-120, 0, 1.2, 95), (120, 0, 1.2, 95)):
-        box("wall", cx, cy, 0, hx, hy, 6.5)
-        box(
-            "wall",
-            cx,
-            cy,
-            6.5,
-            hx + (2.6 if hx < 5 else 0),
-            hy + (2.6 if hy < 5 else 0),
-            0.7,
-        )
-    for i in range(-36, 37):
-        u = i * 3.2
-        for x, y in ((u, 92), (-117, u * 0.8), (117, u * 0.8)):
-            if abs(x) <= 118 and abs(y) <= 93:
-                box("wall", x, y, 0, 0.45, 0.45, 6.5)
+    depth, plinth, shaft, pitch, half_p = 5.61, 0.94, 2.02, 1.94, 0.19
+    wall_t, wall_h = (
+        1.2,
+        7.4,
+    )  # not in the excerpt: estimated from photographs (ref09, ref10)
+    roof = plinth + shaft + 0.42 + 0.32  # beam, then roof slabs
+    sides = (
+        # (axis along x?, fixed coordinate, inward sign, from, to)
+        (True, YARD_W, -1, -YARD_X, YARD_X),
+        (True, YARD_E, 1, -YARD_X, YARD_X),
+        (False, -YARD_X, 1, YARD_E, YARD_W),
+        (False, YARD_X, -1, YARD_E, YARD_W),
+    )
+    for along_x, c, inward, a0, a1 in sides:
+        mid, half = (a0 + a1) / 2, (a1 - a0) / 2
+
+        def put(key, off, hu, hd, z, hh, u=mid, along_x=along_x, c=c, inward=inward):
+            """A block `off` in from the wall line, centred at u along the side."""
+            p = c + inward * off
+            if along_x:
+                box(key, u, p, z, hu, hd, hh)
+            else:
+                box(key, p, u, z, hd, hu, hh)
+
+        # the enclosure wall, two cornices on its inner face
+        put("wall", wall_t / 2, half + wall_t, wall_t / 2, 0.0, wall_h)
+        for zc in (roof - 0.1, wall_h - 0.35):
+            put("wall", wall_t + 0.12, half, 0.14, zc, 0.35)
+        # the gallery floor, then the eave of its flat roof
+        put("wall", wall_t + depth / 2, half, depth / 2, 0.0, plinth)
+        put("wall", wall_t + depth / 2 + 0.25, half, depth / 2 + 0.25, roof - 0.32, 0.32)
+        n = int(2 * half / pitch)
+        for i in range(n + 1):
+            u = a0 + i * (2 * half / n)
+            if not along_x and abs(u - YARD_E) < 3:
+                continue
+            if along_x and c == YARD_E and abs(u) < 4.5:
+                continue  # the gateway's passage on the axis
+            # pilasters on the wall, lower and upper level
+            for z0, hh in ((plinth, shaft + 0.42), (roof, wall_h - roof - 0.4)):
+                put("wall", wall_t + 0.07, 0.17, 0.07, z0, hh, u=u)
+            for off in (wall_t + 1.5, wall_t + depth - 0.35):
+                put("pstone", off, half_p, half_p, plinth, shaft, u=u)
+                # a plain corbel, rounded on its lower edge as in ref20
+                put("pstone", off, half_p + 0.22, half_p + 0.06, plinth + shaft, 0.2, u=u)
+                put(
+                    "pstone",
+                    off,
+                    half_p + 0.12,
+                    half_p + 0.02,
+                    plinth + shaft - 0.12,
+                    0.12,
+                    u=u,
+                )
+            # the beam along each row
+        for off in (wall_t + 1.5, wall_t + depth - 0.35):
+            put("pstone", off, half, 0.22, plinth + shaft + 0.2, 0.22)
 
 
 MESHES["grass"] = bmesh.new()
@@ -1174,15 +1357,18 @@ def mandapa(x0, x1, hy):
         box("stone", min(x0, x1) - 0.12, v, z, 0.22, 0.18, wall_h)
     for i in range(int(2 * hx / 5.0)):
         u = min(x0, x1) + 2.5 + i * 5.0
-        for sy, side in ((-1, 0), (1, 2)):
-            # a framed panel: jamb pilasters with capitals, a kudu medallion, a kudu arch above
+        for sy in (-1, 1):
+            # A niche as on the tower's own walls (the halls share its wall treatment,
+            # ref08): framing pilasters with capitals, a deep plain recess, a flat lintel
+            # and a small barrel-roofed pediment. A medallion under an arch here read as
+            # an arched window (dusk pass, 6 November 2026).
             for d in (-1, 1):
                 box("stone", u + d * 1.25, sy * (hy + 0.3), z + 0.5, 0.22, 0.3, 4.6)
                 box("stone", u + d * 1.25, sy * (hy + 0.35), z + 5.1, 0.36, 0.36, 0.25)
             box("stone", u, sy * (hy + 0.3), z + 0.3, 1.5, 0.32, 0.25)
+            box("niche", u, sy * (hy - 0.05), z + 0.55, 0.95, 0.06, 4.5)
             box("stone", u, sy * (hy + 0.32), z + 5.35, 1.6, 0.34, 0.3)
-            panel_relief(u, sy * hy, z + 2.9, 0.75, side)
-            nasika(u, sy * (hy + 0.35), z + 5.7, 1.1, 1.3, side, out=0.2)
+            barrel("stone", u, sy * (hy + 0.2), z + 5.65, 1.05, 0.38, along_x=True)
     z += wall_h
     for d, h in ((0.3, 0.3), (0.8, 0.35), (1.2, 0.35), (1.0, 0.25), (0.4, 0.4)):
         box("stone", cx, 0, z, hx + d, hy + d, h)
@@ -1195,6 +1381,23 @@ def mandapa(x0, x1, hy):
                 shala(u, sy * (hy - 0.4), z, s, True, side)
             else:
                 kuta(u, sy * (hy - 0.4), z, s * 0.85)
+
+
+def turned_quarter(fn, *args):
+    """Build `fn(*args)`, then turn everything it made a quarter turn about the vertical
+    axis through the tower, (x, y) -> (-y, x): so a hall written along -x stands on the
+    tower's east axis, which runs down -y in this scene."""
+    marks = {k: len(bm.verts) for k, bm in MESHES.items()}
+    n_inst = len(INSTANCES)
+    fn(*args)
+    for k, bm in MESHES.items():
+        bm.verts.ensure_lookup_table()
+        for v in list(bm.verts)[marks.get(k, 0) :]:
+            x, y = v.co.x, v.co.y
+            v.co.x, v.co.y = -y, x
+    for i in range(n_inst, len(INSTANCES)):
+        unit, (x, y, z), sc_, rot = INSTANCES[i]
+        INSTANCES[i] = (unit, (-y, x, z), sc_, rot + math.pi / 2)
 
 
 def lamp_pillar(x, y, h):
@@ -1302,13 +1505,12 @@ def grass_blades(
 
 
 def grounds():
-    # a paved processional path toward the hall, lawns on either side
-    box("path", -40, -70, 0.0, 6.5, 70, 0.04)
-    box("path", -40, -6, 0.0, 30, 28, 0.03)
-    box("path", 0, -64, 0.0, 34, 50, 0.05)
-    box("path", 0, -130, 0.0, 40, 20, 0.05)
-    for cx, cy, hx, hy in ((-90, -70, 40, 70), (10, -80, 36, 60), (60, -20, 50, 60)):
-        box("grass", cx, cy, 0.0, hx, hy, 0.02)
+    # The processional path on the axis, from the gateway to the halls, and paving round
+    # the tower; lawns either side in the open eastern half, as today (ref09).
+    box("path", 0, (YARD_E - 79.4) / 2, 0.0, 7.0, (-79.4 - YARD_E) / 2, 0.04)
+    box("path", 0, -10.0, 0.0, 30.0, 32.0, 0.03)
+    for sx in (-1, 1):
+        box("grass", sx * 32.5, -125.0, 0.0, 22.0, 52.0, 0.02)
 
 
 MESHES["trunk"] = bmesh.new()
@@ -1449,7 +1651,9 @@ def palm(x, y, height, lean, heading, seed, detail=1.0):
                     out,
                     fwd * 0.5,
                     ll,
-                    0.045,
+                    # far palms' leaflets widen so a frond reads as a feathered mass,
+                    # not a bare spine (a 4.5 cm leaflet is under a pixel at 150 m)
+                    0.045 / detail**1.2,
                     0.35 + 0.55 * u + rnd.uniform(-0.1, 0.1),
                     0.6,
                 )
@@ -1631,10 +1835,8 @@ def grove():
     import random
 
     rnd = random.Random(7)  # noqa: S311 - shape variation, not security
-    spots = [
-        (-34, -118, 15.5),
-        (-22, -128, 12.5),
-    ]  # foreground, framing the left of the shot
+    # no palm stands inside the courtyard; they rise beyond the cloister
+    spots = []
     for _ in range(70):  # a skyline of palms beyond the cloister
         spots.append((rnd.uniform(-230, 240), rnd.uniform(102, 190), rnd.uniform(15, 26)))
     for _ in range(24):
@@ -1647,12 +1849,7 @@ def grove():
             rnd.uniform(0.04, 0.16),
             rnd.uniform(0, 2 * math.pi),
             i,
-            detail=1.0 if i < 2 else 0.45,
-        )
-    # banana plants flanking the path, as at a festive entrance
-    for j, (bx, by) in enumerate(((-62, -114), (-41, -127), (-49, -96), (-31, -92))):
-        banana(
-            bx, by, rnd.uniform(3.6, 4.6), rnd.uniform(0, 6.28), 100 + j, fruit=(j < 3)
+            detail=0.45,
         )
 
 
@@ -1752,9 +1949,18 @@ def bead(key, x, y, z, rad):
     )
 
 
+# Carved beads sit half sunk in the stone and almost touch, a string cut from the block;
+# whole spheres spaced apart read as rivets on a ship's hull (dusk pass, 6 November 2026).
+BEAD_PITCH = 2.15  # centre to centre, in bead radii
+BEAD_SINK = 0.5  # how far a bead's centre sits inside the face, in radii
+
+
 def bead_square(key, cx, cy, half, z, rad, step):
-    """A row of beads around a square course, corner to corner."""
-    n = max(2, round(2 * half / step))
+    """A row of beads around a square course, corner to corner. `step` is kept for call
+    sites; the pitch follows the bead, so the string is continuous."""
+    del step
+    half -= rad * BEAD_SINK
+    n = max(2, round(2 * half / (rad * BEAD_PITCH)))
     for side in range(4):
         for i in range(n):
             u = -half + 2 * half * i / n
@@ -1763,7 +1969,9 @@ def bead_square(key, cx, cy, half, z, rad, step):
 
 
 def bead_ring(key, cx, cy, r, z, rad, count):
-    """A ring of beads around a round or octagonal section."""
+    """A ring of beads around a round or octagonal section, as continuous as a square row."""
+    r -= rad * BEAD_SINK
+    count = max(count, round(2 * math.pi * r / (rad * BEAD_PITCH)))
     for i in range(count):
         a = 2 * math.pi * i / count
         bead(key, cx + r * math.cos(a), cy + r * math.sin(a), z, rad)
@@ -1851,14 +2059,14 @@ def pillar(x, y, h=4.6, seed=0, w=0.36):
                     )
                 # a bead border just inside the frame, top and bottom
                 inner = m - fw - 0.03
-                nb = max(4, round(2 * inner / 0.06))
+                nb = max(4, round(2 * inner / (0.012 * BEAD_PITCH)))
                 for i in range(nb + 1):
                     u = -inner + 2 * inner * i / nb
                     for zz in (bot + fw + 0.03, top - fw - 0.03):
                         bead(
                             K,
-                            fx + tan[0] * u + nrm[0] * 0.012,
-                            fy + tan[1] * u + nrm[1] * 0.012,
+                            fx + tan[0] * u + nrm[0] * 0.012 * (1 - BEAD_SINK),
+                            fy + tan[1] * u + nrm[1] * 0.012 * (1 - BEAD_SINK),
                             zz,
                             0.012,
                         )
@@ -1896,9 +2104,9 @@ def pillar(x, y, h=4.6, seed=0, w=0.36):
                 ang = math.pi / 8 + 2 * math.pi * fct / 8
                 ca, sa = math.cos(ang), math.sin(ang)
                 ta, tb = -sa, ca
-                rr_ = w * 0.84 * math.cos(math.pi / 8) + 0.012
-                for gi in range(9):
-                    t = gi / 8
+                rr_ = w * 0.84 * math.cos(math.pi / 8) + 0.011 * (1 - BEAD_SINK)
+                for gi in range(17):
+                    t = gi / 16
                     u = (t - 0.5) * w * 0.55
                     dz = -0.11 * math.sin(math.pi * t) - 0.02
                     bead(
@@ -2085,7 +2293,9 @@ else:
 if PART is not None:
     HERO = True
 if not HERO:
-    birds()
+    if GRADE != "blue":
+        # in a dusk still they read as specks of dust; they return in flight with the film
+        birds()
     HALL_TOP = pavilion(0.0, -115.0)
 HANGING = []
 
@@ -2132,27 +2342,50 @@ def kuthu_vilakku(x, y, z0, h=1.55):
     """A tall brass standing lamp: a stepped round foot, a stem of turned rings and
     bulbs, an oil bowl with five spouts each holding a flame, and a crowning finial."""
     s = h / 1.55
+    # Turned and cast as the real lamps are: a domed, stepped foot; a stem that stays
+    # sturdy (4.5 cm, not the 3.5 cm taper that read as bamboo in the dusk pass), broken
+    # by crisp collars and three rounded knops; a cup that carries the oil bowl.
     prof = [
         (0.005, 0),
-        (0.24, 0),
-        (0.25, 0.02),
-        (0.22, 0.05),
-        (0.15, 0.08),
-        (0.17, 0.11),
-        (0.06, 0.16),
-        (0.05, 0.3),
-        (0.075, 0.34),
-        (0.05, 0.38),
-        (0.035, 0.6),
-        (0.06, 0.66),
-        (0.04, 0.72),
-        (0.03, 0.95),
-        (0.055, 1.0),
-        (0.04, 1.06),
-        (0.05, 1.12),
-        (0.03, 1.16),
+        (0.25, 0),
+        (0.255, 0.012),
+        (0.245, 0.024),
+        (0.2, 0.03),
+        (0.2, 0.045),
+        (0.16, 0.07),
+        (0.12, 0.1),
+        (0.135, 0.112),
+        (0.135, 0.124),
+        (0.07, 0.15),
+        (0.052, 0.19),
+        (0.05, 0.26),
+        (0.07, 0.27),
+        (0.07, 0.282),
+        (0.05, 0.292),
+        (0.075, 0.33),
+        (0.082, 0.36),
+        (0.075, 0.39),
+        (0.05, 0.43),
+        (0.046, 0.6),
+        (0.066, 0.61),
+        (0.066, 0.622),
+        (0.046, 0.632),
+        (0.07, 0.67),
+        (0.076, 0.7),
+        (0.07, 0.73),
+        (0.046, 0.77),
+        (0.044, 0.94),
+        (0.064, 0.95),
+        (0.064, 0.962),
+        (0.044, 0.972),
+        (0.062, 1.01),
+        (0.068, 1.04),
+        (0.06, 1.07),
+        (0.04, 1.1),
+        (0.07, 1.13),
+        (0.05, 1.16),
     ]
-    loft("gold", x, y, [(r * s, z0 + zz * s) for (r, zz) in prof], e=2, n=40)
+    loft("gold", x, y, [(r * s, z0 + zz * s) for (r, zz) in prof], e=2, n=64)
     zb = z0 + 1.16 * s
     loft(
         "gold",
@@ -2230,47 +2463,85 @@ if not HERO:
             hanging_lamp(hx_, hy_, HALL_TOP + 0.42, 3.2 + 0.25 * abs(hx_) / 3.3)
     courtyard()
     grove()
-    mandapa(-16.5, -78, 11)
+    # the halls before the tower, on its east axis (Pichard: "a low and long pillared hall")
+    turned_quarter(mandapa, -16.5, -78, 11)
     lamp_pillar(-30, -98, 11.5)
 LAMP_SPOTS = []
 
 
-def lamp_row(x0, x1, y, z, step):
-    """Small brass oil lamps in a row along a step, each with its flame."""
+def oil_lamp(x, y, z, rnd):
+    """One small brass oil lamp with its flame, set down by hand: no two the same size,
+    and no two flames the same height or lean."""
+    k = rnd.uniform(0.88, 1.14)
+    fh = rnd.uniform(0.85, 1.2)
+    lean = rnd.uniform(-0.006, 0.006)
+    loft(
+        "gold",
+        x,
+        y,
+        [
+            (0.02 * k, z),
+            (0.07 * k, z + 0.01 * k),
+            (0.09 * k, z + 0.05 * k),
+            (0.06 * k, z + 0.07 * k),
+            (0.075 * k, z + 0.09 * k),
+        ],
+        e=2,
+        n=16,
+    )
+    zf = z + 0.085 * k
+    # each flame a teardrop, leaning a little where the air moves it
+    loft(
+        "flame",
+        x + lean,
+        y,
+        [
+            (0.004, zf),
+            (0.022, zf + 0.035 * fh),
+            (0.014, zf + 0.085 * fh),
+            (0.002, zf + 0.145 * fh),
+        ],
+        e=2,
+        n=12,
+    )
+    LAMP_SPOTS.append((x, y, zf + 0.05 * fh))
+
+
+def lamp_row(x0, x1, y, z, step, seed=0):
+    """Oil lamps in a row along a step, never quite evenly spaced."""
+    rnd = random.Random(seed)  # noqa: S311 - placement variation, not security
     n = int((x1 - x0) / step) + 1
     for i in range(n):
-        x = x0 + i * step
-        loft(
-            "gold",
-            x,
-            y,
-            [
-                (0.02, z),
-                (0.07, z + 0.01),
-                (0.09, z + 0.05),
-                (0.06, z + 0.07),
-                (0.075, z + 0.09),
-            ],
-            e=2,
-            n=12,
-        )
-        loft(
-            "flame",
-            x,
-            y,
-            [(0.004, z + 0.085), (0.025, z + 0.12), (0.015, z + 0.17), (0.002, z + 0.23)],
-            e=2,
-            n=8,
-        )
-        LAMP_SPOTS.append((x, y, z + 0.16))
+        x = x0 + i * step + rnd.uniform(-0.09, 0.09) * step
+        oil_lamp(x, y + rnd.uniform(-0.05, 0.05), z, rnd)
+
+
+def path_lamps(half_gap, y0, y1, z, step, seed=0):
+    """Two lines of oil lamps along the processional path, as a festival night lays them:
+    leading lines that meet at the tower and double in the wet stone (LANDING_CINEMA_2026.md
+    section 8: a near, a middle and a far plane in every frame)."""
+    rnd = random.Random(seed)  # noqa: S311 - placement variation, not security
+    n = int((y1 - y0) / step) + 1
+    for side in (-1, 1):
+        for i in range(n):
+            y = y0 + i * step + rnd.uniform(-0.08, 0.08) * step
+            oil_lamp(side * half_gap + rnd.uniform(-0.06, 0.06), y, z, rnd)
 
 
 MESHES["rice"] = bmesh.new()
 
 
 if not HERO:
-    lamp_row(-6.0, 6.0, -105.2, 0.4, 1.0)  # the front step of the hall
-    lamp_row(-13.0, 13.0, -18.4, 0.35, 1.3)  # along the temple's base
+    lamp_row(-6.0, 6.0, -105.2, 0.4, 1.0, seed=3)  # the front step of the hall
+    lamp_row(-9.0, 9.0, -80.3, 0.068, 1.3, seed=4)  # before the halls' front steps
+    if GRADE == "blue":
+        path_lamps(3.2, -104.0, -82.5, 0.068, 2.4, seed=5)  # the path to the halls
+        path_lamps(4.2, -176.0, -126.0, 0.04, 2.6, seed=6)  # gateway to the pavilion
+        # The lamp field the hero walks across (D-164 as amended, 6 November 2026): rows
+        # laid from the north cloister toward the tower, as a festival night lays them,
+        # leading the eye to the tower and doubled in the wet stone.
+        for k, y in enumerate((-5.0, 2.5, 10.0, 17.5, 25.0, 32.5)):
+            lamp_row(18.5, 47.0, y, 0.068, 1.7, seed=20 + k)
     grounds()
 MESHES["pave"] = bmesh.new()
 
@@ -2340,6 +2611,7 @@ def paving(x0, x1, y0, y1, top, seed):
 
 if not HERO:
     paving(-30.0, 30.0, -108.6, -20.0, 0.068, 31)  # the courtyard up to the tower
+    paving(15.4, 53.9, -19.9, 45.0, 0.068, 33)  # north of the tower, to the cloister
     paving(-6.3, 6.3, -121.3, -108.7, 0.402, 32)  # the hall's own floor
 if not HERO:
     grass_blades(
@@ -2798,7 +3070,39 @@ def mat_flame():
     em = N.new("ShaderNodeEmission")
     em.inputs["Color"].default_value = (1.0, 0.78, 0.45, 1)
     em.inputs["Strength"].default_value = 22 if GRADE != "blue" else 6
-    L.new(em.outputs["Emission"], N["Material Output"].inputs["Surface"])
+    if GRADE != "blue":
+        L.new(em.outputs["Emission"], N["Material Output"].inputs["Surface"])
+        return m
+    # A flame seen at dusk: a pale core where the eye looks through most of it, a
+    # deeper orange skin at the edges, thinning into the air rather than ending in a
+    # hard outline; colour from the blackbody near 1,850 K (LANDING_CINEMA_2026.md s4).
+    fac = N.new("ShaderNodeLayerWeight")
+    fac.inputs["Blend"].default_value = 0.45
+    core = N.new("ShaderNodeBlackbody")
+    core.inputs["Temperature"].default_value = 2300
+    skin = N.new("ShaderNodeBlackbody")
+    skin.inputs["Temperature"].default_value = 1650
+    mixc = N.new("ShaderNodeMix")
+    mixc.data_type = "RGBA"
+    L.new(fac.outputs["Facing"], mixc.inputs["Factor"])
+    L.new(core.outputs["Color"], mixc.inputs["A"])
+    L.new(skin.outputs["Color"], mixc.inputs["B"])
+    L.new(mixc.outputs["Result"], em.inputs["Color"])
+    stren = N.new("ShaderNodeMapRange")
+    stren.inputs["To Min"].default_value = 3.2
+    stren.inputs["To Max"].default_value = 1.1
+    L.new(fac.outputs["Facing"], stren.inputs["Value"])
+    L.new(stren.outputs["Result"], em.inputs["Strength"])
+    tr = N.new("ShaderNodeBsdfTransparent")
+    edge = N.new("ShaderNodeMapRange")
+    edge.inputs["From Min"].default_value = 0.55
+    edge.inputs["From Max"].default_value = 0.95
+    L.new(fac.outputs["Facing"], edge.inputs["Value"])
+    mix = N.new("ShaderNodeMixShader")
+    L.new(edge.outputs["Result"], mix.inputs["Fac"])
+    L.new(em.outputs["Emission"], mix.inputs[1])
+    L.new(tr.outputs["BSDF"], mix.inputs[2])
+    L.new(mix.outputs["Shader"], N["Material Output"].inputs["Surface"])
     return m
 
 
@@ -3366,7 +3670,7 @@ def mat_inscription():
         "large_sandstone_blocks",
         3.4,
         displace=0.07,
-        tint=((1.45, 1.14, 0.8) if GRADE == "gold" else (1.34, 1.12, 0.86)),
+        tint=STONE_TINT,
         normal_strength=1.15,
     )
     nt = m.node_tree
@@ -3403,7 +3707,7 @@ MATS = {
         "carve",
         "large_sandstone_blocks",
         3.4,
-        tint=((1.45, 1.14, 0.8) if GRADE == "gold" else (1.34, 1.12, 0.86)),
+        tint=STONE_TINT,
         normal_strength=0.6,
     ),
     "inscr": mat_inscription(),
@@ -3413,7 +3717,7 @@ MATS = {
             "dome",
             "large_sandstone_blocks",
             26.0,
-            tint=((1.45, 1.14, 0.8) if GRADE == "gold" else (1.34, 1.12, 0.86)),
+            tint=STONE_TINT,
             normal_strength=0.4,
         )
     ),
@@ -3421,7 +3725,7 @@ MATS = {
         "mono",
         "large_sandstone_blocks",
         26.0,
-        tint=((1.45, 1.14, 0.8) if GRADE == "gold" else (1.34, 1.12, 0.86)),
+        tint=STONE_TINT,
         normal_strength=0.5,
     ),
     "rice": mat_simple("rice", (0.5, 0.48, 0.45), 0.98),
@@ -3450,7 +3754,9 @@ MATS = {
         3.4,
         displace=0.07,
         # the Brihadeeswarar's granite is warm, a golden brown, never cool grey (pass 12)
-        tint=((1.55, 1.12, 0.7) if GRADE == "gold" or HERO else (1.42, 1.1, 0.78)),
+        tint=STONE_TINT
+        if GRADE == "blue"
+        else ((1.55, 1.12, 0.7) if GRADE == "gold" or HERO else (1.42, 1.1, 0.78)),
         normal_strength=1.15,
     ),
     "wall": mat_scan(
@@ -3458,7 +3764,9 @@ MATS = {
         "large_sandstone_blocks",
         3.4,
         displace=0.06,
-        tint=((1.4, 1.1, 0.8) if GRADE == "gold" else (1.3, 1.1, 0.86)),
+        tint=STONE_TINT
+        if GRADE == "blue"
+        else ((1.4, 1.1, 0.8) if GRADE == "gold" else (1.3, 1.1, 0.86)),
         normal_strength=1.0,
     ),
     "gold": mat_simple("gold", (1.0, 0.7, 0.3), 0.22, 1.0),
@@ -3545,6 +3853,15 @@ for d in prefs.devices:
     d.use = d.type == prefs.compute_device_type
     print("DEVICE", d.type, d.name, d.use)
 sc.cycles.device = "GPU" if any(d.use for d in prefs.devices) else "CPU"
+if sc.cycles.device == "GPU" and GRADE == "blue":
+    # The GTX 1650 (4 GB) faults in Blender 5's unbiased null-scattering volumes on the
+    # full dusk scene ("Illegal address ... integrator_shade_volume", 6 November 2026);
+    # the biased ray-marched method, kept by the 5.0 release notes as an option, renders it.
+    sc.cycles.volume_biased = True
+    sc.cycles.volume_step_rate = 4.0
+if "--cpu" in argv:
+    # the 4 GB card faults in volume shading on the full dusk scene (6 November 2026)
+    sc.cycles.device = "CPU"
 print("RENDER_DEVICE", sc.cycles.device, prefs.compute_device_type)
 sc.cycles.samples = SAMPLES
 sc.cycles.use_denoising = True
@@ -3552,7 +3869,9 @@ sc.render.resolution_x, sc.render.resolution_y = W, H
 sc.view_settings.view_transform = "AgX"
 with contextlib.suppress(Exception):
     sc.view_settings.look = "AgX - Punchy"
-sc.view_settings.exposure = {"gold": 0.2, "blue": 1.9, "noon": -0.3}.get(GRADE, 0.1)
+# blue: raised from 1.9 to meet the blue-hour reference (ref06, measured 6 November 2026:
+# sky lightness 0.31, tower 0.49; the first corner render measured 0.14 and 0.35)
+sc.view_settings.exposure = {"gold": 0.2, "blue": 2.35, "noon": -0.3}.get(GRADE, 0.1)
 
 world = bpy.data.worlds.new("sky")
 sc.world = world
@@ -3614,6 +3933,10 @@ def world_clouds():
     cover = wn.new("ShaderNodeMapRange")
     cover.inputs["From Min"].default_value = 0.5
     cover.inputs["From Max"].default_value = 0.72
+    if GRADE == "blue":
+        # the reference's blue hour is clear: only a few thin wisps low down
+        cover.inputs["From Min"].default_value = 0.66
+        cover.inputs["From Max"].default_value = 0.8
     wl.new(cn.outputs["Fac"], cover.inputs["Value"])
     # only above the horizon, thinning near it
     hz = wn.new("ShaderNodeMapRange")
@@ -3635,7 +3958,7 @@ def world_clouds():
     if GRADE == "blue":
         # after sunset a cloud is a slate shadow, its edges still catching the afterglow
         cr.color_ramp.elements[0].color = (0.07, 0.08, 0.13, 1)
-        cr.color_ramp.elements[1].color = (0.62, 0.42, 0.36, 1)
+        cr.color_ramp.elements[1].color = (0.78, 0.46, 0.42, 1)
     wl.new(shade.outputs["Fac"], cr.inputs["Fac"])
     # a pale warm band of light low on the horizon, fading into the blue above
     glow = wn.new("ShaderNodeMapRange")
@@ -3663,13 +3986,37 @@ def world_clouds():
     warm = wn.new("ShaderNodeMix")
     warm.data_type = "RGBA"
     wl.new(glow.outputs["Result"], warm.inputs["Factor"])
-    wl.new(sky.outputs["Color"], warm.inputs["A"])
+    sky_col = sky.outputs["Color"]
+    if GRADE == "blue":
+        # the reference's zenith is a near pure blue (saturation 0.99, hue 215);
+        # the physical sky at this exposure came out grey-blue (0.19, hue 232)
+        hs = wn.new("ShaderNodeHueSaturation")
+        hs.inputs["Hue"].default_value = 0.47
+        hs.inputs["Saturation"].default_value = 2.4
+        hs.inputs["Value"].default_value = 1.3
+        wl.new(sky.outputs["Color"], hs.inputs["Color"])
+        sky_col = hs.outputs["Color"]
+    wl.new(sky_col, warm.inputs["A"])
     wl.new(gramp.outputs["Color"], warm.inputs["B"])
+    cloud = cr.outputs["Color"]
+    if GRADE == "blue":
+        # high cloud has lost the afterglow; only the low cloud still catches it
+        dim = wn.new("ShaderNodeMapRange")
+        dim.inputs["From Min"].default_value = 0.05
+        dim.inputs["From Max"].default_value = 0.6
+        dim.inputs["To Min"].default_value = 1.0
+        dim.inputs["To Max"].default_value = 0.3
+        wl.new(sep.outputs["Z"], dim.inputs["Value"])
+        sc_ = wn.new("ShaderNodeVectorMath")
+        sc_.operation = "SCALE"
+        wl.new(cr.outputs["Color"], sc_.inputs[0])
+        wl.new(dim.outputs["Result"], sc_.inputs["Scale"])
+        cloud = sc_.outputs["Vector"]
     mix = wn.new("ShaderNodeMix")
     mix.data_type = "RGBA"
     wl.new(mask.outputs["Value"], mix.inputs["Factor"])
     wl.new(warm.outputs["Result"], mix.inputs["A"])
-    wl.new(cr.outputs["Color"], mix.inputs["B"])
+    wl.new(cloud, mix.inputs["B"])
     return mix.outputs["Result"]
 
 
@@ -3679,6 +4026,17 @@ env.image = bpy.data.images.load(os.path.join(TEX, "hdri", "sky_2k.hdr"))
 bg_light = wn.new("ShaderNodeBackground")
 wl.new(env.outputs["Color"], bg_light.inputs["Color"])
 bg_light.inputs["Strength"].default_value = {"blue": 0.05, "noon": 0.6}.get(GRADE, 0.45)
+if GRADE == "blue":
+    # After sunset the only light in the shadows is the sky's: blue. Warm lamp pools
+    # against cool shadow is what reads as dusk; the first dusk pass was all one brown.
+    cool = wn.new("ShaderNodeMix")
+    cool.data_type = "RGBA"
+    cool.blend_type = "MULTIPLY"
+    cool.inputs["Factor"].default_value = 1.0
+    cool.inputs["B"].default_value = (0.42, 0.58, 1.0, 1)
+    wl.new(env.outputs["Color"], cool.inputs["A"])
+    wl.new(cool.outputs["Result"], bg_light.inputs["Color"])
+    bg_light.inputs["Strength"].default_value = 0.1
 lp = wn.new("ShaderNodeLightPath")
 mixw = wn.new("ShaderNodeMixShader")
 wl.new(lp.outputs["Is Camera Ray"], mixw.inputs["Fac"])
@@ -3848,11 +4206,28 @@ if len(argv) > 4 and argv[4] == "threshold":
     target = Vector((0.0, 0.0, 28.0))
     cam_data.lens = 22
 if len(argv) > 4 and argv[4] == "approach":
-    # Down the processional path at golden hour, the sun raking across the
-    # tower's tiers so every pavilion throws a shadow.
-    cam.location = (-52.0, -120.0, 1.7)
-    target = Vector((-2.0, 0.0, 26.0))
+    # Just inside the gateway, on the processional path (D-164): the path and its
+    # lamps lead to the Nandi pavilion's pillars, the halls, and the tower behind.
+    cam.location = (1.8, -170.0, 1.65)
+    target = Vector((0.0, 0.0, 30.0))
     cam_data.lens = 35
+if len(argv) > 4 and argv[4] == "cloister":
+    # The hero's first frame (D-164 as amended): at the edge of the north cloister's
+    # gallery, between its plain granite pillars (Pichard), the lamp field before it and
+    # the tower clear across the courtyard, as reference photograph ref09 sees it.
+    # centred between two front-row pillars (17.47 and 19.41 m along the side), which
+    # stand dark either side, as the hall pillars did in the pass Adhi liked (dusk3)
+    # a pillar stands at 0 along the side (pitch 1.94 m, Pichard): midway, at 0.97,
+    # looking straight across, the two pillars frame the edges and none stands in front
+    cam.location = (55.3, 0.97, 1.5)
+    target = Vector((0.0, 0.97, 24.5))
+    cam_data.lens = 16
+if len(argv) > 4 and argv[4] == "corner":
+    # The blue-hour reference's own view (ref06): near the tower's north-east corner,
+    # looking up its two faces, the halls at one side; for matching by measurement.
+    cam.location = (36.0, -40.0, 1.6)
+    target = Vector((0.0, 0.0, 27.0))
+    cam_data.lens = 24
 if len(argv) > 4 and argv[4] == "pillarmacro":
     # One carved block of a hall pillar, close, the tower soft behind.
     cam.location = (-3.4, -117.45, 2.35)
@@ -3907,7 +4282,7 @@ def ground_haze():
     hz.data.materials.append(m)
 
 
-if GRADE == "blue":
+if GRADE == "blue" and "--nohaze" not in argv:
     ground_haze()
     # Warm floodlights in the paving at the tower's foot, aimed up its faces:
     # each grazes the tiers, so every pavilion throws a shadow upward.
@@ -3918,6 +4293,8 @@ if GRADE == "blue":
         nrm = [(0, -1), (1, 0), (0, 1), (-1, 0)][side]
         tan = (-nrm[1], nrm[0])
         for u in (-11.0, -4.0, 4.0, 11.0):
+            if side == 0:
+                continue  # the halls stand here, on the east axis; lit from in front below
             fx = tan[0] * u + nrm[0] * 31.0
             fy = tan[1] * u + nrm[1] * 31.0
             if abs(u) > 5:
@@ -3925,7 +4302,8 @@ if GRADE == "blue":
                 wl_ = bpy.data.lights.new("wash", "AREA")
                 wl_.shape = "RECTANGLE"
                 wl_.size, wl_.size_y = 9.0, 2.0
-                wl_.energy = 4.5e3
+                # half the first pass: the base burned to a smear in the haze
+                wl_.energy = 1.2e3
                 wl_.color = (1.0, 0.6, 0.32)
                 wo = bpy.data.objects.new("wash", wl_)
                 wo.location = (fx * 0.62, fy * 0.62, 0.4)
@@ -3936,15 +4314,21 @@ if GRADE == "blue":
                 wo.rotation_quaternion = aim_w.to_track_quat("-Z", "Y")
                 wo.visible_glossy = False
                 wo.visible_camera = False
+                # floods are seen on the stone, never as beams in the haze (dusk pass faults)
+                wo.visible_volume_scatter = False
                 sc.collection.objects.link(wo)
                 continue
             fl = bpy.data.lights.new("flood", "SPOT")
-            fl.energy = 7e4 * rr.uniform(0.85, 1.1) * (2.2 if abs(u) < 5 else 1.0)
+            # Matched to the reference at blue hour (ref06, measured 6 November 2026):
+            # tower lightness 0.49 high and 0.42 low, against our 0.31 and 0.20
+            fl.energy = 7e4 * rr.uniform(0.85, 1.1) * (2.2 * 1.15 if abs(u) < 5 else 3.6)
             fl.color = (1.0, 0.66, 0.36)
-            fl.spot_size = math.radians(24 if abs(u) < 5 else 44)
-            fl.spot_blend = 0.8
-            fl.shadow_soft_size = 0.3
+            # wide and soft-edged, so the storey is washed evenly, never pooled
+            fl.spot_size = math.radians(30 if abs(u) < 5 else 62)
+            fl.spot_blend = 1.0
+            fl.shadow_soft_size = 0.6
             fo = bpy.data.objects.new("flood", fl)
+            fo.visible_volume_scatter = False
             fo.location = (fx, fy, 0.25)
             aim = Vector(
                 (tan[0] * u * 0.3, tan[1] * u * 0.3, 52.0 if abs(u) < 5 else 16.0)
@@ -3952,6 +4336,67 @@ if GRADE == "blue":
             fo.rotation_mode = "QUATERNION"
             fo.rotation_quaternion = aim.to_track_quat("-Z", "Y")
             sc.collection.objects.link(fo)
+        # Raised far out in the courtyard (9 m up, inside the cloister, and east of the
+        # halls on the axis): narrow lamps that reach the upper tiers and the crown, which
+        # ground floods leave in the dark.
+        for u in (-7.0, 7.0):
+            hf = bpy.data.lights.new("crownflood", "SPOT")
+            hf.energy = 1.9e5 * rr.uniform(0.9, 1.05)
+            hf.color = (1.0, 0.7, 0.42)
+            hf.spot_size = math.radians(16)
+            hf.spot_blend = 1.0
+            hf.shadow_soft_size = 0.4
+            ho_ = bpy.data.objects.new("crownflood", hf)
+            far = (
+                90.0 if side == 0 else 52.0
+            )  # inside the cloister; east, beyond the halls
+            ho_.location = (tan[0] * u + nrm[0] * far, tan[1] * u + nrm[1] * far, 9.0)
+            aim_h = Vector((tan[0] * u * 0.2, tan[1] * u * 0.2, 46.0)) - Vector(
+                ho_.location
+            )
+            ho_.rotation_mode = "QUATERNION"
+            ho_.rotation_quaternion = aim_h.to_track_quat("-Z", "Y")
+            ho_.visible_volume_scatter = False
+            ho_.visible_camera = False
+            sc.collection.objects.link(ho_)
+    # A line of uplights along the plinth on each face but the halls', as the tower is
+    # lit at night (ref06): they wash the walls from base to cornice, evenly.
+    for side in (1, 2, 3):
+        nrm = [(0, -1), (1, 0), (0, 1), (-1, 0)][side]
+        tan = (-nrm[1], nrm[0])
+        for u in (-9.0, 0.0, 9.0):
+            up = bpy.data.lights.new("plinthup", "AREA")
+            up.shape = "RECTANGLE"
+            up.size, up.size_y = 8.5, 0.3
+            up.energy = 2.2e3
+            up.color = (1.0, 0.78, 0.55)
+            uo = bpy.data.objects.new("plinthup", up)
+            uo.location = (tan[0] * u + nrm[0] * 17.2, tan[1] * u + nrm[1] * 17.2, 0.3)
+            aim_u = Vector((tan[0] * u + nrm[0] * 14.0, tan[1] * u + nrm[1] * 14.0, 12.0))
+            uo.rotation_mode = "QUATERNION"
+            uo.rotation_quaternion = (aim_u - Vector(uo.location)).to_track_quat(
+                "-Z", "Y"
+            )
+            uo.visible_camera = False
+            uo.visible_glossy = False
+            uo.visible_volume_scatter = False
+            sc.collection.objects.link(uo)
+    # the halls' east front and its steps, washed from the paving in front
+    for hx_ in (-8.0, 8.0):
+        hw_ = bpy.data.lights.new("hallwash", "SPOT")
+        hw_.energy = 2.6e4
+        hw_.color = (1.0, 0.7, 0.42)
+        hw_.spot_size = math.radians(70)
+        hw_.spot_blend = 1.0
+        hw_.shadow_soft_size = 0.5
+        hwo = bpy.data.objects.new("hallwash", hw_)
+        hwo.location = (hx_, -88.0, 0.3)
+        aim_m = Vector((hx_ * 0.4, -79.0, 7.0)) - Vector(hwo.location)
+        hwo.rotation_mode = "QUATERNION"
+        hwo.rotation_quaternion = aim_m.to_track_quat("-Z", "Y")
+        hwo.visible_volume_scatter = False
+        hwo.visible_camera = False
+        sc.collection.objects.link(hwo)
     for x, y, z in HANGING:
         hl = bpy.data.lights.new("hang", "POINT")
         # five flames a lamp: kept low so the granite keeps its grain (pass 8 fault)
@@ -3963,8 +4408,17 @@ if GRADE == "blue":
         sc.collection.objects.link(ho)
     for x, y, z in LAMP_SPOTS:
         ld = bpy.data.lights.new("lamp", "POINT")
-        ld.energy = 14
+        ld.energy = 14 * rr.uniform(0.8, 1.15)
+        # a wick in oil burns near 1,850 K, no two the same (LANDING_CINEMA_2026.md s4)
         ld.color = (1.0, 0.72, 0.42)
+        with contextlib.suppress(Exception):
+            ld.use_nodes = True
+            bb = ld.node_tree.nodes.new("ShaderNodeBlackbody")
+            bb.inputs["Temperature"].default_value = rr.uniform(1750, 1950)
+            ld.node_tree.links.new(
+                bb.outputs["Color"], ld.node_tree.nodes["Emission"].inputs["Color"]
+            )
+            ld.color = (1.0, 1.0, 1.0)
         ld.shadow_soft_size = 0.05
         lo = bpy.data.objects.new("lamp", ld)
         lo.location = (x, y, z)
