@@ -2072,3 +2072,16 @@ Newest entries at the bottom.
   1. `GET /api/v1/campaign-templates`: 11 templates, public, cached a day, 60 a minute. Each, with a city and a budget, is created by the real route in the tests, and passes the money and contact flags.
   2. Leaderboards and creator collectives stay open in item 14.
   3. A festival added later is one entry in `festival_templates.py` and is tested by the same loop.
+
+## D-166: The backend's world bar: availability, ASVS and SLSA
+- Date: 2026-11-06
+- Approved by: Adhi, in this session: chose the availability bar from `backend.md` section 0, and for the security and supply-chain bars "the best recommendation", which was both as proposed. **Not reviewed by the other founder** (D-051).
+- Context: Adhi asked that the backend beat the world's biggest, as the frontend does ("standards should be sky high"). `backend.md` section 0 now names each leader's published bar and ours against it; six numbers were put to him.
+- Options considered: for each row, the proposed number or none; for availability, 99.9% then 99.95% (Google SRE: start loose and tighten) against a stricter 99.99% now (no hosting yet to measure it); for security, ASVS Level 2 everywhere with Level 3 on the sensitive routes, against Level 3 everywhere (cost without matching risk); for the build, SLSA L2 now and L3 at launch, against L3 now (needs a hardened builder we do not run).
+- Chosen: availability 99.9% monthly through the pilot and 99.95% from launch, with an error budget that stops feature work when spent; OWASP ASVS 5.0.0 Level 2 on every route and Level 3 on login, tokens, account deletion, payment status and the admin API; SLSA Build L2 for the API image now and L3 before launch.
+- Reason: each is the leader's published practice at the strength our stage can prove. A target we cannot yet measure (availability before hosting) is written now so that hosting is chosen to meet it.
+- Consequences / follow-ups:
+  1. Availability: a synthetic check and the 5xx rate from traces, alerting at half the budget, built with hosting (items 88 and 89).
+  2. ASVS: a requirement map in `docs/standards/security.md`, each requirement against the test or file that meets it, its gaps listed; re-checked every release.
+  3. SLSA: signed provenance for the API image from GitHub Actions in CI, and a verification step before every deploy; a hardened builder before launch.
+  4. Still proposed, not approved: p99 budgets, the never-break policy with its 12-month notice and automatic check, and the rate-limit headers (`backend.md` section 0).
