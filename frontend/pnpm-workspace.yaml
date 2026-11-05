@@ -4,3 +4,9 @@ packages:
 allowBuilds:
   sharp: false
   unrs-resolver: false
+# minimatch below 11.0.1 can be made to do exponential work by a crafted
+# glob (GitHub alert 92, moderate). Only the linter's TypeScript parser uses
+# it, and its newest release (8.72.1, 2 November 2026) still asks for 10, so
+# it is pinned here for that one package. Remove when it asks for 11.
+overrides:
+  "@typescript-eslint/typescript-estree>minimatch": "11.0.1"
