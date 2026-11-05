@@ -12644,6 +12644,52 @@
         "title": "RateGuidanceRead",
         "type": "object"
       },
+      "ReadPartRead": {
+        "properties": {
+          "filter": {
+            "description": "The filter they became. A range gives two parts with the same words. New filters may be added: show an unknown one as its words",
+            "enum": [
+              "q",
+              "niche",
+              "city",
+              "platform",
+              "min_followers",
+              "max_followers",
+              "max_price_paise",
+              "format",
+              "available_on"
+            ],
+            "examples": [
+              "min_followers"
+            ],
+            "title": "Filter",
+            "type": "string"
+          },
+          "value": {
+            "description": "What was read, as the query parameter takes it",
+            "examples": [
+              "5000"
+            ],
+            "title": "Value",
+            "type": "string"
+          },
+          "words": {
+            "description": "The brand's own words, as written",
+            "examples": [
+              "5k to 20k followers"
+            ],
+            "title": "Words",
+            "type": "string"
+          }
+        },
+        "required": [
+          "words",
+          "filter",
+          "value"
+        ],
+        "title": "ReadPartRead",
+        "type": "object"
+      },
       "ReadinessRead": {
         "description": "Everything this process needs is reachable.",
         "properties": {
@@ -13729,6 +13775,267 @@
           "figures_as_of"
         ],
         "title": "SearchChannelRead",
+        "type": "object"
+      },
+      "SearchFiltersRead": {
+        "description": "Each is the query parameter of the same name on `GET /api/v1/creators`;\npass the ones that are not null, unchanged.",
+        "properties": {
+          "available_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A Tamil Nadu day, today or later",
+            "examples": [
+              "2026-11-14"
+            ],
+            "title": "Available On"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Spelled as most creators there wrote it",
+            "examples": [
+              "Coimbatore"
+            ],
+            "title": "City"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "post",
+                  "reel",
+                  "story",
+                  "short",
+                  "video",
+                  "live",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "reel"
+            ],
+            "title": "Format"
+          },
+          "max_followers": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              20000
+            ],
+            "title": "Max Followers"
+          },
+          "max_price_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "In paise: ₹1 is 100",
+            "examples": [
+              1000000
+            ],
+            "title": "Max Price Paise"
+          },
+          "min_followers": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              5000
+            ],
+            "title": "Min Followers"
+          },
+          "niche": {
+            "anyOf": [
+              {
+                "enum": [
+                  "food",
+                  "fashion",
+                  "beauty",
+                  "tech",
+                  "travel",
+                  "fitness",
+                  "education",
+                  "entertainment",
+                  "finance",
+                  "lifestyle"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "food"
+            ],
+            "title": "Niche"
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "enum": [
+                  "instagram",
+                  "youtube"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "instagram"
+            ],
+            "title": "Platform"
+          },
+          "q": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Words in the handle, name or bio: only what was in quotes",
+            "examples": [
+              "millet"
+            ],
+            "title": "Q"
+          }
+        },
+        "required": [
+          "q",
+          "niche",
+          "city",
+          "platform",
+          "min_followers",
+          "max_followers",
+          "max_price_paise",
+          "format",
+          "available_on"
+        ],
+        "title": "SearchFiltersRead",
+        "type": "object"
+      },
+      "SearchNoteRead": {
+        "properties": {
+          "code": {
+            "description": "Why some words were not used. `a_month_is_not_a_day`: search checks one day, so name one. `tier_needs_numbers`: \"micro\" and the like mean different sizes to different people, so give a follower range. `price_from_not_searchable`: search finds creators priced up to an amount, not from one. `free_needs_a_day`: say which day. `day_has_passed`, `not_a_real_day`, `number_out_of_range`: as named. `one_…`: search takes one of each; the first was used. New codes may be added: show an unknown one by its words alone",
+            "enum": [
+              "one_phrase",
+              "one_day",
+              "a_month_is_not_a_day",
+              "day_has_passed",
+              "not_a_real_day",
+              "free_needs_a_day",
+              "one_price",
+              "price_from_not_searchable",
+              "one_follower_range",
+              "number_out_of_range",
+              "tier_needs_numbers",
+              "one_platform",
+              "one_format",
+              "one_niche",
+              "one_city"
+            ],
+            "examples": [
+              "a_month_is_not_a_day"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "words": {
+            "examples": [
+              "free in December"
+            ],
+            "title": "Words",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "words"
+        ],
+        "title": "SearchNoteRead",
+        "type": "object"
+      },
+      "SearchReadingRead": {
+        "description": "How a brand's words were read. Short lists: the words are at most 200 characters.",
+        "properties": {
+          "filters": {
+            "$ref": "#/components/schemas/SearchFiltersRead"
+          },
+          "notes": {
+            "description": "Why, where there is a reason",
+            "items": {
+              "$ref": "#/components/schemas/SearchNoteRead"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "read_as": {
+            "description": "Which words became which filter, in the order written",
+            "items": {
+              "$ref": "#/components/schemas/ReadPartRead"
+            },
+            "title": "Read As",
+            "type": "array"
+          },
+          "unread": {
+            "description": "Words not used, as written, in order: nothing was guessed from them",
+            "examples": [
+              [
+                "vegan"
+              ]
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Unread",
+            "type": "array"
+          }
+        },
+        "required": [
+          "filters",
+          "read_as",
+          "unread",
+          "notes"
+        ],
+        "title": "SearchReadingRead",
         "type": "object"
       },
       "SecondFactorSetupIn": {
@@ -30363,6 +30670,131 @@
         "summary": "Cancel a new UPI ID before brands see it",
         "tags": [
           "upi pay link"
+        ]
+      }
+    },
+    "/api/v1/creators/search-reading": {
+      "get": {
+        "description": "Turns a sentence such as \"café creators in Coimbatore, 5k to 20k followers, free on 14 November\" into the filters of `GET /api/v1/creators`, and says which words became which filter. Read by fixed rules, never a model: the words stay on our servers and always read the same way. What the rules cannot read comes back as `unread`, never guessed, with a note where there is a reason. Places are the ones creators you could find wrote, and Tamil Nadu's districts. Nothing is searched: pass `filters` to `GET /api/v1/creators`, which has the same rate limit. Brands only.",
+        "operationId": "read_search_words_api_v1_creators_search_reading_get",
+        "parameters": [
+          {
+            "description": "What the brand is looking for, in its own words",
+            "in": "query",
+            "name": "words",
+            "required": true,
+            "schema": {
+              "description": "What the brand is looking for, in its own words",
+              "examples": [
+                "Café creators in Coimbatore, 5k to 20k followers"
+              ],
+              "maxLength": 200,
+              "minLength": 2,
+              "title": "Words",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchReadingRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only brands search for creators"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No words, or more than 200 characters"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read a creator search written in plain words",
+        "tags": [
+          "creator search"
         ]
       }
     },

@@ -2020,6 +2020,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/creators/search-reading": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read a creator search written in plain words
+         * @description Turns a sentence such as "café creators in Coimbatore, 5k to 20k followers, free on 14 November" into the filters of `GET /api/v1/creators`, and says which words became which filter. Read by fixed rules, never a model: the words stay on our servers and always read the same way. What the rules cannot read comes back as `unread`, never guessed, with a note where there is a reason. Places are the ones creators you could find wrote, and Tamil Nadu's districts. Nothing is searched: pass `filters` to `GET /api/v1/creators`, which has the same rate limit. Brands only.
+         */
+        get: operations["read_search_words_api_v1_creators_search_reading_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/creators/{creator_id}/delivery-record": {
         parameters: {
             query?: never;
@@ -9370,6 +9390,28 @@ export interface components {
             /** Upper Quarter Paise */
             upper_quarter_paise: number | null;
         };
+        /** ReadPartRead */
+        ReadPartRead: {
+            /**
+             * Filter
+             * @description The filter they became. A range gives two parts with the same words. New filters may be added: show an unknown one as its words
+             * @example min_followers
+             * @enum {string}
+             */
+            filter: "q" | "niche" | "city" | "platform" | "min_followers" | "max_followers" | "max_price_paise" | "format" | "available_on";
+            /**
+             * Value
+             * @description What was read, as the query parameter takes it
+             * @example 5000
+             */
+            value: string;
+            /**
+             * Words
+             * @description The brand's own words, as written
+             * @example 5k to 20k followers
+             */
+            words: string;
+        };
         /**
          * ReadinessRead
          * @description Everything this process needs is reachable.
@@ -9869,6 +9911,102 @@ export interface components {
              * @description The count the platform itself reported, if the creator connected the account (D-134); null when not connected or the platform hides it. Show it beside `followers`, never instead: bought followers inflate both
              */
             verified_followers?: number | null;
+        };
+        /**
+         * SearchFiltersRead
+         * @description Each is the query parameter of the same name on `GET /api/v1/creators`;
+         *     pass the ones that are not null, unchanged.
+         */
+        SearchFiltersRead: {
+            /**
+             * Available On
+             * @description A Tamil Nadu day, today or later
+             * @example 2026-11-14
+             */
+            available_on: string | null;
+            /**
+             * City
+             * @description Spelled as most creators there wrote it
+             * @example Coimbatore
+             */
+            city: string | null;
+            /**
+             * Format
+             * @example reel
+             */
+            format: ("post" | "reel" | "story" | "short" | "video" | "live" | "other") | null;
+            /**
+             * Max Followers
+             * @example 20000
+             */
+            max_followers: number | null;
+            /**
+             * Max Price Paise
+             * @description In paise: ₹1 is 100
+             * @example 1000000
+             */
+            max_price_paise: number | null;
+            /**
+             * Min Followers
+             * @example 5000
+             */
+            min_followers: number | null;
+            /**
+             * Niche
+             * @example food
+             */
+            niche: ("food" | "fashion" | "beauty" | "tech" | "travel" | "fitness" | "education" | "entertainment" | "finance" | "lifestyle") | null;
+            /**
+             * Platform
+             * @example instagram
+             */
+            platform: ("instagram" | "youtube") | null;
+            /**
+             * Q
+             * @description Words in the handle, name or bio: only what was in quotes
+             * @example millet
+             */
+            q: string | null;
+        };
+        /** SearchNoteRead */
+        SearchNoteRead: {
+            /**
+             * Code
+             * @description Why some words were not used. `a_month_is_not_a_day`: search checks one day, so name one. `tier_needs_numbers`: "micro" and the like mean different sizes to different people, so give a follower range. `price_from_not_searchable`: search finds creators priced up to an amount, not from one. `free_needs_a_day`: say which day. `day_has_passed`, `not_a_real_day`, `number_out_of_range`: as named. `one_…`: search takes one of each; the first was used. New codes may be added: show an unknown one by its words alone
+             * @example a_month_is_not_a_day
+             * @enum {string}
+             */
+            code: "one_phrase" | "one_day" | "a_month_is_not_a_day" | "day_has_passed" | "not_a_real_day" | "free_needs_a_day" | "one_price" | "price_from_not_searchable" | "one_follower_range" | "number_out_of_range" | "tier_needs_numbers" | "one_platform" | "one_format" | "one_niche" | "one_city";
+            /**
+             * Words
+             * @example free in December
+             */
+            words: string;
+        };
+        /**
+         * SearchReadingRead
+         * @description How a brand's words were read. Short lists: the words are at most 200 characters.
+         */
+        SearchReadingRead: {
+            filters: components["schemas"]["SearchFiltersRead"];
+            /**
+             * Notes
+             * @description Why, where there is a reason
+             */
+            notes: components["schemas"]["SearchNoteRead"][];
+            /**
+             * Read As
+             * @description Which words became which filter, in the order written
+             */
+            read_as: components["schemas"]["ReadPartRead"][];
+            /**
+             * Unread
+             * @description Words not used, as written, in order: nothing was guessed from them
+             * @example [
+             *       "vegan"
+             *     ]
+             */
+            unread: string[];
         };
         /** SecondFactorSetupIn */
         SecondFactorSetupIn: {
@@ -20843,6 +20981,83 @@ export interface operations {
             };
             /** @description The new ID's 24 hours are over: it is already in effect */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    read_search_words_api_v1_creators_search_reading_get: {
+        parameters: {
+            query: {
+                /** @description What the brand is looking for, in its own words */
+                words: string;
+            };
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchReadingRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Only brands search for creators */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No words, or more than 200 characters */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

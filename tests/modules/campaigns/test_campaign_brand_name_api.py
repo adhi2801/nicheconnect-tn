@@ -5,11 +5,21 @@ read carries its brand's name, in discovery, on the brand's own list and on
 one campaign, from one query for the page.
 """
 
-from sqlalchemy import select
+import pytest
+from sqlalchemy import select, update
 
 from app.modules.auth.models.brand import Brand
+from app.modules.campaigns.models import Campaign
 from tests.deal_flow import CAMPAIGNS_URL, brand_user, creator_user
 from tests.modules.campaigns.test_invitation_api import open_campaign
+
+
+@pytest.fixture(autouse=True)
+def only_this_tests_campaigns(db) -> None:
+    """Discovery reads every open campaign, so a laptop's seeded sample data
+    would push these off the first page. Closed inside the test's
+    transaction, which is rolled back afterwards."""
+    db.execute(update(Campaign).where(Campaign.status == "open").values(status="closed"))
 
 
 def test_a_creator_sees_whose_campaign_it_is(client, db, clock):
