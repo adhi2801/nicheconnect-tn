@@ -7,6 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Request, Response, status
 from sqlalchemy.orm import Session
 
+from app.core import rollout
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.rate_limit import rate_limit
@@ -92,7 +93,10 @@ def ask(
     db: Annotated[Session, Depends(get_db)],
     now: Annotated[datetime, Depends(get_now)],
 ) -> BriefDraftRead:
-    if get_drafter() is None:
+    # Off, or on for a share of brands not yet including this one (D-160).
+    if get_drafter() is None or not rollout.includes(
+        "brief_drafting", access.brand.account_id
+    ):
         raise BriefDraftingOff()
     found = service.ask(db, access, account, body.idea, now)
     response.headers["Location"] = f"/api/v1/brief-drafts/{found.id}"
