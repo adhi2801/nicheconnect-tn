@@ -3196,6 +3196,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What is switched on for me
+         * @description As `GET /api/v1/features`, but `on` is for the signed-in account: a feature being rolled out to a share of accounts is on for some and not others. An account stays in as the share grows. A team member is answered as their brand. Cached privately for 5 minutes.
+         */
+        get: operations["my_features_api_v1_me_features_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/invite-code": {
         parameters: {
             query?: never;
@@ -6911,8 +6931,17 @@ export interface components {
              * @example connections_unavailable
              */
             off_code: string | null;
-            /** On */
+            /**
+             * On
+             * @description On `GET /api/v1/features`: on for everyone. On `GET /api/v1/me/features`: on for the signed-in account
+             */
             on: boolean;
+            /**
+             * Share Percent
+             * @description The share of accounts it reaches when switched on (item 92): 100 for everyone, less while it is being rolled out
+             * @example 100
+             */
+            share_percent: number;
         };
         /**
          * FeaturesRead
@@ -27185,6 +27214,69 @@ export interface operations {
                 };
             };
             /** @description Too many requests, or too many wrong codes for your phone; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    my_features_api_v1_me_features_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeaturesRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
             429: {
                 headers: {
                     [name: string]: unknown;

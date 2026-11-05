@@ -6701,12 +6701,24 @@
             "title": "Off Code"
           },
           "on": {
+            "description": "On `GET /api/v1/features`: on for everyone. On `GET /api/v1/me/features`: on for the signed-in account",
             "title": "On",
             "type": "boolean"
+          },
+          "share_percent": {
+            "description": "The share of accounts it reaches when switched on (item 92): 100 for everyone, less while it is being rolled out",
+            "examples": [
+              100
+            ],
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Share Percent",
+            "type": "integer"
           }
         },
         "required": [
           "on",
+          "share_percent",
           "off_code"
         ],
         "title": "FeatureRead",
@@ -39609,6 +39621,103 @@
         "summary": "Download a copy of my data, once",
         "tags": [
           "privacy"
+        ]
+      }
+    },
+    "/api/v1/me/features": {
+      "get": {
+        "description": "As `GET /api/v1/features`, but `on` is for the signed-in account: a feature being rolled out to a share of accounts is on for some and not others. An account stays in as the share grows. A team member is answered as their brand. Cached privately for 5 minutes.",
+        "operationId": "my_features_api_v1_me_features_get",
+        "parameters": [
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeaturesRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "What is switched on for me",
+        "tags": [
+          "features"
         ]
       }
     },

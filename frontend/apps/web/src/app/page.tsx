@@ -1,8 +1,8 @@
 import { HeroOrbit } from "@/components/landing/hero-orbit";
-import { Closing, HeroText, Money, Record, SiteHeader, Sides, Steps } from "@/components/landing/sections";
+import { Closing, HeroText, Money, Product, Record, SiteHeader, Sides, Steps } from "@/components/landing/sections";
 import { t } from "@/lib/messages";
 
-// The landing page (D-141): the turning temple, then what a deal is, the record, the money promise, both sides, and the
+// The landing page (D-141): the turning temple, then what a deal is, the product's own board, the record, the money promise, both sides, and the
 // way in. Server-rendered and readable with no script; only the hero's turn runs in the browser.
 export default function Home() {
   return (
@@ -14,6 +14,7 @@ export default function Home() {
         </HeroOrbit>
       </div>
       <Steps />
+      <Product />
       <Record />
       <Money />
       <Sides />
