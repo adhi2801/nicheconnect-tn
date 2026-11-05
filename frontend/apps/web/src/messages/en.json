@@ -432,6 +432,12 @@
         }
       }
     },
+    "product": {
+      "eyebrow": "The product",
+      "title": "Every deal, where it stands, and whose move it is",
+      "lede": "The board a creator works from: each deal in its stage, dark where it is your move, with its fee and the day the work is due. Brands see the same deals from their side.",
+      "caption": "Example deals, as a creator sees them. The names are made up."
+    },
     "record": {
       "eyebrow": "The record",
       "title": "Sealed, step by step.",
