@@ -126,13 +126,13 @@ def _words(document: ColumnElement[Any]) -> ColumnElement[Any]:
 
 def creator_document() -> ColumnElement[Any]:
     """The words a creator wrote about their work: the bio's, stored with the row."""
-    return Creator.bio_words
+    return Creator.bio_words.expression
 
 
 def campaign_document() -> ColumnElement[Any]:
     """The words a brand wrote about what it wants: the title's and the
     description's, stored with the row."""
-    return Campaign.brief_words
+    return Campaign.brief_words.expression
 
 
 def brief_words(campaign: Campaign) -> str:
