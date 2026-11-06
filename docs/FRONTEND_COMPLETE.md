@@ -38,7 +38,7 @@ It does **not** mean:
 
 ## 2. Where we are
 
-**352 items: 0 built on `main` (0.0%), 4 built on a branch and not merged (1.1%), 52 started (14.8%), 281 open, 15 blocked.** Counted from the tables of 31 October, plus section 20a (6 November); the statuses of 31 October have not been re-read against `main` since.
+**352 items: 0 built on `main` (0.0%), 4 built on a branch and not merged (1.1%), 52 started (14.8%), 282 open, 14 blocked.** Counted from the tables of 31 October, plus section 20a (6 November); the statuses of 31 October have not been re-read against `main` since.
 
 | Section | Items | Built | On a branch | Started | Open | Blocked |
 |---|---|---|---|---|---|---|
@@ -54,13 +54,13 @@ It does **not** mean:
 | 13. Animation, 3D and the signature moments | 16 | 0 | 0 | 3 | 13 | 0 |
 | 14. Accessibility | 10 | 0 | 1 | 1 | 8 | 0 |
 | 15. Performance and smoothness | 11 | 0 | 0 | 0 | 11 | 0 |
-| 16. Engineering and quality | 14 | 0 | 0 | 5 | 8 | 1 |
+| 16. Engineering and quality | 14 | 0 | 0 | 5 | 9 | 0 |
 | 17. Being found and shared | 6 | 0 | 0 | 0 | 6 | 0 |
 | 18. The apps | 18 | 0 | 0 | 1 | 16 | 1 |
 | 19. Ahead of everyone | 6 | 0 | 0 | 1 | 4 | 1 |
 | 20. Release and operations | 6 | 0 | 0 | 0 | 6 | 0 |
 | 20a. Found by the research of 6 November | 11 | 0 | 0 | 0 | 6 | 5 |
-| **All** | **352** | **0** | **4** | **52** | **281** | **15** |
+| **All** | **352** | **0** | **4** | **52** | **282** | **14** |
 
 **Read honestly:**
 - **Nothing is built to the bar on `main` yet.** The merged web app (pull request #78) is a first version: its screens and components are counted as *Started*, to be rebuilt, not patched (`frontend.md`, "Gaps, named").
@@ -476,7 +476,7 @@ Budgets in `frontend.md` section 4, measured on the reference devices and networ
 | F301 | **Sentry** for the website and apps, scrubbed | An error traced to its backend request | Dependency | Open |
 | F302 | **Dependency audit and licence check** in CI | Gate fails on a finding | — | Open |
 | F303 | **Preview deployment per pull request** | Link on every pull request | Decision | Open |
-| F304 | **Feature flags**, reading which backend features are on | Waits on backend request R6 (`frontend/design/screen-plan.md` section 8) | — | Blocked |
+| F304 | **Feature flags**, reading which backend features are on | Reads `GET /api/v1/me/features` (request R6, on `main` since D-153 and D-160; unblocked 6 November) | — | Open |
 | F305 | **Frontend CI workflow** running every gate above | All gates green on a pull request | — | Open |
 
 ## 17. Being found and shared
