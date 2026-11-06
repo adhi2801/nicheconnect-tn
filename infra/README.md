@@ -4,6 +4,8 @@ Everything the backend runs on is described here, in OpenTofu 1.12.6, and
 nothing is created by hand in the AWS console. A change to the servers is a
 change to these files, reviewed as a pull request like any other.
 
+**Checked against the `.tf` files on 6 November 2026** (OpenTofu 1.12.6; production `db.t4g.small` with two API containers, staging `db.t4g.micro` with one). **The bar** is AWS Well-Architected's six pillars; where it falls short today is in `docs/BACKEND_COMPLETE.md`: a restore never tested (items 90 and D-062 step 10 below), the connections across containers against the database's two vCPUs (`docs/ARCHITECTURE_SCALE.md` S9, items 112 and 113), unsigned images and no build provenance (item 124), and no trace collector (item 89).
+
 **Nothing here has been applied yet.** It needs an AWS account, which only a
 founder can open.
 
