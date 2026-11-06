@@ -2112,3 +2112,14 @@ Newest entries at the bottom.
   2. ASVS: a requirement map in `docs/standards/security.md`, each requirement against the test or file that meets it, its gaps listed; re-checked every release.
   3. SLSA: signed provenance for the API image from GitHub Actions in CI, and a verification step before every deploy; a hardened builder before launch.
   4. Still proposed, not approved: p99 budgets, the never-break policy with its 12-month notice and automatic check, and the rate-limit headers (`backend.md` section 0).
+
+## D-168: Database recovery targets: 5 minutes, 1 hour
+- Date: 2026-11-06
+- Approved by: Adhi, in this session, choosing the recommended targets in `database.md` section 0. **Not reviewed by the other founder** (D-051).
+- Context: the targets had sat as "decision before launch" in `database.md` since October; GitLab's 2017 outage is the standing lesson that a backup is real only once a restore is tested.
+- Options considered: A) at most 5 minutes of data lost and 1 hour to restore, what RDS point-in-time restore gives with its logs shipped every five minutes; B) 1 minute and 15 minutes, which needs a synchronous standby in another zone and roughly doubles the database bill.
+- Chosen: A.
+- Reason: A is met by the backups already described in code (`infra/README.md`) at no extra cost; B is worth its price once real traffic depends on it.
+- Consequences / follow-ups:
+  1. The monthly automated restore (item 90) records its time to restore and the latest restorable time against these targets, and alerts on a miss.
+  2. The first restore runs before the first user (D-062); B is revisited after launch.
