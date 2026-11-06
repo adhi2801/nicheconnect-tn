@@ -1,5 +1,7 @@
 # Design direction: Modern Tamil
 
+**Checked 6 November 2026:** read through the decisions taken since: D-141 (a SaaS product first, with a Tamil soul; the roots in `docs/research/TAMIL_DESIGN_ROOTS.md`), D-142 (nothing photographed; 3D made in Blender) and D-143 (no lotus, no saffron or orange). Where this brief differs from them, they are right. Erode Harish's review is still awaited.
+
 **Status: Adhi's direction (4 October 2026), awaiting Erode Harish.** Adhi asked for a look that is "traditional but modern all around": premium, with considered motion, 3D and transitions, at least as good as Passionfroot's site, and better in every respect. Erode Harish's draft leans traditional. This file is the brief that serves both, for the design work D-053 allows now. Everything here is a proposal until a founder decides; nothing here is a decision entry.
 
 It sits under the binding standards: `docs/standards/frontend.md` (budgets, accessibility, tokens) and `docs/standards/ux.md` (journeys, copy). Where this file and a standard disagree, the standard wins.
