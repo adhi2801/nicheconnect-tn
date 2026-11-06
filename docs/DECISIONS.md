@@ -2146,3 +2146,14 @@ Newest entries at the bottom.
 - Consequences / follow-ups:
   1. A label answer per registry entry, and a generator for both stores' forms, built with the apps' first store submission.
   2. The first audit before launch, then each quarter, dated in `docs/reports/`.
+
+## D-171: Usability in the top tenth, and accessibility gated in CI for real
+- Date: 2026-11-06
+- Approved by: Adhi, in this session, choosing both bars proposed in `ux.md` section 0. **Not reviewed by the other founder** (D-051).
+- Context: the UX standard measured task success but not how usable people find the product; and `frontend.md` section 6 claimed axe-core and Lighthouse ran in CI and failed the build, which no workflow did (found 6 November 2026).
+- Options considered: a System Usability Scale target or none; the accessibility gate wired into CI, or the claim withdrawn.
+- Chosen: every core journey scores above 80.3 on the SUS (the top 10% of 500 published studies; MeasuringU) with brand owners and with creators, before launch and after each redesign; axe-core and Lighthouse (Accessibility 100) run on every push and fail the build.
+- Reason: 80.3 is the published line for an A; a standard that claims a gate nobody runs is worse than no claim.
+- Consequences / follow-ups:
+  1. The SUS questions join every usability session (`ux.md` section 2); scores and their sample sizes are recorded with the session notes.
+  2. The frontend CI job gains axe-core and a Lighthouse run on the built website, as dev-only tools pinned exactly; `frontend.md` section 6's "owed" note is removed in that change.

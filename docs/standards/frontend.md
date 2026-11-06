@@ -117,7 +117,7 @@ Measured, never estimated (`CLAUDE.md` section 7). **Field data** (real users) i
 - Motion respects "reduce motion"; nothing flashes more than three times a second.
 - Every form field has a visible label, and every error is announced and tied to its field.
 
-**Checked by:** automated checks (axe-core on the website, the platform accessibility scanners in the apps) in CI, failing the build; Lighthouse accessibility 100; **a manual TalkBack and VoiceOver pass on the core journeys before every release**; and usability sessions that include people who use assistive technology (`docs/standards/ux.md` section 2). Any legal accessibility duty is a validation pack question, never assumed (constraint 6).
+**Checked by:** automated checks (axe-core on the website, the platform accessibility scanners in the apps) in CI, failing the build (**owed**: no workflow runs them yet, found 6 November 2026, `ux.md` section 0); Lighthouse accessibility 100; **a manual TalkBack and VoiceOver pass on the core journeys before every release**; and usability sessions that include people who use assistive technology (`docs/standards/ux.md` section 2). Any legal accessibility duty is a validation pack question, never assumed (constraint 6).
 
 ## 7. Language, numbers and words
 
