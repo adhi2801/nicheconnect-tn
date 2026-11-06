@@ -2125,3 +2125,60 @@ Newest entries at the bottom.
   2. Rate intervals: conformalized quantile regression at 90% coverage, trained at 200 creators' published cards per platform, answered only with 5 similar creators, falling back to step 1's quartiles.
   3. LightGBM 4.7.0 (MIT) joins the app's dependencies when step 3 is built, the image size measured before and after.
   4. A model card per model, in `docs/models/`, refreshed with each version that goes live.
+
+## D-168: Database recovery targets: 5 minutes, 1 hour
+- Date: 2026-11-06
+- Approved by: Adhi, in this session, choosing the recommended targets in `database.md` section 0. **Not reviewed by the other founder** (D-051).
+- Context: the targets had sat as "decision before launch" in `database.md` since October; GitLab's 2017 outage is the standing lesson that a backup is real only once a restore is tested.
+- Options considered: A) at most 5 minutes of data lost and 1 hour to restore, what RDS point-in-time restore gives with its logs shipped every five minutes; B) 1 minute and 15 minutes, which needs a synchronous standby in another zone and roughly doubles the database bill.
+- Chosen: A.
+- Reason: A is met by the backups already described in code (`infra/README.md`) at no extra cost; B is worth its price once real traffic depends on it.
+- Consequences / follow-ups:
+  1. The monthly automated restore (item 90) records its time to restore and the latest restorable time against these targets, and alerts on a miss.
+  2. The first restore runs before the first user (D-062); B is revisited after launch.
+
+## D-169: Trust and safety held to published numbers
+- Date: 2026-11-06
+- Approved by: Adhi, in this session, choosing all three bars proposed in `trust-and-safety.md` section 0. **Not reviewed by the other founder** (D-051).
+- Context: Adhi asked that every standard beat the world's best ("sky high"). Upwork publishes a yearly transparency report; Airbnb publishes its rate of safety reports per stay; India's Intermediary Rules set the legal clock for complaints.
+- Options considered: for each bar, adopting it or not; for report handling, the legal clock (24 hours to acknowledge, 7 days to resolve) or a stricter one.
+- Chosen: a yearly trust and safety report from the first anniversary of launch; reports per 1,000 deals measured from the first deal, the target set after three months of real data; a scam report acknowledged within 12 hours and acted on within 72.
+- Reason: a marketplace earns trust by showing its numbers, and a scam acted on in three days instead of seven leaves less time for the next victim.
+- Consequences / follow-ups:
+  1. The founders' numbers count flags, reports by kind and outcome, suspensions, and the time from report to acknowledgement and to action.
+  2. The admin queue shows each report's clock against the 12- and 72-hour bars.
+  3. The first report is published a year after launch; the rate target is decided three months after the first deal.
+
+## D-170: Store privacy labels from the code, and a quarterly dark-pattern audit
+- Date: 2026-11-06
+- Approved by: Adhi, in this session, choosing both bars proposed in `legal.md` section 0. **Not reviewed by the other founder** (D-051).
+- Context: Apple's privacy details and Google Play's Data safety section are declarations a developer keeps true by hand; the E-Commerce Rules ask for a yearly dark-pattern self-audit.
+- Options considered: labels by hand or generated from the code's registries; the audit yearly, as the law asks, or quarterly.
+- Chosen: labels generated from `app/modules/me/account_deletion_registry.py` and `NOT_EXPORTED` in `app/modules/me/export_service.py`, a test failing when an entry has no label answer; the dark-pattern audit every quarter, published.
+- Reason: a label that cannot drift from the code is one we never have to defend; four audits a year find a manipulative screen three quarters sooner than the law's one.
+- Consequences / follow-ups:
+  1. A label answer per registry entry, and a generator for both stores' forms, built with the apps' first store submission.
+  2. The first audit before launch, then each quarter, dated in `docs/reports/`.
+
+## D-171: Usability in the top tenth, and accessibility gated in CI for real
+- Date: 2026-11-06
+- Approved by: Adhi, in this session, choosing both bars proposed in `ux.md` section 0. **Not reviewed by the other founder** (D-051).
+- Context: the UX standard measured task success but not how usable people find the product; and `frontend.md` section 6 claimed axe-core and Lighthouse ran in CI and failed the build, which no workflow did (found 6 November 2026).
+- Options considered: a System Usability Scale target or none; the accessibility gate wired into CI, or the claim withdrawn.
+- Chosen: every core journey scores above 80.3 on the SUS (the top 10% of 500 published studies; MeasuringU) with brand owners and with creators, before launch and after each redesign; axe-core and Lighthouse (Accessibility 100) run on every push and fail the build.
+- Reason: 80.3 is the published line for an A; a standard that claims a gate nobody runs is worse than no claim.
+- Consequences / follow-ups:
+  1. The SUS questions join every usability session (`ux.md` section 2); scores and their sample sizes are recorded with the session notes.
+  2. The frontend CI job gains axe-core and a Lighthouse run on the built website, as dev-only tools pinned exactly; `frontend.md` section 6's "owed" note is removed in that change.
+
+## D-172: Tests held above SQLite's and Google's published practice
+- Date: 2026-11-06
+- Approved by: Adhi, in this session, choosing all three bars proposed in `testing.md` section 0. **Not reviewed by the other founder** (D-051).
+- Context: SQLite publishes 100% branch coverage of its core, puts most of its testing into fuzzing, and tests failure on purpose; Google runs mutation testing at scale and reruns only tests marked flaky. Measured on 6 November 2026: all ten rule modules at 100% of branches, after the race on opening a payment record gained its test and two dead branches were removed.
+- Options considered: for each bar, adopting it or not.
+- Chosen: a CI gate failing any rule module below 100% branch coverage; a nightly long run of Schemathesis and the Hypothesis properties at ten times the examples; a test of every outside dependency (the database, Valkey, S3, the Claude API, WhatsApp, the timestamp authorities) failing, timing out or refusing, and the answer a person then gets.
+- Reason: the rules where a silent mistake costs money or trust deserve the strictest coverage there is; fuzzing finds what examples never imagine; a dependency that fails is certain, only its date is not.
+- Consequences / follow-ups:
+  1. CI reads each rule module's branch coverage from the same report as the `service.py` floor and fails below 100%.
+  2. The nightly job gains the long fuzz run; a failure there opens an issue the next morning.
+  3. `testing.md` lists each dependency with its failure test; the missing ones are written in the change that builds the gate.

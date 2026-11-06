@@ -6,7 +6,7 @@
 
 Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md` before first use. Rules marked **(not yet used)** apply the first time the situation arises.
 
-**The ten dimensions** (`CLAUDE.md` section 5), and where this standard serves each:
+**The twelve dimensions** (`CLAUDE.md` section 5, D-139), and where this standard serves each:
 
 | Dimension | Here |
 |---|---|
@@ -17,7 +17,25 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md` befor
 | Trust and safety | Append-only, sealed records nobody can quietly rewrite, section 3 |
 | Performance | Indexes (5), keyset pages and fixed query counts (7), statement timeouts |
 | Research | Section 12 |
-| Novelty, design, business | Not here: a database standard is judged by integrity, not by competitors. What the screens need is `backend.md` |
+| Novelty, design, business | Judged against the published practice of the companies that run the largest databases (section 0), not against competitors. What the screens need is `backend.md` |
+| Reliability | Backups, a restore tested on a schedule and the recovery targets (sections 0 and 8) |
+| Maintainability | Expand, migrate, contract; every migration with a working downgrade (section 6); names from one convention (section 1) |
+
+---
+
+## 0. The benchmarks we beat (Adhi, 6 November 2026: "sky high")
+
+Each row: the strongest published practice, with its source; ours against it; what enforces it; whether it holds today. A row marked **(decision)** binds once a founder approves it.
+
+| Benchmark | What the leader publishes | Our bar | Enforced by | Today |
+|---|---|---|---|---|
+| **Changing a live schema without downtime** (Stripe) | Four phases for moving hundreds of millions of rows: dual writing, changing the read paths, changing the write paths, removing the old data ([Stripe, "Online migrations at scale", 2 February 2017](https://stripe.com/blog/online-migrations)) | Expand, migrate, contract for any table holding real data (section 6); no migration that locks a table people use | Squawk on every new migration in CI; the round trip (upgrade, downgrade, upgrade) on a fresh database | **Holds** |
+| **A backup is only real once restored** (GitLab) | GitLab's outage of 31 January 2017 lost about 5,000 projects because every backup method had silently failed: "nobody was responsible for testing this procedure" ([GitLab postmortem, 10 February 2017](https://about.gitlab.com/blog/postmortem-of-database-outage-of-january-31/)) | A restore into a scratch instance, with the app's readiness check against it, before the first user and then **monthly, automatically**, its result alerting on failure; a named owner | The restore job (item 90) and its alert | Never yet run: gap 1, owed before launch |
+| **How much can be lost, how fast it comes back** (AWS) | RDS ships transaction logs to S3 every five minutes and restores to any second in the retention window ([AWS RDS point-in-time restore](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_PIT.html)) | At most **5 minutes** of data lost and **1 hour** to restore (**approved, D-168**) | Measured by the monthly restore: the time it took, written down each month | Decided; not yet measured (the first restore is owed) |
+| **The database keeps the rules, not only the code** (PostgreSQL) | Constraints, foreign keys and triggers are the database's own guarantees ([PostgreSQL documentation, constraints](https://www.postgresql.org/docs/current/ddl-constraints.html)) | A rule the database can enforce, it does: checks, foreign keys, unique keys, append-only triggers on the sealed records (section 3) | Schema tests that read the catalogue; a test per rule that a hand-written query is refused | **Holds** |
+| **No query per row, every foreign key indexed** | (the practice of every large PostgreSQL user) | A fixed number of queries per list, whatever its length; an index on every foreign key | A query-count test on every list; a catalogue test over every foreign key | **Holds** |
+
+What moves a row from **(decision)** to binding: a founder's yes, recorded in `docs/DECISIONS.md` (`CLAUDE.md` section 5), with its enforcement built in the same change.
 
 ---
 
@@ -101,7 +119,7 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md` befor
 
 - **Backups:** automated, with point-in-time restore to any second in the window: 14 days in production, 1 in staging; deletion protection and a final snapshot in production; storage encrypted; not publicly reachable (`infra/modules/app/data.tf`). Described, not yet deployed.
 - **A restore is tested before launch** (D-062), and monthly after (item 90), by restoring into a scratch instance and running the app's readiness check against it. A backup never restored is not a backup. **Not yet done**: nothing is deployed.
-- **Recovery targets (decision before launch):** proposed at most 5 minutes of data lost and 1 hour to restore.
+- **Recovery targets (D-168):** at most 5 minutes of data lost and 1 hour to restore, each monthly restore's time written down against them.
 - **Watching it:** Performance Insights and PostgreSQL logs to CloudWatch are on in production. A weekly slow-query report from `pg_stat_statements` against the budgets is item 95 **(not yet built)**.
 - **The app's database login owns nothing and can only read and write rows** (item 97, D-100):
   - `app_writer`, a role without a login, holds the rights: `SELECT`, `INSERT`, `UPDATE` and `DELETE` on every table; only `SELECT` and `INSERT` on the six sealed tables; no `DELETE` on `takedown`, whose rows the IT Rules keep (item 52); only `SELECT` on `alembic_version`; no `TRUNCATE`, no ownership, nothing that creates objects. Migration `0dbcaacb1030` grants them, and later tables get the row rights by default; a later sealed table revokes the rest itself.

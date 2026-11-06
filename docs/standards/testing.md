@@ -4,7 +4,7 @@
 
 **The bar** is `CLAUDE.md` section 7.0: **a test is only worth something if it would fail when the code is wrong**, and that is shown, not assumed. "Tested" in any report means the tests below ran in that session and passed. The practice comes from Google's published work on mutation testing and flaky tests, Martin Fowler's on test design and non-determinism, and the documentation of the tools we run (sources in section 12). Each rule says what **enforces** it. A rule nothing enforces is marked *(review only)*.
 
-**The ten dimensions** (`CLAUDE.md` section 5), and where this standard serves each:
+**The twelve dimensions** (`CLAUDE.md` section 5, D-139), and where this standard serves each:
 
 | Dimension | Here |
 |---|---|
@@ -15,7 +15,25 @@
 | Performance | Query-count tests (1), the measurement script and the load test (8) |
 | Architecture | The layer contract and the file-kind rules are tests and a CI gate (9) |
 | Research | Section 12 |
-| Novelty, design, business | Not here: a testing standard is judged by what it catches |
+| Novelty, design, business | Judged by what it catches, against the strongest published test practice (section 0) |
+| Reliability | Concurrency tests (4), the overload and failure tests of every outside service (section 0), the migration round trip (9) |
+| Maintainability | Tests mirror `app/` (3); every rule shown to fail when broken (2), so a refactor that breaks one is caught |
+
+---
+
+## 0. The benchmarks we beat (Adhi, 6 November 2026: "sky high")
+
+Each row: the strongest published test practice, with its source; ours against it; what enforces it; whether it holds today (measured 6 November 2026). A row marked **(decision)** binds once a founder approves it.
+
+| Benchmark | What the leader publishes | Our bar | Enforced by | Today |
+|---|---|---|---|---|
+| **Every branch of the core** (SQLite) | 100% branch coverage of the core, and 100% MC/DC; test code 590 times the library's (version 3.42.0, 2023) ([SQLite, "How SQLite is tested", updated 21 April 2026](https://www.sqlite.org/testing.html)) | **100% branch coverage of every rule module** under mutation testing (section 2); 98% of lines overall; every `service.py` at 90% or more | The per-file floors in CI; the rule modules' 100% branch floor as a CI gate (**approved, D-172**) | **Holds**: all ten rule modules at 100% of branches; 98% of lines overall |
+| **Proving the tests can fail** (Google) | Mutation testing at Google's scale, surfacing surviving mutants in code review ([ICSE 2018](https://research.google/pubs/state-of-mutation-testing-at-google/)) | Mutation testing nightly on every rule module; no new survivor without a test or a written reason; the floor never raised quietly (section 2) | The nightly run and its floor (D-091, D-139) | **Holds**, its survivors named |
+| **Fuzzing as the main effort** (SQLite) | "most testing CPU cycles are now devoted to fuzzing" (same page) | Schemathesis over the whole contract on every push, no input allowed to produce a 500; Hypothesis properties on every pure rule; and a **nightly long run** of both, at ten times the examples (**approved, D-172**) | CI's fuzz step; the nightly job | Per push: **holds**; nightly long run: not yet |
+| **Failure on purpose** (SQLite) | Out-of-memory, I/O error, and crash and power-loss tests (same page) | Every outside dependency (the database, Valkey, S3, the Claude API, WhatsApp, the timestamp authorities) has a test of it failing, timing out or refusing, and the answer a person then gets (**approved, D-172**) | A test per dependency, listed in this file | Partly: the database at capacity (load shedding), the Claude API and WhatsApp failures are tested; the list is not yet complete |
+| **No flaky test hides a failure** (Google) | Reruns only for tests marked flaky ([Google Testing Blog, 27 May 2016](https://testing.googleblog.com/2016/05/flaky-tests-at-google-and-how-we.html)) | No reruns at all: a test that fails once is a failure; a flaky test is fixed, or marked and tracked, the same day | CI runs each test once, stopping at the first failure | **Holds** |
+
+What moves a row from **(decision)** to binding: a founder's yes, recorded in `docs/DECISIONS.md` (`CLAUDE.md` section 5), with its enforcement built in the same change.
 
 ---
 

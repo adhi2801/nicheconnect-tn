@@ -2,11 +2,11 @@
 
 Applies to research, flows, the design system, copy and accessibility, and to **backend choices that shape the experience** (error messages, status names, what data exists, how fast things respond), which follow this file now. The bar is `CLAUDE.md` section 7.0.
 
-**Timing (D-053, amending D-004):** research, flows and the design system may be worked on now. No frontend code starts until the backend is complete. Designs are checked against `docs/api/openapi.json`: a screen that needs a field the API does not answer is a backend request, not a frontend decision.
+**Timing (D-141, reversing D-053's wait):** the website and the apps are built now, beside the backend. Designs are checked against `docs/api/openapi.json`: a screen that needs a field the API does not answer is a backend request, not a frontend decision.
 
 **For:** whoever researches, designs or writes copy, and every backend change that shapes what a person sees, read in full before the first flow or field (`CLAUDE.md` section 6). **Last checked on 28 October 2026**, when the frontend began (D-141). Earlier, on 14 October, two claims had stopped being true and were corrected (section 8).
 
-**The ten dimensions** (`CLAUDE.md` section 5), and where this standard serves each:
+**The twelve dimensions** (`CLAUDE.md` section 5, D-139), and where this standard serves each:
 
 | Dimension | Here |
 |---|---|
@@ -18,6 +18,22 @@ Applies to research, flows, the design system, copy and accessibility, and to **
 | Performance | A skeleton within 100 ms; the budgets are `frontend.md` section 4 |
 | Business | Fast to value: a first campaign and a first application in under 5 minutes (1) |
 | Novelty, architecture, security | Not here: `docs/COMPETITIVE_LANDSCAPE.md`, `backend.md`, `security.md` |
+| Reliability | Nothing a person does is lost: every state designed, offline and failure included (5); `frontend.md` section 5 |
+| Maintainability | One design system (4), every string in a message catalogue (1, 6) |
+
+---
+
+## 0. The benchmarks we beat (Adhi, 6 November 2026: "sky high")
+
+Each row: the strongest published benchmark, with its source; ours against it; how it is measured; whether it holds today. A row marked **(decision)** binds once a founder approves it.
+
+| Benchmark | What the leader publishes | Our bar | Measured by | Today |
+|---|---|---|---|---|
+| **How usable it feels** (MeasuringU) | The System Usability Scale averages **68** across 500 studies and over 5,000 users; above **80.3** is an A, the top 10% ([MeasuringU, "Measuring usability with the System Usability Scale", 3 February 2011](https://measuringu.com/sus/)) | Every core journey (section 3) scores **above 80.3** with brand owners and with creators, before launch and after each redesign of it (**approved, D-171**) | The ten SUS questions after each usability session (section 2), at least five people per side | No session run yet |
+| **Whether people succeed** (Google HEART) | Happiness, engagement, adoption, retention and task success, chosen per product (section 9) | Task completion of at least 90%, no critical confusion point, a first campaign and a first application each in under 5 minutes (section 2) | The usability sessions, then the product's own events after launch | The bar is set; no session run yet |
+| **Accessible to everyone** (W3C) | WCAG 2.2, level AA (section 9) | AA on every screen, checked by tools in CI and by a person with TalkBack and VoiceOver on the reference phones before each release (`frontend.md` section 6) | CI's accessibility checks; the release checklist | **Not in CI yet**: `frontend.md` section 6 names axe-core and Lighthouse as gates, but no workflow runs them (found 6 November 2026); wiring them in approved (D-171) |
+
+What moves a row from **(decision)** to binding: a founder's yes, recorded in `docs/DECISIONS.md` (`CLAUDE.md` section 5), with its measurement built in the same change.
 
 ---
 
