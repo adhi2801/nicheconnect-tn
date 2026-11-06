@@ -1,5 +1,7 @@
 # Frontend research and the homepage prototype audit
 
+**Checked against the code on 6 November 2026:** versions have moved since this was written: the web app runs Next.js 16.4.3, React 19.3.1 and Motion 14 (this file says Motion 12.x and Next.js up to 16.2). The platform's state against our code is now `docs/research/FRONTEND_PLATFORM_AND_FLOWS_2026.md`; this file's audit of the prototype and its research stand as of 28 October.
+
 **Version 1, 28 October 2026.** Desk research and a measured audit, made at Adhi's request ("research on all 14 and more; the latest tech available today; proper audit of how to make it better"). Nothing here is a decision. Every choice that needs a founder is marked **(decision)** and gathered in Part D.
 
 **How it was made.**

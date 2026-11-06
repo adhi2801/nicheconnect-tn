@@ -1,5 +1,7 @@
 # The futurist frontend: what is new, what is ready, and what we refuse
 
+**Checked against the code on 6 November 2026:** of section 1's "use now", the web app does not yet use React 19.3's `<ViewTransition>`, the React Compiler or Cache Components; each is now an item with its proof (`docs/FRONTEND_COMPLETE.md` F342 to F344; `docs/research/FRONTEND_PLATFORM_AND_FLOWS_2026.md` section 1).
+
 **For:** the founders and whoever builds the frontend, to put Colyv ahead of every competitor in what the web and phones can now do, without betting the product on something unfinished. **Version 1, 31 October 2026**, from web searches made that day and `docs/research/FRONTEND_RESEARCH_2026.md` (28 October). **"Futurist" here means the newest thing that is shipped and stable for our users, used on purpose**, not the newest thing announced. That is D-047's upgrade rule, applied to the frontend.
 
 **The four shelves.** Every capability below sits on one:
