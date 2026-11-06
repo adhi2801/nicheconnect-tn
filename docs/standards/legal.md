@@ -15,6 +15,20 @@ Status words in this file:
 
 ---
 
+## 0. The practice we beat (Adhi, 6 November 2026: "sky high")
+
+The law is section 3, and constraint 6 holds there: nothing in this table interprets it. These rows are the published practice of the platforms that will carry our app, and what we do beyond it. A row marked **(decision)** binds once a founder approves it.
+
+| Benchmark | What the leader publishes | Our bar | Enforced by | Today |
+|---|---|---|---|---|
+| **Leaving is as easy as joining** (Apple; Google) | Apple: an app that supports account creation must let people start deleting their account inside the app, required since 30 June 2022 ([App Review, guideline 5.1.1(v)](https://developer.apple.com/help/app-review/guideline-reference/5-1-1-account-deletion)). Google Play: an in-app path **and** a web page that works without the app, declared in the Data safety form, required since 7 December 2023 ([Play Console help](https://support.google.com/googleplay/android-developer/answer/13327111)) | Deletion started in the app, on the website, and on a public page that needs no app and no install; a 30-day window to change one's mind; what is kept, and why, said before confirming | `tests/modules/me/` (deletion, D-122); the public page's test with the website | Backend **built** (D-122); the screens owed with the apps and the website |
+| **What the store label says is what the code does** (Apple; Google) | App Store privacy details and Google Play's Data safety section, each a declaration the developer keeps true | Both labels **generated from the code's own registries** (`app/modules/me/account_deletion_registry.py`, and `NOT_EXPORTED` in `app/modules/me/export_service.py`), so a new table or field changes the label in the same change, never by hand (**approved, D-170**) | A test that fails when a registry entry has no label answer | The registries exist; the labels are not generated yet |
+| **Persuasion audited, not assumed** (the law, and better) | The E-Commerce Rules' yearly dark-pattern self-audit, with the result displayed (section 3.4) | The audit **every quarter**, against the thirteen banned patterns, each screen and route named with its finding, the result published (**approved, D-170**) | The audit file, dated, in `docs/reports/` | The first audit owed before launch |
+
+What moves a row from **(decision)** to binding: a founder's yes, recorded in `docs/DECISIONS.md` (`CLAUDE.md` section 5), with its enforcement built in the same change.
+
+---
+
 ## 1. Rules for everyone building (binding)
 
 1. **Every proposal has a "Legal" line.** It names which section of this file the feature touches, what we will do, and which Confirm items it waits on. No such line, no build. A feature whose Confirm item decides its design waits; one where it only decides wording ships behind a setting that stays off (the pattern of D-070 and D-085).
