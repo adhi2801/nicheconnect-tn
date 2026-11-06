@@ -18,6 +18,8 @@ Adhi, 12 October 2026: every md file at the level of the best. A document meets 
 
 Dated reports, the decision log and the papers in `decided/` are records: they keep what was true when written, and get only a status line saying what became of them.
 
+**Progress on the world-bar pass** (Adhi, 6 November 2026: "all md files ... ultimate world class standards ... sky high"): all eight standards gained a section 0, "the benchmarks we beat": each leader's published bar with its dated source, ours against it with a number, what enforces it, and whether it holds today; the twelve dimensions in each; the root `README.md` rewritten for a reader outside the team. Decisions taken in the pass: D-166 to D-172. Found and marked owed on the way: `frontend.md` claimed Lighthouse and axe-core gate CI, which no workflow did (wiring approved, D-171). Next, in this order: the map, strategy, operations, then the research files and a status line on each paper in `decided/`.
+
 **Progress on the D-139 pass** (27 October): every md file raised again to twelve dimensions and point 9, one file at a time, each coming back to Adhi before it binds. Order: the standards (security, backend, database, testing, trust and safety, legal, frontend, ux), then the map, strategy and operations as below. None raised yet.
 
 **Progress on the D-098 pass**, kept as the record. Raised on 12 October: `CLAUDE.md` and this index. On 14 October: `standards/backend.md`, `standards/database.md`, `standards/security.md`, `standards/testing.md`, `standards/trust-and-safety.md`, `standards/ux.md` and `standards/frontend.md`; and in the map, `BACKEND_COMPLETE.md` section 2, `ARCHITECTURE_SCALE.md` and `PERFORMANCE.md` brought up to date. Next, in this order:
@@ -37,7 +39,7 @@ Dated reports, the decision log and the papers in `decided/` are records: they k
 | `standards/trust-and-safety.md` | Anything that lets one person reach, pay, judge or be judged by another, and every way someone could scam another person or us |
 | `standards/legal.md` | Anything touching the law: personal data and consent, what we say about people, ranking, payments, tax, content rights, messages, minors, and every Confirm question for the lawyer and CA |
 | `standards/testing.md` | Any test, CI change, or claim that something is tested |
-| `standards/frontend.md` | Any web or app work (after the backend is complete) |
+| `standards/frontend.md` | Any web or app work (built now, beside the backend: D-141) |
 | `standards/ux.md` | Any design, flow or copy, and backend choices that shape them |
 
 ## 2. The record: what was decided (append-only)
