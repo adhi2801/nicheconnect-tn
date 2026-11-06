@@ -2123,3 +2123,15 @@ Newest entries at the bottom.
 - Consequences / follow-ups:
   1. The monthly automated restore (item 90) records its time to restore and the latest restorable time against these targets, and alerts on a miss.
   2. The first restore runs before the first user (D-062); B is revisited after launch.
+
+## D-169: Trust and safety held to published numbers
+- Date: 2026-11-06
+- Approved by: Adhi, in this session, choosing all three bars proposed in `trust-and-safety.md` section 0. **Not reviewed by the other founder** (D-051).
+- Context: Adhi asked that every standard beat the world's best ("sky high"). Upwork publishes a yearly transparency report; Airbnb publishes its rate of safety reports per stay; India's Intermediary Rules set the legal clock for complaints.
+- Options considered: for each bar, adopting it or not; for report handling, the legal clock (24 hours to acknowledge, 7 days to resolve) or a stricter one.
+- Chosen: a yearly trust and safety report from the first anniversary of launch; reports per 1,000 deals measured from the first deal, the target set after three months of real data; a scam report acknowledged within 12 hours and acted on within 72.
+- Reason: a marketplace earns trust by showing its numbers, and a scam acted on in three days instead of seven leaves less time for the next victim.
+- Consequences / follow-ups:
+  1. The founders' numbers count flags, reports by kind and outcome, suspensions, and the time from report to acknowledgement and to action.
+  2. The admin queue shows each report's clock against the 12- and 72-hour bars.
+  3. The first report is published a year after launch; the rate target is decided three months after the first deal.

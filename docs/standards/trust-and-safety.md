@@ -6,7 +6,7 @@
 
 **Status words:** **Built** (in the code, with the test named), **Owed** (an item in `docs/BACKEND_COMPLETE.md`), **Frontend** (the backend is ready; the screen must do its part, `ux.md`).
 
-**The ten dimensions** (`CLAUDE.md` section 5), and where this standard serves each:
+**The twelve dimensions** (`CLAUDE.md` section 5, D-139), and where this standard serves each:
 
 | Dimension | Here |
 |---|---|
@@ -19,6 +19,23 @@
 | Business | A marketplace where creators are not scammed is the one they recommend; every scam that works here costs both sides and us |
 | Research | Section 8 |
 | Architecture, performance | Not here: flags are a pure function on read (`app/core/text_flags.py`); blocks are a condition in each query (`security.md` section 2) |
+| Reliability | A flag that cannot be worked out never blocks a person's message; reports are kept until acted on (section 3) |
+| Maintainability | Every scam named once (section 2), each with its protection and its test (section 3) |
+
+---
+
+## 0. The benchmarks we beat (Adhi, 6 November 2026: "sky high")
+
+Each row: the strongest published practice, with its source; ours against it; what enforces it; whether it holds today. A row marked **(decision)** binds once a founder approves it.
+
+| Benchmark | What the leader publishes | Our bar | Enforced by | Today |
+|---|---|---|---|---|
+| **Publishing what went wrong** (Upwork) | A yearly Marketplace Transparency Report; the 2025 report (26 February 2026) reported proposals from bad actors down more than 80% and job offers from bad-actor clients down more than 90% year on year, through machine-learning detection and proactive enforcement ([Upwork blog](https://www.upwork.com/blog/upworks-2025-transparency-report-our-ongoing-work-to-protect-yours); the figures as reported in search results on 6 November 2026, the page refusing automated reads) | A yearly trust and safety report from the first anniversary of launch: flags raised by kind, reports by kind and outcome, accounts suspended, the median time to act, published on the website (**approved, D-169**) | The founders' numbers (`app/modules/admin`), which count each of these | No users yet; the counts exist |
+| **Knowing the rate, not only the cases** (Airbnb) | 0.09% of 2022 stays led to a safety-related report by a host or guest ([Airbnb newsroom](https://news.airbnb.com/an-update-on-our-work-to-crack-down-on-parties-and-disruptive-behavior)) | Reports per 1,000 deals, by kind, from the first deal; a target set after three months of real data (**approved, D-169**; the target itself decided then) | The founders' numbers | Not yet measured |
+| **Acting fast on a report** (the law, and better) | India's Intermediary Rules as amended on 10 February 2026: every complaint acknowledged within 24 hours and resolved within 7 days (`legal.md` section 3.3) | A report of a scam **acknowledged within 12 hours and acted on within 72** (**approved, D-169**), the time to each measured | The admin queue's timestamps, each report's outcome recorded | The legal clocks are the bar today |
+| **Scams named before they happen** (Upwork, Fiverr, Meta) | Upwork and Fiverr hide contact details before a contract; Meta publishes its fraud rules (section 8) | Fee requests aimed at creators and off-platform pulls flagged on every message and brief; the rules public on a page; a pumped record read as one partner (sections 2 to 4) | The text-flag tests and each protection's test (section 3) | **Holds**, the public page owed with the website |
+
+What moves a row from **(decision)** to binding: a founder's yes, recorded in `docs/DECISIONS.md` (`CLAUDE.md` section 5), with its enforcement built in the same change.
 
 ---
 
