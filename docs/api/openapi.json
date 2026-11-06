@@ -3760,8 +3760,26 @@
           "campaign": {
             "$ref": "#/components/schemas/TemplateCampaignRead"
           },
+          "dates_confirmed": {
+            "description": "True when the dates are fixed or notified by the Tamil Nadu Government; false when they are expected, from an almanac or from the moon",
+            "title": "Dates Confirmed",
+            "type": "boolean"
+          },
+          "depends_on_moon": {
+            "description": "The day is set by the moon being sighted, so it can move by a day",
+            "title": "Depends On Moon",
+            "type": "boolean"
+          },
+          "ends_on": {
+            "examples": [
+              "2027-01-17"
+            ],
+            "format": "date",
+            "title": "Ends On",
+            "type": "string"
+          },
           "key": {
-            "description": "Stable, for a link to one template",
+            "description": "Stable: the same festival keeps its key",
             "examples": [
               "pongal"
             ],
@@ -3776,19 +3794,6 @@
             "title": "Lead Weeks",
             "type": "integer"
           },
-          "months": {
-            "description": "The months it falls in, 1 to 12. Empty for a festival that follows the moon, whose dates the brand sets",
-            "examples": [
-              [
-                1
-              ]
-            ],
-            "items": {
-              "type": "integer"
-            },
-            "title": "Months",
-            "type": "array"
-          },
           "name": {
             "examples": [
               "Pongal"
@@ -3796,9 +3801,27 @@
             "title": "Name",
             "type": "string"
           },
+          "publish_by": {
+            "description": "The day to have the campaign open by: `lead_weeks` before `starts_on`",
+            "examples": [
+              "2026-12-03"
+            ],
+            "format": "date",
+            "title": "Publish By",
+            "type": "string"
+          },
+          "starts_on": {
+            "description": "When it next starts, or started if it is under way",
+            "examples": [
+              "2027-01-14"
+            ],
+            "format": "date",
+            "title": "Starts On",
+            "type": "string"
+          },
           "when": {
             "examples": [
-              "Mid-January, the first day of the Tamil month of Thai"
+              "Mid-January: Bhogi, Thai Pongal on the first day of Thai"
             ],
             "title": "When",
             "type": "string"
@@ -3808,7 +3831,11 @@
           "key",
           "name",
           "when",
-          "months",
+          "starts_on",
+          "ends_on",
+          "publish_by",
+          "dates_confirmed",
+          "depends_on_moon",
           "lead_weeks",
           "campaign"
         ],
@@ -15521,6 +15548,13 @@
             "title": "Campaign Type",
             "type": "string"
           },
+          "deliverable_items": {
+            "items": {
+              "$ref": "#/components/schemas/DeliverableIn"
+            },
+            "title": "Deliverable Items",
+            "type": "array"
+          },
           "deliverables": {
             "title": "Deliverables",
             "type": "string"
@@ -15558,6 +15592,7 @@
           "description",
           "campaign_type",
           "deliverables",
+          "deliverable_items",
           "niches"
         ],
         "title": "TemplateCampaignRead",
@@ -23733,8 +23768,26 @@
     },
     "/api/v1/campaign-templates": {
       "get": {
-        "description": "Campaigns already worded for Tamil Nadu's festivals and seasons, the soonest first from today in Tamil Nadu. Each is a starting point: add the brand's cities and, for a paid campaign, a budget, then create it with `POST /api/v1/campaigns`. A festival that follows the moon lists no months and comes last. A fixed list of 11; no login. Cached for a day. Limit: 60 a minute.",
+        "description": "Campaigns already worded for Tamil Nadu's festivals and seasons, of every faith and none, each with its next dates. Ordered only by date: the one to publish soonest first (`publish_by`), so one already under way leads. Each is a starting point: add the brand's cities and, for a paid campaign, a budget, then create it with `POST /api/v1/campaigns`. `dates_confirmed` is false for dates that are expected rather than notified, and `depends_on_moon` marks a day set by the moon being sighted. No login. Cached until midnight in Tamil Nadu, with an ETag. Limit: 60 a minute.",
         "operationId": "campaign_templates_api_v1_campaign_templates_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "if-none-match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-None-Match"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -23749,6 +23802,19 @@
               }
             },
             "description": "Successful Response"
+          },
+          "304": {
+            "description": "The reader's copy, named by `If-None-Match`, is current"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request is not valid; `errors` names each field and why"
           },
           "429": {
             "content": {
