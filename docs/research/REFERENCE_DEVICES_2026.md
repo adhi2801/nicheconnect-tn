@@ -1,5 +1,7 @@
 # Reference devices: the phones and laptop every budget is measured on
 
+**Sources checked 6 November 2026:** 9 links; StatCounter refuses automated checks (an archived copy of June 2026 exists); the rest live. Device sales move quarterly: re-read at the next quarter's figures. This was a check that every cited source still exists, not a new round of research: the findings stand as dated in the file.
+
 **For:** the founders, to buy the test bench `docs/standards/frontend.md` section 3 requires; and whoever measures performance, frames or the 3D budgets. **Version 1, 31 October 2026**, from market data read that day. `frontend.md` section 3 leaves the exact models as a decision "chosen by current Indian sales at frontend start"; this file makes that choice ready.
 
 ---

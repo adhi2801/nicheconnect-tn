@@ -170,7 +170,7 @@ Each area gives what is current (dated), what the best do, what it means for Col
 - **Three.js.**
   - The current release is **r186** (8 September 2026) ([Utsubo](https://www.utsubo.com/blog/threejs-2026-what-changed)). The prototype is on r128, five years older.
   - The WebGPU renderer falls back to WebGL 2 automatically, and its node-based shading (TSL) replaces hand-written shaders.
-  - The three.js manual still recommends the WebGL renderer for pure WebGL apps, and custom `ShaderMaterial` and `onBeforeCompile` do not carry over to WebGPU ([three.js manual](https://threejs.org/manual/en/webgpurenderer.html)).
+  - The three.js manual still recommends the WebGL renderer for pure WebGL apps, and custom `ShaderMaterial` and `onBeforeCompile` do not carry over to WebGPU ([three.js manual](http://web.archive.org/web/20260624133821/https://threejs.org/manual/en/webgpurenderer.html)).
 - **WebGPU is in every major browser:**
   - Chrome and Edge 113 and later;
   - Android Chrome 121 on Android 12 and later, with a compatibility mode for older GLES 3.1 phones from February 2026;

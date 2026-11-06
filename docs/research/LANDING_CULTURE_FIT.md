@@ -1,5 +1,7 @@
 # Does each Tamil root fit Colyv? The landing page, judged
 
+**Sources checked 6 November 2026:** 25 links; the Madras Musings article now points to an archived copy, and Unicode's Tamil names list to its official chart (U0B80.pdf); the rest live. This was a check that every cited source still exists, not a new round of research: the findings stand as dated in the file.
+
 **Version 1, 29 October 2026.** Adhi asked for intensive research into Tamil culture for the landing page, down to the smallest details, including letters and script, and asked for each idea to be judged against the product, the people it serves, psychology and Colyv's values. This file is that judgement.
 
 **What it is:** desk research and reasoning. **What it is not:** evidence from the people we serve. Nothing here is proven until it is shown to Tamil brand owners and creators of every faith and of none (Part E). Nothing here is a decision. The ten-section outline it judges was given to Adhi in chat on 28 October 2026.
@@ -16,7 +18,7 @@ Read with `TAMIL_DESIGN_ROOTS.md` (the roots and their sources) and `FRONTEND_RE
   - About one creator in eight, and one brand in eight, is not Hindu, and many Hindus are not observant.
   - **A page that reads as religious tells all of them it is not for them.**
 - **Temple architecture is already a civic Tamil symbol, but only as architecture.**
-  - The state emblem, designed in 1949 by R. Krishna Rao, carries a gopuram. By his account it is drawn from the west tower of the Madurai Meenakshi temple, though it is popularly linked to Srivilliputhur ([Madras Musings](https://madrasmusings.com/Vol%2021%20No%206/the-artist-who-designed-the-state-emblem.html); [Wikipedia](https://en.wikipedia.org/wiki/Emblem_of_Tamil_Nadu)).
+  - The state emblem, designed in 1949 by R. Krishna Rao, carries a gopuram. By his account it is drawn from the west tower of the Madurai Meenakshi temple, though it is popularly linked to Srivilliputhur ([Madras Musings](http://web.archive.org/web/20240916044531/https://madrasmusings.com/Vol%2021%20No%206/the-artist-who-designed-the-state-emblem.html); [Wikipedia](https://en.wikipedia.org/wiki/Emblem_of_Tamil_Nadu)).
   - The Brihadeeswarar's thousandth year (September 2010) was celebrated with the state government's support under a Chief Minister described as a declared atheist ([Organiser, a partisan source](https://organiser.org/2010/10/17/41739/general/r3f9a4251/amp/); [India Post stamp, 26 September 2010](https://www.istampgallery.com/?p=2647)).
   - The temple belongs to the UNESCO "Great Living Chola Temples".
   - So a temple shown as **Tamil engineering and heritage** has wide standing. Shown as **worship**, it narrows who feels welcome.
@@ -79,7 +81,7 @@ Every detail must carry meaning or function, never decoration (`TAMIL_DESIGN_ROO
 1. **Tamil numerals on the six steps:** ௧ ௨ ௩ ௪ ௫ ௬, with 1 to 6 beside them for anyone who does not read them.
    - Tamil had its own numerals, once with a sign for zero and separate signs for 10, 100 and 1,000. Today they are mostly replaced by ordinary digits ([Wikipedia](https://en.wikipedia.org/wiki/Tamil_numerals); [Unicode technical note 21](https://www.unicode.org/notes/tn21/tamil_numbers.pdf)).
    - That makes them a quiet mark of age that does not get in the way.
-2. **Old Tamil ledger signs, on the record and the payment.** Unicode carries Tamil clerical and calendar signs ([Unicode chart U+0B80](https://unicode.org/charts/nameslist/n_0B80.html)):
+2. **Old Tamil ledger signs, on the record and the payment.** Unicode carries Tamil clerical and calendar signs ([Unicode chart U+0B80](https://www.unicode.org/charts/PDF/U0B80.pdf)):
    - day ௳, month ௴, year ௵;
    - debit ௶, credit ௷;
    - "as above" ௸, rupee ௹, and the number or balance sign ௺.

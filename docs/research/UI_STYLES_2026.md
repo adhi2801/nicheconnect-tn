@@ -1,5 +1,7 @@
 # Interface styles for Colyv: what to take, what to refuse (29 October 2026; version 2, 31 October 2026, adds section 5)
 
+**Sources checked 6 November 2026:** 27 links, all live. This was a check that every cited source still exists, not a new round of research: the findings stand as dated in the file.
+
 **What this is.** Adhi asked (29 October 2026) which of the current interface styles (glassmorphism, Liquid Glass, neumorphism, claymorphism, bento grids, neo-brutalism, aurora gradients and the rest) Colyv should use, after deep research. This file judges each against what Colyv is: a SaaS product people trust with their work and income, with a Tamil soul (`TAMIL_DESIGN_ROOTS.md` rule 0), used mostly on Android phones in Tamil Nadu (`docs/standards/frontend.md` section 4).
 
 **How it was researched.** Web sources read on 29 October 2026, listed at the end. **Be honest about the evidence:** most "2026 trend" articles are agency marketing with no user testing. Where a claim rests only on those, this file says so. The strongest evidence found is Nielsen Norman Group's guidance, Apple's Human Interface Guidelines, Google's published research on Material 3 Expressive, one peer-reviewed usability study of brutalist sites, and a Mozilla bug report measuring blur on old Android GPUs. **Not done:** testing any of these styles with Tamil brand owners and creators (rule 4). Every choice below is a hypothesis until that test.
