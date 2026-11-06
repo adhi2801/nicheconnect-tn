@@ -3409,7 +3409,7 @@
                 "type": "null"
               }
             ],
-            "description": "How close the brief reads to the creator's profile, from 0 to 1. **Null when either side has not been indexed yet** (a creator is indexed once they publish their Passport); the list is then ordered by the creator's words in each brief, newest first",
+            "description": "How close the brief reads to the creator's profile, from 0 to 1. **Null when either side has not been indexed yet** (a creator is indexed once they publish their Passport); the row is then placed by the creator's words in the brief, then newest first",
             "examples": [
               0.79
             ],
@@ -3436,7 +3436,7 @@
             "type": "array"
           },
           "ranked_by_similarity": {
-            "description": "False when the creator has no embedding yet, so the list is ordered by the creator's words in each brief, newest first, without meaning. Say so rather than presenting it as fully ranked",
+            "description": "False when the creator has no embedding yet, so the list is ordered by the creator's words in each brief, then newest first, without meaning. Say so rather than presenting it as fully ranked",
             "examples": [
               true
             ],
@@ -7682,7 +7682,7 @@
                 "type": "null"
               }
             ],
-            "description": "How close the creator's profile reads to the campaign brief, from 0 to 1. **Null when the campaign has not been indexed yet**, in which case the results are ordered by the facts above and are still worth reading",
+            "description": "How close the creator's profile reads to the campaign brief, from 0 to 1. **Null when the campaign or this creator has not been indexed yet**; the row is then placed by the brief's words and the facts above, and is still worth reading",
             "examples": [
               0.83
             ],
@@ -24368,7 +24368,7 @@
     },
     "/api/v1/campaigns/discover/for-me": {
       "get": {
-        "description": "Open campaigns worth the signed-in creator's time, best first, each with the reasons it was suggested, including **how the brand pays** (the same record as `GET /brands/{id}/reliability`).\n\nOnly campaigns that name the creator's city and share one of their niches, whose applications are still open, from brands that are not suspended, and that the creator has not already applied to.\n\nA creator who has not published their Passport has no embedding yet, so `ranked_by_similarity` is false and the list is newest first. Nothing about the creator is shown to anyone by this call.",
+        "description": "Open campaigns worth the signed-in creator's time, best first, each with the reasons it was suggested, including **how the brand pays** (the same record as `GET /brands/{id}/reliability`).\n\nOnly campaigns that name the creator's city and share one of their niches, whose applications are still open, from brands that are not suspended, and that the creator has not already applied to.\n\nOrdered by how well each brief fits the creator, in meaning and in the creator's own words, counted equally; then newest first. A creator who has not published their Passport has no embedding yet, so `ranked_by_similarity` is false and the list is ordered by their words in each brief, then newest first. Nothing about the creator is shown to anyone by this call.",
         "operationId": "list_campaigns_for_me_api_v1_campaigns_discover_for_me_get",
         "parameters": [
           {
@@ -25593,7 +25593,7 @@
     },
     "/api/v1/campaigns/{campaign_id}/matches": {
       "get": {
-        "description": "Creators worth approaching for one of the signed-in brand's own campaigns, best first, each with the reasons it was suggested.\n\nOnly creators in a city the campaign named, in at least one of its niches, **and who have published their Creator Passport**. A creator who has not published is not discoverable here; that is their choice to make and it is not overridden by a brand searching (D-036).\n\nOrdered by: free to take work today first; then how well the profile fits the brief, in meaning and in the brief's own words, counted equally; then deals agreed before. If the campaign has not been indexed yet, `ranked_by_similarity` is false and `similarity` is null on every row: the list is then ordered by the brief's words and the facts, without meaning, and is still worth reading.",
+        "description": "Creators worth approaching for one of the signed-in brand's own campaigns, best first, each with the reasons it was suggested.\n\nOnly creators in a city the campaign named, in at least one of its niches, **and who have published their Creator Passport**. A creator who has not published is not discoverable here; that is their choice to make and it is not overridden by a brand searching (D-036).\n\nOrdered by: free to take work today first; then how well the profile fits the brief, in meaning and in the brief's own words, counted equally; then deals agreed before. If the campaign has not been indexed yet, `ranked_by_similarity` is false and `similarity` is null on every row: the list is then ordered by the brief's words and the facts, without meaning, and is still worth reading. A creator not indexed yet has a null `similarity` and is placed by words alone.",
         "operationId": "list_matches_for_campaign_api_v1_campaigns__campaign_id__matches_get",
         "parameters": [
           {

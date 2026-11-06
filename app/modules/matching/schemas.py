@@ -46,9 +46,9 @@ class MatchReasonsRead(BaseModel):
     similarity: float | None = Field(
         description=(
             "How close the creator's profile reads to the campaign brief, "
-            "from 0 to 1. **Null when the campaign has not been indexed yet**, "
-            "in which case the results are ordered by the facts above and are "
-            "still worth reading"
+            "from 0 to 1. **Null when the campaign or this creator has not been "
+            "indexed yet**; the row is then placed by the brief's words and the "
+            "facts above, and is still worth reading"
         ),
         examples=[0.83],
     )
@@ -101,8 +101,8 @@ class CampaignMatchReasonsRead(BaseModel):
         description=(
             "How close the brief reads to the creator's profile, from 0 to 1. "
             "**Null when either side has not been indexed yet** (a creator is "
-            "indexed once they publish their Passport); the list is then "
-            "ordered by the creator's words in each brief, newest first"
+            "indexed once they publish their Passport); the row is then placed "
+            "by the creator's words in the brief, then newest first"
         ),
         examples=[0.79],
     )
@@ -130,7 +130,7 @@ class CampaignMatchesRead(BaseModel):
     ranked_by_similarity: bool = Field(
         description=(
             "False when the creator has no embedding yet, so the list is "
-            "ordered by the creator's words in each brief, newest first, "
+            "ordered by the creator's words in each brief, then newest first, "
             "without meaning. Say so rather than presenting it as fully ranked"
         ),
         examples=[True],

@@ -24,6 +24,7 @@ from app.core.export import (
     build_section,
 )
 from app.core.taxonomy import CURRENCY
+from app.db.refusals import constraint_name
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo import record_service as record
 from app.modules.deal_memo import service as deal_memos
@@ -239,6 +240,8 @@ def create_for_memo(
         db.flush()
     except IntegrityError as error:
         db.rollback()
+        if constraint_name(error) != "uq_payment_status_deal_memo_id":
+            raise
         raise PaymentRecordExists() from error
     # Opened by the deal's own rule (approval starts the clock, D-027), not
     # by either person, so the record names us as the actor.

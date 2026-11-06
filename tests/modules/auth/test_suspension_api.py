@@ -162,14 +162,14 @@ def test_a_suspended_creator_is_never_suggested(db, brand, creator):
         m.creator.id
         for m in matching.find_creators_for_campaign(
             db, campaign, limit=10, today=FIXED_NOW.date()
-        )
+        ).matches
     ]
     suspend(db, creator.account_id)
     after = [
         m.creator.id
         for m in matching.find_creators_for_campaign(
             db, campaign, limit=10, today=FIXED_NOW.date()
-        )
+        ).matches
     ]
 
     assert row.id in before

@@ -487,7 +487,19 @@ One query per reading, whatever the number of creators (`tests/modules/matching/
 | `GET /campaigns/{id}/matches`, the busiest campaign | 46.3 | 33.8 | 300 | OK |
 | `GET /campaigns/discover/for-me` | 30.7 | 25.4 | 300 | OK |
 
-The keyword ranking is computed inside the structural filter, on the rows that pass it, with no index: no measurable cost at this scale (the difference is within run-to-run variation, so it is not claimed as a gain). Still one query per list. At 10,000 creators it has not been measured; a GIN index on the bio's document is the remedy if it is ever needed.
+The word match is computed inside the structural filter, on every row that passes it, with no index: no measurable cost on the seeded data (the difference is within run-to-run variation, so it is not claimed as a gain). Queries per list: two on the brand's side (whether the campaign has a vector, then the list), three on the creator's (the same two, then the brands' payment records), whatever the list's length.
+
+**After the independent review, the same evening.** Words are now counted once each (distinct shared words over the square root of the document's distinct words) instead of `ts_rank` over an any-word query. Measured back to back on the same laptop, same seeded data, `--runs 100`, before and after the change: matches 38.5 then 37.2 ms p95, campaigns-for-me 30.5 then 37.6, within run-to-run variation; both far inside 300.
+
+**The seeded data understates the worst case, so it was measured on its own** (a SELECT-only script over `generate_series` rows, 30 runs each, the word match alone, texts at their maximum lengths: a 500-character bio, a 120-character title with a 4,000-character description):
+
+| Pool after the filter | Creator's side (briefs 4,120 chars), p95 ms | Brand's side (bios 500 chars), p95 ms |
+| --- | --- | --- |
+| 50 | 34.0 (`ts_rank` 22.3) | 6.8 (9.5) |
+| 200 | 118.2 (90.4) | 14.2 (38.7) |
+| 1,000 | 532.5 (448.6) | 90.6 (154.9) |
+
+The cost is reading each row's text into words on every request; a GIN index would not help, since nothing filters by words. **The creator's side passes the 300 ms read budget somewhere between 200 and 1,000 open campaigns of maximum length in one city and niche.** The pilot is far below that, but the remedy is known and owed: the words stored with each row as a generated column, read rather than recomputed (a migration, so it waits on its approval).
 
 ## What is not measured yet
 

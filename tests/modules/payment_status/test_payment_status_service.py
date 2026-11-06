@@ -7,6 +7,7 @@ dates against today. These tests are what stands behind that decision.
 from datetime import UTC, date, timedelta
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 
 from app.modules.payment_status import service
 from app.modules.payment_status.exceptions import (
@@ -257,6 +258,30 @@ def test_two_callers_past_the_check_still_get_one_record(db, monkeypatch):
             service.create_for_memo(db, memo, approved_on=APPROVED_ON, now=FIXED_NOW)
     finally:
         monkeypatch.setattr(db, "scalars", real)
+
+
+def test_any_other_refusal_is_not_passed_off_as_a_second_record(db, monkeypatch):
+    """Only the one-record index means "a record exists"; any other refusal is a
+    different fault and surfaces as itself."""
+    memo = make_memo(db)
+
+    class Diag:
+        constraint_name = "ck_payment_status_amount_positive"
+
+    class Refusal(Exception):
+        diag = Diag()
+
+    real = db.flush
+
+    def refuse(*args, **kwargs):
+        # only the payment record's own insert is refused; autoflushes pass
+        if any(isinstance(row, PaymentStatus) for row in db.new):
+            raise IntegrityError("INSERT", {}, Refusal())
+        real(*args, **kwargs)
+
+    monkeypatch.setattr(db, "flush", refuse)
+    with pytest.raises(IntegrityError):
+        service.create_for_memo(db, memo, approved_on=APPROVED_ON, now=FIXED_NOW)
 
 
 # --- the two moves --------------------------------------------------------

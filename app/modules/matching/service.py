@@ -198,9 +198,19 @@ class CreatorMatch:
     reasons: MatchReasons
 
 
+@dataclass(frozen=True)
+class Ranked[T]:
+    """A match list, and whether meaning took part in ranking it: the asker's side
+    (the campaign, or the creator asking) has a vector. Said here rather than read
+    off a row, since one row's missing vector says nothing about the list."""
+
+    matches: list[T]
+    by_meaning: bool
+
+
 def find_creators_for_campaign(
     db: Session, campaign: Campaign, *, limit: int, today: date
-) -> list[CreatorMatch]:
+) -> Ranked[CreatorMatch]:
     """Creators worth showing a brand for this campaign, best first.
 
     **Structural filter first, similarity only to rank inside it.** A brand
@@ -216,8 +226,9 @@ def find_creators_for_campaign(
     here.
 
     **It degrades rather than fails.** A campaign whose embedding has not been
-    built yet still gets matches, ordered by the structural signals, with
-    `similarity` null. Embedding inside a request is not an option: the model
+    built yet still gets matches, ordered by the brief's words and the
+    structural signals, with `similarity` null. A creator not yet embedded is
+    ranked by words alone, beside those ranked by both. Embedding inside a request is not an option: the model
     takes 23 seconds to load and a single vector over 200 ms, both beyond the
     budget (see embedder.py).
 
@@ -273,8 +284,8 @@ def find_creators_for_campaign(
     # a list because `order_by(None, ...)` emits `ORDER BY NULL`, which
     # Postgres refuses.
     booked = availability.free_on(today).is_(False)
-    words = fusion.keyword_rank(
-        fusion.creator_document(), fusion.any_word_of(fusion.brief_words(campaign))
+    words = fusion.shared_words(
+        fusion.creator_document(), fusion.words_of(fusion.brief_words(campaign))
     )
     fused = fusion.rrf_score(distance if has_vector else None, words)
     order: list[Any] = [booked, fused.desc(), desc("accepted_deals"), Creator.id]
@@ -298,7 +309,7 @@ def find_creators_for_campaign(
                 ),
             )
         )
-    return matches
+    return Ranked(matches=matches, by_meaning=has_vector and bool(matches))
 
 
 # --- the creator's side: campaigns that suit me --------------------------------
@@ -327,7 +338,7 @@ class CampaignMatch:
 
 def find_campaigns_for_creator(
     db: Session, creator: Creator, *, today: date, record_day: date, limit: int
-) -> list[CampaignMatch]:
+) -> Ranked[CampaignMatch]:
     """Open campaigns worth this creator's time, best first.
 
     The mirror of `find_creators_for_campaign`, with the same rules in the
@@ -343,7 +354,8 @@ def find_campaigns_for_creator(
     Unlike the brand's side, the creator need not have published their
     Passport: this is their own view, and nothing about them is shown to
     anyone. An unpublished creator has no embedding (D-052 embeds published
-    ones), so their list is ordered newest first and `similarity` is null.
+    ones), so their list is ordered by their words in each brief, then newest
+    first, and `similarity` is null.
 
     `record_day` is the Tamil Nadu date the payment records are read as of,
     as on the brand's reliability page; `today` is the date applying checks.
@@ -387,8 +399,8 @@ def find_campaigns_for_creator(
     )
     # Meaning and exact words fused (D-167, step 1), each ranking only what it
     # can; newest first breaks ties, and orders the list when neither ranks.
-    words = fusion.keyword_rank(
-        fusion.campaign_document(), fusion.any_word_of(fusion.bio_words(creator))
+    words = fusion.shared_words(
+        fusion.campaign_document(), fusion.words_of(fusion.bio_words(creator))
     )
     fused = fusion.rrf_score(distance if has_vector else None, words)
     order: list[Any] = [fused.desc(), Campaign.created_at.desc(), Campaign.id]
@@ -398,7 +410,7 @@ def find_campaigns_for_creator(
         db, {campaign.brand_id for campaign, _ in rows}, record_day
     )
     offered = set(creator.niches)
-    return [
+    matches = [
         CampaignMatch(
             campaign=campaign,
             reasons=CampaignMatchReasons(
@@ -410,3 +422,4 @@ def find_campaigns_for_creator(
         )
         for campaign, d in rows
     ]
+    return Ranked(matches=matches, by_meaning=has_vector and bool(matches))
