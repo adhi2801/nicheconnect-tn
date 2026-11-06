@@ -1,5 +1,7 @@
 # Interface psychology: how people judge, read and remember a screen
 
+**Sources checked 6 November 2026:** 19 links, all live (2 refuse automated checks). This was a check that every cited source still exists, not a new round of research: the findings stand as dated in the file.
+
 **For:** whoever designs a screen, a flow or the landing page. **Version 1, 31 October 2026**, from web searches made that day. It covers the **interface**: first impressions, beauty and usability, waiting, memory of an experience, effort and choice. **Why people will trust Colyv at all, and the line we never cross** (no dark patterns, no manufactured urgency, facts over opinions) is `docs/PSYCHOLOGY_AND_TRUST.md`; this file builds on it and never overrides it.
 
 **How strong the evidence is.** Each finding says how it was tested and cites its original paper. Several famous "laws of UX" rest on one old study or on folklore (the 400 ms "Doherty threshold" is one); those are marked, and none is used as the only reason for a rule. Testing with Tamil brand owners and creators is section 8, run with `docs/research/PEOPLE_RESEARCH_KIT.md`.

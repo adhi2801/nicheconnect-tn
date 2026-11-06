@@ -1,6 +1,6 @@
 # Frontend Blueprint → backend mapping
 
-**Updated 10 October 2026, every status checked against the API contract (`docs/api/openapi.json`).** The 1 October version still marked deal memos, proof, payments, search, matching, notifications and the Passport as blocked; all of them are built. The mapping still assumes a creator Android app and a brand web dashboard; the direction since is three clients each serving both roles (D-046, proposed, awaiting Erode Harish), English only (D-054). For platforms read `docs/standards/frontend.md` and `docs/PLATFORM_AND_TECH_PLAN.md` section 2.
+**Updated 10 October 2026, every status checked against the API contract (`docs/api/openapi.json`); re-checked 6 November 2026**, when saved lists, the campaign wizard's templates, the festival calendar and teams had been built. The 1 October version still marked deal memos, proof, payments, search, matching, notifications and the Passport as blocked; all of them are built. The mapping still assumes a creator Android app and a brand web dashboard; the direction since is three clients each serving both roles (D-046, proposed, awaiting Erode Harish), English only (D-054). For platforms read `docs/standards/frontend.md` and `docs/PLATFORM_AND_TECH_PLAN.md` section 2.
 
 Every screen in the NicheConnect TN Frontend Blueprint (18 September 2026, 40 screens), and what the API answers for it. **What is left to build is listed once, in `docs/BACKEND_COMPLETE.md`;** this file only maps screens to it.
 
@@ -77,9 +77,9 @@ The blueprint's flow 2.3 runs the whole journey inside WhatsApp: apply, accept, 
 | Home / dashboard | `/dashboard` | MVP | `GET /me/attention`, `GET /payments/mine` and totals (D-075), `GET /campaigns/{id}/summary` (D-076) | **Built** |
 | Discover creators | `/creators` | MVP | `GET /creators` (filters: city, niche, platform, followers, price, format, free on a date) and `GET /campaigns/{id}/matches` with the reasons for each (Phase D, D-083) | **Built** |
 | Creator profile (brand view) | `/creators/:id` | MVP | The Passport, `GET /creators/{id}/media-kit`, `/delivery-record` (with how many brands it rests on), `/response-times` (D-077). **Contact details are never shown**, before or after a deal (D-036); the UPI ID only on the pay screen (D-085) | **Built** |
-| Shortlists | `/shortlists` | v1.1 | Shortlisting inside a campaign is built; saved lists across campaigns are not | **Partial** |
+| Shortlists | `/shortlists` | v1.1 | Shortlisting inside a campaign, and saved creator lists across campaigns shared with the brand's team (`/api/v1/creator-lists`, D-129, D-148) | **Built** |
 | Campaign list | `/campaigns` | MVP | `GET /campaigns` | **Built** |
-| New campaign wizard | `/campaigns/new` | MVP | `POST /campaigns`, publish. Per-creator quotas and festival templates (E5) are not built; the brief builder is item 40 | **Partial** |
+| New campaign wizard | `/campaigns/new` | MVP | `POST /campaigns`, publish; festival templates prefill it (`GET /api/v1/campaign-templates`, D-161, D-165); a brief drafted from a brand's own words (item 40, D-156, switched off until the validation pack). Per-creator quotas are not built | **Built**, quotas not |
 | Campaign detail | `/campaigns/:id` | MVP | `GET /campaigns/{id}` and `/summary`: applications by status, deals by stage, Complete (D-076) | **Built** |
 | Applications review | `/campaigns/:id/applications` | MVP | List, shortlist, accept, reject **with a reason**; each carries `text_flags` (item 60) | **Built** |
 | Invite a creator; work together again | from search or a finished deal | MVP | `POST /campaigns/{id}/invitations`, `POST /deal-memos/{id}/repeat`, withdraw (D-084) | **Built** |
@@ -87,7 +87,7 @@ The blueprint's flow 2.3 runs the whole journey inside WhatsApp: apply, accept, 
 | Deals (memos + payments) | `/deals` | MVP | `GET /deal-memos/mine`, each with its stage and whose move it is (D-076) | **Built** |
 | Payment + reliability | `/deals/:id/payment` | v1.1 | Payment record, mark paid (single and bulk), the brand's reliability record (D-034); UPI pay details (D-085, switched off until the notice exists) | **Built** |
 | Campaign results / ROI | `/campaigns/:id/results` | v1.2 | Results read from proof (D-070, switched off until the validation pack); platform numbers wait on Meta and Google (items 29 to 31). The campaign report is built: `GET /campaigns/{id}/report` and `/report.csv`, each deal with its delivery, payment, results and latest seal (D-088); print to PDF on the client | **Partial**: the report is built, results are switched off |
-| Company profile / billing | `/settings/company` | MVP | The brand profile is built. Team members with roles: the agency workspace (item 46, both founders). Billing: the pricing model | **Partial**, teams blocked |
+| Company profile / billing | `/settings/company` | MVP | The brand profile is built; team seats with four roles, and handing a brand over (item 13, D-148, D-150). Billing waits on the pricing model (`docs/BACKEND_COMPLETE.md` items 135 to 137) | **Built**, billing blocked |
 
 ---
 
@@ -109,7 +109,7 @@ The blueprint's flow 2.3 runs the whole journey inside WhatsApp: apply, accept, 
 | Portfolio / past collabs | `/profile/portfolio` | v1.1 | The delivery record is built (D-038); portfolio items are not | **Partial** |
 | City leaderboard | `/leaderboard` | v1.2 | Not built. Any ranking must be explained publicly (item 50, `docs/standards/legal.md` section 3.4) | To build |
 | Creator collectives | `/collectives` | v2 | Group applications (E5) | To build |
-| Festival calendar | `/festival-calendar` | v1.2 | Campaign templates by festival (E5) | To build |
+| Festival calendar | `/festival-calendar` | v1.2 | Festival templates with each next date, of every faith and none (D-161, D-165) | **Built** |
 | Block and report | from anything another person sent | MVP | `POST /me/blocks`, `POST /reports` (item 59, D-061) | **Built** |
 
 ---
@@ -119,7 +119,7 @@ The blueprint's flow 2.3 runs the whole journey inside WhatsApp: apply, accept, 
 | Conflict (18 September) | Outcome |
 |---|---|
 | 7.1 Matching was MVP in the blueprint and Phase D in the backlog | **Resolved**: matching is built both ways, every match with its reasons (Phase D) |
-| 7.2 Brand teams break one account, one profile | **Open**: the agency workspace (item 46) needs both founders |
+| 7.2 Brand teams break one account, one profile | **Resolved**: team seats, four roles, every brand route through one access check (D-148); agencies across many brands are item 139 |
 | 7.3 Payment milestones | **Decided**: one payment per deal, due 7 days after approval (D-027); milestones are not built |
 | 7.4 KYC gates applying | **Open**: ID verification waits on the validation pack; until it exists, applying needs only a profile |
 | 7.5 Fair rate with no data | **Resolved**: five creators or nothing, with the sample size shown (D-056) |

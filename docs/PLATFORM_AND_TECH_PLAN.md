@@ -2,6 +2,12 @@
 
 **What this is:** one place for what we build on each platform, how we stand apart from every competitor, and which technology every layer should use, with what starts now and what comes later. Written 22 September 2026 by Adhi's session from web research done that day. Sources are listed at the end.
 
+**Re-checked on 6 November 2026, for the layers that day's research covered** (`docs/research/BACKEND_RESEARCH_2026.md`, `docs/research/FRONTEND_PLATFORM_AND_FLOWS_2026.md`), against what is installed:
+- **In use and current:** PostgreSQL 18 with pgvector 0.8.7, Valkey 9.1.2, Python 3.14.10 with uv, DBOS, Next.js 16.4.3, React 19.3.1, Motion 14, Tailwind 4.3. PostgreSQL 18's asynchronous reads and skip scan are not yet used (`docs/BACKEND_COMPLETE.md` items 109, 110); React Compiler and `<ViewTransition>` are not yet used (`docs/FRONTEND_COMPLETE.md` F342, F344).
+- **Locked here but not what the code uses:** TypeScript 7 is locked; the web app installs TypeScript `^5`. Expo SDK 57 is locked for the apps; the app in the repository is Flutter, and the framework is the founders' open decision F3. Each is true of the plan or of the code, not both, until one changes.
+- **Watched, with its trigger:** Python's free-threaded build (officially supported since 3.14, opt-in): used when every C dependency ships its wheels and a load test shows more people per container.
+- **Not re-checked:** every other layer in 4.1 to 4.3 stands as last checked on 22 September.
+
 **Last checked against current releases: 22 September 2026**, in two passes: the whole plan in the morning, then two deeper passes the same day: the website/app split (section 2), and every technology layer again, including tooling, testing, observability and the CI supply chain (section 4). Sections 3, 5, 6 and 7 were brought up to date with them. Re-check monthly (section 9). In this field a plan older than a month is already behind.
 
 **Updated 1 October 2026, against the code and the decisions since:**

@@ -1,5 +1,7 @@
 # Feel and motion: what "smooth as butter" is, and how we prove ours is
 
+**Sources checked 6 November 2026:** 41 links; two had gone (three.js's WebGPU manual page, a WWDC 2023 note) and now point to archived copies; the rest live (2 refuse automated checks). This was a check that every cited source still exists, not a new round of research: the findings stand as dated in the file.
+
 **For:** whoever designs or builds motion, scrolling, transitions or 3D in the website or the apps; and the founders, to judge the frontend by numbers instead of by feel alone. **Version 1, 31 October 2026**, from about 25 web searches made that day (sources at the end), on top of `docs/research/FRONTEND_RESEARCH_2026.md` sections B4, B5 and B9, which this file does not repeat. **Nothing here is built yet.** Choices that need a founder are marked **(decision)** and gathered in section 13.
 
 **Why it exists.** Adhi, 31 October 2026: the frontend must be "smooth as butter and billion times better in all aspects" than his Interview Coach site, which has scroll animations. "Smooth" is a feeling, but it has physical causes that tools can measure. This file names them, says what the best sites do, and turns each into a rule with a test.
@@ -36,7 +38,7 @@
 
 ## 3. Motion physics: springs and curves
 
-- **Apple's model.** Since WWDC23 Apple describes a spring by two numbers, **duration** and **bounce** (−1 to 1). Bounce 0 is the general-purpose default; around 0.15 hardly feels bouncy; around 0.3 is noticeable; the session notes advise caution with durations much above about 0.4 s for interface elements. Springs keep motion continuous when a gesture hands over velocity, which eased curves cannot ([WWDC23 "Animate with springs" notes](https://wwdcnotes.com/notes/wwdc23/10158); [UIKit API](https://developer.apple.com/documentation/uikit/uiview/animate(springduration:bounce:initialspringvelocity:delay:options:animations:completion:))).
+- **Apple's model.** Since WWDC23 Apple describes a spring by two numbers, **duration** and **bounce** (−1 to 1). Bounce 0 is the general-purpose default; around 0.15 hardly feels bouncy; around 0.3 is noticeable; the session notes advise caution with durations much above about 0.4 s for interface elements. Springs keep motion continuous when a gesture hands over velocity, which eased curves cannot ([WWDC23 "Animate with springs" notes](http://web.archive.org/web/20240526025523/https://www.wwdcnotes.com/notes/wwdc23/10158/); [UIKit API](https://developer.apple.com/documentation/uikit/uiview/animate(springduration:bounce:initialspringvelocity:delay:options:animations:completion:))).
 - **Google's model.** Material 3 uses **springs for spatial movement** (position, size, shape) and **springs that never overshoot for effects** (opacity, colour). The values, read from Google's own Compose source (`ExpressiveMotionTokens` and `StandardMotionTokens`, androidx main branch, 31 October 2026):
 
 | Spring | Expressive: damping, stiffness | Standard: damping, stiffness |
@@ -83,7 +85,7 @@
 ## 7. Live 3D, where it earns its place
 
 - **WebGPU** ships in Chrome and Edge, in Chrome on Android (121 and later), and in Safari 26; Firefox 141 has it partly on desktop and **not on Android** (MDN browser-compat-data `api.GPU`, read 31 October 2026; [web.dev](https://web.dev/blog/webgpu-supported-major-browsers)).
-- **Three.js's own manual** calls `WebGPURenderer` "still in an experimental state although its maturity level has been greatly improved"; it falls back to a WebGL 2 backend when WebGPU is missing; `WebGLRenderer` "is still maintained and the recommended choice for pure WebGL 2 applications"; custom `ShaderMaterial`, `onBeforeCompile` and `EffectComposer` are not supported on the WebGPU renderer ([three.js manual](https://threejs.org/manual/en/webgpurenderer)).
+- **Three.js's own manual** calls `WebGPURenderer` "still in an experimental state although its maturity level has been greatly improved"; it falls back to a WebGL 2 backend when WebGPU is missing; `WebGLRenderer` "is still maintained and the recommended choice for pure WebGL 2 applications"; custom `ShaderMaterial`, `onBeforeCompile` and `EffectComposer` are not supported on the WebGPU renderer ([three.js manual](http://web.archive.org/web/20260624133821/https://threejs.org/manual/en/webgpurenderer.html)).
 - **Always-on GPU effects cost battery.** Stripe's homepage gradient is a small WebGL program; the only evidence on its cost is one forum complaint about battery drain, which is anecdotal ([GSAP forum](https://gsap.com/community/forums/topic/24837-animating-gradients/)).
 
 **Rules.** Live 3D only where a person interacts (turning the seal, perhaps); a WebGL 2 path always, which the WebGPU renderer's own fallback gives; no custom shader material that the WebGPU renderer cannot run (node materials instead); rendering paused off screen, in a hidden tab, and when idle; quality chosen by device class (memory, Save-Data, frame time in the first second), never one size for all.

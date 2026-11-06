@@ -1,5 +1,7 @@
 # Frontend research and the homepage prototype audit
 
+**Checked against the code on 6 November 2026:** versions have moved since this was written: the web app runs Next.js 16.4.3, React 19.3.1 and Motion 14 (this file says Motion 12.x and Next.js up to 16.2). The platform's state against our code is now `docs/research/FRONTEND_PLATFORM_AND_FLOWS_2026.md`; this file's audit of the prototype and its research stand as of 28 October.
+
 **Version 1, 28 October 2026.** Desk research and a measured audit, made at Adhi's request ("research on all 14 and more; the latest tech available today; proper audit of how to make it better"). Nothing here is a decision. Every choice that needs a founder is marked **(decision)** and gathered in Part D.
 
 **How it was made.**
@@ -168,7 +170,7 @@ Each area gives what is current (dated), what the best do, what it means for Col
 - **Three.js.**
   - The current release is **r186** (8 September 2026) ([Utsubo](https://www.utsubo.com/blog/threejs-2026-what-changed)). The prototype is on r128, five years older.
   - The WebGPU renderer falls back to WebGL 2 automatically, and its node-based shading (TSL) replaces hand-written shaders.
-  - The three.js manual still recommends the WebGL renderer for pure WebGL apps, and custom `ShaderMaterial` and `onBeforeCompile` do not carry over to WebGPU ([three.js manual](https://threejs.org/manual/en/webgpurenderer.html)).
+  - The three.js manual still recommends the WebGL renderer for pure WebGL apps, and custom `ShaderMaterial` and `onBeforeCompile` do not carry over to WebGPU ([three.js manual](http://web.archive.org/web/20260624133821/https://threejs.org/manual/en/webgpurenderer.html)).
 - **WebGPU is in every major browser:**
   - Chrome and Edge 113 and later;
   - Android Chrome 121 on Android 12 and later, with a compatibility mode for older GLES 3.1 phones from February 2026;

@@ -1,5 +1,7 @@
 # Aesthetics: what makes an interface beautiful, and the craft Colyv holds itself to
 
+**Sources checked 6 November 2026:** 10 links, all live. This was a check that every cited source still exists, not a new round of research: the findings stand as dated in the file.
+
 **For:** whoever designs or reviews anything visual in the website or the apps, and the founders who judge it (`frontend.md` section 8a). **Version 1, 31 October 2026**, from web searches made that day and the research it builds on: `docs/research/UI_STYLES_2026.md` (which styles to take and refuse), `docs/research/TAMIL_DESIGN_ROOTS.md` (where every visual choice must trace to), `docs/research/COLOUR_PSYCHOLOGY_2026.md`, `docs/research/TYPOGRAPHY_2026.md`, and `docs/research/INTERFACE_PSYCHOLOGY_2026.md` sections 1 and 2 (why beauty changes whether people believe a product works).
 
 **What Adhi asked for** (28 to 31 October 2026): "the most aesthetic type of site ever made", which "should stand like a SaaS site"; grandeur, 3D, a Tamil soul; every element researched and given a reason; "no weakness at all". This file turns that into principles, benchmarks, and a canon of craft details a reviewer can check one by one.

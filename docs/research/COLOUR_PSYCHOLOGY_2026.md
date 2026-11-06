@@ -1,5 +1,7 @@
 # Colour psychology: what the evidence says, and what Colyv does with it
 
+**Sources checked 6 November 2026:** 17 links, all live (4 refuse automated checks and open in a browser). This was a check that every cited source still exists, not a new round of research: the findings stand as dated in the file.
+
 **For:** whoever chooses or changes a colour in the website or the apps, and the founders deciding the accent. **Version 1, 31 October 2026**, from web searches made that day and the colour research in `docs/PROPOSAL_FRONTEND_ARCHITECTURE.md` section 4 (30 October), which this file deepens. The Tamil meanings of colour live in `docs/research/TAMIL_DESIGN_ROOTS.md` section 7 and are linked, not copied. **Nothing here is a decision**; section 9 lists what needs one.
 
 **The honest headline.** Popular colour psychology ("blue means trust", "red makes people buy") is mostly unsupported. The strongest findings are about **lightness and saturation**, about **consistency of meaning**, and about **people who see colour differently**. Hue matters less than the internet says, and culture and context change what a hue means.

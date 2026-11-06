@@ -1,5 +1,7 @@
 # Proposal: where the frontend lives, and which framework the apps use
 
+**Checked 6 November 2026:** still proposed. The frontend lives in `frontend/` (PR #78); the apps' framework is open as `docs/FRONTEND_COMPLETE.md` F3, due from both founders by 15 November, with the evidence of `docs/research/FRONTEND_PLATFORM_AND_FLOWS_2026.md` section 3. The repository's app is Flutter today; `docs/PLATFORM_AND_TECH_PLAN.md` still locks Expo, which the decision settles.
+
 **Status: Proposed.** Nothing here is approved or a decision, and no decision entry is written. Written 28 October 2026 for both founders. Erode Harish asked for the frontend to live in this repository (PR #78) and chose Flutter for the apps on 7 October. Adhi's locked baseline (D-047, `frontend.md`) says a repository of its own and Expo (React Native). Both founders have to agree on one answer, so this lays out the two decisions and what each costs.
 
 **A correction first.** On 28 October the design side was told Flutter was the right choice for the apps. That was said before `frontend.md` and D-047 were read, and the recommendation below is different for that reason.

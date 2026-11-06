@@ -1,5 +1,7 @@
 # Typography: the faces, the numbers and the rules
 
+**Sources checked 6 November 2026:** 14 links, all live. This was a check that every cited source still exists, not a new round of research: the findings stand as dated in the file.
+
 **For:** whoever sets type in the website, the apps, the share images or the 3D scenes. **Version 1, 31 October 2026**, from web searches made that day. Type is about 90% of what a product shows; this file chooses how ours reads. **Nothing here is decided**; section 7 lists what needs a founder.
 
 **How strong the evidence is.** Font roundups are mostly SEO content; facts here (licences, axes, browser support) are taken from the font projects, Fontsource and browser documentation where possible, and marked where only a blog says so.

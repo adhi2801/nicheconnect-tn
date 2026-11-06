@@ -45,6 +45,8 @@ If you act in good faith, stay within this policy, use only accounts you own, ac
 
 We cannot pay bounties yet.
 
+**The practice this follows** (checked 6 November 2026): coordinated disclosure as ISO/IEC 29147 describes it; `security.txt` as RFC 9116 specifies (served by the API, `app/core/security_txt.py`); severity in CVSS 4.0 (FIRST, November 2023); and a safe harbour in the spirit of disclose.io's. A penetration test before launch is `docs/BACKEND_COMPLETE.md` item 126.
+
 ## Supported versions
 
 Only the current `main` branch and the API running from it receive fixes.

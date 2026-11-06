@@ -1,5 +1,7 @@
 # The people research kit: ready to run, one session at a time
 
+**Sources checked 6 November 2026:** 2 links, both live. This was a check that every cited source still exists, not a new round of research: the findings stand as dated in the file.
+
 **For:** the founders, who are the only people who can run these sessions; this kit makes each one a single job with nothing to prepare but the people. **Version 1, 31 October 2026.** It turns the research `docs/standards/ux.md` section 2 requires (and every research file in this folder names as its open question) into scripts, numbers and a write-up format. Desk research cannot replace any of it.
 
 **What it settles**, item by item in `docs/FRONTEND_COMPLETE.md`'s experience section: the five conversations per side, the five-second tests, the task tests, the colour test, and the sessions with people who use assistive technology.

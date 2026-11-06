@@ -1,5 +1,8 @@
 # Checking a deal record yourself
 
+**Checked against the code on 6 November 2026**, claim by claim: the seal's prefix `deal-record/v1
+` and its starting value of 32 zero bytes (`app/modules/deal_memo/record_service.py`, `record_models.py`); the canonical JSON (keys sorted, no spaces, UTF-8 unescaped) and the eight sealed fields; `actor_account_sha256` as the plain SHA-256 of the account id as text; the tree's leaf (the deal's id as 16 bytes, then its seal) and RFC 6962's 0x00 and 0x01 prefixes (`merkle.py`, `anchor_service.py`); DigiCert and Sectigo as the two authorities (`anchor_models.py`); and the named test (`tests/modules/deal_memo/test_deal_record_api.py`). The standard this follows is Certificate Transparency (RFC 6962 and its successor RFC 9162): an append-only record anyone can check without trusting its keeper.
+
 Every deal on the platform has a record: each step (sent, accepted, work
 submitted, paid, and so on) is an entry, and each entry is **sealed** with a
 SHA-256 fingerprint that covers the entry before it. If anyone changes,

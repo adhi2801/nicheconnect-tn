@@ -1,5 +1,7 @@
 # API contract findings
 
+**Status, checked 6 November 2026:** the findings below are from 23 September and have not been re-run in full since. CI fuzzes every push for two minutes but gates only on server errors (`-c not_a_server_error`, `.github/workflows/ci.yml`); re-running every check, updating this file and gating what passes is `docs/BACKEND_COMPLETE.md` item 122 (`docs/standards/testing.md` gap 3).
+
 What Schemathesis found when it was first run against the API, 23 September
 2026. Schemathesis reads the OpenAPI document the app serves, generates
 requests from it, and checks every answer against what the document promises.

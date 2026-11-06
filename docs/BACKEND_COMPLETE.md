@@ -24,7 +24,7 @@ Three things it does **not** mean:
 
 **Counted on 6 November 2026:** 5,879 tests in 284 files (`pytest --collect-only`); coverage 98% counting branches on the full local run that day.
 
-**143 items listed: 61 built, 82 open**, counted from the tables on 6 November: items 103 and 104 added by D-167, items 105 to 143 by the world-bar pass and the research (section 3.13). **Built capabilities audited against the world bar: 0 of 32** (section 2a). The counts below are as of 5 November, before section 3.13.
+**144 items listed: 61 built, 83 open**, counted from the tables on 6 November: items 103 and 104 added by D-167, items 105 to 143 by the world-bar pass and the research (section 3.13). **Built capabilities audited against the world bar: 0 of 32** (section 2a). The counts below are as of 5 November, before section 3.13.
 
 **All 102 items listed on 5 November: 61 built, 41 open** (39 in section 3, items 12 and 20 in section 4).
 
@@ -43,14 +43,14 @@ Three things it does **not** mean:
 
 ## 2a. Everything built, capability by capability, against the world bar
 
-Added 6 November 2026 (Adhi: "102 is less ... all of them world class in every aspect"). The tables in section 3 hold what was listed from 1 October on; most of what was built before that (Phases A to D of the backlog) was never itemised, so this section lists **every built capability once**, 32 of them, behind the contract's 225 operations in 33 groups (`docs/api/openapi.json`, counted 6 November). Each names the strongest published practice it is to be audited against. **An audit** reads the capability's code and tests against that benchmark and the standards' section 0, fixes what falls short in the same change, and records the result here. **Audited so far: 0 of 32.** Audits run one capability per change, most-used first.
+Added 6 November 2026 (Adhi: "102 is less ... all of them world class in every aspect"). The tables in section 3 hold what was listed from 1 October on; most of what was built before that (Phases A to D of the backlog) was never itemised, so this section lists **every built capability once**, 32 of them, behind the contract's 225 operations in 33 groups (`docs/api/openapi.json`, counted 6 November). Each names the strongest published practice it is to be audited against. **An audit** reads the capability's code and tests against that benchmark and the standards' section 0, fixes what falls short in the same change, and records the result here. **Audited so far: 4 of 32** (C1 to C4, 6 November; their one gap is item 144). Next: C5, the admin side. Audits run one capability per change, most-used first.
 
 | # | Capability | Audited against | Audit |
 |---|---|---|---|
-| C1 | Login by phone code, access and refresh tokens, rotation | OWASP ASVS 5.0 authentication and session chapters; NIST SP 800-63B | Owed |
-| C2 | Where you are logged in: sessions, devices, logging out one (item 81) | ASVS session management; Google's account device page | Owed |
-| C3 | Risky changes: step-up codes, phone change, UPI ID wait (items 80, 82) | NIST 800-63B reauthentication; banks' cooling-off practice | Owed |
-| C4 | Passkeys (item 79) | FIDO Alliance and W3C WebAuthn Level 3; NIST phishing-resistant authenticators | Owed |
+| C1 | Login by phone code, access and refresh tokens, rotation | OWASP ASVS 5.0 authentication and session chapters; NIST SP 800-63B | **Audited 6 November 2026.** Holds: 6-digit codes from `secrets`, stored as a keyed HMAC and compared in constant time; 5 minutes, one use, 5 tries a code and 10 a phone per 10 minutes, sends capped 3 per 10 minutes and 10 a day, all under a per-phone lock; an admin's number answered exactly as a wrong code; HS256 pinned with a key id and every claim required, 15-minute access tokens; 256-bit refresh tokens stored hashed, rotated under a row lock, a reused one ending its whole family; suspension and an admin's second factor checked again at every refresh. **One gap:** a brand's or creator's session has no absolute lifetime (each refresh grants 30 more days), which ASVS 5.0 7.3.2 (Level 2) and NIST SP 800-63B-4 (overall timeout, no more than 30 days at AAL1) require: item 144 |
+| C2 | Where you are logged in: sessions, devices, logging out one (item 81) | ASVS session management; Google's account device page | **Audited 6 November 2026; holds.** Every request checks its session is live, so ending one takes effect at once, not at token expiry (ASVS 7.4.1); another account's session id reads exactly as one that never existed; ending any session but your own needs a step-up code and tells the owner (7.4.3, 7.5); the lock taken by every ending stops a refresh at the same moment outliving it; a phone-number change ends every session (7.4.2); the 30-day refresh window is the inactivity timeout, documented (D-008, 7.3.1). Its absolute lifetime is item 144, shared with C1 |
+| C3 | Risky changes: step-up codes, phone change, UPI ID wait (items 80, 82) | NIST 800-63B reauthentication; banks' cooling-off practice | **Audited 6 November 2026; holds.** A step-up code is bound by a keyed HMAC to one action and its exact new value, so it cannot be spent on another change; once, for 5 minutes, under the phone's lock; it shares the login code's send and guess caps, so it buys no extra tries; each action limited to the roles allowed it; a passkey may stand in, bound the same way (ASVS 5.0 re-authentication before sensitive changes). The cooling-off waits (24 hours for a new UPI ID, 72 for a new number, 7 days without the current one) match banks' practice for payee and number changes |
+| C4 | Passkeys (item 79) | FIDO Alliance and W3C WebAuthn Level 3; NIST phishing-resistant authenticators | **Audited 6 November 2026; holds.** Yubico's maintained `fido2` (2.2.1); user verification and discoverable keys required; answers accepted only for our RP ID and listed origins; each challenge once, for 5 minutes, bound to its purpose and, for a change, an HMAC of its value; a key whose counter goes back is refused (WebAuthn Level 3, 6.1.1); no attestation asked, right for a consumer service. Off until the domain exists (item 4) |
 | C5 | The admin API, its log and second factor (item 101) | ASVS Level 3 for administrative functions; least privilege | Owed |
 | C6 | Brand and creator profiles | Data minimisation (DPDP Act section 6; `legal.md`); Stripe-style resource design | Owed |
 | C7 | The Creator Passport, its consent, and the media kit | LinkedIn's public-profile controls; schema.org ProfilePage (item 85) | Owed |
@@ -368,6 +368,12 @@ Each traces to a benchmark a standard's section 0 does not yet meet, a gap a sta
 | 141 | Verified reputation as a product: a signed export of a creator's or brand's record, and a badge that checks itself against us | Money section 3 | Legal (what we may say about a person), security |
 | 142 | Price truth's paid tier, deeper than the free quarterly report (item 84), never showing one person's price | Money section 3 | A decision on the minimum group size |
 | 143 | Partner referrals tracked with consent, the money moving only between the partner and the person | Money section 3 | The lawyer and the CA |
+
+**Found by the capability audits (section 2a)**
+
+| # | Item | Source | Gate |
+|---|---|---|---|
+| 144 | **An absolute lifetime for brand and creator sessions**: a login lasts at most a set time from when it was proven, however often it is refreshed, then a new phone code or passkey | Audit C1; OWASP ASVS 5.0 7.3.2; NIST SP 800-63B-4 | Security; the lifetime a decision |
 
 ## 4. Blocked from outside the code
 
