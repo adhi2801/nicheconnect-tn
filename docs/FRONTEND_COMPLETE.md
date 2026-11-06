@@ -38,7 +38,7 @@ It does **not** mean:
 
 ## 2. Where we are
 
-**341 items: 0 built on `main` (0.0%), 4 built on a branch and not merged (1.2%), 52 started (15.2%), 275 open, 10 blocked.**
+**352 items: 0 built on `main` (0.0%), 4 built on a branch and not merged (1.1%), 52 started (14.8%), 281 open, 15 blocked.** Counted from the tables of 31 October, plus section 20a (6 November); the statuses of 31 October have not been re-read against `main` since.
 
 | Section | Items | Built | On a branch | Started | Open | Blocked |
 |---|---|---|---|---|---|---|
@@ -59,7 +59,8 @@ It does **not** mean:
 | 18. The apps | 18 | 0 | 0 | 1 | 16 | 1 |
 | 19. Ahead of everyone | 6 | 0 | 0 | 1 | 4 | 1 |
 | 20. Release and operations | 6 | 0 | 0 | 0 | 6 | 0 |
-| **All** | **341** | **0** | **4** | **52** | **275** | **10** |
+| 20a. Found by the research of 6 November | 11 | 0 | 0 | 0 | 6 | 5 |
+| **All** | **352** | **0** | **4** | **52** | **281** | **15** |
 
 **Read honestly:**
 - **Nothing is built to the bar on `main` yet.** The merged web app (pull request #78) is a first version: its screens and components are counted as *Started*, to be rebuilt, not patched (`frontend.md`, "Gaps, named").
@@ -90,7 +91,7 @@ Each is a founder's choice, recorded in `docs/DECISIONS.md` before the work it s
 |---|---|---|---|---|
 | F1 | **The accent colour**, by the five-second test with brand owners and creators | Test written up; one accent locked (`docs/research/COLOUR_PSYCHOLOGY_2026.md` section 8) | Decision | Started |
 | F2 | **The style, "granite and light"** | A decision entry (`docs/research/UI_STYLES_2026.md` section 4) | Decision | Open |
-| F3 | **The apps' framework**: Expo (the locked stack) or Flutter (Harish's app) | Both founders, by 15 November (`docs/PROPOSAL_FRONTEND_ARCHITECTURE.md` section 9) | Decision | Open |
+| F3 | **The apps' framework**: Expo (the locked stack) or Flutter (Harish's app) | Both founders, by 15 November (`docs/PROPOSAL_FRONTEND_ARCHITECTURE.md` section 9), settled by our own test: one screen built in both and run on the reference phones under the frame test (`docs/research/FRONTEND_PLATFORM_AND_FLOWS_2026.md` section 3) | Decision | Open |
 | F4 | **Primitives**: Base UI under our components | Dependency request approved | Dependency | Open |
 | F5 | **The component catalogue**: our own page or Storybook | Decision entry | Dependency | Started |
 | F6 | **The message catalogue library** | Dependency request approved | Dependency | Open |
@@ -253,7 +254,7 @@ Research: `docs/research/INTERFACE_PSYCHOLOGY_2026.md`, `docs/PSYCHOLOGY_AND_TRU
 | F135 | **Defaults that protect the person** who does not change them | Review of every default | — | Open |
 | F136 | **Voice and microcopy guide**: plain English, buttons say what happens | Guide written; catalogue reviewed against it (`docs/standards/ux.md` section 6) | — | Open |
 | F137 | **Notifications design**: what, when, how urgent, quiet hours shown | Matrix of events and channels reviewed | — | Open |
-| F138 | **Search and filter experience** for Discover and Find creators | Task test | — | Open |
+| F138 | **Search and filter experience** for Discover and Find creators | Task test, and Baymard's list rules held: applied filters always shown and removable one by one, counts before applying, no dead ends (`docs/research/FRONTEND_PLATFORM_AND_FLOWS_2026.md` section 4) | — | Open |
 | F139 | **Success measures and named events** for each journey | Events listed and tied to measures (`docs/standards/ux.md` section 2) | — | Open |
 | F140 | **Dark-pattern audit** against the thirteen banned patterns | Checklist passed before release (`docs/standards/legal.md` section 3) | — | Open |
 
@@ -541,6 +542,24 @@ The pieces no competitor in `docs/COMPETITIVE_LANDSCAPE.md` was found to have (`
 | F339 | **Field data reviewed** each release against the budgets | Review notes per release | — | Open |
 | F340 | **Changelog** people can read | Published with each release | — | Open |
 | F341 | **Founders' sign-off** that the frontend is complete | Both founders, against this file | Decision | Open |
+
+## 20a. Found by the research of 6 November
+
+From `docs/research/FRONTEND_PLATFORM_AND_FLOWS_2026.md` (our code against today's releases, our flows against the leaders') and the backend's new items (`docs/BACKEND_COMPLETE.md` section 3.13). Items the list already held (F3, F55, F90, F138, F140, F327) were strengthened in place, not repeated.
+
+| # | Item | Done when (the proof) | Gate | Status |
+|---|---|---|---|---|
+| F342 | **React Compiler switched on** (Next.js 16 supports it, off by default; ours is off) | The frame test and the interaction budget no worse, hand-written memoisation removed where the compiler covers it | Dependency | Open |
+| F343 | **Cache Components for the public pages** (landing, Passport, ranking explained), each tagged so the API's change invalidates it | A Passport edit shows on its public page within the stated time; build output shows the pages cached | — | Open |
+| F344 | **Screen changes by React 19.3's `<ViewTransition>`**, typed per move (forward, back, open a detail); Motion kept for gestures, drag and layout inside a screen; nothing animated by both | Frame test on every route change; a test that no element carries both | — | Open |
+| F345 | **Every rating shown with its count**, an honest "new on Colyv" where there is no history, never a bare top score | Snapshot tests of each state; the trust-cue evidence in the research, section 4 | — | Open |
+| F346 | **The reveal rule shown while feedback is written** (D-136: hidden until both answer or the window closes) | Task test: people say what the other side will see, and when | — | Open |
+| F347 | **API calls per screen counted in CI**, at most two (`ux.md`) | The client counts calls per screen in the browser tests; a third call fails | — | Open |
+| F348 | **The deal check shown to both sides**, as facts, before a deal is agreed | Waits on backend item 133 | Decision | Blocked |
+| F349 | **Plans**: the price page, upgrading, limits shown before they are hit, receipts | Waits on backend items 135 to 137 | Decision | Blocked |
+| F350 | **The agency workspace**: switching brands, views across brands | Waits on backend item 139 | Decision | Blocked |
+| F351 | **Creator Pro**, its mark meaning only a fact, never a rank | Waits on backend item 140 | Decision | Blocked |
+| F352 | **Verified reputation shared**: the badge on a creator's or brand's own site, checking itself against us | Waits on backend item 141 | Security | Blocked |
 
 ---
 
