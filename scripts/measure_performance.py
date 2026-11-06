@@ -907,6 +907,26 @@ def main() -> int:
             args.runs,
             READ_BUDGET_MS,
         ),
+        # Matching both ways, ranked by meaning and exact words fused (D-167):
+        # the keyword ranking runs inside the filter, on every row that passes.
+        measure(
+            client,
+            "GET /campaigns/{id}/matches (busiest)",
+            "GET",
+            f"/api/v1/campaigns/{busiest_campaign_id}/matches",
+            brand_headers,
+            args.runs,
+            READ_BUDGET_MS,
+        ),
+        measure(
+            client,
+            "GET /campaigns/discover/for-me",
+            "GET",
+            "/api/v1/campaigns/discover/for-me",
+            creator_headers,
+            args.runs,
+            READ_BUDGET_MS,
+        ),
         measure(
             client,
             "GET /campaigns (mine)",

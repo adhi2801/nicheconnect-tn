@@ -87,8 +87,9 @@ Dated reports, the decision log and the papers in `decided/` are records: they k
 | `api/openapi.json` | The API contract the frontend builds against; tests fail if the app differs |
 | `INCIDENT_RESPONSE.md` | **What to do when something goes wrong**: who acts, rotating each secret, taking the API down, telling people |
 | `../infra/README.md` | How the AWS setup is created and run |
-| `../README.md` | How to run the project |
+| `../README.md` | What Colyv is, for a reader outside the team, and how to run it |
 | `../SECURITY.md` | How a researcher reports a vulnerability, and what we promise them |
+| `RANKING_EXPLAINED.md` | The public page's text: what moves a person or campaign up each list we rank, most important first (`standards/legal.md` section 3.4); changed with the ranking code |
 
 ## Keeping this true
 

@@ -53,9 +53,13 @@ _COMMON_ERRORS: ResponseDocs = {
         "niches, **and who have published their Creator Passport**. A creator "
         "who has not published is not discoverable here; that is their choice "
         "to make and it is not overridden by a brand searching (D-036).\n\n"
-        "If the campaign has not been indexed yet, `ranked_by_similarity` is "
-        "false and `similarity` is null on every row: the list is ordered by "
-        "the facts alone and is still worth reading."
+        "Ordered by: free to take work today first; then how well the profile "
+        "fits the brief, in meaning and in the brief's own words, counted "
+        "equally; then deals agreed before. If the campaign has not been "
+        "indexed yet, `ranked_by_similarity` is false and `similarity` is null "
+        "on every row: the list is then ordered by the brief's words and the "
+        "facts, without meaning, and is still worth reading. A creator not "
+        "indexed yet has a null `similarity` and is placed by words alone."
     ),
     responses={
         **_COMMON_ERRORS,
@@ -74,13 +78,11 @@ def list_matches_for_campaign(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> CreatorMatchesRead:
-    matches = service.find_creators_for_campaign(
+    ranked = service.find_creators_for_campaign(
         db, campaign, limit=limit, today=india_date(now)
     )
     return CreatorMatchesRead(
-        # Every row carries the same answer, so read it off the first one;
-        # with no rows there is nothing to have ranked either way.
-        ranked_by_similarity=bool(matches) and matches[0].reasons.similarity is not None,
+        ranked_by_similarity=ranked.by_meaning,
         matches=[
             CreatorMatchRead(
                 creator=PublicCreatorSummary(
@@ -95,7 +97,7 @@ def list_matches_for_campaign(
                 ),
                 reasons=MatchReasonsRead.model_validate(match.reasons),
             )
-            for match in matches
+            for match in ranked.matches
         ],
     )
 
@@ -114,9 +116,12 @@ def list_matches_for_campaign(
         "Only campaigns that name the creator's city and share one of their "
         "niches, whose applications are still open, from brands that are not "
         "suspended, and that the creator has not already applied to.\n\n"
-        "A creator who has not published their Passport has no embedding "
-        "yet, so `ranked_by_similarity` is false and the list is newest "
-        "first. Nothing about the creator is shown to anyone by this call."
+        "Ordered by how well each brief fits the creator, in meaning and in "
+        "the creator's own words, counted equally; then newest first. A "
+        "creator who has not published their Passport has no embedding yet, "
+        "so `ranked_by_similarity` is false and the list is ordered by their "
+        "words in each brief, then newest first. Nothing about the creator is "
+        "shown to anyone by this call."
     ),
     responses={
         401: problem_doc("No token, or the token is not valid"),
@@ -136,7 +141,7 @@ def list_campaigns_for_me(
     ] = DEFAULT_MATCHES,
     db: Session = Depends(get_db),
 ) -> CampaignMatchesRead:
-    matches = service.find_campaigns_for_creator(
+    ranked = service.find_campaigns_for_creator(
         db,
         creator,
         # The same date applying checks the closing date against.
@@ -146,7 +151,7 @@ def list_campaigns_for_me(
         limit=limit,
     )
     return CampaignMatchesRead(
-        ranked_by_similarity=bool(matches) and matches[0].reasons.similarity is not None,
+        ranked_by_similarity=ranked.by_meaning,
         matches=[
             CampaignMatchRead(
                 campaign=CampaignRead.model_validate(match.campaign),
@@ -157,6 +162,6 @@ def list_campaigns_for_me(
                     brand_payments=to_reliability_read(match.reasons.brand_payments),
                 ),
             )
-            for match in matches
+            for match in ranked.matches
         ],
     )

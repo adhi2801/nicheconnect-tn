@@ -34,6 +34,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.db.refusals import constraint_name
 from app.modules.auth import login_age
 from app.modules.auth import step_up_service as step_ups
 from app.modules.auth.brand_access import BrandAccess
@@ -501,7 +502,7 @@ def hand_over(
         db.rollback()
         # They own a brand already, or took one a moment ago: the unique index
         # on brand.account_id is the one check, so a race cannot slip past it.
-        if _constraint(exc) == "uq_brand_account_id":
+        if constraint_name(exc) == "uq_brand_account_id":
             raise OwnsABrand() from exc
         raise
     former = BrandMember(
@@ -547,10 +548,3 @@ def hand_over(
     )
     db.commit()
     return BrandAccess(brand, "admin", former.id)
-
-
-def _constraint(exc: IntegrityError) -> str | None:
-    """The name of the constraint a database refusal names, if it names one."""
-    diag = getattr(exc.orig, "diag", None)
-    name = getattr(diag, "constraint_name", None)
-    return name if isinstance(name, str) else None

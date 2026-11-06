@@ -1249,7 +1249,7 @@ export interface paths {
          *
          *     Only campaigns that name the creator's city and share one of their niches, whose applications are still open, from brands that are not suspended, and that the creator has not already applied to.
          *
-         *     A creator who has not published their Passport has no embedding yet, so `ranked_by_similarity` is false and the list is newest first. Nothing about the creator is shown to anyone by this call.
+         *     Ordered by how well each brief fits the creator, in meaning and in the creator's own words, counted equally; then newest first. A creator who has not published their Passport has no embedding yet, so `ranked_by_similarity` is false and the list is ordered by their words in each brief, then newest first. Nothing about the creator is shown to anyone by this call.
          */
         get: operations["list_campaigns_for_me_api_v1_campaigns_discover_for_me_get"];
         put?: never;
@@ -1381,7 +1381,7 @@ export interface paths {
          *
          *     Only creators in a city the campaign named, in at least one of its niches, **and who have published their Creator Passport**. A creator who has not published is not discoverable here; that is their choice to make and it is not overridden by a brand searching (D-036).
          *
-         *     If the campaign has not been indexed yet, `ranked_by_similarity` is false and `similarity` is null on every row: the list is ordered by the facts alone and is still worth reading.
+         *     Ordered by: free to take work today first; then how well the profile fits the brief, in meaning and in the brief's own words, counted equally; then deals agreed before. If the campaign has not been indexed yet, `ranked_by_similarity` is false and `similarity` is null on every row: the list is then ordered by the brief's words and the facts, without meaning, and is still worth reading. A creator not indexed yet has a null `similarity` and is placed by words alone.
          */
         get: operations["list_matches_for_campaign_api_v1_campaigns__campaign_id__matches_get"];
         put?: never;
@@ -5361,7 +5361,7 @@ export interface components {
             shared_niches: string[];
             /**
              * Similarity
-             * @description How close the brief reads to the creator's profile, from 0 to 1. **Null when either side has not been indexed yet** (a creator is indexed once they publish their Passport); the list is then newest first
+             * @description How close the brief reads to the creator's profile, from 0 to 1. **Null when either side has not been indexed yet** (a creator is indexed once they publish their Passport); the row is then placed by the creator's words in the brief, then newest first
              * @example 0.79
              */
             similarity: number | null;
@@ -5375,7 +5375,7 @@ export interface components {
             matches: components["schemas"]["CampaignMatchRead"][];
             /**
              * Ranked By Similarity
-             * @description False when the creator has no embedding yet, so the list is newest first. Say so rather than presenting it as a ranking
+             * @description False when the creator has no embedding yet, so the list is ordered by the creator's words in each brief, then newest first, without meaning. Say so rather than presenting it as fully ranked
              * @example true
              */
             ranked_by_similarity: boolean;
@@ -5990,7 +5990,7 @@ export interface components {
             matches: components["schemas"]["CreatorMatchRead"][];
             /**
              * Ranked By Similarity
-             * @description False when the campaign has no embedding yet, so the order comes from the facts alone. Say so in the interface rather than showing an unranked list as if it were ranked
+             * @description False when the campaign has no embedding yet, so the order comes from the brief's words and the facts, without meaning. Say so in the interface rather than presenting it as fully ranked
              * @example true
              */
             ranked_by_similarity: boolean;
@@ -7438,7 +7438,7 @@ export interface components {
             shared_niches: string[];
             /**
              * Similarity
-             * @description How close the creator's profile reads to the campaign brief, from 0 to 1. **Null when the campaign has not been indexed yet**, in which case the results are ordered by the facts above and are still worth reading
+             * @description How close the creator's profile reads to the campaign brief, from 0 to 1. **Null when the campaign or this creator has not been indexed yet**; the row is then placed by the brief's words and the facts above, and is still worth reading
              * @example 0.83
              */
             similarity: number | null;

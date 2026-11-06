@@ -19,14 +19,14 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any, Protocol
 
-from sqlalchemy import delete, desc, exists, func, null, nulls_last, or_, select
+from sqlalchemy import delete, desc, exists, func, null, or_, select
 from sqlalchemy.orm import Session
 
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import account_is_active, brand_is_active
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.models import DealMemo
-from app.modules.matching import embedder
+from app.modules.matching import embedder, fusion
 from app.modules.matching.embedding_input import campaign_text, creator_text
 from app.modules.matching.models import CampaignEmbedding, CreatorEmbedding
 from app.modules.payment_status import reliability
@@ -198,9 +198,19 @@ class CreatorMatch:
     reasons: MatchReasons
 
 
+@dataclass(frozen=True)
+class Ranked[T]:
+    """A match list, and whether meaning took part in ranking it: the asker's side
+    (the campaign, or the creator asking) has a vector. Said here rather than read
+    off a row, since one row's missing vector says nothing about the list."""
+
+    matches: list[T]
+    by_meaning: bool
+
+
 def find_creators_for_campaign(
     db: Session, campaign: Campaign, *, limit: int, today: date
-) -> list[CreatorMatch]:
+) -> Ranked[CreatorMatch]:
     """Creators worth showing a brand for this campaign, best first.
 
     **Structural filter first, similarity only to rank inside it.** A brand
@@ -216,8 +226,9 @@ def find_creators_for_campaign(
     here.
 
     **It degrades rather than fails.** A campaign whose embedding has not been
-    built yet still gets matches, ordered by the structural signals, with
-    `similarity` null. Embedding inside a request is not an option: the model
+    built yet still gets matches, ordered by the brief's words and the
+    structural signals, with `similarity` null. A creator not yet embedded is
+    ranked by words alone, beside those ranked by both. Embedding inside a request is not an option: the model
     takes 23 seconds to load and a single vector over 200 ms, both beyond the
     budget (see embedder.py).
 
@@ -266,15 +277,18 @@ def find_creators_for_campaign(
             Creator.niches.overlap(campaign.niches),
         )
     )
-    # Closest first when there is a vector to compare against; a creator with
-    # no embedding sorts last rather than disappearing. The clause is built as
-    # a list rather than passed conditionally, because `order_by(None, ...)`
-    # emits a literal `ORDER BY NULL`, which Postgres refuses.
+    # Free before booked, then by meaning and exact words fused (D-167, step 1
+    # of learned matching): the embedding's closeness and the brief's words in
+    # the profile, each ranking only what it can, so a creator with no
+    # embedding yet still ranks by words. Past deals break ties. The clause is
+    # a list because `order_by(None, ...)` emits `ORDER BY NULL`, which
+    # Postgres refuses.
     booked = availability.free_on(today).is_(False)
-    order: list[Any] = [booked]
-    if has_vector:
-        order.append(nulls_last(distance.asc()))
-    order += [desc("accepted_deals"), Creator.id]
+    words = fusion.shared_words(
+        fusion.creator_document(), fusion.words_of(fusion.brief_words(campaign))
+    )
+    fused = fusion.rrf_score(distance if has_vector else None, words)
+    order: list[Any] = [booked, fused.desc(), desc("accepted_deals"), Creator.id]
     query = query.order_by(*order).limit(limit)
 
     wanted = set(campaign.niches)
@@ -295,7 +309,7 @@ def find_creators_for_campaign(
                 ),
             )
         )
-    return matches
+    return Ranked(matches=matches, by_meaning=has_vector and bool(matches))
 
 
 # --- the creator's side: campaigns that suit me --------------------------------
@@ -324,7 +338,7 @@ class CampaignMatch:
 
 def find_campaigns_for_creator(
     db: Session, creator: Creator, *, today: date, record_day: date, limit: int
-) -> list[CampaignMatch]:
+) -> Ranked[CampaignMatch]:
     """Open campaigns worth this creator's time, best first.
 
     The mirror of `find_creators_for_campaign`, with the same rules in the
@@ -340,7 +354,8 @@ def find_campaigns_for_creator(
     Unlike the brand's side, the creator need not have published their
     Passport: this is their own view, and nothing about them is shown to
     anyone. An unpublished creator has no embedding (D-052 embeds published
-    ones), so their list is ordered newest first and `similarity` is null.
+    ones), so their list is ordered by their words in each brief, then newest
+    first, and `similarity` is null.
 
     `record_day` is the Tamil Nadu date the payment records are read as of,
     as on the brand's reliability page; `today` is the date applying checks.
@@ -382,20 +397,20 @@ def find_campaigns_for_creator(
             ~already_applied,
         )
     )
-    # Closest first when there is a vector; a campaign not yet embedded sorts
-    # last rather than disappearing. Newest first breaks ties, and orders the
-    # whole list when the creator has no vector at all.
-    order: list[Any] = []
-    if has_vector:
-        order.append(nulls_last(distance.asc()))
-    order += [Campaign.created_at.desc(), Campaign.id]
+    # Meaning and exact words fused (D-167, step 1), each ranking only what it
+    # can; newest first breaks ties, and orders the list when neither ranks.
+    words = fusion.shared_words(
+        fusion.campaign_document(), fusion.words_of(fusion.bio_words(creator))
+    )
+    fused = fusion.rrf_score(distance if has_vector else None, words)
+    order: list[Any] = [fused.desc(), Campaign.created_at.desc(), Campaign.id]
     rows = db.execute(query.order_by(*order).limit(limit)).all()
 
     records = reliability.for_brands(
         db, {campaign.brand_id for campaign, _ in rows}, record_day
     )
     offered = set(creator.niches)
-    return [
+    matches = [
         CampaignMatch(
             campaign=campaign,
             reasons=CampaignMatchReasons(
@@ -407,3 +422,4 @@ def find_campaigns_for_creator(
         )
         for campaign, d in rows
     ]
+    return Ranked(matches=matches, by_meaning=has_vector and bool(matches))
