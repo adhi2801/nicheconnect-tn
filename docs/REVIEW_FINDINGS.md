@@ -1,6 +1,6 @@
 # Automated review findings, and what became of each
 
-**Checked against the code on 4 October 2026.** Two review bots are connected to this repository, ChatGPT Codex and CodeRabbit, and their comments had never been answered. This file is the answer to every one of them, with the evidence. Nothing here was marked done because it was assigned: each was checked against the code, and every bug was first reproduced by a failing test.
+**Checked against the code on 4 October 2026; on 6 November 2026 the independent reviews D-139 requires were added (last section).** Two review bots are connected to this repository, ChatGPT Codex and CodeRabbit, and their comments had never been answered. This file is the answer to every one of them, with the evidence. Nothing here was marked done because it was assigned: each was checked against the code, and every bug was first reproduced by a failing test.
 
 ## The finding behind the findings: most of the code was never reviewed by a bot
 
@@ -91,3 +91,24 @@ What has caught real bugs since is the automated net:
 - **seed data**: three tests that passed only on an empty database, one of which checked nothing.
 
 None of that is a second reader. Step 2 above is still the most valuable review there is: comment `@coderabbitai review` on the open pull request, and have Erode Harish read it before it merges.
+
+## Independent reviews (D-139), from 6 November 2026
+
+D-139 made an independent review part of every feature: a separate reviewer, told to find faults, reads the whole change, and each finding is fixed or answered. It is not the other founder's review, and it is recorded here so the findings outlive the session.
+
+### Learned matching step 1 (D-167), reviewed 6 November 2026
+
+Read: `e4045f2` (hybrid retrieval) and `ebc8d0e` (payment status coverage). Eight findings; fixed in `fc96df7` and `4d6eb66`, on `main` since `916189d`.
+
+| # | Finding | Severity | What became of it |
+|---|---|---|---|
+| 1 | `ranked_by_similarity` read off the first row, which after fusion can be one not yet embedded: the list said "not ranked by meaning" when it was | Medium-high | **Fixed**: the service says whether the asker has a vector; tests with a mixed list on both sides, shown failing with the old reading |
+| 2 | Cutting each row's text into words on every request passes 300 ms for creators between 200 and 1,000 maximum-length campaigns; the documented remedy (a GIN index) would not help | Medium | **Fixed** by D-173: the words stored per row; 1,000 campaigns in 88.7 ms p95, from 532.5 |
+| 3 | `ts_rank` rewarded repeating the brief's words and listing a niche's whole vocabulary; the public page described it wrongly | Medium | **Fixed** (D-173): distinct shared words over the square root of the document's; two tests; the public page corrected |
+| 4 | The property test could not see ties, so `dense_rank` or `row_number` in the SQL survived | Medium | **Fixed**: ties drawn on purpose; both mutations now caught. The rule's float sums also depended on order, an older flake; it now adds exactly |
+| 5 | Stale contract text, a test file cited that does not exist, a wrong query count | Low-medium | **Fixed**; contract and frontend types regenerated |
+| 6 | Words matched on the bio and the brief only, where the proposal said all public profile text, without approval first | Low (process) | **Answered**: put to Adhi, approved as D-173 |
+| 7 | `&` inside a word (a URL) rewritten by text substitution | Low | **Fixed**: no text is parsed as query syntax |
+| 8 | "Within a millionth" was rounding, not a tolerance | Nit | **Fixed** in the comment |
+| + | Payment status mapped any database refusal to "a record exists" | Low | **Fixed**: only the one-record index's refusal; a test |
+
