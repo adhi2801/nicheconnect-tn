@@ -1,5 +1,7 @@
 # Proposal: rate card, channels and media kit on the Creator Passport
 
+**Outcome, checked 6 November 2026:** the schema was approved and the Passport and rate cards built (D-055); the media kit followed. The status below is as written on 21 September.
+
 **Status: Decisions 2–4 approved (D-042). Decision 1, the schema, still needs both founders.** Nothing here is built. Written 21 September 2026 by Adhi's session. Decision 3 changed after research; section 3 says why. The schema half is **Erode Harish's to own and implement**; the API half is Adhi's. The work is sequenced so no file is edited by both of you (section 6).
 
 ---

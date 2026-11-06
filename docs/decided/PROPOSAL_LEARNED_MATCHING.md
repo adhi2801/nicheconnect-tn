@@ -1,5 +1,7 @@
 # Proposal: matching that learns from deals that worked
 
+**Outcome, checked 6 November 2026:** step 1 built and on `main`: reciprocal rank fusion of meaning and exact words (D-167), its words counted once each and stored per row after an independent review (D-173). Steps 2 and 3 open (`docs/BACKEND_COMPLETE.md` item 103).
+
 **Status: approved as written, 6 November 2026 (D-167)**, with option A for the dependency (LightGBM in the API image, its size measured first) and the thresholds as proposed. Built step by step: step 1 first.
 
 ## 1. What it answers

@@ -7,7 +7,8 @@ is where they live.
 **Budgets** (`docs/standards/backend.md` section 6): p95 ≤ 300 ms for reads,
 ≤ 500 ms for writes, on seeded local data.
 
-**Last measured:** 30 September 2026 for creator search and reports (next
+**Last measured: 6 November 2026, every route in the script at once** (section "Every route, 6 November" below): 73 timings, 71 within budget, the two over both known. Before that, per section as dated:
+30 September 2026 for creator search and reports (next
 section); 26 September 2026 for everything else, on PostgreSQL 18.6 with pgvector 0.8.6
 (D-049), seeded with 10 brands, 200 creators, 150 campaigns, 785
 applications and 958 rate card packages. 100 runs per read. For writes: 30
@@ -511,21 +512,30 @@ The cost was reading each row's text into words on every request; a GIN index wo
 
 What remains per row is unnesting the stored words and comparing each with the query's: linear in the pool, inside the budget at 1,000 maximum-length campaigns.
 
+## Every route, 6 November 2026, on `main`
+
+`scripts/measure_performance.py --runs 50` on `main` at `916189d` (matching's stored words, D-173, included), the seeded scratch database (10 brands, 200 creators, 150 campaigns, 785 applications, 958 packages), the same laptop, PostgreSQL 18 with pgvector 0.8.7. One run; the docs test ran against the same database for a few seconds during it.
+
+**73 timings: 71 within budget, 2 over.**
+
+| Over budget | p95 ms | Budget | Why, and what acts on it |
+|---|---|---|---|
+| `POST /brands/me/payments/mark-paid` (25 rows) | 743.8 | 500 | Known since 30 September: each request runs in a savepoint of one rolled-back transaction, and past 64 subtransactions PostgreSQL's visibility checks slow; committed, the same calls ran at 341 ms (section "Added 18 October: the bulk mark-paid, committed"). Still the write to re-measure committed before the 25-row limit changes |
+| Job: one data export built | 686.4 | 500 | A background job since D-111: nobody waits on it, and the person is told when it is ready. The budget is the write budget applied to a job, so it is shown, not hidden |
+
+**The slowest reads within budget, p95:** `GET /campaigns/discover` 117.5 ms (its first run, a cold start, peaked at 643.9), `GET /campaigns/{id}/matches` for the busiest campaign 60.9, `GET /campaigns` (mine) 55.8, `GET /creators/by-handle/{handle}` 51.7. **The slowest writes within budget:** a draft with two images 127.7, approving a draft 91.0. Every other route under 65 ms.
+
+**What this run settles:** the search, discovery and matching figures now include the block filter (item 59) and the takedown filter (item 52), which earlier figures predated (section "What is not measured yet", corrected below).
+
 ## What is not measured yet
 
-- **Everything built from 8 to 10 October 2026**:
-  - availability (D-083);
-  - invitations and repeat deals (D-084);
-  - UPI pay details (D-085);
-  - blocking (item 59).
-
-  The block check also adds a condition to every search, discovery and matching query, so **the search, discovery and matching figures above predate it** and must be measured again before anyone relies on them. Query-count tests prove none of these adds a query per row; only a timed run proves they stay inside the budget.
+- **Availability (D-083) and invitations and repeat deals (D-084)**: not in the script. Query-count tests prove neither adds a query per row; only a timed run proves they stay inside the budget. (UPI pay details and blocking, listed here until 6 November, are now measured: the UPI routes directly, the block check inside every search, discovery and matching figure of 6 November.)
 - **Writes beyond the deal, disputes, bulk mark-paid, the rate card and
   reports.** Profile and campaign edits are single-row writes of the same
   kind, but they are not in the script yet.
-- **The admin side** (D-061). Admins are few and their screens are not on a
-  user's path; the report queue and account lookup are the ones to add when
-  the pilot has admins.
+- **Most of the admin side** (D-061). The report queue, its clocks and
+  takedowns are measured (6 November); account lookup and the admin log are
+  not. Admins are few and their screens are not on a user's path.
 - **Under load, on real hardware.** The load test exists (above) and was run
   on a laptop with the load generator on the same machine. A staging run
   against the real database, from another machine, is owed once AWS is up.

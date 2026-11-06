@@ -1,6 +1,6 @@
 # Go to market: how we win the first city, then the next
 
-**Researched 1 October 2026; statuses brought up to date 10 October 2026.** It completes `docs/REVENUE_RESEARCH.md` (what we charge, the arithmetic, the 90-day pilot and its checkpoints) and does not repeat it. This file is **how people hear of us, why they join, and why they bring others.** Nothing here is decided; each choice in section 11 is a founder decision.
+**Researched 1 October 2026; statuses brought up to date 10 October 2026; re-checked 6 November 2026**, adding section 3a, how the best marketplaces in the world and in India solved the first-city problem, each lesson set against our plan. It completes `docs/REVENUE_RESEARCH.md` (what we charge, the arithmetic, the 90-day pilot and its checkpoints) and does not repeat it. This file is **how people hear of us, why they join, and why they bring others.** Nothing here is decided; each choice in section 11 is a founder decision.
 
 ---
 
@@ -31,6 +31,18 @@ Words we never use, here or anywhere: "escrow", "wallet", "guaranteed funds", "s
 **The atomic network, to test (D-071):** three niches, **food and cafés, fashion and textiles, beauty and salons**, **30 active brands and 150 creators** across them. The test that it is dense enough is the pilot's own: **3 or more suitable applications within 72 hours of a campaign** (revenue research, day 60).
 
 **Why three niches, not every niche:** a food creator with ten restaurant campaigns nearby stays; the same creator with one campaign each in ten niches does not.
+
+## 3a. How the best marketplaces started, and what we take
+
+Re-checked 6 November 2026. Each row is the published evidence, then what it changes here.
+
+| Evidence | What it says | For us |
+|---|---|---|
+| **Lenny Rachitsky's study of 17 marketplaces** (2019; read through summaries, his newsletter is the authority) | 14 of 17 put most early effort into one side, the scarce one; the sequence was "supply, demand, supply, supply, supply"; a median of **two** growth levers, not ten; direct sales for about 60% of them; early members held by hand so they feel part of the business | Our scarce side is **brands** (section 1, point 2), so the founders' hours go there first; pick two levers and drop the rest (section 4's door-to-door with CODISSIA's members, and creators bringing their shops, section 6); every one of the first 30 brands has a founder's phone number |
+| **NFX, "19 tactics for the chicken-or-egg problem"** (James Currier, July 2019) | Start with the harder side; constrain geography and time until one slice is dense; do the early matching by hand | One city, three niches, the 72-hour test (section 3): already the plan. Add by-hand matching: in the first 90 days a founder reads every new campaign and personally invites the five best creators through the built invite (D-084) |
+| **Urban Company** (India; founders' and investors' accounts, YourStory February 2026) | Began by matching providers to customers by hand, vetting every professional for skill and behaviour before admission; later took on onboarding, training and verification itself because trust was the category's problem, accepting slower growth for it | Trust is our category's problem too (`COMPETITIVE_LANDSCAPE.md` section 1, point 4). In the pilot, a founder checks each brand's domain (item 74) and meets each of the first brands; the done-for-you campaigns of `REVENUE_RESEARCH.md` stream 1 are our version of doing the hard part ourselves while the product learns |
+
+**What none of them faced, and we do:** discovery is free inside Instagram and YouTube (`COMPETITIVE_LANDSCAPE.md` section 1), so we cannot start, as Urban Company and Airbnb could, by being the only place to find the other side. We start where those tools stop: the deal, its record, and whether people kept their word.
 
 ## 4. Getting brands (the hard side)
 
@@ -121,4 +133,7 @@ Checkpoints and what we do if we miss them: `docs/REVENUE_RESEARCH.md` section 8
 - [The Cold Start Problem, Andrew Chen: atomic networks and the hard side (summary)](https://www.indiehackers.com/post/how-to-kickstart-a-marketplace-lessons-learned-from-andrew-chens-book-the-cold-start-problem-b0fdf81f6b), [book summary](https://youexec.com/resources/the-cold-start-problem-by-andrew-chen)
 - [CODISSIA, Coimbatore District Small Industries Association](https://www.codissia.com/), [CODISSIA (Wikipedia)](https://en.wikipedia.org/wiki/Coimbatore_District_Small_Industries_Association), [MSME associations, south zone (DC-MSME)](https://www.dcmsme.gov.in/All%20Associations/SOUTH%20ZONE.html)
 - [How AI search engines choose sources (Conductor)](https://www.conductor.com/academy/how-ai-citations-differ/), [AI platform citation patterns (Profound)](https://www.tryprofound.com/blog/ai-platform-citation-patterns), [Which AI engines cite which sources, 2026 (Frase)](https://www.frase.io/blog/which-ai-engines-cite-which-sources), [Generative engine optimization (Wikipedia)](https://en.wikipedia.org/wiki/Generative_engine_optimization), [Getting local businesses cited by AI, 2026](https://renewlocal.com/blog/answer-engine-optimization-local-business-cited-by-ai-2026)
-- Prices, market size and the pilot: `docs/REVENUE_RESEARCH.md` sources
+- Prices, market size and the pilot: `docs/REVENUE_RESEARCH.md` sources; at scale, `docs/research/MONEY_AT_SCALE_2026.md`
+- Lenny Rachitsky on kickstarting marketplaces, through summaries: https://echai.ventures/startingup/r/how-to-kickstart-and-scale-a-marketplace-business-part-1--r-how-to-kickstart-and-scale-a-marketplace ; https://andrewchen.com/grow-marketplace-supply/
+- NFX, 19 tactics: https://www.nfx.com/post/19-marketplace-tactics-for-overcoming-the-chicken-or-egg-problem
+- Urban Company: https://yourstory.com/2026/02/urban-company-built-trust-indias-home-services-market ; https://elevationcapital.com/urban-company-story

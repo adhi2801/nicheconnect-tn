@@ -2,13 +2,13 @@
 
 **Researched 30 September 2026.** It builds on `docs/COMPETITIVE_LANDSCAPE.md` (21 September) and `docs/PLAYBOOK_GAPS.md` section 1, and goes further: what this market actually pays for, what the numbers mean for a one-city pilot, and a plan with checkpoints so we find out early if it is not working.
 
-**Nothing here is decided.** Every price is a proposal to test with real brands, not a promise. Sources are at the bottom; most are industry articles and vendor pages, so treat single figures as a range, not a fact. Where something is our judgement, it says so. GST, TDS and invoicing rules are **needs validation pack** (`CLAUDE.md` constraint 6): a CA confirms them before anything is charged.
+**Taken further on 6 November 2026** by `docs/research/MONEY_AT_SCALE_2026.md`: how Fiverr, Upwork and the creator platforms earn, every line we could earn from at scale, and whether India alone is large enough. **Nothing here is decided.** Every price is a proposal to test with real brands, not a promise. Sources are at the bottom; most are industry articles and vendor pages, so treat single figures as a range, not a fact. Where something is our judgement, it says so. GST, TDS and invoicing rules are **needs validation pack** (`CLAUDE.md` constraint 6): a CA confirms them before anything is charged.
 
 ---
 
 ## 1. The answer, in six points
 
-1. **Charge brands, never creators.** Creators are the supply, they are price-sensitive, and competitors lose them by charging. Brands already spend on this: the Indian market is about ₹3,000–3,500 crore in 2025, growing about 22% a year toward ₹4,500–5,000 crore by 2027.
+1. **Charge brands, never creators, in the pilot.** (Re-checked 6 November: a paid Creator Pro, with the free tier's promise written first, is proposed for after brand plans in `docs/research/MONEY_AT_SCALE_2026.md` section 3, item 140; paying to apply stays refused.) Creators are the supply, they are price-sensitive, and competitors lose them by charging. Brands already spend on this: the Indian market is about ₹3,000–3,500 crore in 2025, growing about 22% a year toward ₹4,500–5,000 crore by 2027.
 2. **Do not take a cut of deals.** We never touch campaign money (constraint 1), so we could not collect a percentage without trusting both sides to report it. Marketplaces that live on a cut report losing 30–80% of it to deals moved off the platform. A fee we cannot collect is not a business model.
 3. **Sell what nobody else sells: a deal you can trust.** Discovery is free now: Instagram's and YouTube's marketplaces take no cut. What stays unsolved is the deal itself: 60–90 day payment delays, fake followers, no record when something goes wrong. Indian small businesses already pay for trust: IndiaMART sells a trust badge for about ₹45,000 a year on top of listings.
 4. **Three streams, in this order:** (a) **done-for-you campaigns** for local businesses, for cash and learning in the first months; (b) **monthly plans** for brands that post regularly; (c) **agency plans** for the agencies that already run Tamil Nadu campaigns. Pay-per-campaign fills the gap for shops that won't subscribe.
@@ -152,11 +152,11 @@ None of this is approved; each is a gated decision (`CLAUDE.md` section 5).
 | Step | What | Gates | When |
 |---|---|---|---|
 | 1 | **Nothing new for done-for-you.** It runs on today's API; the founder invoices by hand | None | Now |
-| 2 | Plans and limits: a plan per brand, and limits checked when a campaign is posted | New table and a module (database, architecture) | Before month 3 |
-| 3 | Taking payment for our plans: Razorpay subscriptions with UPI AutoPay, and its webhooks | New dependency, security, payments | With step 2 |
-| 4 | GST invoices for our fees | Validation pack, then a table | Before the first charge |
-| 5 | Agency workspaces: one agency managing several brands | Schema, authorization | Month 3–4 |
-| 6 | Featured campaigns, labelled | Small; after the pilot | Later |
+| 2 | Plans and limits: a plan per brand, and limits checked when a campaign is posted (`docs/BACKEND_COMPLETE.md` item 135) | New table and a module (database, architecture) | Before month 3 |
+| 3 | Taking payment for our plans: Razorpay subscriptions with UPI AutoPay, and its webhooks (item 136) | New dependency, security, payments | With step 2 |
+| 4 | GST invoices for our fees (item 137) | Validation pack, then a table | Before the first charge |
+| 5 | Agency workspaces: one agency managing several brands (item 139) | Schema, authorization | Month 3–4 |
+| 6 | Featured campaigns, labelled. **In conflict since 6 November:** a campaign featured for money ranks above others in a creator's list, which `docs/RANKING_EXPLAINED.md` promises never happens; the money research recommends refusing paid placement (`docs/research/MONEY_AT_SCALE_2026.md` section 7, decision 1). **A founders' decision** settles it; until then it is not on the finish line | A decision first | Later, if at all |
 
 **The payment rule stays exact:** the gateway collects *our fee for our service*. It never touches a brand's payment to a creator, and none of the words constraint 1 forbids ever appear in the code or the copy.
 

@@ -1,6 +1,6 @@
 # Psychology and trust: why people will rely on us, and the line we never cross
 
-**Researched 1 October 2026.** Every product decision that touches how people feel (screens, alerts, words, the order things happen in) reads this first. Facts carry sources at the bottom; where something is our judgement, it says so.
+**Researched 1 October 2026; last checked against the code 6 November 2026**, when four statuses had moved (feedback built, its scores, milestones deferred, paid placement refused) and the trust-cue studies of `docs/research/FRONTEND_PLATFORM_AND_FLOWS_2026.md` section 4 were added. Every product decision that touches how people feel (screens, alerts, words, the order things happen in) reads this first. Facts carry sources at the bottom; where something is our judgement, it says so.
 
 **The one idea:** both sides of this market already price in each other's risk. Creators quote higher or demand deposits because brands pay late; brands haggle because creators inflate. **Whoever removes the fear takes the market.** We remove it with facts, and we persuade only with facts that are true: the levers we use on purpose, and the line each must not cross, are in `docs/standards/legal.md` section 3.5.
 
@@ -31,7 +31,7 @@ India's Central Consumer Protection Authority made 13 deceptive designs unfair t
 | Interface interference | The safe choice is never hidden or greyed; both choices look like choices |
 | Bait and switch | What the two sides agreed is what the memo records, and once accepted it cannot change: the deal record proves it (D-057) |
 | Drip pricing | Any price we charge is shown whole, at the start |
-| Disguised advertisement | Paid placement, if it ever exists, is labelled as paid |
+| Disguised advertisement | There is no paid placement: money never moves anyone up a list (`docs/RANKING_EXPLAINED.md`), and the money research recommends it stay refused (`docs/research/MONEY_AT_SCALE_2026.md` section 3) |
 | Nagging | Every alert is tied to a real event in a deal; a notification budget per person (section 5) |
 | Trick wording | Plain English; buttons say what happens (`docs/standards/ux.md` section 6) |
 | SaaS billing | No silent renewals; reminders before any charge |
@@ -43,9 +43,9 @@ India's Central Consumer Protection Authority made 13 deceptive designs unfair t
 
 | Mechanism | Evidence | How we use it | Status |
 |---|---|---|---|
-| **Facts over opinions** | Star ratings inflate (Airbnb's skew heavily positive) and lose their meaning; two-sided reviews invite retaliation | Records of what happened, with dates: on-time payment share, delivered on time, disputes. Never stars | **Built** (D-034, D-038) |
+| **Facts over opinions** | Star ratings inflate (Airbnb's skew heavily positive) and lose their meaning; two-sided reviews invite retaliation. In a controlled study, moderate, credible ratings raised trust while extremely high ratings or huge counts raised suspicion, and listings with no reviews were trusted least (Télécom Paris, Quant UX lab) | Records of what happened, with dates, come first: on-time payment share, delivered on time, disputes. Feedback (D-136) is three fixed scores, shown only beside those records, only from three answers up, always with its count; an honest "new" where there is no history (frontend item F345) | **Built** (D-034, D-038, D-136) |
 | **Proof nobody can quietly change** | Trust needs that the record itself cannot be edited by the platform | The deal record is append-only, chained, and stamped daily by outside authorities | **Built** (D-057, D-060) |
-| **Simultaneous reveal**, if feedback ever exists | Airbnb shows reviews only after both sides submit, or 14 days pass, which discourages tit-for-tat | Any future feedback between the two sides is hidden until both have answered | Proposed |
+| **Simultaneous reveal** | Airbnb shows reviews only after both sides submit, or 14 days pass, which discourages tit-for-tat | Feedback between the two sides of a finished deal is hidden until both have answered or 14 days pass, sealed once given; the rule is shown while it is written (frontend item F346) | **Built** (D-136) |
 | **Fair process, visible** | People accept an outcome they dislike when the process was fair and they could see it (procedural justice, our judgement from long-established research) | Dispute timelines both sides can see and export; no verdict recorded by us (D-028, D-035) | **Built** |
 | **Safety from each other** | Most marketplace scams start in a message: a fee asked of the seller, or a move off the record (`docs/standards/trust-and-safety.md` section 2) | Requests for money and early contact details flagged where they appear; links only to known hosts; block, both ways, never revealed to the person blocked | **Built** (items 57 to 60) |
 | **Breadth behind a number** | A perfect record from one partner says less than the same record across many, and is how a record is faked | Every record says how many different partners it rests on | **Built** (item 61) |
@@ -86,12 +86,19 @@ Our rule: **people come back because something real needs them, not because we e
 | "What needs me" in one call | Alerts tied to real events | **Built** (`/me/attention`) |
 | Notification preferences: quiet hours, digest, per-event choice | Section 5; no nagging | **Built** (D-079) |
 | Typical response times from real data ("brands usually reply within N days") | Certainty (section 3) without invention | **Built** (D-077) |
-| **Milestones from real records** | Section 4 | **Not built**: derived from existing records; a decision on which |
-| Simultaneous reveal for any two-sided feedback | Section 3 | Only if feedback is ever approved |
+| **Milestones from real records** | Section 4 | **Deferred past launch** by decision (D-071, item 20): they mean nothing until real deals exist |
+| Simultaneous reveal for two-sided feedback | Section 3 | **Built** (D-136) |
+| The deal check: each side's records shown to the other before a deal is agreed, as facts, never a score that refuses anyone | Fear on both sides (section 1), answered before the risk is taken | Proposed (`docs/BACKEND_COMPLETE.md` item 133) |
 
 ## 7. How we know it works
 
-Measured, never assumed: time to first deal for each side; share of deals paid on time; disputes per hundred deals; repeat deals between the same brand and creator; creators active after 90 days; and how many people turn off alerts (a rising number means we are nagging). Targets are set once the pilot has a baseline (`docs/REVENUE_RESEARCH.md` section 8).
+Measured, never assumed: time to first deal for each side; share of deals paid on time; disputes per hundred deals; repeat deals between the same brand and creator; creators active after 90 days; and how many people turn off alerts (a rising number means we are nagging). Targets are set once the pilot has a baseline (`docs/REVENUE_RESEARCH.md` section 8); the founders' numbers page that shows them is item 138.
+
+## 8. What this file does not know
+
+- **Nobody here has asked a Coimbatore brand or creator** what they fear or want; section 1 is national studies and our judgement until the first sessions (`docs/research/PEOPLE_RESEARCH_KIT.md`).
+- **Whether our moments (section 4) feel as intended** is untested; the usability bar is `docs/standards/ux.md` section 0 (D-171).
+- **The trust-cue study** was run with Western participants on rental listings; whether Tamil Nadu's brands read a rating the same way is a question for the sessions.
 
 ---
 
@@ -101,4 +108,5 @@ Measured, never assumed: time to first deal for each side; share of deals paid o
 - [Designing Online Marketplaces: Trust and Reputation Mechanisms (Luca, HBS)](https://www.hbs.edu/ris/Publication%20Files/17-017_ec4ccdc0-4348-4eb9-9f46-86e1ac696b4f.pdf), [Reviews and reputation (Fradkin)](https://andreyfradkin.com/assets/reviews_paper.pdf), [Trust and power in Airbnb's rating system](https://link.springer.com/article/10.1007/s10676-025-09825-6), [The trust stack for marketplaces](https://www.uladshauchenka.com/p/the-trust-stack-for-marketplaces)
 - [India's creator economy: broken payments as the bottleneck](https://www.thereelstars.com/tech/indias-creator-economy-is-booming-but-broken-payments-are-becoming-its-biggest-bottleneck/), [Creator mental health study, 550 respondents in 18 Indian cities](https://kommerstad.org/journal/article/download/355/272/797), [Influencer economy statistics 2026](https://lonelyentrepreneur.com/influencer-economy-statistics-2026/)
 - Fake followers and brand losses: `docs/COMPETITIVE_LANDSCAPE.md` sources
+- Trust cues in listings (read 6 November 2026): [Télécom Paris, Quant UX lab](https://quantux.telecom-paris.fr/?p=489); [Hesse et al., "Understanding the Platform Economy: Signals, Trust, and Social Interaction", HICSS-53](https://scholarspace.manoa.hawaii.edu/items/a5557992-d575-436f-912e-1357044086df)
 - Compliance is not taken from here: any legal duty comes from the validation pack (constraint 6)

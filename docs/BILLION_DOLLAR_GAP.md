@@ -2,11 +2,15 @@
 
 **Research of 8 October 2026, for Adhi.** Asked: "these are not enough; I am aiming for a billion-dollar company; do all the research." This file lists what the best platforms in the world and in India have, or are about to have, that we do not, and turns each gap into a backend item with its evidence, its fit with our rules, and what it needs before it can be built. **Every item here is proposed, not approved** (`CLAUDE.md` section 5). Section 3.8 of `docs/BACKEND_COMPLETE.md` carries them.
 
-It builds on `docs/COMPETITIVE_LANDSCAPE.md` (version 3), which already covers the Indian and global competitors and what we have that they do not. Nothing there is repeated here.
+**Last checked 6 November 2026.** Each item's status lives in one place, `docs/BACKEND_COMPLETE.md` section 3.8: of items 29 to 49, eight are built (29, switched off; 32; 40; 42 to 45; 47). How the business earns at this scale without ever touching deal money is `docs/research/MONEY_AT_SCALE_2026.md` (6 November), which takes this file's honest frame further with the leaders' own 2025 results.
+
+It builds on `docs/COMPETITIVE_LANDSCAPE.md` (version 3; version 5 since), which already covers the Indian and global competitors and what we have that they do not. Nothing there is repeated here.
 
 ---
 
 ## 1. First, the honest frame
+
+**Re-checked 6 November 2026:** Kofluence's reports put brands' influencer spend at about ₹3,000 to 3,500 crore in 2025, growing about 22% a year to ₹4,500 to 5,000 crore by 2027, inside a creator economy EY sizes at ₹12,500 crore in 2024 and nearly ₹50,000 crore by 2030; the figures below agree. The leaders' own results add one more point: Fiverr's growth in 2025 came from advertising, subscriptions and software (up 50.9%), not from its cut of the work (down 1.8%), which is the kind of revenue we can take (`research/MONEY_AT_SCALE_2026.md` section 2).
 
 - **The whole Indian market is small today.** Influencer marketing in India is estimated at **₹3,375 crore in 2026** (EY and Collective Artists Network), about US$400 million: the *entire* country's spend. A Tamil Nadu marketplace taking a fee on part of that is not a billion-dollar company on its own. The path there runs through all of India, then through what sits next to influencer marketing: **creator commerce** (India's D2C e-commerce is about **US$109 billion in 2026**, growing about 24% a year, Mordor Intelligence) and **software that small businesses pay for monthly**. How we earn is `docs/REVENUE_RESEARCH.md`, a founder decision.
 - **Money for this category got scarce.** Influencer-platform companies raised **US$48.1 million across 18 rounds** in 2026 to September (Tracxn), against about US$807 million in the first five months of 2025 alone. The exits are going to whoever owns real workflow and data: **Accenture Song agreed to buy Whalar** (June 2026), the largest creator-economy deal to date. A company that wins now must be capital-efficient and own something others cannot copy.
@@ -119,6 +123,12 @@ Today every follower count and result is self-reported or read from a screenshot
 4. Signed memos (item 35): does a memo become a contract? **(Legal, via the validation pack)**
 
 ---
+
+## 5. What this file does not know
+
+- **The sizes of Tamil Nadu's and South India's markets**: no report found splits India's spend by state; the pilot's interviews and first quarter estimate it (`research/MONEY_AT_SCALE_2026.md` section 4).
+- **Whether brands here will pay for each item**: every item is desk research until brands and creators are asked (`research/PEOPLE_RESEARCH_KIT.md`).
+- **Funding figures for 2026** are Tracxn's as reported; its method is not public.
 
 ## Sources
 

@@ -1,6 +1,6 @@
 # Survival playbook: how startups like ours die, and the rules that keep us alive
 
-Written 10 October 2026, at Adhi's request: "70%+ of startups fail in India; help us survive, and earn well, gradually, like a real business." Research, not law: the founders decide every rule here. It sits beside `GO_TO_MARKET.md` (how we win the first city) and `REVENUE_RESEARCH.md` (how we earn), and does not repeat them.
+Written 10 October 2026; **last checked 6 November 2026**, when the numbers of a large company were added to section 4 and its link to the research on earning at scale (`docs/research/MONEY_AT_SCALE_2026.md`). At Adhi's request: "70%+ of startups fail in India; help us survive, and earn well, gradually, like a real business." Research, not law: the founders decide every rule here. It sits beside `GO_TO_MARKET.md` (how we win the first city) and `REVENUE_RESEARCH.md` (how we earn), and does not repeat them.
 
 **The honest frame.** Over 11,000 Indian startups shut down in 2025, 30% more than in 2024 (Tracxn, via Inc42). Most did not die of bad code. They died of four things:
 - running out of cash before the business paid for itself;
@@ -63,6 +63,17 @@ Every number comes from the records, never from memory (`CLAUDE.md` section 7.0)
 | **Active brands and creators** in the atomic network | Density | Up, in one city before the next |
 | **Revenue, costs, cash, and months of runway** | Default alive or dead | Runway never under 6 months without a plan written down |
 
+**Once anyone pays, the numbers a large company lives by** (`docs/research/MONEY_AT_SCALE_2026.md` section 6), each from the records, none built yet (`docs/BACKEND_COMPLETE.md` item 138):
+
+| Number | What it tells us | Healthy direction |
+|---|---|---|
+| **Paying brands, and revenue per brand** | Whether brands pay, and how much | Up |
+| **Net revenue retention**: this year's revenue from last year's paying brands, against last year's | Whether customers grow their spend; the strongest single sign of a large software business | Above 100% |
+| **Deal value tracked**: the agreed value of deals on the record (never held) | The marketplace's scale without touching the money | Up |
+| **Time to first deal**, for a new brand | Whether the product works for a newcomer | Down |
+| **Gross margin** | Whether software or people make the money; Upwork reported 77.8% for 2025 | Up as done-for-you work gives way to plans |
+| **Cost to win a paying brand, and months to earn it back** | Whether growth pays for itself | Payback under 12 months (our judgement, to set from the pilot's baseline) |
+
 ## 5. Earning more than our classmates: gradually, and for real
 
 A placement offer pays from month one. A company pays nothing at first, and can pay far more later. That only happens if it survives, and ownership is where most of the money is made. So:
@@ -71,6 +82,12 @@ A placement offer pays from month one. A company pays nothing at first, and can 
 2. **Stage 1, default alive and revenue covering costs:** founders draw enough to live on, the same for both, set by both. The point is to stop living on savings, not to get rich.
 3. **Stage 2, profitable or funded, with section 4 healthy:** founder pay moves toward what a strong engineer earns. Real wealth comes from the value of what each founder owns, which is why **vesting and the founders' agreement come first**.
 4. **A decision date, written down.** Agree now on what the numbers must show by when (for example, a set number of paying brands by the end of the pilot). On that date, both founders decide in writing: continue, change course, or stop. It is not pessimism. Without a date, a company dies slowly instead of changing in time.
+
+## 5a. What this file does not know
+
+- **Our own runway**: no costs, revenue or cash are recorded anywhere yet, so section 4's last row cannot be answered today.
+- **How long the build takes against the cash**: at the pace measured on 6 November, a pilot-ready website is realistically March to April 2027; whether the founders' money lasts to the pilot's first revenue is the question this file exists to keep asked.
+- **The shutdown figures** are Tracxn's, as reported by Inc42; its method is not public.
 
 ## 6. Sources (read 10 October 2026)
 

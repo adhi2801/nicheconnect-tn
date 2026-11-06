@@ -4,7 +4,7 @@
 
 **Keeping count:** an item stays in its table when built, marked **Built** with its date and decision, so progress can be counted from this file alone. Items built before 14 October were taken out of the tables at first; on 27 October all 26 were put back, marked the same way, so every item ever listed is in a table.
 
-Frontend **code** starts only when the backend is complete (D-004, amended by D-053). Until today nothing defined "complete", so nobody could say how far away it was. This file is that definition, and the list of everything between here and it.
+The website and the apps are built beside the backend since 28 October 2026 (D-141, reversing D-053's wait); this file is the backend's definition of complete, and the list of everything between here and it. Its counterpart for the frontend is `docs/FRONTEND_COMPLETE.md`.
 
 ---
 
@@ -22,7 +22,11 @@ Three things it does **not** mean:
 
 **Measured on 14 October 2026:** 2,985 tests; coverage 98.55% counting branches when last measured that day, before its last three changes, with CI holding the floors on every run (`docs/standards/testing.md` section 7); CI green on `main` (`d6a86b8`, every job): the secret scan, the module layers, migration linting and round trip, the release step, the suite run as the app's own login and then the owner's tests, coverage, API fuzzing, the dependency and image scans, and the infrastructure check.
 
-**All 102 items listed: 61 built, 41 open** (39 in section 3, items 12 and 20 in section 4), counted from the tables on 5 November.
+**Counted on 6 November 2026:** 5,879 tests in 284 files (`pytest --collect-only`); coverage 98% counting branches on the full local run that day.
+
+**143 items listed: 61 built, 82 open**, counted from the tables on 6 November: items 103 and 104 added by D-167, items 105 to 143 by the world-bar pass and the research (section 3.13). **Built capabilities audited against the world bar: 0 of 32** (section 2a). The counts below are as of 5 November, before section 3.13.
+
+**All 102 items listed on 5 November: 61 built, 41 open** (39 in section 3, items 12 and 20 in section 4).
 
 **Open in section 3: 39 items** (68 on 14 October; item 51 built on 15 October, items 52 and 101 on 16 October, items 74, 82 and 80 on 17 October, item 79 on 18 October, items 81, 75 and 85 on 24 October, items 6, 44 and 8 on 25 October, items 26, 17, 66, 43, 68, 70, 65 and 77 on 26 October, item 11 on 27 October, item 27 on 29 October, items 13 and 40 on 4 November (40 built switched off, as 29 is), items 64 and 92 on 5 November, item 29 built switched off the same day (section 1: its outside part only turns it on), and item 87 found built since 20 September). 21 wait on something outside the code or on Erode Harish: the name and domain (4, 10), the Meta app (30, 31, 67, 78), the validation pack (33, 39), the lawyer or CA (35, 50, 76), the MSG91 template (62), results data (83, 86), founders' decisions (7, 38, 41, 46, 48, 61, 72). **18 need only an approval**. Section 4 holds the 8 that wait on someone outside, and item 29, built switched off.
 
@@ -36,6 +40,45 @@ Three things it does **not** mean:
 - 24 October, marked in the tables: item 81 (where you are logged in; D-114), with two weaknesses its reading found, fixed: a refresh at the moment of a logout outlived it, and every logout left the last access token working for up to 15 minutes.
 - 18 October: the three weaknesses item 80's report named, fixed: a login at least a week old before changing the phone number or a UPI ID in effect (D-109), a lost current number (D-110), and the data export built in the background, downloaded once (D-111), whose failed builds now retry and then tell the owner, with one code per export (D-112).
 - 17 October, marked in the tables: item 74 (a brand proves it controls its website's domain; D-106), item 82 (a second check before risky changes, and a new UPI ID's 24-hour wait; D-107) and item 80 (changing one's phone number, with a code from each number and a 72-hour wait; D-108).
+
+## 2a. Everything built, capability by capability, against the world bar
+
+Added 6 November 2026 (Adhi: "102 is less ... all of them world class in every aspect"). The tables in section 3 hold what was listed from 1 October on; most of what was built before that (Phases A to D of the backlog) was never itemised, so this section lists **every built capability once**, 32 of them, behind the contract's 225 operations in 33 groups (`docs/api/openapi.json`, counted 6 November). Each names the strongest published practice it is to be audited against. **An audit** reads the capability's code and tests against that benchmark and the standards' section 0, fixes what falls short in the same change, and records the result here. **Audited so far: 0 of 32.** Audits run one capability per change, most-used first.
+
+| # | Capability | Audited against | Audit |
+|---|---|---|---|
+| C1 | Login by phone code, access and refresh tokens, rotation | OWASP ASVS 5.0 authentication and session chapters; NIST SP 800-63B | Owed |
+| C2 | Where you are logged in: sessions, devices, logging out one (item 81) | ASVS session management; Google's account device page | Owed |
+| C3 | Risky changes: step-up codes, phone change, UPI ID wait (items 80, 82) | NIST 800-63B reauthentication; banks' cooling-off practice | Owed |
+| C4 | Passkeys (item 79) | FIDO Alliance and W3C WebAuthn Level 3; NIST phishing-resistant authenticators | Owed |
+| C5 | The admin API, its log and second factor (item 101) | ASVS Level 3 for administrative functions; least privilege | Owed |
+| C6 | Brand and creator profiles | Data minimisation (DPDP Act section 6; `legal.md`); Stripe-style resource design | Owed |
+| C7 | The Creator Passport, its consent, and the media kit | LinkedIn's public-profile controls; schema.org ProfilePage (item 85) | Owed |
+| C8 | Rate cards and their consent | Collabstr's visible rates, with our consent rule | Owed |
+| C9 | Availability (booked until) | Calendly and Upwork availability | Owed |
+| C10 | Campaigns: create, edit, discover, alerts, festival templates (items 14, 40) | Aspire's and Collabstr's posting flows; Baymard's list rules | Owed |
+| C11 | Applications, invitations, counter-offers, repeat deals | Upwork's proposals and offers | Owed |
+| C12 | Matching, creator search, plain-words search, "like my best", saved lists (items 64, 65, 66, 103) | Offline ranking evaluation (NDCG on held-out outcomes); Fiverr's dynamic matching | Owed |
+| C13 | Deal memos, terms versions, drafts and their images (item 27) | Upwork's contracts and milestones; plain-language contract practice | Owed |
+| C14 | The sealed deal record and its daily outside timestamp | Certificate Transparency (RFC 9162): append-only, independently verifiable logs | Owed |
+| C15 | Proof files and results from proof | AWS S3 security best practice; content-cleaning pipelines | Owed |
+| C16 | Payment status, bulk mark-paid, reliability records, UPI pay link (item 87) | Upwork's client payment verification; NPCI's UPI deep-link format | Owed |
+| C17 | Disputes | Airbnb's resolution centre; online dispute resolution practice | Owed |
+| C18 | Notifications, preferences, quiet hours, the attention list | Apple's and Google's notification guidelines | Owed |
+| C19 | Blocking, reports and their clocks, takedowns (items 51, 52, 59, 102) | The IT Rules' clocks, and the Trust & Safety Professional Association's practice | Owed |
+| C20 | The data export and account deletion (item 6) | GDPR articles 15, 17 and 20 as the strictest model; DPDP rights | Owed |
+| C21 | Team seats and handing a brand over (item 13) | GitHub's and Slack's organisation roles | Owed |
+| C22 | Verified brand domains and look-alike names (items 74, 75) | Google Search Console's DNS verification; Unicode UTS #39 | Owed |
+| C23 | Feedback revealed only when both answered (item 77) | Airbnb's simultaneous review reveal | Owed |
+| C24 | City figures and fair-rate guidance (item 22) | k-anonymity as practised by salary-data companies | Owed |
+| C25 | Gradual rollout (item 92) | Percentage rollouts as practised by LaunchDarkly and Google | Owed |
+| C26 | Public pages and what search engines may read (item 85) | Google Search Central's guidance | Owed |
+| C27 | Rate limits and overload shedding (items 5, 5a) | Stripe's published rate limiters; Google SRE, "Handling overload" | Owed |
+| C28 | Errors, the contract, its snapshot and generated types | RFC 9457; Stripe's API design (`research/BACKEND_RESEARCH_2026.md` section 1) | Owed |
+| C29 | Background jobs on DBOS | Durable execution (`research/BACKEND_RESEARCH_2026.md` section 4.2) | Owed |
+| C30 | Error tracking, tracing, structured logs (items 2, 3) | OpenTelemetry's stable conventions; Google SRE monitoring | Owed |
+| C31 | Embeddings and hybrid retrieval (D-167, D-173) | Retrieval evaluation (recall and NDCG on labelled pairs) | Owed |
+| C32 | Infrastructure as code and the image (D-062, D-063) | AWS Well-Architected's six pillars; SLSA | Owed |
 
 ## 3. Left to build: no outside wait, a decision first
 
@@ -253,6 +296,79 @@ Found by reading the code against `docs/standards/database.md` (its section 10) 
 | 103 | **Matching that learns from deals that worked** (D-167, `docs/decided/PROPOSAL_LEARNED_MATCHING.md`) | Matching ranked in a fixed order that never learned from what brands chose; an outside review named "little ML" a weakness | Matching, database, dependency · **Step 1 built 6 November (D-167)**: both match lists ranked by reciprocal rank fusion of meaning (the embedding) and the exact words of bio and brief, inside the unchanged filter; ties stay ties; words counted once each, so repeating them buys nothing; no measurable cost on the seeded data (`docs/PERFORMANCE.md`); the ranking explained in `docs/RANKING_EXPLAINED.md`. Independently reviewed the same day: eight findings, each fixed or answered; the words stored with each row by the database (D-173), so 1,000 maximum-length campaigns in one pool rank in 89 ms p95, not 533. **Still owed:** step 2 (`match_impressions`), step 3 (the LambdaMART reranker behind its published gate) |
 | 104 | **A fair price range for this creator, with its coverage** (D-167, `docs/decided/PROPOSAL_RATE_INTERVALS.md`) | Rate guidance answers for a group and states no uncertainty | Dependency · Approved 6 November; built when a platform passes 200 published rate cards, the training pipeline first |
 
+### 3.13 Found by the world-bar pass and the research (6 November 2026)
+
+Each traces to a benchmark a standard's section 0 does not yet meet, a gap a standard names, or a *Next* in the research of 6 November (`research/BACKEND_RESEARCH_2026.md`, `research/MONEY_AT_SCALE_2026.md`). Items already listed elsewhere (90, 93, 94, 95, 36, 61, 62) are not repeated. Rows marked **(decision)** were proposed in the world-bar pass and are not approved.
+
+**The API contract**
+
+| # | Item | Source | Gate |
+|---|---|---|---|
+| 105 | A breaking-change check in CI: a contract diff fails on a removed field, a narrowed type or a new required input | `backend.md` section 0; research 1.3 | Infrastructure (CI) |
+| 106 | A test that walks every POST and DELETE and fails on one a client cannot safely retry | Research 1.2 (Stripe) | None (tests) |
+| 107 | `RateLimit` and `RateLimit-Policy` fields on every limited route, labelled as the IETF draft's **(decision)** | `backend.md` section 0; research 1.4 | A decision |
+| 108 | Signed events to brands' and agencies' own systems (Standard Webhooks), each deal event carrying its record's seal | Research 1.6 | Architecture, security; when the first agency asks |
+
+**The database and its connections**
+
+| # | Item | Source | Gate |
+|---|---|---|---|
+| 109 | PostgreSQL 18's asynchronous reads measured (`worker` against `io_uring`) on the production image before launch | Research 2.1 | Infrastructure |
+| 110 | Every composite index read against its queries for PostgreSQL 18's skip scan; indexes merged where one now serves both | Research 2.1 | Database |
+| 111 | The vector-index trigger to switch on pgvector's iterative scans with HNSW, so filtered matches are never short | Research 2.2 | Database, with the index |
+| 112 | A startup check and a test that processes × containers × (pool + overflow), at the autoscaler's maximum, stays inside the database's capacity | Research 3 | Infrastructure |
+| 113 | A connection pooler (PgBouncer 1.25 with prepared statements, or RDS Proxy), chosen by measurement before autoscaling (item 88) | Research 3 | Infrastructure, a decision |
+| 114 | Free-text cities checked per element by the database | `database.md` gap 3 | Database |
+| 115 | Each *(review only)* rule given a test where practical: nullable columns explained, query plans for new hot queries, a query count per list, concurrency checks | `database.md` gap 4; `testing.md` gap 2 | None (tests) |
+
+**Reliability and observability**
+
+| # | Item | Source | Gate |
+|---|---|---|---|
+| 116 | Objectives for five journeys (sign in, publish a campaign, apply, agree a deal, mark paid), burn-rate alerts over two windows, and an error budget policy both founders sign | `backend.md` section 0 (availability, D-166); research 4.1 | Infrastructure, both founders |
+| 117 | The 99th percentile as a gate beside p95: 800 ms reads, 1,200 ms writes **(decision)** | `backend.md` section 0 | A decision |
+| 118 | A timeout on every background step that calls outside (WhatsApp, the Claude API, S3), so a hung call never holds a worker | Research 4.2 | None |
+| 119 | Valkey's per-field expiry where one key holds parts with different lifetimes | Research 4.3 | None |
+| 120 | OpenTelemetry's stable database attributes switched on before traces have somewhere to go (item 89) | Research 5 | Infrastructure |
+| 121 | Failure on purpose for every dependency the app calls, listed in `testing.md` with its test | `testing.md` section 0 (D-172) | None (tests) |
+| 122 | Fuzzing that gates more than server errors, and its nightly long run | `testing.md` section 0 and gap 3 (D-172) | Infrastructure (CI) |
+
+**Security and the supply chain**
+
+| # | Item | Source | Gate |
+|---|---|---|---|
+| 123 | OWASP ASVS 5.0 mapped chapter by chapter with evidence; Level 2 throughout, Level 3 for login, sessions and the deal record | `security.md` gap 2; research 6 | Security |
+| 124 | Signed provenance for every image (SLSA) and signed images | `backend.md` and `security.md` section 0; `security.md` gap 4 | Infrastructure |
+| 125 | OpenSSF Scorecard measured and held at 8.0 or above **(decision)** | `security.md` section 0 | A decision |
+| 126 | A penetration test before launch, against the ASVS map (item 123), and a rehearsed incident | `security.md` gap 4 | Security; its cost a founders' decision |
+| 127 | The open code-scanning alert read and answered | `security.md` gap 1 | A founder signs in to read it |
+| 128 | Branch protection on `main` requiring CI's jobs, so no merge passes a failing run | `testing.md` gap 1 | A founder, on GitHub |
+| 129 | Admins on passkeys once the domain exists **(decision)** | `security.md` section 0 | A decision |
+
+**Trust and safety**
+
+| # | Item | Source | Gate |
+|---|---|---|---|
+| 130 | A campaign's title checked for fee requests, as its brief is | `trust-and-safety.md` gap 2 | Security |
+| 131 | A published report of what went wrong and what we did, from the counts the system keeps | `trust-and-safety.md` section 0 (Upwork) | After launch |
+| 132 | The rate of fraud measured, not only its cases | `trust-and-safety.md` section 0 (Airbnb) | After launch |
+| 133 | A check on each deal before it is agreed, from records only we hold (days to pay, disputes, delivery record, domain, look-alike name, first deal between the two), shown to both sides as facts, never as a score that refuses anyone | Research 8 | Trust and safety; a product decision |
+| 134 | App-store privacy labels generated from the registries the code keeps | `legal.md` section 0 (D-170) | None |
+
+**Earning money** (none of it touching deal money, constraint 1)
+
+| # | Item | Source | Gate |
+|---|---|---|---|
+| 135 | Plans and what each allows, read by the rollout switch (D-160) | `research/MONEY_AT_SCALE_2026.md` section 5 | Architecture, database; after the pilot names a price |
+| 136 | Charging for our plans through a payment provider, for our own fees only | Money section 5 | Dependency, security; the CA |
+| 137 | Our invoices for our fees, numbered and sealed | Money section 5 | Validation pack: GST, TDS |
+| 138 | The business's numbers on the founders' page: paying brands, revenue per brand, net revenue retention, deal value tracked, time to first deal | Money section 6; `SURVIVAL_PLAYBOOK.md` section 4 | None for what the records hold |
+| 139 | An agency workspace: many brands per agency, per-seat plans (with item 72) | Money section 3 | Both founders, security |
+| 140 | Creator Pro: what a paying creator gets, with the free tier's promise written first (never ranked by paying, the Passport always whole for free) | Money sections 3 and 7 | A product decision |
+| 141 | Verified reputation as a product: a signed export of a creator's or brand's record, and a badge that checks itself against us | Money section 3 | Legal (what we may say about a person), security |
+| 142 | Price truth's paid tier, deeper than the free quarterly report (item 84), never showing one person's price | Money section 3 | A decision on the minimum group size |
+| 143 | Partner referrals tracked with consent, the money moving only between the partner and the person | Money section 3 | The lawyer and the CA |
+
 ## 4. Blocked from outside the code
 
 | Item | Waiting on |
@@ -278,4 +394,4 @@ Found by reading the code against `docs/standards/database.md` (its section 10) 
 
 - Updated in the same pull request as any work that moves an item. An item leaves section 3 only when it is built and tested, or deferred by a recorded decision.
 - Re-checked against the code whenever `docs/PRODUCT_BACKLOG.md` is.
-- When section 3 is empty, the backend is complete, and D-004's gate on frontend code opens.
+- When section 3 is empty and every capability in section 2a is audited, the backend is complete.
