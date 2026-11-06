@@ -1,6 +1,8 @@
 # When something goes wrong: the incident plan
 
-**Written 8 October 2026 (D-082), for `docs/standards/security.md` section 9; rotation and shutdown corrected against `infra/` on 10 October. Not yet rehearsed:** it must be walked through once, end to end, on staging before launch, and the rehearsal's date written here.
+**Written 8 October 2026 (D-082), for `docs/standards/security.md` section 9; rotation and shutdown corrected against `infra/` on 10 October. Not yet rehearsed:** it must be walked through once, end to end, on staging before launch, and the rehearsal's date written here (`docs/BACKEND_COMPLETE.md` item 126). **Last checked 6 November 2026:** every secret the code reads as one (`app/core/config.py`: `SECRET_KEY`, `OTP_HASH_KEY`, `SECOND_FACTOR_KEY`, `PLATFORM_TOKEN_KEY`, `APP_DATABASE_PASSWORD`, `MSG91_AUTH_KEY`, `ANTHROPIC_API_KEY`, `META_APP_SECRET`, `GOOGLE_CLIENT_SECRET`, and the `SENTRY_DSN`) has its rotation in section 3.
+
+**The bar:** NIST's incident response guidance (SP 800-61, revision 3, April 2025), which ties response to the whole of managing risk rather than a separate playbook; Google's practice of one incident commander, a written state of the incident, and a blameless postmortem for every incident (*Site Reliability Engineering*, "Managing Incidents" and "Postmortem Culture"); and India's own clocks, CERT-In's 6 hours and the DPDP Rules' notices (section 5). **Where we stand:** the roles, the first hour, every rotation and both legal clocks are written; the rehearsal and a penetration test are owed (item 126); nothing is deployed, so no incident has happened.
 
 An incident is anything that may have exposed personal data or a secret, let someone act as another account, changed records nobody asked to change, or taken the API down. **When unsure, treat it as one.** Declaring an incident that turns out to be nothing costs an hour; waiting on a real one costs trust.
 
@@ -88,8 +90,20 @@ Data is never deleted to stop an incident. A restore from backup (`docs/standard
 
 Within five working days, a short write-up in `docs/reports/`: the timeline, the cause, what stopped it, and the change that keeps it from happening again. The write-up blames no person. Every fix comes with a test that fails without it (`docs/standards/testing.md` section 2).
 
+## 6a. What this plan does not know
+
+- **Whether it works**: never rehearsed (section 7); a plan untried is a guess about the first hour.
+- **The DPDP Rules' exact notice contents and timing** for a personal-data breach come from the validation pack (constraint 6); `docs/standards/legal.md` section 3.1 holds what is known.
+- **Who answers at night**: two founders, both students; an on-call rota is a decision for when there are users.
+
 ## 7. Rehearsal
 
 | Date | Who | Scenario | What we changed |
 |---|---|---|---|
 | Not yet | Both founders | A leaked `SECRET_KEY` on staging, rotated and confirmed within the hour | |
+
+## Sources (read 6 November 2026)
+
+- NIST SP 800-61 Rev. 3, Incident Response Recommendations and Considerations for Cybersecurity Risk Management (April 2025): https://csrc.nist.gov/pubs/sp/800/61/r3/final
+- Google, *Site Reliability Engineering*: "Managing Incidents", https://sre.google/sre-book/managing-incidents/ ; "Postmortem Culture", https://sre.google/sre-book/postmortem-culture/
+- CERT-In Directions, 28 April 2022, and the DPDP Rules: `docs/standards/legal.md` sections 3.1 and 3.2, with their sources
