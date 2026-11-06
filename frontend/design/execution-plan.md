@@ -1,5 +1,7 @@
 # Execution plan: keeping pace with the backend
 
+**Checked 6 November 2026:** the API gaps this plan names as R1, R2 and R6 (brand names and campaign titles on lists, who applied, which features are on) are built and on `main` (D-153, D-154, D-160), and R3 as item 27; R4 and R5 stand. **The launch date of 1 January 2027 is not confirmed**, nor the 10 December build deadline: at the pace measured on 6 November (0 of 352 frontend items built to the bar, about 5 to 10 items a week across both lists), a pilot-ready website is realistically March to April 2027 (`docs/FRONTEND_COMPLETE.md` section 2). The founders keep every item at full scope; the date moves, not the bar.
+
 **Status: Proposed.** Written 28 October 2026. **Launch: 1 January 2027.** The build deadline of **10 December** is not yet confirmed; this plan assumes it, and shows what moves if it does not. Nothing here is approved.
 
 ## 1. Where the backend is, in Adhi's own numbers
