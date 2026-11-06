@@ -1181,7 +1181,7 @@ export interface paths {
         };
         /**
          * Festival campaign templates
-         * @description Campaigns already worded for Tamil Nadu's festivals and seasons, the soonest first from today in Tamil Nadu. Each is a starting point: add the brand's cities and, for a paid campaign, a budget, then create it with `POST /api/v1/campaigns`. A festival that follows the moon lists no months and comes last. A fixed list of 11; no login. Cached for a day. Limit: 60 a minute.
+         * @description Campaigns already worded for Tamil Nadu's festivals and seasons, of every faith and none, each with its next dates. Ordered only by date: the one to publish soonest first (`publish_by`), so one already under way leads. Each is a starting point: add the brand's cities and, for a paid campaign, a budget, then create it with `POST /api/v1/campaigns`. `dates_confirmed` is false for dates that are expected rather than notified, and `depends_on_moon` marks a day set by the moon being sighted. No login. Cached until midnight in Tamil Nadu, with an ETag. Limit: 60 a minute.
          */
         get: operations["campaign_templates_api_v1_campaign_templates_get"];
         put?: never;
@@ -5531,8 +5531,24 @@ export interface components {
         CampaignTemplateRead: {
             campaign: components["schemas"]["TemplateCampaignRead"];
             /**
+             * Dates Confirmed
+             * @description True when the dates are fixed or notified by the Tamil Nadu Government; false when they are expected, from an almanac or from the moon
+             */
+            dates_confirmed: boolean;
+            /**
+             * Depends On Moon
+             * @description The day is set by the moon being sighted, so it can move by a day
+             */
+            depends_on_moon: boolean;
+            /**
+             * Ends On
+             * Format: date
+             * @example 2027-01-17
+             */
+            ends_on: string;
+            /**
              * Key
-             * @description Stable, for a link to one template
+             * @description Stable: the same festival keeps its key
              * @example pongal
              */
             key: string;
@@ -5543,21 +5559,27 @@ export interface components {
              */
             lead_weeks: number;
             /**
-             * Months
-             * @description The months it falls in, 1 to 12. Empty for a festival that follows the moon, whose dates the brand sets
-             * @example [
-             *       1
-             *     ]
-             */
-            months: number[];
-            /**
              * Name
              * @example Pongal
              */
             name: string;
             /**
+             * Publish By
+             * Format: date
+             * @description The day to have the campaign open by: `lead_weeks` before `starts_on`
+             * @example 2026-12-03
+             */
+            publish_by: string;
+            /**
+             * Starts On
+             * Format: date
+             * @description When it next starts, or started if it is under way
+             * @example 2027-01-14
+             */
+            starts_on: string;
+            /**
              * When
-             * @example Mid-January, the first day of the Tamil month of Thai
+             * @example Mid-January: Bhogi, Thai Pongal on the first day of Thai
              */
             when: string;
         };
@@ -10852,6 +10874,8 @@ export interface components {
              * @enum {string}
              */
             campaign_type: "paid" | "barter" | "commission" | "local_business";
+            /** Deliverable Items */
+            deliverable_items: components["schemas"]["DeliverableIn"][];
             /** Deliverables */
             deliverables: string;
             /** Description */
@@ -16400,7 +16424,9 @@ export interface operations {
     campaign_templates_api_v1_campaign_templates_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "if-none-match"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -16413,6 +16439,22 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CampaignTemplateRead"][];
+                };
+            };
+            /** @description The reader's copy, named by `If-None-Match`, is current */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request is not valid; `errors` names each field and why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Too many requests; see the Retry-After header */

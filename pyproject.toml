@@ -228,7 +228,8 @@ ignore_missing_imports = true
 # The pure rules where a silent mistake costs someone money or trust
 # (testing.md section 2, D-091): a deal's stage, payment state and its
 # dates, the approval clock, the record's fingerprint and Merkle proofs, the
-# contact and money flags, cursors, and the report spreadsheet.
+# contact and money flags, cursors, the report spreadsheet, and the festival
+# templates' dates and order (D-165).
 source_paths = ["app/"]
 only_mutate = [
     "app/modules/deal_memo/stage.py",
@@ -239,6 +240,7 @@ only_mutate = [
     "app/core/text_flags.py",
     "app/core/pagination.py",
     "app/modules/campaigns/report_csv.py",
+    "app/modules/campaigns/festival_templates.py",
 ]
 # Only lines the chosen tests reach: a function they never call is not
 # evidence of a weak test, and would bury the real survivors.
