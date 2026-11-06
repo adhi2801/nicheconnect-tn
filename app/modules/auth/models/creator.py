@@ -3,6 +3,7 @@ from datetime import date, datetime
 
 from sqlalchemy import (
     CheckConstraint,
+    Computed,
     Date,
     DateTime,
     ForeignKeyConstraint,
@@ -11,7 +12,7 @@ from sqlalchemy import (
     Text,
     text,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -26,6 +27,11 @@ CREATOR_NICHES = NICHES
 CREATOR_LANGUAGES = LANGUAGES
 HANDLE_PATTERN = r"^[a-z0-9._]{3,30}$"
 BIO_MAX_LENGTH = 500
+# The words of the bio, cut and stemmed once when it is written, so matching
+# reads them rather than re-reading the text on every request (D-173). The
+# config is matching's (`app/modules/matching/fusion.py`, CONFIG); a test
+# holds the two together.
+BIO_WORDS = "to_tsvector('english'::regconfig, coalesce(bio, ''::text))"
 
 
 class Creator(Base):
@@ -82,6 +88,11 @@ class Creator(Base):
     languages: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
     # Nullable on purpose: a bio is optional on a creator profile.
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Kept by the database from the bio, never written by the app; an empty
+    # bio has no words. Deferred: only matching reads it.
+    bio_words: Mapped[str] = mapped_column(
+        TSVECTOR, Computed(BIO_WORDS, persisted=True), nullable=False, deferred=True
+    )
     # When this creator chose to put their profile on the open internet.
     #
     # NULL means not published, and that is the default for everybody: a

@@ -499,7 +499,17 @@ The word match is computed inside the structural filter, on every row that passe
 | 200 | 118.2 (90.4) | 14.2 (38.7) |
 | 1,000 | 532.5 (448.6) | 90.6 (154.9) |
 
-The cost is reading each row's text into words on every request; a GIN index would not help, since nothing filters by words. **The creator's side passes the 300 ms read budget somewhere between 200 and 1,000 open campaigns of maximum length in one city and niche.** The pilot is far below that, but the remedy is known and owed: the words stored with each row as a generated column, read rather than recomputed (a migration, so it waits on its approval).
+The cost was reading each row's text into words on every request; a GIN index would not help, since nothing filters by words. The creator's side passed the 300 ms read budget somewhere between 200 and 1,000 open campaigns of maximum length in one city and niche.
+
+**Fixed the same evening (D-173): the words stored with each row**, as generated columns the database keeps (`creator.bio_words`, `campaign.brief_words`), read rather than recomputed. Measured the same way, the stored words in a temporary table, 30 runs each:
+
+| Pool after the filter | Creator's side, p95 ms (computed per request) | Brand's side, p95 ms (computed per request) |
+| --- | --- | --- |
+| 50 | 6.0 (34.0) | 1.6 (6.8) |
+| 200 | 34.6 (118.2) | 12.1 (14.2) |
+| 1,000 | 88.7 (532.5) | 15.1 (90.6) |
+
+What remains per row is unnesting the stored words and comparing each with the query's: linear in the pool, inside the budget at 1,000 maximum-length campaigns.
 
 ## What is not measured yet
 

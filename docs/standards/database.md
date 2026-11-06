@@ -62,6 +62,7 @@ What moves a row from **(decision)** to binding: a founder's yes, recorded in `d
 | Email | `VARCHAR(320)`, stored lowercase by a `CHECK` (`email = lower(email)`), so a plain unique constraint is case-insensitive | case-sensitive uniqueness | the `CHECK` |
 | Phone | `VARCHAR(16)` in E.164 | local formats | `CHECK`s on `account` and `otp_challenge` |
 | Embeddings | `vector(<dim>)`, the dimension fixed by D-052 | | `tests/modules/matching/test_embedding_model.py` |
+| Words for matching | `tsvector`, a stored generated column computed from the text in the row, in matching's config, deferred in the model (D-173: `creator.bio_words`, `campaign.brief_words`) | written by the app; computed per request | `tests/modules/matching/test_stored_words_model.py` |
 
 - Every table has `id`, `created_at` and `updated_at`, except the named ones: the two embedding tables are keyed by their owner; the four append-only tables have no `updated_at`, because they are never updated; `deal_record_entry`'s moment is `recorded_at`, inside its seal (D-057). **Enforced by** `tests/test_schema_rules.py`. The app sets `updated_at` in the same statement as every change. *(review only)*
 - `NOT NULL` is the default. A nullable column says what NULL means, in a comment beside it in the model ("NULL means never published"). *(review only)*: the schema has 90 nullable columns.
