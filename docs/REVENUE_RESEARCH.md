@@ -2,7 +2,7 @@
 
 **Researched 30 September 2026.** It builds on `docs/COMPETITIVE_LANDSCAPE.md` (21 September) and `docs/PLAYBOOK_GAPS.md` section 1, and goes further: what this market actually pays for, what the numbers mean for a one-city pilot, and a plan with checkpoints so we find out early if it is not working.
 
-**Nothing here is decided.** Every price is a proposal to test with real brands, not a promise. Sources are at the bottom; most are industry articles and vendor pages, so treat single figures as a range, not a fact. Where something is our judgement, it says so. GST, TDS and invoicing rules are **needs validation pack** (`CLAUDE.md` constraint 6): a CA confirms them before anything is charged.
+**Taken further on 6 November 2026** by `docs/research/MONEY_AT_SCALE_2026.md`: how Fiverr, Upwork and the creator platforms earn, every line we could earn from at scale, and whether India alone is large enough. **Nothing here is decided.** Every price is a proposal to test with real brands, not a promise. Sources are at the bottom; most are industry articles and vendor pages, so treat single figures as a range, not a fact. Where something is our judgement, it says so. GST, TDS and invoicing rules are **needs validation pack** (`CLAUDE.md` constraint 6): a CA confirms them before anything is charged.
 
 ---
 

@@ -71,7 +71,7 @@ Dated reports, the decision log and the papers in `decided/` are records: they k
 | `SURVIVAL_PLAYBOOK.md` | How startups like ours die and the rules that keep us alive: default alive, the numbers to watch weekly, money without selling the company, and founder pay growing step by step (10 October) |
 | `GO_TO_MARKET.md` | Coimbatore first: how the pilot finds its first brands and creators |
 | `PSYCHOLOGY_AND_TRUST.md` | What makes people trust a marketplace with their money and work |
-| `REVENUE_RESEARCH.md` | How we could earn, never by touching deal money |
+| `REVENUE_RESEARCH.md` | How we could earn, never by touching deal money: the pilot's first money in one city (30 September). How the leaders earn, every line we could earn from at scale, and what each needs built: `research/MONEY_AT_SCALE_2026.md` (6 November) |
 | `PERFORMANCE.md` | Measured response times against the budgets |
 | `REVIEW_FINDINGS.md` | Every automated review finding, and what became of it |
 | `API_CONTRACT_FINDINGS.md` | What fuzzing the API against its contract found |
