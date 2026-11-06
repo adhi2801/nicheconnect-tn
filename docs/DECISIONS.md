@@ -2157,3 +2157,15 @@ Newest entries at the bottom.
 - Consequences / follow-ups:
   1. The SUS questions join every usability session (`ux.md` section 2); scores and their sample sizes are recorded with the session notes.
   2. The frontend CI job gains axe-core and a Lighthouse run on the built website, as dev-only tools pinned exactly; `frontend.md` section 6's "owed" note is removed in that change.
+
+## D-172: Tests held above SQLite's and Google's published practice
+- Date: 2026-11-06
+- Approved by: Adhi, in this session, choosing all three bars proposed in `testing.md` section 0. **Not reviewed by the other founder** (D-051).
+- Context: SQLite publishes 100% branch coverage of its core, puts most of its testing into fuzzing, and tests failure on purpose; Google runs mutation testing at scale and reruns only tests marked flaky. Measured on 6 November 2026: all ten rule modules at 100% of branches, after the race on opening a payment record gained its test and two dead branches were removed.
+- Options considered: for each bar, adopting it or not.
+- Chosen: a CI gate failing any rule module below 100% branch coverage; a nightly long run of Schemathesis and the Hypothesis properties at ten times the examples; a test of every outside dependency (the database, Valkey, S3, the Claude API, WhatsApp, the timestamp authorities) failing, timing out or refusing, and the answer a person then gets.
+- Reason: the rules where a silent mistake costs money or trust deserve the strictest coverage there is; fuzzing finds what examples never imagine; a dependency that fails is certain, only its date is not.
+- Consequences / follow-ups:
+  1. CI reads each rule module's branch coverage from the same report as the `service.py` floor and fails below 100%.
+  2. The nightly job gains the long fuzz run; a failure there opens an issue the next morning.
+  3. `testing.md` lists each dependency with its failure test; the missing ones are written in the change that builds the gate.

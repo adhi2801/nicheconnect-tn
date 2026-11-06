@@ -8,7 +8,7 @@ Rules marked **(decision)** are open and are decided, with a `docs/DECISIONS.md`
 
 **For:** whoever designs or builds the website or the apps, read in full before the first screen or line of frontend code (`CLAUDE.md` section 6). **Last checked on 28 October 2026**, when sections 8a to 8d were added; the stack's versions are re-checked as section 2 says.
 
-**The ten dimensions** (`CLAUDE.md` section 5), and where this standard serves each:
+**The twelve dimensions** (`CLAUDE.md` section 5, D-139), and where this standard serves each:
 
 | Dimension | Here |
 |---|---|
@@ -19,7 +19,24 @@ Rules marked **(decision)** are open and are decided, with a `docs/DECISIONS.md`
 | Trust and safety | Flags shown beside text, links never made from people's words, report and block one tap away (sections 10, 14; `trust-and-safety.md` section 5) |
 | Architecture | One frontend repository, three apps, one core, a client generated from the contract (section 2) |
 | Research | Sources, below; the stack's evidence is `docs/PLATFORM_AND_TECH_PLAN.md` |
-| Novelty, business | Not here: `docs/COMPETITIVE_LANDSCAPE.md` and `docs/GO_TO_MARKET.md` |
+| Novelty, business | Beating the named leaders (section 0, 8a); the market is `docs/COMPETITIVE_LANDSCAPE.md` and `docs/GO_TO_MARKET.md` |
+| Reliability | Nothing a person does is ever lost (section 5); crash-free and frozen-app budgets (section 4) |
+| Maintainability | One design system and its tokens (section 8); a client generated from the contract (section 2) |
+
+---
+
+## 0. The benchmarks we beat (Adhi, 6 November 2026: "sky high")
+
+The leaders this frontend is judged against, what each publishes or shows, our number against it, what enforces it, and whether it holds today (checked 6 November 2026).
+
+| Benchmark | What the leader publishes or shows | Our bar | Enforced by | Today |
+|---|---|---|---|---|
+| **Speed people feel** (Google) | Core Web Vitals, "good" at the 75th percentile of page loads: LCP within 2.5 s, INP at most 200 ms, CLS at most 0.1 ([web.dev, "Web Vitals", updated 31 October 2024](https://web.dev/articles/vitals)) | Stricter, on a budget Android phone: LCP at most 2.0 s, INP at most 150 ms, CLS at most 0.05 (section 4) | Lighthouse on the built website in CI, failing the build (D-171); field data after launch | **Not in CI yet**: no workflow runs Lighthouse (found 6 November 2026); wiring it in approved (D-171) |
+| **Lab scores** (Google Lighthouse) | Performance, Accessibility, Best practices and SEO, each out of 100 | Performance at least 95, the other three 100, mobile (section 4) | The same Lighthouse run | Not in CI yet (D-171) |
+| **Craft and precision** (Stripe, Linear, Vercel, Mercury, Apple; Awwwards' Sites of the Year) | Their own sites (section 8a; `docs/research/AESTHETICS_2026.md` section 2) | Each landing section and core screen judged better than its named benchmark by a founder, side by side, before it ships (section 8a) | The release step, the judgement written in the commit | A process, held per pass |
+| **Accessible to everyone** (W3C) | WCAG 2.2, level AA | AA on every screen, Accessibility 100 in Lighthouse, a manual TalkBack and VoiceOver pass before each release (section 6) | axe-core and Lighthouse in CI (D-171); the release checklist | axe-core not in CI yet (D-171) |
+| **Apps that never crash or freeze** (Google Play) | Play's bad-behaviour lines: user-perceived crash rate 1.09% and ANR rate 0.47% overall (section 4) | Crash-free sessions at least 99.8%; ANR at most 0.2% overall and 1% on any device (section 4) | Play Console and the crash reporter, per release | No release yet |
+| **Made frames, judged against the real place** | (our own bar, section 8b) | The render bar's twelve checks, the hero matched to a named reference photograph by measurement | Each pass's commit | Held per pass; the hero within tolerance is the temple's next pass |
 
 ---
 
@@ -62,7 +79,7 @@ Rules that hold whatever the versions:
 
 ## 4. Performance budgets
 
-Measured, never estimated (`CLAUDE.md` section 7). **Field data** (real users) is the truth; **lab data** (CI) catches regressions before release. A budget breached in CI fails the build.
+Measured, never estimated (`CLAUDE.md` section 7). **Field data** (real users) is the truth; **lab data** (CI) catches regressions before release. A budget breached in CI fails the build (**owed**: the Lighthouse run is not yet in CI, found 6 November 2026; wiring it in approved, D-171).
 
 **Website, at the 75th percentile of real mobile visits:**
 
