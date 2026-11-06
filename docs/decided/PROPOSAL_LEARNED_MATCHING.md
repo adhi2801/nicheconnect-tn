@@ -1,6 +1,6 @@
 # Proposal: matching that learns from deals that worked
 
-**Status: proposed, 6 November 2026.** Adhi chose this direction the same day ("Learned matching"), from a choice of four. Nothing is built until he approves this proposal (`CLAUDE.md` section 5). It touches matching and embeddings, a schema change and a new dependency, all approval gates.
+**Status: approved as written, 6 November 2026 (D-167)**, with option A for the dependency (LightGBM in the API image, its size measured first) and the thresholds as proposed. Built step by step: step 1 first.
 
 ## 1. What it answers
 

@@ -2099,3 +2099,16 @@ Newest entries at the bottom.
   4. The cache runs to Tamil Nadu midnight, never under a minute, with an ETag and a 304.
   5. `festival_templates.py` joins mutation testing. A property test covers every day the table is written for.
   6. Recorded process gap in D-161: its approval was a general go-ahead, not a yes to a written proposal (CLAUDE.md section 5), and it named no dated sources for the festival facts. This entry gives the sources.
+
+## D-167: Learned matching and conformal rate intervals
+- Date: 2026-11-06
+- Approved by: Adhi, in this session: "Yes, both, as recommended", after the two written proposals, which an outside review of the project prompted ("mostly backend and product, little ML"). **Not reviewed by the other founder** (D-051).
+- Context: matching ranks by a fixed order that never learns from what brands choose; rate guidance answers for a group, never for one creator, and states no uncertainty.
+- Options considered: learned matching, a fair-rate model, fake-audience screening, fine-tuned embeddings (Adhi chose the first two); for the dependency, A) LightGBM in the API image, B) trained outside it and served through an exported scorer.
+- Chosen: both proposals as written (`docs/decided/PROPOSAL_LEARNED_MATCHING.md`, `docs/decided/PROPOSAL_RATE_INTERVALS.md`), option A.
+- Reason: each solves a problem on the platform and publishes its evaluation. Learning from completed, paid deals is data no competitor holds. A range with a guaranteed coverage is more honest than any competitor's point estimate.
+- Consequences / follow-ups:
+  1. Learned matching in three steps: hybrid retrieval by reciprocal rank fusion; a `match_impressions` table (IDs only, 180 days, the retention to be confirmed by the validation pack); a LightGBM LambdaMART reranker, live only past the gate (2,000 shown pairs with 200 positive outcomes; NDCG@10 up 5% relative with a 95% bootstrap interval above zero; no city, niche or new-creator group worse by more than 2%).
+  2. Rate intervals: conformalized quantile regression at 90% coverage, trained at 200 creators' published cards per platform, answered only with 5 similar creators, falling back to step 1's quartiles.
+  3. LightGBM 4.7.0 (MIT) joins the app's dependencies when step 3 is built, the image size measured before and after.
+  4. A model card per model, in `docs/models/`, refreshed with each version that goes live.

@@ -1,6 +1,6 @@
 # Proposal: a fair price for this creator, with honest uncertainty
 
-**Status: proposed, 6 November 2026.** Adhi chose this direction the same day ("Fair-rate model"), from a choice of four. Nothing is built until he approves this proposal (`CLAUDE.md` section 5). It extends fair-rate guidance step 1 (D-056, `docs/decided/PROPOSAL_FAIR_RATE_GUIDANCE.md`), adds a dependency, and changes a public contract additively.
+**Status: approved as written, 6 November 2026 (D-167).** It extends fair-rate guidance step 1 (D-056, `docs/decided/PROPOSAL_FAIR_RATE_GUIDANCE.md`), shares learned matching's dependency, and changes a public contract additively.
 
 ## 1. What it answers
 
