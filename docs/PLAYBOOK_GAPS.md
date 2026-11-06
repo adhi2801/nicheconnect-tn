@@ -1,5 +1,7 @@
 # What the playbook does not cover
 
+**Status, 6 November 2026:** the gap audit of 1 October, kept as its record. Every gap that became work is an item in `docs/BACKEND_COMPLETE.md` (section 3; the money gaps since 6 November also in `docs/research/MONEY_AT_SCALE_2026.md`), and its status lives there, not here.
+
 **Updated 1 October 2026:** the product is English only (D-054), so the Tamil parts of this file are withdrawn and kept as a record: Tamil support tickets measured separately (section 3), bilingual consent (section 8) and the Tamil glossary (section 12). Two survive in English form: support that can answer a Tamil speaker is a founder decision, not a product language; and **people will still type Tamil words in English letters (Tanglish), so search must cope with it**. Section 15 now shows which decisions have been made.
 
 The Product, Design & Build Playbook v1.0 (17 September 2026) answers: what the market looks like on Android, which features set us apart, how the product should look and behave, and what to build it with. It does that well, and this file does not repeat it.
