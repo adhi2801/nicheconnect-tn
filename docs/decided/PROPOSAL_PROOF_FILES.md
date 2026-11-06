@@ -1,5 +1,7 @@
 # Proposal: proof of delivery as files, not only links (E3)
 
+**Outcome, checked 6 November 2026:** approved and built (D-065 to D-067): uploads to S3 through a cleaning pipeline; draft images reuse it (D-144). The status below is as written on 30 September.
+
 **Status: proposed, 30 September 2026. Nothing here is built or approved.**
 
 ## 1. Why

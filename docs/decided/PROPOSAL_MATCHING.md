@@ -1,5 +1,7 @@
 # Proposal: Phase D, matching
 
+**Outcome, checked 6 November 2026:** approved and built as Phase D (D-052): embeddings in pgvector, the structural filter first, reasons with every match; ranking since fused with exact words (D-167, D-173). The status below is as written on 23 September.
+
 **Status: proposed. Nothing here is in the code.** Written 23 September 2026.
 Needs Adhi's approval (D-051): it adds a dependency, a table, a migration and
 an extension, which are four separate gates in `CLAUDE.md` section 5.
