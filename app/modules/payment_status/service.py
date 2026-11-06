@@ -310,11 +310,11 @@ def _record_marked_paid(
         },
     )
     # The creator has no other way to know they should look for the money.
-    memo = db.get(DealMemo, payment.deal_memo_id)
-    if memo is not None:
-        deal_memos.notify_party(
-            db, memo, to="creator", notification_type="payment_marked_paid", now=now
-        )
+    # A payment's memo always exists (a non-null foreign key, RESTRICT on delete).
+    memo = db.get_one(DealMemo, payment.deal_memo_id)
+    deal_memos.notify_party(
+        db, memo, to="creator", notification_type="payment_marked_paid", now=now
+    )
 
 
 def confirm_received(
@@ -340,11 +340,10 @@ def confirm_received(
         now=now,
         facts={"payment_id": str(payment.id)},
     )
-    memo = db.get(DealMemo, payment.deal_memo_id)
-    if memo is not None:
-        deal_memos.notify_party(
-            db, memo, to="brand", notification_type="payment_confirmed", now=now
-        )
+    memo = db.get_one(DealMemo, payment.deal_memo_id)
+    deal_memos.notify_party(
+        db, memo, to="brand", notification_type="payment_confirmed", now=now
+    )
     db.commit()
     db.refresh(payment)
     return payment

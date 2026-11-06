@@ -318,3 +318,9 @@ def test_it_is_rate_limited(client):
     for _ in range(int(PUBLIC_READ_LIMIT.split()[0])):
         assert client.get(URL).status_code == 200
     assert client.get(URL).status_code == 429
+
+
+def test_a_template_may_ask_for_stories_alone():
+    assert festival_templates.reels_and_stories(0, 2) == (
+        festival_templates.Item("instagram", "story", 2),
+    )

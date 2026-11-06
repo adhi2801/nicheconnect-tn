@@ -238,6 +238,27 @@ def test_a_memo_cannot_be_given_two_payment_records(db):
         service.create_for_memo(db, memo, approved_on=APPROVED_ON, now=FIXED_NOW)
 
 
+def test_two_callers_past_the_check_still_get_one_record(db, monkeypatch):
+    """The check can be passed by two callers at once; the unique index on
+    deal_memo_id is what holds the line, and its error becomes the same answer."""
+    memo = make_memo(db)
+    service.create_for_memo(db, memo, approved_on=APPROVED_ON, now=FIXED_NOW)
+    db.commit()
+
+    class NothingFound:
+        def first(self):
+            return None
+
+    # the second caller's check ran before the first caller's row existed
+    real = db.scalars
+    monkeypatch.setattr(db, "scalars", lambda *a, **k: NothingFound())
+    try:
+        with pytest.raises(PaymentRecordExists):
+            service.create_for_memo(db, memo, approved_on=APPROVED_ON, now=FIXED_NOW)
+    finally:
+        monkeypatch.setattr(db, "scalars", real)
+
+
 # --- the two moves --------------------------------------------------------
 
 
