@@ -1,12 +1,12 @@
 # Security Standard
 
-**For:** anyone touching login, access, secrets, personal data, rate limits, dependencies or the workflows, read in full before the first file (`CLAUDE.md` section 6). Any change here needs founder approval (`CLAUDE.md` section 5). **Last checked against the code: 14 October 2026**, on branch `docs/standards-bar`. Every claim below was re-checked then. Six that had stopped being true were corrected; they are listed in section 11.
+**For:** anyone touching login, access, secrets, personal data, rate limits, dependencies or the workflows, read in full before the first file (`CLAUDE.md` section 6). Any change here needs founder approval (`CLAUDE.md` section 5). **Last checked against the code: 14 October 2026**, on branch `docs/standards-bar`. Every claim below was re-checked then. Six that had stopped being true were corrected; they are listed in section 11. **Section 0 added 6 November 2026**, each of its "Today" cells checked against the code that day.
 
-**The bar** is `CLAUDE.md` section 7.0. **The target is OWASP ASVS 5.0, Level 2**, the verification standard for applications holding personal and business data. Today this file maps our controls to the OWASP API Security Top 10 (section 3), not yet to ASVS chapter by chapter, so Level 2 is a target, not a claim (gap 2). Each rule says what **enforces** it. A rule nothing enforces is marked *(review only)*.
+**The bar** is `CLAUDE.md` section 7.0. **The target is OWASP ASVS 5.0.0: Level 2 on every route, Level 3 on login, tokens, account deletion, payment status and the admin API** (D-166), the verification standard for applications holding personal and business data. Today this file maps our controls to the OWASP API Security Top 10 (section 3), not yet to ASVS chapter by chapter, so Level 2 is a target, not a claim (gap 2). Each rule says what **enforces** it. A rule nothing enforces is marked *(review only)*.
 
 Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md`. Rules marked **(not yet built)** are owed before launch and tracked in section 10.
 
-**The ten dimensions** (`CLAUDE.md` section 5), and where this standard serves each:
+**The twelve dimensions** (`CLAUDE.md` section 5, D-139), and where this standard serves each:
 
 | Dimension | Here |
 |---|---|
@@ -17,7 +17,26 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md`. Rule
 | Architecture | Every access check lives in `auth` (layer 1, `backend.md` section 1); the database's own user, section 9 |
 | Performance | Rate limits and the overload answer protect capacity, section 5; the budgets are `backend.md` section 6 |
 | Research | Section 12 |
-| Novelty, design, business | Not here: security is judged against the standards, not competitors. What the screens show for errors is `backend.md` section 3 |
+| Novelty, design, business | Security is judged against the world's published bars (section 0), not competitors. What the screens show for errors is `backend.md` section 3 |
+| Reliability | Rate limits and the overload answer keep the service up under attack (section 5); recovery of secrets and keys, section 6 |
+| Maintainability | One access check for every route (section 2), every control mapped to its proof (sections 0 and 3) |
+
+---
+
+## 0. The benchmarks we beat (Adhi, 6 November 2026: "sky high")
+
+Each row: the strongest published bar, with its source; ours against it; what enforces it; whether it holds today. A row marked **(decision)** binds only once a founder approves it.
+
+| Benchmark | What the leader publishes | Our bar | Enforced by | Today |
+|---|---|---|---|---|
+| **Verified security** (OWASP) | ASVS 5.0.0, published 30 May 2025 ([OWASP ASVS](https://asvs.owasp.org/)) | Level 2 everywhere, Level 3 on the sensitive routes (**approved, D-166**) | A requirement map in this file, each requirement against the test or file that meets it, re-checked every release | Mapped to the OWASP API Top 10 (section 3); the ASVS map is owed (gap 2) |
+| **Phishing-resistant login** (NIST) | SP 800-63B-4, final in July 2025: at AAL2 a service "must offer a phishing-resistant authentication option", which passkeys are ([NIST SP 800-63B-4](https://csrc.nist.gov/pubs/sp/800/63/b/4/final); the wording read through a copy of the text, 6 November 2026) | Every brand and creator offered a passkey beside the phone code from launch; **every admin on a passkey**, the authenticator app kept only as a second factor **(decision)** | The passkey routes' tests (item 79, D-113); an admin-login test that refuses a login with no passkey once it binds | Passkeys built, off until the domain exists (`PASSKEY_RP_ID`); admins on a phone code and an authenticator app (D-105), two factors but not phishing-resistant |
+| **A repository anyone can audit** (OpenSSF) | Scorecard: 19 checks, 0 to 10 each, weighted by risk, run by its own GitHub Action ([OpenSSF Scorecard](https://github.com/ossf/scorecard)) | An aggregate of **8.0 or more**, and no Critical-risk check below 8, measured on every push to `main` **(decision: a CI workflow)** | The Scorecard Action, its result in the Security tab | Not measured |
+| **A build anyone can verify** (SLSA) | Build L2: a hosted platform signs the provenance; L3: a hardened platform keeps the signing secrets from the build ([SLSA levels](https://slsa.dev/spec/v1.1/levels)) | L2 now, L3 before launch (**approved, D-166**) | The release job and a verification step before every deploy | A CycloneDX SBOM per image (D-082); no signed provenance |
+| **Known vulnerabilities** | (the practice of the projects above) | No known vulnerability in a dependency or the image ships unless accepted in writing, version-pinned, with its reason and the release that removes it | `pip-audit` and Grype in CI, failing the build; accepted ones in `.grype.yaml` (D-149, D-159) | **Holds** |
+| **No secret in history** | GitHub's push protection (the practice) | No secret ever reaches the repository's history | Gitleaks over the full history in CI, run locally before each push | **Holds** |
+
+What moves a row from **(decision)** to binding: a founder's yes, recorded in `docs/DECISIONS.md` (`CLAUDE.md` section 5), with its enforcement built in the same change.
 
 ---
 
