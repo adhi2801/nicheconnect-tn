@@ -1,5 +1,7 @@
 # The closed notice, 21 to 23 September 2026
 
+**Status, checked 6 November 2026:** closed on 23 September 2026 (CLAUDE.md section 0, D-051); kept as the record of what was settled.
+
 Moved out of `CLAUDE.md` on 12 October 2026 (D-098): it was closed on 23 September and kept as a record, but `CLAUDE.md` is read at the start of every session, and a settled notice there is noise. The text is unchanged below. Some of it is out of date by design: `requirements.txt` gave way to uv and `pyproject.toml` on 1 October (D-072).
 
 

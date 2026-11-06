@@ -1,5 +1,7 @@
 # Daily Engineering Report: 2026-09-23
 
+**Status, checked 6 November 2026:** a record of that day, kept as written. The branch it reports reached `main`, and the work has been built on since; what is true today is `docs/BACKEND_COMPLETE.md` (and section 2a for every built capability). Numbers, names and plans below are as they stood then.
+
 **Branches:** eight, all pushed  ·  **Author:** Adhi  ·  **Pushed:** Yes  ·  **PRs:** none opened
 
 The day was spent carrying out the technology baseline locked as D-047 on
