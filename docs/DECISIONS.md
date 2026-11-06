@@ -2085,6 +2085,21 @@ Newest entries at the bottom.
   2. Mist, flames, leaves and birds are baked into the frames and move only with scroll; reduce motion and no JavaScript show the last frame.
   3. The frame budget (96 frames proposed) is still set by the benchmark on the budget Android (`frontend.md` section 8b).
 
+## D-165: Festival templates for every faith and none, dated and ordered only by date
+- Date: 2026-11-06
+- Approved by: Adhi, in this session: chose all four of Bakrid, Easter, the Velankanni feast and secular moments, "all and secular stuffs all needed". The rest fixes an independent review of D-161. **Not reviewed by the other founder** (D-051).
+- Context: an independent review of D-161 found that "soonest first" counted whole months, so festivals already over led the list; that the one Muslim festival was always last; that the copy staged a deity idol; that the cache had no invalidation rule and no ETag; and that the tests let several mutations survive.
+- Options considered: A) dated occurrences per year from the Tamil Nadu Government's notified public holidays, an almanac where a year is not yet notified, Easter by its rule, ordered by the day to publish by; B) months only, as D-161, with the ties and the moon festivals patched; C) let each brand enter dates.
+- Chosen: A.
+- Reason: a date from the Government's own list is the most neutral source there is, and ordering by the day to publish by is the order a brand needs. No festival is placed by its faith. B could not tell a festival that ended last week from one next week. C puts the work back on the brand the template exists to save it. Faith mix behind the choice: 87.58% Hindu, 6.12% Christian, 5.86% Muslim (Census 2011); the Velankanni feast draws about three million people a year.
+- Consequences / follow-ups:
+  1. Sixteen templates: New Year's Day, Pongal, Puthandu, Easter, Ramzan and Eid, Bakrid, back to school, Aadi, Independence Day, the Velankanni feast, Vinayagar Chathurthi, Navaratri and Ayudha Pooja, Deepavali, Karthigai Deepam, Margazhi and Christmas. Each answers `starts_on`, `ends_on`, `publish_by`, `dates_confirmed` and `depends_on_moon`; `months` is gone.
+  2. Dates: G.O. 2026 and G.O. (Ms.) No. 613 for 2027; Drik Panchang's Tamil calendar for 2028 and for Karthigai Deepam, which is not a holiday; consensus estimates for 2028's Islamic dates. A moon-sighted day is never confirmed ahead. `test_the_dates_reach_a_year_ahead` fails on the real calendar until each new year's dates are added.
+  3. The copy shows festivals as people keep them at home, never worship (TAMIL_DESIGN_ROOTS rule 1). Every deliverables line asks for the paid-partnership label, and the campaign prefills `deliverable_items`. Any offer is stated as the brand words it. Still owed: showing the copy to Tamil brand owners and creators (rule 4), and the validation pack on the label's exact wording.
+  4. The cache runs to Tamil Nadu midnight, never under a minute, with an ETag and a 304.
+  5. `festival_templates.py` joins mutation testing. A property test covers every day the table is written for.
+  6. Recorded process gap in D-161: its approval was a general go-ahead, not a yes to a written proposal (CLAUDE.md section 5), and it named no dated sources for the festival facts. This entry gives the sources.
+
 ## D-166: The backend's world bar: availability, ASVS and SLSA
 - Date: 2026-11-06
 - Approved by: Adhi, in this session: chose the availability bar from `backend.md` section 0, and for the security and supply-chain bars "the best recommendation", which was both as proposed. **Not reviewed by the other founder** (D-051).
