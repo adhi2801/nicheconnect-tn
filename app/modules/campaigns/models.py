@@ -4,6 +4,7 @@ from datetime import date, datetime
 from sqlalchemy import (
     BigInteger,
     CheckConstraint,
+    Computed,
     Date,
     DateTime,
     ForeignKey,
@@ -13,7 +14,7 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -32,6 +33,14 @@ CAMPAIGN_STATUSES: tuple[str, ...] = ("draft", "open", "closed", "cancelled")
 MAX_CITIES = 10
 TITLE_MAX_LENGTH = 120
 DESCRIPTION_MAX_LENGTH = 4000
+# The words of the title and description, cut and stemmed once when they are
+# written, so matching reads them rather than re-reading up to 4,120
+# characters a row on every request (D-173). The config is matching's
+# (`app/modules/matching/fusion.py`, CONFIG); a test holds the two together.
+# `||`, not concat_ws, which is not immutable and so cannot be stored.
+BRIEF_WORDS = (
+    "to_tsvector('english'::regconfig, ((title)::text || ' '::text) || description)"
+)
 DELIVERABLES_MAX_LENGTH = 2000
 
 
@@ -104,6 +113,11 @@ class Campaign(Base):
     )
     title: Mapped[str] = mapped_column(String(TITLE_MAX_LENGTH), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
+    # Kept by the database from the title and description, never written by
+    # the app. Deferred: only matching reads it.
+    brief_words: Mapped[str] = mapped_column(
+        TSVECTOR, Computed(BRIEF_WORDS, persisted=True), nullable=False, deferred=True
+    )
     campaign_type: Mapped[str] = mapped_column(String(20), nullable=False)
     # Paise, never rupees and never a float (D-015).
     budget_min_paise: Mapped[int | None] = mapped_column(BigInteger, nullable=True)

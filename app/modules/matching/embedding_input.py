@@ -78,6 +78,9 @@ CREATOR_NOT_EMBEDDED = frozenset(
         # A date that changes often and means nothing about the creator's
         # work; matching filters and ranks on it directly (D-083).
         "booked_until",
+        # The bio's own words, kept by the database; the bio itself is
+        # embedded (D-173).
+        "bio_words",
         "created_at",
         "updated_at",
     }
@@ -113,6 +116,9 @@ CAMPAIGN_NOT_EMBEDDED = frozenset(
         "budget_min_paise",
         "currency",
         "status",
+        # The title's and description's own words, kept by the database;
+        # the text itself is embedded (D-173).
+        "brief_words",
         "created_at",
         "updated_at",
     }
