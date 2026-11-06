@@ -2182,3 +2182,15 @@ Newest entries at the bottom.
   1. CI reads each rule module's branch coverage from the same report as the `service.py` floor and fails below 100%.
   2. The nightly job gains the long fuzz run; a failure there opens an issue the next morning.
   3. `testing.md` lists each dependency with its failure test; the missing ones are written in the change that builds the gate.
+
+## D-173: Matching's words: the bio and the brief, counted once each, stored with the row
+- Date: 2026-11-06
+- Approved by: Adhi, in this session: "go as per recommended", after two written decisions (option A of each). **Not reviewed by the other founder** (D-051).
+- Context: the independent review of learned matching step 1 (D-167) found that the build matched words on the bio and the brief's title and description, where the approved proposal said "over the same public profile text", without that change being approved first; that `ts_rank` rewarded repeating words; and that cutting each row's text into words on every request passes the 300 ms read budget for creators between 200 and 1,000 maximum-length campaigns in one pool.
+- Options considered: for the scope and score, A) the bio against the title and description, each distinct word counted once, over the square root of the document's distinct words (the cosine of the two word sets), B) all public profile text with `ts_rank`, as first proposed; for the cost, A) the words stored per row as generated columns now, B) deferred behind a measured trigger in `ARCHITECTURE_SCALE.md`.
+- Chosen: A and A.
+- Reason: city and niche are shared by every candidate the filter lets through, so matching them adds only noise; counting each word once means repeating words or listing a whole niche's vocabulary buys no place. Storing the words removes the known limit now, while no table holds real data and the rewrite costs nothing.
+- Consequences / follow-ups:
+  1. `creator.bio_words` and `campaign.brief_words`, stored generated `tsvector` columns in matching's English config, computed by the database on every write; never written by the app, deferred so ordinary reads do not fetch them (migration `e65f3516f952`).
+  2. `docs/RANKING_EXPLAINED.md` says each word counts once and a long list counts for less per word.
+  3. The proposal's "same public profile text" reads, from here, as this decision states.

@@ -20,8 +20,10 @@ text on each side, a subset of the embedded fields
 matching (constraint 2). City and niche are left out on purpose: the filter
 already makes every candidate share them, and in an any-word match they would
 drown the brief's distinctive words. Deliverables are left out too: "reels"
-says how, not what about. It is computed inside the structural filter, on the
-rows that pass it, with no new column (docs/PERFORMANCE.md has the timing).
+says how, not what about. Each row's words are stored with it, computed by
+the database whenever the text changes (`creator.bio_words`,
+`campaign.brief_words`, D-173), so a request reads them rather than cutting
+up to 4,120 characters a row into words (docs/PERFORMANCE.md has the timing).
 
 **Which words, counted how.** Both texts are cut into distinct stemmed words
 by PostgreSQL's English parser, and the score is the words they share divided
@@ -123,15 +125,14 @@ def _words(document: ColumnElement[Any]) -> ColumnElement[Any]:
 
 
 def creator_document() -> ColumnElement[Any]:
-    """The words a creator wrote about their work: the bio."""
-    return func.to_tsvector(_config(), func.coalesce(Creator.bio, ""))
+    """The words a creator wrote about their work: the bio's, stored with the row."""
+    return Creator.bio_words
 
 
 def campaign_document() -> ColumnElement[Any]:
-    """The words a brand wrote about what it wants: the title and the description."""
-    return func.to_tsvector(
-        _config(), func.concat_ws(" ", Campaign.title, Campaign.description)
-    )
+    """The words a brand wrote about what it wants: the title's and the
+    description's, stored with the row."""
+    return Campaign.brief_words
 
 
 def brief_words(campaign: Campaign) -> str:

@@ -8,7 +8,7 @@ The text of the public page the Consumer Protection (E-Commerce) Rules ask for: 
 
 ## A campaign's suggested creators
 
-*Shown to the brand that owns the campaign. Code: `app/modules/matching/service.py`, `find_creators_for_campaign`; `app/modules/matching/fusion.py`. Last changed 6 November 2026 (D-167; words counted once each after the independent review).*
+*Shown to the brand that owns the campaign. Code: `app/modules/matching/service.py`, `find_creators_for_campaign`; `app/modules/matching/fusion.py`. Last changed 6 November 2026 (D-167, D-173).*
 
 **Who can appear at all.** Only creators who chose to publish their profile, who live in a city the campaign names, and who share at least one of its niches. Never a creator either side has blocked, an account that is suspended, or a profile withheld on an order.
 
@@ -26,7 +26,7 @@ A creator whose profile has not been read for meaning yet (it is read in batches
 
 ## Campaigns suggested to a creator
 
-*Shown to the creator, for themselves only. Code: `app/modules/matching/service.py`, `find_campaigns_for_creator`; `app/modules/matching/fusion.py`. Last changed 6 November 2026 (D-167; words counted once each after the independent review).*
+*Shown to the creator, for themselves only. Code: `app/modules/matching/service.py`, `find_campaigns_for_creator`; `app/modules/matching/fusion.py`. Last changed 6 November 2026 (D-167, D-173).*
 
 **Which campaigns can appear at all.** Open campaigns, still taking applications, in the creator's city and sharing at least one of their niches, from a brand that is not suspended or blocked by either side, that the creator has not already applied to.
 
