@@ -2135,3 +2135,14 @@ Newest entries at the bottom.
   1. The founders' numbers count flags, reports by kind and outcome, suspensions, and the time from report to acknowledgement and to action.
   2. The admin queue shows each report's clock against the 12- and 72-hour bars.
   3. The first report is published a year after launch; the rate target is decided three months after the first deal.
+
+## D-170: Store privacy labels from the code, and a quarterly dark-pattern audit
+- Date: 2026-11-06
+- Approved by: Adhi, in this session, choosing both bars proposed in `legal.md` section 0. **Not reviewed by the other founder** (D-051).
+- Context: Apple's privacy details and Google Play's Data safety section are declarations a developer keeps true by hand; the E-Commerce Rules ask for a yearly dark-pattern self-audit.
+- Options considered: labels by hand or generated from the code's registries; the audit yearly, as the law asks, or quarterly.
+- Chosen: labels generated from `app/modules/me/account_deletion_registry.py` and `NOT_EXPORTED` in `app/modules/me/export_service.py`, a test failing when an entry has no label answer; the dark-pattern audit every quarter, published.
+- Reason: a label that cannot drift from the code is one we never have to defend; four audits a year find a manipulative screen three quarters sooner than the law's one.
+- Consequences / follow-ups:
+  1. A label answer per registry entry, and a generator for both stores' forms, built with the apps' first store submission.
+  2. The first audit before launch, then each quarter, dated in `docs/reports/`.
