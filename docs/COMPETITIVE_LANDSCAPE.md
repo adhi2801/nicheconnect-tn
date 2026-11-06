@@ -1,6 +1,6 @@
 # Competitive landscape
 
-**Version 4, 10 October 2026.** Version 2 (21 September) researched about 20 platforms: Indian, global, and the free tools inside Instagram and YouTube. Version 3 (1 October) re-checked the market and turned the build list into novelties. Version 4 brings every status in line with what was built from 8 to 10 October: invitations, availability, scam protection and the UPI pay link. Every fact has a source at the bottom. Where something is our judgement rather than a fact, it says so. Section 9 says what changed in each version.
+**Version 5, 6 November 2026.** Adds the global leaders' own 2025 results (Fiverr, Upwork), Collabstr's current fees from its pricing page, Aspire's new creator portal, Later's creator-sales scale and the Indian market's 2026 figures, and credits what we built from 11 October to 6 November (section 9). Version 2 (21 September) researched about 20 platforms: Indian, global, and the free tools inside Instagram and YouTube. Version 3 (1 October) re-checked the market and turned the build list into novelties. Version 4 brings every status in line with what was built from 8 to 10 October: invitations, availability, scam protection and the UPI pay link. Every fact has a source at the bottom. Where something is our judgement rather than a fact, it says so. Section 9 says what changed in each version.
 
 **How to read it:** sections 1–2 are the conclusion. Section 3 lists who is out there. Section 4 closes every gap they have over us; section 5 is what we have that they lack. Section 6 is the novelties next: things nobody has, each with the approval it needs.
 
@@ -28,11 +28,11 @@ This is our judgement. The research shows what the well-funded players compete o
 | Live media kits, rate cards, instant analytics | Platform API integrations | Rate cards and media kit **built** (D-055); results read from proof **built** (D-070) |
 | "Verified" badges and fraud screening | Third-party data | **Open**: built from observed reach on real deals instead of bought data (section 4) |
 | Handling payouts | Money-handling licences and liability | **Never**, by design |
-| Speed, reliability, no lost work | Engineering discipline | **Built and measured:** retries safe on every write; over 2,500 tests at about 98% coverage, each critical rule shown to fail when broken; API fuzzing; strict types; budgets in `docs/PERFORMANCE.md` |
+| Speed, reliability, no lost work | Engineering discipline | **Built and measured:** retries safe on every write; 5,879 tests at about 98% coverage (6 November), each critical rule shown to fail when broken; API fuzzing; strict types; budgets in `docs/PERFORMANCE.md` |
 | Safety from scams | Trust and safety teams (Upwork and Fiverr flag off-platform moves and check links) | **Built in the product:** money requests and early contact details flagged, links only to known hosts, daily ceilings, invisible blocking (`docs/standards/trust-and-safety.md`) |
 | Trust you can check | Nobody has built it | **Built:** brand payment record, creator delivery record, neutral dispute record, and a deal record nobody can quietly change (D-057, D-060) |
 
-The honest summary: **polish is bought with money, but trust is built from facts.** On facts we are already ahead of everyone reviewed. On polish we are behind by design: the build order puts the frontend after the backend (D-004), and `docs/standards/frontend.md` sets the bar it must meet. The novelties in section 6 widen the lead on facts.
+The honest summary: **polish is bought with money, but trust is built from facts.** On facts we are already ahead of everyone reviewed. On polish we are behind today: the frontend has been built beside the backend only since 28 October (D-141), and `docs/standards/frontend.md` sets the bar it must meet before anyone sees it. The novelties in section 6 widen the lead on facts.
 
 ---
 
@@ -68,10 +68,13 @@ The honest summary: **polish is bought with money, but trust is built from facts
 
 | Who | Model | Price | Feature worth copying |
 |---|---|---|---|
-| **Collabstr** | Open marketplace: creators list fixed-price packages, brands buy them | Free + 10% fee; $299–399/month plans at 5% | Creator **packages** with upfront prices; **influencer price calculator**; fake-follower checker; briefs with priced applications; one-click post analytics. Holds the brand's payment until delivery |
+| **Collabstr** | Open marketplace: creators list fixed-price packages, brands buy them | 10% of each order from the brand on Free and Pro, 5% on Premium, **and 15% of the creator's payout** (its pricing page, read 6 November 2026); plan prices differ between sources | Creator **packages** with upfront prices; **influencer price calculator**; fake-follower checker; briefs with priced applications; one-click post analytics. Holds the brand's payment until delivery |
 | **Passionfroot** | Creator "storefront": a live, bookable media kit | 15% take rate on its network; 5% on storefront bookings | **A media kit a brand can book through**, instead of a PDF sent over email |
 | **Beacons** | Link-in-bio + media kit builder | Freemium | **Live** stats that update themselves |
-| **Aspire / Upfluence / CreatorIQ** | Enterprise relationship and discovery suites | $795 to $3,000+/month | Enterprise reporting depth; not our market |
+| **Aspire / Upfluence / CreatorIQ** | Enterprise relationship and discovery suites | $795 to $3,000+/month; Aspire's Essentials from $2,299 a month plus $2,000 onboarding, by Collabstr's account | Enterprise reporting depth; not our market. Aspire rebuilt its creator portal in March 2026 to cut the back-and-forth before a collaboration (Influencer Marketing Hub) |
+| **Fiverr** (freelance, global) | Takes 27.7% of what buyers spend (2025); revenue $430.9 m, its services line (ads, subscriptions, software) up 50.9% while marketplace revenue fell 1.8% (results and Form 20-F, February 2026) | Public | **Dynamic matching** on a knowledge graph of client, talent, scope and order; a graph neural network cut cancellations 7% in first tests (investor materials). The measure, cancellations per match, is worth copying (`docs/BACKEND_COMPLETE.md` item 103) |
+| **Upwork** (freelance, global) | About 19% to 20% of what clients spend; revenue $787.8 m in 2025, gross margin 77.8%; ads and subscriptions up 24% in Q4 2025 | Public | Shows freelancers whether a **client's payment method is verified** and its hiring history: our brand payment record goes further, from what brands actually did (D-027) |
+| **Later** (with Mavely, creator selling) | Affiliate network bought in 2025; says a $2.4 billion yearly run rate of sales through creators (company release, December 2025) | Private | Creator-led selling is the larger market; Later holds and pays out the money, which we never do (`docs/research/MONEY_AT_SCALE_2026.md` section 3) |
 
 ---
 
@@ -196,6 +199,8 @@ Our `disclosure_confirmed` records the creator's statement. Whether that is enou
 
 ## 9. What changed in each version
 
+**Version 5 (6 November 2026):** the leaders read from their own results: Fiverr's and Upwork's 2025 figures, the creator platforms' fees, Later's creator selling, India's market at about ₹3,000 to 3,500 crore in 2025 growing about 22% a year (Kofluence) inside a creator economy EY puts at ₹12,500 crore in 2024. Built since version 4, each against a named competitor in section 4 or 5: passkeys (D-113) and where you are logged in (D-114); account deletion (D-122); counter-offers (D-123); deal notes (D-128); saved creator lists (D-129); the content library (D-132); "like my best" (D-133); feedback revealed only when both answer (D-136); draft first (D-140, D-144); team seats and handing a brand over (D-148, D-150); creator search in plain words (D-158); festival templates for every faith and none (D-161, D-165); the brief drafter (D-156); matching by meaning and exact words fused (D-167, D-173). How we could earn at the leaders' scale without their cut: `docs/research/MONEY_AT_SCALE_2026.md`.
+
 **Version 4 (10 October 2026):** built since version 3, each beating a named competitor:
 - invitations and repeat deals (D-084), beating Instagram's, impact.com's and Skeepers';
 - one-date availability (D-083), against Passionfroot's slots;
@@ -216,9 +221,18 @@ Results from proof moved from proposed to built (switched off). The score is nin
 | Global platforms cost $795–3,000/month | Indian ones too: ₹25,000 to ₹3 lakh a month, or 8–15% commission |
 | Creator delivery record was the top recommendation | **Built** (D-038), and the undated-deal loophole closed (D-039) |
 
+## 10. What this file does not know
+
+- **No brand or creator has been asked** what they use and pay today; every competitor's place here is from desk research (`docs/research/README.md`, the people kit).
+- **Indian players' finances are not public** for FY25; their scale is their own claims.
+- **Plan prices** for Collabstr, Aspire and others differ between sources; the fees above are from the pricing page itself, the plan prices are not.
+- **Market sizes** come from Kofluence (a platform with a stake) and EY; neither publishes its method in full.
+
 ---
 
 ## Sources
+
+Added in version 5 (read 6 November 2026): [Fiverr, Q4 and full year 2025](https://www.fiverr.com/news/fiverr-q4-earnings-2025); [Fiverr Form 20-F FY2025](https://www.sec.gov/Archives/edgar/data/0001762301/000117891326000858/zk2634486.htm); [Fiverr investor materials](https://investors.fiverr.com/static-files/5e59fc89-3813-4dac-b215-bb031c76c761); [Upwork Q4 2025 call](https://www.fool.com/earnings/call-transcripts/2026/02/09/upwork-upwk-q4-2025-earnings-call-transcript); [Upwork vs Fiverr, 2026](https://www.upwork.com/resources/upwork-vs-fiverr); [Collabstr pricing](https://collabstr.com/pricing); [Aspire's creator portal, March 2026](https://influencermarketinghub.com/aspire-updated-creator-portal-for-brand-creator-matching/); [Later and Mavely, December 2025](https://www.pulse.bot/b2b-growth/news/later-surpasses-24-billion-annual-gmv-run-rate-and-more-than-250-million-in-cumulative-creator-payou-199ba553-c7e7-4856-a4b9-bca19aafcf7e/); [Kofluence 2026 report](https://www.campaignindia.in/article/kofluence-report-tracks-creator-economy-s-formal-shift/4xrn0g9cve1s8tcd4m0revck5k); [EY on India's creator economy, May 2025](https://www.exchange4media.com/digital-news/indias-creator-economy-set-to-touch-rs-500-billion-by-2030-ey-143175.html).
 
 Version 4:
 
