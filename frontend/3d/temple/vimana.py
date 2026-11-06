@@ -3998,9 +3998,9 @@ def world_clouds():
         # the reference's zenith is a near pure blue (saturation 0.99, hue 215);
         # the physical sky at this exposure came out grey-blue (0.19, hue 232)
         hs = wn.new("ShaderNodeHueSaturation")
-        hs.inputs["Hue"].default_value = 0.47
+        hs.inputs["Hue"].default_value = 0.505
         hs.inputs["Saturation"].default_value = 2.4
-        hs.inputs["Value"].default_value = 1.65
+        hs.inputs["Value"].default_value = 2.05
         wl.new(sky.outputs["Color"], hs.inputs["Color"])
         sky_col = hs.outputs["Color"]
     wl.new(sky_col, warm.inputs["A"])
@@ -4328,7 +4328,7 @@ if GRADE == "blue" and "--nohaze" not in argv:
             fl = bpy.data.lights.new("flood", "SPOT")
             # Matched to the reference at blue hour (ref06, measured 6 November 2026):
             # tower lightness 0.49 high and 0.42 low, against our 0.31 and 0.20
-            fl.energy = 7e4 * rr.uniform(0.85, 1.1) * (1.6 if abs(u) < 5 else 5.0)
+            fl.energy = 7e4 * rr.uniform(0.85, 1.1) * (1.3 if abs(u) < 5 else 6.5)
             fl.color = (1.0, 0.66, 0.36)
             # wide and soft-edged, so the storey is washed evenly, never pooled
             fl.spot_size = math.radians(30 if abs(u) < 5 else 62)
@@ -4348,7 +4348,7 @@ if GRADE == "blue" and "--nohaze" not in argv:
         # ground floods leave in the dark.
         for u in (-7.0, 7.0):
             hf = bpy.data.lights.new("crownflood", "SPOT")
-            hf.energy = 1.1e5 * rr.uniform(0.9, 1.05)
+            hf.energy = 0.75e5 * rr.uniform(0.9, 1.05)
             hf.color = (1.0, 0.7, 0.42)
             hf.spot_size = math.radians(16)
             hf.spot_blend = 1.0
@@ -4375,7 +4375,7 @@ if GRADE == "blue" and "--nohaze" not in argv:
             up = bpy.data.lights.new("plinthup", "AREA")
             up.shape = "RECTANGLE"
             up.size, up.size_y = 8.5, 0.3
-            up.energy = 3.2e3
+            up.energy = 4.6e3
             up.color = (1.0, 0.78, 0.55)
             uo = bpy.data.objects.new("plinthup", up)
             # on the plinth's ledge (5.4 m up, in front of the wall), as the real lamps
