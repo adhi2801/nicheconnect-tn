@@ -76,8 +76,8 @@ class CreatorMatchesRead(BaseModel):
     ranked_by_similarity: bool = Field(
         description=(
             "False when the campaign has no embedding yet, so the order comes "
-            "from the facts alone. Say so in the interface rather than showing "
-            "an unranked list as if it were ranked"
+            "from the brief's words and the facts, without meaning. Say so in "
+            "the interface rather than presenting it as fully ranked"
         ),
         examples=[True],
     )
@@ -102,7 +102,7 @@ class CampaignMatchReasonsRead(BaseModel):
             "How close the brief reads to the creator's profile, from 0 to 1. "
             "**Null when either side has not been indexed yet** (a creator is "
             "indexed once they publish their Passport); the list is then "
-            "newest first"
+            "ordered by the creator's words in each brief, newest first"
         ),
         examples=[0.79],
     )
@@ -130,7 +130,8 @@ class CampaignMatchesRead(BaseModel):
     ranked_by_similarity: bool = Field(
         description=(
             "False when the creator has no embedding yet, so the list is "
-            "newest first. Say so rather than presenting it as a ranking"
+            "ordered by the creator's words in each brief, newest first, "
+            "without meaning. Say so rather than presenting it as fully ranked"
         ),
         examples=[True],
     )

@@ -1381,7 +1381,7 @@ export interface paths {
          *
          *     Only creators in a city the campaign named, in at least one of its niches, **and who have published their Creator Passport**. A creator who has not published is not discoverable here; that is their choice to make and it is not overridden by a brand searching (D-036).
          *
-         *     If the campaign has not been indexed yet, `ranked_by_similarity` is false and `similarity` is null on every row: the list is ordered by the facts alone and is still worth reading.
+         *     Ordered by: free to take work today first; then how well the profile fits the brief, in meaning and in the brief's own words, counted equally; then deals agreed before. If the campaign has not been indexed yet, `ranked_by_similarity` is false and `similarity` is null on every row: the list is then ordered by the brief's words and the facts, without meaning, and is still worth reading.
          */
         get: operations["list_matches_for_campaign_api_v1_campaigns__campaign_id__matches_get"];
         put?: never;
@@ -5361,7 +5361,7 @@ export interface components {
             shared_niches: string[];
             /**
              * Similarity
-             * @description How close the brief reads to the creator's profile, from 0 to 1. **Null when either side has not been indexed yet** (a creator is indexed once they publish their Passport); the list is then newest first
+             * @description How close the brief reads to the creator's profile, from 0 to 1. **Null when either side has not been indexed yet** (a creator is indexed once they publish their Passport); the list is then ordered by the creator's words in each brief, newest first
              * @example 0.79
              */
             similarity: number | null;
@@ -5375,7 +5375,7 @@ export interface components {
             matches: components["schemas"]["CampaignMatchRead"][];
             /**
              * Ranked By Similarity
-             * @description False when the creator has no embedding yet, so the list is newest first. Say so rather than presenting it as a ranking
+             * @description False when the creator has no embedding yet, so the list is ordered by the creator's words in each brief, newest first, without meaning. Say so rather than presenting it as fully ranked
              * @example true
              */
             ranked_by_similarity: boolean;
@@ -5990,7 +5990,7 @@ export interface components {
             matches: components["schemas"]["CreatorMatchRead"][];
             /**
              * Ranked By Similarity
-             * @description False when the campaign has no embedding yet, so the order comes from the facts alone. Say so in the interface rather than showing an unranked list as if it were ranked
+             * @description False when the campaign has no embedding yet, so the order comes from the brief's words and the facts, without meaning. Say so in the interface rather than presenting it as fully ranked
              * @example true
              */
             ranked_by_similarity: boolean;

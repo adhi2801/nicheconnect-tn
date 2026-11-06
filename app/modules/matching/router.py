@@ -53,9 +53,12 @@ _COMMON_ERRORS: ResponseDocs = {
         "niches, **and who have published their Creator Passport**. A creator "
         "who has not published is not discoverable here; that is their choice "
         "to make and it is not overridden by a brand searching (D-036).\n\n"
-        "If the campaign has not been indexed yet, `ranked_by_similarity` is "
-        "false and `similarity` is null on every row: the list is ordered by "
-        "the facts alone and is still worth reading."
+        "Ordered by: free to take work today first; then how well the profile "
+        "fits the brief, in meaning and in the brief's own words, counted "
+        "equally; then deals agreed before. If the campaign has not been "
+        "indexed yet, `ranked_by_similarity` is false and `similarity` is null "
+        "on every row: the list is then ordered by the brief's words and the "
+        "facts, without meaning, and is still worth reading."
     ),
     responses={
         **_COMMON_ERRORS,

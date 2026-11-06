@@ -19,14 +19,14 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any, Protocol
 
-from sqlalchemy import delete, desc, exists, func, null, nulls_last, or_, select
+from sqlalchemy import delete, desc, exists, func, null, or_, select
 from sqlalchemy.orm import Session
 
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import account_is_active, brand_is_active
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.models import DealMemo
-from app.modules.matching import embedder
+from app.modules.matching import embedder, fusion
 from app.modules.matching.embedding_input import campaign_text, creator_text
 from app.modules.matching.models import CampaignEmbedding, CreatorEmbedding
 from app.modules.payment_status import reliability
@@ -266,15 +266,18 @@ def find_creators_for_campaign(
             Creator.niches.overlap(campaign.niches),
         )
     )
-    # Closest first when there is a vector to compare against; a creator with
-    # no embedding sorts last rather than disappearing. The clause is built as
-    # a list rather than passed conditionally, because `order_by(None, ...)`
-    # emits a literal `ORDER BY NULL`, which Postgres refuses.
+    # Free before booked, then by meaning and exact words fused (D-167, step 1
+    # of learned matching): the embedding's closeness and the brief's words in
+    # the profile, each ranking only what it can, so a creator with no
+    # embedding yet still ranks by words. Past deals break ties. The clause is
+    # a list because `order_by(None, ...)` emits `ORDER BY NULL`, which
+    # Postgres refuses.
     booked = availability.free_on(today).is_(False)
-    order: list[Any] = [booked]
-    if has_vector:
-        order.append(nulls_last(distance.asc()))
-    order += [desc("accepted_deals"), Creator.id]
+    words = fusion.keyword_rank(
+        fusion.creator_document(), fusion.any_word_of(fusion.brief_words(campaign))
+    )
+    fused = fusion.rrf_score(distance if has_vector else None, words)
+    order: list[Any] = [booked, fused.desc(), desc("accepted_deals"), Creator.id]
     query = query.order_by(*order).limit(limit)
 
     wanted = set(campaign.niches)
@@ -382,13 +385,13 @@ def find_campaigns_for_creator(
             ~already_applied,
         )
     )
-    # Closest first when there is a vector; a campaign not yet embedded sorts
-    # last rather than disappearing. Newest first breaks ties, and orders the
-    # whole list when the creator has no vector at all.
-    order: list[Any] = []
-    if has_vector:
-        order.append(nulls_last(distance.asc()))
-    order += [Campaign.created_at.desc(), Campaign.id]
+    # Meaning and exact words fused (D-167, step 1), each ranking only what it
+    # can; newest first breaks ties, and orders the list when neither ranks.
+    words = fusion.keyword_rank(
+        fusion.campaign_document(), fusion.any_word_of(fusion.bio_words(creator))
+    )
+    fused = fusion.rrf_score(distance if has_vector else None, words)
+    order: list[Any] = [fused.desc(), Campaign.created_at.desc(), Campaign.id]
     rows = db.execute(query.order_by(*order).limit(limit)).all()
 
     records = reliability.for_brands(

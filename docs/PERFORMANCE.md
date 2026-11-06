@@ -478,6 +478,17 @@ for its own decision. **Trigger:** 20,000 deals, or a measured proof p95 above
 
 One query per reading, whatever the number of creators (`tests/modules/matching/test_search_words_api.py::test_one_query_however_many_creators_and_places`). The query groups every findable creator's city, so it grows with creators, not with traffic; at 10,000 creators it has not been measured. The same run found the two writes this file already names over budget in this harness: the 25-row bulk mark-paid (p95 560.6 ms) and one data export built (671.2 ms). Neither was touched by this change.
 
+## Added 6 November: matching ranked by meaning and exact words fused (D-167)
+
+`scripts/measure_performance.py --runs 100`, on 6 November 2026, on the scratch database seeded by `scripts/seed_dev_data.py` (150 campaigns, 785 applications, 200 creators, 958 packages), the same laptop. Both matching routes join the script with this change. The old ranking was measured in the same session by running the same script against the previous `service.py`.
+
+| Endpoint | Before p95 ms | After p95 ms | Budget | Verdict |
+| --- | --- | --- | --- | --- |
+| `GET /campaigns/{id}/matches`, the busiest campaign | 46.3 | 33.8 | 300 | OK |
+| `GET /campaigns/discover/for-me` | 30.7 | 25.4 | 300 | OK |
+
+The keyword ranking is computed inside the structural filter, on the rows that pass it, with no index: no measurable cost at this scale (the difference is within run-to-run variation, so it is not claimed as a gain). Still one query per list. At 10,000 creators it has not been measured; a GIN index on the bio's document is the remedy if it is ever needed.
+
 ## What is not measured yet
 
 - **Everything built from 8 to 10 October 2026**:
