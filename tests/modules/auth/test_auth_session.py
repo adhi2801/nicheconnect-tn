@@ -8,7 +8,11 @@ from sqlalchemy.exc import IntegrityError
 
 from app.core.config import settings
 from app.modules.auth.models.account import Account
-from app.modules.auth.models.auth_session import AuthSession, refresh_token_expiry
+from app.modules.auth.models.auth_session import (
+    MEMBER_SESSION_LIMIT,
+    AuthSession,
+    refresh_token_expiry,
+)
 from tests.factories import (
     FIXED_NOW,
     build_auth_session,
@@ -31,7 +35,9 @@ def test_valid_session_is_saved_unused_and_active(db):
     db.refresh(auth_session)
 
     assert auth_session.id is not None
-    assert auth_session.expires_at == refresh_token_expiry("creator", FIXED_NOW, None)
+    assert auth_session.expires_at == refresh_token_expiry(
+        "creator", FIXED_NOW, None, FIXED_NOW
+    )
     assert auth_session.used_at is None
     assert auth_session.revoked_at is None
     assert auth_session.created_at is not None
@@ -170,29 +176,46 @@ def test_deleting_an_account_deletes_its_sessions(db):
 
 
 def test_a_brand_or_creator_session_lasts_the_configured_days():
-    assert refresh_token_expiry("brand", FIXED_NOW, None) == FIXED_NOW + timedelta(
-        days=settings.refresh_token_expire_days
+    assert refresh_token_expiry(
+        "brand", FIXED_NOW, None, FIXED_NOW
+    ) == FIXED_NOW + timedelta(days=settings.refresh_token_expire_days)
+
+
+def test_a_brand_or_creator_session_never_outlasts_thirty_days_from_the_login():
+    """However recently it was refreshed (item 144, D-174)."""
+    logged_in = FIXED_NOW - timedelta(days=29, hours=23)
+
+    assert refresh_token_expiry("creator", FIXED_NOW, None, logged_in) == logged_in + (
+        MEMBER_SESSION_LIMIT
     )
+    assert timedelta(days=30) == MEMBER_SESSION_LIMIT
+
+
+def test_a_login_past_its_limit_gets_a_token_already_expired():
+    """refresh_session refuses it; this is what it checks."""
+    logged_in = FIXED_NOW - timedelta(days=31)
+
+    assert refresh_token_expiry("brand", FIXED_NOW, None, logged_in) <= FIXED_NOW
 
 
 def test_an_admin_session_lasts_an_hour_from_each_refresh():
     logged_in = FIXED_NOW - timedelta(hours=3)
 
-    assert refresh_token_expiry("admin", FIXED_NOW, logged_in) == FIXED_NOW + timedelta(
-        hours=1
-    )
+    assert refresh_token_expiry(
+        "admin", FIXED_NOW, logged_in, logged_in
+    ) == FIXED_NOW + timedelta(hours=1)
 
 
 def test_an_admin_session_never_outlasts_twelve_hours_from_the_login():
     logged_in = FIXED_NOW - timedelta(hours=11, minutes=30)
 
-    assert refresh_token_expiry("admin", FIXED_NOW, logged_in) == logged_in + timedelta(
-        hours=12
-    )
+    assert refresh_token_expiry(
+        "admin", FIXED_NOW, logged_in, logged_in
+    ) == logged_in + timedelta(hours=12)
 
 
 def test_an_admin_session_with_no_second_factor_still_gets_only_an_hour():
     """Refresh refuses such a session anyway (D-105); this is the outer bound."""
-    assert refresh_token_expiry("admin", FIXED_NOW, None) == FIXED_NOW + timedelta(
-        hours=1
-    )
+    assert refresh_token_expiry(
+        "admin", FIXED_NOW, None, FIXED_NOW
+    ) == FIXED_NOW + timedelta(hours=1)

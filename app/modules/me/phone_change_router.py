@@ -150,7 +150,7 @@ def change_my_phone(
     summary="Move my account to a new number when my current number is lost",
     description=(
         "For when your current number is already gone, so no code can reach "
-        "it. Needs **a login at least 30 days old** (403 `login_too_recent`, "
+        "it. Needs **a login at least 14 days old** (403 `login_too_recent`, "
         "with `Retry-After`, from a newer one), or, once you have a passkey, "
         "the passkey's grant in `Step-Up-Code` instead; and a code from the "
         "new number, "
@@ -168,7 +168,7 @@ def change_my_phone(
         400: problem_doc("The new number's code is wrong, expired or used"),
         403: problem_doc(
             "`role_not_allowed`: an admin's number cannot be changed here; "
-            "`login_too_recent`: this login is under 30 days old (see Retry-After)"
+            "`login_too_recent`: this login is under 14 days old (see Retry-After)"
         ),
         409: problem_doc(
             "`phone_unchanged`, `phone_in_use`, `phone_change_taking_effect`, "

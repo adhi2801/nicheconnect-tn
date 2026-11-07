@@ -5,7 +5,6 @@ responses, a cache header and an ETag, and nothing that depends on who is
 asking. The rules for what counts are in city_figures_service.py.
 """
 
-import hashlib
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, Path, Request, Response, status
@@ -13,6 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.errors import ResponseDocs, problem_doc
+from app.core.http_cache import etag_for, holds_current
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.insights import city_figures_service as figures
@@ -52,9 +52,9 @@ def _cached(
     body: BaseModel, response: Response, if_none_match: str | None
 ) -> Response | None:
     """Set the cache headers; a 304 when the reader already has this answer."""
-    etag = '"' + hashlib.sha256(body.model_dump_json().encode()).hexdigest()[:32] + '"'
+    etag = etag_for(body.model_dump_json().encode())
     headers = {"Cache-Control": f"public, max-age={CACHE_SECONDS}", "ETag": etag}
-    if if_none_match == etag:
+    if holds_current(if_none_match, etag):
         return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=headers)
     response.headers.update(headers)
     return None

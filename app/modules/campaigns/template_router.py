@@ -1,6 +1,5 @@
 """Festival campaign templates, over HTTP (item 14, piece 1, D-161, D-165)."""
 
-import hashlib
 from datetime import datetime, time, timedelta
 from typing import Annotated
 
@@ -9,6 +8,7 @@ from pydantic import TypeAdapter
 
 from app.core.clock import IST, india_date
 from app.core.errors import problem_doc
+from app.core.http_cache import etag_for, holds_current
 from app.core.rate_limit import rate_limit
 from app.modules.auth.dependencies import get_now
 from app.modules.campaigns import festival_templates
@@ -60,12 +60,12 @@ def campaign_templates(
     body = [
         to_template_read(t, o) for t, o in festival_templates.upcoming(india_date(now))
     ]
-    etag = '"' + hashlib.sha256(_BODY.dump_json(body)).hexdigest()[:32] + '"'
+    etag = etag_for(_BODY.dump_json(body))
     headers = {
         "Cache-Control": f"public, max-age={seconds_to_india_midnight(now)}",
         "ETag": etag,
     }
-    if if_none_match == etag:
+    if holds_current(if_none_match, etag):
         return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=headers)
     response.headers.update(headers)
     return body

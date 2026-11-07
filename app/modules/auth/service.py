@@ -435,7 +435,11 @@ def issue_session(
     `sign_in_acknowledged_at` is carried the same way (D-120).
     """
     refresh_token = new_refresh_token()
-    refresh_expires_at = refresh_token_expiry(account.role, now, second_factor_at)
+    if authenticated_at is None:
+        authenticated_at = now
+    refresh_expires_at = refresh_token_expiry(
+        account.role, now, second_factor_at, authenticated_at
+    )
     db.add(
         AuthSession(
             account_id=account.id,
@@ -462,8 +466,9 @@ def issue_session(
         account.role,
         now,
         methods=methods,
-        not_after=refresh_expires_at if account.role == "admin" else None,
-        authenticated_at=now if authenticated_at is None else authenticated_at,
+        # The login's own limit binds its last access token too (D-105, D-174).
+        not_after=refresh_expires_at,
+        authenticated_at=authenticated_at,
         session_id=family_id,
     )
     return LoginResult(
@@ -532,13 +537,26 @@ def refresh_session(db: Session, refresh_token: str, now: datetime) -> LoginResu
         _revoke_family(db, auth_session, now)
         db.commit()
         raise InvalidToken()
+    authenticated_at = logged_in_at(db, auth_session.family_id)
+    if (
+        refresh_token_expiry(
+            account.role, now, auth_session.second_factor_at, authenticated_at
+        )
+        <= now
+    ):
+        # The login is past its overall limit (D-174). Rows issued before
+        # the limit existed can outlive it, so it is checked here, not only
+        # by their own expiry.
+        _revoke_family(db, auth_session, now)
+        db.commit()
+        raise InvalidToken()
     result = issue_session(
         db,
         account,
         auth_session.family_id,
         now,
         second_factor_at=auth_session.second_factor_at,
-        authenticated_at=logged_in_at(db, auth_session.family_id),
+        authenticated_at=authenticated_at,
         passkey_at=auth_session.passkey_at,
         sign_in_acknowledged_at=auth_session.sign_in_acknowledged_at,
         device=_device_of(auth_session),

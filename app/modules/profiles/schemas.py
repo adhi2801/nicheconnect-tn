@@ -10,9 +10,9 @@ from pydantic import (
     Field,
     model_validator,
 )
-from pydantic_core import PydanticCustomError
 
 from app.core.literals import ensure_same_values
+from app.core.partial_update import check_change
 from app.core.taxonomy import LANGUAGES
 from app.modules.auth.schemas import (
     Bio,
@@ -53,8 +53,7 @@ class BrandProfileUpdate(BaseModel):
 
     @model_validator(mode="after")
     def at_least_one_field(self) -> BrandProfileUpdate:
-        if not self.model_fields_set:
-            raise PydanticCustomError("empty_update", "Send at least one field to change")
+        check_change(self, ("name", "email"))
         return self
 
 
@@ -103,8 +102,7 @@ class CreatorProfileUpdate(BaseModel):
 
     @model_validator(mode="after")
     def at_least_one_field(self) -> CreatorProfileUpdate:
-        if not self.model_fields_set:
-            raise PydanticCustomError("empty_update", "Send at least one field to change")
+        check_change(self, ("display_name", "handle", "city", "niches", "languages"))
         return self
 
 
@@ -196,8 +194,10 @@ class PackageUpdate(BaseModel):
 
     @model_validator(mode="after")
     def at_least_one_field(self) -> PackageUpdate:
-        if not self.model_fields_set:
-            raise PydanticCustomError("empty_update", "Send at least one field to change")
+        check_change(
+            self,
+            ("platform", "format", "title", "price_paise", "delivery_days", "position"),
+        )
         return self
 
 

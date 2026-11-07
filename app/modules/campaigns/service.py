@@ -32,11 +32,13 @@ from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import brand_is_active, brand_is_unavailable
 from app.modules.campaigns import alert_service
 from app.modules.campaigns import offer_service as offers
+from app.modules.campaigns.budget import budget_problem
 from app.modules.campaigns.deliverable_models import CampaignDeliverable
 from app.modules.campaigns.exceptions import (
     AlreadyApplied,
     ApplicationsClosed,
     ApplicationStatusConflict,
+    CampaignBudgetInvalid,
     CampaignNotEditable,
     CampaignNotFound,
     CampaignNotOpen,
@@ -221,6 +223,17 @@ def update_campaign(
             )
 
     items = changes.pop("deliverable_items", None)
+    after = {
+        name: changes.get(name, getattr(campaign, name))
+        for name in ("campaign_type", "budget_min_paise", "budget_max_paise")
+    }
+    problem = budget_problem(
+        after["campaign_type"], after["budget_min_paise"], after["budget_max_paise"]
+    )
+    if problem is not None:
+        # Else the database's CHECK refused it, answered 500 (audit C6).
+        db.rollback()
+        raise CampaignBudgetInvalid(*problem)
     for field, value in changes.items():
         setattr(campaign, field, value)
     if items is not None:

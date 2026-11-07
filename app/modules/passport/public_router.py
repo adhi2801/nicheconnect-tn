@@ -21,7 +21,6 @@ profile only appears here once its owner has turned the Passport on
 (D-036). That switch is read in exactly one place, `passport_service.passport_is_public`.
 """
 
-import hashlib
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Header, Query, Request, Response, status
@@ -29,6 +28,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.errors import problem_doc
+from app.core.http_cache import etag_for, holds_current
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
@@ -65,8 +65,7 @@ def _etag(page: PublicCreatorRead) -> str:
     Hashing the page rather than a timestamp means an edit to a channel or a
     package, which lives in another table, changes it too.
     """
-    digest = hashlib.sha256(page.model_dump_json().encode()).hexdigest()
-    return '"' + digest[:32] + '"'
+    return etag_for(page.model_dump_json().encode())
 
 
 def _structured_data(
@@ -184,7 +183,7 @@ def read_public_profile(
 
     etag = _etag(page)
     cache_headers = {"Cache-Control": f"public, max-age={CACHE_SECONDS}", "ETag": etag}
-    if if_none_match == etag:
+    if holds_current(if_none_match, etag):
         # Unchanged since the reader last saw it: no body to send.
         return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=cache_headers)
 
@@ -228,9 +227,9 @@ def list_indexable_passports(
         ],
         next_cursor=found.next_cursor,
     )
-    etag = '"' + hashlib.sha256(page.model_dump_json().encode()).hexdigest()[:32] + '"'
+    etag = etag_for(page.model_dump_json().encode())
     cache_headers = {"Cache-Control": f"public, max-age={CACHE_SECONDS}", "ETag": etag}
-    if if_none_match == etag:
+    if holds_current(if_none_match, etag):
         return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=cache_headers)
     response.headers.update(cache_headers)
     return page

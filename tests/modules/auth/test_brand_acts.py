@@ -289,6 +289,8 @@ def test_a_member_of_another_brand_reaches_none_of_this_one(client, db, clock, w
         for route in brand_routes():
             if "{" not in route.path:
                 continue  # their own brand's lists: nothing of this brand's to reach
+            if "brand" in stranger_walk.PUBLIC.get((method(route), route.path), ((),))[0]:
+                continue  # every brand's by design, as for any stranger (the media kit)
             answer = ask(client, route, world["ids"], stranger)
             if answer.status_code not in (403, 404):
                 leaks.append(f"{method(route)} {route.path}: {answer.status_code}")

@@ -31,6 +31,21 @@ class FieldNotEditableNow(DomainError):
     title = "That detail cannot be changed once the campaign is open"
 
 
+class CampaignBudgetInvalid(DomainError):
+    """A change would leave the campaign's budget breaking its rules.
+
+    `code` is the rule broken, as the create route's 422 names it.
+    """
+
+    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
+    code = "budget_invalid"
+    title = "The budget does not fit the campaign"
+
+    def __init__(self, code: str, detail: str) -> None:
+        super().__init__(detail)
+        self.code = code
+
+
 class CampaignStatusConflict(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "campaign_status_conflict"

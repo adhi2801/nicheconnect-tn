@@ -22,6 +22,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.modules.auth.models.account import Account
@@ -32,6 +33,7 @@ from app.modules.profiles import connection_service as connections
 from app.modules.profiles.connection_models import ConnectedAccount
 from app.modules.profiles.models import CreatorChannel, CreatorPackage
 from app.modules.profiles.rate_card_service import list_channels, list_packages
+from app.modules.safety.blocks import not_blocked
 from app.modules.safety.takedowns import refuse_withheld_creator
 
 
@@ -65,12 +67,23 @@ def refuse_if_withheld(db: Session, account: Account, creator: Creator) -> None:
         refuse_withheld_creator(db, creator.id)
 
 
-def for_creator(db: Session, creator_id: uuid.UUID, now: datetime) -> MediaKit | None:
+def for_creator(
+    db: Session, creator_id: uuid.UUID, now: datetime, viewer_account_id: uuid.UUID
+) -> MediaKit | None:
     """The media kit as of `now`, or None if there is no such creator.
 
-    Six queries, however many channels, packages, connections or deals there are.
+    None too across a block, either way, between the creator and
+    `viewer_account_id` (the reader, or the brand a team member reads for):
+    a block leaves each side alone, and a blocked brand reads the kit as one
+    that does not exist (D-175). The block is a condition in the creator's
+    own query, so it costs nothing more: six queries, however many channels,
+    packages, connections or deals there are.
     """
-    creator = db.get(Creator, creator_id)
+    creator = db.scalars(
+        select(Creator).where(
+            Creator.id == creator_id, not_blocked(viewer_account_id, Creator.account_id)
+        )
+    ).first()
     if creator is None:
         return None
     return MediaKit(

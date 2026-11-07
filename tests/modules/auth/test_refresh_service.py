@@ -53,7 +53,8 @@ def test_refresh_returns_new_tokens_in_the_same_family(db):
     assert refreshed.refresh_token != login.refresh_token
     assert refreshed.access_token != login.access_token
     assert refreshed.access_token_expires_at == LATER + timedelta(minutes=15)
-    assert refreshed.refresh_token_expires_at == LATER + timedelta(days=30)
+    # Never past 30 days from the login, however late the refresh (D-174).
+    assert refreshed.refresh_token_expires_at == FIXED_NOW + timedelta(days=30)
     old, new = sessions_for(db, login.account_id)
     assert old.family_id == new.family_id
     assert old.used_at == LATER
@@ -119,6 +120,42 @@ def test_token_works_until_just_before_expiry(db):
     refresh_session(
         db, login.refresh_token, FIXED_NOW + timedelta(days=30) - timedelta(seconds=1)
     )
+
+
+def test_a_login_ends_thirty_days_after_it_was_proven_however_often_refreshed(db):
+    """Item 144 (D-174): refreshing daily used to keep a login forever."""
+    login = log_in(db)
+    token = login.refresh_token
+    for day in range(1, 30):
+        refreshed = refresh_session(db, token, FIXED_NOW + timedelta(days=day))
+        assert refreshed.refresh_token_expires_at == FIXED_NOW + timedelta(days=30)
+        token = refreshed.refresh_token
+
+    with pytest.raises(InvalidToken):
+        refresh_session(db, token, FIXED_NOW + timedelta(days=30))
+
+
+def test_the_last_access_token_ends_with_the_login(db):
+    login = log_in(db)
+
+    refreshed = refresh_session(
+        db, login.refresh_token, FIXED_NOW + timedelta(days=30) - timedelta(minutes=5)
+    )
+
+    assert refreshed.access_token_expires_at == FIXED_NOW + timedelta(days=30)
+
+
+def test_a_session_issued_before_the_limit_is_refused_and_its_login_ended(db):
+    """Rows from before D-174 carry an expiry past the login's limit."""
+    login = log_in(db)
+    row = session_by_token(db, login.refresh_token)
+    row.expires_at = FIXED_NOW + timedelta(days=59)
+    db.commit()
+
+    with pytest.raises(InvalidToken):
+        refresh_session(db, login.refresh_token, FIXED_NOW + timedelta(days=30))
+
+    assert all(s.revoked_at is not None for s in sessions_for(db, login.account_id))
 
 
 def test_revoked_token_is_rejected(db):

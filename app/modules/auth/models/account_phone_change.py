@@ -11,7 +11,7 @@ old number is let go, so whoever is given it next, once it is recycled
 (TRAI: after 90 days), finds a new account, not this one.
 
 Someone whose current number is already gone may ask without its code, from
-a login at least 30 days old (D-110): that change waits 7 days, and a login
+a login at least 14 days old (D-110, D-174): that change waits 7 days, and a login
 with the current number meanwhile cancels it.
 
 One row per account, at most: a second change replaces the first and starts

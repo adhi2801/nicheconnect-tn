@@ -166,7 +166,7 @@ def test_a_change_with_both_numbers_says_it_was_not_without_one(
     )
 
 
-def test_a_login_one_second_short_of_30_days_waits_one_second(
+def test_a_login_one_second_short_of_14_days_waits_one_second(
     client, sender, clock, creator
 ):
     creator.logged_in_at = clock.now - LOST_NUMBER_LOGIN + timedelta(seconds=1)
@@ -178,7 +178,7 @@ def test_a_login_one_second_short_of_30_days_waits_one_second(
     assert sender.sent == []
 
 
-def test_a_login_exactly_30_days_old_may_ask(client, sender, clock, creator):
+def test_a_login_exactly_14_days_old_may_ask(client, sender, clock, creator):
     creator.logged_in_at = clock.now - LOST_NUMBER_LOGIN
 
     assert lost(client, sender, creator.headers, unique_test_phone()).status_code == 202
@@ -285,7 +285,7 @@ def test_refreshing_the_session_that_asked_does_not_cancel_it(client, db, sender
     phone = unique_test_phone()
     tokens = log_in(client, sender, phone)
     for _ in range(2):
-        clock.advance(timedelta(days=16))
+        clock.advance(timedelta(days=8))
         tokens = client.post(
             REFRESH_URL, json={"refresh_token": tokens["refresh_token"]}
         ).json()

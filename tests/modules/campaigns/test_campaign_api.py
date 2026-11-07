@@ -391,6 +391,64 @@ def test_empty_update_is_rejected(client, db, clock):
     )
 
 
+@pytest.mark.parametrize(
+    ("change", "rule"),
+    [
+        ({"budget_max_paise": 100_000}, "budget_backwards"),
+        ({"budget_min_paise": None}, "budget_incomplete"),
+        ({"campaign_type": "barter"}, "budget_on_barter"),
+        ({"budget_min_paise": None, "budget_max_paise": None}, "budget_required"),
+    ],
+)
+def test_a_change_that_breaks_the_budget_rules_is_refused_not_a_500(
+    client, db, clock, change, rule
+):
+    """Checked on the campaign as it would be after the change (audit C6).
+
+    Each change names one field, or none of the rule's, and still breaks a
+    rule with the fields it left alone; the database refused it, answered 500.
+    """
+    _, headers = brand_login(db, clock)
+    campaign = create(client, headers)
+
+    assert_problem(
+        client.patch(f"{URL}/{campaign['id']}", json=change, headers=headers),
+        422,
+        rule,
+    )
+    assert client.get(f"{URL}/{campaign['id']}", headers=headers).json() == campaign
+
+
+def test_a_change_that_keeps_the_budget_rules_is_made(client, db, clock):
+    _, headers = brand_login(db, clock)
+    campaign = create(client, headers)
+
+    changed = client.patch(
+        f"{URL}/{campaign['id']}",
+        json={
+            "campaign_type": "barter",
+            "budget_min_paise": None,
+            "budget_max_paise": None,
+        },
+        headers=headers,
+    )
+
+    assert changed.status_code == 200, changed.text
+    assert changed.json()["budget_min_paise"] is None
+
+
+@pytest.mark.parametrize("field", ["title", "cities", "campaign_type", "deliverables"])
+def test_null_for_a_field_that_always_has_a_value_is_refused(client, db, clock, field):
+    _, headers = brand_login(db, clock)
+    campaign = create(client, headers)
+
+    assert_problem(
+        client.patch(f"{URL}/{campaign['id']}", json={field: None}, headers=headers),
+        422,
+        "validation_failed",
+    )
+
+
 def test_another_brand_cannot_change_your_campaign(client, db, clock):
     _, first_headers = brand_login(db, clock)
     campaign = create(client, first_headers)

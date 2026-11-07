@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validat
 from pydantic_core import PydanticCustomError
 
 from app.core.literals import ensure_same_values
+from app.core.partial_update import check_change
 from app.core.taxonomy import CURRENCY
 from app.core.text_flags import FieldFlag, field_flags
 from app.modules.campaigns.schemas import DeliverableItems, DeliverableRead
@@ -133,15 +134,7 @@ class MemoUpdate(BaseModel):
 
     @model_validator(mode="after")
     def at_least_one_field(self) -> MemoUpdate:
-        if not self.model_fields_set:
-            raise PydanticCustomError("empty_update", "Send at least one field to change")
-        # These always have a value; null would reach the database as one
-        # (found by the independent review of item 27, 27 October 2026).
-        for name in _ALWAYS_SET:
-            if name in self.model_fields_set and getattr(self, name) is None:
-                raise PydanticCustomError(
-                    "value_required", "{field} cannot be null", {"field": name}
-                )
+        check_change(self, _ALWAYS_SET)
         return self
 
 

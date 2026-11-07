@@ -2194,3 +2194,28 @@ Newest entries at the bottom.
   1. `creator.bio_words` and `campaign.brief_words`, stored generated `tsvector` columns in matching's English config, computed by the database on every write; never written by the app, deferred so ordinary reads do not fetch them (migration `e65f3516f952`).
   2. `docs/RANKING_EXPLAINED.md` says each word counts once and a long list counts for less per word.
   3. The proposal's "same public profile text" reads, from here, as this decision states.
+
+## D-174: A login lasts 30 days from when it was proven; a lost number moves from a login 14 days old
+- Date: 2026-11-07
+- Approved by: Adhi, in this session: "30 days (Recommended)" for item 144's lifetime, then, told that it made D-110's 30-day-old login unreachable, "30 days, recovery at 14 (Recommended)". **Not reviewed by the other founder** (D-051).
+- Context: audit C1 (6 November) found brand and creator sessions had no overall limit: each refresh granted 30 more days, so a refresh token stolen and refreshed in time worked for ever. NIST SP 800-63B-4 section 2 (read 7 November 2026): at AAL1 "a definite reauthentication overall timeout SHALL be established, which SHOULD be no more than 30 days"; OWASP ASVS 5.0 7.3.2. A 30-day limit leaves no login 30 days old, which D-110 needed to move a lost number.
+- Options considered: A) 30 days, D-110 from a login 14 days old; B) 90 days, D-110 unchanged, a recorded deviation from NIST's 30-day SHOULD; C) 60 days, the same; for the lifetime alone, 14 days was also offered.
+- Chosen: A.
+- Reason: it meets NIST's figure, so audit C1 closes; 14 days is twice the week a SIM swapper's fresh login never has (D-109), and the 7-day wait with cancel-by-login (D-110) stays. Re-login with a passkey is one tap.
+- Consequences / follow-ups:
+  1. `auth_session.MEMBER_SESSION_LIMIT` (30 days): `refresh_token_expiry` takes the login's time and never reaches past it plus the limit; every access token stops there too (admins' already did, D-105).
+  2. `refresh_session` refuses a refresh past the limit and ends that login, so rows issued before this change, with later expiries, end on time. No migration: the login's time is already the family's first row (D-109).
+  3. `login_age.LOST_NUMBER_LOGIN` is 14 days; a test holds it between the week of D-109 and the lifetime, so the two cannot collide again. The endpoint's text and the contract say 14.
+  4. What it costs, said plainly: someone who signs in by phone code is asked for a code once a month (an SMS or WhatsApp message, paid per code); after each re-login, the week of D-109 before changing a UPI ID or number starts again, unless they have a passkey; and a lost number can be moved only in the second half of each login.
+
+## D-175: A block closes the media kit too
+- Date: 2026-11-08
+- Approved by: Adhi, in this session: "Yes, close it (Recommended)", after audit C7 found the gap. **Not reviewed by the other founder** (D-051).
+- Context: a block (item 59) kept each side out of the other's search, matches and discovery, and stopped every invitation, repeat and application, but a brand the creator had blocked, or that had blocked them, could still read the creator's media kit by id: the creator's channel figures, their delivery record and prices they had not published. Instagram and LinkedIn close a profile to a blocked account.
+- Options considered: A) the kit reads as a creator that does not exist across a block, either way; B) keep it open, so a brand with an agreed deal can still check the figures, and record the gap.
+- Chosen: A.
+- Reason: a block's promise is to be left alone (`trust-and-safety.md` section 1, rule 7), and the kit is the fullest view of a creator anyone has.
+- Consequences / follow-ups:
+  1. `media_kit_service.for_creator` takes the reader, or the brand a team member reads for (D-148), and the block is a condition in the creator's own query: no query added, six in all.
+  2. Answered 404 `profile_not_found`, exactly as an id that does not exist, so the blocked side is never told. The creator still reads their own; other brands are unaffected; agreed deals carry on, as before.
+  3. Enforced by `tests/modules/passport/test_media_kit_api.py` (either way, a team member, and the block lifted), seen failing without the condition.
