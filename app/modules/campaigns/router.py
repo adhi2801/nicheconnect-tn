@@ -227,9 +227,8 @@ def read_campaign(
         409: problem_doc("The campaign, or that field, cannot be changed now"),
         422: problem_doc(
             "A field is missing or invalid, null for a field that always has a "
-            "value, or the campaign after the change would break a budget rule "
-            "(`budget_incomplete`, `budget_backwards`, `budget_on_barter`, "
-            "`budget_required`)"
+            "value, or the campaign after the change would break a budget rule, "
+            "answered as the same rule in a new campaign's body"
         ),
         429: problem_doc("Too many requests; see the Retry-After header"),
     },

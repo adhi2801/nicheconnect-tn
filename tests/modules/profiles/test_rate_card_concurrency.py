@@ -14,7 +14,7 @@ every run rather than by luck.
 import time
 import uuid
 from collections.abc import Iterator
-from datetime import date
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import delete, event, func, select
@@ -39,7 +39,7 @@ from tests.modules.payment_status.test_payment_concurrency import (
     unique_phone,
 )
 
-TODAY = date(2026, 10, 4)
+NOW = datetime(2026, 10, 4, 6, 30, tzinfo=UTC)
 
 
 def package_fields(position: int) -> dict[str, object]:
@@ -84,7 +84,7 @@ def test_the_package_limit_holds_against_simultaneous_adds(
 ):
     results = run_at_once(
         lambda s: rate_card.create_package(
-            s, s.get(Creator, creator), **package_fields(10)
+            s, s.get(Creator, creator), NOW, **package_fields(10)
         ),
         AT_ONCE,
     )
@@ -130,7 +130,7 @@ def test_simultaneous_first_saves_of_a_channel_all_succeed_as_one_row(
             profile_url="https://www.instagram.com/priya.eats/",
             followers=12_000,
             average_views=9_000,
-            today=TODAY,
+            now=NOW,
         ),
         AT_ONCE,
     )

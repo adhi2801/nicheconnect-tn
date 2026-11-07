@@ -16,13 +16,14 @@ must not rewrite when the creator actually chose.
 """
 
 import uuid
-from datetime import date, datetime
+from datetime import datetime
 from urllib.parse import urlparse
 
 from sqlalchemy import delete as sa_delete
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.clock import india_date
 from app.modules.auth.models.creator import Creator
 from app.modules.profiles.exceptions import (
     ChannelNotFound,
@@ -88,7 +89,7 @@ def save_channel(
     profile_url: str,
     followers: int,
     average_views: int | None,
-    today: date,
+    now: datetime,
 ) -> CreatorChannel:
     """Add or replace this creator's channel on one platform.
 
@@ -96,7 +97,8 @@ def save_channel(
     most one of each and "I have already added Instagram" is not a useful
     error. `figures_as_of` is set from the server's clock, never the client:
     it is the date we were told, and a client could otherwise claim yesterday's
-    numbers were gathered today.
+    numbers were gathered today. `updated_at` moves with every save, so the
+    Passport's last change (item 85) sees new figures (audit C8).
     """
     check_profile_url(platform, profile_url)
     _one_writer_at_a_time(db, creator)
@@ -109,13 +111,14 @@ def save_channel(
     ).first()
 
     if channel is None:
-        channel = CreatorChannel(creator_id=creator.id, platform=platform)
+        channel = CreatorChannel(creator_id=creator.id, platform=platform, created_at=now)
         db.add(channel)
 
     channel.profile_url = profile_url
     channel.followers = followers
     channel.average_views = average_views
-    channel.figures_as_of = today
+    channel.figures_as_of = india_date(now)
+    channel.updated_at = now
     db.commit()
     db.refresh(channel)
     return channel
@@ -165,7 +168,9 @@ def _owned_package(
     return package
 
 
-def create_package(db: Session, creator: Creator, **fields: object) -> CreatorPackage:
+def create_package(
+    db: Session, creator: Creator, now: datetime, **fields: object
+) -> CreatorPackage:
     """Add a package, up to the limit."""
     _one_writer_at_a_time(db, creator)
     count = (
@@ -182,7 +187,9 @@ def create_package(db: Session, creator: Creator, **fields: object) -> CreatorPa
             f"Change or remove one before adding another."
         )
 
-    package = CreatorPackage(creator_id=creator.id, **fields)
+    package = CreatorPackage(
+        creator_id=creator.id, created_at=now, updated_at=now, **fields
+    )
     db.add(package)
     db.commit()
     db.refresh(package)
@@ -190,11 +197,18 @@ def create_package(db: Session, creator: Creator, **fields: object) -> CreatorPa
 
 
 def update_package(
-    db: Session, creator: Creator, package_id: uuid.UUID, changes: dict[str, object]
+    db: Session,
+    creator: Creator,
+    package_id: uuid.UUID,
+    changes: dict[str, object],
+    now: datetime,
 ) -> CreatorPackage:
+    """Change a package. `updated_at` moves, so the Passport's last change
+    sees a new price (item 85; it stayed at creation until audit C8)."""
     package = _owned_package(db, creator, package_id)
     for field, value in changes.items():
         setattr(package, field, value)
+    package.updated_at = now
     db.commit()
     db.refresh(package)
     return package

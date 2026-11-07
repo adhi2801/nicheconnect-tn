@@ -16983,7 +16983,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description A field is missing or invalid, null for a field that always has a value, or the campaign after the change would break a budget rule (`budget_incomplete`, `budget_backwards`, `budget_on_barter`, `budget_required`). Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            /** @description A field is missing or invalid, null for a field that always has a value, or the campaign after the change would break a budget rule, answered as the same rule in a new campaign's body. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -21279,7 +21279,10 @@ export interface operations {
     read_delivery_record_api_v1_creators__creator_id__delivery_record_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path: {
                 /** @description The creator's id */
                 creator_id: string;
@@ -21317,7 +21320,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description No such creator */
+            /** @description No such creator, or a block stands between you; or `brand_not_found` for a `Brand-Id` that is not a brand you act for */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -21327,7 +21330,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description The creator id is not a valid id */
+            /** @description The creator id is not a valid id; or `brand_choice_needed`: on more than one brand's team, send `Brand-Id` */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -21363,7 +21366,10 @@ export interface operations {
     creator_feedback_api_v1_creators__creator_id__feedback_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path: {
                 /** @description The creator's id */
                 creator_id: string;
@@ -21401,7 +21407,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description No such creator */
+            /** @description No such creator, or a block stands between you; or `brand_not_found` for a `Brand-Id` that is not a brand you act for */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -21451,7 +21457,10 @@ export interface operations {
                 /** @description From a previous page's next_cursor */
                 cursor?: string | null;
             };
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path: {
                 /** @description The creator's id */
                 creator_id: string;
@@ -21489,7 +21498,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description No such creator */
+            /** @description No such creator, or a block stands between you; or `brand_not_found` for a `Brand-Id` that is not a brand you act for */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -21576,7 +21585,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description No such creator, or a block stands between you */
+            /** @description No such creator, or a block stands between you; or `brand_not_found` for a `Brand-Id` that is not a brand you act for */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -21586,7 +21595,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description The creator id is not a valid id */
+            /** @description The creator id is not a valid id; or `brand_choice_needed`: on more than one brand's team, send `Brand-Id` */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -21632,7 +21641,10 @@ export interface operations {
     creator_response_times_api_v1_creators__creator_id__response_times_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path: {
                 /** @description The creator's id */
                 creator_id: string;
@@ -21670,7 +21682,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description No such creator */
+            /** @description No such creator, or a block stands between you; or `brand_not_found` for a `Brand-Id` that is not a brand you act for */
             404: {
                 headers: {
                     [name: string]: unknown;

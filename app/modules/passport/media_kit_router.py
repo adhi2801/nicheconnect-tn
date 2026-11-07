@@ -31,8 +31,14 @@ CreatorId = Annotated[uuid.UUID, Path(description="The creator's id")]
 _ERRORS: ResponseDocs = {
     401: problem_doc("No access token, or it is invalid or expired"),
     403: problem_doc("Only brands, or the creator themself, can read this"),
-    404: problem_doc("No such creator, or a block stands between you"),
-    422: problem_doc("The creator id is not a valid id"),
+    404: problem_doc(
+        "No such creator, or a block stands between you; or `brand_not_found` "
+        "for a `Brand-Id` that is not a brand you act for"
+    ),
+    422: problem_doc(
+        "The creator id is not a valid id; or `brand_choice_needed`: on more "
+        "than one brand's team, send `Brand-Id`"
+    ),
     429: problem_doc("Too many requests; see the Retry-After header"),
     451: problem_doc("The creator's profile is withheld for legal reasons (item 52)"),
 }

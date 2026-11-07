@@ -8,9 +8,11 @@ first date because the date is the consent.
 
 import uuid
 from collections.abc import Iterator
+from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 import app.db.models
 from app.core.rate_limit import limiter
@@ -19,6 +21,7 @@ from app.main import app
 from app.modules.auth.dependencies import get_now
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.tokens import create_access_token
+from app.modules.profiles.models import CreatorChannel, CreatorPackage
 from tests.factories import FIXED_NOW, build_creator, create_account
 from tests.query_counts import queries_for
 
@@ -232,6 +235,42 @@ def test_a_package_can_be_changed_field_by_field(client, db):
     assert changed.status_code == 200
     assert changed.json()["price_paise"] == 950_000
     assert changed.json()["title"] == "1 Instagram Reel"  # untouched
+
+
+def test_a_package_change_moves_its_last_change_by_the_injected_clock(client, db):
+    """The Passport's last change reads it (item 85); it stayed at creation,
+    by the database's own clock, until audit C8."""
+    _, headers = creator_login(db)
+    package_id = client.post(PACKAGES, json=package_body(), headers=headers).json()["id"]
+    later = FIXED_NOW + timedelta(minutes=10)  # within the token's 15
+    app.dependency_overrides[get_now] = lambda: later
+
+    client.patch(
+        f"{PACKAGES}/{package_id}", json={"price_paise": 950_000}, headers=headers
+    )
+
+    package = db.get(CreatorPackage, uuid.UUID(package_id))
+    db.refresh(package)
+    assert (package.created_at, package.updated_at) == (FIXED_NOW, later)
+
+
+def test_saving_a_channel_again_moves_its_last_change(client, db):
+    creator, headers = creator_login(db)
+    client.put(f"{CHANNELS}/instagram", json=channel_body(), headers=headers)
+    later = FIXED_NOW + timedelta(minutes=10)  # within the token's 15
+    app.dependency_overrides[get_now] = lambda: later
+
+    saved = client.put(
+        f"{CHANNELS}/instagram", json=channel_body(followers=20_000), headers=headers
+    )
+
+    assert saved.status_code == 200, saved.text
+
+    channel = db.scalars(
+        select(CreatorChannel).where(CreatorChannel.creator_id == creator.id)
+    ).one()
+    db.refresh(channel)
+    assert (channel.created_at, channel.updated_at) == (FIXED_NOW, later)
 
 
 def test_an_empty_change_is_refused(client, db):

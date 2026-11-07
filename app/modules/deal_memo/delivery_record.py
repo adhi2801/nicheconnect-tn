@@ -49,6 +49,7 @@ from app.modules.deal_memo.draft_rules import (
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.proof_models import DeliverableProof
 from app.modules.deal_memo.review_clock import approval_deadline
+from app.modules.safety.blocks import not_blocked
 
 # Below this, the figures are withheld (the same floor as D-027).
 MIN_DEALS_FOR_HISTORY = 3
@@ -265,8 +266,20 @@ def build_record(
     )
 
 
-def creator_exists(db: Session, creator_id: uuid.UUID) -> bool:
-    return db.scalar(select(Creator.id).where(Creator.id == creator_id)) is not None
+def creator_exists(
+    db: Session, creator_id: uuid.UUID, viewer_account_id: uuid.UUID
+) -> bool:
+    """Whether the creator exists for this reader: not across a block, either
+    way, so a blocked brand reads every record of theirs as of nobody (D-175)."""
+    return (
+        db.scalar(
+            select(Creator.id).where(
+                Creator.id == creator_id,
+                not_blocked(viewer_account_id, Creator.account_id),
+            )
+        )
+        is not None
+    )
 
 
 def creator_id_for_account(db: Session, account_id: uuid.UUID) -> uuid.UUID | None:

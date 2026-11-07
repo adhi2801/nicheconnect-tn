@@ -162,7 +162,17 @@ class CampaignUpdate(BaseModel):
     def at_least_one_field(self) -> CampaignUpdate:
         check_change(
             self,
-            ("title", "description", "campaign_type", "cities", "niches", "deliverables"),
+            (
+                "title",
+                "description",
+                "campaign_type",
+                "cities",
+                "niches",
+                "deliverables",
+                # Not a column but a list replaced whole: null replaced
+                # nothing and still moved the campaign's last change.
+                "deliverable_items",
+            ),
         )
         return self
 

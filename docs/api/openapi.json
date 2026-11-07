@@ -24723,7 +24723,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "A field is missing or invalid, null for a field that always has a value, or the campaign after the change would break a budget rule (`budget_incomplete`, `budget_backwards`, `budget_on_barter`, `budget_required`). Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+            "description": "A field is missing or invalid, null for a field that always has a value, or the campaign after the change would break a budget rule, answered as the same rule in a new campaign's body. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
           },
           "429": {
             "content": {
@@ -31065,6 +31065,24 @@
               "title": "Creator Id",
               "type": "string"
             }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
           }
         ],
         "responses": {
@@ -31109,7 +31127,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "No such creator"
+            "description": "No such creator, or a block stands between you; or `brand_not_found` for a `Brand-Id` that is not a brand you act for"
           },
           "422": {
             "content": {
@@ -31120,7 +31138,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "The creator id is not a valid id"
+            "description": "The creator id is not a valid id; or `brand_choice_needed`: on more than one brand's team, send `Brand-Id`"
           },
           "429": {
             "content": {
@@ -31179,6 +31197,24 @@
               "title": "Creator Id",
               "type": "string"
             }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
           }
         ],
         "responses": {
@@ -31223,7 +31259,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "No such creator"
+            "description": "No such creator, or a block stands between you; or `brand_not_found` for a `Brand-Id` that is not a brand you act for"
           },
           "422": {
             "content": {
@@ -31324,6 +31360,24 @@
               "description": "From a previous page's next_cursor",
               "title": "Cursor"
             }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
           }
         ],
         "responses": {
@@ -31368,7 +31422,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "No such creator"
+            "description": "No such creator, or a block stands between you; or `brand_not_found` for a `Brand-Id` that is not a brand you act for"
           },
           "422": {
             "content": {
@@ -31500,7 +31554,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "No such creator, or a block stands between you"
+            "description": "No such creator, or a block stands between you; or `brand_not_found` for a `Brand-Id` that is not a brand you act for"
           },
           "422": {
             "content": {
@@ -31511,7 +31565,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "The creator id is not a valid id"
+            "description": "The creator id is not a valid id; or `brand_choice_needed`: on more than one brand's team, send `Brand-Id`"
           },
           "429": {
             "content": {
@@ -31581,6 +31635,24 @@
               "title": "Creator Id",
               "type": "string"
             }
+          },
+          {
+            "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+            "in": "header",
+            "name": "Brand-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one.",
+              "title": "Brand-Id"
+            }
           }
         ],
         "responses": {
@@ -31625,7 +31697,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "No such creator"
+            "description": "No such creator, or a block stands between you; or `brand_not_found` for a `Brand-Id` that is not a brand you act for"
           },
           "422": {
             "content": {

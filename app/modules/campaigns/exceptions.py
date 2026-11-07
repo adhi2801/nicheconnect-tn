@@ -34,16 +34,19 @@ class FieldNotEditableNow(DomainError):
 class CampaignBudgetInvalid(DomainError):
     """A change would leave the campaign's budget breaking its rules.
 
-    `code` is the rule broken, as the create route's 422 names it.
+    Answered exactly as the same rule broken in a new campaign's body: 422
+    `validation_failed`, the rule's message in `errors` (the independent
+    review of audit C6).
     """
 
     status_code = HTTPStatus.UNPROCESSABLE_ENTITY
-    code = "budget_invalid"
-    title = "The budget does not fit the campaign"
+    code = "validation_failed"
+    title = "Some fields are missing or invalid"
 
-    def __init__(self, code: str, detail: str) -> None:
-        super().__init__(detail)
-        self.code = code
+    def __init__(self, rule: str, message: str) -> None:
+        super().__init__()
+        self.rule = rule
+        self.errors = [{"field": "request", "message": message}]
 
 
 class CampaignStatusConflict(DomainError):

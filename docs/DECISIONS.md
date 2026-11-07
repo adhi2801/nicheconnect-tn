@@ -2219,3 +2219,17 @@ Newest entries at the bottom.
   1. `media_kit_service.for_creator` takes the reader, or the brand a team member reads for (D-148), and the block is a condition in the creator's own query: no query added, six in all.
   2. Answered 404 `profile_not_found`, exactly as an id that does not exist, so the blocked side is never told. The creator still reads their own; other brands are unaffected; agreed deals carry on, as before.
   3. Enforced by `tests/modules/passport/test_media_kit_api.py` (either way, a team member, and the block lifted), seen failing without the condition.
+  4. **Widened the same day** (the independent review, then Adhi: "Yes, extend it (Recommended)" for campaigns): the delivery record, response times and feedback by creator id answered a blocked brand 200, which both gave back part of the kit and told it the kit's 404 meant a block; they now answer as the kit does, through `delivery_record.creator_exists`. And a brand's open campaign read by id answers a creator blocked either way as not found, as discovery already did.
+
+## D-176: A login lasts while a change its owner may cancel is waiting
+- Date: 2026-11-08
+- Approved by: Adhi, in this session: "Extend while one waits (Recommended)", after the independent review of D-174 found the conflict. **Not reviewed by the other founder** (D-051).
+- Context: a phone change (72 hours, or 7 days without the current number) and the account's deletion (30 days) are each cancelled from any of the owner's sessions with no code, the answer to a SIM swapper who asks for one (D-109, D-110, D-122). Before D-174 an owner's session never ended; after it, it ended 30 days from its login, and a new login's code goes to whoever holds the number. An owner whose login was 25 days old when a swapper asked for deletion lost the means to cancel five days later.
+- Options considered: A) while either waits, the owner's sessions last until it takes effect; B) a deletion wait shorter than the lifetime; C) accept and document until passkeys are on.
+- Chosen: A.
+- Reason: it keeps every cancel window whole, and a swapper's own session is new anyway, so it gains them nothing; everywhere else NIST's 30 days still holds.
+- Consequences / follow-ups:
+  1. `auth.service.cancel_window_end`: the later of a waiting deletion's and a waiting phone change's moment, one indexed query a refresh. `refresh_token_expiry` takes it as `holds_until`, which outlasts both the login's limit and the idle window.
+  2. A token issued before the request still reaches the end of the wait: a refresh is checked against its login's limit and any waiting change, not only its stored expiry.
+  3. Once the change is made, every session ends anyway (a phone change ends them, a deletion erases the account); once cancelled, the 30 days apply again at the next refresh.
+  4. Enforced by `tests/modules/auth/test_refresh_service.py` (a deletion, each kind of phone change, and one already past).

@@ -10,7 +10,6 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Request, Response, status
 from sqlalchemy.orm import Session
 
-from app.core.clock import india_date
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.rate_limit import rate_limit
@@ -109,7 +108,7 @@ def save_my_channel(
         profile_url=body.profile_url,
         followers=body.followers,
         average_views=body.average_views,
-        today=india_date(now),
+        now=now,
     )
     return ChannelRead.model_validate(channel)
 
@@ -177,9 +176,10 @@ def add_my_package(
     response: Response,
     account: CurrentCreator,
     db: Session = Depends(get_db),
+    now: datetime = Depends(get_now),
 ) -> PackageRead:
     package = service.create_package(
-        db, _creator(db, account), **body.model_dump(exclude_unset=False)
+        db, _creator(db, account), now, **body.model_dump(exclude_unset=False)
     )
     response.headers["Location"] = f"/api/v1/creators/me/packages/{package.id}"
     return PackageRead.model_validate(package)
@@ -203,9 +203,10 @@ def change_my_package(
     body: PackageUpdate,
     account: CurrentCreator,
     db: Session = Depends(get_db),
+    now: datetime = Depends(get_now),
 ) -> PackageRead:
     package = service.update_package(
-        db, _creator(db, account), package_id, body.model_dump(exclude_unset=True)
+        db, _creator(db, account), package_id, body.model_dump(exclude_unset=True), now
     )
     return PackageRead.model_validate(package)
 

@@ -36,17 +36,24 @@ def refresh_token_expiry(
     now: datetime,
     second_factor_at: datetime | None,
     authenticated_at: datetime,
+    holds_until: datetime | None = None,
 ) -> datetime:
     """When a refresh token issued at `now` stops working.
 
     Settings decide it for brands and creators (D-008), never past 30 days
-    from `authenticated_at`, when the login was proven (D-174). An admin's
-    lasts an hour, and never past 12 hours from the moment both factors
-    were proven.
+    from `authenticated_at`, when the login was proven (D-174), unless
+    `holds_until` is later: while a phone change or the account's deletion
+    waits, its owner must be able to cancel it from a session they already
+    have, since during a SIM swap a new login's code goes to the swapper
+    (D-176). An admin's lasts an hour, and never past 12 hours from the
+    moment both factors were proven.
     """
     if role != "admin":
         idle_end = now + timedelta(days=settings.refresh_token_expire_days)
-        return min(idle_end, authenticated_at + MEMBER_SESSION_LIMIT)
+        ends = min(idle_end, authenticated_at + MEMBER_SESSION_LIMIT)
+        # The hold outlasts both: an owner away from the app for weeks must
+        # still find a session to cancel from when they come back.
+        return ends if holds_until is None else max(ends, holds_until)
     idle_end = now + ADMIN_IDLE_LIMIT
     if second_factor_at is None:
         return idle_end
