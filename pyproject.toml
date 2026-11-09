@@ -34,7 +34,7 @@ dependencies = [
     "psycopg[binary]==3.3.6",
     "pgvector==0.5.1",
     "redis==8.1.0",
-    "pydantic-settings==2.16.1",
+    "pydantic-settings==2.16.2",
     "slowapi==0.1.10",
     "PyJWT==2.15.0",
     # The app's HTTP client (the MSG91 sender, the timestamp authorities) and
@@ -44,7 +44,7 @@ dependencies = [
     # Background jobs (D-060). Durable workflows whose state lives in
     # Postgres, in DBOS's own `dbos` schema; they run inside the app, so there
     # is no broker and no new service to deploy (CLAUDE.md section 3).
-    "dbos==3.3.0",
+    "dbos==3.4.0",
     # Checks the RFC 3161 timestamps on the deal record's daily checkpoint.
     "rfc3161-client==1.0.9",
     # Pinned although rfc3161-client pulls it in: it performs the signature
@@ -56,7 +56,7 @@ dependencies = [
     "certifi==2026.10.23",
     # Proof files in S3 (D-065): signs the upload and view links and checks
     # the objects. Signing requests by hand is security code we should not own.
-    "boto3==1.43.118",
+    "boto3==1.43.123",
     # Re-encodes every uploaded image so no GPS location or hidden data
     # reaches a brand (D-065). Security releases are frequent: the dependency
     # audit fails CI until it is upgraded, which is the point.
@@ -90,22 +90,22 @@ dependencies = [
 # pinned so every laptop and CI check the code with the same versions, and so
 # the dependency audit covers them too. Never in an image.
 dev = [
-    "pytest==9.1.1",
-    "ruff==0.17.2",
-    "mypy==2.4.0",
+    "pytest==9.2.0",
+    "ruff==0.17.3",
+    "mypy==2.4.1",
     "pytest-cov==7.1.0",
     # Pinned although pytest-cov pulls it in: unpinned, local and CI runs
     # could count branches differently (D-047).
     "coverage==7.17.0",
     # API fuzz testing (D-047). Reads docs/api/openapi.json, generates
     # thousands of requests from it and checks every answer.
-    "schemathesis==4.32.5",
+    "schemathesis==4.33.0",
     # Imitates S3 in tests, so the storage code is tested without AWS (D-065).
-    "moto==5.2.4",
+    "moto==5.2.5",
     # Property-based tests (D-090): one test states a rule, Hypothesis tries
     # hundreds of generated inputs and shrinks any failure to the smallest.
     # Schemathesis pulls it in too; pinned here because tests import it.
-    "hypothesis==6.170.11",
+    "hypothesis==6.170.14",
     "import-linter==2.15",
 ]
 load = [
@@ -120,7 +120,7 @@ load = [
 # wheel declares about 1.4 GB of CUDA libraries for a workload that never
 # touches a GPU.
 ml = [
-    "torch==2.14.1",
+    "torch==2.15.0",
     "sentence-transformers==6.2.0",
 ]
 # Automated mutation testing (D-091): breaks the rule-heavy code in thousands
@@ -128,7 +128,7 @@ ml = [
 # it brings a terminal UI and a parser the test suite does not need; installed
 # only by the nightly mutation workflow. Linux only (it forks).
 mutation = [
-    "mutmut==3.8.0",
+    "mutmut==3.8.1",
 ]
 
 [tool.uv]
