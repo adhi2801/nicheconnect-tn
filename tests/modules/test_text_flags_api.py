@@ -38,6 +38,29 @@ def test_a_brief_asking_creators_for_money_is_flagged_for_everyone(client, db, c
     assert flags(as_brand) == flags(as_creator) == [("description", "asks_for_money")]
 
 
+def test_a_title_asking_creators_for_money_is_flagged_too(client, db, clock):
+    """A title is short enough to carry the whole scam (trust-and-safety gap 2)."""
+    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    campaign_id = open_campaign(client, brand, title="Rs 500 registration fee, DM us")
+
+    as_creator = client.get(
+        f"{CAMPAIGNS_URL}/{campaign_id}", headers=creator.headers
+    ).json()
+
+    assert ("title", "asks_for_money") in flags(as_creator)
+
+
+def test_an_ordinary_title_has_no_flags(client, db, clock):
+    brand = brand_user(db, clock)
+    campaign_id = open_campaign(
+        client, brand, title="Pongal sweets launch, ₹5,000 a reel"
+    )
+
+    body = client.get(f"{CAMPAIGNS_URL}/{campaign_id}", headers=brand.headers).json()
+
+    assert [f for f in body["text_flags"] if f["field"] == "title"] == []
+
+
 def test_an_ordinary_brief_has_no_flags(client, db, clock):
     brand = brand_user(db, clock)
     campaign_id = open_campaign(

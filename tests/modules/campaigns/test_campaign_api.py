@@ -478,6 +478,8 @@ def test_an_open_campaign_reads_as_not_found_across_a_block(
     """As discovery already hides it (D-175, audit C10)."""
     brand, brand_headers = brand_login(db, clock)
     campaign = publish(client, brand_headers, create(client, brand_headers)["id"])
+    _, other_headers = brand_login(db, clock)
+    other_campaign = publish(client, other_headers, create(client, other_headers)["id"])
     creator_id, headers = creator_login_with_id(db, clock)
     assert client.get(f"{URL}/{campaign['id']}", headers=headers).status_code == 200
     one, other = (
@@ -498,6 +500,9 @@ def test_an_open_campaign_reads_as_not_found_across_a_block(
     assert_problem(
         client.get(f"{URL}/{campaign['id']}", headers=headers), 404, "campaign_not_found"
     )
+    # Two of each (testing.md section 2): a block tied to the wrong brand
+    # would hide this one too.
+    assert client.get(f"{URL}/{other_campaign['id']}", headers=headers).status_code == 200
     # The brand still reads its own.
     assert client.get(f"{URL}/{campaign['id']}", headers=brand_headers).status_code == 200
 
@@ -506,18 +511,20 @@ def test_a_suspended_brands_open_campaign_reads_as_not_found(client, db, clock):
     """It leaves discovery (D-061); until audit C10 a read by id still found it."""
     brand, brand_headers = brand_login(db, clock)
     campaign = publish(client, brand_headers, create(client, brand_headers)["id"])
+    _, other_headers = brand_login(db, clock)
+    other_campaign = publish(client, other_headers, create(client, other_headers)["id"])
     db.execute(
         update(Account)
         .where(Account.id == brand.account_id)
         .values(suspended_at=clock.now, suspension_reason="abuse")
     )
     db.flush()
+    reader = creator_login(db, clock)
 
     assert_problem(
-        client.get(f"{URL}/{campaign['id']}", headers=creator_login(db, clock)),
-        404,
-        "campaign_not_found",
+        client.get(f"{URL}/{campaign['id']}", headers=reader), 404, "campaign_not_found"
     )
+    assert client.get(f"{URL}/{other_campaign['id']}", headers=reader).status_code == 200
 
 
 def test_another_brand_cannot_change_your_campaign(client, db, clock):

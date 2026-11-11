@@ -245,8 +245,14 @@ class CampaignRead(BaseModel):
     @property
     def text_flags(self) -> list[FieldFlag]:
         # Creators read a brief before any deal: money and contact both count.
+        # The title too: "₹500 registration, DM us" fits in one (trust and
+        # safety gap 2, closed with the next change to this schema).
         return field_flags(
-            {"description": self.description, "deliverables": self.deliverables},
+            {
+                "title": self.title,
+                "description": self.description,
+                "deliverables": self.deliverables,
+            },
             money=True,
             contact=True,
         )

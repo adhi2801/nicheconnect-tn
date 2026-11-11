@@ -172,12 +172,27 @@ def test_reading_one_campaign_is_a_handful_of_queries(client, db):
     db.add(campaign)
     db.flush()
 
-    count = queries_for(
-        client, f"{CAMPAIGNS_URL}/{campaign.id}", auth(brand.account_id, "brand")
-    )
+    creator = build_creator(db)
+    db.add(creator)
+    db.flush()
+    counts = []
+    for account_id, role in (
+        (brand.account_id, "brand"),
+        (creator.account_id, "creator"),
+    ):
+        # Cold, as a real request's session is. Until 8 November this read
+        # with the campaign still in the session's cache, so loading it cost
+        # nothing and the bound was 5; a request has always cost 6 (measured
+        # cold, before and after audit C10 moved suspension and blocks into
+        # the campaign's own query).
+        db.expunge_all()
+        counts.append(
+            queries_for(client, f"{CAMPAIGNS_URL}/{campaign.id}", auth(account_id, role))
+        )
 
-    # Its deliverables are one more (D-127).
-    assert count <= 5
+    # The account, the campaign with its brand's standing and any block,
+    # the takedowns, the brand's name and domain, its deliverables (D-127).
+    assert counts == [6, 6]
 
 
 def test_my_applications_query_count_does_not_grow_with_rows(client, db):
