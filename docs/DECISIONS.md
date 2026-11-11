@@ -2259,3 +2259,18 @@ Newest entries at the bottom.
 - Consequences / follow-ups:
   1. `Dockerfile`: `zlib1g=1:1.3.dfsg+really1.3.1-1+deb13u1`, exact, upgrade only, beside OpenSSL, PCRE2 and APT; removed when the base digest carries it.
   2. Checked locally before pushing: the image rebuilt and Grype 0.119.0 with `.grype.yaml`, `--only-fixed --fail-on negligible`: no vulnerabilities found. The embeddings image is built from it and inherits the fix.
+
+## D-179: Six of the world bars made binding
+- Date: 2026-11-11
+- Approved by: Adhi, in this session, choosing all six from two lists ("everything needs to be world-class, sky high"). **Not reviewed by the other founder** (D-051).
+- Context: the 6 November pass set each standard's section 0 against the leaders' published practice; six rows waited on a founder's yes and bound nothing until then.
+- Options considered: each of the six, yes or no.
+- Chosen: all six.
+- Reason: each is the published practice of a leader (Google SRE, GitHub and the IETF, Stripe, OpenSSF, NIST, OWASP), and none can be claimed by us until it binds.
+- Consequences / follow-ups (each row's enforcement is built in the change that builds it, `CLAUDE.md` section 5):
+  1. **p99 as a gate** beside p95: 800 ms for reads, 1,200 ms for writes (`backend.md` section 0; item 117): the measurement script and the load test fail on it.
+  2. **RateLimit headers** (IETF draft, as GitHub does) on every rate-limited answer (item 107).
+  3. **Never break a client** (Stripe): nothing published removed or changed in meaning; a breaking need gets a new route, the old one `Deprecation` and a `Sunset` at least 12 months ahead; an automatic breaking-change check on the contract in CI (item 105; its tool is a dev dependency, proposed when built).
+  4. **OpenSSF Scorecard** at 8.0 or above, no critical check below 8, on every push to `main` (item 125; a CI workflow, proposed when built).
+  5. **Admins on passkeys** once the domain exists, the authenticator kept as the second factor (item 129).
+  6. **The ASVS 5.0 map a release gate**: chapter by chapter, each requirement against its test or file, before launch (item 123; D-166 set the levels).
