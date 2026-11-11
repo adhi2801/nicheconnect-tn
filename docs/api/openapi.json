@@ -23075,7 +23075,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "No such brand"
+            "description": "No such brand, or a block stands between you"
           },
           "422": {
             "content": {
@@ -23209,7 +23209,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "No such brand"
+            "description": "No such brand, or a block stands between you"
           },
           "422": {
             "content": {
@@ -23312,7 +23312,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "No such brand"
+            "description": "No such brand, or a block stands between you"
           },
           "422": {
             "content": {
@@ -23414,7 +23414,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "No such brand"
+            "description": "No such brand, or a block stands between you"
           },
           "422": {
             "content": {
@@ -31263,13 +31263,14 @@
           },
           "422": {
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
-              }
+              },
+              "application/problem+json": {}
             },
-            "description": "The request is not valid; `errors` names each field and why"
+            "description": "The creator id is not a valid id; or `brand_choice_needed`: on more than one brand's team, send `Brand-Id`"
           },
           "429": {
             "content": {
@@ -31433,7 +31434,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "A query parameter or the cursor is invalid"
+            "description": "A query parameter or the cursor is invalid; or `brand_choice_needed`: on more than one brand's team, send `Brand-Id`"
           },
           "429": {
             "content": {
@@ -31708,7 +31709,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "The id is not a valid id"
+            "description": "The creator id is not a valid id; or `brand_choice_needed`: on more than one brand's team, send `Brand-Id`"
           },
           "429": {
             "content": {

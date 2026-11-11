@@ -154,7 +154,12 @@ def ensure_may_request(db: Session, account: Account, now: datetime) -> None:
 
 
 def request_deletion(
-    db: Session, account: Account, step_up_code: str | None, now: datetime
+    db: Session,
+    account: Account,
+    step_up_code: str | None,
+    now: datetime,
+    *,
+    session_id: uuid.UUID | None = None,
 ) -> DeletionState:
     """Ask for the account to be deleted 30 days from now. Commits.
 
@@ -175,6 +180,8 @@ def request_deletion(
     takes_effect_at = now + DELETION_WAIT
     account.deletion_requested_at = now
     account.deletion_takes_effect_at = takes_effect_at
+    # The login asking is never kept alive by the wait (D-176).
+    account.deletion_requested_by_session = session_id
     account.updated_at = now
     notifications.record(
         db,
@@ -205,6 +212,7 @@ def cancel(db: Session, account: Account, now: datetime) -> None:
         return
     account.deletion_requested_at = None
     account.deletion_takes_effect_at = None
+    account.deletion_requested_by_session = None
     account.updated_at = now
     notifications.record(
         db, account_id=account.id, notification_type="deletion_cancelled", now=now

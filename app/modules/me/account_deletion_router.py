@@ -9,7 +9,12 @@ from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
-from app.modules.auth.dependencies import CurrentAccount, StepUpCode, get_now
+from app.modules.auth.dependencies import (
+    CurrentAccount,
+    CurrentSessionId,
+    StepUpCode,
+    get_now,
+)
 from app.modules.me import account_deletion_service as service
 from app.modules.me.account_deletion_schemas import (
     MAX_UNFINISHED_SHOWN,
@@ -115,11 +120,14 @@ def read_my_deletion(
 def delete_my_account(
     request: Request,
     account: CurrentAccount,
+    session_id: CurrentSessionId,
     step_up_code: StepUpCode = None,
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> AccountDeletionRead:
-    return _read(service.request_deletion(db, account, step_up_code, now))
+    return _read(
+        service.request_deletion(db, account, step_up_code, now, session_id=session_id)
+    )
 
 
 @router.delete(

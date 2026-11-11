@@ -76,4 +76,11 @@ def test_null_is_refused_where_the_column_always_holds_a_value(schema, field, nu
         return
     with pytest.raises(ValidationError) as refused:
         schema.model_validate({field: None})
-    assert refused.value.errors()[0]["type"] == "value_required"
+    [error] = refused.value.errors()
+    # Named, so the person knows which field to fix (mutation testing found
+    # no test held the name, 8 November 2026).
+    assert (error["type"], error["msg"], error["ctx"]) == (
+        "value_required",
+        f"{field} cannot be null",
+        {"field": field},
+    )

@@ -58,6 +58,7 @@ from app.modules.profiles import brand_domain_service as brand_domains
 from app.modules.profiles import brand_name_service
 from app.modules.profiles.brand_domain_models import BrandDomain
 from app.modules.profiles.brand_names import NameFlag
+from app.modules.safety.blocks import not_blocked_with_brand
 
 # Below this, the figures are withheld rather than shown with a caveat
 # nobody reads (D-027).
@@ -252,8 +253,18 @@ def for_brands(
     }
 
 
-def brand_exists(db: Session, brand_id: uuid.UUID) -> bool:
-    return db.scalar(select(Brand.id).where(Brand.id == brand_id)) is not None
+def brand_exists(db: Session, brand_id: uuid.UUID, viewer_account_id: uuid.UUID) -> bool:
+    """Whether the brand exists for this reader: not across a block, either
+    way, so a blocked creator reads every record of the brand's as of
+    nobody, as the brand reads theirs (D-175)."""
+    return (
+        db.scalar(
+            select(Brand.id).where(
+                Brand.id == brand_id, not_blocked_with_brand(viewer_account_id, Brand.id)
+            )
+        )
+        is not None
+    )
 
 
 def verified_domain_of(db: Session, brand_id: uuid.UUID) -> BrandDomain | None:

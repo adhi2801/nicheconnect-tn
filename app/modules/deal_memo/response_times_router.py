@@ -49,7 +49,10 @@ _ERRORS: ResponseDocs = {
         "From work submitted to approved or sent back; an approval by the "
         "clock counts at the moment the review window ended. " + _MEANING
     ),
-    responses={**_ERRORS, 404: problem_doc("No such brand")},
+    responses={
+        **_ERRORS,
+        404: problem_doc("No such brand, or a block stands between you"),
+    },
 )
 @rate_limit(READ_LIMIT)
 def brand_response_times(
@@ -59,7 +62,7 @@ def brand_response_times(
     db: Annotated[Session, Depends(get_db)],
 ) -> BrandResponseTimesRead:
     """Any signed-in account, as for the brand's payment record."""
-    if not reliability.brand_exists(db, brand_id):
+    if not reliability.brand_exists(db, brand_id, account.id):
         raise ProfileNotFound()
     found = response_times.for_brand(db, brand_id)
     return BrandResponseTimesRead(
@@ -82,6 +85,10 @@ def brand_response_times(
         404: problem_doc(
             "No such creator, or a block stands between you; or `brand_not_found` "
             "for a `Brand-Id` that is not a brand you act for"
+        ),
+        422: problem_doc(
+            "The creator id is not a valid id; or `brand_choice_needed`: on more "
+            "than one brand's team, send `Brand-Id`"
         ),
     },
 )

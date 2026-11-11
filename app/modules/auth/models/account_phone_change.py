@@ -84,6 +84,13 @@ class AccountPhoneChange(Base):
     without_current_number: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
+    # The login (its session family) that asked, which is never kept alive
+    # past its 30 days while the change waits (D-176): asking again from it,
+    # to restart the wait, keeps nothing alive. NULL when the token that
+    # asked named no session (signed before D-114).
+    requested_by_session: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

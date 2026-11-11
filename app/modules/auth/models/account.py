@@ -72,6 +72,10 @@ class Account(Base):
             name="deleted_only_after_a_request",
         ),
         CheckConstraint(
+            "deletion_requested_by_session IS NULL OR deletion_requested_at IS NOT NULL",
+            name="deletion_asker_only_with_a_request",
+        ),
+        CheckConstraint(
             "(deleted_at IS NULL) = (phone IS NOT NULL)", name="phone_until_deleted"
         ),
     )
@@ -111,6 +115,13 @@ class Account(Base):
     )
     deletion_takes_effect_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    # The login (its session family) that asked for the deletion, which is
+    # never kept alive past its 30 days while the deletion waits (D-176), so
+    # a thief who asks gains nothing. NULL with no deletion asked for, or one
+    # asked for by a token that named no session (signed before D-114).
+    deletion_requested_by_session: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True
     )
     deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

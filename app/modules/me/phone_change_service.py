@@ -151,6 +151,8 @@ def request_change(
     step_up_code: str | None,
     authenticated_at: datetime | None,
     now: datetime,
+    *,
+    session_id: uuid.UUID | None = None,
 ) -> PhoneChangeState:
     """Start moving the account onto `new_phone`, which takes over in 72 hours.
 
@@ -185,6 +187,7 @@ def request_change(
         step_up_code,
         now,
         without_current_number=False,
+        session_id=session_id,
     )
 
 
@@ -196,6 +199,8 @@ def request_change_without_current_number(
     authenticated_at: datetime | None,
     now: datetime,
     step_up_code: str | None = None,
+    *,
+    session_id: uuid.UUID | None = None,
 ) -> PhoneChangeState:
     """Start moving the account onto `new_phone` when its current number is lost (D-110).
 
@@ -230,6 +235,7 @@ def request_change_without_current_number(
         step_up_code,
         now,
         without_current_number=True,
+        session_id=session_id,
     )
 
 
@@ -242,8 +248,13 @@ def _claim(
     now: datetime,
     *,
     without_current_number: bool,
+    session_id: uuid.UUID | None,
 ) -> PhoneChangeState:
     """Both locks, the codes, the checks and the waiting row. Commits.
+
+    `session_id` is the login asking, kept with the row so the wait never
+    keeps that login alive (D-176): asking again from it restarts the wait
+    and holds nothing.
 
     `step_up_code` is spent when given: a code from the current number, or a
     passkey's grant (D-113). Without the current number and no passkey,
@@ -278,6 +289,7 @@ def _claim(
         "requested_at": now,
         "takes_effect_at": takes_effect_at,
         "without_current_number": without_current_number,
+        "requested_by_session": session_id,
         "updated_at": now,
     }
     try:

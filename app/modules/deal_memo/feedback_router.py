@@ -160,6 +160,10 @@ def _creator_readable(
             "No such creator, or a block stands between you; or `brand_not_found` "
             "for a `Brand-Id` that is not a brand you act for"
         ),
+        422: problem_doc(
+            "The creator id is not a valid id; or `brand_choice_needed`: on more "
+            "than one brand's team, send `Brand-Id`"
+        ),
     },
 )
 @rate_limit(READ_LIMIT)
@@ -187,7 +191,10 @@ def creator_feedback(
             "No such creator, or a block stands between you; or `brand_not_found` "
             "for a `Brand-Id` that is not a brand you act for"
         ),
-        422: problem_doc("A query parameter or the cursor is invalid"),
+        422: problem_doc(
+            "A query parameter or the cursor is invalid; or `brand_choice_needed`: "
+            "on more than one brand's team, send `Brand-Id`"
+        ),
     },
 )
 @rate_limit(READ_LIMIT)
@@ -216,7 +223,10 @@ def creator_feedback_notes(
         "how many and from how many creators. Null below three answers. Show beside "
         "the payment record, never instead. Any signed-in account."
     ),
-    responses={**_COMMON, 404: problem_doc("No such brand")},
+    responses={
+        **_COMMON,
+        404: problem_doc("No such brand, or a block stands between you"),
+    },
 )
 @rate_limit(READ_LIMIT)
 def brand_feedback(
@@ -226,7 +236,7 @@ def brand_feedback(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> FeedbackFiguresRead:
-    if not reliability.brand_exists(db, brand_id):
+    if not reliability.brand_exists(db, brand_id, account.id):
         raise ProfileNotFound()
     return _figures(service.figures(db, "brand", brand_id, now))
 
@@ -238,7 +248,7 @@ def brand_feedback(
     description="Revealed notes, newest first, each beside the brand's own words on that deal.",
     responses={
         **_COMMON,
-        404: problem_doc("No such brand"),
+        404: problem_doc("No such brand, or a block stands between you"),
         422: problem_doc("A query parameter or the cursor is invalid"),
     },
 )
@@ -252,7 +262,7 @@ def brand_feedback_notes(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> Page[FeedbackNoteRead]:
-    if not reliability.brand_exists(db, brand_id):
+    if not reliability.brand_exists(db, brand_id, account.id):
         raise ProfileNotFound()
     return _notes(service.notes(db, "brand", brand_id, now, limit=limit, cursor=cursor))
 

@@ -15949,7 +15949,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description No such brand */
+            /** @description No such brand, or a block stands between you */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -16027,7 +16027,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description No such brand */
+            /** @description No such brand, or a block stands between you */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -16101,7 +16101,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description No such brand */
+            /** @description No such brand, or a block stands between you */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -16174,7 +16174,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description No such brand */
+            /** @description No such brand, or a block stands between you */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -21417,13 +21417,14 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description The request is not valid; `errors` names each field and why */
+            /** @description The creator id is not a valid id; or `brand_choice_needed`: on more than one brand's team, send `Brand-Id` */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
                 };
             };
             /** @description Too many requests; see the Retry-After header */
@@ -21508,7 +21509,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description A query parameter or the cursor is invalid */
+            /** @description A query parameter or the cursor is invalid; or `brand_choice_needed`: on more than one brand's team, send `Brand-Id` */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -21692,7 +21693,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description The id is not a valid id */
+            /** @description The creator id is not a valid id; or `brand_choice_needed`: on more than one brand's team, send `Brand-Id` */
             422: {
                 headers: {
                     [name: string]: unknown;
