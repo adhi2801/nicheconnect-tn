@@ -38,6 +38,11 @@ def set_fields(db, account_id, assignments: str) -> None:
             "ck_account_deletion_takes_effect_thirty_days_after",
         ),
         (
+            # The login that asked, with nothing asked for (D-176).
+            "deletion_requested_by_session = gen_random_uuid()",
+            "ck_account_deletion_asker_only_with_a_request",
+        ),
+        (
             "deleted_at = now(), phone = NULL",
             "ck_account_deleted_only_after_a_request",
         ),

@@ -29,12 +29,15 @@ class DomainError(Exception):
     """Base class for business-rule errors raised by services.
 
     Subclasses set status_code, code (stable, machine-readable) and title
-    (safe to show to users). detail adds a user-safe explanation.
+    (safe to show to users). detail adds a user-safe explanation. `errors`,
+    when set, names fields as a 422 from validation does, so a rule a
+    service checks reads exactly as the same rule checked on the body.
     """
 
     status_code: int = HTTPStatus.BAD_REQUEST
     code: str = "domain_error"
     title: str = "The request could not be completed"
+    errors: list[dict[str, str]] | None = None
 
     def __init__(
         self, detail: str | None = None, *, headers: dict[str, str] | None = None
@@ -132,6 +135,7 @@ async def handle_domain_error(request: Request, exc: DomainError) -> JSONRespons
         code=exc.code,
         title=exc.title,
         detail=exc.detail,
+        errors=exc.errors,
         headers=exc.headers,
     )
 

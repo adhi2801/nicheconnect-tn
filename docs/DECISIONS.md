@@ -2194,3 +2194,68 @@ Newest entries at the bottom.
   1. `creator.bio_words` and `campaign.brief_words`, stored generated `tsvector` columns in matching's English config, computed by the database on every write; never written by the app, deferred so ordinary reads do not fetch them (migration `e65f3516f952`).
   2. `docs/RANKING_EXPLAINED.md` says each word counts once and a long list counts for less per word.
   3. The proposal's "same public profile text" reads, from here, as this decision states.
+
+## D-174: A login lasts 30 days from when it was proven; a lost number moves from a login 14 days old
+- Date: 2026-11-07
+- Approved by: Adhi, in this session: "30 days (Recommended)" for item 144's lifetime, then, told that it made D-110's 30-day-old login unreachable, "30 days, recovery at 14 (Recommended)". **Not reviewed by the other founder** (D-051).
+- Context: audit C1 (6 November) found brand and creator sessions had no overall limit: each refresh granted 30 more days, so a refresh token stolen and refreshed in time worked for ever. NIST SP 800-63B-4 section 2 (read 7 November 2026): at AAL1 "a definite reauthentication overall timeout SHALL be established, which SHOULD be no more than 30 days"; OWASP ASVS 5.0 7.3.2. A 30-day limit leaves no login 30 days old, which D-110 needed to move a lost number.
+- Options considered: A) 30 days, D-110 from a login 14 days old; B) 90 days, D-110 unchanged, a recorded deviation from NIST's 30-day SHOULD; C) 60 days, the same; for the lifetime alone, 14 days was also offered.
+- Chosen: A.
+- Reason: it meets NIST's figure, so audit C1 closes; 14 days is twice the week a SIM swapper's fresh login never has (D-109), and the 7-day wait with cancel-by-login (D-110) stays. Re-login with a passkey is one tap.
+- Consequences / follow-ups:
+  1. `auth_session.MEMBER_SESSION_LIMIT` (30 days): `refresh_token_expiry` takes the login's time and never reaches past it plus the limit; every access token stops there too (admins' already did, D-105).
+  2. `refresh_session` refuses a refresh past the limit and ends that login, so rows issued before this change, with later expiries, end on time. No migration: the login's time is already the family's first row (D-109).
+  3. `login_age.LOST_NUMBER_LOGIN` is 14 days; a test holds it between the week of D-109 and the lifetime, so the two cannot collide again. The endpoint's text and the contract say 14.
+  4. What it costs, said plainly: someone who signs in by phone code is asked for a code once a month (an SMS or WhatsApp message, paid per code); after each re-login, the week of D-109 before changing a UPI ID or number starts again, unless they have a passkey; and a lost number can be moved only in the second half of each login.
+
+## D-175: A block closes the media kit too
+- Date: 2026-11-08
+- Approved by: Adhi, in this session: "Yes, close it (Recommended)", after audit C7 found the gap. **Not reviewed by the other founder** (D-051).
+- Context: a block (item 59) kept each side out of the other's search, matches and discovery, and stopped every invitation, repeat and application, but a brand the creator had blocked, or that had blocked them, could still read the creator's media kit by id: the creator's channel figures, their delivery record and prices they had not published. Instagram and LinkedIn close a profile to a blocked account.
+- Options considered: A) the kit reads as a creator that does not exist across a block, either way; B) keep it open, so a brand with an agreed deal can still check the figures, and record the gap.
+- Chosen: A.
+- Reason: a block's promise is to be left alone (`trust-and-safety.md` section 1, rule 7), and the kit is the fullest view of a creator anyone has.
+- Consequences / follow-ups:
+  1. `media_kit_service.for_creator` takes the reader, or the brand a team member reads for (D-148), and the block is a condition in the creator's own query: no query added, six in all.
+  2. Answered 404 `profile_not_found`, exactly as an id that does not exist, so the blocked side is never told. The creator still reads their own; other brands are unaffected; agreed deals carry on, as before.
+  3. Enforced by `tests/modules/passport/test_media_kit_api.py` (either way, a team member, and the block lifted), seen failing without the condition.
+  4. **Widened the same day** (the independent review, then Adhi: "Yes, extend it (Recommended)" for campaigns): the delivery record, response times and feedback by creator id answered a blocked brand 200, which both gave back part of the kit and told it the kit's 404 meant a block; they now answer as the kit does, through `delivery_record.creator_exists`. And a brand's open campaign read by id answers a creator blocked either way as not found, as discovery already did.
+
+## D-176: A login lasts while a change its owner may cancel is waiting
+- Date: 2026-11-08
+- Approved by: Adhi, in this session: "Extend while one waits (Recommended)", after the independent review of D-174 found the conflict. **Not reviewed by the other founder** (D-051).
+- Context: a phone change (72 hours, or 7 days without the current number) and the account's deletion (30 days) are each cancelled from any of the owner's sessions with no code, the answer to a SIM swapper who asks for one (D-109, D-110, D-122). Before D-174 an owner's session never ended; after it, it ended 30 days from its login, and a new login's code goes to whoever holds the number. An owner whose login was 25 days old when a swapper asked for deletion lost the means to cancel five days later.
+- Options considered: A) while either waits, the owner's sessions last until it takes effect; B) a deletion wait shorter than the lifetime; C) accept and document until passkeys are on.
+- Chosen: A.
+- Reason: it keeps every cancel window whole, and a swapper's own session is new anyway, so it gains them nothing; everywhere else NIST's 30 days still holds.
+- Consequences / follow-ups:
+  1. `auth.service.cancel_window_end`: the later of a waiting deletion's and a waiting phone change's moment, one indexed query a refresh. `refresh_token_expiry` takes it as `holds_until`, which outlasts both the login's limit and the idle window.
+  2. A token issued before the request still reaches the end of the wait: a refresh is checked against its login's limit and any waiting change, not only its stored expiry.
+  3. Once the change is made, every session ends anyway (a phone change ends them, a deletion erases the account); once cancelled, the 30 days apply again at the next refresh.
+  4. Enforced by `tests/modules/auth/test_refresh_service.py` (a deletion, each kind of phone change, and one already past).
+
+## D-177: D-176's hold keeps only the owner; a block closes the brand's records too
+- Date: 2026-11-11
+- Approved by: Adhi, in this session: "Hold only the owner (Recommended)" and "Yes, close them (Recommended)", after the independent review of the whole branch. **Not reviewed by the other founder** (D-051).
+- Context: the review found D-176, as built, kept alive the login that asked as well as the owner's: a thief holding a session at least 14 days old could ask to move the account to their own number and ask again before each 7-day wait ended, so their session never ended, undoing D-174. It also revived tokens that had already run out (an old laptop, a cybercafe browser) for the whole wait, kept holding after a login with the current number cancelled the change, and dropped the hold from a deletion an unfinished deal held past its date. Separately, a creator blocked by a brand still read the brand's payment record, response times and feedback by id, which told them the campaign's 404 meant a block.
+- Options considered: for the hold, A) record the login that asked and hold only others, B) remove the hold and document the gap until passkeys; for the brand's records, A) close them across a block, B) keep them open and correct the docs.
+- Chosen: A and A.
+- Reason: the hold exists for the owner; whoever asked is the one person it must never help. The block's promise is the same in both directions.
+- Twelve dimensions, short: **Quality** each condition broken on purpose and its test seen failing (5 hold conditions, 2 routes recording the asker, 8 brand-record cases); **Security** (STRIDE) spoofing: none new; tampering: the asker is set by the server from the token's session, never from the body; repudiation: the asker is kept on the row while it waits; information disclosure: a blocked side learns nothing, every record reads as not found; denial of service: a deletion held by a deal renews the owner's login a day at a time, never further; elevation: asking, or asking again, keeps the asker nothing, and no token that had run out comes back; **Privacy** a session family id is not personal data beyond the session it names, kept only while the change waits; **Trust and safety** a SIM swapper still cannot outlast the owner's cancel window; **Performance** one more query a refresh at most (the phone change), the measured p95 in `docs/PERFORMANCE.md`; **Reliability** a request from a token naming no session (before D-114) holds every login alive at it, as before; **Maintainability** the rule is one function, `auth.service.cancel_window_end`; **Architecture, design, business, novelty, research** none beyond D-174 to D-176.
+- Consequences / follow-ups:
+  1. Migration `578a45512fe0`: `account.deletion_requested_by_session` (with `ck_account_deletion_asker_only_with_a_request`) and `account_phone_change.requested_by_session`, the session family that asked, set by the routes from the token's `sid`; cleared or replaced with the request.
+  2. `cancel_window_end` holds a login only if it did not ask, existed before the request and was still alive at it; a voided phone change holds nothing; a deletion past its date but not done renews the hold a day at a time.
+  3. `reliability.brand_exists` takes the reader, like `delivery_record.creator_exists`: a brand's reliability, response times and feedback answer a creator blocked either way as not found.
+  4. Correcting D-175 consequence 1 and the C10 row: the block check adds no query, but a team member reading a creator's records goes through the brand-access check (1 to 3 queries, as every brand route) and must name the brand with `Brand-Id` when on more than one team (422 `brand_choice_needed`), now documented on each route.
+  5. Correcting audit C10: the lock serialises a change with a publish, but the final state cannot show which came first, so no test can prove that half; the claim is withdrawn, and the two-changes race keeps its test.
+
+## D-178: zlib patched in the API image (three CVEs, two High)
+- Date: 2026-11-11
+- Approved by: Adhi, in this session: "Yes, patch it (Recommended)". **Not reviewed by the other founder** (D-051).
+- Context: CI's image gate failed on `0ce20d3`: Grype 0.119.0 found CVE-2026-76844 and CVE-2026-85091 (High) and CVE-2026-27171 (Medium) in the base image's `zlib1g` 1:1.3.dfsg+really1.3.1-1+b1, each fixed in 1:1.3.dfsg+really1.3.1-1+deb13u1. Nothing in the change introduced them: the vulnerability database had moved since `main` last passed.
+- Options considered: A) upgrade `zlib1g` to the fixed version in the image's existing security block (the pattern of D-068 and D-159); B) accept the three in `.grype.yaml` with a reason and an expiry.
+- Chosen: A.
+- Reason: a fix exists, two are rated High, and D-047 says security fixes come at once.
+- Consequences / follow-ups:
+  1. `Dockerfile`: `zlib1g=1:1.3.dfsg+really1.3.1-1+deb13u1`, exact, upgrade only, beside OpenSSL, PCRE2 and APT; removed when the base digest carries it.
+  2. Checked locally before pushing: the image rebuilt and Grype 0.119.0 with `.grype.yaml`, `--only-fixed --fail-on negligible`: no vulnerabilities found. The embeddings image is built from it and inherits the fix.

@@ -24,8 +24,11 @@ from app.modules.auth.exceptions import LoginTooRecent
 # 2026), and TRAI's 7 days before a swapped SIM's number may be ported.
 ESTABLISHED_LOGIN = timedelta(days=7)
 # Moving the account without a code from its current number (D-110): the
-# login itself is then the only proof, so it must be much older.
-LOST_NUMBER_LOGIN = timedelta(days=30)
+# login itself is then the only proof, so it must be much older. Twice
+# ESTABLISHED_LOGIN, and under the 30 days a login now lasts (D-174), so
+# such a login exists for the second half of every one; it was 30 days,
+# which no login could reach once logins ended at 30.
+LOST_NUMBER_LOGIN = timedelta(days=14)
 
 
 def allowed_from(

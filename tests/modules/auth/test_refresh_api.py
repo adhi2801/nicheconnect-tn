@@ -98,7 +98,8 @@ def test_refresh_returns_a_new_pair_of_tokens(client, sender, clock):
     assert body["access_token"] != login["access_token"]
     assert body["refresh_token"] != login["refresh_token"]
     assert body["expires_in"] == 15 * 60
-    assert body["refresh_expires_in"] == 30 * 24 * 60 * 60
+    # Counted from the login, not the refresh (D-174).
+    assert body["refresh_expires_in"] == 30 * 24 * 60 * 60 - 5 * 60
     assert body["account"] == {**login["account"], "is_new": False}
     claims = decode_access_token(body["access_token"], clock.now)
     assert str(claims.account_id) == login["account"]["id"]

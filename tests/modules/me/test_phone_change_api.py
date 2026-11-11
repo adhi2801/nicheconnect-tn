@@ -8,9 +8,11 @@ tests/modules/auth/test_account_phone_change_model.py, two accounts racing
 for one number in test_phone_change_concurrency.py.
 """
 
+import uuid
 from collections.abc import Iterator
 from contextlib import nullcontext
 from datetime import timedelta
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import select
@@ -27,11 +29,12 @@ from app.modules.auth.models.account_phone_change import (
 from app.modules.auth.models.otp_challenge import OtpChallenge
 from app.modules.auth.models.step_up_challenge import StepUpChallenge
 from app.modules.auth.sender import FakeOtpSender, get_otp_sender
+from app.modules.auth.tokens import create_access_token
 from app.modules.me import phone_change_service as service
 from app.modules.me.phone_change_router import CHANGE_LIMIT
 from app.modules.notifications.models import Notification
 from tests.deal_flow import User, brand_user, creator_user
-from tests.factories import create_account, unique_test_phone
+from tests.factories import build_auth_session, create_account, unique_test_phone
 from tests.step_up import STEP_UP_URL, download_export
 
 URL = "/api/v1/me/phone-change"
@@ -677,3 +680,25 @@ def test_the_export_holds_a_waiting_change(client, db, sender, clock, creator):
         "created_at",
         "updated_at",
     }
+
+
+def test_the_login_asking_is_recorded_with_the_change(client, db, sender, creator):
+    """So the wait never keeps that login alive (D-176)."""
+    family = uuid.uuid4()
+    db.add(build_auth_session(db, account_id=creator.account_id, family_id=family))
+    db.commit()
+    token, _ = create_access_token(
+        creator.account_id,
+        "creator",
+        creator.clock.now,
+        authenticated_at=creator.clock.now - timedelta(days=60),
+        session_id=family,
+    )
+    asker = SimpleNamespace(
+        account_id=creator.account_id, headers={"Authorization": f"Bearer {token}"}
+    )
+
+    response = change(client, db, sender, asker, unique_test_phone())
+
+    assert response.status_code == 202, response.text
+    assert waiting_row(db, creator).requested_by_session == family

@@ -32,11 +32,13 @@ from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import brand_is_active, brand_is_unavailable
 from app.modules.campaigns import alert_service
 from app.modules.campaigns import offer_service as offers
+from app.modules.campaigns.budget import budget_problem
 from app.modules.campaigns.deliverable_models import CampaignDeliverable
 from app.modules.campaigns.exceptions import (
     AlreadyApplied,
     ApplicationsClosed,
     ApplicationStatusConflict,
+    CampaignBudgetInvalid,
     CampaignNotEditable,
     CampaignNotFound,
     CampaignNotOpen,
@@ -135,19 +137,31 @@ def get_visible_campaign(
     withheld (item 52).
 
     Raises CampaignNotFound for another brand's campaign that is not open,
-    never 403, so drafts stay private; and ContentWithheld (451) for an open
-    one withheld by a takedown, of it or of its brand.
+    never 403, so drafts stay private; for one whose brand is suspended,
+    which leaves discovery too (D-061); and across a block, either way, as
+    discovery does (D-175, audit C10). ContentWithheld (451) for an open one
+    withheld by a takedown, of it or of its brand.
     """
-    campaign = db.get(Campaign, campaign_id)
-    if campaign is None:
+    # Suspension and blocks are worked out in the campaign's own query, so
+    # an open campaign, the common case, still costs no query for them.
+    found = db.execute(
+        select(
+            Campaign,
+            brand_is_active(Campaign.brand_id),
+            not_blocked_with_brand(account.id, Campaign.brand_id),
+        ).where(Campaign.id == campaign_id)
+    ).first()
+    if found is None:
         raise CampaignNotFound()
+    campaign, brand_active, not_blocked = found
     withheld = campaign_is_withheld(db, campaign.id, campaign.brand_id)
+    hidden = campaign.status != "open" or not brand_active or not not_blocked
     # Only now asked whether the reader is of the brand: an open campaign,
     # the common case, costs no query for it.
-    if (campaign.status != "open" or withheld) and brand_access.role_in(
+    if (hidden or withheld) and brand_access.role_in(
         db, account, campaign.brand_id
     ) is None:
-        if campaign.status != "open":
+        if hidden:
             raise CampaignNotFound()
         raise ContentWithheld()
     return campaign
@@ -207,8 +221,13 @@ def update_campaign(
 
     A draft can be changed completely. An open campaign only allows the fields
     in EDITABLE_WHILE_OPEN. A closed or cancelled campaign allows nothing.
-    Raises CampaignNotEditable and FieldNotEditableNow.
+    Raises CampaignNotEditable, FieldNotEditableNow and CampaignBudgetInvalid.
     """
+    # Locked and read again before any check, as change_status does: two
+    # changes at once, each fine alone, both passed the checks on the same
+    # old row and together broke the budget's CHECK, a 500; and a change
+    # racing a publish could edit a field an open campaign keeps (audit C10).
+    db.refresh(campaign, with_for_update=True)
     if campaign.status in ("closed", "cancelled"):
         db.rollback()
         raise CampaignNotEditable()
@@ -221,6 +240,17 @@ def update_campaign(
             )
 
     items = changes.pop("deliverable_items", None)
+    after = {
+        name: changes.get(name, getattr(campaign, name))
+        for name in ("campaign_type", "budget_min_paise", "budget_max_paise")
+    }
+    problem = budget_problem(
+        after["campaign_type"], after["budget_min_paise"], after["budget_max_paise"]
+    )
+    if problem is not None:
+        # Else the database's CHECK refused it, answered 500 (audit C6).
+        db.rollback()
+        raise CampaignBudgetInvalid(*problem)
     for field, value in changes.items():
         setattr(campaign, field, value)
     if items is not None:

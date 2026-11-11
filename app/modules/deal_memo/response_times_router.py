@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
+from app.modules.auth.brand_dependencies import AnyBrandAccess
 from app.modules.auth.dependencies import CurrentAccount
 from app.modules.auth.exceptions import ProfileNotFound, RoleNotAllowed
 from app.modules.deal_memo import delivery_record, response_times
@@ -48,7 +49,10 @@ _ERRORS: ResponseDocs = {
         "From work submitted to approved or sent back; an approval by the "
         "clock counts at the moment the review window ended. " + _MEANING
     ),
-    responses={**_ERRORS, 404: problem_doc("No such brand")},
+    responses={
+        **_ERRORS,
+        404: problem_doc("No such brand, or a block stands between you"),
+    },
 )
 @rate_limit(READ_LIMIT)
 def brand_response_times(
@@ -58,7 +62,7 @@ def brand_response_times(
     db: Annotated[Session, Depends(get_db)],
 ) -> BrandResponseTimesRead:
     """Any signed-in account, as for the brand's payment record."""
-    if not reliability.brand_exists(db, brand_id):
+    if not reliability.brand_exists(db, brand_id, account.id):
         raise ProfileNotFound()
     found = response_times.for_brand(db, brand_id)
     return BrandResponseTimesRead(
@@ -78,7 +82,14 @@ def brand_response_times(
     responses={
         **_ERRORS,
         403: problem_doc("Only brands, or the creator themself, can read this"),
-        404: problem_doc("No such creator"),
+        404: problem_doc(
+            "No such creator, or a block stands between you; or `brand_not_found` "
+            "for a `Brand-Id` that is not a brand you act for"
+        ),
+        422: problem_doc(
+            "The creator id is not a valid id; or `brand_choice_needed`: on more "
+            "than one brand's team, send `Brand-Id`"
+        ),
     },
 )
 @rate_limit(READ_LIMIT)
@@ -86,6 +97,7 @@ def creator_response_times(
     request: Request,
     creator_id: Annotated[uuid.UUID, Path(description="The creator's id")],
     account: CurrentAccount,
+    access: AnyBrandAccess,
     db: Annotated[Session, Depends(get_db)],
 ) -> CreatorResponseTimesRead:
     """Any brand, or the creator themself, as for the delivery record."""
@@ -95,7 +107,9 @@ def creator_response_times(
         and delivery_record.creator_id_for_account(db, account.id) != creator_id
     ):
         raise RoleNotAllowed()
-    if not delivery_record.creator_exists(db, creator_id):
+    # Blocks are the brand's (D-148): a team member reads as the brand.
+    viewer = account.id if access is None else access.brand.account_id
+    if not delivery_record.creator_exists(db, creator_id, viewer):
         raise ProfileNotFound()
     found = response_times.for_creator(db, creator_id)
     return CreatorResponseTimesRead(

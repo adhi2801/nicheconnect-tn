@@ -8,13 +8,16 @@ test_account_deletion_concurrency.py, the table's rules in
 tests/modules/auth/test_account_model.py.
 """
 
+import uuid
 from datetime import timedelta
 
 import pytest
 from sqlalchemy import select
 
 from app.core.clock import india_date
+from app.modules.auth.models.account import Account
 from app.modules.auth.models.step_up_challenge import StepUpChallenge
+from app.modules.auth.tokens import create_access_token
 from app.modules.me import account_deletion_service as service
 from app.modules.me.account_deletion_registry import KEPT
 from app.modules.me.account_deletion_router import REQUEST_LIMIT
@@ -30,7 +33,7 @@ from tests.deal_flow import (
     creator_user,
     finish_deal,
 )
-from tests.factories import create_account
+from tests.factories import build_auth_session, create_account
 from tests.step_up import STEP_UP_URL, with_code
 
 URL = "/api/v1/me/deletion"
@@ -498,3 +501,24 @@ def test_a_declined_or_cancelled_deal_holds_nothing(client, brand, creator, endi
 
     assert state(client, brand)["unfinished_deals"] == 0
     assert state(client, creator)["unfinished_deals"] == 0
+
+
+def test_the_login_asking_is_recorded_and_cleared_with_a_cancel(client, db, creator):
+    """So the wait never keeps that login alive (D-176)."""
+    family = uuid.uuid4()
+    db.add(build_auth_session(db, account_id=creator.account_id, family_id=family))
+    db.flush()
+    token, _ = create_access_token(
+        creator.account_id, "creator", creator.clock.now, session_id=family
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+
+    asked = client.post(URL, headers=with_code(client, headers, "delete_account"))
+
+    assert asked.status_code == 202, asked.text
+    account = db.get_one(Account, creator.account_id)
+    db.refresh(account)
+    assert account.deletion_requested_by_session == family
+    assert client.delete(URL, headers=headers).status_code == 204
+    db.refresh(account)
+    assert account.deletion_requested_by_session is None

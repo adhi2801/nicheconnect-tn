@@ -786,6 +786,75 @@ def measure_writes(
                 )
                 if run.made != 1:
                     raise SystemExit(f"phone change job: {run}")
+            # A login refreshed (D-174 to D-177): a real login through the
+            # codes, then its token rotated `deals` times, each refresh
+            # reading the login's limit and any change waiting on the account.
+            refresh_phone = f"+9194{uuid.uuid4().int % 10**8:08d}"
+            write(None, "/api/v1/auth/otp/request", {}, {"phone": refresh_phone})
+            tokens = write(
+                None,
+                "/api/v1/auth/otp/verify",
+                {},
+                {
+                    "phone": refresh_phone,
+                    "code": sender.last_code_for(refresh_phone) or "",
+                    "role": "creator",
+                },
+            )
+            for _ in range(deals):
+                tokens = write(
+                    "POST /auth/refresh",
+                    "/api/v1/auth/refresh",
+                    {},
+                    {"refresh_token": tokens["refresh_token"]},
+                )
+            # Deletion asked for with its code, then cancelled (D-122, D-177),
+            # by the creator made for this run, who has no deal to hold it.
+            for _ in range(deals):
+                write(
+                    "POST /me/step-up",
+                    "/api/v1/me/step-up",
+                    rate_card_headers,
+                    {"action": "delete_account"},
+                )
+                write(
+                    "POST /me/deletion (with its code)",
+                    "/api/v1/me/deletion",
+                    {
+                        **rate_card_headers,
+                        "Step-Up-Code": sender.last_code_for("+919000099999") or "",
+                    },
+                )
+                write(
+                    "DELETE /me/deletion",
+                    "/api/v1/me/deletion",
+                    rate_card_headers,
+                    method="DELETE",
+                )
+            # A campaign changed, its row locked first (audit C10).
+            draft = write(
+                None,
+                "/api/v1/campaigns",
+                brand_headers,
+                {
+                    "title": "Diwali hampers",
+                    "description": "Two reels on our hamper boxes.",
+                    "campaign_type": "paid",
+                    "budget_min_paise": 500_000,
+                    "budget_max_paise": 1_500_000,
+                    "cities": ["Madurai"],
+                    "niches": ["food"],
+                    "deliverables": "2 Instagram reels",
+                },
+            )["id"]
+            for round_number in range(deals):
+                write(
+                    "PATCH /campaigns/{id}",
+                    f"/api/v1/campaigns/{draft}",
+                    brand_headers,
+                    {"budget_max_paise": 1_500_000 + round_number},
+                    method="PATCH",
+                )
         finally:
             login.OTP_SEND_LIMITS = caps
             settings.upi_notice_version = notice
@@ -978,6 +1047,61 @@ def main() -> int:
             "GET",
             f"/api/v1/creators/{fullest.id}/media-kit",
             brand_headers,
+            args.runs,
+            READ_BUDGET_MS,
+        ),
+        # Every record read by id answers through a block check (D-175, D-177).
+        measure(
+            client,
+            "GET /creators/{id}/delivery-record",
+            "GET",
+            f"/api/v1/creators/{fullest.id}/delivery-record",
+            brand_headers,
+            args.runs,
+            READ_BUDGET_MS,
+        ),
+        measure(
+            client,
+            "GET /creators/{id}/response-times",
+            "GET",
+            f"/api/v1/creators/{fullest.id}/response-times",
+            brand_headers,
+            args.runs,
+            READ_BUDGET_MS,
+        ),
+        measure(
+            client,
+            "GET /creators/{id}/feedback",
+            "GET",
+            f"/api/v1/creators/{fullest.id}/feedback",
+            brand_headers,
+            args.runs,
+            READ_BUDGET_MS,
+        ),
+        measure(
+            client,
+            "GET /brands/{id}/reliability",
+            "GET",
+            f"/api/v1/brands/{brand.id}/reliability",
+            creator_headers,
+            args.runs,
+            READ_BUDGET_MS,
+        ),
+        measure(
+            client,
+            "GET /brands/{id}/response-times",
+            "GET",
+            f"/api/v1/brands/{brand.id}/response-times",
+            creator_headers,
+            args.runs,
+            READ_BUDGET_MS,
+        ),
+        measure(
+            client,
+            "GET /brands/{id}/feedback",
+            "GET",
+            f"/api/v1/brands/{brand.id}/feedback",
+            creator_headers,
             args.runs,
             READ_BUDGET_MS,
         ),

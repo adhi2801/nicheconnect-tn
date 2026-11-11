@@ -31,6 +31,24 @@ class FieldNotEditableNow(DomainError):
     title = "That detail cannot be changed once the campaign is open"
 
 
+class CampaignBudgetInvalid(DomainError):
+    """A change would leave the campaign's budget breaking its rules.
+
+    Answered exactly as the same rule broken in a new campaign's body: 422
+    `validation_failed`, the rule's message in `errors` (the independent
+    review of audit C6).
+    """
+
+    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
+    code = "validation_failed"
+    title = "Some fields are missing or invalid"
+
+    def __init__(self, rule: str, message: str) -> None:
+        super().__init__()
+        self.rule = rule
+        self.errors = [{"field": "request", "message": message}]
+
+
 class CampaignStatusConflict(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "campaign_status_conflict"

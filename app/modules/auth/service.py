@@ -29,6 +29,7 @@ from app.modules.auth.exceptions import (
     RoleMismatch,
 )
 from app.modules.auth.models.account import Account
+from app.modules.auth.models.account_phone_change import AccountPhoneChange
 from app.modules.auth.models.auth_session import AuthSession, refresh_token_expiry
 from app.modules.auth.models.otp_challenge import MAX_OTP_ATTEMPTS, OTP_TTL, OtpChallenge
 from app.modules.auth.models.step_up_challenge import StepUpChallenge
@@ -420,6 +421,7 @@ def issue_session(
     passkey_at: datetime | None = None,
     device: ClientDevice | None = None,
     sign_in_acknowledged_at: datetime | None = None,
+    holds_until: datetime | None = None,
 ) -> LoginResult:
     """Create one session in `family_id` and return its tokens. The caller commits.
 
@@ -433,9 +435,15 @@ def issue_session(
     family, so its owner can tell it from the others (D-114). Every access
     token carries the family as `sid`, so ending it ends them at once.
     `sign_in_acknowledged_at` is carried the same way (D-120).
+    `holds_until` keeps a brand's or creator's login past its 30 days while
+    a change waits that its owner must be able to cancel (D-176).
     """
     refresh_token = new_refresh_token()
-    refresh_expires_at = refresh_token_expiry(account.role, now, second_factor_at)
+    if authenticated_at is None:
+        authenticated_at = now
+    refresh_expires_at = refresh_token_expiry(
+        account.role, now, second_factor_at, authenticated_at, holds_until
+    )
     db.add(
         AuthSession(
             account_id=account.id,
@@ -462,8 +470,9 @@ def issue_session(
         account.role,
         now,
         methods=methods,
-        not_after=refresh_expires_at if account.role == "admin" else None,
-        authenticated_at=now if authenticated_at is None else authenticated_at,
+        # The login's own limit binds its last access token too (D-105, D-174).
+        not_after=refresh_expires_at,
+        authenticated_at=authenticated_at,
         session_id=family_id,
     )
     return LoginResult(
@@ -513,13 +522,46 @@ def refresh_session(db: Session, refresh_token: str, now: datetime) -> LoginResu
         logger.warning("auth.refresh_token_reused family_id=%s", auth_session.family_id)
         raise InvalidToken()
 
-    if auth_session.revoked_at is not None or now >= auth_session.expires_at:
+    if auth_session.revoked_at is not None:
         db.rollback()
+        raise InvalidToken()
+
+    account = db.get_one(Account, auth_session.account_id)
+    authenticated_at = logged_in_at(db, auth_session.family_id)
+    # When this token ends on its own: as it was issued, never past the
+    # login's 30 days (D-174), which rows issued before the limit can.
+    alive_until = min(
+        auth_session.expires_at,
+        refresh_token_expiry(
+            account.role,
+            auth_session.created_at,
+            auth_session.second_factor_at,
+            authenticated_at,
+        ),
+    )
+    # And, while a change its owner may cancel waits, until it takes effect
+    # (D-176), for a login the hold may keep: never the one that asked, and
+    # only one already alive when it was asked.
+    holds_until = (
+        None
+        if account.role == "admin"
+        else cancel_window_end(
+            db, account, auth_session.family_id, authenticated_at, alive_until, now
+        )
+    )
+    ends_at = alive_until if holds_until is None else max(alive_until, holds_until)
+    if now >= ends_at:
+        if now < auth_session.expires_at:
+            # Cut short by the login's limit, not by its own expiry: ended,
+            # so the list of sessions stops showing it as live.
+            _revoke_family(db, auth_session, now)
+            db.commit()
+        else:
+            db.rollback()
         raise InvalidToken()
 
     auth_session.used_at = now
     auth_session.updated_at = now
-    account = db.get_one(Account, auth_session.account_id)
     if account.suspended_at is not None:
         # A suspension ends every session; this catches any it missed.
         _revoke_family(db, auth_session, now)
@@ -538,13 +580,75 @@ def refresh_session(db: Session, refresh_token: str, now: datetime) -> LoginResu
         auth_session.family_id,
         now,
         second_factor_at=auth_session.second_factor_at,
-        authenticated_at=logged_in_at(db, auth_session.family_id),
+        authenticated_at=authenticated_at,
+        holds_until=holds_until,
         passkey_at=auth_session.passkey_at,
         sign_in_acknowledged_at=auth_session.sign_in_acknowledged_at,
         device=_device_of(auth_session),
     )
     db.commit()
     return result
+
+
+# A deletion held past its date by an unfinished deal has no moment to hold
+# until, so its hold is renewed a day at a time, at each refresh, until it is
+# cancelled or done (D-176).
+HELD_DELETION_RENEWAL = timedelta(days=1)
+
+
+def cancel_window_end(
+    db: Session,
+    account: Account,
+    family_id: uuid.UUID,
+    logged_in_at: datetime,
+    alive_until: datetime,
+    now: datetime,
+) -> datetime | None:
+    """How long a waiting change keeps this login alive, or None (D-176).
+
+    A phone change and the account's deletion are each cancelled from any of
+    the owner's sessions, with no code, so a SIM swapper's request is undone
+    in time (D-109, D-122); a login ending at its 30 days meanwhile would
+    leave the owner nothing to cancel from, since a new login's code goes to
+    whoever holds the number. So a waiting change keeps a login alive until
+    it takes effect, but only a login that:
+
+    - did not ask for it, so a thief holding a stolen session gains nothing
+      by asking, or by asking again to restart the wait;
+    - existed when it was asked for, and was still alive then, so no token
+      that had already run out comes back.
+
+    A phone change cancelled by a login with its current number
+    (`phone_changes.is_void`) keeps nothing alive. Two queries at most.
+    """
+    waiting: list[tuple[datetime, uuid.UUID | None, datetime]] = []
+    if account.deletion_requested_at is not None and account.deleted_at is None:
+        due = account.deletion_takes_effect_at
+        end = due if due is not None and due > now else now + HELD_DELETION_RENEWAL
+        waiting.append(
+            (account.deletion_requested_at, account.deletion_requested_by_session, end)
+        )
+    change = db.scalars(
+        select(AccountPhoneChange).where(AccountPhoneChange.account_id == account.id)
+    ).first()
+    if (
+        change is not None
+        and change.takes_effect_at > now
+        and not phone_changes.is_void(db, change)
+    ):
+        waiting.append(
+            (change.requested_at, change.requested_by_session, change.takes_effect_at)
+        )
+    return max(
+        (
+            end
+            for requested_at, asked_by, end in waiting
+            if asked_by != family_id
+            and logged_in_at < requested_at
+            and alive_until > requested_at
+        ),
+        default=None,
+    )
 
 
 def _device_of(auth_session: AuthSession) -> ClientDevice | None:

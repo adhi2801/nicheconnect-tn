@@ -51,7 +51,9 @@ RUN groupadd --system --gid 10001 app \
 # Debian security fixes the pinned base does not carry yet (D-068): OpenSSL
 # (9 CVEs, one High) and PCRE2 (one High), published after the base was
 # built on 19 September; and APT itself (CVE-2026-109518, High: a tampered
-# mirror or proxy could get an unverified package installed, D-159).
+# mirror or proxy could get an unverified package installed, D-159); and
+# zlib (CVE-2026-76844 and CVE-2026-85091, High; CVE-2026-27171, Medium),
+# found by the image gate on 11 November (D-178).
 # Exact versions, upgrade only, so the build stays
 # reproducible. Remove this step when the base digest moves to an image
 # that already has these versions or newer; Grype will say if it is early.
@@ -63,6 +65,7 @@ RUN apt-get update \
         libpcre2-8-0=10.46-1~deb13u3 \
         apt=3.0.4 \
         libapt-pkg7.0=3.0.4 \
+        zlib1g=1:1.3.dfsg+really1.3.1-1+deb13u1 \
     && rm -rf /var/lib/apt/lists/*
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \

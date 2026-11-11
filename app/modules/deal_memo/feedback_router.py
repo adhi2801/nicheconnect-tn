@@ -12,6 +12,8 @@ from app.core.idempotent_route import IdempotentRoute
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page, Slice
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
+from app.modules.auth.brand_access import BrandAccess
+from app.modules.auth.brand_dependencies import AnyBrandAccess
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.auth.exceptions import ProfileNotFound, RoleNotAllowed
 from app.modules.deal_memo import delivery_record
@@ -124,7 +126,11 @@ def give_feedback(
 
 
 def _creator_readable(
-    db: Session, account_id: uuid.UUID, role: str, creator_id: uuid.UUID
+    db: Session,
+    account_id: uuid.UUID,
+    role: str,
+    creator_id: uuid.UUID,
+    access: BrandAccess | None,
 ) -> None:
     """Any brand, or the creator themself, as their delivery record (D-038)."""
     if (
@@ -132,7 +138,9 @@ def _creator_readable(
         and delivery_record.creator_id_for_account(db, account_id) != creator_id
     ):
         raise RoleNotAllowed()
-    if not delivery_record.creator_exists(db, creator_id):
+    # Blocks are the brand's (D-148): a team member reads as the brand.
+    viewer = account_id if access is None else access.brand.account_id
+    if not delivery_record.creator_exists(db, creator_id, viewer):
         raise ProfileNotFound()
 
 
@@ -148,7 +156,14 @@ def _creator_readable(
     responses={
         **_COMMON,
         403: problem_doc("Another creator"),
-        404: problem_doc("No such creator"),
+        404: problem_doc(
+            "No such creator, or a block stands between you; or `brand_not_found` "
+            "for a `Brand-Id` that is not a brand you act for"
+        ),
+        422: problem_doc(
+            "The creator id is not a valid id; or `brand_choice_needed`: on more "
+            "than one brand's team, send `Brand-Id`"
+        ),
     },
 )
 @rate_limit(READ_LIMIT)
@@ -156,10 +171,11 @@ def creator_feedback(
     request: Request,
     creator_id: CreatorId,
     account: CurrentAccount,
+    access: AnyBrandAccess,
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> FeedbackFiguresRead:
-    _creator_readable(db, account.id, account.role, creator_id)
+    _creator_readable(db, account.id, account.role, creator_id, access)
     return _figures(service.figures(db, "creator", creator_id, now))
 
 
@@ -171,8 +187,14 @@ def creator_feedback(
     responses={
         **_COMMON,
         403: problem_doc("Another creator"),
-        404: problem_doc("No such creator"),
-        422: problem_doc("A query parameter or the cursor is invalid"),
+        404: problem_doc(
+            "No such creator, or a block stands between you; or `brand_not_found` "
+            "for a `Brand-Id` that is not a brand you act for"
+        ),
+        422: problem_doc(
+            "A query parameter or the cursor is invalid; or `brand_choice_needed`: "
+            "on more than one brand's team, send `Brand-Id`"
+        ),
     },
 )
 @rate_limit(READ_LIMIT)
@@ -180,12 +202,13 @@ def creator_feedback_notes(
     request: Request,
     creator_id: CreatorId,
     account: CurrentAccount,
+    access: AnyBrandAccess,
     limit: Limit = DEFAULT_LIMIT,
     cursor: Cursor = None,
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> Page[FeedbackNoteRead]:
-    _creator_readable(db, account.id, account.role, creator_id)
+    _creator_readable(db, account.id, account.role, creator_id, access)
     return _notes(
         service.notes(db, "creator", creator_id, now, limit=limit, cursor=cursor)
     )
@@ -200,7 +223,10 @@ def creator_feedback_notes(
         "how many and from how many creators. Null below three answers. Show beside "
         "the payment record, never instead. Any signed-in account."
     ),
-    responses={**_COMMON, 404: problem_doc("No such brand")},
+    responses={
+        **_COMMON,
+        404: problem_doc("No such brand, or a block stands between you"),
+    },
 )
 @rate_limit(READ_LIMIT)
 def brand_feedback(
@@ -210,7 +236,7 @@ def brand_feedback(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> FeedbackFiguresRead:
-    if not reliability.brand_exists(db, brand_id):
+    if not reliability.brand_exists(db, brand_id, account.id):
         raise ProfileNotFound()
     return _figures(service.figures(db, "brand", brand_id, now))
 
@@ -222,7 +248,7 @@ def brand_feedback(
     description="Revealed notes, newest first, each beside the brand's own words on that deal.",
     responses={
         **_COMMON,
-        404: problem_doc("No such brand"),
+        404: problem_doc("No such brand, or a block stands between you"),
         422: problem_doc("A query parameter or the cursor is invalid"),
     },
 )
@@ -236,7 +262,7 @@ def brand_feedback_notes(
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> Page[FeedbackNoteRead]:
-    if not reliability.brand_exists(db, brand_id):
+    if not reliability.brand_exists(db, brand_id, account.id):
         raise ProfileNotFound()
     return _notes(service.notes(db, "brand", brand_id, now, limit=limit, cursor=cursor))
 

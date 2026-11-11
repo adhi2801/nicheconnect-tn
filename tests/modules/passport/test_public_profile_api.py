@@ -244,6 +244,25 @@ def test_editing_the_profile_changes_the_etag(client, db):
     assert second.json()["bio"] == "Now covering Madurai too."
 
 
+@pytest.mark.parametrize(
+    "sent",
+    [
+        lambda tag: f"W/{tag}",  # marked weak by a compressing proxy
+        lambda tag: f'"stale", {tag}',  # one of several the reader holds
+        lambda tag: "*",
+    ],
+    ids=["weak", "list", "any"],
+)
+def test_an_unchanged_profile_is_recognised_as_rfc_9110_compares(client, db, sent):
+    """Compared weakly, against a list (RFC 9110 section 13.1.2; audit C7)."""
+    make_creator(db, handle="priya.eats")
+    etag = client.get(f"{URL}/priya.eats").headers["etag"]
+
+    again = client.get(f"{URL}/priya.eats", headers={"If-None-Match": sent(etag)})
+
+    assert again.status_code == 304
+
+
 def test_an_old_etag_gets_the_new_profile(client, db):
     creator = make_creator(db, handle="priya.eats")
     stale = client.get(f"{URL}/priya.eats").headers["etag"]

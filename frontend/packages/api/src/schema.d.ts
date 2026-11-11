@@ -2129,7 +2129,7 @@ export interface paths {
         };
         /**
          * A creator's media kit
-         * @description Everything a brand needs to weigh a creator, on one screen: the profile, each channel with its follower count and average views, every package with its price, and the delivery record. Channel numbers are the creator's own claim, dated by `figures_as_of`, and must be shown as self-reported. Prices appear here whether or not the creator published them on their public page. Readable by any brand and by the creator themself, never by another creator.
+         * @description Everything a brand needs to weigh a creator, on one screen: the profile, each channel with its follower count and average views, every package with its price, and the delivery record. Channel numbers are the creator's own claim, dated by `figures_as_of`, and must be shown as self-reported. Prices appear here whether or not the creator published them on their public page. Readable by any brand and by the creator themself, never by another creator. A brand blocked by the creator, or that blocked them, is answered as for a creator that does not exist.
          */
         get: operations["read_media_kit_api_v1_creators__creator_id__media_kit_get"];
         put?: never;
@@ -3407,7 +3407,7 @@ export interface paths {
         put?: never;
         /**
          * Move my account to a new number when my current number is lost
-         * @description For when your current number is already gone, so no code can reach it. Needs **a login at least 30 days old** (403 `login_too_recent`, with `Retry-After`, from a newer one), or, once you have a passkey, the passkey's grant in `Step-Up-Code` instead; and a code from the new number, asked for at `POST /api/v1/auth/otp/request`, as `new_phone_code`. **The new number takes over 7 days later**, and **any login with your current number before then cancels it**, since that number was not lost after all; you are told either way. Asking again replaces a change still waiting. Brands and creators only. There is no other way: we never move a number on someone's word, so a lost number with no login this old cannot be recovered. Limits as for a change with both numbers.
+         * @description For when your current number is already gone, so no code can reach it. Needs **a login at least 14 days old** (403 `login_too_recent`, with `Retry-After`, from a newer one), or, once you have a passkey, the passkey's grant in `Step-Up-Code` instead; and a code from the new number, asked for at `POST /api/v1/auth/otp/request`, as `new_phone_code`. **The new number takes over 7 days later**, and **any login with your current number before then cancels it**, since that number was not lost after all; you are told either way. Asking again replaces a change still waiting. Brands and creators only. There is no other way: we never move a number on someone's word, so a lost number with no login this old cannot be recovered. Limits as for a change with both numbers.
          */
         post: operations["change_my_lost_phone_api_v1_me_phone_change_without_current_number_post"];
         delete?: never;
@@ -15949,7 +15949,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description No such brand */
+            /** @description No such brand, or a block stands between you */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -16027,7 +16027,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description No such brand */
+            /** @description No such brand, or a block stands between you */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -16101,7 +16101,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description No such brand */
+            /** @description No such brand, or a block stands between you */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -16174,7 +16174,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description No such brand */
+            /** @description No such brand, or a block stands between you */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -16983,7 +16983,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description A field is missing or invalid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            /** @description A field is missing or invalid, null for a field that always has a value, or the campaign after the change would break a budget rule, answered as the same rule in a new campaign's body. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -21279,7 +21279,10 @@ export interface operations {
     read_delivery_record_api_v1_creators__creator_id__delivery_record_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path: {
                 /** @description The creator's id */
                 creator_id: string;
@@ -21317,7 +21320,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description No such creator */
+            /** @description No such creator, or a block stands between you; or `brand_not_found` for a `Brand-Id` that is not a brand you act for */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -21327,7 +21330,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description The creator id is not a valid id */
+            /** @description The creator id is not a valid id; or `brand_choice_needed`: on more than one brand's team, send `Brand-Id` */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -21363,7 +21366,10 @@ export interface operations {
     creator_feedback_api_v1_creators__creator_id__feedback_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path: {
                 /** @description The creator's id */
                 creator_id: string;
@@ -21401,7 +21407,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description No such creator */
+            /** @description No such creator, or a block stands between you; or `brand_not_found` for a `Brand-Id` that is not a brand you act for */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -21411,13 +21417,14 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description The request is not valid; `errors` names each field and why */
+            /** @description The creator id is not a valid id; or `brand_choice_needed`: on more than one brand's team, send `Brand-Id` */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
                 };
             };
             /** @description Too many requests; see the Retry-After header */
@@ -21451,7 +21458,10 @@ export interface operations {
                 /** @description From a previous page's next_cursor */
                 cursor?: string | null;
             };
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path: {
                 /** @description The creator's id */
                 creator_id: string;
@@ -21489,7 +21499,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description No such creator */
+            /** @description No such creator, or a block stands between you; or `brand_not_found` for a `Brand-Id` that is not a brand you act for */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -21499,7 +21509,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description A query parameter or the cursor is invalid */
+            /** @description A query parameter or the cursor is invalid; or `brand_choice_needed`: on more than one brand's team, send `Brand-Id` */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -21535,7 +21545,10 @@ export interface operations {
     read_media_kit_api_v1_creators__creator_id__media_kit_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path: {
                 /** @description The creator's id */
                 creator_id: string;
@@ -21573,7 +21586,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description No such creator */
+            /** @description No such creator, or a block stands between you; or `brand_not_found` for a `Brand-Id` that is not a brand you act for */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -21583,7 +21596,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description The creator id is not a valid id */
+            /** @description The creator id is not a valid id; or `brand_choice_needed`: on more than one brand's team, send `Brand-Id` */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -21629,7 +21642,10 @@ export interface operations {
     creator_response_times_api_v1_creators__creator_id__response_times_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The brand to act for, for someone in more than one (D-148). Leave it out to act for your own brand, or your only one. */
+                "Brand-Id"?: string | null;
+            };
             path: {
                 /** @description The creator's id */
                 creator_id: string;
@@ -21667,7 +21683,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description No such creator */
+            /** @description No such creator, or a block stands between you; or `brand_not_found` for a `Brand-Id` that is not a brand you act for */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -21677,7 +21693,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description The id is not a valid id */
+            /** @description The creator id is not a valid id; or `brand_choice_needed`: on more than one brand's team, send `Brand-Id` */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -28358,7 +28374,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description `role_not_allowed`: an admin's number cannot be changed here; `login_too_recent`: this login is under 30 days old (see Retry-After) */
+            /** @description `role_not_allowed`: an admin's number cannot be changed here; `login_too_recent`: this login is under 14 days old (see Retry-After) */
             403: {
                 headers: {
                     [name: string]: unknown;

@@ -4,14 +4,17 @@ from datetime import datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import update
 
 from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.main import app
 from app.modules.auth.dependencies import get_now
+from app.modules.auth.models.account import Account
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.tokens import create_access_token
 from app.modules.campaigns.models import Campaign
+from app.modules.safety.models import AccountBlock
 from tests.factories import FIXED_NOW, build_brand, create_account
 
 URL = "/api/v1/campaigns"
@@ -389,6 +392,139 @@ def test_empty_update_is_rejected(client, db, clock):
         422,
         "validation_failed",
     )
+
+
+@pytest.mark.parametrize(
+    ("change", "create_with"),
+    [
+        ({"budget_max_paise": 100_000}, {"budget_max_paise": 100_000}),
+        ({"budget_min_paise": None}, {"budget_min_paise": None}),
+        ({"campaign_type": "barter"}, {"campaign_type": "barter"}),
+        (
+            {"budget_min_paise": None, "budget_max_paise": None},
+            {"budget_min_paise": None, "budget_max_paise": None},
+        ),
+    ],
+    ids=["backwards", "incomplete", "on_barter", "required"],
+)
+def test_a_change_that_breaks_the_budget_rules_is_refused_not_a_500(
+    client, db, clock, change, create_with
+):
+    """Checked on the campaign as it would be after the change (audit C6),
+    and answered exactly as the same rule broken in a new campaign's body.
+
+    Each change names one field, or none of the rule's, and still breaks a
+    rule with the fields it left alone; the database refused it, answered 500.
+    """
+    _, headers = brand_login(db, clock)
+    campaign = create(client, headers)
+
+    changed = assert_problem(
+        client.patch(f"{URL}/{campaign['id']}", json=change, headers=headers),
+        422,
+        "validation_failed",
+    )
+    created = assert_problem(
+        client.post(URL, json=valid_body(**create_with), headers=headers),
+        422,
+        "validation_failed",
+    )
+
+    assert changed["errors"] == created["errors"]
+    assert changed["title"] == created["title"]
+    assert client.get(f"{URL}/{campaign['id']}", headers=headers).json() == campaign
+
+
+def test_a_change_that_keeps_the_budget_rules_is_made(client, db, clock):
+    _, headers = brand_login(db, clock)
+    campaign = create(client, headers)
+
+    changed = client.patch(
+        f"{URL}/{campaign['id']}",
+        json={
+            "campaign_type": "barter",
+            "budget_min_paise": None,
+            "budget_max_paise": None,
+        },
+        headers=headers,
+    )
+
+    assert changed.status_code == 200, changed.text
+    assert changed.json()["budget_min_paise"] is None
+
+
+@pytest.mark.parametrize("field", ["title", "cities", "campaign_type", "deliverables"])
+def test_null_for_a_field_that_always_has_a_value_is_refused(client, db, clock, field):
+    _, headers = brand_login(db, clock)
+    campaign = create(client, headers)
+
+    assert_problem(
+        client.patch(f"{URL}/{campaign['id']}", json={field: None}, headers=headers),
+        422,
+        "validation_failed",
+    )
+
+
+def creator_login_with_id(db, clock) -> tuple[uuid.UUID, dict[str, str]]:
+    account = create_account(db, "creator")
+    token, _ = create_access_token(account.id, "creator", clock.now)
+    return account.id, {"Authorization": f"Bearer {token}"}
+
+
+@pytest.mark.parametrize("who_blocks", ["creator", "brand"])
+def test_an_open_campaign_reads_as_not_found_across_a_block(
+    client, db, clock, who_blocks
+):
+    """As discovery already hides it (D-175, audit C10)."""
+    brand, brand_headers = brand_login(db, clock)
+    campaign = publish(client, brand_headers, create(client, brand_headers)["id"])
+    _, other_headers = brand_login(db, clock)
+    other_campaign = publish(client, other_headers, create(client, other_headers)["id"])
+    creator_id, headers = creator_login_with_id(db, clock)
+    assert client.get(f"{URL}/{campaign['id']}", headers=headers).status_code == 200
+    one, other = (
+        (creator_id, brand.account_id)
+        if who_blocks == "creator"
+        else (brand.account_id, creator_id)
+    )
+    db.add(
+        AccountBlock(
+            blocker_account_id=one,
+            blocked_account_id=other,
+            created_at=clock.now,
+            updated_at=clock.now,
+        )
+    )
+    db.flush()
+
+    assert_problem(
+        client.get(f"{URL}/{campaign['id']}", headers=headers), 404, "campaign_not_found"
+    )
+    # Two of each (testing.md section 2): a block tied to the wrong brand
+    # would hide this one too.
+    assert client.get(f"{URL}/{other_campaign['id']}", headers=headers).status_code == 200
+    # The brand still reads its own.
+    assert client.get(f"{URL}/{campaign['id']}", headers=brand_headers).status_code == 200
+
+
+def test_a_suspended_brands_open_campaign_reads_as_not_found(client, db, clock):
+    """It leaves discovery (D-061); until audit C10 a read by id still found it."""
+    brand, brand_headers = brand_login(db, clock)
+    campaign = publish(client, brand_headers, create(client, brand_headers)["id"])
+    _, other_headers = brand_login(db, clock)
+    other_campaign = publish(client, other_headers, create(client, other_headers)["id"])
+    db.execute(
+        update(Account)
+        .where(Account.id == brand.account_id)
+        .values(suspended_at=clock.now, suspension_reason="abuse")
+    )
+    db.flush()
+    reader = creator_login(db, clock)
+
+    assert_problem(
+        client.get(f"{URL}/{campaign['id']}", headers=reader), 404, "campaign_not_found"
+    )
+    assert client.get(f"{URL}/{other_campaign['id']}", headers=reader).status_code == 200
 
 
 def test_another_brand_cannot_change_your_campaign(client, db, clock):

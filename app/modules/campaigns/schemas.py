@@ -8,8 +8,10 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validat
 from pydantic_core import PydanticCustomError
 
 from app.core.literals import ensure_same_values
+from app.core.partial_update import check_change
 from app.core.taxonomy import CURRENCY, MAX_NICHES, Niche
 from app.core.text_flags import FieldFlag, field_flags
+from app.modules.campaigns.budget import budget_problem
 from app.modules.campaigns.deliverable_models import (
     DELIVERABLE_FORMATS,
     DELIVERABLE_NOTE_MAX_LENGTH,
@@ -20,7 +22,6 @@ from app.modules.campaigns.deliverable_models import (
 from app.modules.campaigns.models import (
     APPLICATION_ORIGINS,
     APPLICATION_STATUSES,
-    BUDGETED_TYPES,
     CAMPAIGN_TYPES,
     DECLINE_REASONS,
     DELIVERABLES_MAX_LENGTH,
@@ -69,23 +70,9 @@ Paise = Annotated[
 
 
 def _check_budget(campaign_type: str, minimum: int | None, maximum: int | None) -> None:
-    """The same rules the database enforces, with friendlier messages."""
-    if (minimum is None) != (maximum is None):
-        raise PydanticCustomError(
-            "budget_incomplete", "Give both a minimum and a maximum budget, or neither"
-        )
-    if minimum is not None and maximum is not None and maximum < minimum:
-        raise PydanticCustomError(
-            "budget_backwards", "The maximum budget cannot be lower than the minimum"
-        )
-    if campaign_type == "barter" and minimum is not None:
-        raise PydanticCustomError(
-            "budget_on_barter", "A barter campaign pays in goods, so it has no budget"
-        )
-    if campaign_type in BUDGETED_TYPES and minimum is None:
-        raise PydanticCustomError(
-            "budget_required", "Give a budget range for this campaign type"
-        )
+    problem = budget_problem(campaign_type, minimum, maximum)
+    if problem is not None:
+        raise PydanticCustomError(*problem)
 
 
 # --- deliverables as a list (item 26, D-127) --------------------------------
@@ -173,8 +160,20 @@ class CampaignUpdate(BaseModel):
 
     @model_validator(mode="after")
     def at_least_one_field(self) -> CampaignUpdate:
-        if not self.model_fields_set:
-            raise PydanticCustomError("empty_update", "Send at least one field to change")
+        check_change(
+            self,
+            (
+                "title",
+                "description",
+                "campaign_type",
+                "cities",
+                "niches",
+                "deliverables",
+                # Not a column but a list replaced whole: null replaced
+                # nothing and still moved the campaign's last change.
+                "deliverable_items",
+            ),
+        )
         return self
 
 
@@ -246,8 +245,14 @@ class CampaignRead(BaseModel):
     @property
     def text_flags(self) -> list[FieldFlag]:
         # Creators read a brief before any deal: money and contact both count.
+        # The title too: "₹500 registration, DM us" fits in one (trust and
+        # safety gap 2, closed with the next change to this schema).
         return field_flags(
-            {"description": self.description, "deliverables": self.deliverables},
+            {
+                "title": self.title,
+                "description": self.description,
+                "deliverables": self.deliverables,
+            },
             money=True,
             contact=True,
         )

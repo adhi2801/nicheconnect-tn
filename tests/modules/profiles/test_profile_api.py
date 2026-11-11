@@ -193,6 +193,28 @@ def test_creator_creates_reads_and_changes_its_profile(client, db, now):
     assert changed.json()["bio"] is None
 
 
+@pytest.mark.parametrize(
+    ("url", "body", "field"),
+    [
+        (CREATOR_URL, creator_body, "display_name"),
+        (CREATOR_URL, creator_body, "handle"),
+        (BRAND_URL, brand_body, "name"),
+        (BRAND_URL, brand_body, "email"),
+    ],
+)
+def test_null_for_a_field_that_always_has_a_value_is_refused(
+    client, db, now, url, body, field
+):
+    """It reached the database's NOT NULL, answered 500 (audit C6)."""
+    headers = login(db, now, "creator" if url == CREATOR_URL else "brand")
+    created = client.post(url, json=body(), headers=headers).json()
+
+    assert_problem(
+        client.patch(url, json={field: None}, headers=headers), 422, "validation_failed"
+    )
+    assert client.get(url, headers=headers).json() == created
+
+
 @pytest.mark.parametrize("typed", ["@Priya.Eats", " priya.eats ", "PRIYA.EATS"])
 def test_handle_is_cleaned_up(client, db, now, typed):
     response = client.post(

@@ -48,7 +48,7 @@ BrandId = Annotated[uuid.UUID, Path(description="The brand's id")]
     ),
     responses={
         401: problem_doc("No access token, or it is invalid or expired"),
-        404: problem_doc("No such brand"),
+        404: problem_doc("No such brand, or a block stands between you"),
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
@@ -61,7 +61,7 @@ def read_brand_reliability(
     now: Annotated[datetime, Depends(get_now)],
 ) -> BrandReliabilityRead:
     """Any signed-in account may read any brand's record."""
-    if not reliability.brand_exists(db, brand_id):
+    if not reliability.brand_exists(db, brand_id, account.id):
         raise ProfileNotFound()
     record = reliability.for_brand(db, brand_id, india_date(now))
     return to_reliability_read(

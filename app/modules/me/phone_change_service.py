@@ -30,7 +30,7 @@ Threat model (security.md section 4):
   both numbers' locks; if it is taken anyway (an admin made by the script),
   the change is dropped and the owner told.
 - **A current number already lost** (D-110): the change may be asked
-  without its code, from a login at least 30 days old, and waits 7 days. A
+  without its code, from a login at least 14 days old, and waits 7 days. A
   thief holding only an old session can try this; the owner, who still has
   the number, cancels it by logging in once, with no tap needed, and is
   told. There is no other way round a lost number: admins never move one
@@ -151,6 +151,8 @@ def request_change(
     step_up_code: str | None,
     authenticated_at: datetime | None,
     now: datetime,
+    *,
+    session_id: uuid.UUID | None = None,
 ) -> PhoneChangeState:
     """Start moving the account onto `new_phone`, which takes over in 72 hours.
 
@@ -185,6 +187,7 @@ def request_change(
         step_up_code,
         now,
         without_current_number=False,
+        session_id=session_id,
     )
 
 
@@ -196,11 +199,13 @@ def request_change_without_current_number(
     authenticated_at: datetime | None,
     now: datetime,
     step_up_code: str | None = None,
+    *,
+    session_id: uuid.UUID | None = None,
 ) -> PhoneChangeState:
     """Start moving the account onto `new_phone` when its current number is lost (D-110).
 
     No code from the current number can be had, so the login is the proof:
-    it must be at least LOST_NUMBER_LOGIN (30 days) old, and the change waits
+    it must be at least LOST_NUMBER_LOGIN (14 days) old, and the change waits
     PHONE_CHANGE_WAIT_WITHOUT_CURRENT (7 days). If anyone logs in with the
     current number meanwhile, it was not lost, and the change is off
     (`phone_changes.is_void`); the job then drops it and tells the account.
@@ -230,6 +235,7 @@ def request_change_without_current_number(
         step_up_code,
         now,
         without_current_number=True,
+        session_id=session_id,
     )
 
 
@@ -242,8 +248,13 @@ def _claim(
     now: datetime,
     *,
     without_current_number: bool,
+    session_id: uuid.UUID | None,
 ) -> PhoneChangeState:
     """Both locks, the codes, the checks and the waiting row. Commits.
+
+    `session_id` is the login asking, kept with the row so the wait never
+    keeps that login alive (D-176): asking again from it restarts the wait
+    and holds nothing.
 
     `step_up_code` is spent when given: a code from the current number, or a
     passkey's grant (D-113). Without the current number and no passkey,
@@ -278,6 +289,7 @@ def _claim(
         "requested_at": now,
         "takes_effect_at": takes_effect_at,
         "without_current_number": without_current_number,
+        "requested_by_session": session_id,
         "updated_at": now,
     }
     try:

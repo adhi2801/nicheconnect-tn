@@ -225,7 +225,11 @@ def read_campaign(
         403: problem_doc("Only brand accounts can change campaigns"),
         404: problem_doc("No such campaign, or it is not yours"),
         409: problem_doc("The campaign, or that field, cannot be changed now"),
-        422: problem_doc("A field is missing or invalid"),
+        422: problem_doc(
+            "A field is missing or invalid, null for a field that always has a "
+            "value, or the campaign after the change would break a budget rule, "
+            "answered as the same rule in a new campaign's body"
+        ),
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )

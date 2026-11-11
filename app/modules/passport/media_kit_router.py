@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
+from app.modules.auth.brand_dependencies import AnyBrandAccess
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.auth.exceptions import ProfileNotFound, RoleNotAllowed
 from app.modules.auth.schemas import ChannelRead, PackageRead
@@ -30,8 +31,14 @@ CreatorId = Annotated[uuid.UUID, Path(description="The creator's id")]
 _ERRORS: ResponseDocs = {
     401: problem_doc("No access token, or it is invalid or expired"),
     403: problem_doc("Only brands, or the creator themself, can read this"),
-    404: problem_doc("No such creator"),
-    422: problem_doc("The creator id is not a valid id"),
+    404: problem_doc(
+        "No such creator, or a block stands between you; or `brand_not_found` "
+        "for a `Brand-Id` that is not a brand you act for"
+    ),
+    422: problem_doc(
+        "The creator id is not a valid id; or `brand_choice_needed`: on more "
+        "than one brand's team, send `Brand-Id`"
+    ),
     429: problem_doc("Too many requests; see the Retry-After header"),
     451: problem_doc("The creator's profile is withheld for legal reasons (item 52)"),
 }
@@ -76,7 +83,9 @@ def _to_read(kit: MediaKit) -> MediaKitRead:
         "numbers are the creator's own claim, dated by `figures_as_of`, and "
         "must be shown as self-reported. Prices appear here whether or not "
         "the creator published them on their public page. Readable by any "
-        "brand and by the creator themself, never by another creator."
+        "brand and by the creator themself, never by another creator. A "
+        "brand blocked by the creator, or that blocked them, is answered as "
+        "for a creator that does not exist."
     ),
     responses=_ERRORS,
 )
@@ -85,13 +94,16 @@ def read_media_kit(
     request: Request,
     creator_id: CreatorId,
     account: CurrentAccount,
+    access: AnyBrandAccess,
     db: Annotated[Session, Depends(get_db)],
     now: Annotated[datetime, Depends(get_now)],
 ) -> MediaKitRead:
     """Any brand, or the creator themself."""
     if not media_kit_service.may_read(db, account, creator_id):
         raise RoleNotAllowed()
-    kit = media_kit_service.for_creator(db, creator_id, now)
+    # Blocks are the brand's (D-148): a team member reads as the brand.
+    viewer = account.id if access is None else access.brand.account_id
+    kit = media_kit_service.for_creator(db, creator_id, now, viewer)
     if kit is None:
         raise ProfileNotFound()
     media_kit_service.refuse_if_withheld(db, account, kit.creator)

@@ -7,7 +7,7 @@ is where they live.
 **Budgets** (`docs/standards/backend.md` section 6): p95 ≤ 300 ms for reads,
 ≤ 500 ms for writes, on seeded local data.
 
-**Last measured: 6 November 2026, every route in the script at once** (section "Every route, 6 November" below): 73 timings, 71 within budget, the two over both known. Before that, per section as dated:
+**Last measured: 11 November 2026, every route in the script at once** (section "Every route, 11 November" below): 83 timings, all 83 within budget. Before that, 6 November: 73 timings, 71 within budget. Before that, per section as dated:
 30 September 2026 for creator search and reports (next
 section); 26 September 2026 for everything else, on PostgreSQL 18.6 with pgvector 0.8.6
 (D-049), seeded with 10 brands, 200 creators, 150 campaigns, 785
@@ -15,6 +15,27 @@ applications and 958 rate card packages. 100 runs per read. For writes: 30
 whole deals, 5 bank bulk transfers of 25 rows, and 30 rounds of rate card
 edits. All from one run, on a developer laptop under Docker Desktop for
 Windows.
+
+## Every route, 11 November (D-174 to D-177, audits C5 to C10)
+
+On `feature/session-lifetime` at `59c2bf4`, 50 runs per read, 30 whole deals for the writes, same seeded data and laptop as below. **83 timings, all within budget.** Ten were added to the script by this change, which had touched them without measuring them (`CLAUDE.md` section 6, step 6):
+
+| Route | p50 ms | p95 ms | max ms | Budget |
+|---|---|---|---|---|
+| `POST /auth/refresh` (the login's limit and any waiting change read on each) | 16.6 | 20.9 | 21.3 | 500 |
+| `PATCH /campaigns/{id}` (the row locked first) | 25.5 | 36.9 | 56.1 | 500 |
+| `POST /me/deletion` (with its code; records who asked) | 30.2 | 36.8 | 43.5 | 500 |
+| `DELETE /me/deletion` | 13.1 | 16.5 | 16.8 | 500 |
+| `GET /creators/{id}/delivery-record` (through the block check) | 15.0 | 19.4 | 20.7 | 300 |
+| `GET /creators/{id}/response-times` | 14.9 | 20.4 | 68.4 | 300 |
+| `GET /creators/{id}/feedback` | 17.7 | 22.6 | 25.2 | 300 |
+| `GET /brands/{id}/reliability` (through the block check) | 16.2 | 19.4 | 19.8 | 300 |
+| `GET /brands/{id}/response-times` | 13.2 | 20.9 | 59.5 | 300 |
+| `GET /brands/{id}/feedback` | 16.0 | 20.5 | 22.2 | 300 |
+
+Routes already in the script that this change touched: `GET /campaigns/{id}` 23.0 ms p95 (6 queries cold, before and after), `GET /creators/{id}/media-kit` 24.0, `PATCH /creators/me/packages/{id}` 17.9, `PUT /creators/me/channels/{platform}` 17.9, both phone changes 35.1 and 27.9.
+
+The two over budget on 6 November came in under it this time: the bulk mark-paid of 25 rows at 443.6 ms (743.8 then) and the export job at 422.3 ms (686.4 then). Nothing in this change touched either, so the difference is the laptop's load between runs, not a fix: both stay watched, and the bulk figure's note below (savepoints piling up in one rolled-back transaction) still applies.
 
 ## Added 4 November: a brand's team (item 13 piece 2, D-148, D-150)
 

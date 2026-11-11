@@ -565,3 +565,81 @@ def test_a_brand_s_blocks_go_with_it_to_a_new_owner(client, db, clock, brand, cr
     assert [
         b["brand_id"] for b in client.get(URL, headers=creator.headers).json()["items"]
     ] == [brand_id]
+
+
+# --- what each side reads of the other by id (D-175) -------------------------------------
+
+
+CREATOR_RECORDS = [
+    "media-kit",
+    "delivery-record",
+    "response-times",
+    "feedback",
+    "feedback/notes",
+]
+BRAND_RECORDS = ["reliability", "response-times", "feedback", "feedback/notes"]
+
+
+@pytest.mark.parametrize("record", CREATOR_RECORDS)
+def test_the_brand_reads_every_record_of_the_creator_as_nobodys(
+    client, db, clock, blocked, brand, record
+):
+    """Either way the block was placed (trust-and-safety rule 7). Two of each
+    (testing.md section 2): another creator's stays readable."""
+    other = creator_user(db, clock)
+    _, other_id = ids(db, brand, other)
+
+    response = client.get(
+        f"/api/v1/creators/{blocked['creator_id']}/{record}", headers=brand.headers
+    )
+
+    assert (response.status_code, response.json()["code"]) == (404, "profile_not_found")
+    assert (
+        client.get(
+            f"/api/v1/creators/{other_id}/{record}", headers=brand.headers
+        ).status_code
+        == 200
+    )
+
+
+@pytest.mark.parametrize("record", BRAND_RECORDS)
+def test_the_creator_reads_every_record_of_the_brand_as_nobodys(
+    client, db, clock, blocked, creator, record
+):
+    """The other way round (D-175, widened 11 November): a 200 here would tell
+    the creator the campaign's 404 meant a block."""
+    other = brand_user(db, clock)
+    other_id, _ = ids(db, other, creator)
+
+    response = client.get(
+        f"/api/v1/brands/{blocked['brand_id']}/{record}", headers=creator.headers
+    )
+
+    assert response.status_code == 404, response.text
+    assert (
+        client.get(
+            f"/api/v1/brands/{other_id}/{record}", headers=creator.headers
+        ).status_code
+        == 200
+    )
+
+
+def test_the_creator_reads_the_brands_open_campaign_as_not_found(
+    client, db, clock, brand, creator
+):
+    campaign_id = open_campaign(client, brand)
+    assert (
+        client.get(
+            f"/api/v1/campaigns/{campaign_id}", headers=creator.headers
+        ).status_code
+        == 200
+    )
+    brand_id, _ = ids(db, brand, creator)
+    assert (
+        client.post(URL, json={"brand_id": brand_id}, headers=creator.headers).status_code
+        == 201
+    )
+
+    response = client.get(f"/api/v1/campaigns/{campaign_id}", headers=creator.headers)
+
+    assert (response.status_code, response.json()["code"]) == (404, "campaign_not_found")

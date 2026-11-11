@@ -1,15 +1,23 @@
 """The admin API (D-061): invisible to everyone else, and every act on the log."""
 
 import json
+import re
 import uuid
+from collections.abc import Iterator
 from datetime import timedelta
+from typing import Any
 
 import pytest
+from fastapi.routing import APIRoute
 from sqlalchemy import select, update
 
+from app.core.errors import _leaf_routes
+from app.main import app
 from app.modules.admin.models.admin_action import AdminAction
+from app.modules.auth.dependencies import get_admin
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.creator import Creator
+from app.modules.auth.tokens import PHONE_CODE_ONLY, create_access_token
 from tests.deal_flow import User, brand_user, creator_user
 from tests.factories import FIXED_NOW, build_auth_session, create_account
 from tests.query_counts import queries_for
@@ -64,16 +72,50 @@ def creator_profile_id(db, user: User) -> uuid.UUID:
 
 # --- invisible to everyone but admins -------------------------------------------------
 
-ROUTES = [
-    ("GET", f"{ADMIN}/accounts?phone=%2B919000000001&reason=looking"),
-    ("GET", f"{ADMIN}/accounts/{uuid.uuid4()}?reason=looking"),
-    ("POST", f"{ADMIN}/accounts/{uuid.uuid4()}/suspend"),
-    ("POST", f"{ADMIN}/accounts/{uuid.uuid4()}/restore"),
-    ("GET", f"{ADMIN}/reports"),
-    ("GET", f"{ADMIN}/reports/clocks"),
-    ("POST", f"{ADMIN}/reports/{uuid.uuid4()}/resolve"),
-    ("GET", f"{ADMIN}/actions"),
-]
+
+def _calls(dependant: Any) -> Iterator[Any]:
+    for sub in dependant.dependencies:
+        yield sub.call
+        yield from _calls(sub)
+
+
+def _admin_routes() -> list[APIRoute]:
+    return sorted(
+        (
+            r
+            for r in _leaf_routes(app.routes)
+            if isinstance(r, APIRoute) and get_admin in set(_calls(r.dependant))
+        ),
+        key=lambda r: (r.path, sorted(r.methods)),
+    )
+
+
+def _filled(route: APIRoute) -> tuple[str, str]:
+    """A call to `route` that would pass validation, so a 404 means the guard."""
+    url = re.sub(r"\{[^}]+\}", str(uuid.uuid4()), route.path)
+    return sorted(route.methods - {"HEAD"})[
+        0
+    ], url + "?phone=%2B919000000001&reason=looking"
+
+
+# Walked from the app, not written by hand (audit C5, 7 November 2026): the
+# list it replaced named 8 of the 16 admin routes, so the takedowns, the
+# founders' numbers, look-alike names and sign-ups were never shown hidden.
+ROUTES = [_filled(r) for r in _admin_routes()]
+
+
+def test_every_route_under_the_admin_prefix_is_guarded_as_an_admins():
+    """A route added under /api/v1/admin without CurrentAdmin fails here."""
+    unguarded = [
+        r.path
+        for r in _leaf_routes(app.routes)
+        if isinstance(r, APIRoute)
+        and r.path.startswith(f"{ADMIN}/")
+        and get_admin not in set(_calls(r.dependant))
+    ]
+
+    assert unguarded == []
+    assert len(ROUTES) >= 16
 
 
 @pytest.mark.parametrize(("method", "url"), ROUTES)
@@ -85,11 +127,16 @@ def test_every_admin_route_is_a_plain_404_for_anyone_else(client, db, clock, met
         .values(suspended_at=FIXED_NOW, suspension_reason="abuse")
     )
     db.flush()
+    one_factor, _ = create_access_token(
+        create_account(db, "admin").id, "admin", clock.now, methods=PHONE_CODE_ONLY
+    )
     callers = [
         {},
         brand_user(db, clock).headers,
         creator_user(db, clock).headers,
         suspended_admin.headers,
+        # An admin's token from the phone code alone (D-105).
+        {"Authorization": f"Bearer {one_factor}"},
         {"Authorization": "Bearer not-a-token"},
     ]
 

@@ -1,9 +1,12 @@
+import uuid
 from datetime import timedelta
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.modules.auth.exceptions import InvalidToken
+from app.modules.auth.models.account import Account
+from app.modules.auth.models.account_phone_change import AccountPhoneChange
 from app.modules.auth.models.auth_session import AuthSession
 from app.modules.auth.service import logout, refresh_session, request_otp, verify_otp
 from app.modules.auth.tokens import (
@@ -53,7 +56,8 @@ def test_refresh_returns_new_tokens_in_the_same_family(db):
     assert refreshed.refresh_token != login.refresh_token
     assert refreshed.access_token != login.access_token
     assert refreshed.access_token_expires_at == LATER + timedelta(minutes=15)
-    assert refreshed.refresh_token_expires_at == LATER + timedelta(days=30)
+    # Never past 30 days from the login, however late the refresh (D-174).
+    assert refreshed.refresh_token_expires_at == FIXED_NOW + timedelta(days=30)
     old, new = sessions_for(db, login.account_id)
     assert old.family_id == new.family_id
     assert old.used_at == LATER
@@ -119,6 +123,237 @@ def test_token_works_until_just_before_expiry(db):
     refresh_session(
         db, login.refresh_token, FIXED_NOW + timedelta(days=30) - timedelta(seconds=1)
     )
+
+
+def test_a_login_ends_thirty_days_after_it_was_proven_however_often_refreshed(db):
+    """Item 144 (D-174): refreshing daily used to keep a login forever."""
+    login = log_in(db)
+    token = login.refresh_token
+    for day in range(1, 30):
+        refreshed = refresh_session(db, token, FIXED_NOW + timedelta(days=day))
+        assert refreshed.refresh_token_expires_at == FIXED_NOW + timedelta(days=30)
+        token = refreshed.refresh_token
+
+    with pytest.raises(InvalidToken):
+        refresh_session(db, token, FIXED_NOW + timedelta(days=30))
+
+
+def test_the_last_access_token_ends_with_the_login(db):
+    login = log_in(db)
+
+    refreshed = refresh_session(
+        db, login.refresh_token, FIXED_NOW + timedelta(days=30) - timedelta(minutes=5)
+    )
+
+    assert refreshed.access_token_expires_at == FIXED_NOW + timedelta(days=30)
+
+
+def test_a_session_issued_before_the_limit_is_refused_and_its_login_ended(db):
+    """Rows from before D-174 carry an expiry past the login's limit."""
+    login = log_in(db)
+    row = session_by_token(db, login.refresh_token)
+    row.expires_at = FIXED_NOW + timedelta(days=59)
+    db.commit()
+
+    with pytest.raises(InvalidToken):
+        refresh_session(db, login.refresh_token, FIXED_NOW + timedelta(days=30))
+
+    assert all(s.revoked_at is not None for s in sessions_for(db, login.account_id))
+
+
+def test_a_waiting_deletion_keeps_the_login_until_it_is_done(db):
+    """D-176: the owner cancels a SIM swapper's deletion from a session they
+    already have; a login ending at its 30 days would leave them none. Once
+    the deletion is done, nothing holds the login."""
+    login = log_in(db)
+    account = db.get_one(Account, login.account_id)
+    account.deletion_requested_at = FIXED_NOW + timedelta(days=25)
+    account.deletion_takes_effect_at = FIXED_NOW + timedelta(days=55)
+    db.commit()
+
+    kept = refresh_session(db, login.refresh_token, FIXED_NOW + timedelta(days=29))
+    later = refresh_session(db, kept.refresh_token, FIXED_NOW + timedelta(days=40))
+
+    assert kept.refresh_token_expires_at == FIXED_NOW + timedelta(days=55)
+    assert later.refresh_token_expires_at == FIXED_NOW + timedelta(days=55)
+    account = db.get_one(Account, login.account_id)
+    account.deleted_at, account.phone = FIXED_NOW + timedelta(days=55), None
+    db.commit()
+    with pytest.raises(InvalidToken):
+        refresh_session(db, later.refresh_token, FIXED_NOW + timedelta(days=55))
+
+
+@pytest.mark.parametrize("without_current_number", [False, True])
+def test_a_waiting_phone_change_keeps_the_login_until_it_takes_effect(
+    db, without_current_number
+):
+    login = log_in(db)
+    requested = FIXED_NOW + timedelta(days=29, hours=12)
+    wait = timedelta(days=7) if without_current_number else timedelta(hours=72)
+    db.add(
+        AccountPhoneChange(
+            account_id=login.account_id,
+            new_phone=fake_phone(),
+            requested_at=requested,
+            takes_effect_at=requested + wait,
+            without_current_number=without_current_number,
+            created_at=requested,
+            updated_at=requested,
+        )
+    )
+    db.commit()
+
+    kept = refresh_session(
+        db, login.refresh_token, FIXED_NOW + timedelta(days=30, hours=1)
+    )
+
+    assert kept.refresh_token_expires_at == requested + wait
+
+
+def test_a_change_already_made_or_past_keeps_nothing(db):
+    login = log_in(db)
+    account = db.get_one(Account, login.account_id)
+    account.deletion_requested_at = FIXED_NOW - timedelta(days=1)
+    account.deletion_takes_effect_at = FIXED_NOW + timedelta(days=29)
+    db.commit()
+
+    with pytest.raises(InvalidToken):
+        refresh_session(db, login.refresh_token, FIXED_NOW + timedelta(days=30))
+
+
+def owners_two_logins(db):
+    """The same account logged in twice, on day 0: (first, second)."""
+    phone = fake_phone()
+    first = verify_otp(
+        db, phone, request_otp(db, phone, FIXED_NOW).code, "creator", FIXED_NOW
+    )
+    later = FIXED_NOW + timedelta(minutes=1)
+    second = verify_otp(db, phone, request_otp(db, phone, later).code, "creator", later)
+    return first, second
+
+
+def family_of(db, login) -> uuid.UUID:
+    return session_by_token(db, login.refresh_token).family_id
+
+
+def ask_for_deletion(db, account_id, asked_at, asked_by=None) -> None:
+    account = db.get_one(Account, account_id)
+    account.deletion_requested_at = asked_at
+    account.deletion_takes_effect_at = asked_at + timedelta(days=30)
+    account.deletion_requested_by_session = asked_by
+    db.commit()
+
+
+def test_the_login_that_asked_is_never_kept_alive(db):
+    """A thief holding a stolen session gains nothing by asking (the review of D-176)."""
+    owner, thief = owners_two_logins(db)
+    ask_for_deletion(
+        db, owner.account_id, FIXED_NOW + timedelta(days=25), family_of(db, thief)
+    )
+    kept = refresh_session(db, owner.refresh_token, FIXED_NOW + timedelta(days=29))
+    thiefs = refresh_session(db, thief.refresh_token, FIXED_NOW + timedelta(days=29))
+
+    later = FIXED_NOW + timedelta(days=31)
+    assert refresh_session(db, kept.refresh_token, later).refresh_token_expires_at == (
+        FIXED_NOW + timedelta(days=55)
+    )
+    with pytest.raises(InvalidToken):
+        refresh_session(db, thiefs.refresh_token, later)
+
+
+def test_asking_again_to_restart_the_wait_keeps_the_asker_nothing(db):
+    owner, thief = owners_two_logins(db)
+    asker = family_of(db, thief)
+    for day in (20, 26):  # a new 7-day wait before the last one ends
+        requested = FIXED_NOW + timedelta(days=day)
+        db.execute(
+            delete(AccountPhoneChange).where(
+                AccountPhoneChange.account_id == owner.account_id
+            )
+        )
+        db.add(
+            AccountPhoneChange(
+                account_id=owner.account_id,
+                new_phone=fake_phone(),
+                requested_at=requested,
+                takes_effect_at=requested + timedelta(days=7),
+                without_current_number=True,
+                requested_by_session=asker,
+                created_at=requested,
+                updated_at=requested,
+            )
+        )
+        db.commit()
+
+    with pytest.raises(InvalidToken):
+        refresh_session(db, thief.refresh_token, FIXED_NOW + timedelta(days=30, hours=1))
+
+
+def test_a_token_already_run_out_is_never_brought_back(db):
+    """Only a login alive when the change was asked for is held."""
+    login = log_in(db)
+    ask_for_deletion(db, login.account_id, FIXED_NOW + timedelta(days=31))
+
+    with pytest.raises(InvalidToken):
+        refresh_session(db, login.refresh_token, FIXED_NOW + timedelta(days=32))
+
+
+def test_a_login_made_after_the_request_is_not_held(db):
+    owner, _ = owners_two_logins(db)
+    ask_for_deletion(db, owner.account_id, FIXED_NOW - timedelta(days=1))
+
+    with pytest.raises(InvalidToken):
+        refresh_session(db, owner.refresh_token, FIXED_NOW + timedelta(days=30))
+
+
+def test_a_phone_change_cancelled_by_a_login_with_the_number_holds_nothing(db):
+    owner, _ = owners_two_logins(db)
+    requested = FIXED_NOW + timedelta(days=25)
+    db.add(
+        AccountPhoneChange(
+            account_id=owner.account_id,
+            new_phone=fake_phone(),
+            requested_at=requested,
+            takes_effect_at=requested + timedelta(days=7),
+            without_current_number=True,
+            created_at=requested,
+            updated_at=requested,
+        )
+    )
+    db.commit()
+    phone = db.get_one(Account, owner.account_id).phone
+    at = requested + timedelta(hours=1)
+    verify_otp(
+        db, phone, request_otp(db, phone, at).code, "creator", at
+    )  # the number logs in
+
+    with pytest.raises(InvalidToken):
+        refresh_session(db, owner.refresh_token, FIXED_NOW + timedelta(days=30, hours=1))
+
+
+def test_a_deletion_held_past_its_date_by_a_deal_keeps_the_login_a_day_at_a_time(db):
+    login = log_in(db)
+    ask_for_deletion(db, login.account_id, FIXED_NOW + timedelta(days=1))  # due day 31
+    kept = refresh_session(db, login.refresh_token, FIXED_NOW + timedelta(days=29))
+    now = FIXED_NOW + timedelta(days=32)  # past its date, still waiting on a deal
+
+    held = refresh_session(db, kept.refresh_token, now)
+
+    assert held.refresh_token_expires_at == now + timedelta(days=1)
+
+
+def test_cancelling_the_change_ends_the_hold_and_the_login(db):
+    """D-176 consequence 3: once cancelled, the 30 days apply at the next refresh."""
+    login = log_in(db)
+    ask_for_deletion(db, login.account_id, FIXED_NOW + timedelta(days=25))
+    kept = refresh_session(db, login.refresh_token, FIXED_NOW + timedelta(days=29))
+    account = db.get_one(Account, login.account_id)
+    account.deletion_requested_at = account.deletion_takes_effect_at = None
+    db.commit()
+
+    with pytest.raises(InvalidToken):
+        refresh_session(db, kept.refresh_token, FIXED_NOW + timedelta(days=31))
+    assert all(s.revoked_at is not None for s in sessions_for(db, login.account_id))
 
 
 def test_revoked_token_is_rejected(db):

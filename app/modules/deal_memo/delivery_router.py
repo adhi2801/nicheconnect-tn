@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
+from app.modules.auth.brand_dependencies import AnyBrandAccess
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.auth.exceptions import ProfileNotFound, RoleNotAllowed
 from app.modules.deal_memo import delivery_record
@@ -34,8 +35,14 @@ CreatorId = Annotated[uuid.UUID, Path(description="The creator's id")]
 _ERRORS: ResponseDocs = {
     401: problem_doc("No access token, or it is invalid or expired"),
     403: problem_doc("Only brands, or the creator themself, can read this"),
-    404: problem_doc("No such creator"),
-    422: problem_doc("The creator id is not a valid id"),
+    404: problem_doc(
+        "No such creator, or a block stands between you; or `brand_not_found` "
+        "for a `Brand-Id` that is not a brand you act for"
+    ),
+    422: problem_doc(
+        "The creator id is not a valid id; or `brand_choice_needed`: on more "
+        "than one brand's team, send `Brand-Id`"
+    ),
     429: problem_doc("Too many requests; see the Retry-After header"),
 }
 
@@ -60,6 +67,7 @@ def read_delivery_record(
     request: Request,
     creator_id: CreatorId,
     account: CurrentAccount,
+    access: AnyBrandAccess,
     db: Annotated[Session, Depends(get_db)],
     now: Annotated[datetime, Depends(get_now)],
 ) -> CreatorDeliveryRead:
@@ -71,6 +79,8 @@ def read_delivery_record(
         and delivery_record.creator_id_for_account(db, account.id) != creator_id
     ):
         raise RoleNotAllowed()
-    if not delivery_record.creator_exists(db, creator_id):
+    # Blocks are the brand's (D-148): a team member reads as the brand.
+    viewer = account.id if access is None else access.brand.account_id
+    if not delivery_record.creator_exists(db, creator_id, viewer):
         raise ProfileNotFound()
     return to_delivery_read(delivery_record.for_creator(db, creator_id, now))

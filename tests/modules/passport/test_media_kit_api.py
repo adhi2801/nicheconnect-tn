@@ -10,11 +10,13 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 
 import pytest
-from sqlalchemy import event, select
+from sqlalchemy import event, select, text
 
 from app.core.taxonomy import CURRENCY
 from app.db.session import engine
 from app.modules.auth.models.account import Account
+from app.modules.auth.models.brand import Brand
+from app.modules.auth.models.brand_team import BrandMember
 from app.modules.auth.models.creator import Creator
 from app.modules.passport.media_kit_router import READ_LIMIT
 from app.modules.profiles.models import CreatorChannel, CreatorPackage
@@ -255,6 +257,136 @@ def test_an_unknown_creator_is_not_found(client, brand):
 
     assert response.status_code == 404
     assert response.json()["code"] == "profile_not_found"
+
+
+BLOCKS_URL = "/api/v1/me/blocks"
+
+
+def brand_id_of(db, user: User) -> str:
+    return str(
+        db.scalars(select(Brand.id).where(Brand.account_id == user.account_id)).one()
+    )
+
+
+@pytest.mark.parametrize("who_blocks", ["creator", "brand"])
+def test_a_block_either_way_reads_as_a_creator_that_does_not_exist(
+    client, db, brand, creator, who_blocks
+):
+    """A block leaves each side alone (audit C7, D-175)."""
+    creator_id = profile_of(db, creator).id
+    if who_blocks == "creator":
+        placed = client.post(
+            BLOCKS_URL, json={"brand_id": brand_id_of(db, brand)}, headers=creator.headers
+        )
+    else:
+        placed = client.post(
+            BLOCKS_URL, json={"creator_id": str(creator_id)}, headers=brand.headers
+        )
+    assert placed.status_code == 201, placed.text
+
+    blocked = client.get(kit_url(creator_id), headers=brand.headers)
+    unknown = client.get(kit_url(uuid.uuid4()), headers=brand.headers)
+
+    assert blocked.status_code == unknown.status_code == 404
+    assert blocked.json()["code"] == unknown.json()["code"] == "profile_not_found"
+    # The creator still reads their own, and other brands still read it.
+    assert client.get(kit_url(creator_id), headers=creator.headers).status_code == 200
+    other = brand_user(db, brand.clock)
+    assert client.get(kit_url(creator_id), headers=other.headers).status_code == 200
+
+
+@pytest.mark.parametrize(
+    "record",
+    ["media-kit", "delivery-record", "response-times", "feedback", "feedback/notes"],
+)
+def test_every_record_of_the_creator_reads_as_nobodys_across_a_block(
+    client, db, brand, creator, record
+):
+    """Else a 200 on one proves the creator exists, and the kit's 404 means a
+    block (the independent review of D-175)."""
+    creator_id = profile_of(db, creator).id
+    url = f"/api/v1/creators/{creator_id}/{record}"
+    assert client.get(url, headers=brand.headers).status_code == 200
+    placed = client.post(
+        BLOCKS_URL, json={"brand_id": brand_id_of(db, brand)}, headers=creator.headers
+    )
+    assert placed.status_code == 201, placed.text
+
+    blocked = client.get(url, headers=brand.headers)
+
+    assert blocked.status_code == 404
+    assert blocked.json()["code"] == "profile_not_found"
+    assert client.get(url, headers=creator.headers).status_code == 200
+
+
+def test_a_team_member_reads_as_the_brand_so_its_block_holds(
+    client, db, clock, brand, creator
+):
+    creator_id = profile_of(db, creator).id
+    brand_id = brand_id_of(db, brand)
+    member = brand_user(db, clock)
+    db.execute(text("DELETE FROM brand WHERE account_id = :a"), {"a": member.account_id})
+    db.add(
+        BrandMember(
+            brand_id=uuid.UUID(brand_id),
+            account_id=member.account_id,
+            role="campaigns",
+            first_name="Ravi",
+            created_at=clock.now,
+            updated_at=clock.now,
+        )
+    )
+    db.flush()
+    placed = client.post(BLOCKS_URL, json={"brand_id": brand_id}, headers=creator.headers)
+    assert placed.status_code == 201, placed.text
+
+    response = client.get(kit_url(creator_id), headers=member.headers)
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "profile_not_found"
+
+
+def test_a_member_of_two_brands_names_the_one_it_reads_for(client, db, clock, creator):
+    """The block is the brand's (D-148), so the kit asks which brand, as search does."""
+    creator_id = profile_of(db, creator).id
+    member = brand_user(db, clock)
+    db.execute(text("DELETE FROM brand WHERE account_id = :a"), {"a": member.account_id})
+    brand_ids = [brand_id_of(db, brand_user(db, clock)) for _ in range(2)]
+    for brand_id in brand_ids:
+        db.add(
+            BrandMember(
+                brand_id=uuid.UUID(brand_id),
+                account_id=member.account_id,
+                role="campaigns",
+                first_name="Ravi",
+                created_at=clock.now,
+                updated_at=clock.now,
+            )
+        )
+    db.flush()
+
+    unnamed = client.get(kit_url(creator_id), headers=member.headers)
+    named = client.get(
+        kit_url(creator_id), headers={**member.headers, "Brand-Id": brand_ids[0]}
+    )
+    foreign = client.get(
+        kit_url(creator_id), headers={**member.headers, "Brand-Id": str(uuid.uuid4())}
+    )
+
+    assert (unnamed.status_code, unnamed.json()["code"]) == (422, "brand_choice_needed")
+    assert named.status_code == 200
+    assert (foreign.status_code, foreign.json()["code"]) == (404, "brand_not_found")
+
+
+def test_lifting_the_block_opens_the_kit_again(client, db, brand, creator):
+    creator_id = profile_of(db, creator).id
+    brand_id = brand_id_of(db, brand)
+    placed = client.post(BLOCKS_URL, json={"brand_id": brand_id}, headers=creator.headers)
+
+    lifted = client.delete(f"{BLOCKS_URL}/{placed.json()['id']}", headers=creator.headers)
+
+    assert lifted.status_code == 204, lifted.text
+    assert client.get(kit_url(creator_id), headers=brand.headers).status_code == 200
 
 
 def test_an_invalid_id_is_rejected(client, brand):
