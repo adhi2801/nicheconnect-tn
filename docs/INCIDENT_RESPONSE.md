@@ -1,6 +1,6 @@
 # When something goes wrong: the incident plan
 
-**Written 8 October 2026 (D-082), for `docs/standards/security.md` section 9; rotation and shutdown corrected against `infra/` on 10 October. Not yet rehearsed:** it must be walked through once, end to end, on staging before launch, and the rehearsal's date written here (`docs/BACKEND_COMPLETE.md` item 126). **Last checked 6 November 2026:** every secret the code reads as one (`app/core/config.py`: `SECRET_KEY`, `OTP_HASH_KEY`, `SECOND_FACTOR_KEY`, `PLATFORM_TOKEN_KEY`, `APP_DATABASE_PASSWORD`, `MSG91_AUTH_KEY`, `ANTHROPIC_API_KEY`, `META_APP_SECRET`, `GOOGLE_CLIENT_SECRET`, and the `SENTRY_DSN`) has its rotation in section 3.
+**Written 8 October 2026 (D-082), for `docs/standards/security.md` section 9; rotation and shutdown corrected against `infra/` on 10 October. Not yet rehearsed:** it must be walked through once, end to end, on staging before launch, and the rehearsal's date written here (`docs/BACKEND_COMPLETE.md` item 126). **Last checked 6 November 2026:** every secret the code reads as one (`app/core/config.py`: `SECRET_KEY`, `OTP_HASH_KEY`, `SECOND_FACTOR_KEY`, `PLATFORM_TOKEN_KEY`, `APP_DATABASE_PASSWORD`, `MSG91_AUTH_KEY`, `ANTHROPIC_API_KEY`, `META_APP_SECRET`, `GOOGLE_CLIENT_SECRET`, and the `SENTRY_DSN`) has its rotation in section 3. **Changed 11 November 2026 (D-185):** an on-call rota from launch (section 1), postmortems on one template with a review and deadlines (section 6), and game days each quarter (section 7).
 
 **The bar:** NIST's incident response guidance (SP 800-61, revision 3, April 2025), which ties response to the whole of managing risk rather than a separate playbook; Google's practice of one incident commander, a written state of the incident, and a blameless postmortem for every incident (*Site Reliability Engineering*, "Managing Incidents" and "Postmortem Culture"); and India's own clocks, CERT-In's 6 hours and the DPDP Rules' notices (section 5). **Where we stand:** the roles, the first hour, every rotation and both legal clocks are written; the rehearsal and a penetration test are owed (item 126); nothing is deployed, so no incident has happened.
 
@@ -16,6 +16,8 @@ An incident is anything that may have exposed personal data or a secret, let som
 | Second | The other founder | Checks every step before it runs, takes over if the lead is unreachable |
 
 Both founders are reached by phone call, not chat: a message can sit unread. If one cannot be reached within 30 minutes, the other proceeds alone and says so in the log.
+
+**On call, from launch (D-185).** A written rota of both founders, no shift longer than 12 hours (Google's limit). A page is acknowledged within **15 minutes from 07:00 to 23:00 Tamil Nadu time, and within 60 minutes outside it**: Google answers a revenue-hitting page in 5, which two students cannot promise at night, and this says so. Every page must need a person to act; one that does not becomes a ticket, or is removed, within a week. More than two incidents in one shift, twice in a month, stops feature work until the cause is fixed. The rota, the paging tool and its monthly figures are owed (`docs/BACKEND_COMPLETE.md` item 146); the tool waits on its own decision, a dependency and a cost.
 
 **The log** is a private GitHub security advisory on this repository, opened at the start: times in IST, what was seen, what was done, who did it. It becomes the record and, if needed, the disclosure.
 
@@ -88,22 +90,33 @@ Data is never deleted to stop an incident. A restore from backup (`docs/standard
 
 ## 6. Afterwards
 
-Within five working days, a short write-up in `docs/reports/`: the timeline, the cause, what stopped it, and the change that keeps it from happening again. The write-up blames no person. Every fix comes with a test that fails without it (`docs/standards/testing.md` section 2).
+A **postmortem** (D-185) is due for each of Google's five triggers (user-visible downtime past the threshold, any data loss, a fix by hand during the incident, a resolution that took too long, monitoring that missed it), for every security incident and for every personal-data breach:
+
+- within **five working days**, in `docs/reports/`, on the template `docs/POSTMORTEM_TEMPLATE.md`: summary, impact in numbers, timeline in Tamil Nadu time, contributing causes, what went well, where we were lucky, actions;
+- **blameless**: no person is named as a cause, and no user is named at all;
+- **closed only when reviewed** by the founder who did not write it;
+- **every action is an item with a date**: a fix for a cause within **4 weeks**, any other action within **8**; every fix comes with a test that fails without it (`docs/standards/testing.md` section 2).
+
+A test over `docs/reports/` that fails on a missing heading, or an action with no item or date, is owed (`docs/BACKEND_COMPLETE.md` item 148).
 
 ## 6a. What this plan does not know
 
 - **Whether it works**: never rehearsed (section 7); a plan untried is a guess about the first hour.
 - **The DPDP Rules' exact notice contents and timing** for a personal-data breach come from the validation pack (constraint 6); `docs/standards/legal.md` section 3.1 holds what is known.
-- **Who answers at night**: two founders, both students; an on-call rota is a decision for when there are users.
+- **Whether the night is covered**: the rule is set (section 1, D-185), but no rota is written and no paging tool chosen; two founders, both students, cannot match Google's 5 minutes, and the 60 minutes at night is a promise only once the tool exists.
+- **Whether the error budget is being spent**: no objective is watched until hosting exists (`docs/BACKEND_COMPLETE.md` items 116 and 145).
 
-## 7. Rehearsal
+## 7. Rehearsal and game days
 
-| Date | Who | Scenario | What we changed |
-|---|---|---|---|
-| Not yet | Both founders | A leaked `SECRET_KEY` on staging, rotated and confirmed within the hour | |
+The first rehearsal is the incident plan walked through end to end on staging before launch (item 126). From then on, a **game day** (D-185, AWS Well-Architected REL12-BP05) on staging before launch and then **once a quarter**: one real failure made on purpose (the database failed over or restored, Valkey stopped, a secret leaked and rotated, S3 refusing), both founders answering as they would in production, the minutes from fault to alert and to recovery written against the 1-hour restore target (D-168), and a retrospective in `docs/reports/` whose every finding becomes an item. Each is one row below. A test that fails when the newest row is more than 100 days old, once launched, is owed (`docs/BACKEND_COMPLETE.md` item 147).
+
+| Date | Who | Scenario | Minutes to alert | Minutes to recovery | What we changed |
+|---|---|---|---|---|---|
+| Not yet | Both founders | A leaked `SECRET_KEY` on staging, rotated and confirmed within the hour | | | |
 
 ## Sources (read 6 November 2026)
 
 - NIST SP 800-61 Rev. 3, Incident Response Recommendations and Considerations for Cybersecurity Risk Management (April 2025): https://csrc.nist.gov/pubs/sp/800/61/r3/final
 - Google, *Site Reliability Engineering*: "Managing Incidents", https://sre.google/sre-book/managing-incidents/ ; "Postmortem Culture", https://sre.google/sre-book/postmortem-culture/
 - CERT-In Directions, 28 April 2022, and the DPDP Rules: `docs/standards/legal.md` sections 3.1 and 3.2, with their sources
+- On call, game days and postmortems (read 11 November 2026, D-185): `docs/standards/backend.md` section 13
