@@ -2274,3 +2274,19 @@ Newest entries at the bottom.
   4. **OpenSSF Scorecard** at 8.0 or above, no critical check below 8, on every push to `main` (item 125; a CI workflow, proposed when built).
   5. **Admins on passkeys** once the domain exists, the authenticator kept as the second factor (item 129).
   6. **The ASVS 5.0 map a release gate**: chapter by chapter, each requirement against its test or file, before launch (item 123; D-166 set the levels).
+
+## D-180: Applications close at midnight in Tamil Nadu; a campaign says when, and whether it is open (audit C11)
+- Date: 2026-11-11
+- Approved by: Adhi, in this session, the revised proposal ("yes but you have to make sure"), after research. **Not reviewed by the other founder** (D-051).
+- Context: audit C11 found applying and matching compared a campaign's closing date with the UTC date, so applications landed for five and a half hours after the closing day ended in Tamil Nadu, while feedback used the Tamil Nadu date; applying checked "still open" without a lock, so a close could slip between the check and the write; discovery listed campaigns past their closing date; and the export's file name used the UTC date. The same mistake was then found twice more, in a channel's "connected since" on the media kit and the Passport.
+- Options considered: A) the four fixes; B) A, plus a test that refuses any date taken from a moment except through `india_date`, property tests over every moment, and two fields telling the apps when applying ends; C) a stored closing moment instead of a date (a schema change, rejected: it buys nothing over B).
+- Chosen: B.
+- Reason: it removes the class of bug, not one instance, and no app has to work out a time zone. Research (11 November 2026): Google's AIP-142 gives a deadline as an instant in UTC; PostgreSQL 18's explicit locking: `FOR SHARE` lets applications run together and makes a close wait, where the foreign key's own `FOR KEY SHARE` never conflicts with a change of status.
+- Twelve dimensions, short: **Quality** property tests over every moment 2026 to 2030, boundary tests at 23:59:59.999 and midnight, a lock test, discovery with two of each, an architecture guard; each seen failing when broken. **Security** tampering: no application after close; denial of service: a shared lock held for milliseconds. **Trust and safety** no application lands after a brand's deadline; no creator is shown a campaign they cannot apply to. **Performance** p95 measured: discovery 92.9 ms, a campaign 27.7 ms, applying 36.6 ms. **Design** two fields: no app computes a time zone. **Maintainability** one rule, `campaigns.service.applications_open`; one conversion, `app.core.clock`. Novelty, privacy, business, reliability, architecture, research: as the proposal, none beyond the above.
+- Consequences / follow-ups:
+  1. `app.core.clock.end_of_india_day`: the first moment after a Tamil Nadu day, in UTC; applying is allowed while `now` is before it.
+  2. `campaigns.service.applications_open`, used by applying and by every campaign's answer: `applications_open` and `applications_close_at` (additive, D-179 rule 3).
+  3. Applying takes `FOR SHARE` on the campaign before its checks; closing waits for it.
+  4. Discovery, and matching's campaigns for a creator, show only campaigns still taking applications, by the Tamil Nadu date.
+  5. `tests/test_architecture.py::test_every_date_from_a_moment_is_a_tamil_nadu_day` fails on any `.date()`, `date.today()` or `datetime.now()` in `app/` not on its list with the reason; six are, each checked.
+  6. Measured on the same run, untouched by this change: the bulk mark-paid at 520.7 ms p95 over its 500 ms budget (443.6 and 743.8 on earlier runs); its measurement with real commits is part of audit C16.

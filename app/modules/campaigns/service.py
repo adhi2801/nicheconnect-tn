@@ -11,13 +11,14 @@ campaign, so a creator's application history always points at what they saw.
 """
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import Select, delete, select
+from sqlalchemy import Select, delete, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.clock import end_of_india_day
 from app.core.export import (
     MAX_ROWS_PER_SECTION,
     ExportedSection,
@@ -348,8 +349,14 @@ def discover_campaigns(
     campaign_type: str | None = None,
     min_budget_paise: int | None = None,
     viewer_account_id: uuid.UUID | None = None,
+    today: date | None = None,
 ) -> Slice[Campaign]:
-    """Open campaigns for creators to browse, with optional filters."""
+    """Open campaigns for creators to browse, with optional filters.
+
+    With `today` (a Tamil Nadu date), only those still taking applications:
+    a campaign past its closing date is not shown to someone who cannot
+    apply to it (audit C11).
+    """
     query = select(Campaign).where(
         Campaign.status == "open",
         # A suspended brand's campaigns leave discovery (D-061).
@@ -357,6 +364,13 @@ def discover_campaigns(
         # So does one withheld, or whose brand is (item 52).
         campaign_not_withheld(Campaign.id, Campaign.brand_id),
     )
+    if today is not None:
+        query = query.where(
+            or_(
+                Campaign.applications_close_on.is_(None),
+                Campaign.applications_close_on >= today,
+            )
+        )
     if viewer_account_id is not None:
         # So do those of a brand either side has blocked (item 59).
         query = query.where(not_blocked_with_brand(viewer_account_id, Campaign.brand_id))
@@ -410,6 +424,21 @@ APPLICATION_MOVES: dict[str, dict[str, frozenset[str]]] = {
 }
 
 
+def applications_open(campaign: Campaign, now: datetime) -> bool:
+    """Whether a creator may apply at `now`: the one rule, used by applying
+    and by every campaign's answer (audit C11).
+
+    Open, and before the first moment of the day after its closing date in
+    Tamil Nadu. Until 11 November the closing date was compared with the
+    UTC date, so applications landed for five and a half hours after the
+    closing day ended there.
+    """
+    if campaign.status != "open":
+        return False
+    close_on = campaign.applications_close_on
+    return close_on is None or now < end_of_india_day(close_on)
+
+
 def get_creator_for_account(db: Session, account_id: uuid.UUID) -> Creator:
     """The creator profile of a signed-in creator account."""
     creator = db.scalars(select(Creator).where(Creator.account_id == account_id)).first()
@@ -460,6 +489,16 @@ def apply_to_campaign(
     if campaign is None:
         db.rollback()
         raise CampaignNotFound()
+    # Shared, and read again: creators applying at once never wait on each
+    # other, and a brand closing the campaign waits for them, or they for it,
+    # so no application lands on a campaign already closed (audit C11). The
+    # foreign key's own lock (FOR KEY SHARE) never conflicts with a change of
+    # status, so it does not do this (PostgreSQL 18, explicit locking).
+    db.refresh(
+        campaign,
+        attribute_names=["status", "applications_close_on"],
+        with_for_update={"read": True},
+    )
     if campaign.status != "open" or brand_is_unavailable(db, campaign.brand_id):
         # A suspended brand's campaign cannot be applied to, even by its id.
         db.rollback()
@@ -481,10 +520,7 @@ def apply_to_campaign(
     if is_withheld(db, "creator", creator.id):
         db.rollback()
         raise OwnContentWithheld()
-    if (
-        campaign.applications_close_on is not None
-        and now.date() > campaign.applications_close_on
-    ):
+    if not applications_open(campaign, now):
         db.rollback()
         raise ApplicationsClosed()
 

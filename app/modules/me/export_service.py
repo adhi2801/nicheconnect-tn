@@ -20,6 +20,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.clock import india_date
 from app.core.export import (
     MAX_ROWS_PER_SECTION,
     ExportedSection,
@@ -583,4 +584,4 @@ def exported_tables() -> frozenset[str]:
 
 def export_filename(now: datetime) -> str:
     """A name that says what the file is and when it was made."""
-    return f"nicheconnect-export-{now.date().isoformat()}.json"
+    return f"nicheconnect-export-{india_date(now).isoformat()}.json"

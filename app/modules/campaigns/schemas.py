@@ -7,6 +7,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 from pydantic_core import PydanticCustomError
 
+from app.core.clock import end_of_india_day
 from app.core.literals import ensure_same_values
 from app.core.partial_update import check_change
 from app.core.taxonomy import CURRENCY, MAX_NICHES, Niche
@@ -204,6 +205,27 @@ class CampaignRead(BaseModel):
     deliverables: str
     deliverable_items: list[DeliverableRead]
     applications_close_on: date | None
+    applications_open: bool = Field(
+        default=False,
+        description=(
+            "Whether a creator may apply now: open, and before `applications_close_at`. "
+            "Worked out on the server's clock at the moment of the answer"
+        ),
+    )
+
+    @computed_field(  # type: ignore[prop-decorator]
+        description=(
+            "The first moment applications are refused: midnight in Tamil Nadu "
+            "after `applications_close_on`, in UTC. Apply while now is before it. "
+            "Null when there is no closing date"
+        )
+    )
+    @property
+    def applications_close_at(self) -> datetime | None:
+        if self.applications_close_on is None:
+            return None
+        return end_of_india_day(self.applications_close_on)
+
     status: CampaignStatus
     created_at: datetime
     updated_at: datetime

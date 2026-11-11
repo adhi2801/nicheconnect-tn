@@ -8,6 +8,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
+from app.core.clock import india_date
 from app.core.errors import problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page, Slice
@@ -44,7 +45,7 @@ Limit = Annotated[int, Query(ge=1, le=MAX_LIMIT, description="Rows per page")]
 Cursor = Annotated[str | None, Query(description="From a previous page's next_cursor")]
 
 
-def _reads(db: Session, campaigns: list[Campaign]) -> list[CampaignRead]:
+def _reads(db: Session, campaigns: list[Campaign], now: datetime) -> list[CampaignRead]:
     """Each campaign with its brand's name, verified domain and any look-alike
     name warning.
 
@@ -60,19 +61,20 @@ def _reads(db: Session, campaigns: list[Campaign]) -> list[CampaignRead]:
                 "brand_name": names.get(campaign.brand_id, ""),
                 "verified_domain": domains.get(campaign.brand_id),
                 "brand_name_flag": name_flags.get(campaign.brand_id),
+                "applications_open": service.applications_open(campaign, now),
             }
         )
         for campaign in campaigns
     ]
 
 
-def _read(db: Session, campaign: Campaign) -> CampaignRead:
-    return _reads(db, [campaign])[0]
+def _read(db: Session, campaign: Campaign, now: datetime) -> CampaignRead:
+    return _reads(db, [campaign], now)[0]
 
 
-def _page(db: Session, result: Slice[Campaign]) -> Page[CampaignRead]:
+def _page(db: Session, result: Slice[Campaign], now: datetime) -> Page[CampaignRead]:
     return Page[CampaignRead](
-        items=_reads(db, list(result.rows)), next_cursor=result.next_cursor
+        items=_reads(db, list(result.rows), now), next_cursor=result.next_cursor
     )
 
 
@@ -104,7 +106,7 @@ def create_campaign(
 ) -> CampaignRead:
     campaign = service.create_campaign(db, brand, body.model_dump(), now)
     response.headers["Location"] = f"/api/v1/campaigns/{campaign.id}"
-    return _read(db, campaign)
+    return _read(db, campaign, now)
 
 
 @router.get(
@@ -128,11 +130,12 @@ def list_my_campaigns(
     limit: Limit = DEFAULT_LIMIT,
     cursor: Cursor = None,
     db: Session = Depends(get_db),
+    now: datetime = Depends(get_now),
 ) -> Page[CampaignRead]:
     result = service.list_brand_campaigns(
         db, brand, limit=limit, cursor=cursor, status=campaign_status
     )
-    page = _page(db, result)
+    page = _page(db, result, now)
     counts = applicant_service.applicant_counts(db, [c.id for c in page.items])
     return Page[CampaignRead](
         items=[
@@ -167,6 +170,7 @@ def discover_campaigns(
     limit: Limit = DEFAULT_LIMIT,
     cursor: Cursor = None,
     db: Session = Depends(get_db),
+    now: datetime = Depends(get_now),
 ) -> Page[CampaignRead]:
     return _page(
         db,
@@ -179,7 +183,10 @@ def discover_campaigns(
             campaign_type=campaign_type,
             min_budget_paise=min_budget_paise,
             viewer_account_id=account.id,
+            # Only campaigns a creator can still apply to (audit C11).
+            today=india_date(now),
         ),
+        now,
     )
 
 
@@ -206,9 +213,10 @@ def read_campaign(
     campaign_id: uuid.UUID,
     account: CurrentAccount,
     db: Session = Depends(get_db),
+    now: datetime = Depends(get_now),
 ) -> CampaignRead:
     campaign = service.get_visible_campaign(db, campaign_id, account)
-    return _read(db, campaign)
+    return _read(db, campaign, now)
 
 
 @router.patch(
@@ -242,7 +250,7 @@ def update_campaign(
     now: datetime = Depends(get_now),
 ) -> CampaignRead:
     changes = body.model_dump(exclude_unset=True)
-    return _read(db, service.update_campaign(db, campaign, changes, now))
+    return _read(db, service.update_campaign(db, campaign, changes, now), now)
 
 
 @router.get(
@@ -306,7 +314,7 @@ def _status_endpoint(
         db: Session = Depends(get_db),
         now: datetime = Depends(get_now),
     ) -> CampaignRead:
-        return _read(db, service.change_status(db, campaign, new_status, now))
+        return _read(db, service.change_status(db, campaign, new_status, now), now)
 
     return endpoint
 

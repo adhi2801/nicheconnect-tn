@@ -1,6 +1,6 @@
 import uuid
 from collections.abc import Iterator
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -651,6 +651,37 @@ def test_discover_shows_only_open_campaigns(client, db, clock):
     )
 
     assert [item["title"] for item in response.json()["items"]] == ["Open one"]
+
+
+def test_discover_shows_only_campaigns_still_taking_applications(client, db, clock):
+    """A campaign past its closing date in Tamil Nadu is not shown to someone
+    who could no longer apply to it (audit C11). Two of each kind."""
+    _, brand_headers = brand_login(db, clock)
+    city = unique_city()
+    for title, close_on in [
+        ("Closed yesterday", "2026-09-19"),
+        ("Also closed", "2026-09-18"),
+        ("Closes today", "2026-09-20"),
+        ("Closes later", "2026-09-30"),
+        ("No closing date", None),
+    ]:
+        fields = {"title": title, "cities": [city]}
+        if close_on is not None:
+            fields["applications_close_on"] = close_on
+        publish(client, brand_headers, create(client, brand_headers, **fields)["id"])
+    # 23:00 on 20 September in Tamil Nadu: the UTC date is still the 20th too.
+    clock.now = datetime(2026, 9, 20, 17, 30, tzinfo=UTC)
+
+    response = client.get(
+        DISCOVER_URL, params={"city": city}, headers=creator_login(db, clock)
+    )
+
+    assert sorted(item["title"] for item in response.json()["items"]) == [
+        "Closes later",
+        "Closes today",
+        "No closing date",
+    ]
+    assert all(item["applications_open"] for item in response.json()["items"])
 
 
 def test_discover_filters_combine(client, db, clock):

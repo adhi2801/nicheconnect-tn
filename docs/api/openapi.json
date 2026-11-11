@@ -3466,6 +3466,20 @@
             "description": "How many creators came forward: applied, or said yes to an invitation, whatever you decided since. On your own campaign list only; null everywhere else",
             "title": "Applicant Count"
           },
+          "applications_close_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The first moment applications are refused: midnight in Tamil Nadu after `applications_close_on`, in UTC. Apply while now is before it. Null when there is no closing date",
+            "readOnly": true,
+            "title": "Applications Close At"
+          },
           "applications_close_on": {
             "anyOf": [
               {
@@ -3477,6 +3491,12 @@
               }
             ],
             "title": "Applications Close On"
+          },
+          "applications_open": {
+            "default": false,
+            "description": "Whether a creator may apply now: open, and before `applications_close_at`. Worked out on the server's clock at the moment of the answer",
+            "title": "Applications Open",
+            "type": "boolean"
           },
           "brand_id": {
             "format": "uuid",
@@ -3636,6 +3656,7 @@
           "status",
           "created_at",
           "updated_at",
+          "applications_close_at",
           "text_flags"
         ],
         "title": "CampaignRead",

@@ -144,8 +144,8 @@ def list_campaigns_for_me(
     ranked = service.find_campaigns_for_creator(
         db,
         creator,
-        # The same date applying checks the closing date against.
-        today=now.date(),
+        # The same Tamil Nadu date applying checks the closing date against.
+        today=india_date(now),
         # The same date the brand's reliability page reads its record as of.
         record_day=india_date(now),
         limit=limit,

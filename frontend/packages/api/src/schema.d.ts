@@ -5390,8 +5390,19 @@ export interface components {
              * @description How many creators came forward: applied, or said yes to an invitation, whatever you decided since. On your own campaign list only; null everywhere else
              */
             applicant_count?: number | null;
+            /**
+             * Applications Close At
+             * @description The first moment applications are refused: midnight in Tamil Nadu after `applications_close_on`, in UTC. Apply while now is before it. Null when there is no closing date
+             */
+            readonly applications_close_at: string | null;
             /** Applications Close On */
             applications_close_on: string | null;
+            /**
+             * Applications Open
+             * @description Whether a creator may apply now: open, and before `applications_close_at`. Worked out on the server's clock at the moment of the answer
+             * @default false
+             */
+            applications_open: boolean;
             /**
              * Brand Id
              * Format: uuid

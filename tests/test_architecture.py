@@ -7,6 +7,7 @@ directly before this test existed.
 """
 
 import ast
+import re
 from pathlib import Path
 
 import pytest
@@ -122,3 +123,49 @@ def test_settings_are_read_only_through_config():
     ]
 
     assert offenders == []
+
+
+# Every day in this product is a Tamil Nadu day (backend.md section 2; D-030).
+# A date taken from a moment any other way is the UTC date, wrong for five and
+# a half hours each night: applying, matching, the export's file name and a
+# channel's "connected since" all were (audit C11, 11 November 2026). Each
+# use left is here with why it is right, and an entry that disappears fails
+# too, so the list cannot outlive the code.
+DATES_FROM_MOMENTS_ALLOWED = {
+    ("app/core/clock.py", "moment.astimezone(IST).date()"): "the one conversion",
+    ("app/modules/auth/dependencies.py", "datetime.now(UTC)"): "the clock itself",
+    ("app/modules/campaigns/template_router.py", "local.date()"): "already in IST",
+    ("app/modules/notifications/preference_service.py", "local.date()"): "in IST",
+    ("app/modules/auth/attribution_service.py", "started.date()"): (
+        "truncated in Asia/Kolkata by the database"
+    ),
+    ("app/modules/profiles/domain_lookup.py", ").date()"): (
+        "a registry's date, defined in UTC (RDAP, RFC 9083)"
+    ),
+}
+DATE_FROM_MOMENT = re.compile(r"\.date\(\)|date\.today\(\)|datetime\.(utc)?now\(")
+
+
+def test_every_date_from_a_moment_is_a_tamil_nadu_day():
+    found = set()
+    for path in sorted(Path("app").rglob("*.py")):
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if DATE_FROM_MOMENT.search(line):
+                found.add((path.as_posix(), line.strip()))
+
+    unexplained = sorted(
+        (path, line)
+        for path, line in found
+        if not any(
+            path == p and snippet in line for p, snippet in DATES_FROM_MOMENTS_ALLOWED
+        )
+    )
+    gone = sorted(
+        key
+        for key in DATES_FROM_MOMENTS_ALLOWED
+        if not any(path == key[0] and key[1] in line for path, line in found)
+    )
+
+    assert unexplained == [], "Use app.core.clock.india_date: " + repr(unexplained)
+    assert gone == [], "No longer in the code; take it off the list: " + repr(gone)
+    assert found  # the scan reads the app at all
