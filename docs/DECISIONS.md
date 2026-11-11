@@ -2259,3 +2259,13 @@ Newest entries at the bottom.
 - Consequences / follow-ups:
   1. `Dockerfile`: `zlib1g=1:1.3.dfsg+really1.3.1-1+deb13u1`, exact, upgrade only, beside OpenSSL, PCRE2 and APT; removed when the base digest carries it.
   2. Checked locally before pushing: the image rebuilt and Grype 0.119.0 with `.grype.yaml`, `--only-fixed --fail-on negligible`: no vulnerabilities found. The embeddings image is built from it and inherits the fix.
+
+## D-183: Seven Dependabot updates, merged together on today's main
+- Date: 2026-11-11
+- Approved by: Adhi, in this session: "Approve all 7 (Recommended)", each merged only once CI is green on today's main. **Not reviewed by the other founder** (D-051).
+- Context: #101 to #107 had waited three days, their CI red only because they were built before the zlib fix (D-178) reached `main`.
+- Options considered: A) all seven; B) only the app's three, holding the AWS provider until infrastructure is deployed; C) hold all.
+- Chosen: A.
+- Reason: each is a patch, a minor provider update or a data refresh, kept current as D-047 and Dependabot's 7-day hold intend.
+- Consequences / follow-ups:
+  1. One branch, `chore/deps-2026-11-11`, merging the seven onto `main` (`setup-uv` 10.3.3, Valkey 9.1.3, the AWS provider 6.71 in four places, `publicsuffixlist` 1.1.2.20261101); the lockfile checked; merged only once CI is green on its exact commit, which closes each pull request.
