@@ -2248,3 +2248,14 @@ Newest entries at the bottom.
   3. `reliability.brand_exists` takes the reader, like `delivery_record.creator_exists`: a brand's reliability, response times and feedback answer a creator blocked either way as not found.
   4. Correcting D-175 consequence 1 and the C10 row: the block check adds no query, but a team member reading a creator's records goes through the brand-access check (1 to 3 queries, as every brand route) and must name the brand with `Brand-Id` when on more than one team (422 `brand_choice_needed`), now documented on each route.
   5. Correcting audit C10: the lock serialises a change with a publish, but the final state cannot show which came first, so no test can prove that half; the claim is withdrawn, and the two-changes race keeps its test.
+
+## D-178: zlib patched in the API image (three CVEs, two High)
+- Date: 2026-11-11
+- Approved by: Adhi, in this session: "Yes, patch it (Recommended)". **Not reviewed by the other founder** (D-051).
+- Context: CI's image gate failed on `0ce20d3`: Grype 0.119.0 found CVE-2026-76844 and CVE-2026-85091 (High) and CVE-2026-27171 (Medium) in the base image's `zlib1g` 1:1.3.dfsg+really1.3.1-1+b1, each fixed in 1:1.3.dfsg+really1.3.1-1+deb13u1. Nothing in the change introduced them: the vulnerability database had moved since `main` last passed.
+- Options considered: A) upgrade `zlib1g` to the fixed version in the image's existing security block (the pattern of D-068 and D-159); B) accept the three in `.grype.yaml` with a reason and an expiry.
+- Chosen: A.
+- Reason: a fix exists, two are rated High, and D-047 says security fixes come at once.
+- Consequences / follow-ups:
+  1. `Dockerfile`: `zlib1g=1:1.3.dfsg+really1.3.1-1+deb13u1`, exact, upgrade only, beside OpenSSL, PCRE2 and APT; removed when the base digest carries it.
+  2. Checked locally before pushing: the image rebuilt and Grype 0.119.0 with `.grype.yaml`, `--only-fixed --fail-on negligible`: no vulnerabilities found. The embeddings image is built from it and inherits the fix.
