@@ -7,14 +7,16 @@ to every deal rather than this pair's, cannot pass by luck.
 """
 
 import uuid
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import update
 
 from app.core.clock import india_date
 from app.modules.auth.models.account import Account
 from app.modules.deal_memo.check_router import READ_LIMIT
+from app.modules.profiles.connection_models import ConnectedAccount
 from tests.deal_flow import (
     LINK,
     MEMOS_URL,
@@ -220,6 +222,12 @@ def test_the_brand_reads_facts_about_the_creator_and_only_this_creator(
         followers="18200",
         as_of="now()",
     )
+    # 20:00 UTC is 01:30 the next morning in Tamil Nadu: the date shown is that day.
+    db.execute(
+        update(ConnectedAccount)
+        .where(ConnectedAccount.creator_id == profile_of(db, creator).id)
+        .values(connected_at=datetime(2026, 9, 14, 20, 0, tzinfo=UTC))
+    )
     memo_id = sent_memo(client, brand, creator)
 
     body = read(client, memo_id, brand)
@@ -238,6 +246,8 @@ def test_the_brand_reads_facts_about_the_creator_and_only_this_creator(
     }
     assert about["memo_answered"]["examples"] == 2
     assert about["memo_answered"]["median_hours"] is None
+    # One payment confirmed (the finished deal); the disputed one never was.
+    assert about["payment_confirmed"]["examples"] == 1
     assert about["profile_withheld"] is False
     [channel] = about["channels"]
     assert (channel["followers"], channel["self_reported"]) == (21_400, True)
@@ -246,6 +256,8 @@ def test_the_brand_reads_facts_about_the_creator_and_only_this_creator(
         "madurai.eats",
         18_200,
     )
+    assert connected["connected_since"] == "2026-09-15"
+    assert connected["verified_as_of"] is not None
 
 
 def test_a_member_of_the_brands_team_reads_what_the_owner_reads(
@@ -475,14 +487,23 @@ def test_it_is_rate_limited(client, brand, creator):
 def test_a_long_history_costs_the_same_queries_as_a_short_one(
     client, db, clock, unlimited, reader, other_brand, other_creator
 ):
-    """Pairs with one earlier deal and with five, each deal finished,
-    disputed or with a channel and connection: the same count. A pair with
-    none skips the stage's queries, so it costs fewer, never more."""
+    """Pairs with one earlier deal and with five, each deal finished or
+    disputed: the same count. The long history's creator also has two
+    channels and two connected accounts to the short one's one each, so a
+    query per channel or per connection cannot pass (testing.md section 2:
+    two of every kind). A pair with no earlier deal skips the stage's
+    queries, so it costs fewer, never more."""
 
     def history(deals: int) -> int:
         brand, creator = brand_user(db, clock), creator_user(db, clock)
-        add_channel(db, profile_of(db, creator))
-        connection(db, profile_of(db, creator).id, user=f"'{uuid.uuid4().hex}'")
+        for platform in ("instagram", "youtube")[: 2 if deals > 1 else 1]:
+            add_channel(db, profile_of(db, creator), platform)
+            connection(
+                db,
+                profile_of(db, creator).id,
+                platform=f"'{platform}'",
+                user=f"'{uuid.uuid4().hex}'",
+            )
         for n in range(deals):
             memo = accepted_memo(client, brand, creator)
             if n % 2:
