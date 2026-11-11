@@ -13,6 +13,7 @@ notice is (`readable_details`), so erasing a member erases it everywhere.
 """
 
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, cast
 
@@ -81,55 +82,150 @@ def record(
     """
     shown = dict(details or {})
     acting = brand_access.acting(db)
-    if (
+    if _may_name_member(acting, notification_type, account_id):
+        recipient = db.get(Account, account_id)
+        if recipient is not None and recipient.role == "creator":
+            shown[ACTING_MEMBER] = str(_member_id(acting))
+    notification = _add(
+        db, account_id, notification_type, now, campaign_id, application_id, shown
+    )
+    record_many(
+        db,
+        notification_type=notification_type,
+        now=now,
+        campaign_id=campaign_id,
+        application_id=application_id,
+        to=[
+            (member_account, _team_copy(shown, brand_id, brand_name))
+            for _, member_account, brand_id, brand_name in _team_hearing(
+                db, notification_type, {account_id}, acting
+            )
+        ],
+    )
+    return notification
+
+
+def _may_name_member(
+    acting: brand_access.Acting | None, notification_type: str, account_id: uuid.UUID
+) -> bool:
+    """Whether a notice to `account_id` names the team member acting, should
+    its recipient be a creator: only a member's own act, never to themselves."""
+    return (
         acting is not None
         and acting.member_id is not None
         and notification_type in brand_acts.NAMED_TO_CREATORS
         and account_id != acting.account_id
-    ):
-        recipient = db.get(Account, account_id)
-        if recipient is not None and recipient.role == "creator":
-            shown[ACTING_MEMBER] = str(acting.member_id)
-    notification = _add(
-        db, account_id, notification_type, now, campaign_id, application_id, shown
     )
+
+
+def _member_id(acting: brand_access.Acting | None) -> uuid.UUID:
+    if acting is None or acting.member_id is None:
+        raise RuntimeError("Only a member's act names a member (D-148)")
+    return acting.member_id
+
+
+def _team_hearing(
+    db: Session,
+    notification_type: str,
+    owners: set[uuid.UUID],
+    acting: brand_access.Acting | None,
+) -> list[tuple[uuid.UUID, uuid.UUID, uuid.UUID, str]]:
+    """(owner, member, brand id, brand name) for each member who hears a
+    notice of this kind to one of `owners`, in one query for all of them;
+    none, and no query, when no role hears this kind. Never whoever acted."""
     roles = brand_acts.roles_hearing(notification_type)
-    if roles:
-        team = db.execute(
-            select(BrandMember.account_id, Brand.id, Brand.name)
-            .join(Brand, Brand.id == BrandMember.brand_id)
-            .join(Account, Account.id == BrandMember.account_id)
-            .where(
-                Brand.account_id == account_id,
-                BrandMember.removed_at.is_(None),
-                BrandMember.role.in_(roles),
-                # A suspended or departed member acts for nobody, so hears nothing.
-                Account.suspended_at.is_(None),
-                Account.deleted_at.is_(None),
-            )
-            .order_by(BrandMember.created_at, BrandMember.id)
-        ).all()
-        record_many(
-            db,
-            notification_type=notification_type,
-            now=now,
-            campaign_id=campaign_id,
-            application_id=application_id,
-            to=[
-                # Someone in several brands needs to know which one it is for.
-                (
-                    member_account,
-                    {
-                        **shown,
-                        "for_brand_id": str(brand_id),
-                        "for_brand_name": brand_name,
-                    },
-                )
-                for member_account, brand_id, brand_name in team
-                if acting is None or member_account != acting.account_id
-            ],
+    if not roles or not owners:
+        return []
+    team = db.execute(
+        select(Brand.account_id, BrandMember.account_id, Brand.id, Brand.name)
+        .join(Brand, Brand.id == BrandMember.brand_id)
+        .join(Account, Account.id == BrandMember.account_id)
+        .where(
+            Brand.account_id.in_(owners),
+            BrandMember.removed_at.is_(None),
+            BrandMember.role.in_(roles),
+            # A suspended or departed member acts for nobody, so hears nothing.
+            Account.suspended_at.is_(None),
+            Account.deleted_at.is_(None),
         )
-    return notification
+        .order_by(BrandMember.created_at, BrandMember.id)
+    ).tuples()
+    return [row for row in team if acting is None or row[1] != acting.account_id]
+
+
+def _team_copy(
+    shown: dict[str, Any], brand_id: uuid.UUID, brand_name: str
+) -> dict[str, Any]:
+    # Someone in several brands needs to know which one it is for.
+    return {**shown, "for_brand_id": str(brand_id), "for_brand_name": brand_name}
+
+
+@dataclass(frozen=True)
+class Notice:
+    """One notice for `record_each`: to whom, about which deal, saying what."""
+
+    account_id: uuid.UUID
+    campaign_id: uuid.UUID | None
+    application_id: uuid.UUID | None
+    details: dict[str, Any]
+
+
+def record_each(
+    db: Session, *, notification_type: str, now: datetime, notices: list[Notice]
+) -> None:
+    """`record` for many notices of one kind, each to its own account about
+    its own deal, in one statement and at most two reads however many
+    (audit C16, D-184): who the recipients are, and their teams, each read
+    once for all of them. Names the acting member and copies to a team
+    exactly as `record` does, for every notice, two to one account included.
+    The caller commits.
+    """
+    if not notices:
+        return
+    acting = brand_access.acting(db)
+    may_name = {
+        n.account_id
+        for n in notices
+        if _may_name_member(acting, notification_type, n.account_id)
+    }
+    creators = (
+        set(
+            db.scalars(
+                select(Account.id).where(
+                    Account.id.in_(may_name), Account.role == "creator"
+                )
+            ).all()
+        )
+        if may_name
+        else set()
+    )
+    team = _team_hearing(db, notification_type, {n.account_id for n in notices}, acting)
+    rows: list[tuple[uuid.UUID, Notice, dict[str, Any]]] = []
+    for notice in notices:
+        shown = dict(notice.details)
+        if notice.account_id in creators:
+            shown[ACTING_MEMBER] = str(_member_id(acting))
+        rows.append((notice.account_id, notice, shown))
+        rows.extend(
+            (member, notice, _team_copy(shown, brand_id, brand_name))
+            for owner, member, brand_id, brand_name in team
+            if owner == notice.account_id
+        )
+    db.execute(
+        insert(Notification),
+        [
+            {
+                "account_id": account_id,
+                "notification_type": notification_type,
+                "campaign_id": notice.campaign_id,
+                "application_id": notice.application_id,
+                "details": details,
+                "created_at": now,
+                "updated_at": now,
+            }
+            for account_id, notice, details in rows
+        ],
+    )
 
 
 def record_many(

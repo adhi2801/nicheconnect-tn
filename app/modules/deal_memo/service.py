@@ -433,7 +433,20 @@ def replace_deliverables(
 def update_memo(
     db: Session, memo: DealMemo, changes: dict[str, Any], now: datetime
 ) -> DealMemo:
-    """Change a memo the brand still holds (draft, or a change was requested)."""
+    """Change a memo the brand still holds (draft, or a change was requested).
+
+    Raises MemoNotEditable, DraftReviewNeedsNewTerms and the fee errors.
+
+    The memo is locked and read again, every column, before the check, as
+    every status move does (backend.md section 5). Read unlocked, an edit
+    racing the brand's own send passed the check on the draft it had read,
+    waited for the send's lock, then wrote new terms onto a memo already
+    sent: terms the creator could accept but the record never sealed at
+    sending (legal.md section 3.5, bait and switch; audit C13, D-184).
+    Locked, an edit either lands before the send, which then seals it, or
+    finds the memo sent and is refused.
+    """
+    db.refresh(memo, with_for_update=True)
     if memo.status not in EDITABLE_STATUSES:
         db.rollback()
         raise MemoNotEditable()
@@ -533,12 +546,11 @@ def change_status(
     # Locked and read again before the check: two moves at once would both
     # pass it, and the last write would silently win (review audit, 4 Oct).
     # revision_count too: two change requests at once would add one each to
-    # the same old count.
-    db.refresh(
-        memo,
-        attribute_names=["status", "revision_count", "work_started_at"],
-        with_for_update=True,
-    )
+    # the same old count. And the terms, deliverables included: a send or an
+    # accept seals them (record.terms_facts), and an edit committed between
+    # this request reading the memo and locking it would otherwise be sealed
+    # as the terms it replaced (audit C13, D-184).
+    db.refresh(memo, with_for_update=True)
     allowed = BRAND_TRANSITIONS if actor == "brand" else CREATOR_TRANSITIONS
     if new_status not in allowed[memo.status]:
         db.rollback()
@@ -853,6 +865,51 @@ def notify_party(
     the joins and risking telling the wrong person about their money.
     """
     _notify_other_side(db, memo, to=to, notification_type=notification_type, now=now)
+
+
+def notify_creators(
+    db: Session, memo_ids: list[uuid.UUID], *, notification_type: str, now: datetime
+) -> None:
+    """`notify_party(to="creator")` for many deals at once, in the order given:
+    one read for every deal's campaign and creator, then the notices
+    together (audit C16, D-184). A creator who has left is told nothing, as
+    `notify_party` tells them nothing.
+    """
+    if not memo_ids:
+        return
+    deals = {
+        memo_id: (application_id, campaign_id, title, account_id)
+        for memo_id, application_id, campaign_id, title, account_id in db.execute(
+            select(
+                DealMemo.id,
+                Application.id,
+                Campaign.id,
+                Campaign.title,
+                Creator.account_id,
+            )
+            .join(Application, Application.id == DealMemo.application_id)
+            .join(Campaign, Campaign.id == Application.campaign_id)
+            .join(Creator, Creator.id == Application.creator_id)
+            .where(DealMemo.id.in_(memo_ids))
+        ).tuples()
+    }
+    notifications.record_each(
+        db,
+        notification_type=notification_type,
+        now=now,
+        notices=[
+            notifications.Notice(
+                account_id=account_id,
+                campaign_id=campaign_id,
+                application_id=application_id,
+                details={"campaign_title": title},
+            )
+            for application_id, campaign_id, title, account_id in (
+                deals[memo_id] for memo_id in memo_ids
+            )
+            if account_id is not None
+        ],
+    )
 
 
 def agreed_amounts(db: Session, memos: list[DealMemo]) -> dict[uuid.UUID, int | None]:

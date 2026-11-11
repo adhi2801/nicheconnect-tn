@@ -31,7 +31,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 
 from app.modules.auth import brand_access
@@ -179,8 +179,28 @@ def _last_entry(db: Session, memo_id: uuid.UUID) -> DealRecordEntry | None:
     ).first()
 
 
-def _seal(
-    db: Session,
+def _accounts(
+    db: Session, brand_account: uuid.UUID, creator_account: uuid.UUID
+) -> dict[str, uuid.UUID | None]:
+    """The account each role's entry names. The brand side names who acted
+    (D-148): a team member acting in this request, else the owner, as before
+    teams (a job, or the owner's request)."""
+    acting = brand_access.acting(db)
+    return {
+        "brand": acting.account_id if acting is not None else brand_account,
+        "creator": creator_account,
+        "system": None,
+    }
+
+
+def _needs_opening(previous: DealRecordEntry | None, kind: str, memo: DealMemo) -> bool:
+    """Whether a `record_started` entry goes first: a deal whose history began
+    before the record existed, so no deal pretends its record reaches further
+    back than it does."""
+    return previous is None and (kind != "memo_sent" or memo.revision_count > 0)
+
+
+def _sealed(
     memo: DealMemo,
     previous: DealRecordEntry | None,
     *,
@@ -191,6 +211,7 @@ def _seal(
     now: datetime,
     facts: dict[str, Any],
 ) -> DealRecordEntry:
+    """One entry, chained to `previous` and fingerprinted; not yet added."""
     entry = DealRecordEntry(
         deal_memo_id=memo.id,
         sequence=1 if previous is None else previous.sequence + 1,
@@ -203,9 +224,16 @@ def _seal(
         previous_hash=GENESIS_HASH if previous is None else previous.entry_hash,
     )
     entry.entry_hash = compute_hash(entry.previous_hash, entry_body(entry))
-    db.add(entry)
-    db.flush()
     return entry
+
+
+def _seal(
+    db: Session, memo: DealMemo, previous: DealRecordEntry | None, **entry: Any
+) -> DealRecordEntry:
+    sealed = _sealed(memo, previous, **entry)
+    db.add(sealed)
+    db.flush()
+    return sealed
 
 
 def append(
@@ -229,18 +257,10 @@ def append(
     further back than it does.
     """
     db.execute(select(DealMemo.id).where(DealMemo.id == memo.id).with_for_update())
-    brand_account, creator_account = _party_account_ids(db, memo)
-    # The brand side names who acted (D-148): a team member acting in this
-    # request, else the owner, as before teams (a job, or the owner's request).
-    acting = brand_access.acting(db)
-    accounts = {
-        "brand": acting.account_id if acting is not None else brand_account,
-        "creator": creator_account,
-        "system": None,
-    }
+    accounts = _accounts(db, *_party_account_ids(db, memo))
 
     previous = _last_entry(db, memo.id)
-    if previous is None and (kind != "memo_sent" or memo.revision_count > 0):
+    if _needs_opening(previous, kind, memo):
         previous = _seal(
             db,
             memo,
@@ -264,6 +284,113 @@ def append(
         now=now,
         facts=facts or {},
     )
+
+
+def append_each(
+    db: Session,
+    facts_by_memo: dict[uuid.UUID, dict[str, Any]],
+    *,
+    kind: str,
+    actor_role: str,
+    now: datetime,
+) -> None:
+    """`append` on many deals at once: one entry of one kind on each, with its
+    own facts, in five statements however many deals (audit C16, D-184):
+    the deals locked, their deliverables, their parties, their last
+    entries, and the entries written.
+
+    Exactly `append`'s rules: each deal locked first, its parties and last
+    entry read, a `record_started` entry first where the record has none.
+    The deals are locked in one statement, in id order, so two callers
+    sharing deals take their locks in the same order and neither can hold
+    one the other waits for while waiting on one it holds (a deadlock).
+    Never commits.
+    """
+    if not facts_by_memo:
+        return
+    memos = list(
+        db.scalars(
+            select(DealMemo)
+            .where(DealMemo.id.in_(facts_by_memo))
+            .order_by(DealMemo.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        ).all()
+    )
+    if len(memos) != len(facts_by_memo):
+        raise LookupError("A deal to put on the record does not exist")
+    parties = {
+        application_id: (brand_account, creator_account)
+        for application_id, brand_account, creator_account in db.execute(
+            select(Application.id, Brand.account_id, Creator.account_id)
+            .join(Campaign, Campaign.id == Application.campaign_id)
+            .join(Brand, Brand.id == Campaign.brand_id)
+            .join(Creator, Creator.id == Application.creator_id)
+            .where(Application.id.in_([memo.application_id for memo in memos]))
+        ).tuples()
+    }
+    # Each deal's newest entry, in one statement (served by the unique
+    # (deal, sequence) index).
+    last = {
+        entry.deal_memo_id: entry
+        for entry in db.scalars(
+            select(DealRecordEntry)
+            .where(DealRecordEntry.deal_memo_id.in_(facts_by_memo))
+            .order_by(DealRecordEntry.deal_memo_id, DealRecordEntry.sequence.desc())
+            .distinct(DealRecordEntry.deal_memo_id)
+        ).all()
+    }
+
+    entries: list[DealRecordEntry] = []
+    for memo in memos:
+        accounts = _accounts(db, *parties[memo.application_id])
+        previous = last.get(memo.id)
+        if _needs_opening(previous, kind, memo):
+            previous = _sealed(
+                memo,
+                None,
+                kind="record_started",
+                actor_role="system",
+                actor_account_id=None,
+                occurred_at=now,
+                now=now,
+                facts={"terms_sha256": terms_fingerprint(memo)},
+            )
+            entries.append(previous)
+        entries.append(
+            _sealed(
+                memo,
+                previous,
+                kind=kind,
+                actor_role=actor_role,
+                actor_account_id=accounts[actor_role],
+                occurred_at=now,
+                now=now,
+                facts=facts_by_memo[memo.id],
+            )
+        )
+    # Written by hand, in one statement: the database makes each entry's id,
+    # and the ORM writes one INSERT per row when it does.
+    db.execute(
+        insert(DealRecordEntry),
+        [{field: getattr(entry, field) for field in _WRITTEN} for entry in entries],
+    )
+
+
+# What `append_each` writes of each entry: everything but the id, which the
+# database makes.
+_WRITTEN: tuple[str, ...] = (
+    "deal_memo_id",
+    "sequence",
+    "kind",
+    "actor_role",
+    "actor_account_id",
+    "occurred_at",
+    "recorded_at",
+    "facts",
+    "previous_hash",
+    "entry_hash",
+)
 
 
 def append_for_payment(

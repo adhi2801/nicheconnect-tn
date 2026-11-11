@@ -417,6 +417,43 @@ def test_a_creator_paid_by_finance_sees_who_marked_it(client, db, clock, owner):
     )
 
 
+def test_creators_paid_by_finance_in_one_batch_see_who_marked_it(
+    client, db, clock, owner
+):
+    """The bulk path writes its notices and record entries together, by code
+    of its own (audit C16, D-184), so it names the member as the single path
+    does, on every deal of the batch, and every record still verifies."""
+    finance = join(client, db, clock, owner, "finance", "Meena")
+    creators = [make_creator(db, clock) for _ in range(2)]
+    memo_ids = []
+    for creator in creators:
+        memo_id = accepted_memo(client, owner, creator)
+        proof = submit_proof(client, memo_id, creator)
+        client.post(f"{MEMOS_URL}/{memo_id}/proof/{proof}/approve", headers=owner.headers)
+        memo_ids.append(memo_id)
+
+    marked = client.post(
+        "/api/v1/brands/me/payments/mark-paid",
+        json={
+            "payments": [
+                {"memo_id": memo_id, "method": "upi", "reference": f"41234567890{i}"}
+                for i, memo_id in enumerate(memo_ids)
+            ]
+        },
+        headers=finance.headers,
+    )
+
+    assert marked.status_code == 200, marked.text
+    assert marked.json()["recorded"] == 2
+    for creator, memo_id in zip(creators, memo_ids, strict=True):
+        shown = shown_to(client, creator, "payment_marked_paid")
+        assert shown["acting_first_name"] == "Meena"
+        read = client.get(f"{MEMOS_URL}/{memo_id}/record", headers=creator.headers)
+        assert read.json()["intact"] is True
+        names = {e["kind"]: e["actor_first_name"] for e in read.json()["entries"]}
+        assert names["payment_marked_paid"] == "Meena"
+
+
 def test_the_record_keeps_the_name_of_a_member_who_left(client, db, clock, owner):
     campaigns = join(client, db, clock, owner, "campaigns", "Ravi")
     creator, memo_id = acted_on_proof(client, db, clock, owner, campaigns)

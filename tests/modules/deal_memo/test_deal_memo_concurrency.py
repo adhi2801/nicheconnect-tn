@@ -13,17 +13,34 @@ happens every run rather than by luck.
 """
 
 import time
-from datetime import UTC, datetime
+import uuid
+from collections.abc import Callable, Iterator
+from datetime import UTC, date, datetime
+from typing import Any
+
+import pytest
+from sqlalchemy import delete
+from sqlalchemy.orm import Session
 
 import app.db.models  # noqa: F401 — registers every table, as the app does
+from app.db.session import SessionLocal
 from app.modules.campaigns.models import Application
 from app.modules.deal_memo import proof_service
+from app.modules.deal_memo import record_service as record
 from app.modules.deal_memo import service as memos
-from app.modules.deal_memo.exceptions import MemoAlreadyExists, ProofAlreadyDecided
+from app.modules.deal_memo.deliverable_models import MemoDeliverable
+from app.modules.deal_memo.exceptions import (
+    MemoAlreadyExists,
+    MemoNotEditable,
+    MemoStatusConflict,
+    ProofAlreadyDecided,
+)
 from app.modules.deal_memo.models import DealMemo
+from app.modules.deal_memo.record_models import DealRecordEntry
 from tests.modules.payment_status.test_payment_concurrency import (
     AT_ONCE,
     run_at_once,
+    run_staggered,
     split,
 )
 
@@ -81,3 +98,211 @@ def test_two_simultaneous_proof_submissions_give_one_proof_and_conflicts(
     won, refused, unexpected = split(results, ProofAlreadyDecided)
     assert unexpected == [], f"a raw database error reached the caller: {unexpected}"
     assert (won, refused) == (1, AT_ONCE - 1)
+
+
+# --- terms against a send, and the creator's answers (audit C13, D-184) -----------
+#
+# Each "only if" here is checked after locking the memo (backend.md section
+# 5). `slow_writes` holds every flush open, and the jobs start in a fixed
+# order, so without the lock the bad interleaving is the one that happens,
+# every run, not one that might.
+
+DUE_ON = date(2026, 10, 15)
+NEW_FEE = 950_000
+NEW_ITEMS = [{"platform": "instagram", "format": "reel", "quantity": 2, "note": None}]
+
+
+@pytest.fixture
+def draft_memo(committed_application) -> Iterator[uuid.UUID]:
+    """A committed draft memo on a paid campaign, due well after NOW."""
+    with SessionLocal() as session:
+        memo = DealMemo(
+            application_id=committed_application,
+            deliverables="Three reels, for a concurrency test.",
+            fee_amount_paise=800_000,
+            content_due_on=DUE_ON,
+            status="draft",
+            created_at=NOW,
+            updated_at=NOW,
+        )
+        session.add(memo)
+        session.commit()
+        memo_id = memo.id
+    try:
+        yield memo_id
+    finally:
+        # Deliverables hold their memo by RESTRICT; the application's own
+        # cleanup removes the memo and its record after this.
+        with SessionLocal() as session:
+            session.execute(
+                delete(MemoDeliverable).where(MemoDeliverable.deal_memo_id == memo_id)
+            )
+            session.commit()
+
+
+@pytest.fixture
+def sent_memo(draft_memo) -> uuid.UUID:
+    with SessionLocal() as session:
+        memos.change_status(
+            session, session.get_one(DealMemo, draft_memo), "sent", NOW, actor="brand"
+        )
+    return draft_memo
+
+
+def memo_entries(memo_id: uuid.UUID) -> list[DealRecordEntry]:
+    with SessionLocal() as session:
+        return record.entries_for(session, memo_id)
+
+
+def edit(memo_id: uuid.UUID) -> Callable[[Session], Any]:
+    return lambda s: memos.update_memo(
+        s,
+        s.get_one(DealMemo, memo_id),
+        {"fee_amount_paise": NEW_FEE, "deliverable_items": list(NEW_ITEMS)},
+        NOW,
+    )
+
+
+def move(memo_id: uuid.UUID, status: str, actor: str) -> Callable[[Session], Any]:
+    message = "Make it two reels." if status == "change_requested" else None
+    return lambda s: memos.change_status(
+        s, s.get_one(DealMemo, memo_id), status, NOW, actor=actor, message=message
+    )
+
+
+@pytest.mark.parametrize("first", ["send", "edit"])
+def test_an_edit_racing_the_send_never_lands_on_terms_the_record_did_not_seal(
+    draft_memo, slow_writes, first
+):
+    """Bait and switch (legal.md section 3.5). Read unlocked, an edit that
+    started after the send passed its check on the draft, waited for the
+    send's lock, then wrote a new fee onto the sent memo; and a send that
+    read the memo before an edit committed sealed the fee the edit replaced.
+    Either way the creator could accept terms the record never sealed at
+    sending. Now it is edit then send, or send then the edit refused (409).
+
+    The stagger stages the bad interleaving; the assertions hold for either
+    order, so a slow machine that lets the later job win the lock first
+    proves the same rule rather than failing for the wrong reason."""
+    later = 0.1
+    send_job = move(draft_memo, "sent", "brand")
+    edit_job = edit(draft_memo)
+    if first == "send":
+        sent, edited = run_staggered((0.0, send_job), (later, edit_job))
+    else:
+        sent, edited = run_staggered((later, send_job), (0.0, edit_job))
+
+    assert not isinstance(sent, Exception), f"the send failed: {sent!r}"
+    # The edit landed before the send, or found the memo sent: nothing else.
+    edit_landed = not isinstance(edited, Exception)
+    assert edit_landed or isinstance(edited, MemoNotEditable), repr(edited)
+    expected_fee = NEW_FEE if edit_landed else 800_000
+    with SessionLocal() as session:
+        memo = session.get_one(DealMemo, draft_memo)
+        assert memo.status == "sent"
+        assert memo.fee_amount_paise == expected_fee
+        terms_now = record.terms_fingerprint(memo)
+    sealed = [e for e in memo_entries(draft_memo) if e.kind == "memo_sent"]
+    assert len(sealed) == 1
+    # What the creator was sent is exactly what the record sealed at sending.
+    assert sealed[0].facts["fee_amount_paise"] == expected_fee
+    assert sealed[0].facts["terms_sha256"] == terms_now
+
+
+def test_of_four_accepts_at_once_exactly_one_wins(sent_memo, slow_writes):
+    results = run_at_once(move(sent_memo, "accepted", "creator"), AT_ONCE)
+
+    won, refused, unexpected = split(results, MemoStatusConflict)
+    assert unexpected == [], f"a raw error reached the caller: {unexpected}"
+    assert (won, refused) == (1, AT_ONCE - 1)
+    assert [e.kind for e in memo_entries(sent_memo)] == ["memo_sent", "memo_accepted"]
+
+
+def test_the_creator_s_three_answers_at_once_leave_one(sent_memo, slow_writes):
+    """Accept, ask for a change, decline: one answer stands, and its marks
+    alone are on the memo, never a mix of two."""
+    jobs = ["accepted", "change_requested", "declined", "accepted"]
+
+    results = run_at_once(lambda s: move(sent_memo, jobs.pop(), "creator")(s), AT_ONCE)
+
+    won, refused, unexpected = split(results, MemoStatusConflict)
+    assert unexpected == [], f"a raw error reached the caller: {unexpected}"
+    assert (won, refused) == (1, AT_ONCE - 1)
+    answers = [e.kind for e in memo_entries(sent_memo)][1:]
+    assert len(answers) == 1
+    with SessionLocal() as session:
+        memo = session.get_one(DealMemo, sent_memo)
+        assert f"memo_{memo.status}" == answers[0]
+        # A lost update would count two requests, or accept a questioned memo.
+        assert memo.revision_count == (1 if memo.status == "change_requested" else 0)
+        assert (memo.accepted_at is not None) == (memo.status == "accepted")
+        assert (memo.declined_at is not None) == (memo.status == "declined")
+
+
+def test_of_four_sends_of_one_draft_at_once_exactly_one_wins(draft_memo, slow_writes):
+    """One send, sealed once: a second would seal the same terms again and
+    tell the creator twice."""
+    results = run_at_once(move(draft_memo, "sent", "brand"), AT_ONCE)
+
+    won, refused, unexpected = split(results, MemoStatusConflict)
+    assert unexpected == [], f"a raw error reached the caller: {unexpected}"
+    assert (won, refused) == (1, AT_ONCE - 1)
+    assert [e.kind for e in memo_entries(draft_memo)] == ["memo_sent"]
+
+
+def test_both_sides_cancelling_an_accepted_memo_at_once_cancel_it_once(
+    sent_memo, slow_writes
+):
+    """Either side may cancel an accepted memo; only the first cancellation
+    happened, and the record says so once."""
+    with SessionLocal() as session:
+        memos.change_status(
+            session,
+            session.get_one(DealMemo, sent_memo),
+            "accepted",
+            NOW,
+            actor="creator",
+        )
+    jobs = [("cancelled", "brand"), ("cancelled", "creator")] * (AT_ONCE // 2)
+
+    results = run_at_once(lambda s: move(sent_memo, *jobs.pop())(s), AT_ONCE)
+
+    won, refused, unexpected = split(results, MemoStatusConflict)
+    assert unexpected == [], f"a raw error reached the caller: {unexpected}"
+    assert (won, refused) == (1, AT_ONCE - 1)
+    cancels = [e for e in memo_entries(sent_memo) if e.kind == "memo_cancelled"]
+    assert len(cancels) == 1
+    with SessionLocal() as session:
+        memo = session.get_one(DealMemo, sent_memo)
+        assert memo.status == "cancelled"
+        # Nothing was submitted, so it cost nothing, whoever cancelled (D-026).
+        assert memo.cancellation_kind == "withdrawn_early"
+        assert cancels[0].facts == {"cancellation_kind": "withdrawn_early"}
+
+
+def test_an_accept_and_a_cancel_at_once_leave_a_sequence_the_rules_allow(
+    sent_memo, slow_writes
+):
+    """A brand may cancel a sent memo and an accepted one, so both may win,
+    but only in that order: accepted, then cancelled. A cancelled memo is
+    never accepted, and the record says exactly what happened."""
+    jobs = [
+        ("accepted", "creator"),
+        ("cancelled", "brand"),
+        ("accepted", "creator"),
+        ("cancelled", "brand"),
+    ]
+
+    results = run_at_once(lambda s: move(sent_memo, *jobs.pop())(s), AT_ONCE)
+
+    won, refused, unexpected = split(results, MemoStatusConflict)
+    assert unexpected == [], f"a raw error reached the caller: {unexpected}"
+    answers = [e.kind for e in memo_entries(sent_memo)][1:]
+    assert answers in (["memo_cancelled"], ["memo_accepted", "memo_cancelled"])
+    assert (won, refused) == (len(answers), AT_ONCE - len(answers))
+    with SessionLocal() as session:
+        memo = session.get_one(DealMemo, sent_memo)
+        assert memo.status == "cancelled"
+        assert (memo.accepted_at is not None) == ("memo_accepted" in answers)
+        # No work was submitted, so the cancellation cost nothing (D-026).
+        assert memo.cancellation_kind == "withdrawn_early"

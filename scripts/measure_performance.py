@@ -249,6 +249,14 @@ def measure_writes(
                 "content_due_on": due_on,
             },
         )["id"]
+        # An edit before sending: the memo locked and read again first (D-184).
+        write(
+            name("PATCH /deal-memos/{id}"),
+            f"{memos}/{memo}",
+            brand_headers,
+            {"fee_amount_paise": 850_000},
+            method="PATCH",
+        )
         write(name("POST /deal-memos/{id}/send"), f"{memos}/{memo}/send", brand_headers)
         write(
             name("POST /deal-memos/{id}/accept"),
