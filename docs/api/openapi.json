@@ -1954,6 +1954,35 @@
         "title": "AvailabilityUpdate",
         "type": "object"
       },
+      "BetweenYouRead": {
+        "description": "The same brand and creator's deals agreed before this one.",
+        "properties": {
+          "earlier_deals_agreed": {
+            "description": "Deals the two of you agreed before this one was agreed (or before now, while it is not)",
+            "minimum": 0.0,
+            "title": "Earlier Deals Agreed",
+            "type": "integer"
+          },
+          "earlier_deals_finished": {
+            "description": "Of those, how many finished: paid and confirmed, or barter work approved",
+            "minimum": 0.0,
+            "title": "Earlier Deals Finished",
+            "type": "integer"
+          },
+          "first_deal_together": {
+            "description": "True when the two of you agreed no deal before this one",
+            "title": "First Deal Together",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "first_deal_together",
+          "earlier_deals_agreed",
+          "earlier_deals_finished"
+        ],
+        "title": "BetweenYouRead",
+        "type": "object"
+      },
       "BlockCreate": {
         "additionalProperties": false,
         "description": "Whom to block. A creator names a brand; a brand names a creator.",
@@ -2266,6 +2295,42 @@
           "text_flags"
         ],
         "title": "BrandApplicationRead",
+        "type": "object"
+      },
+      "BrandCheckRead": {
+        "description": "What a creator reads about the brand before agreeing.",
+        "properties": {
+          "account_created_on": {
+            "description": "The Tamil Nadu date the account that owns the brand was created; after a hand-over (D-151), the new owner's account",
+            "format": "date",
+            "title": "Account Created On",
+            "type": "string"
+          },
+          "brand_id": {
+            "format": "uuid",
+            "title": "Brand Id",
+            "type": "string"
+          },
+          "disputes": {
+            "$ref": "#/components/schemas/DisputeHistoryRead"
+          },
+          "payment_record": {
+            "$ref": "#/components/schemas/BrandReliabilityRead",
+            "description": "How the brand pays, with its verified domain (the registry's date for it in `registered_on`) and the look-alike name flag, as `GET /brands/{brand_id}/reliability` answers"
+          },
+          "work_reviewed": {
+            "$ref": "#/components/schemas/ResponseTimeRead",
+            "description": "How long the brand takes to decide on submitted work"
+          }
+        },
+        "required": [
+          "brand_id",
+          "account_created_on",
+          "payment_record",
+          "work_reviewed",
+          "disputes"
+        ],
+        "title": "BrandCheckRead",
         "type": "object"
       },
       "BrandDomainClaim": {
@@ -4160,6 +4225,61 @@
         "title": "ChannelUpsert",
         "type": "object"
       },
+      "CheckConnectionRead": {
+        "description": "A connected account (D-134), with the count the platform itself reported.\n\n`connected_since` is a Tamil Nadu date, as every date in the check is.",
+        "properties": {
+          "connected_since": {
+            "format": "date",
+            "title": "Connected Since",
+            "type": "string"
+          },
+          "handle": {
+            "title": "Handle",
+            "type": "string"
+          },
+          "platform": {
+            "enum": [
+              "instagram",
+              "youtube"
+            ],
+            "title": "Platform",
+            "type": "string"
+          },
+          "verified_as_of": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified As Of"
+          },
+          "verified_followers": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The platform's own count; null when the platform hides it, never 0",
+            "title": "Verified Followers"
+          }
+        },
+        "required": [
+          "platform",
+          "handle",
+          "connected_since",
+          "verified_followers",
+          "verified_as_of"
+        ],
+        "title": "CheckConnectionRead",
+        "type": "object"
+      },
       "CheckpointTimestampRead": {
         "description": "One authority's signed statement that the day's root existed.",
         "properties": {
@@ -4505,6 +4625,70 @@
           "rights_state"
         ],
         "title": "ContentItemRead",
+        "type": "object"
+      },
+      "CreatorCheckRead": {
+        "description": "What a brand reads about the creator before agreeing.",
+        "properties": {
+          "account_created_on": {
+            "description": "The Tamil Nadu date the creator's account was created",
+            "format": "date",
+            "title": "Account Created On",
+            "type": "string"
+          },
+          "channels": {
+            "description": "The creator's own claim, each dated by `figures_as_of`, and shown as self-reported",
+            "items": {
+              "$ref": "#/components/schemas/ChannelRead"
+            },
+            "title": "Channels",
+            "type": "array"
+          },
+          "connected_accounts": {
+            "description": "Accounts the creator connected, with the platform's own count: shown beside the channel's stated count, never instead",
+            "items": {
+              "$ref": "#/components/schemas/CheckConnectionRead"
+            },
+            "title": "Connected Accounts",
+            "type": "array"
+          },
+          "creator_id": {
+            "format": "uuid",
+            "title": "Creator Id",
+            "type": "string"
+          },
+          "delivery_record": {
+            "$ref": "#/components/schemas/CreatorDeliveryRead"
+          },
+          "disputes": {
+            "$ref": "#/components/schemas/DisputeHistoryRead"
+          },
+          "memo_answered": {
+            "$ref": "#/components/schemas/ResponseTimeRead",
+            "description": "How long the creator takes to answer a memo"
+          },
+          "payment_confirmed": {
+            "$ref": "#/components/schemas/ResponseTimeRead",
+            "description": "How long the creator takes to confirm a payment arrived"
+          },
+          "profile_withheld": {
+            "description": "True while the creator's profile is withheld for legal reasons (item 52): its channels and connected accounts are then left out",
+            "title": "Profile Withheld",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "creator_id",
+          "account_created_on",
+          "delivery_record",
+          "memo_answered",
+          "payment_confirmed",
+          "disputes",
+          "profile_withheld",
+          "channels",
+          "connected_accounts"
+        ],
+        "title": "CreatorCheckRead",
         "type": "object"
       },
       "CreatorDeliveryRead": {
@@ -5224,6 +5408,56 @@
           "downloaded_at"
         ],
         "title": "DataExportRead",
+        "type": "object"
+      },
+      "DealCheckRead": {
+        "description": "Facts about the other side of a deal, from our records, as of a Tamil Nadu date.\n\nExactly one of `about_brand` (for the creator) and `about_creator` (for\nthe brand) is set. Every share and median is null below its floor,\nmeaning **not enough to say**, and must never be shown as 0. Nothing here\nis a score, and nothing stops either side agreeing.",
+        "properties": {
+          "about_brand": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BrandCheckRead"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set when the creator reads; null for the brand"
+          },
+          "about_creator": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CreatorCheckRead"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set when the brand reads; null for the creator"
+          },
+          "as_of": {
+            "description": "The Tamil Nadu date these facts were read",
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "between_you": {
+            "$ref": "#/components/schemas/BetweenYouRead"
+          },
+          "deal_memo_id": {
+            "format": "uuid",
+            "title": "Deal Memo Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "deal_memo_id",
+          "as_of",
+          "about_brand",
+          "about_creator",
+          "between_you"
+        ],
+        "title": "DealCheckRead",
         "type": "object"
       },
       "DealFeedbackRead": {
@@ -6031,6 +6265,33 @@
         "title": "DisputeEventRead",
         "type": "object"
       },
+      "DisputeHistoryRead": {
+        "description": "The deals this side agreed, and how many of them went to a dispute.\n\nCounts, reported always, beside the number they rest on. Who raised a\ndispute is never shown.",
+        "properties": {
+          "deals_agreed": {
+            "description": "Deals this side agreed (a memo accepted): the count below rests on it",
+            "minimum": 0.0,
+            "title": "Deals Agreed",
+            "type": "integer"
+          },
+          "outcomes": {
+            "$ref": "#/components/schemas/DisputeOutcomesRead"
+          },
+          "went_to_dispute": {
+            "description": "Of those, how many went to a dispute about the payment",
+            "minimum": 0.0,
+            "title": "Went To Dispute",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "deals_agreed",
+          "went_to_dispute",
+          "outcomes"
+        ],
+        "title": "DisputeHistoryRead",
+        "type": "object"
+      },
       "DisputeOpen": {
         "additionalProperties": false,
         "description": "Raising one. Either side may.",
@@ -6050,6 +6311,50 @@
           "reason"
         ],
         "title": "DisputeOpen",
+        "type": "object"
+      },
+      "DisputeOutcomesRead": {
+        "description": "How each dispute ended, or where it stands. A fact about the dispute,\nnever a finding about either side (D-028).",
+        "properties": {
+          "open": {
+            "description": "Raised, inside its 30 days, no outcome yet",
+            "minimum": 0.0,
+            "title": "Open",
+            "type": "integer"
+          },
+          "resolved_informally": {
+            "description": "Settled between the two of them",
+            "minimum": 0.0,
+            "title": "Resolved Informally",
+            "type": "integer"
+          },
+          "resolved_paid": {
+            "description": "Ended with the money arriving",
+            "minimum": 0.0,
+            "title": "Resolved Paid",
+            "type": "integer"
+          },
+          "resolved_withdrawn": {
+            "description": "Withdrawn by whoever raised it",
+            "minimum": 0.0,
+            "title": "Resolved Withdrawn",
+            "type": "integer"
+          },
+          "unresolved": {
+            "description": "Thirty days passed with no outcome agreed: a fact about the dispute, not a finding about either of you",
+            "minimum": 0.0,
+            "title": "Unresolved",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "open",
+          "unresolved",
+          "resolved_paid",
+          "resolved_withdrawn",
+          "resolved_informally"
+        ],
+        "title": "DisputeOutcomesRead",
         "type": "object"
       },
       "DisputeRead": {
@@ -32759,6 +33064,109 @@
         "summary": "Cancel the memo (brand)",
         "tags": [
           "deal memos"
+        ]
+      }
+    },
+    "/api/v1/deal-memos/{memo_id}/check": {
+      "get": {
+        "description": "What our records hold about the other side of this deal, on one screen. The creator reads about the brand: its payment record, verified domain and look-alike name flag, how long it takes to decide on work, the deals that went to a dispute and how each ended, and when its account was created. The brand reads about the creator: the delivery record, how long the creator takes to answer, the deals that went to a dispute and how each ended, when the account was created, and each channel's figures as the creator's own claim beside any count a connected platform reported. Both read whether this is their first deal together and how many earlier deals between them finished. Facts with the number each rests on; every share and median is `null` below its floor, meaning **not enough to say**, never 0. Never a score, and it never stops anyone agreeing. The brand's team from the draft on; the creator once the memo is sent.",
+        "operationId": "read_deal_check_api_v1_deal_memos__memo_id__check_get",
+        "parameters": [
+          {
+            "description": "The memo's id",
+            "in": "path",
+            "name": "memo_id",
+            "required": true,
+            "schema": {
+              "description": "The memo's id",
+              "format": "uuid",
+              "title": "Memo Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealCheckRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No such memo, not yours, a draft read by the creator, or a block stands between the two of you"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The memo id is not a valid id"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Facts about the other side, before the deal is agreed",
+        "tags": [
+          "reliability"
         ]
       }
     },
