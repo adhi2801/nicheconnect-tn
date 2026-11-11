@@ -2274,3 +2274,13 @@ Newest entries at the bottom.
   4. **OpenSSF Scorecard** at 8.0 or above, no critical check below 8, on every push to `main` (item 125; a CI workflow, proposed when built).
   5. **Admins on passkeys** once the domain exists, the authenticator kept as the second factor (item 129).
   6. **The ASVS 5.0 map a release gate**: chapter by chapter, each requirement against its test or file, before launch (item 123; D-166 set the levels).
+
+## D-183: Seven Dependabot updates, merged together on today's main
+- Date: 2026-11-11
+- Approved by: Adhi, in this session: "Approve all 7 (Recommended)", each merged only once CI is green on today's main. **Not reviewed by the other founder** (D-051).
+- Context: #101 to #107 had waited three days, their CI red only because they were built before the zlib fix (D-178) reached `main`.
+- Options considered: A) all seven; B) only the app's three, holding the AWS provider until infrastructure is deployed; C) hold all.
+- Chosen: A.
+- Reason: each is a patch, a minor provider update or a data refresh, kept current as D-047 and Dependabot's 7-day hold intend.
+- Consequences / follow-ups:
+  1. One branch, `chore/deps-2026-11-11`, merging the seven onto `main` (`setup-uv` 10.3.3, Valkey 9.1.3, the AWS provider 6.71 in four places, `publicsuffixlist` 1.1.2.20261101); the lockfile checked; merged only once CI is green on its exact commit, which closes each pull request.
