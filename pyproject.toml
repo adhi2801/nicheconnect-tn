@@ -246,6 +246,8 @@ only_mutate = [
     "app/modules/campaigns/budget.py",
     "app/core/partial_update.py",
     "app/core/http_cache.py",
+    # When a Tamil Nadu day ends (audit C11, D-180).
+    "app/core/clock.py",
 ]
 # Only lines the chosen tests reach: a function they never call is not
 # evidence of a weak test, and would bury the real survivors.
@@ -272,6 +274,7 @@ pytest_add_cli_args_test_selection = [
     "tests/modules/campaigns/test_budget_rules.py",
     "tests/test_update_schemas.py",
     "tests/core/test_http_cache_properties.py",
+    "tests/core/test_clock_properties.py",
 ]
 
 [tool.importlinter]
