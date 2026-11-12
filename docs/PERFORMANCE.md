@@ -7,7 +7,7 @@ is where they live.
 **Budgets** (`docs/standards/backend.md` section 6): p95 ≤ 300 ms for reads,
 ≤ 500 ms for writes, on seeded local data.
 
-**Last measured: 11 November 2026, again, after D-184** (section "Added 11 November: the deal domain's locks" below): 84 timings, 83 within budget, on a machine loaded by another job's test run. Earlier the same day (section "Every route, 11 November" below): 83 timings, all 83 within budget. Before that, 6 November: 73 timings, 71 within budget. Before that, per section as dated:
+**Last measured: 12 November 2026, D-184 with `main` merged in** (section "Added 12 November: the deal domain's locks, measured again on a quiet database" below): 86 timings, 85 within budget, the one over the export job. On 11 November after D-184 (section "Added 11 November: the deal domain's locks" below): 84 timings, 83 within budget, on a machine loaded by another job's test run. Earlier the same day (section "Every route, 11 November" below): 83 timings, all 83 within budget. Before that, 6 November: 73 timings, 71 within budget. Before that, per section as dated:
 30 September 2026 for creator search and reports (next
 section); 26 September 2026 for everything else, on PostgreSQL 18.6 with pgvector 0.8.6
 (D-049), seeded with 10 brands, 200 creators, 150 campaigns, 785
@@ -15,6 +15,22 @@ applications and 958 rate card packages. 100 runs per read. For writes: 30
 whole deals, 5 bank bulk transfers of 25 rows, and 30 rounds of rate card
 edits. All from one run, on a developer laptop under Docker Desktop for
 Windows.
+
+## Added 12 November: the deal domain's locks, measured again on a quiet database (D-184)
+
+On `fix/deal-domain-audits` with `main` merged in (items 133 and the seven updates of D-183), `scripts/measure_performance.py --runs 100` (30 whole deals for the writes, 5 bulk transfers of 25 rows), against a database of its own on the same server (`nicheconnect_deal`, freshly migrated and seeded: 150 campaigns, 785 applications, 200 creators, 958 packages), so no other job's tests shared its tables. The server's other database was sampled every 20 seconds through the run: no active query in any of the 12 samples. **86 timings, 85 within budget.**
+
+| Route | p50 ms | p95 ms | max ms | Budget |
+|---|---|---|---|---|
+| `POST /brands/me/payments/mark-paid` (25 rows) | 226.5 | 251.0 | 251.0 | 500 |
+| `PATCH /deal-memos/{id}` | 32.6 | 46.6 | 56.7 | 500 |
+| `POST /deal-memos/{id}/send` | 38.6 | 87.2 | 97.9 | 500 |
+| `POST /deal-memos/{id}/accept` | 39.5 | 48.2 | 49.2 | 500 |
+| `POST /deal-memos/{id}/payment/mark-paid` | 37.7 | 67.2 | 84.3 | 500 |
+| `POST .../payment/dispute/entries` | 30.1 | 36.4 | 38.7 | 500 |
+| `GET /deal-memos/{id}/check` (creator; brand) | 35.0; 37.6 | 43.4; 49.0 | 62.1; 51.5 | 300 |
+
+The bulk mark-paid of 25 rows: **251.0 ms p95, inside its 500 ms budget**, where the old per-row code measured 971.3 ms p95 the same morning (on `fix/c11-applications`, which carries `main`'s bulk code, against the shared database: a different database and run, so the comparison is indicative; the statement counts, 16 whatever the size against 18 a row, are the exact one). Its five samples make its p95 its maximum. **Over budget, not on this change's path:** the export job, 529.4 ms p95, which nobody waits on in a request (D-111); it stays watched.
 
 ## Added 11 November: the deal domain's locks (D-184, parts of audits C13, C14, C16, C17)
 

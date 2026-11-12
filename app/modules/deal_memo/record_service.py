@@ -32,6 +32,7 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import insert, select
+from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.orm import Session
 
 from app.modules.auth import brand_access
@@ -337,7 +338,7 @@ def append_each(
             select(DealRecordEntry)
             .where(DealRecordEntry.deal_memo_id.in_(facts_by_memo))
             .order_by(DealRecordEntry.deal_memo_id, DealRecordEntry.sequence.desc())
-            .distinct(DealRecordEntry.deal_memo_id)
+            .ext(distinct_on(DealRecordEntry.deal_memo_id))
         ).all()
     }
 
