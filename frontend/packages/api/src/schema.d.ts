@@ -2284,6 +2284,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/deal-memos/{memo_id}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Facts about the other side, before the deal is agreed
+         * @description What our records hold about the other side of this deal, on one screen. The creator reads about the brand: its payment record, verified domain and look-alike name flag, how long it takes to decide on work, the deals that went to a dispute and how each ended, and when its account was created. The brand reads about the creator: the delivery record, how long the creator takes to answer, the deals that went to a dispute and how each ended, when the account was created, and each channel's figures as the creator's own claim beside any count a connected platform reported. Both read whether this is their first deal together and how many earlier deals between them finished. Facts with the number each rests on; every share and median is `null` below its floor, meaning **not enough to say**, never 0. Never a score, and it never stops anyone agreeing. The brand's team from the draft on; the creator once the memo is sent.
+         */
+        get: operations["read_deal_check_api_v1_deal_memos__memo_id__check_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/deal-memos/{memo_id}/decline": {
         parameters: {
             query?: never;
@@ -4764,6 +4784,27 @@ export interface components {
             booked_until: string | null;
         };
         /**
+         * BetweenYouRead
+         * @description The same brand and creator's deals agreed before this one.
+         */
+        BetweenYouRead: {
+            /**
+             * Earlier Deals Agreed
+             * @description Deals the two of you agreed before this one was agreed (or before now, while it is not)
+             */
+            earlier_deals_agreed: number;
+            /**
+             * Earlier Deals Finished
+             * @description Of those, how many finished: paid and confirmed, or barter work approved
+             */
+            earlier_deals_finished: number;
+            /**
+             * First Deal Together
+             * @description True when the two of you agreed no deal before this one
+             */
+            first_deal_together: boolean;
+        };
+        /**
          * BlockCreate
          * @description Whom to block. A creator names a brand; a brand names a creator.
          */
@@ -4890,6 +4931,28 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /**
+         * BrandCheckRead
+         * @description What a creator reads about the brand before agreeing.
+         */
+        BrandCheckRead: {
+            /**
+             * Account Created On
+             * Format: date
+             * @description The Tamil Nadu date the account that owns the brand was created; after a hand-over (D-151), the new owner's account
+             */
+            account_created_on: string;
+            /**
+             * Brand Id
+             * Format: uuid
+             */
+            brand_id: string;
+            disputes: components["schemas"]["DisputeHistoryRead"];
+            /** @description How the brand pays, with its verified domain (the registry's date for it in `registered_on`) and the look-alike name flag, as `GET /brands/{brand_id}/reliability` answers */
+            payment_record: components["schemas"]["BrandReliabilityRead"];
+            /** @description How long the brand takes to decide on submitted work */
+            work_reviewed: components["schemas"]["ResponseTimeRead"];
         };
         /** BrandDomainClaim */
         BrandDomainClaim: {
@@ -5692,6 +5755,33 @@ export interface components {
             profile_url: string;
         };
         /**
+         * CheckConnectionRead
+         * @description A connected account (D-134), with the count the platform itself reported.
+         *
+         *     `connected_since` is a Tamil Nadu date, as every date in the check is.
+         */
+        CheckConnectionRead: {
+            /**
+             * Connected Since
+             * Format: date
+             */
+            connected_since: string;
+            /** Handle */
+            handle: string;
+            /**
+             * Platform
+             * @enum {string}
+             */
+            platform: "instagram" | "youtube";
+            /** Verified As Of */
+            verified_as_of: string | null;
+            /**
+             * Verified Followers
+             * @description The platform's own count; null when the platform hides it, never 0
+             */
+            verified_followers: number | null;
+        };
+        /**
          * CheckpointTimestampRead
          * @description One authority's signed statement that the day's root existed.
          */
@@ -5873,6 +5963,44 @@ export interface components {
              * @description The days of use the accepted memo states; null if it states none
              */
             usage_rights_days: number | null;
+        };
+        /**
+         * CreatorCheckRead
+         * @description What a brand reads about the creator before agreeing.
+         */
+        CreatorCheckRead: {
+            /**
+             * Account Created On
+             * Format: date
+             * @description The Tamil Nadu date the creator's account was created
+             */
+            account_created_on: string;
+            /**
+             * Channels
+             * @description The creator's own claim, each dated by `figures_as_of`, and shown as self-reported
+             */
+            channels: components["schemas"]["ChannelRead"][];
+            /**
+             * Connected Accounts
+             * @description Accounts the creator connected, with the platform's own count: shown beside the channel's stated count, never instead
+             */
+            connected_accounts: components["schemas"]["CheckConnectionRead"][];
+            /**
+             * Creator Id
+             * Format: uuid
+             */
+            creator_id: string;
+            delivery_record: components["schemas"]["CreatorDeliveryRead"];
+            disputes: components["schemas"]["DisputeHistoryRead"];
+            /** @description How long the creator takes to answer a memo */
+            memo_answered: components["schemas"]["ResponseTimeRead"];
+            /** @description How long the creator takes to confirm a payment arrived */
+            payment_confirmed: components["schemas"]["ResponseTimeRead"];
+            /**
+             * Profile Withheld
+             * @description True while the creator's profile is withheld for legal reasons (item 52): its channels and connected accounts are then left out
+             */
+            profile_withheld: boolean;
         };
         /**
          * CreatorDeliveryRead
@@ -6185,6 +6313,33 @@ export interface components {
              * @enum {string}
              */
             status: "preparing" | "failed" | "ready" | "downloaded" | "expired";
+        };
+        /**
+         * DealCheckRead
+         * @description Facts about the other side of a deal, from our records, as of a Tamil Nadu date.
+         *
+         *     Exactly one of `about_brand` (for the creator) and `about_creator` (for
+         *     the brand) is set. Every share and median is null below its floor,
+         *     meaning **not enough to say**, and must never be shown as 0. Nothing here
+         *     is a score, and nothing stops either side agreeing.
+         */
+        DealCheckRead: {
+            /** @description Set when the creator reads; null for the brand */
+            about_brand: components["schemas"]["BrandCheckRead"] | null;
+            /** @description Set when the brand reads; null for the creator */
+            about_creator: components["schemas"]["CreatorCheckRead"] | null;
+            /**
+             * As Of
+             * Format: date
+             * @description The Tamil Nadu date these facts were read
+             */
+            as_of: string;
+            between_you: components["schemas"]["BetweenYouRead"];
+            /**
+             * Deal Memo Id
+             * Format: uuid
+             */
+            deal_memo_id: string;
         };
         /**
          * DealFeedbackRead
@@ -6598,6 +6753,26 @@ export interface components {
             note: string | null;
         };
         /**
+         * DisputeHistoryRead
+         * @description The deals this side agreed, and how many of them went to a dispute.
+         *
+         *     Counts, reported always, beside the number they rest on. Who raised a
+         *     dispute is never shown.
+         */
+        DisputeHistoryRead: {
+            /**
+             * Deals Agreed
+             * @description Deals this side agreed (a memo accepted): the count below rests on it
+             */
+            deals_agreed: number;
+            outcomes: components["schemas"]["DisputeOutcomesRead"];
+            /**
+             * Went To Dispute
+             * @description Of those, how many went to a dispute about the payment
+             */
+            went_to_dispute: number;
+        };
+        /**
          * DisputeOpen
          * @description Raising one. Either side may.
          */
@@ -6608,6 +6783,38 @@ export interface components {
              * @example The payment was marked sent on 8 September but nothing has reached my account and the reference does not match.
              */
             reason: string;
+        };
+        /**
+         * DisputeOutcomesRead
+         * @description How each dispute ended, or where it stands. A fact about the dispute,
+         *     never a finding about either side (D-028).
+         */
+        DisputeOutcomesRead: {
+            /**
+             * Open
+             * @description Raised, inside its 30 days, no outcome yet
+             */
+            open: number;
+            /**
+             * Resolved Informally
+             * @description Settled between the two of them
+             */
+            resolved_informally: number;
+            /**
+             * Resolved Paid
+             * @description Ended with the money arriving
+             */
+            resolved_paid: number;
+            /**
+             * Resolved Withdrawn
+             * @description Withdrawn by whoever raised it
+             */
+            resolved_withdrawn: number;
+            /**
+             * Unresolved
+             * @description Thirty days passed with no outcome agreed: a fact about the dispute, not a finding about either of you
+             */
+            unresolved: number;
         };
         /**
          * DisputeRead
@@ -22376,6 +22583,80 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetails"];
                     "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    read_deal_check_api_v1_deal_memos__memo_id__check_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The memo's id */
+                memo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealCheckRead"];
+                };
+            };
+            /** @description No access token, or it is invalid or expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description No such memo, not yours, a draft read by the creator, or a block stands between the two of you */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description The memo id is not a valid id */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
