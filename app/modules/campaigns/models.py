@@ -25,6 +25,13 @@ from app.modules.campaigns.deliverable_models import CampaignDeliverable
 # What a brand asks for (D-016). Money is whole paise (D-015); no float ever.
 
 CAMPAIGN_TYPES: tuple[str, ...] = ("paid", "barter", "commission", "local_business")
+# The hidden campaign a direct offer's acceptance makes (D-189): never
+# created by a brand, never listed, read or changed through a campaign route,
+# and closed from the moment it exists, so it takes no creator and reaches
+# no discovery, matching, alert or figure. Its deal is an ordinary deal.
+DIRECT_CAMPAIGN_TYPE = "direct"
+# What the database allows: a brand's types, and the hidden one.
+STORED_CAMPAIGN_TYPES: tuple[str, ...] = (*CAMPAIGN_TYPES, DIRECT_CAMPAIGN_TYPE)
 # Types that must name a budget. Barter pays in goods, so it must not have one;
 # commission is paid per sale, so a budget is optional.
 BUDGETED_TYPES: tuple[str, ...] = ("paid", "local_business")
@@ -47,7 +54,9 @@ DELIVERABLES_MAX_LENGTH = 2000
 class Campaign(Base):
     __tablename__ = "campaign"
     __table_args__ = (
-        CheckConstraint(f"campaign_type IN {tuple(CAMPAIGN_TYPES)}", name="type_allowed"),
+        CheckConstraint(
+            f"campaign_type IN {tuple(STORED_CAMPAIGN_TYPES)}", name="type_allowed"
+        ),
         CheckConstraint(f"status IN {tuple(CAMPAIGN_STATUSES)}", name="status_allowed"),
         CheckConstraint(f"currency = '{CURRENCY}'", name="currency_allowed"),
         CheckConstraint("char_length(btrim(title)) > 0", name="title_not_blank"),
@@ -160,6 +169,10 @@ class Campaign(Base):
 # deal is an invitation that names the deal it repeats.
 
 APPLICATION_ORIGINS: tuple[str, ...] = ("applied", "invited")
+# The application a direct offer's acceptance makes (D-189), accepted at
+# once, on its hidden campaign: hidden like it from every application route.
+DIRECT_ORIGIN = "direct"
+STORED_APPLICATION_ORIGINS: tuple[str, ...] = (*APPLICATION_ORIGINS, DIRECT_ORIGIN)
 APPLICATION_STATUSES: tuple[str, ...] = (
     "submitted",
     "shortlisted",
@@ -202,7 +215,9 @@ class Application(Base):
             f"char_length(btrim(pitch)) BETWEEN {PITCH_MIN_LENGTH} AND {PITCH_MAX_LENGTH}",
             name="pitch_length",
         ),
-        CheckConstraint(f"origin IN {tuple(APPLICATION_ORIGINS)}", name="origin_allowed"),
+        CheckConstraint(
+            f"origin IN {tuple(STORED_APPLICATION_ORIGINS)}", name="origin_allowed"
+        ),
         # The creator who applied wrote a pitch; an invited creator did not.
         CheckConstraint(
             "(origin = 'applied') = (pitch IS NOT NULL)", name="pitch_matches_origin"
@@ -294,7 +309,8 @@ class Application(Base):
         ForeignKey("creator.id", ondelete="RESTRICT"),
         nullable=False,
     )
-    # How it began: 'applied' by the creator, or 'invited' by the brand.
+    # How it began: 'applied' by the creator, 'invited' by the brand, or
+    # 'direct', a creator's direct offer the brand accepted (D-189).
     origin: Mapped[str] = mapped_column(
         String(10), nullable=False, server_default=text("'applied'")
     )
