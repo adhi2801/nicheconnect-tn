@@ -8,6 +8,7 @@ directly before this test existed.
 
 import ast
 import re
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -128,44 +129,71 @@ def test_settings_are_read_only_through_config():
 # Every day in this product is a Tamil Nadu day (backend.md section 2; D-030).
 # A date taken from a moment any other way is the UTC date, wrong for five and
 # a half hours each night: applying, matching, the export's file name and a
-# channel's "connected since" all were (audit C11, 11 November 2026). Each
-# use left is here with why it is right, and an entry that disappears fails
-# too, so the list cannot outlive the code.
+# channel's "connected since" all were (audit C11, D-180). Every form of it is
+# looked for, in Python and in SQL; each use left is here, by its exact line,
+# with why it is right, so one allowed line cannot hide another in its file,
+# and an entry that disappears fails too, so the list cannot outlive the code.
 DATES_FROM_MOMENTS_ALLOWED = {
-    ("app/core/clock.py", "moment.astimezone(IST).date()"): "the one conversion",
-    ("app/modules/auth/dependencies.py", "datetime.now(UTC)"): "the clock itself",
-    ("app/modules/campaigns/template_router.py", "local.date()"): "already in IST",
-    ("app/modules/notifications/preference_service.py", "local.date()"): "in IST",
-    ("app/modules/auth/attribution_service.py", "started.date()"): (
-        "truncated in Asia/Kolkata by the database"
-    ),
+    ("app/core/clock.py", "return moment.astimezone(IST).date()"): "the one conversion",
+    ("app/modules/auth/dependencies.py", "return datetime.now(UTC)"): "the clock itself",
+    (
+        "app/modules/notifications/preference_service.py",
+        "candidate = datetime.combine(local.date(), at, tzinfo=IST)",
+    ): "already in IST",
+    (
+        "app/modules/auth/attribution_service.py",
+        "SignupRow(week_starting=started.date(), source=source, role=role, accounts=count)",
+    ): "truncated in Asia/Kolkata by the database",
     ("app/modules/profiles/domain_lookup.py", ").date()"): (
         "a registry's date, defined in UTC (RDAP, RFC 9083)"
     ),
 }
-DATE_FROM_MOMENT = re.compile(r"\.date\(\)|date\.today\(\)|datetime\.(utc)?now\(")
+DATE_FROM_MOMENT = re.compile(
+    r"\.date\s*\(\)|\bdate\.today\(|datetime\.(utc)?now\(|datetime\.today\("
+    r"|\bdate\.fromtimestamp\(|current_date|func\.date\(|::date",
+    re.IGNORECASE,  # SQL's CURRENT_DATE as well (the independent review of C11)
+)
+# A cast to a date in SQL, read across lines: the content library's took the
+# UTC day plus five and a half hours, right only while the session ran in UTC,
+# and the line scan missed it because the formatter splits a long cast.
+SQL_DATE_CAST = re.compile(
+    r"cast\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*?,\s*Date\s*,?\s*\)", re.DOTALL
+)
+SQL_DATE_CASTS_ALLOWED = {
+    (
+        "app/core/clock.py",
+        'cast(func.timezone("Asia/Kolkata", moment), Date)',
+    ): "the one conversion, in SQL: india_date_sql",
+    (
+        "app/modules/deal_memo/content_library_service.py",
+        "cast( india_date_sql(DeliverableProof.approved_at) + DealMemo.usage_rights_days, Date )",
+    ): "days added to a Tamil Nadu date, still a date",
+}
 
 
 def test_every_date_from_a_moment_is_a_tamil_nadu_day():
-    found = set()
+    found: Counter[tuple[str, str]] = Counter()
+    casts: set[tuple[str, str]] = set()
     for path in sorted(Path("app").rglob("*.py")):
-        for line in path.read_text(encoding="utf-8").splitlines():
+        source = path.read_text(encoding="utf-8")
+        for line in source.splitlines():
             if DATE_FROM_MOMENT.search(line):
-                found.add((path.as_posix(), line.strip()))
+                found[(path.as_posix(), line.strip())] += 1
+        for match in SQL_DATE_CAST.finditer(source):
+            casts.add((path.as_posix(), " ".join(match.group(0).split())))
 
-    unexplained = sorted(
-        (path, line)
-        for path, line in found
-        if not any(
-            path == p and snippet in line for p, snippet in DATES_FROM_MOMENTS_ALLOWED
-        )
-    )
-    gone = sorted(
-        key
-        for key in DATES_FROM_MOMENTS_ALLOWED
-        if not any(path == key[0] and key[1] in line for path, line in found)
-    )
+    unexplained = sorted(set(found) - set(DATES_FROM_MOMENTS_ALLOWED))
+    gone = sorted(set(DATES_FROM_MOMENTS_ALLOWED) - set(found))
+    # An allowed line written twice in one file would let the second pass
+    # unseen, so each must be unique (the independent review of C11).
+    repeated = sorted(key for key, count in found.items() if count > 1)
 
     assert unexplained == [], "Use app.core.clock.india_date: " + repr(unexplained)
     assert gone == [], "No longer in the code; take it off the list: " + repr(gone)
+    assert repeated == [], "Write each allowed line once: " + repr(repeated)
+    assert sorted(casts - set(SQL_DATE_CASTS_ALLOWED)) == [], (
+        "Use app.core.clock.india_date_sql: " + repr(sorted(casts))
+    )
+    assert sorted(set(SQL_DATE_CASTS_ALLOWED) - casts) == []
     assert found  # the scan reads the app at all
+    assert casts  # and finds SQL casts at all

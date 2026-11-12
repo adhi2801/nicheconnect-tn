@@ -134,6 +134,86 @@ def test_easter_by_the_church_s_rule(year, easter):
     assert easter_sunday(2027) - timedelta(days=2) == date(2027, 3, 26)
 
 
+# Every year above shares one century, so the computus's century terms never
+# moved and the mutation run found 13 changes to them that no test caught.
+# These span the Gregorian range, the earliest and latest Easters among them
+# (dates checked against python-dateutil's easter(), 11 November 2026).
+@pytest.mark.parametrize(
+    ("year", "easter"),
+    [(1583, date(1583, 4, 10)), (1600, date(1600, 4, 2)), (1700, date(1700, 4, 11)),
+     (1818, date(1818, 3, 22)), (1900, date(1900, 4, 15)), (1943, date(1943, 4, 25)),
+     # the two years the rule's last correction (m = 1) moves a week earlier
+     (1954, date(1954, 4, 18)), (1981, date(1981, 4, 19)), (2000, date(2000, 4, 23)),
+     (2100, date(2100, 3, 28)), (2200, date(2200, 4, 6)), (2285, date(2285, 3, 22)),
+     (2400, date(2400, 4, 16)), (3000, date(3000, 4, 13)), (4099, date(4099, 4, 19))],
+)  # fmt: skip
+def test_easter_in_every_century(year, easter):
+    assert easter_sunday(year) == easter
+
+
+def _easter_by_oudin(year: int) -> date:
+    """A second, independent algorithm (Oudin's, as python-dateutil implements it).
+
+    Checked equal to python-dateutil's easter() for every year 1583 to 4099 on
+    12 November 2026; written out here so the test needs no extra package."""
+    g = year % 19
+    c = year // 100
+    h = (c - c // 4 - (8 * c + 13) // 25 + 19 * g + 15) % 30
+    i = h - (h // 28) * (1 - (h // 28) * (29 // (h + 1)) * ((21 - g) // 11))
+    j = (year + year // 4 + i + 2 - c + c // 4) % 7
+    p = i - j
+    return date(year, 3 + (p + 26) // 30, 1 + (p + 27 + (p + 6) // 40) % 31)
+
+
+# The years above still let two changes pass that move Easter in only a few
+# years (1707, 1734, 1859, ... and 3165, 3192, ...; the mutation run of
+# 11 November), so every year the Gregorian rule is checked for is compared.
+def test_easter_agrees_with_an_independent_algorithm_in_every_year():
+    years = range(1583, 4100)
+    assert [easter_sunday(y) for y in years] == [_easter_by_oudin(y) for y in years]
+
+
+@given(st.integers(min_value=1583, max_value=4099))
+def test_easter_is_a_sunday_from_22_march_to_25_april(year):
+    easter = easter_sunday(year)
+    assert easter.weekday() == 6
+    assert date(year, 3, 22) <= easter <= date(year, 4, 25)
+
+
+def _template(key: str) -> festival_templates.FestivalTemplate:
+    return next(t for t in festival_templates.TEMPLATES if t.key == key)
+
+
+@pytest.mark.parametrize(
+    ("key", "expected"),
+    [
+        # the same days every year: last year's, this year's and next
+        ("christmas", [((2025, 12, 24), (2025, 12, 25)), ((2026, 12, 24), (2026, 12, 25)),
+                       ((2027, 12, 24), (2027, 12, 25))]),
+        # an end before its start runs into the next year
+        ("new_year", [((2025, 12, 31), (2026, 1, 1)), ((2026, 12, 31), (2027, 1, 1)),
+                      ((2027, 12, 31), (2028, 1, 1))]),
+        # one day: its end is the same day, not next year's
+        ("puthandu", [((2025, 4, 14), (2025, 4, 14)), ((2026, 4, 14), (2026, 4, 14)),
+                      ((2027, 4, 14), (2027, 4, 14))]),
+        # Good Friday to Easter Sunday, by the computus
+        ("easter", [((2025, 4, 18), (2025, 4, 20)), ((2026, 4, 3), (2026, 4, 5)),
+                    ((2027, 3, 26), (2027, 3, 28))]),
+    ],
+)  # fmt: skip
+def test_a_template_s_occurrences_from_last_year_to_next(key, expected):
+    found = festival_templates.occurrences(_template(key), date(2026, 6, 1))
+    assert found == [
+        festival_templates.Occurrence(date(*start), date(*end), True)
+        for start, end in expected
+    ]
+
+
+def test_a_template_the_table_does_not_date_has_no_occurrences():
+    undated = replace(_template("pongal"), key="not_in_the_table")
+    assert festival_templates.occurrences(undated, date(2026, 6, 1)) == []
+
+
 def test_the_notified_days_are_the_government_s():
     # G.O. 2026 and G.O. (Ms.) No. 613 for 2027, as recorded in festival_templates.py
     notified = {
@@ -323,4 +403,20 @@ def test_it_is_rate_limited(client):
 def test_a_template_may_ask_for_stories_alone():
     assert festival_templates.reels_and_stories(0, 2) == (
         festival_templates.Item("instagram", "story", 2),
+    )
+
+
+@pytest.mark.parametrize(
+    ("reels", "stories", "expected"),
+    [
+        (1, 0, (("instagram", "reel", 1),)),
+        (2, 3, (("instagram", "reel", 2), ("instagram", "story", 3))),
+        (0, 0, ()),
+    ],
+)
+def test_reels_come_before_stories_and_a_zero_asks_for_none(reels, stories, expected):
+    """The mutation run found only stories alone tested here: every other
+    template calls this while the module loads, where no mutant can reach."""
+    assert festival_templates.reels_and_stories(reels, stories) == tuple(
+        festival_templates.Item(*item) for item in expected
     )

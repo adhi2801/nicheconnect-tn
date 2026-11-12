@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import update
+from sqlalchemy import func, select, update
 
 from app.core.rate_limit import limiter
 from app.db.session import get_db
@@ -13,6 +13,7 @@ from app.modules.auth.dependencies import get_now
 from app.modules.auth.models.account import Account
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.tokens import create_access_token
+from app.modules.campaigns.alert_models import CampaignAlertSend
 from app.modules.campaigns.models import Campaign
 from app.modules.safety.models import AccountBlock
 from tests.factories import FIXED_NOW, build_brand, create_account
@@ -682,6 +683,166 @@ def test_discover_shows_only_campaigns_still_taking_applications(client, db, clo
         "No closing date",
     ]
     assert all(item["applications_open"] for item in response.json()["items"])
+
+
+def test_discover_at_the_hour_the_dates_differ_uses_the_tamil_nadu_day(client, db, clock):
+    """20:00 UTC on the 20th is 01:30 on the 21st in Tamil Nadu (D-180)."""
+    _, brand_headers = brand_login(db, clock)
+    city = unique_city()
+    for title, close_on in [
+        ("Closed the 20th", "2026-09-20"),
+        ("Closes the 21st", "2026-09-21"),
+    ]:
+        publish(
+            client,
+            brand_headers,
+            create(
+                client,
+                brand_headers,
+                title=title,
+                cities=[city],
+                applications_close_on=close_on,
+            )["id"],
+        )
+    clock.now = datetime(2026, 9, 20, 20, 0, tzinfo=UTC)
+
+    response = client.get(
+        DISCOVER_URL, params={"city": city}, headers=creator_login(db, clock)
+    )
+
+    assert [item["title"] for item in response.json()["items"]] == ["Closes the 21st"]
+
+
+def headers_at(brand, moment) -> dict[str, str]:
+    """A token minted at `moment`, so moving the clock never expires it."""
+    token, _ = create_access_token(brand.account_id, "brand", moment)
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.mark.parametrize("step", ["create", "change", "publish"])
+def test_a_closing_date_already_past_is_refused(client, db, clock, step):
+    """Adhi, 11 November: refuse it, so no alert goes out for a campaign
+    nobody can join (D-180). Today is still allowed."""
+    brand, _ = brand_login(db, clock)
+    earlier = datetime(2026, 9, 18, 6, 0, tzinfo=UTC)
+    later = datetime(2026, 9, 20, 20, 0, tzinfo=UTC)  # the 21st in Tamil Nadu
+    clock.now = earlier
+    draft = create(client, headers_at(brand, earlier), applications_close_on="2026-09-20")
+    clock.now = later
+    if step == "create":
+        response = client.post(
+            URL,
+            json=valid_body(applications_close_on="2026-09-20"),
+            headers=headers_at(brand, later),
+        )
+    elif step == "change":
+        response = client.patch(
+            f"{URL}/{draft['id']}",
+            json={"applications_close_on": "2026-09-19"},
+            headers=headers_at(brand, later),
+        )
+    else:
+        response = client.post(
+            f"{URL}/{draft['id']}/publish", headers=headers_at(brand, later)
+        )
+
+    problem = assert_problem(response, 422, "validation_failed")
+    assert problem["errors"] == [
+        {
+            "field": "applications_close_on",
+            "message": "Choose today or a later closing date, or leave it empty",
+        }
+    ]
+    # Nothing changed: the draft is still a draft, its date as it was, and
+    # no alert is due for it (the independent review of audit C11).
+    db.expire_all()
+    kept = db.get(Campaign, uuid.UUID(draft["id"]))
+    assert (kept.status, kept.applications_close_on.isoformat()) == (
+        "draft",
+        "2026-09-20",
+    )
+    queued = db.scalar(select(func.count()).select_from(CampaignAlertSend))
+    assert queued == 0
+
+
+def test_a_passed_closing_date_sent_back_unchanged_is_not_refused(client, db, clock):
+    """A form that sends the whole draft back, its passed date unchanged, is
+    not refused for it; changing to another passed date is (the independent
+    review of audit C11)."""
+    brand, _ = brand_login(db, clock)
+    earlier = datetime(2026, 9, 18, 6, 0, tzinfo=UTC)
+    later = datetime(2026, 9, 20, 20, 0, tzinfo=UTC)  # the 21st in Tamil Nadu
+    clock.now = earlier
+    draft = create(client, headers_at(brand, earlier), applications_close_on="2026-09-20")
+    clock.now = later
+
+    unchanged = client.patch(
+        f"{URL}/{draft['id']}",
+        json={"title": "Pongal sweets, renamed", "applications_close_on": "2026-09-20"},
+        headers=headers_at(brand, later),
+    )
+
+    assert unchanged.status_code == 200, unchanged.text
+    assert unchanged.json()["title"] == "Pongal sweets, renamed"
+
+
+def test_today_is_still_a_closing_date_one_may_choose(client, db, clock):
+    brand, _ = brand_login(db, clock)
+    clock.now = datetime(2026, 9, 20, 20, 0, tzinfo=UTC)  # the 21st in Tamil Nadu
+
+    response = client.post(
+        URL,
+        json=valid_body(applications_close_on="2026-09-21"),
+        headers=headers_at(brand, clock.now),
+    )
+
+    assert response.status_code == 201, response.text
+
+
+# The independent review of audit C11: 9999-12-31 was accepted, and every read
+# of that campaign then answered 500 (the end of its day overflowed the
+# calendar), discovery with it. A year ahead is the bound availability uses.
+@pytest.mark.parametrize("step", ["create", "change"])
+@pytest.mark.parametrize("close_on", ["2027-09-22", "9999-12-31"])
+def test_a_closing_date_more_than_a_year_ahead_is_refused(
+    client, db, clock, step, close_on
+):
+    brand, _ = brand_login(db, clock)
+    clock.now = datetime(2026, 9, 20, 20, 0, tzinfo=UTC)  # the 21st in Tamil Nadu
+    headers = headers_at(brand, clock.now)
+    if step == "create":
+        response = client.post(
+            URL, json=valid_body(applications_close_on=close_on), headers=headers
+        )
+    else:
+        draft = create(client, headers)
+        response = client.patch(
+            f"{URL}/{draft['id']}",
+            json={"applications_close_on": close_on},
+            headers=headers,
+        )
+
+    problem = assert_problem(response, 422, "validation_failed")
+    assert problem["errors"] == [
+        {
+            "field": "applications_close_on",
+            "message": "Choose a closing date within a year from today; check the year",
+        }
+    ]
+
+
+def test_a_closing_date_exactly_a_year_ahead_may_be_chosen(client, db, clock):
+    brand, _ = brand_login(db, clock)
+    clock.now = datetime(2026, 9, 20, 20, 0, tzinfo=UTC)  # the 21st in Tamil Nadu
+
+    response = client.post(
+        URL,
+        json=valid_body(applications_close_on="2027-09-21"),
+        headers=headers_at(brand, clock.now),
+    )
+
+    assert response.status_code == 201, response.text
+    assert response.json()["applications_close_at"] == "2027-09-21T18:30:00Z"
 
 
 def test_discover_filters_combine(client, db, clock):

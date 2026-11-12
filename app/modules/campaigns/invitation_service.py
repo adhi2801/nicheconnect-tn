@@ -32,9 +32,11 @@ from app.modules.auth import sides
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import is_unavailable
+from app.modules.campaigns import applying
 from app.modules.campaigns import service as campaigns
 from app.modules.campaigns.exceptions import (
     AlreadyOnCampaign,
+    ApplicationsClosed,
     CampaignNotOpen,
     CreatorNotFound,
     InvitationLimitReached,
@@ -71,10 +73,20 @@ def invite_creator(
     AlreadyOnCampaign, OwnContentWithheld (the campaign or the brand is
     withheld) and ContentWithheld (the creator is: item 52).
     """
-    db.refresh(campaign, attribute_names=["status"], with_for_update=True)
+    db.refresh(
+        campaign,
+        attribute_names=["status", "applications_close_on"],
+        with_for_update=True,
+    )
     if campaign.status != "open":
         db.rollback()
         raise CampaignNotOpen()
+    # The closing date closes invitations too (D-180).
+    if not applying.applications_open(
+        campaign.status, campaign.applications_close_on, now
+    ):
+        db.rollback()
+        raise ApplicationsClosed()
     # Shared lock: erasing a creator who left (D-122) locks the row for
     # update, so an invitation lands wholly before it, and is withdrawn with
     # the rest, or after it, and finds the creator gone.

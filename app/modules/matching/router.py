@@ -13,7 +13,7 @@ from app.db.session import get_db
 from app.modules.auth.dependencies import get_now
 from app.modules.auth.schemas import PublicCreatorSummary
 from app.modules.campaigns.dependencies import CurrentCreatorProfile, OwnedCampaign
-from app.modules.campaigns.schemas import CampaignRead
+from app.modules.campaigns.schemas import to_campaign_read
 from app.modules.matching import service
 from app.modules.matching.schemas import (
     CampaignMatchesRead,
@@ -154,7 +154,7 @@ def list_campaigns_for_me(
         ranked_by_similarity=ranked.by_meaning,
         matches=[
             CampaignMatchRead(
-                campaign=CampaignRead.model_validate(match.campaign),
+                campaign=to_campaign_read(match.campaign, now),
                 reasons=CampaignMatchReasonsRead(
                     shared_niches=match.reasons.shared_niches,
                     city=match.reasons.city,

@@ -548,9 +548,33 @@ What remains per row is unnesting the stored words and comparing each with the q
 
 **What this run settles:** the search, discovery and matching figures now include the block filter (item 59) and the takedown filter (item 52), which earlier figures predated (section "What is not measured yet", corrected below).
 
+## Added 12 November: applications closing at midnight in Tamil Nadu (audit C11, D-180)
+
+`scripts/measure_performance.py --runs 100`, on 12 November 2026, on branch `fix/c11-applications`, the seeded local database (151 campaigns, 788 applications, 203 creators, 958 packages), the same laptop. Four routes the change touches join the script with it: city figures, the attention list (a creator's and a brand's), and, as phase 1c of the writes, an invitation sent and accepted and a counter-offer made and accepted, each taking the campaign's shared lock (`applying.lock_for_joining`) before its checks. The run shared the database server with another worktree's test suite, on a database of its own.
+
+| Endpoint the change touches | p50 ms | p95 ms | Budget | Verdict |
+| --- | --- | --- | --- | --- |
+| `GET /campaigns/discover` | 35.2 | 49.3 | 300 | OK |
+| `GET /campaigns/discover?city&niche` | 22.3 | 31.3 | 300 | OK |
+| `GET /campaigns/discover/for-me` | 25.8 | 42.1 | 300 | OK |
+| `GET /campaigns/{id}` | 21.4 | 35.9 | 300 | OK |
+| `GET /cities/{city}/figures` | 17.9 | 31.2 | 300 | OK |
+| `GET /me/attention` (creator) | 33.0 | 54.1 | 300 | OK |
+| `GET /me/attention` (brand) | 41.3 | 71.3 | 300 | OK |
+| `POST /campaigns` | 25.6 | 63.7 | 500 | OK |
+| `PATCH /campaigns/{id}` | 34.4 | 51.2 | 500 | OK |
+| `POST /campaigns/{id}/publish` | 35.1 | 44.8 | 500 | OK |
+| `POST /campaigns/{id}/applications` | 31.0 | 45.2 | 500 | OK |
+| `POST /campaigns/{id}/invitations` | 42.5 | 65.5 | 500 | OK |
+| `POST /applications/{id}/accept-invitation` | 36.1 | 42.8 | 500 | OK |
+| `POST /applications/{id}/offers` | 39.7 | 60.6 | 500 | OK |
+| `POST /applications/{id}/offers/{id}/accept` | 39.9 | 54.5 | 500 | OK |
+
+The shared lock adds no measurable cost: applying was 112.5 ms p95 on the first run of the day and 45.2 on this one, the difference being run-to-run variation, not the change. Two timings over budget, neither touched by this change: the 25-row bulk mark-paid at 861.7 ms (971.3 on the first run), whose rebuild as one ordered lock is audit C16 (pull request #114, not yet merged), and one data export built at 605.3 ms (461.0 on the first run), a job nobody waits on.
+
 ## What is not measured yet
 
-- **Availability (D-083) and invitations and repeat deals (D-084)**: not in the script. Query-count tests prove neither adds a query per row; only a timed run proves they stay inside the budget. (UPI pay details and blocking, listed here until 6 November, are now measured: the UPI routes directly, the block check inside every search, discovery and matching figure of 6 November.)
+- **Availability (D-083) and repeat deals (D-084)**: not in the script. Query-count tests prove neither adds a query per row; only a timed run proves they stay inside the budget. Invitations are measured since 12 November (above). (UPI pay details and blocking, listed here until 6 November, are now measured: the UPI routes directly, the block check inside every search, discovery and matching figure of 6 November.)
 - **Writes beyond the deal, disputes, bulk mark-paid, the rate card and
   reports.** Profile and campaign edits are single-row writes of the same
   kind, but they are not in the script yet.

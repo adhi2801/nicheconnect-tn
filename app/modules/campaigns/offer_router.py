@@ -36,6 +36,7 @@ _COMMON: ResponseDocs = {
 _CLOSED = (
     "`offers_closed`: the application is no longer waiting, the campaign is "
     "barter, or the other side has gone; `campaign_not_open`; "
+    "`applications_closed`: an invitation past its closing day in Tamil Nadu; "
     "`offer_already_agreed`: a figure is agreed, so changes go through the memo"
 )
 

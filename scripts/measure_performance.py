@@ -144,7 +144,11 @@ BULK_ROWS = MAX_BULK_MARK_PAID
 
 
 def measure_writes(
-    deals: int, brand_headers: dict, creator_headers: dict, now: datetime
+    deals: int,
+    brand_headers: dict,
+    creator_headers: dict,
+    creator_id: uuid.UUID,
+    now: datetime,
 ) -> list[dict]:
     """Every write in a deal's life, timed, then rolled back.
 
@@ -155,6 +159,10 @@ def measure_writes(
     1b. `deals` deals agreed with a draft review (item 27): two images uploaded
        for each of two drafts, each draft shown, listed, cleaned and its images
        opened; the first sent back, the second approved.
+    1c. `deals` rounds of the other ways into a campaign, each taking the
+       campaign's shared lock before its checks (audit C11, D-180): an
+       invitation sent and accepted, and a figure offered on an application
+       and accepted.
     2. `BULK_ROUNDS` bank bulk transfers of `BULK_ROWS` deals each, through
        the bulk mark-paid.
     3. `deals` rounds of rate card writes, by a creator made for the run:
@@ -416,6 +424,56 @@ def measure_writes(
             write(
                 "POST /deal-memos/{id}/drafts/{id}/approve",
                 f"{drafts}/{shown_ids[-1]}/approve",
+                brand_headers,
+            )
+
+        # 1c. Invitations and counter-offers: the campaigns set up untimed.
+        def open_campaign() -> str:
+            campaign = write(
+                None,
+                "/api/v1/campaigns",
+                brand_headers,
+                {
+                    "title": "Pongal sweets launch",
+                    "description": "One reel featuring our new sweet box.",
+                    "campaign_type": "paid",
+                    "budget_min_paise": 500_000,
+                    "budget_max_paise": 1_500_000,
+                    "cities": ["Madurai"],
+                    "niches": ["food"],
+                    "deliverables": "1 Instagram reel",
+                },
+            )["id"]
+            write(None, f"/api/v1/campaigns/{campaign}/publish", brand_headers)
+            return str(campaign)
+
+        for _ in range(deals):
+            invitation = write(
+                "POST /campaigns/{id}/invitations",
+                f"/api/v1/campaigns/{open_campaign()}/invitations",
+                brand_headers,
+                {"creator_id": str(creator_id)},
+            )["id"]
+            write(
+                "POST /applications/{id}/accept-invitation",
+                f"/api/v1/applications/{invitation}/accept-invitation",
+                creator_headers,
+            )
+            application = write(
+                None,
+                f"/api/v1/campaigns/{open_campaign()}/applications",
+                creator_headers,
+                {"pitch": "I cover food in Madurai for local families, in Tamil."},
+            )["id"]
+            offer = write(
+                "POST /applications/{id}/offers",
+                f"/api/v1/applications/{application}/offers",
+                creator_headers,
+                {"amount_paise": 900_000},
+            )["id"]
+            write(
+                "POST /applications/{id}/offers/{id}/accept",
+                f"/api/v1/applications/{application}/offers/{offer}/accept",
                 brand_headers,
             )
 
@@ -1014,6 +1072,35 @@ def main() -> int:
             args.runs,
             READ_BUDGET_MS,
         ),
+        # Each counts only campaigns still taking applications by the
+        # Tamil Nadu date (audit C11, D-180).
+        measure(
+            client,
+            "GET /cities/{city}/figures",
+            "GET",
+            "/api/v1/cities/Madurai/figures",
+            {},
+            args.runs,
+            READ_BUDGET_MS,
+        ),
+        measure(
+            client,
+            "GET /me/attention (creator)",
+            "GET",
+            "/api/v1/me/attention",
+            creator_headers,
+            args.runs,
+            READ_BUDGET_MS,
+        ),
+        measure(
+            client,
+            "GET /me/attention (brand)",
+            "GET",
+            "/api/v1/me/attention",
+            brand_headers,
+            args.runs,
+            READ_BUDGET_MS,
+        ),
         measure(
             client,
             "GET /campaigns/{id}/applications",
@@ -1176,7 +1263,7 @@ def main() -> int:
             READ_BUDGET_MS,
         ),
     ]
-    results += measure_writes(args.deals, brand_headers, creator_headers, now)
+    results += measure_writes(args.deals, brand_headers, creator_headers, creator.id, now)
     app.dependency_overrides.clear()
     limiter.reset()
 

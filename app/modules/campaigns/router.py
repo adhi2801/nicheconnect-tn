@@ -28,6 +28,7 @@ from app.modules.campaigns.schemas import (
     CampaignType,
     CampaignUpdate,
     DealStageCountsRead,
+    to_campaign_read,
 )
 from app.modules.campaigns.summary import summarise
 
@@ -56,12 +57,11 @@ def _reads(db: Session, campaigns: list[Campaign], now: datetime) -> list[Campai
     domains = service.verified_domains_for(db, campaigns)
     names, name_flags = service.brand_names_and_flags_for(db, campaigns)
     return [
-        CampaignRead.model_validate(campaign).model_copy(
+        to_campaign_read(campaign, now).model_copy(
             update={
                 "brand_name": names.get(campaign.brand_id, ""),
                 "verified_domain": domains.get(campaign.brand_id),
                 "brand_name_flag": name_flags.get(campaign.brand_id),
-                "applications_open": service.applications_open(campaign, now),
             }
         )
         for campaign in campaigns
@@ -78,6 +78,12 @@ def _page(db: Session, result: Slice[Campaign], now: datetime) -> Page[CampaignR
     )
 
 
+DATE_422 = (
+    "a closing date already passed in Tamil Nadu, or more than a year ahead "
+    "(`validation_failed` on `applications_close_on`, D-180)"
+)
+
+
 @router.post(
     "",
     status_code=status.HTTP_201_CREATED,
@@ -91,7 +97,7 @@ def _page(db: Session, result: Slice[Campaign], now: datetime) -> Page[CampaignR
         401: problem_doc("No access token, or it is invalid or expired"),
         403: problem_doc("Only brand accounts can post campaigns"),
         409: problem_doc("The brand profile has not been created yet"),
-        422: problem_doc("A field is missing or invalid"),
+        422: problem_doc(f"A field is missing or invalid, or {DATE_422}"),
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
@@ -236,7 +242,8 @@ def read_campaign(
         422: problem_doc(
             "A field is missing or invalid, null for a field that always has a "
             "value, or the campaign after the change would break a budget rule, "
-            "answered as the same rule in a new campaign's body"
+            "answered as the same rule in a new campaign's body; or a closing "
+            f"date changed to {DATE_422}"
         ),
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
@@ -291,7 +298,11 @@ def campaign_summary(
 
 
 def _status_endpoint(
-    action: str, new_status: str, summary: str, description: str
+    action: str,
+    new_status: str,
+    summary: str,
+    description: str,
+    refused_422: str | None = None,
 ) -> Callable[..., Any]:
     @router.post(
         f"/{{campaign_id}}/{action}",
@@ -304,6 +315,7 @@ def _status_endpoint(
             403: problem_doc("Only brand accounts can do this"),
             404: problem_doc("No such campaign, or it is not yours"),
             409: problem_doc("The campaign is not in a state where that is allowed"),
+            **({422: problem_doc(refused_422)} if refused_422 else {}),
             429: problem_doc("Too many requests; see the Retry-After header"),
         },
     )
@@ -327,7 +339,10 @@ publish_campaign = _status_endpoint(
     "name looks like a protected brand's is refused, 409 "
     "`brand_name_needs_domain`, until it verifies that brand's domain at `POST "
     "/api/v1/brands/me/domain` (item 75); the detail names the brand and the "
-    "domain.",
+    "domain. A closing date already passed in Tamil Nadu, or more than a year "
+    "ahead, is refused, 422 `validation_failed` on `applications_close_on` "
+    "(D-180), so no creator is alerted to a campaign nobody can join.",
+    f"A field is missing or invalid, or {DATE_422}",
 )
 close_campaign = _status_endpoint(
     "close",

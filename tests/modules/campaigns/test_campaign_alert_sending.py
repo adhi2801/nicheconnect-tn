@@ -16,11 +16,12 @@ from datetime import timedelta
 import pytest
 from sqlalchemy import select, update
 
+from app.core.clock import india_date
 from app.modules.auth.models.account import Account
 from app.modules.campaigns import alert_service
 from app.modules.campaigns.alert_models import CampaignAlert, CampaignAlertSend
 from app.modules.campaigns.alert_rules import AlertTerms, CampaignTerms, matches
-from app.modules.campaigns.models import CAMPAIGN_TYPES
+from app.modules.campaigns.models import CAMPAIGN_TYPES, Campaign
 from app.modules.notifications.models import Notification
 from app.modules.safety.models import AccountBlock
 from tests.deal_flow import CAMPAIGNS_URL, User, brand_user, creator_user
@@ -335,6 +336,17 @@ def test_the_brands_own_other_side_is_never_told(client, db, clock, brand):
     assert told(db, kept, campaign_id)
 
 
+def closing_day_passed(client, db, clock, brand, campaign_id) -> None:
+    """Its closing day ends before its alerts go out (D-180): today is its
+    closing date, then the clock passes midnight in Tamil Nadu."""
+    db.execute(
+        update(Campaign)
+        .where(Campaign.id == uuid.UUID(str(campaign_id)))
+        .values(applications_close_on=india_date(clock.now))
+    )
+    clock.advance(timedelta(days=1))
+
+
 CAMPAIGN_GONE = {
     "closed": lambda client, db, clock, brand, campaign_id: client.post(
         f"{CAMPAIGNS_URL}/{campaign_id}/close", headers=brand.headers
@@ -348,6 +360,7 @@ CAMPAIGN_GONE = {
     "the brand withheld": lambda client, db, clock, brand, campaign_id: withhold(
         client, admin_of(db, clock), "brand", brand_id_of(db, brand)
     ),
+    "its closing day passed": closing_day_passed,
 }
 
 

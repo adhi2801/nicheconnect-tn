@@ -12,6 +12,7 @@ from app.core.literals import ensure_same_values
 from app.core.partial_update import check_change
 from app.core.taxonomy import CURRENCY, MAX_NICHES, Niche
 from app.core.text_flags import FieldFlag, field_flags
+from app.modules.campaigns import applying
 from app.modules.campaigns.budget import budget_problem
 from app.modules.campaigns.deliverable_models import (
     DELIVERABLE_FORMATS,
@@ -34,6 +35,7 @@ from app.modules.campaigns.models import (
     REJECTION_NOTE_MAX_LENGTH,
     REJECTION_REASONS,
     TITLE_MAX_LENGTH,
+    Campaign,
 )
 from app.modules.campaigns.offer_models import (
     OFFER_NOTE_MAX_LENGTH,
@@ -206,7 +208,6 @@ class CampaignRead(BaseModel):
     deliverable_items: list[DeliverableRead]
     applications_close_on: date | None
     applications_open: bool = Field(
-        default=False,
         description=(
             "Whether a creator may apply now: open, and before `applications_close_at`. "
             "Worked out on the server's clock at the moment of the answer"
@@ -516,6 +517,26 @@ class ApplicationRead(ApplicationFields):
             "none was agreed"
         )
     )
+
+
+def to_campaign_read(campaign: Campaign, now: datetime) -> CampaignRead:
+    """A campaign as the API answers it, at `now`: the one way one is built.
+
+    `applications_open` has no default, so a campaign built any other way
+    fails validation instead of quietly answering "closed", as matching's
+    suggestions all did before the C11 review found them.
+    """
+    # Only what the row holds, as `from_attributes` reads it; the fields
+    # another module fills (the brand's name) keep their defaults.
+    fields = {
+        name: getattr(campaign, name)
+        for name in CampaignRead.model_fields
+        if name != "applications_open" and hasattr(campaign, name)
+    }
+    fields["applications_open"] = applying.applications_open(
+        campaign.status, campaign.applications_close_on, now
+    )
+    return CampaignRead.model_validate(fields, from_attributes=True)
 
 
 def to_application_read(
