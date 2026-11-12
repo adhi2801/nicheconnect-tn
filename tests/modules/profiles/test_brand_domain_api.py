@@ -13,6 +13,7 @@ import pytest
 from sqlalchemy import select
 
 from app.core.clock import india_date
+from app.core.deadline import Deadline
 from app.core.rate_limit import limiter
 from app.modules.auth.models.brand import Brand
 from app.modules.profiles import brand_domain_service as service
@@ -530,3 +531,26 @@ def test_the_brand_s_export_holds_the_claim_but_never_the_token(
     assert found["record_value"].split("=")[1] not in str(row)
     db.expire_all()
     assert db.scalars(select(BrandDomain)).first() is not None
+
+
+def test_a_run_whose_budget_is_spent_looks_nothing_up_and_takes_it_again_later(
+    client, db, lookup, clock, brand
+):
+    """Item 118 (D-186): no claim is looked up once the run's budget is spent;
+    one taken but not looked up is taken again once its lease ends."""
+    body = claim(client, brand, a_domain()).json()
+    publish(lookup, body)
+    client.post(CHECK, headers=brand.headers)
+
+    spent = service.run_checks(
+        lambda: nullcontext(db), lookup, clock.now, budget=Deadline(0)
+    )
+
+    assert (spent.checked, spent.verified) == (0, 0)
+    assert lookup.asked == []
+    assert mine(client, brand)["status"] == "pending"
+    clock.advance(service.LEASE + timedelta(seconds=1))
+    later = service.run_checks(
+        lambda: nullcontext(db), lookup, clock.now, budget=Deadline(45)
+    )
+    assert later.verified == 1

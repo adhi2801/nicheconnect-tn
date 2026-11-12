@@ -20,6 +20,7 @@ from typing import Any
 
 from dbos import DBOS, ScheduleInput
 
+from app.core.job_runs import run_alone
 from app.db.session import SessionLocal
 from app.modules.admin import report_clock_service
 
@@ -37,7 +38,8 @@ def run_warnings(scheduled_at: datetime) -> report_clock_service.WarningRun:
 def warning_step(scheduled_at: datetime) -> None:
     # One step: each batch is its own transaction and a warned report is
     # never warned again, so a crash halfway is safely redone.
-    run_warnings(scheduled_at)
+    # One run at a time per schedule (item 118, D-186).
+    run_alone(SCHEDULE_NAME, lambda: run_warnings(scheduled_at))
 
 
 @DBOS.workflow(name="report_clocks.warn")

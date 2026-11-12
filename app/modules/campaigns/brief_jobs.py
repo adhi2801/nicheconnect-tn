@@ -15,6 +15,8 @@ from typing import Any
 
 from dbos import DBOS, ScheduleInput
 
+from app.core.deadline import Deadline
+from app.core.job_runs import EVERY_MINUTE_BUDGET_SECONDS, run_alone
 from app.db.session import SessionLocal
 from app.modules.campaigns import brief_service
 from app.modules.campaigns.brief_drafter import get_drafter
@@ -23,15 +25,24 @@ EVERY_MINUTE_CRON = "* * * * *"
 SCHEDULE_NAME = "brief-drafts"
 
 
-def run_drafting(scheduled_at: datetime) -> brief_service.DraftRun:
-    """The work itself, callable without DBOS (tests, and a manual rerun)."""
+def run_drafting(
+    scheduled_at: datetime, budget: Deadline | None = None
+) -> brief_service.DraftRun:
+    """The work itself, callable without DBOS (tests, and a manual rerun).
+
+    No budget unless one is given: the scheduled step gives its own.
+    """
     with SessionLocal() as db:
-        return brief_service.run(db, get_drafter(), scheduled_at)
+        return brief_service.run(db, get_drafter(), scheduled_at, budget=budget)
 
 
 @DBOS.step(name="brief_drafts.run")
 def drafting_step(scheduled_at: datetime) -> None:
-    run_drafting(scheduled_at)
+    # One run at a time per schedule (item 118, D-186).
+    run_alone(
+        SCHEDULE_NAME,
+        lambda: run_drafting(scheduled_at, Deadline(EVERY_MINUTE_BUDGET_SECONDS)),
+    )
 
 
 @DBOS.workflow(name="brief_drafts.draft")

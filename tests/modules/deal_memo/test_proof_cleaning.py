@@ -15,6 +15,7 @@ from PIL import Image, ImageCms
 from sqlalchemy import select
 
 from app.core import storage
+from app.core.deadline import Deadline
 from app.modules.deal_memo import proof_cleaning_service as cleaning
 from app.modules.deal_memo.proof_cleaning_service import Refused, clean_image
 from app.modules.deal_memo.proof_models import ProofFile
@@ -334,3 +335,19 @@ def test_pending_uploads_are_never_cleaned(client, db, clock, deal):
     run = cleaning.clean_attached(db, storage.memory_store(), clock.now)
 
     assert run == cleaning.CleaningRun(cleaned=0, rejected=0, skipped=0)
+
+
+def test_a_run_whose_budget_is_spent_cleans_nothing_and_leaves_it_queued(
+    client, db, clock, deal
+):
+    """Item 118 (D-186): no file is started once the run's budget is spent."""
+    _, creator, memo_id = deal
+    [file_id] = submitted(client, clock, creator, memo_id, (photo(), "image/jpeg"))
+    store = storage.memory_store()
+
+    spent = cleaning.clean_attached(db, store, clock.now, budget=Deadline(0))
+
+    assert spent == cleaning.CleaningRun(cleaned=0, rejected=0, skipped=0)
+    assert db.get(ProofFile, file_id).status != "cleaned"
+    # Still queued: the next run, with time to spare, cleans it.
+    assert cleaning.clean_attached(db, store, clock.now, budget=Deadline(45)).cleaned == 1

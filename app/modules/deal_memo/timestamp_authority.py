@@ -45,7 +45,7 @@ from rfc3161_client import (
 from rfc3161_client.errors import VerificationError
 
 from app.core.deadline import Clock, Deadline
-from app.core.outside_http import exchange
+from app.core.outside_http import exchange, limited_client
 
 logger = logging.getLogger(__name__)
 
@@ -182,7 +182,7 @@ class Rfc3161Authority:
     ) -> None:
         self.name = name
         self._url = url
-        self._client = client or httpx2.Client(timeout=TIMEOUT)
+        self._client = client or limited_client(TIMEOUT)
         self._sleep = sleep
         self._jitter = jitter
         self._clock = clock

@@ -4,13 +4,17 @@ No test calls the API: a fake client records the request and returns a
 made-up response, as the proof reader's tests do.
 """
 
+from functools import partial
 from types import SimpleNamespace
 
 import anthropic
 import httpx2
 import pytest
 
+from app.core.claude_calls import call_claude
 from app.core.config import settings
+from app.core.outside_http import LimitedTransport
+from app.modules.campaigns import brief_drafter
 from app.modules.campaigns.brief_drafter import (
     FALLBACK_BETA,
     ClaudeDrafter,
@@ -53,7 +57,9 @@ class FakeMessages:
 def drafter_with(response=None, error=None) -> tuple[ClaudeDrafter, FakeMessages]:
     messages = FakeMessages(response, error)
     client = SimpleNamespace(beta=SimpleNamespace(messages=messages))
-    return ClaudeDrafter(client, MODEL), messages
+    # The real limits around each call, with waits that take no time.
+    call = partial(call_claude, sleep=lambda _: None, jitter=lambda: 0.5)
+    return ClaudeDrafter(client, MODEL, call=call), messages
 
 
 def response(stop_reason: str = "end_turn", parsed=None):
@@ -127,9 +133,24 @@ REQUEST = httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
     ],
 )
 def test_an_api_that_cannot_be_reached_is_a_failure_not_a_crash(error):
-    drafted = drafter_with(error=error)[0].draft("idea idea idea idea")
+    drafter, messages = drafter_with(error=error)
+
+    drafted = drafter.draft("idea idea idea idea")
 
     assert drafted.failure == "api_error"
+    # Tried three times, each try told its own limit (item 118, D-186).
+    assert [call["timeout"] for call in messages.calls] == [60.0, 60.0, 60.0]
+
+
+def test_a_request_the_api_refuses_is_sent_once():
+    """A 4xx says the request is wrong: sending it again only repeats that."""
+    refused = anthropic.APIStatusError(
+        "bad", response=httpx2.Response(400, request=REQUEST), body=None
+    )
+    drafter, messages = drafter_with(error=refused)
+
+    assert drafter.draft("idea idea idea idea").failure == "api_error"
+    assert len(messages.calls) == 1
 
 
 def test_drafting_is_off_by_default_so_there_is_no_drafter():
@@ -138,7 +159,9 @@ def test_drafting_is_off_by_default_so_there_is_no_drafter():
     assert get_drafter() is None
 
 
-def test_switched_on_it_is_claude_with_retries_and_a_timeout(monkeypatch):
+def test_switched_on_it_is_claude_with_a_limited_client_and_no_retries_of_its_own(
+    monkeypatch,
+):
     from pydantic import SecretStr
 
     monkeypatch.setattr(settings, "brief_drafting_enabled", True)
@@ -148,6 +171,9 @@ def test_switched_on_it_is_claude_with_retries_and_a_timeout(monkeypatch):
         drafter = get_drafter()
         assert isinstance(drafter, ClaudeDrafter)
         assert drafter.model == settings.brief_drafter_model
+        # Retried by call_claude within 150 s, never by the SDK (item 118, D-186).
+        assert drafter._client.max_retries == brief_drafter.API_MAX_RETRIES == 0
+        assert isinstance(drafter._client._client._transport, LimitedTransport)
         assert get_drafter() is drafter, "made once"
     finally:
         set_drafter(None)

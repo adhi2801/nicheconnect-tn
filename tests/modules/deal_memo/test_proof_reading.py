@@ -14,6 +14,7 @@ from sqlalchemy import func, select, text
 from app.core import storage
 from app.core.clock import india_date
 from app.core.config import settings
+from app.core.deadline import Deadline, DeadlinePassed
 from app.modules.auth.models.creator import Creator
 from app.modules.deal_memo import proof_cleaning_service as cleaning
 from app.modules.deal_memo import proof_reading_service as reading_service
@@ -485,3 +486,44 @@ def test_the_handle_in_a_channel_link(platform, url, handle):
 )
 def test_which_numbers_can_be_true_together(numbers, agree):
     assert numbers_agree(numbers) is agree
+
+
+def test_a_run_whose_budget_is_spent_reads_nothing_and_leaves_it_due(
+    client, db, clock, deal
+):
+    """Item 118 (D-186): no file is started once the run's budget is spent."""
+    _, creator, memo_id = deal
+    [file_id] = cleaned(client, db, clock, creator, memo_id)
+    reader = FakeReader()
+
+    spent = run(db, clock, reader, budget=Deadline(0))
+
+    assert spent.read == 0
+    assert reader.images == []
+    assert reading_for(db, file_id) is None
+    # Still due: the next run, with time to spare, reads it.
+    assert run(db, clock, reader, budget=Deadline(45)).read == 1
+
+
+def test_a_clean_copy_too_slow_to_read_is_skipped_and_stays_due(
+    client, db, clock, deal, monkeypatch
+):
+    """Item 118 (D-186): storage past its 30 s limit is this run's problem,
+    not the file's: nothing is read or sealed, and the next run tries again."""
+    _, creator, memo_id = deal
+    [file_id] = cleaned(client, db, clock, creator, memo_id)
+    reader = FakeReader()
+    store = storage.memory_store()
+    real_read = store.read
+
+    def too_slow(key: str, *, max_bytes: int) -> bytes:
+        raise DeadlinePassed("reading a stored file passed its limit")
+
+    monkeypatch.setattr(store, "read", too_slow)
+    slow = run(db, clock, reader)
+
+    assert (slow.read, slow.skipped) == (0, 1)
+    assert reader.images == []
+    assert reading_for(db, file_id) is None
+    monkeypatch.setattr(store, "read", real_read)
+    assert run(db, clock, reader).read == 1

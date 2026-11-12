@@ -32,7 +32,7 @@ from typing import Any, Protocol
 import httpx2
 
 from app.core.deadline import Deadline
-from app.core.outside_http import exchange
+from app.core.outside_http import exchange, limited_client
 from app.modules.profiles.brand_domains import ResolverAnswer
 
 logger = logging.getLogger(__name__)
@@ -135,7 +135,7 @@ class HttpsDomainLookup:
         jitter: Callable[[], float] = random.random,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
-        self._client = client or httpx2.Client(timeout=TIMEOUT)
+        self._client = client or limited_client(TIMEOUT)
         self._sleep = sleep
         self._jitter = jitter
         self._clock = clock

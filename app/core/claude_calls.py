@@ -11,7 +11,11 @@ Instead:
 - full-jitter waits of up to 1 s, then 2 s, between tries (`app.core.retrying`);
 - only an error a second try can cure is tried again: no connection or a
   timeout, 408, 429, and every 5xx, Anthropic's 529 "overloaded" among them.
-  A 4xx says the request itself is wrong, and would only be repeated.
+  A 4xx says the request itself is wrong, and would only be repeated;
+- the SDK's client is made by `claude_http_client`, so every socket wait of
+  every try is cut to the time the whole call has left
+  (`app.core.outside_http`): an answer trickled a byte at a time ends at the
+  150 s like any other.
 """
 
 import random
@@ -19,7 +23,10 @@ import time
 from collections.abc import Callable
 from typing import Any
 
+import httpx2
+
 from app.core.deadline import Clock, Deadline
+from app.core.outside_http import limited_client, within
 from app.core.retrying import within_tries
 
 # What a caller is given to make its call: `call_claude`, or a test's own.
@@ -34,6 +41,7 @@ TRY_LIMIT_SECONDS = 60.0
 TRIES = 3
 BASE_DELAY_SECONDS = 1.0
 RETRY_STATUSES = frozenset({408, 429})
+CONNECT_LIMIT_SECONDS = 3.0
 
 
 def is_retryable(error: Exception) -> bool:
@@ -48,6 +56,13 @@ def is_retryable(error: Exception) -> bool:
     return False
 
 
+def claude_http_client() -> httpx2.Client:
+    """The HTTP client the Anthropic SDK is given: its sockets keep to the call's limit."""
+    return limited_client(
+        httpx2.Timeout(TRY_LIMIT_SECONDS, connect=CONNECT_LIMIT_SECONDS)
+    )
+
+
 def call_claude[T](
     send: Callable[[float], T],
     *,
@@ -56,13 +71,14 @@ def call_claude[T](
     clock: Clock = time.monotonic,
 ) -> T:
     """`send(timeout_for_this_try)`, within the limits above. Raises the last error."""
-    return within_tries(
-        send,
-        deadline=Deadline(CALL_LIMIT_SECONDS, clock),
-        tries=TRIES,
-        try_limit=TRY_LIMIT_SECONDS,
-        retryable=is_retryable,
-        base_delay=BASE_DELAY_SECONDS,
-        sleep=sleep,
-        jitter=jitter,
-    )
+    with within(Deadline(CALL_LIMIT_SECONDS, clock)) as deadline:
+        return within_tries(
+            send,
+            deadline=deadline,
+            tries=TRIES,
+            try_limit=TRY_LIMIT_SECONDS,
+            retryable=is_retryable,
+            base_delay=BASE_DELAY_SECONDS,
+            sleep=sleep,
+            jitter=jitter,
+        )

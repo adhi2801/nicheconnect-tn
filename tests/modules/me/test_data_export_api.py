@@ -13,6 +13,7 @@ from datetime import timedelta
 import pytest
 from sqlalchemy import select, update
 
+from app.core.deadline import Deadline
 from app.core.rate_limit import limiter
 from app.core.storage import memory_store
 from app.modules.auth.models.step_up_challenge import StepUpChallenge
@@ -428,3 +429,33 @@ def test_the_file_lists_the_exports_asked_for(client, creator):
     [row] = body["data"]["data_exports"]
     assert row["id"] == export_id
     assert set(row) == set(export_service.DATA_EXPORT_FIELDS)
+
+
+# --- a run's budget (item 118, D-186) ------------------------------------------------
+
+
+def test_a_run_whose_budget_is_spent_builds_nothing_and_leaves_it_asked(client, creator):
+    export_id = ask_for_export(client, creator.headers)
+
+    spent = build_exports(Deadline(0))
+
+    assert spent.built == 0
+    assert read(client, creator, export_id).json()["status"] != "ready"
+    assert memory_store().keys() == set()
+    # Still asked for: the next run, with time to spare, builds it.
+    assert build_exports(Deadline(45)).built == 1
+
+
+def test_a_run_whose_budget_is_spent_destroys_nothing_and_leaves_it_due(
+    client, clock, creator
+):
+    export_id = ready_export(client, creator)
+    clock.advance(EXPORT_KEPT_FOR)
+
+    spent = build_exports(Deadline(0))
+
+    assert spent.expired == 0
+    assert memory_store().keys() == {object_key_for(export_id)}
+    # Still due: the next run, with time to spare, destroys it.
+    assert build_exports(Deadline(45)).expired == 1
+    assert memory_store().keys() == set()

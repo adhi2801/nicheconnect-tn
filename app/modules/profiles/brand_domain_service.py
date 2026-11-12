@@ -275,8 +275,9 @@ def run_checks(
     """
     with session_factory() as db:
         due = take_due(db, now)
-    verified = lapsed = 0
+    checked = verified = lapsed = 0
     for check in within_budget(due, budget, "brand_domains.check"):
+        checked += 1
         outcome = rules.classify(lookup.txt(rules.record_name(check.domain)), check.token)
         registered_on = (
             lookup.registered_on(check.domain)
@@ -292,11 +293,11 @@ def run_checks(
                 lapsed += row.status == "lapsed"
     logger.info(
         "brand_domain.checks checked=%d verified=%d lapsed=%d",
-        len(due),
+        checked,
         verified,
         lapsed,
     )
-    return CheckRun(checked=len(due), verified=verified, lapsed=lapsed)
+    return CheckRun(checked=checked, verified=verified, lapsed=lapsed)
 
 
 def _locked(db: Session, claim_id: uuid.UUID) -> BrandDomain | None:

@@ -21,6 +21,7 @@ from typing import Any
 
 from dbos import DBOS, ScheduleInput
 
+from app.core.job_runs import run_alone
 from app.db.session import SessionLocal
 from app.modules.campaigns import alert_service
 
@@ -37,7 +38,8 @@ def run_sending(scheduled_at: datetime) -> alert_service.AlertRun:
 def sending_step(scheduled_at: datetime) -> None:
     # One step: each batch is its own transaction and nobody is told twice,
     # so a crash halfway is safely redone from where it stopped.
-    run_sending(scheduled_at)
+    # One run at a time per schedule (item 118, D-186).
+    run_alone(SCHEDULE_NAME, lambda: run_sending(scheduled_at))
 
 
 @DBOS.workflow(name="campaign_alerts.send")

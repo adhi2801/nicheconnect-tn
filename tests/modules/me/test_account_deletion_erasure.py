@@ -18,6 +18,7 @@ import pytest
 from sqlalchemy import func, or_, select, text
 from sqlalchemy.orm import Session
 
+from app.core.deadline import Deadline
 from app.core.storage import memory_store
 from app.db.base import Base
 from app.main import app
@@ -956,3 +957,25 @@ def test_a_deleted_brands_campaign_is_never_discovered_even_if_still_open(
     assert campaign_id not in [item["id"] for item in found["items"]]
     assert applied.status_code == 409
     assert applied.json()["code"] == "campaign_not_open"
+
+
+def test_a_run_whose_budget_is_spent_erases_nobody_and_leaves_them_due(
+    db, clock, creator
+):
+    """Item 118 (D-186): no account is started once the run's budget is spent."""
+    who = person(db, creator)
+    due(db, who, clock)
+
+    spent = service.run_deletions(
+        lambda: nullcontext(db), memory_store(), clock.now, budget=Deadline(0)
+    )
+
+    assert spent.erased == 0
+    assert db.get_one(Account, creator.account_id).deleted_at is None
+    # Still due: the next run, with time to spare, erases it.
+    assert (
+        service.run_deletions(
+            lambda: nullcontext(db), memory_store(), clock.now, budget=Deadline(600)
+        ).erased
+        == 1
+    )

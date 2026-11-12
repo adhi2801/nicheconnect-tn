@@ -13,6 +13,7 @@ from typing import Any
 from fastapi.testclient import TestClient
 from httpx2 import Response
 
+from app.core.deadline import Deadline
 from app.core.storage import memory_store
 from app.db.session import get_db
 from app.main import app
@@ -59,11 +60,13 @@ def with_code(
     return {**headers, "Step-Up-Code": code}
 
 
-def build_exports() -> data_export_service.ExportRun:
+def build_exports(budget: Deadline | None = None) -> data_export_service.ExportRun:
     """One run of the export job, on the test's own session, clock and store."""
     db = app.dependency_overrides[get_db]()
     now = app.dependency_overrides[get_now]()
-    return data_export_service.run_exports(lambda: nullcontext(db), memory_store(), now)
+    return data_export_service.run_exports(
+        lambda: nullcontext(db), memory_store(), now, budget=budget
+    )
 
 
 def ask_for_export(client: TestClient, headers: Mapping[str, str]) -> str:

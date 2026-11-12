@@ -10,6 +10,7 @@ import base64
 import io
 from collections.abc import Callable, Iterator
 from datetime import date
+from functools import partial
 from types import SimpleNamespace
 from typing import Any
 
@@ -18,7 +19,9 @@ import httpx2
 import pytest
 from PIL import Image
 
+from app.core.claude_calls import call_claude
 from app.core.config import settings
+from app.core.outside_http import LimitedTransport
 from app.modules.deal_memo import proof_reader
 from app.modules.deal_memo.proof_reader import (
     PROMPT_VERSION,
@@ -75,7 +78,9 @@ def reader_answering(
     respond: Callable[[dict[str, Any]], Any],
 ) -> tuple[ClaudeReader, FakeMessages]:
     messages = FakeMessages(respond)
-    return ClaudeReader(SimpleNamespace(messages=messages), MODEL), messages
+    # The real limits around each call, with waits that take no time.
+    call = partial(call_claude, sleep=lambda _: None, jitter=lambda: 0.5)
+    return ClaudeReader(SimpleNamespace(messages=messages), MODEL, call=call), messages
 
 
 def raises(error: Exception) -> Callable[[dict[str, Any]], Any]:
@@ -244,11 +249,26 @@ REQUEST = httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
     ],
 )
 def test_an_api_that_cannot_be_reached_is_a_failure_not_a_crash(error):
-    reader, _ = reader_answering(raises(error))
+    reader, messages = reader_answering(raises(error))
 
     reading = reader.read(png(), "image/png")
 
     assert (reading.status, reading.failure) == ("failed", "api_error")
+    # Tried three times, each try told its own limit (item 118, D-186).
+    assert [call["timeout"] for call in messages.calls] == [60.0, 60.0, 60.0]
+
+
+def test_a_request_the_api_refuses_is_sent_once():
+    """A 4xx says the request is wrong: sending it again only repeats that."""
+    refused = anthropic.APIStatusError(
+        "bad", response=httpx2.Response(400, request=REQUEST), body=None
+    )
+    reader, messages = reader_answering(raises(refused))
+
+    reading = reader.read(png(), "image/png")
+
+    assert (reading.status, reading.failure) == ("failed", "api_error")
+    assert len(messages.calls) == 1
 
 
 # --- images too heavy to send -------------------------------------------------------------
@@ -291,7 +311,9 @@ def test_reading_is_off_by_default_so_there_is_no_reader():
     assert get_reader() is None
 
 
-def test_switched_on_it_is_claude_with_retries_and_a_timeout(monkeypatch):
+def test_switched_on_it_is_claude_with_a_limited_client_and_no_retries_of_its_own(
+    monkeypatch,
+):
     monkeypatch.setattr(settings, "proof_reading_enabled", True)
     monkeypatch.setattr(
         settings, "anthropic_api_key", type(settings.secret_key)("sk-ant-test-only")
@@ -302,7 +324,10 @@ def test_switched_on_it_is_claude_with_retries_and_a_timeout(monkeypatch):
     assert isinstance(reader, ClaudeReader)
     assert reader.model == settings.proof_reader_model
     client = reader._client
-    assert client.max_retries == proof_reader.API_MAX_RETRIES
+    # The SDK never retries on its own: call_claude does, within 150 s, over
+    # a client whose sockets keep to that limit (item 118, D-186).
+    assert client.max_retries == proof_reader.API_MAX_RETRIES == 0
+    assert isinstance(client._client._transport, LimitedTransport)
     assert client.timeout == proof_reader.API_TIMEOUT_SECONDS
     assert get_reader() is reader  # made once
 

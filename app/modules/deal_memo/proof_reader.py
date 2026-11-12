@@ -33,7 +33,7 @@ from typing import Any, Literal, Protocol
 from PIL import Image
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from app.core.claude_calls import ClaudeCall, call_claude
+from app.core.claude_calls import ClaudeCall, call_claude, claude_http_client
 from app.core.config import settings
 
 # Changed whenever the instructions or the shape change, and stored with every
@@ -321,6 +321,7 @@ def get_reader() -> ScreenshotReader | None:
                     api_key=settings.anthropic_api_key.get_secret_value(),
                     timeout=API_TIMEOUT_SECONDS,
                     max_retries=API_MAX_RETRIES,
+                    http_client=claude_http_client(),
                 ),
                 settings.proof_reader_model,
             )

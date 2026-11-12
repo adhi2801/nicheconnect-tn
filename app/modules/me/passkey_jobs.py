@@ -16,6 +16,7 @@ from typing import Any
 
 from dbos import DBOS, ScheduleInput
 
+from app.core.job_runs import run_alone
 from app.db.session import SessionLocal
 from app.modules.me import passkey_service
 
@@ -30,7 +31,8 @@ def run_resets(scheduled_at: datetime) -> passkey_service.ResetRun:
 
 @DBOS.step(name="passkeys.settle_resets")
 def settle_step(scheduled_at: datetime) -> None:
-    run_resets(scheduled_at)
+    # One run at a time per schedule (item 118, D-186).
+    run_alone(SCHEDULE_NAME, lambda: run_resets(scheduled_at))
 
 
 @DBOS.workflow(name="passkeys.settle")

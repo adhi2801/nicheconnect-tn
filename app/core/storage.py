@@ -13,12 +13,31 @@ on one check alone.
 
 **Nothing is public.** Reading is only through a link signed for a few
 minutes, for one object.
+
+**Every call to S3 ends within CALL_LIMIT_SECONDS** (item 118, D-186).
+botocore bounds each wait (connect 3 s, read 10 s) and its tries (3), never
+their sum, and a body trickled a byte at a time, each inside the read
+timeout, would never end. So each call carries one `Deadline`: botocore asks
+`_refuse_late_try` before every try, retries included, and none starts once
+the limit has passed; a file is read piece by piece, the limit checked after
+each, and a watchdog cuts the socket's waits short the moment it passes.
+**What it cannot do**, since botocore offers no hook there: cut a try that
+is already waiting for S3's headers, or a wait between tries already begun.
+A store that never answers is given up within the limit, one try (connect
+3 s, read 10 s) and the one wait botocore had begun (its cap is 20 s, and 5 s
+more when S3 asks with `x-amz-retry-after`); a store trickling its headers a
+byte at a time is held only by botocore's per-wait limit, with no end. S3
+is AWS's own service in the same region, so this is the least likely of the
+outside calls to misbehave so; it is named in D-186 as a gap.
 """
 
 import base64
 import hashlib
 import threading
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager, suppress
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from http import HTTPStatus
@@ -31,11 +50,32 @@ from app.core.errors import DomainError
 # Outside AWS nothing is uploaded for real, so the stand-in is only allowed
 # where nobody's files are at stake.
 MEMORY_STORE_ENVIRONMENTS = frozenset({"local", "test"})
-# Reading one stored file, from asking to the last byte (item 118, D-186):
-# the client's own limits bound each wait (connect 3 s, read 10 s, 3 tries),
-# and this bounds the whole, so a slow body cannot hold a job's worker.
-READ_LIMIT_SECONDS = 30.0
+# One call to the store, every try and wait included, a file's whole body
+# among them (item 118, D-186): a 7 MB proof read in AWS's own region takes
+# well under a second, so 30 s is a stuck store, not a slow one.
+CALL_LIMIT_SECONDS = 30.0
 READ_PIECE_BYTES = 64 * 1024
+# Once the limit passes, how long the body's socket may still wait for its
+# next bytes before the read stops.
+CUT_WAIT_SECONDS = 0.05
+# Registered once per client, however many stores share it.
+_HOOK_ID = "colyv-call-limit"
+
+_current_call: ContextVar[Deadline | None] = ContextVar("storage_call", default=None)
+
+
+def _refuse_late_try(**_: Any) -> None:
+    """botocore's `before-send` event, before every try: none once the limit has passed."""
+    deadline = _current_call.get()
+    if deadline is not None and deadline.expired():
+        raise DeadlinePassed("a storage call passed its limit")
+
+
+def _cut_waits(body: Any) -> None:
+    """The watchdog: the body's next socket wait ends almost at once."""
+    # Not a socket (a stand-in's body): the check after each piece stops it.
+    with suppress(AttributeError):
+        body.set_socket_timeout(CUT_WAIT_SECONDS)
 
 
 class StorageNotConfigured(DomainError):
@@ -113,6 +153,19 @@ class S3FileStore:
         self.bucket = bucket
         self._client = client
         self._clock = clock
+        client.meta.events.register(
+            "before-send.s3", _refuse_late_try, unique_id=_HOOK_ID
+        )
+
+    @contextmanager
+    def _call(self) -> Iterator[Deadline]:
+        """One call's limit, seen by every try botocore makes inside the block."""
+        deadline = Deadline(CALL_LIMIT_SECONDS, self._clock)
+        token = _current_call.set(deadline)
+        try:
+            yield deadline
+        finally:
+            _current_call.reset(token)
 
     def upload_form(
         self,
@@ -155,7 +208,8 @@ class S3FileStore:
         from botocore.exceptions import ClientError
 
         try:
-            head = self._client.head_object(Bucket=self.bucket, Key=key)
+            with self._call():
+                head = self._client.head_object(Bucket=self.bucket, Key=key)
         except ClientError as error:
             if error.response.get("Error", {}).get("Code") in {
                 "404",
@@ -169,52 +223,67 @@ class S3FileStore:
         )
 
     def read(self, key: str, *, max_bytes: int) -> bytes:
-        """The file, read piece by piece within READ_LIMIT_SECONDS.
+        """The file, read piece by piece within CALL_LIMIT_SECONDS.
 
         Raises ObjectTooLarge, or DeadlinePassed once the limit is spent.
         """
-        deadline = Deadline(READ_LIMIT_SECONDS, self._clock)
-        response = self._client.get_object(Bucket=self.bucket, Key=key)
-        body = response["Body"]
-        try:
-            if int(response["ContentLength"]) > max_bytes:
-                raise ObjectTooLarge(key)
-            data = bytearray()
-            for piece in body.iter_chunks(chunk_size=READ_PIECE_BYTES):
-                data += piece
-                if len(data) > max_bytes:
+        from botocore.exceptions import ReadTimeoutError
+
+        with self._call() as deadline:
+            response = self._client.get_object(Bucket=self.bucket, Key=key)
+            body = response["Body"]
+            watchdog = threading.Timer(deadline.remaining(), _cut_waits, (body,))
+            watchdog.daemon = True
+            watchdog.start()
+            try:
+                if int(response["ContentLength"]) > max_bytes:
                     raise ObjectTooLarge(key)
+                data = bytearray()
+                for piece in body.iter_chunks(chunk_size=READ_PIECE_BYTES):
+                    data += piece
+                    if len(data) > max_bytes:
+                        raise ObjectTooLarge(key)
+                    if deadline.expired():
+                        raise DeadlinePassed("reading a stored file passed its limit")
+                return bytes(data)
+            except ReadTimeoutError as error:
                 if deadline.expired():
-                    raise DeadlinePassed("reading a stored file passed its limit")
-            if deadline.expired():
-                raise DeadlinePassed("reading a stored file passed its limit")
-            return bytes(data)
-        finally:
-            body.close()
+                    raise DeadlinePassed(
+                        "reading a stored file passed its limit"
+                    ) from error
+                raise
+            finally:
+                watchdog.cancel()
+                body.close()
 
     def write(self, key: str, data: bytes, *, content_type: str) -> None:
-        self._client.put_object(
-            Bucket=self.bucket,
-            Key=key,
-            Body=data,
-            ContentType=content_type,
-            ChecksumSHA256=base64.b64encode(hashlib.sha256(data).digest()).decode(
-                "ascii"
-            ),
-        )
+        with self._call():
+            self._client.put_object(
+                Bucket=self.bucket,
+                Key=key,
+                Body=data,
+                ContentType=content_type,
+                ChecksumSHA256=base64.b64encode(hashlib.sha256(data).digest()).decode(
+                    "ascii"
+                ),
+            )
 
     def delete(self, key: str) -> None:
-        self._client.delete_object(Bucket=self.bucket, Key=key)
+        with self._call():
+            self._client.delete_object(Bucket=self.bucket, Key=key)
 
     def destroy(self, key: str) -> None:
         # The bucket keeps versions, so a plain delete only hides an object
         # for a month (`tidy`). Deleting each version by its id removes it.
-        listed = self._client.list_object_versions(Bucket=self.bucket, Prefix=key)
-        for entry in [*listed.get("Versions", []), *listed.get("DeleteMarkers", [])]:
-            if entry["Key"] == key:
-                self._client.delete_object(
-                    Bucket=self.bucket, Key=key, VersionId=entry["VersionId"]
-                )
+        # One limit for the listing and every deletion: a destroy that stops
+        # halfway is asked again by its job's next run.
+        with self._call():
+            listed = self._client.list_object_versions(Bucket=self.bucket, Prefix=key)
+            for entry in [*listed.get("Versions", []), *listed.get("DeleteMarkers", [])]:
+                if entry["Key"] == key:
+                    self._client.delete_object(
+                        Bucket=self.bucket, Key=key, VersionId=entry["VersionId"]
+                    )
 
     def view_url(self, key: str, *, expires_in: timedelta, filename: str) -> str:
         url: str = self._client.generate_presigned_url(

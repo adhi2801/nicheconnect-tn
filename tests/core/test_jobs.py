@@ -15,10 +15,15 @@ from sqlalchemy import delete, select, text
 
 from app.core import jobs
 from app.core.config import settings
+from app.core.job_runs import (
+    EVERY_MINUTE_BUDGET_SECONDS,
+    LONG_BUDGET_SECONDS,
+    one_run_at_a_time,
+)
 from app.db.session import SessionLocal
 from app.main import app
 from app.modules.admin import report_clock_jobs
-from app.modules.campaigns import alert_jobs
+from app.modules.campaigns import alert_jobs, brief_jobs
 from app.modules.deal_memo import (
     anchor_jobs,
     anchor_service,
@@ -130,7 +135,7 @@ def test_the_cleaning_workflow_runs_through_dbos(launched, monkeypatch):
     monkeypatch.setattr(
         proof_cleaning_jobs,
         "run_cleaning",
-        lambda scheduled_at: runs.append(scheduled_at),
+        lambda scheduled_at, budget=None: runs.append(scheduled_at),
     )
 
     proof_cleaning_jobs.clean_proof_files(SCHEDULED, None)
@@ -156,7 +161,7 @@ def test_the_reading_workflow_runs_through_dbos(launched, monkeypatch):
     monkeypatch.setattr(
         proof_reading_jobs,
         "run_reading",
-        lambda scheduled_at: runs.append(scheduled_at),
+        lambda scheduled_at, budget=None: runs.append(scheduled_at),
     )
 
     proof_reading_jobs.read_proof_files(SCHEDULED, None)
@@ -190,7 +195,7 @@ def test_the_warning_workflow_runs_through_dbos(launched, monkeypatch):
     monkeypatch.setattr(
         report_clock_jobs,
         "run_warnings",
-        lambda scheduled_at: runs.append(scheduled_at),
+        lambda scheduled_at, budget=None: runs.append(scheduled_at),
     )
 
     report_clock_jobs.warn_about_report_deadlines(SCHEDULED, None)
@@ -253,7 +258,7 @@ def test_the_domain_checking_workflow_runs_through_dbos(launched, monkeypatch):
     monkeypatch.setattr(
         brand_domain_jobs,
         "run_checks",
-        lambda scheduled_at: runs.append(scheduled_at),
+        lambda scheduled_at, budget=None: runs.append(scheduled_at),
     )
 
     brand_domain_jobs.check_brand_domains(SCHEDULED, None)
@@ -283,7 +288,9 @@ def test_phone_changes_are_made_every_minute_with_no_backfill(launched):
 def test_the_phone_change_workflow_runs_through_dbos(launched, monkeypatch):
     runs = []
     monkeypatch.setattr(
-        phone_change_jobs, "run_changes", lambda scheduled_at: runs.append(scheduled_at)
+        phone_change_jobs,
+        "run_changes",
+        lambda scheduled_at, budget=None: runs.append(scheduled_at),
     )
 
     phone_change_jobs.make_phone_changes(SCHEDULED, None)
@@ -309,7 +316,9 @@ def test_data_exports_are_built_every_minute_with_no_backfill(launched):
 def test_the_export_workflow_runs_through_dbos(launched, monkeypatch):
     runs = []
     monkeypatch.setattr(
-        data_export_jobs, "run_exports", lambda scheduled_at: runs.append(scheduled_at)
+        data_export_jobs,
+        "run_exports",
+        lambda scheduled_at, budget=None: runs.append(scheduled_at),
     )
 
     data_export_jobs.build_data_exports(SCHEDULED, None)
@@ -335,7 +344,9 @@ def test_passkey_resets_are_settled_every_minute_with_no_backfill(launched):
 def test_the_passkey_workflow_runs_through_dbos(launched, monkeypatch):
     runs = []
     monkeypatch.setattr(
-        passkey_jobs, "run_resets", lambda scheduled_at: runs.append(scheduled_at)
+        passkey_jobs,
+        "run_resets",
+        lambda scheduled_at, budget=None: runs.append(scheduled_at),
     )
 
     passkey_jobs.settle_passkey_resets(SCHEDULED, None)
@@ -367,7 +378,7 @@ def test_the_deletion_workflow_runs_through_dbos(launched, monkeypatch):
     monkeypatch.setattr(
         account_deletion_jobs,
         "run_deletions",
-        lambda scheduled_at: runs.append(scheduled_at),
+        lambda scheduled_at, budget=None: runs.append(scheduled_at),
     )
 
     account_deletion_jobs.erase_accounts(SCHEDULED, None)
@@ -393,7 +404,9 @@ def test_campaign_alerts_are_sent_every_minute_with_no_backfill(launched):
 def test_the_alert_workflow_runs_through_dbos(launched, monkeypatch):
     runs = []
     monkeypatch.setattr(
-        alert_jobs, "run_sending", lambda scheduled_at: runs.append(scheduled_at)
+        alert_jobs,
+        "run_sending",
+        lambda scheduled_at, budget=None: runs.append(scheduled_at),
     )
 
     alert_jobs.send_campaign_alerts(SCHEDULED, None)
@@ -413,7 +426,9 @@ def test_connections_are_refreshed_each_morning_with_no_backfill(launched):
 def test_the_refresh_workflow_runs_through_dbos(launched, monkeypatch):
     runs = []
     monkeypatch.setattr(
-        connection_jobs, "run_refresh", lambda scheduled_at: runs.append(scheduled_at)
+        connection_jobs,
+        "run_refresh",
+        lambda scheduled_at, budget=None: runs.append(scheduled_at),
     )
 
     connection_jobs.refresh_connections(SCHEDULED, None)
@@ -425,3 +440,75 @@ def test_a_refresh_run_while_switched_off_reads_nothing(launched):
     run = connection_jobs.run_refresh(SCHEDULED)
 
     assert run.read == run.expired == run.unavailable == 0
+
+
+# --- one run at a time, and each run's budget (item 118, D-186) ----------------------
+
+JOBS = [
+    # module, the work it runs, its workflow, its budget (None: it calls nobody outside)
+    (
+        proof_cleaning_jobs,
+        "run_cleaning",
+        "clean_proof_files",
+        EVERY_MINUTE_BUDGET_SECONDS,
+    ),
+    (proof_reading_jobs, "run_reading", "read_proof_files", EVERY_MINUTE_BUDGET_SECONDS),
+    (brief_jobs, "run_drafting", "draft_briefs", EVERY_MINUTE_BUDGET_SECONDS),
+    (data_export_jobs, "run_exports", "build_data_exports", EVERY_MINUTE_BUDGET_SECONDS),
+    (brand_domain_jobs, "run_checks", "check_brand_domains", EVERY_MINUTE_BUDGET_SECONDS),
+    (account_deletion_jobs, "run_deletions", "erase_accounts", LONG_BUDGET_SECONDS),
+    (anchor_jobs, "run_checkpoint", "daily_checkpoint", LONG_BUDGET_SECONDS),
+    (connection_jobs, "run_refresh", "refresh_connections", LONG_BUDGET_SECONDS),
+    (report_clock_jobs, "run_warnings", "warn_about_report_deadlines", None),
+    (alert_jobs, "run_sending", "send_campaign_alerts", None),
+    (passkey_jobs, "run_resets", "settle_passkey_resets", None),
+    (phone_change_jobs, "run_changes", "make_phone_changes", None),
+]
+JOB_IDS = [module.SCHEDULE_NAME for module, *_ in JOBS]
+
+
+def test_every_schedule_is_bounded_here():
+    """A schedule added later must join JOBS, or this fails."""
+    scheduled = {
+        schedule["schedule_name"]
+        for module in vars(jobs).values()
+        if hasattr(module, "schedules")
+        for schedule in module.schedules()
+    }
+
+    assert len(scheduled) == 12
+    assert scheduled == set(JOB_IDS)
+
+
+@pytest.mark.parametrize(("module", "work", "workflow", "budget"), JOBS, ids=JOB_IDS)
+def test_each_run_is_given_its_budget(
+    launched, monkeypatch, module, work, workflow, budget
+):
+    given = []
+    monkeypatch.setattr(
+        module, work, lambda scheduled_at, *budgets: given.append((scheduled_at, budgets))
+    )
+
+    getattr(module, workflow)(SCHEDULED, None)
+
+    [(scheduled_at, budgets)] = given
+    assert scheduled_at == SCHEDULED
+    if budget is None:
+        assert budgets == ()
+    else:
+        [deadline] = budgets
+        assert budget - 5 < deadline.remaining() <= budget
+
+
+@pytest.mark.parametrize(("module", "work", "workflow", "budget"), JOBS, ids=JOB_IDS)
+def test_a_run_while_the_last_is_still_going_does_nothing(
+    launched, monkeypatch, module, work, workflow, budget
+):
+    given = []
+    monkeypatch.setattr(module, work, lambda *args: given.append(args))
+
+    with one_run_at_a_time(module.SCHEDULE_NAME) as held:
+        assert held is True  # the "last run", on a connection of its own
+        getattr(module, workflow)(SCHEDULED, None)
+
+    assert given == []

@@ -33,7 +33,7 @@ from typing import Any
 import httpx2
 
 from app.core.deadline import Clock, Deadline
-from app.core.outside_http import exchange
+from app.core.outside_http import exchange, limited_client
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ class Msg91WhatsAppSender:
         self._template = template
         self._language = language
         # One client, so connections are reused between codes.
-        self._client = client or httpx2.Client(timeout=TIMEOUT)
+        self._client = client or limited_client(TIMEOUT)
         self._sleep = sleep
         self._jitter = jitter
         self._clock = clock

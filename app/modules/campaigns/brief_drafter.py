@@ -23,7 +23,7 @@ from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
-from app.core.claude_calls import ClaudeCall, call_claude
+from app.core.claude_calls import ClaudeCall, call_claude, claude_http_client
 from app.core.config import settings
 from app.core.taxonomy import MAX_NICHES, Niche
 from app.modules.campaigns.models import (
@@ -224,6 +224,7 @@ def get_drafter() -> BriefDrafter | None:
                     api_key=settings.anthropic_api_key.get_secret_value(),
                     timeout=API_TIMEOUT_SECONDS,
                     max_retries=API_MAX_RETRIES,
+                    http_client=claude_http_client(),
                 ),
                 settings.brief_drafter_model,
             )
