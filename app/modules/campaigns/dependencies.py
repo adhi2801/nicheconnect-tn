@@ -23,7 +23,12 @@ from app.modules.campaigns.exceptions import (
     BrandProfileRequired,
     CampaignNotFound,
 )
-from app.modules.campaigns.models import Application, Campaign
+from app.modules.campaigns.models import (
+    DIRECT_CAMPAIGN_TYPE,
+    DIRECT_ORIGIN,
+    Application,
+    Campaign,
+)
 from app.modules.campaigns.service import get_creator_for_account
 
 
@@ -85,10 +90,15 @@ def get_owned_campaign(
     """A campaign owned by the signed-in brand.
 
     Another brand's campaign gives 404, never 403: saying "forbidden" would
-    confirm that the campaign exists (security.md section 2).
+    confirm that the campaign exists (security.md section 2). So does the
+    hidden campaign of a direct offer (D-189): no campaign route reaches it.
     """
     campaign = db.scalars(
-        select(Campaign).where(Campaign.id == campaign_id, Campaign.brand_id == brand.id)
+        select(Campaign).where(
+            Campaign.id == campaign_id,
+            Campaign.brand_id == brand.id,
+            Campaign.campaign_type != DIRECT_CAMPAIGN_TYPE,
+        )
     ).first()
     if campaign is None:
         raise CampaignNotFound()
@@ -122,7 +132,9 @@ def get_visible_application(
     private.
     """
     application = db.get(Application, application_id)
-    if application is None:
+    # A direct offer's application (D-189) is no application route's: its
+    # deal is reached through the deal's own routes.
+    if application is None or application.origin == DIRECT_ORIGIN:
         raise ApplicationNotFound()
 
     if account.role == "creator":
@@ -152,7 +164,11 @@ def get_owned_application(
     application = db.scalars(
         select(Application)
         .join(Campaign, Campaign.id == Application.campaign_id)
-        .where(Application.id == application_id, Campaign.brand_id == brand.id)
+        .where(
+            Application.id == application_id,
+            Campaign.brand_id == brand.id,
+            Application.origin != DIRECT_ORIGIN,
+        )
     ).first()
     if application is None:
         raise ApplicationNotFound()
@@ -170,7 +186,9 @@ def get_own_application(
     """An application the signed-in creator sent (else 404)."""
     application = db.scalars(
         select(Application).where(
-            Application.id == application_id, Application.creator_id == creator.id
+            Application.id == application_id,
+            Application.creator_id == creator.id,
+            Application.origin != DIRECT_ORIGIN,
         )
     ).first()
     if application is None:

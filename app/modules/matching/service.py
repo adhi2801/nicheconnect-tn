@@ -25,7 +25,7 @@ from sqlalchemy.orm import Session
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import account_is_active, brand_is_active
 from app.modules.campaigns import applying
-from app.modules.campaigns.models import Application, Campaign
+from app.modules.campaigns.models import DIRECT_CAMPAIGN_TYPE, Application, Campaign
 from app.modules.deal_memo.models import DealMemo
 from app.modules.matching import embedder, fusion
 from app.modules.matching.embedding_input import campaign_text, creator_text
@@ -148,8 +148,12 @@ def refresh_creators(
 def refresh_campaigns(
     db: Session, *, campaign_ids: Sequence[uuid.UUID] | None = None, force: bool = False
 ) -> Rebuilt:
-    """Bring campaign embeddings up to date. All of them, or the ones named."""
-    query = select(Campaign)
+    """Bring campaign embeddings up to date. All of them, or the ones named.
+
+    Never a direct offer's hidden campaign (D-189): it is matched to nobody,
+    and its deliverables are a creator's own words, typed for one brand.
+    """
+    query = select(Campaign).where(Campaign.campaign_type != DIRECT_CAMPAIGN_TYPE)
     if campaign_ids is not None:
         query = query.where(Campaign.id.in_(campaign_ids))
     return _refresh(

@@ -225,6 +225,12 @@ class Settings(BaseSettings):
     # until the publish notice says search engines will show the Passport
     # (legal.md section 3.1, a Confirm item).
     passport_indexing: bool = False
+    # Direct offers (D-189): a creator's memo to a brand not on the platform,
+    # accepted at a link with a code. Off until the validation pack gives the
+    # link page's and the code message's notice wording (constraint 6); while
+    # either is still a placeholder (`deal_memo.direct_offer_notices`), the
+    # feature stays off even with this on.
+    direct_offers_enabled: bool = False
     # Connected Instagram and YouTube accounts (item 29, D-134): numbers read
     # from the platform with the creator's consent. Off until Meta App Review
     # and Google's verification approve the apps, and the connect notice's

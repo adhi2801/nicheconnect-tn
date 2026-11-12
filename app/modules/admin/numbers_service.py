@@ -43,7 +43,7 @@ from sqlalchemy.orm import Session, aliased
 from app.core.clock import IST, india_date_sql
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
-from app.modules.campaigns.models import Application, Campaign
+from app.modules.campaigns.models import DIRECT_CAMPAIGN_TYPE, Application, Campaign
 from app.modules.deal_memo.models import DealMemo
 from app.modules.payment_status.models import PaymentStatus
 
@@ -161,6 +161,11 @@ def _period(db: Session, first: date, last: date, city: str | None) -> PeriodNum
         )
     )
 
+    # Posted: out of draft, and a brand's own, never a direct offer's hidden
+    # campaign (D-189), which is made agreed and would read as filled at once.
+    posted = and_(
+        Campaign.status != "draft", Campaign.campaign_type != DIRECT_CAMPAIGN_TYPE
+    )
     # Every campaign posted in the period, with its first application and its
     # first agreed deal: one row each, so the rates are worked out from facts.
     first_application = (
@@ -177,7 +182,7 @@ def _period(db: Session, first: date, last: date, city: str | None) -> PeriodNum
     campaigns = db.execute(
         select(
             Campaign.brand_id, Campaign.created_at, first_application, first_deal
-        ).where(_in(Campaign.created_at, start, end), Campaign.status != "draft", in_city)
+        ).where(_in(Campaign.created_at, start, end), posted, in_city)
     ).all()
     judged = [row for row in campaigns if row[1] + FILL_WINDOW <= end]
     filled = [
@@ -223,9 +228,7 @@ def _period(db: Session, first: date, last: date, city: str | None) -> PeriodNum
         select(func.count()).select_from(
             union(
                 select(Campaign.brand_id).where(
-                    _in(Campaign.created_at, start, end),
-                    Campaign.status != "draft",
-                    in_city,
+                    _in(Campaign.created_at, start, end), posted, in_city
                 ),
                 select(Campaign.brand_id)
                 .join(Application, Application.campaign_id == Campaign.id)

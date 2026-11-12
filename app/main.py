@@ -45,6 +45,13 @@ from app.modules.deal_memo.calendar_router import router as deal_calendar_router
 from app.modules.deal_memo.check_router import router as deal_check_router
 from app.modules.deal_memo.content_library_router import router as content_library_router
 from app.modules.deal_memo.delivery_router import router as delivery_router
+from app.modules.deal_memo.direct_offer_router import (
+    link_login_router as direct_offer_login_router,
+)
+from app.modules.deal_memo.direct_offer_router import (
+    link_router as direct_offer_link_router,
+)
+from app.modules.deal_memo.direct_offer_router import router as direct_offers_router
 from app.modules.deal_memo.draft_router import router as draft_router
 from app.modules.deal_memo.feedback_router import router as feedback_router
 from app.modules.deal_memo.note_router import router as notes_router
@@ -227,6 +234,10 @@ app.include_router(deal_record_router)
 app.include_router(deal_calendar_router)
 app.include_router(deal_check_router)
 app.include_router(repeat_router)
+# Direct offers (D-189): the creator's own, the public link, and its login.
+app.include_router(direct_offers_router)
+app.include_router(direct_offer_link_router)
+app.include_router(direct_offer_login_router)
 app.include_router(notes_router)
 app.include_router(proof_router)
 app.include_router(payment_router)

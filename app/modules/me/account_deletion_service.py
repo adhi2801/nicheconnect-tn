@@ -60,6 +60,7 @@ from app.modules.auth.models.creator import Creator
 from app.modules.campaigns import alert_service as campaign_alerts
 from app.modules.campaigns import brief_service as brief_drafts
 from app.modules.campaigns import departure_service as departures
+from app.modules.deal_memo import direct_offer_service as direct_offers
 from app.modules.deal_memo.unfinished import unfinished_deals
 from app.modules.matching import creator_list_service as creator_lists
 from app.modules.matching import service as matching
@@ -357,6 +358,7 @@ def erase(db: Session, account_id: uuid.UUID, now: datetime) -> Outcome | None:
         brief_drafts.erase_for_brand(db, profile.id)
     elif isinstance(profile, Creator):
         departures.end_for_creator(db, applications, now)
+        direct_offers.erase_for_creator(db, profile.id)
         upi.erase_for_creator(db, profile.id)
         rate_cards.erase_for_creator(db, profile.id)
         matching.erase_for_creator(db, profile.id)
