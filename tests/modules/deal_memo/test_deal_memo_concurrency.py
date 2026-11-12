@@ -19,7 +19,7 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 import pytest
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 import app.db.models  # noqa: F401 — registers every table, as the app does
@@ -33,6 +33,7 @@ from app.modules.deal_memo.exceptions import (
     MemoAlreadyExists,
     MemoNotEditable,
     MemoStatusConflict,
+    PaidMemoNeedsFee,
     ProofAlreadyDecided,
 )
 from app.modules.deal_memo.models import DealMemo
@@ -306,3 +307,134 @@ def test_an_accept_and_a_cancel_at_once_leave_a_sequence_the_rules_allow(
         assert (memo.accepted_at is not None) == ("memo_accepted" in answers)
         # No work was submitted, so the cancellation cost nothing (D-026).
         assert memo.cancellation_kind == "withdrawn_early"
+
+
+@pytest.fixture
+def change_requested_memo(sent_memo) -> uuid.UUID:
+    """A sent memo the creator asked to change: the brand's to edit and send again."""
+    with SessionLocal() as session:
+        move(sent_memo, "change_requested", "creator")(session)
+    return sent_memo
+
+
+def test_four_re_sends_and_an_edit_at_once_seal_the_terms_once(
+    change_requested_memo, slow_writes
+):
+    """The re-send after a change request (audit C13, D-184, the independent
+    review of 12 November): four sends and an edit at once. One send wins
+    and is sealed once; the edit lands before it, and is sealed with it, or
+    finds the memo sent and is refused. Never two sends on the record, and
+    never terms on the memo that the last send did not seal."""
+    jobs = [edit(change_requested_memo)] + [
+        move(change_requested_memo, "sent", "brand")
+    ] * AT_ONCE
+
+    results = run_at_once(lambda s: jobs.pop()(s), AT_ONCE + 1)
+
+    lost_sends = [r for r in results if isinstance(r, MemoStatusConflict)]
+    refused_edits = [r for r in results if isinstance(r, MemoNotEditable)]
+    unexpected = [
+        r
+        for r in results
+        if isinstance(r, Exception)
+        and not isinstance(r, (MemoStatusConflict, MemoNotEditable))
+    ]
+    assert unexpected == [], f"a raw error reached the caller: {unexpected}"
+    assert len(lost_sends) == AT_ONCE - 1
+    assert len(refused_edits) in (0, 1)
+    edit_landed = not refused_edits
+    entries = memo_entries(change_requested_memo)
+    assert [e.kind for e in entries] == [
+        "memo_sent",
+        "memo_change_requested",
+        "memo_sent",
+    ]
+    with SessionLocal() as session:
+        memo = session.get_one(DealMemo, change_requested_memo)
+        assert memo.status == "sent"
+        assert memo.fee_amount_paise == (NEW_FEE if edit_landed else 800_000)
+        terms_now = record.terms_fingerprint(memo)
+    # What the creator was sent again is exactly what the record sealed.
+    assert entries[-1].facts["fee_amount_paise"] == memo.fee_amount_paise
+    assert entries[-1].facts["terms_sha256"] == terms_now
+
+
+def deliverables_of(quantity: int) -> list[dict[str, Any]]:
+    """Two deliverables, both of `quantity`, so a mix of two edits shows."""
+    return [
+        {"platform": "instagram", "format": "reel", "quantity": quantity, "note": None},
+        {
+            "platform": "instagram",
+            "format": "reel",
+            "quantity": quantity,
+            "note": "Second",
+        },
+    ]
+
+
+def test_four_edits_replacing_the_deliverables_at_once_never_collide(
+    draft_memo, slow_writes
+):
+    """The independent review of 12 November (D-184). Each edit deletes the
+    memo's deliverables and inserts its own from place 0. Unlocked, under
+    READ COMMITTED, four at once each deleted what it saw and inserted place
+    0, and every edit after the first hit `uq_memo_deliverable_place`: a raw
+    database error, a 500 through the API. The memo's lock in `update_memo`
+    queues them: every edit lands, one after another, and the list left is
+    one edit's whole list, never a mix.
+
+    Only the deliverables change: a fee in the same edit would lock the
+    memo's row by its UPDATE first, and hide the race this test is for."""
+    quantities = list(range(1, AT_ONCE + 1))
+
+    results = run_at_once(
+        lambda s: memos.update_memo(
+            s,
+            s.get_one(DealMemo, draft_memo),
+            {"deliverable_items": deliverables_of(quantities.pop())},
+            NOW,
+        ),
+        AT_ONCE,
+    )
+
+    won, refused, unexpected = split(results, MemoNotEditable)
+    assert unexpected == [], f"a raw database error reached the caller: {unexpected}"
+    # A draft stays editable, so every edit wins in turn.
+    assert (won, refused) == (AT_ONCE, 0)
+    with SessionLocal() as session:
+        rows = list(
+            session.scalars(
+                select(MemoDeliverable)
+                .where(MemoDeliverable.deal_memo_id == draft_memo)
+                .order_by(MemoDeliverable.position)
+            )
+        )
+    assert [row.position for row in rows] == [0, 1]
+    assert len({row.quantity for row in rows}) == 1
+    assert [row.note for row in rows] == [None, "Second"]
+
+
+def test_a_refused_fee_lets_go_of_the_memo_at_once(draft_memo):
+    """A paid memo's edit that clears the fee is refused while it holds the
+    memo's lock. It rolls back before raising, as every other refusal in
+    the service does (the independent review of 12 November, D-184), so
+    the lock goes with the refusal, not when the session is finally closed:
+    another request can take the memo straight away."""
+    with SessionLocal() as editing:
+        with pytest.raises(PaidMemoNeedsFee):
+            memos.update_memo(
+                editing,
+                editing.get_one(DealMemo, draft_memo),
+                {"fee_amount_paise": None},
+                NOW,
+            )
+        # The refused session is still open, as a request's is while its
+        # error is answered. NOWAIT fails at once if the lock is still held.
+        with SessionLocal() as other:
+            locked = other.scalars(
+                select(DealMemo.id)
+                .where(DealMemo.id == draft_memo)
+                .with_for_update(nowait=True)
+            ).one()
+            other.rollback()
+    assert locked == draft_memo

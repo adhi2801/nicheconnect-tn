@@ -444,7 +444,12 @@ def update_memo(
     sent: terms the creator could accept but the record never sealed at
     sending (legal.md section 3.5, bait and switch; audit C13, D-184).
     Locked, an edit either lands before the send, which then seals it, or
-    finds the memo sent and is refused.
+    finds the memo sent and is refused. The lock also keeps two edits that
+    each replace the deliverables from both inserting the first place at
+    once: unlocked, the second hit `uq_memo_deliverable_place`, a raw 500.
+
+    Every refusal rolls back before it is raised, as its siblings' do, so a
+    refused edit never holds the memo's lock while its session lingers.
     """
     db.refresh(memo, with_for_update=True)
     if memo.status not in EDITABLE_STATUSES:
@@ -453,9 +458,13 @@ def update_memo(
 
     if "fee_amount_paise" in changes:
         application = db.get_one(Application, memo.application_id)
-        _check_fee_against_campaign(
-            _campaign_of(db, application), changes["fee_amount_paise"]
-        )
+        try:
+            _check_fee_against_campaign(
+                _campaign_of(db, application), changes["fee_amount_paise"]
+            )
+        except BarterMemoHasNoFee, PaidMemoNeedsFee:
+            db.rollback()
+            raise
 
     # A memo made before terms version 3 would never seal the draft review,
     # so it cannot take one (item 27); it is drafted again instead.
@@ -891,7 +900,7 @@ def notify_creators(
             .join(Campaign, Campaign.id == Application.campaign_id)
             .join(Creator, Creator.id == Application.creator_id)
             .where(DealMemo.id.in_(memo_ids))
-        ).tuples()
+        )
     }
     notifications.record_each(
         db,

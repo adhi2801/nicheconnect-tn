@@ -157,7 +157,11 @@ def test_a_long_batch_costs_the_same_queries_as_a_short_one(
     its parties and last entry read, the entry written; the notice's three
     reads and its write; and the payment updated. Now the payments are
     locked in one statement and every row's writes go out together: sixteen
-    statements whatever the count, the request's own included."""
+    statements counted here for two rows or six, the request's own included.
+    Two of them are this harness's SAVEPOINT and its release at the commit,
+    so production runs fourteen. And one is the payments' UPDATE, sent once
+    as an executemany with every row's values: the database still runs it
+    once a row; it is one statement to send, not one row's work."""
     # Each batch its own creators: at least two of every kind (testing.md 2).
     short = [approved_deal(client, brand, creator_user(db, clock)) for _ in range(2)]
     long = [approved_deal(client, brand, creator_user(db, clock)) for _ in range(6)]
@@ -171,6 +175,11 @@ def test_a_long_batch_costs_the_same_queries_as_a_short_one(
     locks = [s for s in many if "FROM payment_status" in s and "FOR UPDATE" in s]
     assert len(locks) == 1, locks
     assert "ORDER BY payment_status.id" in locks[0]
+    # Their deals too, by `record.append_each`, in one statement in id order:
+    # a single mark or a dispute entry locks the same deals one at a time.
+    deal_locks = [s for s in many if "FROM deal_memo" in s and "FOR UPDATE" in s]
+    assert len(deal_locks) == 1, deal_locks
+    assert "ORDER BY deal_memo.id" in deal_locks[0]
 
 
 # --- what it must not reveal or accept ------------------------------------------

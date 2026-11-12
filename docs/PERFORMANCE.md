@@ -30,7 +30,7 @@ On `fix/deal-domain-audits` with `main` merged in (items 133 and the seven updat
 | `POST .../payment/dispute/entries` | 30.1 | 36.4 | 38.7 | 500 |
 | `GET /deal-memos/{id}/check` (creator; brand) | 35.0; 37.6 | 43.4; 49.0 | 62.1; 51.5 | 300 |
 
-The bulk mark-paid of 25 rows: **251.0 ms p95, inside its 500 ms budget**, where the old per-row code measured 971.3 ms p95 the same morning (on `fix/c11-applications`, which carries `main`'s bulk code, against the shared database: a different database and run, so the comparison is indicative; the statement counts, 16 whatever the size against 18 a row, are the exact one). Its five samples make its p95 its maximum. **Over budget, not on this change's path:** the export job, 529.4 ms p95, which nobody waits on in a request (D-111); it stays watched.
+The bulk mark-paid of 25 rows: **251.0 ms p95, inside its 500 ms budget**, where the old per-row code measured 971.3 ms p95 the same morning (on `fix/c11-applications`, which carries `main`'s bulk code, against the shared database: a different database and run, so the comparison is indicative; the statement counts are the exact one: 16 counted by the test whatever the size, 14 in production once the test harness's SAVEPOINT and its release are taken out, against 18 a row before; one of the 14 is the payments' UPDATE, sent once with every row's values, which the database still runs once a row). Its five samples make its p95 its maximum. **Over budget, not on this change's path:** the export job, 529.4 ms p95, which nobody waits on in a request (D-111); it stays watched.
 
 ## Added 11 November: the deal domain's locks (D-184, parts of audits C13, C14, C16, C17)
 
@@ -40,7 +40,7 @@ On `fix/deal-domain-audits`, `scripts/measure_performance.py --runs 50 --deals 3
 
 | Route | p50 ms | p95 ms | max ms | Budget | Statements, before and after (counted) |
 |---|---|---|---|---|---|
-| `POST /brands/me/payments/mark-paid` (25 rows) | 253.7 | 413.6 | 413.6 | 500 | 18 a row (42 for 2 rows, 114 for 6) before; **16 whatever the size** after |
+| `POST /brands/me/payments/mark-paid` (25 rows) | 253.7 | 413.6 | 413.6 | 500 | 18 a row (42 for 2 rows, 114 for 6) before; **16 whatever the size** after, as the test counts them (14 in production: two are the harness's SAVEPOINT and its release; the payments' UPDATE is one executemany the database runs once a row) |
 | `PATCH /deal-memos/{id}` (the memo locked and read again first) | 40.7 | 55.4 | 65.5 | 500 | 13 before, 15 after |
 | `POST /deal-memos/{id}/send` (the whole memo read again under the lock) | 49.1 | 66.2 | 75.5 | 500 | 20 before, 21 after |
 | `POST /deal-memos/{id}/accept` (likewise) | 46.9 | 67.4 | 144.1 | 500 | 21 before, 22 after |

@@ -149,8 +149,12 @@ def _team_hearing(
             Account.deleted_at.is_(None),
         )
         .order_by(BrandMember.created_at, BrandMember.id)
-    ).tuples()
-    return [row for row in team if acting is None or row[1] != acting.account_id]
+    )
+    return [
+        (owner, member, brand_id, brand_name)
+        for owner, member, brand_id, brand_name in team
+        if acting is None or member != acting.account_id
+    ]
 
 
 def _team_copy(

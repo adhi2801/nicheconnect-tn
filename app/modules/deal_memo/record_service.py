@@ -328,7 +328,7 @@ def append_each(
             .join(Brand, Brand.id == Campaign.brand_id)
             .join(Creator, Creator.id == Application.creator_id)
             .where(Application.id.in_([memo.application_id for memo in memos]))
-        ).tuples()
+        )
     }
     # Each deal's newest entry, in one statement (served by the unique
     # (deal, sequence) index).
