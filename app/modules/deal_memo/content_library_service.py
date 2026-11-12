@@ -17,10 +17,10 @@ import uuid
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import ColumnElement, Date, and_, cast, literal, select, text
+from sqlalchemy import ColumnElement, Date, and_, cast, literal, select
 from sqlalchemy.orm import Session
 
-from app.core.clock import india_date
+from app.core.clock import india_date, india_date_sql
 from app.core.pagination import Slice, build_slice, older_than_cursor
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
@@ -119,9 +119,7 @@ def page(
 def _until_sql() -> ColumnElement[date]:
     """`rights_until` in SQL: the approval's Tamil Nadu day plus the days."""
     return cast(
-        cast(DeliverableProof.approved_at + text("interval '5 hours 30 minutes'"), Date)
-        + DealMemo.usage_rights_days,
-        Date,
+        india_date_sql(DeliverableProof.approved_at) + DealMemo.usage_rights_days, Date
     )
 
 

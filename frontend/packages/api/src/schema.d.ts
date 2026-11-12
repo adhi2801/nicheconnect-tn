@@ -1403,7 +1403,7 @@ export interface paths {
         put?: never;
         /**
          * Publish a campaign
-         * @description Moves a draft to open, so creators can see and apply to it. A brand whose name looks like a protected brand's is refused, 409 `brand_name_needs_domain`, until it verifies that brand's domain at `POST /api/v1/brands/me/domain` (item 75); the detail names the brand and the domain.
+         * @description Moves a draft to open, so creators can see and apply to it. A brand whose name looks like a protected brand's is refused, 409 `brand_name_needs_domain`, until it verifies that brand's domain at `POST /api/v1/brands/me/domain` (item 75); the detail names the brand and the domain. A closing date already passed in Tamil Nadu, or more than a year ahead, is refused, 422 `validation_failed` on `applications_close_on` (D-180), so no creator is alerted to a campaign nobody can join.
          */
         post: operations["campaign_publish_api_v1_campaigns__campaign_id__publish_post"];
         delete?: never;
@@ -5453,8 +5453,18 @@ export interface components {
              * @description How many creators came forward: applied, or said yes to an invitation, whatever you decided since. On your own campaign list only; null everywhere else
              */
             applicant_count?: number | null;
+            /**
+             * Applications Close At
+             * @description The first moment applications are refused: midnight in Tamil Nadu after `applications_close_on`, in UTC. Apply while now is before it. Null when there is no closing date
+             */
+            readonly applications_close_at: string | null;
             /** Applications Close On */
             applications_close_on: string | null;
+            /**
+             * Applications Open
+             * @description Whether a creator may apply now: open, and before `applications_close_at`. Worked out on the server's clock at the moment of the answer
+             */
+            applications_open: boolean;
             /**
              * Brand Id
              * Format: uuid
@@ -12872,7 +12882,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description It is not an invitation waiting for an answer, the campaign is no longer open, or your profile is withheld for legal reasons (`own_content_withheld`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            /** @description It is not an invitation waiting for an answer, the campaign is no longer open, to accept: its closing day has passed in Tamil Nadu (`applications_closed`), or your profile is withheld for legal reasons (`own_content_withheld`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -12991,7 +13001,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description It is not an invitation waiting for an answer, the campaign is no longer open, or your profile is withheld for legal reasons (`own_content_withheld`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            /** @description It is not an invitation waiting for an answer, the campaign is no longer open, to accept: its closing day has passed in Tamil Nadu (`applications_closed`), or your profile is withheld for legal reasons (`own_content_withheld`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -13173,7 +13183,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description `offers_closed`: the application is no longer waiting, the campaign is barter, or the other side has gone; `campaign_not_open`; `offer_already_agreed`: a figure is agreed, so changes go through the memo; `offer_limit_reached`: you have made 3; `offer_open`: your own offer still waits; `own_content_withheld`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            /** @description `offers_closed`: the application is no longer waiting, the campaign is barter, or the other side has gone; `campaign_not_open`; `applications_closed`: an invitation past its closing day in Tamil Nadu; `offer_already_agreed`: a figure is agreed, so changes go through the memo; `offer_limit_reached`: you have made 3; `offer_open`: your own offer still waits; `own_content_withheld`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -13354,7 +13364,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description `offers_closed`: the application is no longer waiting, the campaign is barter, or the other side has gone; `campaign_not_open`; `offer_already_agreed`: a figure is agreed, so changes go through the memo; `offer_already_answered`; `offer_not_yours_to_answer`: it is your own offer; `own_content_withheld`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            /** @description `offers_closed`: the application is no longer waiting, the campaign is barter, or the other side has gone; `campaign_not_open`; `applications_closed`: an invitation past its closing day in Tamil Nadu; `offer_already_agreed`: a figure is agreed, so changes go through the memo; `offer_already_answered`; `offer_not_yours_to_answer`: it is your own offer; `own_content_withheld`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -16843,7 +16853,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description A field is missing or invalid. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            /** @description A field is missing or invalid, or a closing date already passed in Tamil Nadu, or more than a year ahead (`validation_failed` on `applications_close_on`, D-180). Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -17190,7 +17200,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description A field is missing or invalid, null for a field that always has a value, or the campaign after the change would break a budget rule, answered as the same rule in a new campaign's body. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            /** @description A field is missing or invalid, null for a field that always has a value, or the campaign after the change would break a budget rule, answered as the same rule in a new campaign's body; or a closing date changed to a closing date already passed in Tamil Nadu, or more than a year ahead (`validation_failed` on `applications_close_on`, D-180). Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -17708,7 +17718,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description The brand profile is missing, the campaign is not open, the creator already applied or was invited, the campaign has 25 invitations waiting, or the campaign or the brand is withheld for legal reasons (`own_content_withheld`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            /** @description The brand profile is missing, the campaign is not open, its closing day has passed in Tamil Nadu (`applications_closed`), the creator already applied or was invited, the campaign has 25 invitations waiting, or the campaign or the brand is withheld for legal reasons (`own_content_withheld`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -17926,7 +17936,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            /** @description A field is missing or invalid, or a closing date already passed in Tamil Nadu, or more than a year ahead (`validation_failed` on `applications_close_on`, D-180). Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -25442,7 +25452,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description The brand profile is missing, the deal was not agreed or was cancelled, its fee does not suit the campaign's type, the campaign is not open, the creator is already on it, it has 25 invitations waiting, or the campaign or the brand is withheld for legal reasons (`own_content_withheld`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            /** @description The brand profile is missing, the deal was not agreed or was cancelled, its fee does not suit the campaign's type, the campaign is not open or its closing day has passed (`applications_closed`), the creator is already on it, it has 25 invitations waiting, or the campaign or the brand is withheld for legal reasons (`own_content_withheld`). Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
             409: {
                 headers: {
                     [name: string]: unknown;

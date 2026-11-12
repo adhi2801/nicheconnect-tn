@@ -45,7 +45,8 @@ router = APIRouter(
         409: problem_doc(
             "The brand profile is missing, the deal was not agreed or was "
             "cancelled, its fee does not suit the campaign's type, the campaign "
-            "is not open, the creator is already on it, it has 25 "
+            "is not open or its closing day has passed (`applications_closed`), "
+            "the creator is already on it, it has 25 "
             "invitations waiting, or the campaign or the brand is withheld for "
             "legal reasons (`own_content_withheld`)"
         ),

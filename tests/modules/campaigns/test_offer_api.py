@@ -7,12 +7,15 @@ The pure rules have their property tests (test_offer_properties.py), the
 table its rules (test_offer_model.py), the races their own file.
 """
 
+import uuid
 from datetime import timedelta
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, update
 
+from app.core.clock import india_date
 from app.modules.auth.models.creator import Creator
+from app.modules.campaigns.models import Campaign
 from app.modules.campaigns.offer_models import MAX_OFFERS_PER_SIDE
 from app.modules.me import export_service
 from app.modules.notifications.models import Notification
@@ -358,6 +361,45 @@ def test_an_accepted_application_is_no_longer_open_to_offers(client, brand, crea
     response = offer(client, creator, application_id, 700_000)
 
     assert response.json()["code"] == "offers_closed"
+
+
+def test_an_invitation_past_its_closing_day_takes_no_offers_an_application_still_may(
+    client, db, clock, brand, creator
+):
+    """The independent review of audit C11: an invitation could still be
+    negotiated after its closing day, though it could no longer be accepted.
+    An application already made may still be settled: the brand may still
+    answer it (applying.py)."""
+    campaign_id = open_campaign(client, brand)
+    creator_id = db.scalars(
+        select(Creator.id).where(Creator.account_id == creator.account_id)
+    ).one()
+    other = creator_user(db, clock)
+    db.commit()
+    invitation_id = client.post(
+        f"{CAMPAIGNS_URL}/{campaign_id}/invitations",
+        json={"creator_id": str(creator_id)},
+        headers=brand.headers,
+    ).json()["id"]
+    application_id = client.post(
+        f"{CAMPAIGNS_URL}/{campaign_id}/applications",
+        json={"pitch": PITCH, "quoted_amount_paise": QUOTE},
+        headers=other.headers,
+    ).json()["id"]
+    yesterday = india_date(clock.now) - timedelta(days=1)
+    db.execute(
+        update(Campaign)
+        .where(Campaign.id == uuid.UUID(campaign_id))
+        .values(applications_close_on=yesterday)
+    )
+    db.commit()
+
+    on_invitation = offer(client, creator, invitation_id, 900_000)
+    on_application = offer(client, brand, application_id, 500_000)
+
+    assert on_invitation.status_code == 409
+    assert on_invitation.json()["code"] == "applications_closed"
+    assert on_application.status_code == 201, on_application.text
 
 
 def test_a_closed_campaign_takes_no_offers(client, db, brand, creator):

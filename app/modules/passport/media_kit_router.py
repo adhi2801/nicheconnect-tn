@@ -10,6 +10,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Request
 from sqlalchemy.orm import Session
 
+from app.core.clock import india_date
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
@@ -63,7 +64,7 @@ def _to_read(kit: MediaKit) -> MediaKitRead:
             VerifiedConnectionRead(
                 platform=c.platform,
                 handle=c.handle,
-                connected_since=c.connected_at.date(),
+                connected_since=india_date(c.connected_at),
                 verified_followers=c.verified_followers,
                 verified_as_of=c.verified_as_of,
             )

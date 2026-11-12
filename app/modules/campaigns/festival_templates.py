@@ -334,8 +334,9 @@ TEMPLATES: tuple[FestivalTemplate, ...] = (
 )
 
 
-def _d(y: int, m: int, d: int) -> date:
-    return date(y, m, d)
+# Short for the dates below. A name, not a function: it runs only while the
+# module loads, where mutation testing could never switch it.
+_d = date
 
 
 # Festivals that move, year by year: (starts_on, ends_on, confirmed).
@@ -383,12 +384,17 @@ DATED: dict[str, tuple[Occurrence, ...]] = {
 
 def easter_sunday(year: int) -> date:
     """Easter Sunday by the Gregorian computus (the anonymous algorithm, as published by
-    Meeus): the rule the Church itself fixes the date by, so it is exact for any year."""
+    Meeus): the rule the Church itself fixes the date by, so it is exact for any year.
+
+    Two terms are written in an equal form: the lunar correction as `(8b + 13) // 25`
+    (Oudin's, equal to Meeus's `(b - (b + 8) // 25 + 1) // 3` for every Gregorian
+    century), and the 15 first, since `x + 15` and `x - 15` agree modulo 30. Meeus's
+    spelling let two changes pass that alter no year at all, which the nightly
+    mutation run could never kill (audit C11, D-180)."""
     a, b, c = year % 19, year // 100, year % 100
     d, e = b // 4, b % 4
-    f = (b + 8) // 25
-    g = (b - f + 1) // 3
-    h = (19 * a + b - d - g + 15) % 30
+    g = (8 * b + 13) // 25
+    h = (15 + 19 * a + b - d - g) % 30
     i, k = c // 4, c % 4
     weekday = (32 + 2 * e + 2 * i - h - k) % 7
     m = (a + 11 * h + 22 * weekday) // 451

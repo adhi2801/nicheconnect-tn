@@ -8,7 +8,7 @@ here.
 
 import pytest
 
-from app.core.text_flags import flags_in
+from app.core.text_flags import FieldFlag, field_flags, flags_in
 
 
 def money(text: str) -> bool:
@@ -112,4 +112,28 @@ def test_flags_come_in_a_fixed_order():
         "phone_number",
         "email",
         "messaging_link",
+    ]
+
+
+FIELDS = {
+    "title": "Pay a registration fee of ₹2,000 to confirm your collaboration slot.",
+    "brief": None,
+    "notes": "Questions? Mail someone@example.com any time.",
+}
+
+
+@pytest.mark.parametrize(
+    ("money", "contact", "expected"),
+    [
+        (True, True, [("title", "asks_for_money"), ("notes", "email")]),
+        (True, False, [("title", "asks_for_money")]),
+        (False, True, [("notes", "email")]),
+        (False, False, []),
+    ],
+)
+def test_each_field_s_flags_named_by_field_in_the_order_given(money, contact, expected):
+    """The mutation run found field_flags untested: which field, which flag, and
+    which of the two readers' checks apply."""
+    assert field_flags(FIELDS, money=money, contact=contact) == [
+        FieldFlag(field=name, flag=flag) for name, flag in expected
     ]
