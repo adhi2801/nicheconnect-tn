@@ -624,6 +624,42 @@ def test_the_creator_reads_every_record_of_the_brand_as_nobodys(
     )
 
 
+@pytest.mark.parametrize("placed_by", ["creator", "brand"])
+def test_the_pre_deal_check_reads_as_not_found_across_a_block(
+    client, db, clock, brand, creator, placed_by
+):
+    """The check (item 133, D-182) gathers the records above, so it closes
+    with them, both ways; the deal itself carries on. Two of each: the same
+    brand's deal with another creator keeps its check."""
+    other = creator_user(db, clock)
+    memo_id = accepted_memo(client, brand, creator)
+    other_memo = accepted_memo(client, brand, other)
+    brand_id, creator_id = ids(db, brand, creator)
+    if placed_by == "creator":
+        placed = client.post(URL, json={"brand_id": brand_id}, headers=creator.headers)
+    else:
+        placed = client.post(URL, json={"creator_id": creator_id}, headers=brand.headers)
+    assert placed.status_code == 201, placed.text
+
+    from tests.modules.me.test_team_api import join
+
+    # A member of the brand's team reads as the brand: the block is the brand's.
+    member = join(client, db, clock, brand, "campaigns")
+    for reader in (brand, member, creator):
+        response = client.get(f"{MEMOS_URL}/{memo_id}/check", headers=reader.headers)
+        assert (response.status_code, response.json()["code"]) == (
+            404,
+            "memo_not_found",
+        )
+    assert (
+        client.get(f"{MEMOS_URL}/{other_memo}/check", headers=brand.headers).status_code
+        == 200
+    )
+    assert (
+        client.get(f"{MEMOS_URL}/{memo_id}", headers=creator.headers).status_code == 200
+    )
+
+
 def test_the_creator_reads_the_brands_open_campaign_as_not_found(
     client, db, clock, brand, creator
 ):
