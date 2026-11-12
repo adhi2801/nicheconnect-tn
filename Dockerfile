@@ -76,6 +76,11 @@ COPY --from=build /opt/venv /opt/venv
 # so it goes. Named by full path: with the venv first on PATH, a bare
 # `python` is the environment's.
 RUN /usr/local/bin/python -m pip uninstall --yes --quiet pip
+# OpenSSL must not run in FIPS mode: CVE-2026-119170 (hashlib's FIPS
+# enforcement, only in Python 3.14.10) is accepted in .grype.yaml because
+# it cannot apply while FIPS mode is off (D-190). The build fails if a
+# change ever turns it on, so the reason stays true while it is accepted.
+RUN /usr/local/bin/python -c "import _hashlib, sys; sys.exit(_hashlib.get_fips_mode())"
 WORKDIR /srv
 # Only what runs: the app, the migrations, and the scripts a founder runs
 # against production (make_admin, refresh_embeddings). Tests, docs and the

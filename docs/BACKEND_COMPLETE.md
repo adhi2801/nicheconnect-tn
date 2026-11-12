@@ -24,7 +24,7 @@ Three things it does **not** mean:
 
 **Counted on 6 November 2026:** 5,879 tests in 284 files (`pytest --collect-only`); coverage 98% counting branches on the full local run that day.
 
-**144 items listed: 64 built, 80 open**, counted from the tables on 11 November 2026 (61 built on 6 November; then items 144 on 7 November, 130 on 8 November and 133 on 11 November): items 103 and 104 added by D-167, items 105 to 143 by the world-bar pass and the research (section 3.13). **Built capabilities audited against the world bar: 10 of 32** (C1 to C10, 6 to 8 November; section 2a). The counts below are as of 5 November, before section 3.13.
+**144 items listed: 64 built, 80 open**, counted from the tables on 11 November 2026 (61 built on 6 November; then items 144 on 7 November, 130 on 8 November and 133 on 11 November): items 103 and 104 added by D-167, items 105 to 143 by the world-bar pass and the research (section 3.13). **Added on 11 November 2026:** items 145 to 148 (D-185, operations), all open, so 148 items are listed: 64 built, 84 open. **Built capabilities audited against the world bar: 10 of 32** (C1 to C10, 6 to 8 November; section 2a). The counts below are as of 5 November, before section 3.13.
 
 **All 102 items listed on 5 November: 61 built, 41 open** (39 in section 3, items 12 and 20 in section 4).
 
@@ -325,7 +325,7 @@ Each traces to a benchmark a standard's section 0 does not yet meet, a gap a sta
 
 | # | Item | Source | Gate |
 |---|---|---|---|
-| 116 | Objectives for five journeys (sign in, publish a campaign, apply, agree a deal, mark paid), burn-rate alerts over two windows, and an error budget policy both founders sign | `backend.md` section 0 (availability, D-166); research 4.1 | Infrastructure, both founders |
+| 116 | Objectives for five journeys (sign in, publish a campaign, apply, agree a deal, mark paid), burn-rate alerts over two windows, and an error budget policy both founders sign. **Approved 11 November (D-185)**: the three alerts are page at 14.4 times over 1 hour (checked over 5 minutes), page at 6 times over 6 hours (30 minutes), ticket at 1 time over 3 days (6 hours); **proof:** the rules in OpenTofu and a test that reads them and fails when a journey has no objective or lacks one of its three alerts, seen failing with one removed. The policy itself is item 145 | `backend.md` section 0 (availability, D-166; burn rate, D-185); research 4.1 | Infrastructure: waits on hosting (items 88, 89) |
 | 117 | The 99th percentile as a gate beside p95: 800 ms reads, 1,200 ms writes **(decision)** | `backend.md` section 0 | A decision |
 | 118 | A timeout on every background step that calls outside (WhatsApp, the Claude API, S3), so a hung call never holds a worker | Research 4.2 | None |
 | 119 | Valkey's per-field expiry where one key holds parts with different lifetimes | Research 4.3 | None |
@@ -374,6 +374,15 @@ Each traces to a benchmark a standard's section 0 does not yet meet, a gap a sta
 | # | Item | Source | Gate |
 |---|---|---|---|
 | 144 | **An absolute lifetime for brand and creator sessions**: a login lasts at most a set time from when it was proven, however often it is refreshed, then a new phone code or passkey | Audit C1; OWASP ASVS 5.0 7.3.2; NIST SP 800-63B-4 | Security · **Built 7 November (D-174)**: 30 days from the login; a lost number moves from a login 14 days old (was 30) |
+
+**Operations at Google's and AWS's bar** (D-185, 11 November 2026; the alerts themselves are item 116)
+
+| # | Item | Source | Gate |
+|---|---|---|---|
+| 145 | **The error budget policy**, written and signed by both founders: the five journeys and their objectives, how the budget is counted each month, and that a spent budget stops feature work until it is earned back. **Proof:** the signed policy in `docs/`, both names and dates on it. **Erode Harish's signature is still owed** | `backend.md` section 0; D-185 | Both founders |
+| 146 | **The on-call rota and the paging tool**: the written rota, no shift over 12 hours; the tool chosen; each month's acknowledgement times (15 minutes from 07:00 to 23:00 Tamil Nadu time, 60 outside) and page counts read into `docs/reports/`, with pages that needed no action turned into tickets or removed within a week. **Proof:** the first month's report after launch, its figures from the tool, not from memory | `backend.md` section 0; `docs/INCIDENT_RESPONSE.md` section 1; D-185 | Dependency and a cost (the paging tool); before launch |
+| 147 | **Game days**: the first on staging before launch, then once a quarter, each a row in `docs/INCIDENT_RESPONSE.md` section 7 with its minutes to alert and to recovery against D-168's hour, and its retrospective in `docs/reports/`. **Proof:** a test that reads the table and fails when the newest row is more than 100 days old once launched, seen failing on a table with an old row | `backend.md` section 0; AWS REL12-BP05; D-185 | Infrastructure: staging waits on hosting; the test needs none |
+| 148 | **Every postmortem held to the template**: a test over `docs/reports/` that finds each postmortem and fails when it misses one of `docs/POSTMORTEM_TEMPLATE.md`'s headings, when an action has no item number or no date, or when a fix for a cause is due more than 4 weeks after the review (8 for any other action). **Proof:** the test seen failing on a sample postmortem with each fault | `backend.md` section 0; `docs/INCIDENT_RESPONSE.md` section 6; D-185 | None (tests) |
 
 ## 4. Blocked from outside the code
 
