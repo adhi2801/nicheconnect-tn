@@ -1,5 +1,6 @@
 """What holds for every limit and every move of the clock (item 118, D-186; testing.md section 6)."""
 
+import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
@@ -23,10 +24,12 @@ def test_time_left_only_falls_and_stays_within_the_limit(limit, steps):
     clock = Clock()
     deadline = Deadline(limit, clock)
     before = deadline.remaining()
+    # The limit itself, but for the rounding of adding it to the clock's time.
+    assert before == pytest.approx(limit, rel=1e-12, abs=1e-9)
     for step in steps:
         clock.now += step
         left = deadline.remaining()
-        assert 0 <= left <= before <= limit
+        assert 0 <= left <= before
         before = left
 
 

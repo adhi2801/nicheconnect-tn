@@ -58,7 +58,11 @@ _lock_engine = create_engine(
 
 @contextmanager
 def one_run_at_a_time(schedule: str) -> Iterator[bool]:
-    """True while this run holds the schedule's lock; False if another run does."""
+    """True while this run holds the schedule's lock; False if another run does.
+
+    The lock is let go by closing its connection, which `NullPool` really
+    closes, however the run ends: a session's advisory locks end with it.
+    """
     key = func.hashtext(schedule)
     with _lock_engine.connect() as lock:
         held = bool(
@@ -68,13 +72,7 @@ def one_run_at_a_time(schedule: str) -> Iterator[bool]:
         lock.commit()
         if not held:
             logger.warning("job.already_running schedule=%s", schedule)
-            yield False
-            return
-        try:
-            yield True
-        finally:
-            lock.execute(select(func.pg_advisory_unlock(RUN_LOCK_NAMESPACE, key)))
-            lock.commit()
+        yield held
 
 
 def run_alone(schedule: str, work: Callable[[], object]) -> bool:

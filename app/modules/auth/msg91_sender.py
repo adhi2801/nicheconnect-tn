@@ -156,6 +156,6 @@ class Msg91WhatsAppSender:
                 delay = BASE_DELAY_SECONDS * 2 ** (attempt - 1)
                 self._sleep(deadline.capped(delay * (0.5 + self._jitter())))
         raise OtpDeliveryFailed(
-            f"MSG91 unreachable within {CALL_LIMIT_SECONDS:.0f} s "
-            f"and {attempt} attempts ({failure})"
+            f"MSG91 unreachable after {attempt} attempts "
+            f"within {CALL_LIMIT_SECONDS:.0f} s ({failure})"
         )

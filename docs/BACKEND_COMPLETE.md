@@ -24,7 +24,7 @@ Three things it does **not** mean:
 
 **Counted on 6 November 2026:** 5,879 tests in 284 files (`pytest --collect-only`); coverage 98% counting branches on the full local run that day.
 
-**144 items listed: 64 built, 80 open**, counted from the tables on 11 November 2026 (61 built on 6 November; then items 144 on 7 November, 130 on 8 November and 133 on 11 November): items 103 and 104 added by D-167, items 105 to 143 by the world-bar pass and the research (section 3.13). **Added on 11 November 2026:** items 145 to 148 (D-185, operations), all open, so 148 items are listed: 64 built, 84 open. **Built capabilities audited against the world bar: 10 of 32** (C1 to C10, 6 to 8 November; section 2a). The counts below are as of 5 November, before section 3.13.
+**144 items listed: 64 built, 80 open**, counted from the tables on 11 November 2026 (61 built on 6 November; then items 144 on 7 November, 130 on 8 November and 133 on 11 November): items 103 and 104 added by D-167, items 105 to 143 by the world-bar pass and the research (section 3.13). **Added on 11 November 2026:** items 145 to 148 (D-185, operations), all open, so 148 items are listed: 64 built, 84 open. **Built on 13 November 2026:** item 118 (D-186), so 65 built, 83 open, counting only what this branch holds. **Built capabilities audited against the world bar: 10 of 32** (C1 to C10, 6 to 8 November; section 2a). The counts below are as of 5 November, before section 3.13.
 
 **All 102 items listed on 5 November: 61 built, 41 open** (39 in section 3, items 12 and 20 in section 4).
 
@@ -327,10 +327,10 @@ Each traces to a benchmark a standard's section 0 does not yet meet, a gap a sta
 |---|---|---|---|
 | 116 | Objectives for five journeys (sign in, publish a campaign, apply, agree a deal, mark paid), burn-rate alerts over two windows, and an error budget policy both founders sign. **Approved 11 November (D-185)**: the three alerts are page at 14.4 times over 1 hour (checked over 5 minutes), page at 6 times over 6 hours (30 minutes), ticket at 1 time over 3 days (6 hours); **proof:** the rules in OpenTofu and a test that reads them and fails when a journey has no objective or lacks one of its three alerts, seen failing with one removed. The policy itself is item 145 | `backend.md` section 0 (availability, D-166; burn rate, D-185); research 4.1 | Infrastructure: waits on hosting (items 88, 89) |
 | 117 | The 99th percentile as a gate beside p95: 800 ms reads, 1,200 ms writes **(decision)** | `backend.md` section 0 | A decision |
-| 118 | A timeout on every background step that calls outside (WhatsApp, the Claude API, S3), so a hung call never holds a worker | Research 4.2 | None |
+| 118 | A timeout on every background step that calls outside (WhatsApp, the Claude API, S3), so a hung call never holds a worker | Research 4.2 | None · **Built 13 November 2026 (D-186)**: a whole limit on every outside call across its tries (15 s; S3 30 s; the Claude API 150 s in 3 tries, the SDK's retries off), every HTTP socket wait cut to the time left so a trickling server is cut off; one run at a time per schedule (a non-blocking advisory lock on its own connection) and a budget per run (45 s every minute, 10 minutes otherwise). One gap: S3 trickling its headers is not cut (botocore offers no hook). Not reviewed by the other founder |
 | 119 | Valkey's per-field expiry where one key holds parts with different lifetimes | Research 4.3 | None |
 | 120 | OpenTelemetry's stable database attributes switched on before traces have somewhere to go (item 89) | Research 5 | Infrastructure |
-| 121 | Failure on purpose for every dependency the app calls, listed in `testing.md` with its test | `testing.md` section 0 (D-172) | None (tests) |
+| 121 | Failure on purpose for every dependency the app calls, listed in `testing.md` with its test | `testing.md` section 0 (D-172) | None (tests) · **Listed 13 November 2026 (D-186)**: every outside service, the database and Valkey, each with its test; open for the gaps the list names (Valkey down for the rate limiter, S3 failing inside a request) |
 | 122 | Fuzzing that gates more than server errors, and its nightly long run | `testing.md` section 0 and gap 3 (D-172) | Infrastructure (CI) |
 
 **Security and the supply chain**

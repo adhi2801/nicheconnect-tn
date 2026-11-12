@@ -237,8 +237,8 @@ class Rfc3161Authority:
                 delay = BASE_DELAY_SECONDS * 2 ** (attempt - 1)
                 self._sleep(deadline.capped(delay * (0.5 + self._jitter())))
         raise TimestampFailed(
-            f"{self.name} unreachable within {CALL_LIMIT_SECONDS:.0f} s "
-            f"and {attempt} attempts ({failure})"
+            f"{self.name} unreachable after {attempt} attempts "
+            f"within {CALL_LIMIT_SECONDS:.0f} s ({failure})"
         )
 
 

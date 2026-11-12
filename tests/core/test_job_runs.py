@@ -11,6 +11,7 @@ import time
 import uuid
 
 import pytest
+from sqlalchemy import text
 
 from app.core import job_runs
 from app.core.deadline import Deadline
@@ -163,3 +164,34 @@ def test_the_lock_never_takes_a_connection_from_the_pool_requests_use():
 def test_the_lock_is_its_own_kind_of_lock():
     """Its first key is its own, so it never meets a draft's (40) or a proof file's (70 070)."""
     assert job_runs.RUN_LOCK_NAMESPACE == 118
+
+
+def lock_holders(schedule: str) -> int:
+    """How many sessions hold this schedule's lock, read from PostgreSQL's own table."""
+    with engine.connect() as db:
+        return db.scalar(
+            text(
+                "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory'"
+                " AND classid = :namespace AND objsubid = 2"
+                " AND objid = ((hashtext(:schedule)::bigint & 4294967295)::oid)"
+            ),
+            {"namespace": job_runs.RUN_LOCK_NAMESPACE, "schedule": schedule},
+        )
+
+
+@pytest.mark.parametrize("fails", [False, True], ids=["finished", "failed"])
+def test_no_session_holds_the_lock_once_a_run_ends_however_it_ends(fails):
+    schedule = a_schedule()
+
+    def work() -> None:
+        assert lock_holders(schedule) == 1
+        if fails:
+            raise RuntimeError("a job's own failure")
+
+    if fails:
+        with pytest.raises(RuntimeError):
+            run_alone(schedule, work)
+    else:
+        run_alone(schedule, work)
+
+    assert lock_holders(schedule) == 0

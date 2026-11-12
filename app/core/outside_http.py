@@ -17,7 +17,9 @@ Claude API through its SDK) is made by `limited_client`, and each call runs
   either.
 
 The socket's waits are cut by a network backend that reads the deadline set
-by `within` on this thread; outside `within` it changes nothing. It is put
+by `within` on this thread; outside `within` it changes nothing. **What it
+does not cut:** a wait for a free connection in the client's own pool (100
+connections), which is not a socket wait; it keeps the client's pool limit. It is put
 into the transport httpx2 builds (`HTTPTransport._pool`, replaced with a
 pool given that backend), the one seam httpx2 offers no public way to set.
 """
@@ -187,18 +189,9 @@ def exchange(
     """
     if deadline.expired():
         raise CallLimitReached("the call's limit passed before this try")
-    own = client.timeout
-    # Waiting for a free connection in the pool is not a socket wait, so it
-    # is cut here; the socket's own waits are cut as they happen (above).
-    timeout = httpx2.Timeout(
-        connect=deadline.capped(own.connect),
-        read=deadline.capped(own.read),
-        write=deadline.capped(own.write),
-        pool=deadline.capped(own.pool),
-    )
     with (
         within(deadline),
-        client.stream(method, url, timeout=timeout, **request) as response,
+        client.stream(method, url, **request) as response,
     ):
         pieces: list[bytes] = []
         size = 0
