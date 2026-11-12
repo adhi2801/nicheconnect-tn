@@ -1,6 +1,7 @@
 """What in campaigns is waiting on someone (see app/core/attention.py)."""
 
 import uuid
+from datetime import date
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -8,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.attention import AttentionItem
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.suspension import brand_is_active
+from app.modules.campaigns import applying
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.safety.takedowns import campaign_not_withheld
 
@@ -45,7 +47,7 @@ def for_brand(db: Session, brand_id: uuid.UUID) -> list[AttentionItem]:
     ]
 
 
-def for_creator(db: Session, creator_id: uuid.UUID) -> list[AttentionItem]:
+def for_creator(db: Session, creator_id: uuid.UUID, today: date) -> list[AttentionItem]:
     """One item per invitation waiting for this creator's answer (D-084).
 
     One per invitation, not a count: each is a different brand asking, and
@@ -59,7 +61,8 @@ def for_creator(db: Session, creator_id: uuid.UUID) -> list[AttentionItem]:
         .where(
             Application.creator_id == creator_id,
             Application.status == "invited",
-            Campaign.status == "open",
+            # Only invitations that can still be accepted (D-180).
+            applying.taking_creators(today),
             brand_is_active(Campaign.brand_id),
             campaign_not_withheld(Campaign.id, Campaign.brand_id),
         )

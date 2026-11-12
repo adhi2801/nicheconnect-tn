@@ -5,16 +5,19 @@ responses, a cache header and an ETag, and nothing that depends on who is
 asking. The rules for what counts are in city_figures_service.py.
 """
 
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, Path, Request, Response, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.core.clock import india_date
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.http_cache import etag_for, holds_current
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
+from app.modules.auth.dependencies import get_now
 from app.modules.insights import city_figures_service as figures
 from app.modules.insights.schemas import (
     AskingPriceRead,
@@ -111,9 +114,10 @@ def city_figures(
     city: City,
     if_none_match: Annotated[str | None, Header()] = None,
     db: Session = Depends(get_db),
+    now: datetime = Depends(get_now),
 ) -> Response | CityFiguresRead:
     """Anyone may call this. Nothing here depends on who is asking."""
-    found = figures.for_city(db, city)
+    found = figures.for_city(db, city, india_date(now))
     body = CityFiguresRead(
         city=found.city,
         min_count=figures.MIN_COUNT,

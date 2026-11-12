@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -174,6 +174,44 @@ def test_can_apply_on_the_closing_date(client, db, clock):
     clock.advance(timedelta(days=3))
 
     assert apply(client, creator, campaign_id).status_code == 201
+
+
+@pytest.mark.parametrize(
+    ("moment", "status"),
+    [
+        # 23:59:59.999 on 20 September in Tamil Nadu: still the closing day.
+        (datetime(2026, 9, 20, 18, 29, 59, 999_000, tzinfo=UTC), 201),
+        # 00:00 on 21 September there: closed, to the microsecond.
+        (datetime(2026, 9, 20, 18, 30, tzinfo=UTC), 409),
+        # 01:30 on 21 September there, still 20 September in UTC: closed. The
+        # UTC date let this one in until audit C11.
+        (datetime(2026, 9, 20, 20, 0, tzinfo=UTC), 409),
+    ],
+    ids=["last-moment", "midnight", "utc-still-the-20th"],
+)
+def test_the_closing_date_ends_at_midnight_in_tamil_nadu(
+    client, db, clock, moment, status
+):
+    brand = brand_with_profile(db, clock)
+    creator = creator_with_profile(db, clock)
+    campaign_id = open_campaign(client, brand, applications_close_on="2026-09-20")
+    clock.now = moment
+
+    response = apply(client, creator, campaign_id)
+
+    assert response.status_code == status, response.text
+
+
+def test_a_campaign_says_when_applying_ends_and_whether_it_is_open(client, db, clock):
+    brand = brand_with_profile(db, clock)
+    campaign_id = open_campaign(client, brand, applications_close_on="2026-09-20")
+
+    before = client.get(f"/api/v1/campaigns/{campaign_id}", headers=brand.headers).json()
+    clock.now = datetime(2026, 9, 20, 18, 30, tzinfo=UTC)
+    after = client.get(f"/api/v1/campaigns/{campaign_id}", headers=brand.headers).json()
+
+    assert before["applications_close_at"] == "2026-09-20T18:30:00Z"
+    assert (before["applications_open"], after["applications_open"]) == (True, False)
 
 
 def test_creator_without_a_profile_is_told_to_finish_it(client, db, clock):

@@ -23,10 +23,11 @@ from collections import Counter
 from dataclasses import dataclass
 from datetime import date
 
-from sqlalchemy import exists, func, or_, select
+from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
 
 from app.modules.auth.models.creator import Creator
+from app.modules.campaigns import applying
 from app.modules.campaigns.models import (
     APPLICATION_STATUSES,
     REJECTION_REASONS,
@@ -144,13 +145,8 @@ def for_creator(db: Session, creator: Creator, today: date) -> ApplicationFeedba
     in_city = Campaign.cities.any_() == creator.city
     in_niches, in_niches_and_city = db.execute(
         select(func.count(), func.count().filter(in_city)).where(
-            Campaign.status == "open",
-            # Still taking applications: a closing date in the past means
-            # nobody can apply, whatever the status says.
-            or_(
-                Campaign.applications_close_on.is_(None),
-                Campaign.applications_close_on >= today,
-            ),
+            # Still taking applications (D-180).
+            applying.taking_creators(today),
             Campaign.niches.overlap(creator.niches),
             ~already_applied,
         )

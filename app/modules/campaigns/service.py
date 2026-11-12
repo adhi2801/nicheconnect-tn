@@ -11,13 +11,14 @@ campaign, so a creator's application history always points at what they saw.
 """
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import Select, delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.clock import india_date
 from app.core.export import (
     MAX_ROWS_PER_SECTION,
     ExportedSection,
@@ -30,7 +31,7 @@ from app.modules.auth.models.account import Account
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import brand_is_active, brand_is_unavailable
-from app.modules.campaigns import alert_service
+from app.modules.campaigns import alert_service, applying
 from app.modules.campaigns import offer_service as offers
 from app.modules.campaigns.budget import budget_problem
 from app.modules.campaigns.deliverable_models import CampaignDeliverable
@@ -43,6 +44,8 @@ from app.modules.campaigns.exceptions import (
     CampaignNotFound,
     CampaignNotOpen,
     CampaignStatusConflict,
+    ClosingDatePassed,
+    ClosingDateTooFar,
     CreatorProfileRequired,
     FieldNotEditableNow,
     InvitationPending,
@@ -194,10 +197,37 @@ def brand_names_and_flags_for(
     }
 
 
+# A year, as availability allows (C9): anything further is a mistyped year.
+FURTHEST_CLOSING_DATE = timedelta(days=365)
+
+
+def _ensure_closing_date_ahead(db: Session, close_on: date | None, now: datetime) -> None:
+    """Refuse a closing date before today in Tamil Nadu (Adhi, 11 November:
+    the same rule availability uses), or more than a year ahead. Today itself
+    is allowed: applying is open until its midnight.
+
+    Raises ClosingDatePassed or ClosingDateTooFar, rolled back first so no
+    lock is held while the error is answered.
+    """
+    if close_on is None:
+        return
+    today = india_date(now)
+    if close_on < today:
+        db.rollback()
+        raise ClosingDatePassed()
+    if close_on > today + FURTHEST_CLOSING_DATE:
+        db.rollback()
+        raise ClosingDateTooFar()
+
+
 def create_campaign(
     db: Session, brand: Brand, fields: dict[str, Any], now: datetime
 ) -> Campaign:
-    """Create a campaign as a draft. Only publishing makes it visible."""
+    """Create a campaign as a draft. Only publishing makes it visible.
+
+    Raises ClosingDatePassed for a closing date already past (D-180).
+    """
+    _ensure_closing_date_ahead(db, fields.get("applications_close_on"), now)
     items = fields.pop("deliverable_items", None) or []
     campaign = Campaign(
         brand_id=brand.id,
@@ -239,6 +269,13 @@ def update_campaign(
                 f"Cannot change {', '.join(sorted(blocked))} while the campaign is open."
             )
 
+    # Only a date that changes is checked: a form that sends the whole
+    # campaign back, its passed date unchanged, is not refused for it (the
+    # independent review of audit C11).
+    if changes.get("applications_close_on", campaign.applications_close_on) != (
+        campaign.applications_close_on
+    ):
+        _ensure_closing_date_ahead(db, changes["applications_close_on"], now)
     items = changes.pop("deliverable_items", None)
     after = {
         name: changes.get(name, getattr(campaign, name))
@@ -295,6 +332,9 @@ def change_status(
             f"A {campaign.status} campaign cannot become {new_status}."
         )
     if new_status == "open":
+        # Publishing a campaign nobody could join would alert creators to it
+        # (D-180).
+        _ensure_closing_date_ahead(db, campaign.applications_close_on, now)
         # A name that looks like a protected brand's publishes nothing until
         # the brand verifies that brand's domain (item 75, option B).
         brand_name_service.ensure_may_publish(db, campaign.brand_id)
@@ -347,11 +387,15 @@ def discover_campaigns(
     niche: str | None = None,
     campaign_type: str | None = None,
     min_budget_paise: int | None = None,
+    today: date,
     viewer_account_id: uuid.UUID | None = None,
 ) -> Slice[Campaign]:
-    """Open campaigns for creators to browse, with optional filters."""
+    """Campaigns a creator can join on `today` (a Tamil Nadu date), with
+    optional filters: none past its closing day is shown to someone who could
+    no longer apply to it (`applying`, D-180).
+    """
     query = select(Campaign).where(
-        Campaign.status == "open",
+        applying.taking_creators(today),
         # A suspended brand's campaigns leave discovery (D-061).
         brand_is_active(Campaign.brand_id),
         # So does one withheld, or whose brand is (item 52).
@@ -460,6 +504,10 @@ def apply_to_campaign(
     if campaign is None:
         db.rollback()
         raise CampaignNotFound()
+    # Shared, and read again, before any check (audit C11): a close waits
+    # for this application, or it for the close. The foreign key's own lock
+    # comes only at the insert, after the checks, too late to protect them.
+    applying.lock_for_joining(db, campaign)
     if campaign.status != "open" or brand_is_unavailable(db, campaign.brand_id):
         # A suspended brand's campaign cannot be applied to, even by its id.
         db.rollback()
@@ -481,9 +529,8 @@ def apply_to_campaign(
     if is_withheld(db, "creator", creator.id):
         db.rollback()
         raise OwnContentWithheld()
-    if (
-        campaign.applications_close_on is not None
-        and now.date() > campaign.applications_close_on
+    if not applying.applications_open(
+        campaign.status, campaign.applications_close_on, now
     ):
         db.rollback()
         raise ApplicationsClosed()
@@ -581,6 +628,14 @@ def move_application(
     creator withheld (item 52), checked under the application's lock: an
     invitation outlives none of them.
     """
+    campaign = db.get_one(Campaign, application.campaign_id)
+    joining = (actor, new_status) == ("creator", "accepted")
+    if joining:
+        # Joining, as applying is: the campaign share-locked before the
+        # application, the order an account's erasure takes them in
+        # (`departure_service.lock_for_brand`), so the two never deadlock
+        # (D-180; the independent review of audit C11).
+        applying.lock_for_joining(db, campaign)
     # Locked and read again before the check: two moves at once would both
     # pass it, and the last write would silently win (review audit, 4 Oct).
     db.refresh(
@@ -593,12 +648,17 @@ def move_application(
         raise ApplicationStatusConflict(
             f"A {application.status} application cannot become {new_status}."
         )
-    campaign = db.get_one(Campaign, application.campaign_id)
-    if (actor, new_status) == ("creator", "accepted") and (
-        campaign.status != "open" or brand_is_unavailable(db, campaign.brand_id)
-    ):
-        db.rollback()
-        raise CampaignNotOpen()
+    if joining:
+        # Before the closing day ends (Adhi, 11 November: the date closes
+        # everything).
+        if campaign.status != "open" or brand_is_unavailable(db, campaign.brand_id):
+            db.rollback()
+            raise CampaignNotOpen()
+        if not applying.applications_open(
+            campaign.status, campaign.applications_close_on, now
+        ):
+            db.rollback()
+            raise ApplicationsClosed()
     # Withheld (item 52): no move towards a new deal, by either side. Saying
     # no (rejecting, declining, withdrawing) stays open to both.
     if (actor, new_status) == ("creator", "accepted"):

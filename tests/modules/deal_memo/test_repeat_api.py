@@ -23,6 +23,7 @@ from tests.deal_flow import (
     creator_user,
 )
 from tests.modules.campaigns.test_invitation_api import (
+    AFTER_THE_20TH,
     APPLICATIONS_URL,
     answer,
     assert_problem,
@@ -224,6 +225,18 @@ def test_not_onto_a_campaign_that_is_not_open(client, brand, deal, next_campaign
     response = repeat(client, brand, deal, next_campaign)
 
     assert_problem(response, 409, "campaign_not_open")
+
+
+def test_not_onto_a_campaign_past_its_closing_day(client, brand, deal):
+    """A repeat is an invitation, so the closing date closes it too (D-180).
+    The brand's other campaign, still before its day, takes the same repeat:
+    the refusal is the date's, not the deal's."""
+    closing = open_campaign(client, brand, applications_close_on="2026-09-20")
+    later = open_campaign(client, brand, applications_close_on="2026-09-25")
+    brand.clock.now = AFTER_THE_20TH
+
+    assert_problem(repeat(client, brand, deal, closing), 409, "applications_closed")
+    assert repeat(client, brand, deal, later).status_code == 201
 
 
 def test_not_onto_another_brands_campaign(client, db, clock, brand, deal):

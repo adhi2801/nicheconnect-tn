@@ -48,6 +48,7 @@ from app.modules.auth.models.account import Account
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import account_is_active, brand_is_active
+from app.modules.campaigns import applying
 from app.modules.campaigns.alert_models import (
     MAX_ALERTS_A_DAY,
     MAX_ALERTS_PER_CREATOR,
@@ -206,7 +207,9 @@ def send_one(
                 db.rollback()
                 return told
             campaign = db.get_one(Campaign, send.campaign_id)
-            batch = _notify_batch(db, campaign, now) if _still_fits(db, campaign) else 0
+            batch = (
+                _notify_batch(db, campaign, now) if _still_fits(db, campaign, now) else 0
+            )
             told += batch
             if batch < BATCH_SIZE:
                 send.recipients = db.scalar(
@@ -227,13 +230,14 @@ def send_one(
                 return told
 
 
-def _still_fits(db: Session, campaign: Campaign) -> bool:
-    """Still open, from a brand neither suspended, deleted nor withheld."""
+def _still_fits(db: Session, campaign: Campaign, now: datetime) -> bool:
+    """Still taking creators (D-180: its closing day not ended in Tamil Nadu),
+    from a brand neither suspended, deleted nor withheld."""
     return (
         db.scalar(
             select(Campaign.id).where(
                 Campaign.id == campaign.id,
-                Campaign.status == "open",
+                applying.taking_creators(india_date(now)),
                 brand_is_active(Campaign.brand_id),
                 campaign_not_withheld(Campaign.id, Campaign.brand_id),
             )

@@ -8,6 +8,7 @@ refuses an invitation that breaks the rules.
 """
 
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import select, text
@@ -687,3 +688,53 @@ def test_an_invitation_row_needs_no_pitch(db, creator, campaign_id):
         select(Application).where(Application.campaign_id == campaign_id)
     ).one()
     assert (row.origin, row.pitch) == ("invited", None)
+
+
+# --- the closing date closes invitations too (D-180; Adhi, 11 November) ---------------
+
+AFTER_THE_20TH = datetime(
+    2026, 9, 20, 20, 0, tzinfo=UTC
+)  # 01:30 on the 21st in Tamil Nadu
+
+
+def test_no_invitation_after_the_closing_day(client, db, brand, creator):
+    closing = open_campaign(client, brand, applications_close_on="2026-09-20")
+    later = open_campaign(client, brand, applications_close_on="2026-09-25")
+    brand.clock.now = AFTER_THE_20TH
+
+    assert_problem(
+        invite(client, brand, closing, creator_id_of(db, creator)),
+        409,
+        "applications_closed",
+    )
+    # The same brand's campaign still before its day invites as ever.
+    assert invite(client, brand, later, creator_id_of(db, creator)).status_code == 201
+
+
+def test_an_invitation_cannot_be_accepted_after_the_closing_day(
+    client, db, brand, creator
+):
+    closing = open_campaign(client, brand, applications_close_on="2026-09-20")
+    later = open_campaign(client, brand, applications_close_on="2026-09-25")
+    invitation_id = invite(client, brand, closing, creator_id_of(db, creator)).json()[
+        "id"
+    ]
+    still_open = invite(client, brand, later, creator_id_of(db, creator)).json()["id"]
+    brand.clock.now = AFTER_THE_20TH
+
+    assert_problem(
+        answer(client, creator, invitation_id, "accept-invitation"),
+        409,
+        "applications_closed",
+    )
+    # It no longer asks the creator for an answer either; declining still works.
+    attention = client.get("/api/v1/me/attention", headers=creator.headers).json()
+    assert attention["counts"].get("answer_invitation", 0) == 1
+    assert (
+        answer(
+            client, creator, invitation_id, "decline-invitation", reason="timing"
+        ).status_code
+        == 200
+    )
+    # The invitation on the campaign still before its day is accepted as ever.
+    assert answer(client, creator, still_open, "accept-invitation").status_code == 200

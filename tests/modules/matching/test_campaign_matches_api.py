@@ -7,7 +7,7 @@ in the results.
 
 import uuid
 from collections.abc import Iterator
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -273,6 +273,28 @@ def test_applications_closed_yesterday_are_not_suggested_but_closing_today_is(
     creator = a_creator(db, city)
 
     assert titles(client.get(URL, headers=login(creator))) == ["Last day"]
+
+
+def test_at_the_hour_the_dates_differ_the_tamil_nadu_day_decides(client, db, city):
+    """01:30 on 18 September in Tamil Nadu is still the 17th in UTC: a campaign
+    that closed on the 17th is no longer suggested, and the one suggested says
+    it is open (D-180; the review of C11 found every suggestion said false)."""
+    brand = a_brand(db)
+    a_campaign(
+        db, brand, city, title="Closed the 17th", applications_close_on=date(2026, 9, 17)
+    )
+    a_campaign(
+        db, brand, city, title="Closes the 18th", applications_close_on=date(2026, 9, 18)
+    )
+    creator = a_creator(db, city)
+    moment = datetime(2026, 9, 17, 20, 0, tzinfo=UTC)
+    app.dependency_overrides[get_now] = lambda: moment
+    token, _ = create_access_token(creator.account_id, "creator", moment)
+
+    response = client.get(URL, headers={"Authorization": f"Bearer {token}"})
+
+    assert titles(response) == ["Closes the 18th"]
+    assert response.json()["matches"][0]["campaign"]["applications_open"] is True
 
 
 def test_a_suspended_brands_campaign_is_not_suggested(client, db, city):

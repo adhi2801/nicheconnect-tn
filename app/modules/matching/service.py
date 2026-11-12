@@ -19,11 +19,12 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any, Protocol
 
-from sqlalchemy import delete, desc, exists, func, null, or_, select
+from sqlalchemy import delete, desc, exists, func, null, select
 from sqlalchemy.orm import Session
 
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import account_is_active, brand_is_active
+from app.modules.campaigns import applying
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.models import DealMemo
 from app.modules.matching import embedder, fusion
@@ -384,14 +385,10 @@ def find_campaigns_for_creator(
         select(Campaign, distance.label("d"))
         .outerjoin(CampaignEmbedding, CampaignEmbedding.campaign_id == Campaign.id)
         .where(
-            Campaign.status == "open",
+            applying.taking_creators(today),
             brand_is_active(Campaign.brand_id),
             not_blocked_with_brand(creator.account_id, Campaign.brand_id),
             campaign_not_withheld(Campaign.id, Campaign.brand_id),
-            or_(
-                Campaign.applications_close_on.is_(None),
-                Campaign.applications_close_on >= today,
-            ),
             Campaign.cities.any_() == creator.city,
             Campaign.niches.overlap(creator.niches),
             ~already_applied,
