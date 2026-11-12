@@ -46,6 +46,16 @@
 # resolved by us, and must match DOMAIN_PATTERN (letters, digits, hyphens,
 # dots), which the database enforces too.
 #
+# A fifth, accepted on 12 November 2026 (D-190): CVE-2026-119170
+# (published 6 November; NVD: High, CVSS 4.0 8.2, awaiting analysis), a
+# regression in how hashlib enforces FIPS algorithms. Only Python 3.14.10 is
+# affected, and only when OpenSSL runs in FIPS mode. Grype names 3.14.11 as
+# the fix, but no 3.14.11 is released yet (python.org and Docker Hub, checked
+# 12 November 2026). Our image runs OpenSSL 3.5.7 with FIPS mode off and no
+# FIPS provider installed, checked inside the image; the Dockerfile fails
+# the build if FIPS mode is ever on, so this reason is enforced, not assumed.
+# Remove this entry with the move to 3.14.11.
+#
 # Remove each entry when a 3.14 release carries its fix.
 ignore:
   - vulnerability: CVE-2025-15367
@@ -60,3 +70,6 @@ ignore:
   - vulnerability: CVE-2026-116566
     package: { name: python, version: 3.14.10, type: binary }
     reason: "getaddrinfo null-byte truncation; we resolve only fixed hosts, and a brand domain is pattern-checked and never resolved by us (D-159)."
+  - vulnerability: CVE-2026-119170
+    package: { name: python, version: 3.14.10, type: binary }
+    reason: "hashlib FIPS enforcement regression; applies only with OpenSSL in FIPS mode, which is off in our image and checked at build (D-190)."
