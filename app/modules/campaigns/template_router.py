@@ -1,12 +1,12 @@
 """Festival campaign templates, over HTTP (item 14, piece 1, D-161, D-165)."""
 
-from datetime import datetime, time, timedelta
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, Request, Response, status
 from pydantic import TypeAdapter
 
-from app.core.clock import IST, india_date
+from app.core.clock import end_of_india_day, india_date
 from app.core.errors import problem_doc
 from app.core.http_cache import etag_for, holds_current
 from app.core.rate_limit import rate_limit
@@ -26,9 +26,8 @@ _BODY = TypeAdapter(list[CampaignTemplateRead])
 
 
 def seconds_to_india_midnight(now: datetime) -> int:
-    local = now.astimezone(IST)
-    midnight = datetime.combine(local.date() + timedelta(days=1), time(), tzinfo=IST)
-    return max(MIN_CACHE_SECONDS, int((midnight - local).total_seconds()))
+    midnight = end_of_india_day(india_date(now))
+    return max(MIN_CACHE_SECONDS, int((midnight - now).total_seconds()))
 
 
 @router.get(

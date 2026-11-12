@@ -85,7 +85,7 @@ What moves a row from **(decision)** to binding: a founder's yes, recorded in `d
 ## 2. API design
 
 - **Base path** `/api/v1`. Resources are plural nouns (`/campaigns/{campaign_id}/applications`). An action that is not create, read, update or delete takes a verb sub-path (`POST /deal-memos/{id}/accept`, following Google's custom methods, AIP-136). The signed-in person's own things live under `/me/...`, with no id in the path, so nobody can reach anyone else's.
-- **JSON fields** are `snake_case`. IDs are UUID strings. Timestamps are RFC 3339, in UTC, ending in `Z`. Dates (`…_on`) are `YYYY-MM-DD`, and a day means a Tamil Nadu calendar day.
+- **JSON fields** are `snake_case`. IDs are UUID strings. Timestamps are RFC 3339, in UTC, ending in `Z`. Dates (`…_on`) are `YYYY-MM-DD`, and a day means a Tamil Nadu calendar day: a date is taken from a moment only through `app.core.clock.india_date`, and a deadline that ends with a day is given to clients as the instant it ends (`end_of_india_day`, as Google's AIP-142 gives one). **Enforced by** `tests/test_architecture.py::test_every_date_from_a_moment_is_a_tamil_nadu_day` (D-180).
 - **Money** is whole paise as integers with an explicit currency (D-015), never floats: `{"amount_paise": 1500000, "currency": "INR"}`. **Enforced by** every currency column's database check, and `Literal["INR"]` in the schemas.
 - **Status codes** (RFC 9110 semantics):
 

@@ -31,6 +31,46 @@ class FieldNotEditableNow(DomainError):
     title = "That detail cannot be changed once the campaign is open"
 
 
+class ClosingDatePassed(DomainError):
+    """A closing date already past in Tamil Nadu, on create, change or publish.
+
+    Answered as a field error in a body is (`validation_failed`), since that
+    is what it is to the person typing it (D-180).
+    """
+
+    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
+    code = "validation_failed"
+    title = "Some fields are missing or invalid"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.errors = [
+            {
+                "field": "applications_close_on",
+                "message": "Choose today or a later closing date, or leave it empty",
+            }
+        ]
+
+
+class ClosingDateTooFar(DomainError):
+    """A closing date more than a year ahead: almost certainly a mistyped year,
+    refused as availability refuses one (C9), and so no date can reach the end
+    of the calendar (the independent review of audit C11)."""
+
+    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
+    code = "validation_failed"
+    title = "Some fields are missing or invalid"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.errors = [
+            {
+                "field": "applications_close_on",
+                "message": "Choose a closing date within a year from today; check the year",
+            }
+        ]
+
+
 class CampaignBudgetInvalid(DomainError):
     """A change would leave the campaign's budget breaking its rules.
 

@@ -26,6 +26,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Header, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
+from app.core.clock import india_date
 from app.core.config import settings
 from app.core.errors import problem_doc
 from app.core.http_cache import etag_for, holds_current
@@ -125,7 +126,7 @@ def _to_public(
             PublicConnectionRead(
                 platform=c.platform,
                 handle=c.handle,
-                connected_since=c.connected_at.date(),
+                connected_since=india_date(c.connected_at),
             )
             for c in connections
         ],

@@ -8,6 +8,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
+from app.core.clock import india_date
 from app.core.errors import problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page, Slice
@@ -27,6 +28,7 @@ from app.modules.campaigns.schemas import (
     CampaignType,
     CampaignUpdate,
     DealStageCountsRead,
+    to_campaign_read,
 )
 from app.modules.campaigns.summary import summarise
 
@@ -44,7 +46,7 @@ Limit = Annotated[int, Query(ge=1, le=MAX_LIMIT, description="Rows per page")]
 Cursor = Annotated[str | None, Query(description="From a previous page's next_cursor")]
 
 
-def _reads(db: Session, campaigns: list[Campaign]) -> list[CampaignRead]:
+def _reads(db: Session, campaigns: list[Campaign], now: datetime) -> list[CampaignRead]:
     """Each campaign with its brand's name, verified domain and any look-alike
     name warning.
 
@@ -55,7 +57,7 @@ def _reads(db: Session, campaigns: list[Campaign]) -> list[CampaignRead]:
     domains = service.verified_domains_for(db, campaigns)
     names, name_flags = service.brand_names_and_flags_for(db, campaigns)
     return [
-        CampaignRead.model_validate(campaign).model_copy(
+        to_campaign_read(campaign, now).model_copy(
             update={
                 "brand_name": names.get(campaign.brand_id, ""),
                 "verified_domain": domains.get(campaign.brand_id),
@@ -66,14 +68,20 @@ def _reads(db: Session, campaigns: list[Campaign]) -> list[CampaignRead]:
     ]
 
 
-def _read(db: Session, campaign: Campaign) -> CampaignRead:
-    return _reads(db, [campaign])[0]
+def _read(db: Session, campaign: Campaign, now: datetime) -> CampaignRead:
+    return _reads(db, [campaign], now)[0]
 
 
-def _page(db: Session, result: Slice[Campaign]) -> Page[CampaignRead]:
+def _page(db: Session, result: Slice[Campaign], now: datetime) -> Page[CampaignRead]:
     return Page[CampaignRead](
-        items=_reads(db, list(result.rows)), next_cursor=result.next_cursor
+        items=_reads(db, list(result.rows), now), next_cursor=result.next_cursor
     )
+
+
+DATE_422 = (
+    "a closing date already passed in Tamil Nadu, or more than a year ahead "
+    "(`validation_failed` on `applications_close_on`, D-180)"
+)
 
 
 @router.post(
@@ -89,7 +97,7 @@ def _page(db: Session, result: Slice[Campaign]) -> Page[CampaignRead]:
         401: problem_doc("No access token, or it is invalid or expired"),
         403: problem_doc("Only brand accounts can post campaigns"),
         409: problem_doc("The brand profile has not been created yet"),
-        422: problem_doc("A field is missing or invalid"),
+        422: problem_doc(f"A field is missing or invalid, or {DATE_422}"),
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
 )
@@ -104,7 +112,7 @@ def create_campaign(
 ) -> CampaignRead:
     campaign = service.create_campaign(db, brand, body.model_dump(), now)
     response.headers["Location"] = f"/api/v1/campaigns/{campaign.id}"
-    return _read(db, campaign)
+    return _read(db, campaign, now)
 
 
 @router.get(
@@ -128,11 +136,12 @@ def list_my_campaigns(
     limit: Limit = DEFAULT_LIMIT,
     cursor: Cursor = None,
     db: Session = Depends(get_db),
+    now: datetime = Depends(get_now),
 ) -> Page[CampaignRead]:
     result = service.list_brand_campaigns(
         db, brand, limit=limit, cursor=cursor, status=campaign_status
     )
-    page = _page(db, result)
+    page = _page(db, result, now)
     counts = applicant_service.applicant_counts(db, [c.id for c in page.items])
     return Page[CampaignRead](
         items=[
@@ -167,6 +176,7 @@ def discover_campaigns(
     limit: Limit = DEFAULT_LIMIT,
     cursor: Cursor = None,
     db: Session = Depends(get_db),
+    now: datetime = Depends(get_now),
 ) -> Page[CampaignRead]:
     return _page(
         db,
@@ -179,7 +189,10 @@ def discover_campaigns(
             campaign_type=campaign_type,
             min_budget_paise=min_budget_paise,
             viewer_account_id=account.id,
+            # Only campaigns a creator can still apply to (audit C11).
+            today=india_date(now),
         ),
+        now,
     )
 
 
@@ -206,9 +219,10 @@ def read_campaign(
     campaign_id: uuid.UUID,
     account: CurrentAccount,
     db: Session = Depends(get_db),
+    now: datetime = Depends(get_now),
 ) -> CampaignRead:
     campaign = service.get_visible_campaign(db, campaign_id, account)
-    return _read(db, campaign)
+    return _read(db, campaign, now)
 
 
 @router.patch(
@@ -228,7 +242,8 @@ def read_campaign(
         422: problem_doc(
             "A field is missing or invalid, null for a field that always has a "
             "value, or the campaign after the change would break a budget rule, "
-            "answered as the same rule in a new campaign's body"
+            "answered as the same rule in a new campaign's body; or a closing "
+            f"date changed to {DATE_422}"
         ),
         429: problem_doc("Too many requests; see the Retry-After header"),
     },
@@ -242,7 +257,7 @@ def update_campaign(
     now: datetime = Depends(get_now),
 ) -> CampaignRead:
     changes = body.model_dump(exclude_unset=True)
-    return _read(db, service.update_campaign(db, campaign, changes, now))
+    return _read(db, service.update_campaign(db, campaign, changes, now), now)
 
 
 @router.get(
@@ -283,7 +298,11 @@ def campaign_summary(
 
 
 def _status_endpoint(
-    action: str, new_status: str, summary: str, description: str
+    action: str,
+    new_status: str,
+    summary: str,
+    description: str,
+    refused_422: str | None = None,
 ) -> Callable[..., Any]:
     @router.post(
         f"/{{campaign_id}}/{action}",
@@ -296,6 +315,7 @@ def _status_endpoint(
             403: problem_doc("Only brand accounts can do this"),
             404: problem_doc("No such campaign, or it is not yours"),
             409: problem_doc("The campaign is not in a state where that is allowed"),
+            **({422: problem_doc(refused_422)} if refused_422 else {}),
             429: problem_doc("Too many requests; see the Retry-After header"),
         },
     )
@@ -306,7 +326,7 @@ def _status_endpoint(
         db: Session = Depends(get_db),
         now: datetime = Depends(get_now),
     ) -> CampaignRead:
-        return _read(db, service.change_status(db, campaign, new_status, now))
+        return _read(db, service.change_status(db, campaign, new_status, now), now)
 
     return endpoint
 
@@ -319,7 +339,10 @@ publish_campaign = _status_endpoint(
     "name looks like a protected brand's is refused, 409 "
     "`brand_name_needs_domain`, until it verifies that brand's domain at `POST "
     "/api/v1/brands/me/domain` (item 75); the detail names the brand and the "
-    "domain.",
+    "domain. A closing date already passed in Tamil Nadu, or more than a year "
+    "ahead, is refused, 422 `validation_failed` on `applications_close_on` "
+    "(D-180), so no creator is alerted to a campaign nobody can join.",
+    f"A field is missing or invalid, or {DATE_422}",
 )
 close_campaign = _status_endpoint(
     "close",

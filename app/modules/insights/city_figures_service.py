@@ -26,6 +26,7 @@ shown with the spelling most of its creators used.
 """
 
 from dataclasses import dataclass
+from datetime import date
 
 from sqlalchemy import ColumnElement, exists, func, select
 from sqlalchemy.orm import Session
@@ -33,6 +34,7 @@ from sqlalchemy.orm import Session
 from app.core.taxonomy import CURRENCY, NICHES, Niche
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import account_is_active, brand_is_active
+from app.modules.campaigns import applying
 from app.modules.campaigns.models import Campaign
 from app.modules.profiles.models import CreatorPackage
 
@@ -89,7 +91,7 @@ def cities(db: Session) -> list[CityCount]:
     return [CityCount(city=name, published_creators=count) for name, count in rows]
 
 
-def for_city(db: Session, city: str) -> CityFigures:
+def for_city(db: Session, city: str, today: date) -> CityFigures:
     """One city's figures, in four queries."""
     wanted = city.strip().lower()
     in_city = func.lower(func.btrim(Creator.city)) == wanted
@@ -116,7 +118,8 @@ def for_city(db: Session, city: str) -> CityFigures:
     campaign_city = func.unnest(Campaign.cities).column_valued("c")
     campaigns = db.scalar(
         select(func.count(Campaign.id)).where(
-            Campaign.status == "open",
+            # Open demand: only campaigns still taking creators (D-180).
+            applying.taking_creators(today),
             brand_is_active(Campaign.brand_id),
             exists(
                 select(campaign_city).where(

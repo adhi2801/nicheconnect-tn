@@ -40,9 +40,11 @@ from app.core.export import ExportedSection, allow, build_section
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import brand_is_unavailable, is_unavailable
+from app.modules.campaigns import applying
 from app.modules.campaigns import offer_rules as rules
 from app.modules.campaigns.exceptions import (
     ApplicationNotFound,
+    ApplicationsClosed,
     CampaignNotOpen,
     OfferNotFound,
     OfferOpen,
@@ -138,12 +140,12 @@ def make_offer(
 
     Raises OffersClosed (not waiting, a barter campaign, or the other side
     is gone),
-    CampaignNotOpen, ApplicationNotFound (blocked either way, read as not
+    CampaignNotOpen, ApplicationsClosed (an invitation past its closing day), ApplicationNotFound (blocked either way, read as not
     found), ContentWithheld or OwnContentWithheld, OfferAlreadyAgreed,
     OfferLimitReached (MAX_OFFERS_PER_SIDE made already) and OfferOpen (its
     own offer still waits: withdraw it first).
     """
-    campaign = _locked_and_negotiable(db, application, side)
+    campaign = _locked_and_negotiable(db, application, side, now)
     offers = history(db, application)
     refused = rules.refusal_to_make(offers, side)
     if refused is not None:
@@ -191,7 +193,7 @@ def accept(
     Raises what make_offer raises for a negotiation that is closed, and
     OfferNotFound, OfferAnswered and OfferNotYours.
     """
-    campaign = _locked_and_negotiable(db, application, side)
+    campaign = _locked_and_negotiable(db, application, side, now)
     offer = _answerable(db, application, offer_id, side)
     _end(offer, "accepted", now)
     _tell(
@@ -344,16 +346,33 @@ def _lock(db: Session, application: Application) -> None:
     db.refresh(application, attribute_names=["status"], with_for_update=True)
 
 
-def _locked_and_negotiable(db: Session, application: Application, side: str) -> Campaign:
-    """Lock the application, then refuse a negotiation that cannot go on."""
+def _locked_and_negotiable(
+    db: Session, application: Application, side: str, now: datetime
+) -> Campaign:
+    """Lock the campaign, then the application, and refuse a negotiation that
+    cannot go on.
+
+    The campaign first, shared, so a close lands wholly before this offer or
+    after it (D-180), and in the order an account's erasure locks the two
+    (`departure_service.lock_for_brand`), so the two never deadlock (the
+    independent review of audit C11). An invitation's figure stops with its
+    closing day, since it could no longer be accepted; an application already
+    made may still be settled, as the brand may still answer it.
+    """
+    campaign = db.get_one(Campaign, application.campaign_id)
+    applying.lock_for_joining(db, campaign)
     _lock(db, application)
     if application.status not in WAITING:
         db.rollback()
         raise OffersClosed()
-    campaign = db.get_one(Campaign, application.campaign_id)
     if campaign.status != "open" or brand_is_unavailable(db, campaign.brand_id):
         db.rollback()
         raise CampaignNotOpen()
+    if application.status == "invited" and not applying.applications_open(
+        campaign.status, campaign.applications_close_on, now
+    ):
+        db.rollback()
+        raise ApplicationsClosed()
     if campaign.campaign_type == "barter":
         db.rollback()
         raise OffersClosed(

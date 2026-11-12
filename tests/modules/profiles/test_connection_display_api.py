@@ -6,8 +6,10 @@ controls the account, never a count (D-135, keeping D-042). An expired
 connection shows nowhere.
 """
 
+from datetime import UTC, datetime
+
 import pytest
-from sqlalchemy import update
+from sqlalchemy import select, update
 
 from app.modules.auth.models.creator import Creator
 from app.modules.profiles.models import CreatorChannel
@@ -108,3 +110,25 @@ def test_the_public_passport_shows_control_never_a_count(
         "24000"
         not in client.get(f"/api/v1/creators/by-handle/{handle_of(db, creator)}").text
     )
+
+
+def test_connected_since_is_the_tamil_nadu_day_on_both_pages(
+    client, db, clock, creator, platforms
+):
+    """Connected at 20:00 UTC on the 20th, 01:30 on the 21st in Tamil Nadu:
+    the 21st, on the Passport and the media kit alike (D-180; it was the
+    UTC date until the review of audit C11)."""
+    clock.now = datetime(2026, 9, 20, 20, 0, tzinfo=UTC)
+    connected(client, creator, platforms, handle="priya.eats", followers=24_000)
+    brand = brand_user(db, clock)
+    creator_id = db.scalar(
+        select(Creator.id).where(Creator.account_id == creator.account_id)
+    )
+
+    passport = client.get(f"/api/v1/creators/by-handle/{handle_of(db, creator)}").json()
+    kit = client.get(
+        f"/api/v1/creators/{creator_id}/media-kit", headers=brand.headers
+    ).json()
+
+    assert passport["connected_accounts"][0]["connected_since"] == "2026-09-21"
+    assert kit["connected_accounts"][0]["connected_since"] == "2026-09-21"

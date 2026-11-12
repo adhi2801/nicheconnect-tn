@@ -7,7 +7,7 @@ database can never change its counts.
 import random
 import string
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -169,6 +169,20 @@ def test_open_campaigns_in_the_city_are_counted_from_five(client, db):
 
     db.add(build_campaign(db, cities=["Madurai", city]))
     db.flush()
+    assert figures(client, city)["open_campaigns"] == 5
+
+
+def test_a_campaign_past_its_closing_day_is_not_open_demand(client, db, clock):
+    """Open means still taking creators (D-180): its Tamil Nadu closing day not
+    ended. Five still open and two past their day: five are counted."""
+    city = city_name()
+    clock.now = datetime(2026, 9, 20, 20, 0, tzinfo=UTC)  # the 21st in Tamil Nadu
+    for close_on in [None, None, date(2026, 9, 21), date(2026, 9, 21), date(2026, 10, 1)]:
+        db.add(build_campaign(db, cities=[city], applications_close_on=close_on))
+    for close_on in [date(2026, 9, 20), date(2026, 9, 19)]:
+        db.add(build_campaign(db, cities=[city], applications_close_on=close_on))
+    db.flush()
+
     assert figures(client, city)["open_campaigns"] == 5
 
 

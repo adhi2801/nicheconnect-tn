@@ -40,7 +40,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Session, aliased
 
-from app.core.clock import IST
+from app.core.clock import IST, india_date_sql
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.models import Application, Campaign
@@ -207,8 +207,7 @@ def _period(db: Session, first: date, last: date, city: str | None) -> PeriodNum
         select(
             func.count(PaymentStatus.id),
             func.count(PaymentStatus.id).filter(
-                func.date(func.timezone("Asia/Kolkata", PaymentStatus.marked_paid_at))
-                <= PaymentStatus.due_on
+                india_date_sql(PaymentStatus.marked_paid_at) <= PaymentStatus.due_on
             ),
         )
         .join(DealMemo, DealMemo.id == PaymentStatus.deal_memo_id)
