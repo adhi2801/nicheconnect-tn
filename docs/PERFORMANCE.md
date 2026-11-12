@@ -35,6 +35,17 @@ The bulk figure rests on 5 calls, so its p95 is close to its maximum; it no long
 
 **Over budget, and not on this change's path:** the job building one busy account's data export, 1001.7 ms p95 (422.3 earlier the same day, 686.4 on 6 November). Nobody waits on it in a request (D-111), this change does not touch it, and its swing tracks the load; it stays watched, as before.
 
+## Added 11 November: the pre-deal check (item 133, D-182)
+
+On `feature/pre-deal-check` at `1438e97` (`d00e90d`'s code with `main` merged in; the check's code unchanged since), the whole script, 50 runs per read and 30 whole deals for the writes, same seeded data and laptop. The check is timed inside the deal phase, as the calendar file is, because the seeded data has no sent memo: each side reads it once a deal, the moment it is for (the memo sent, not yet answered), and every deal the run makes lengthens both sides' history, so the 30 samples run from no earlier deal to 29.
+
+| Route | p50 ms | p95 ms | max ms | Budget |
+|---|---|---|---|---|
+| `GET /deal-memos/{id}/check` (the creator reading) | 44.3 | 57.1 | 62.6 | 300 |
+| `GET /deal-memos/{id}/check` (the brand reading) | 46.9 | 65.6 | 84.0 | 300 |
+
+Queries, counted by `tests/modules/deal_memo/test_deal_check_api.py` and printed in this session: 16 for the creator and 20 for the brand (its team check included) with one earlier deal or five, and with two channels and two connected accounts as with one; 11 and 15 with none; at most two more when a deal has a draft review. **85 timings in the run, 83 within budget.** The two over are the ones over on 6 November, which this change does not touch: the bulk mark-paid of 25 rows at 699.3 ms and the export job at 735.2 ms; the note on the bulk figure below still applies. The worst single read was 1,160 ms (`GET /campaigns/discover`, its p95 130.9): two other jobs shared this laptop's database during the run, so every figure here may carry their load; none was re-measured on a quiet machine. An earlier run of the same code by the session that built it, before `main` was merged, gave the check 50.9 and 44.4 ms p95. 30 samples a side, so the 99th percentile cannot be told apart from the maximum: at most 84.0 ms, against D-179's 800.
+
 ## Every route, 11 November (D-174 to D-177, audits C5 to C10)
 
 On `feature/session-lifetime` at `59c2bf4`, 50 runs per read, 30 whole deals for the writes, same seeded data and laptop as below. **83 timings, all within budget.** Ten were added to the script by this change, which had touched them without measuring them (`CLAUDE.md` section 6, step 6):

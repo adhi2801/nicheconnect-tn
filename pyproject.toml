@@ -81,7 +81,7 @@ dependencies = [
     # from the Public Suffix List it bundles, with no network call. Released
     # as the list changes; Dependabot proposes each one. MPL-2.0, used
     # unchanged (legal.md section 3.15).
-    "publicsuffixlist==1.1.2.20261023",
+    "publicsuffixlist==1.1.2.20261101",
     "fido2==2.2.1",
 ]
 

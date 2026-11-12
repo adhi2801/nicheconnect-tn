@@ -24,7 +24,7 @@ Three things it does **not** mean:
 
 **Counted on 6 November 2026:** 5,879 tests in 284 files (`pytest --collect-only`); coverage 98% counting branches on the full local run that day.
 
-**144 items listed: 61 built, 83 open**, counted from the tables on 6 November: items 103 and 104 added by D-167, items 105 to 143 by the world-bar pass and the research (section 3.13). **Built capabilities audited against the world bar: 0 of 32** (section 2a). The counts below are as of 5 November, before section 3.13.
+**144 items listed: 64 built, 80 open**, counted from the tables on 11 November 2026 (61 built on 6 November; then items 144 on 7 November, 130 on 8 November and 133 on 11 November): items 103 and 104 added by D-167, items 105 to 143 by the world-bar pass and the research (section 3.13). **Built capabilities audited against the world bar: 10 of 32** (C1 to C10, 6 to 8 November; section 2a). The counts below are as of 5 November, before section 3.13.
 
 **All 102 items listed on 5 November: 61 built, 41 open** (39 in section 3, items 12 and 20 in section 4).
 
@@ -352,7 +352,7 @@ Each traces to a benchmark a standard's section 0 does not yet meet, a gap a sta
 | 130 | A campaign's title checked for fee requests, as its brief is | `trust-and-safety.md` gap 2 | Security · **Built 8 November** with audit C10's change to the campaign schema, as the gap said |
 | 131 | A published report of what went wrong and what we did, from the counts the system keeps | `trust-and-safety.md` section 0 (Upwork) | After launch |
 | 132 | The rate of fraud measured, not only its cases | `trust-and-safety.md` section 0 (Airbnb) | After launch |
-| 133 | A check on each deal before it is agreed, from records only we hold (days to pay, disputes, delivery record, domain, look-alike name, first deal between the two), shown to both sides as facts, never as a score that refuses anyone | Research 8 | Trust and safety; a product decision |
+| 133 | A check on each deal before it is agreed, from records only we hold (days to pay, disputes, delivery record, domain, look-alike name, first deal between the two), shown to both sides as facts, never as a score that refuses anyone | Research 8 | Trust and safety; a product decision · **Built 11 November 2026 (D-182)**: `GET /api/v1/deal-memos/{memo_id}/check`, the memo's two parties only and closed across a block; the creator reads the brand's payment record, domain, look-alike flag, review time, disputes by how each ended and account date; the brand reads the creator's delivery record, answer times, disputes, account date and channels as the creator's claim beside a connected count; both read their first deal together and earlier deals finished. Not reviewed by the other founder |
 | 134 | App-store privacy labels generated from the registries the code keeps | `legal.md` section 0 (D-170) | None |
 
 **Earning money** (none of it touching deal money, constraint 1)

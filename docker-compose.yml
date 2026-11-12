@@ -45,7 +45,7 @@ services:
   # The tag is exact, not floating: the same version everywhere, and an
   # upgrade is a visible line in review rather than whatever got pulled.
   redis:
-    image: valkey/valkey:9.1.2-alpine
+    image: valkey/valkey:9.1.3-alpine
     restart: unless-stopped
     ports:
       - "6379:6379"

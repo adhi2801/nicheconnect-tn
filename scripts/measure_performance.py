@@ -258,6 +258,23 @@ def measure_writes(
             method="PATCH",
         )
         write(name("POST /deal-memos/{id}/send"), f"{memos}/{memo}/send", brand_headers)
+        if timed:
+            # The pre-deal check (item 133, D-182), read by each side at the
+            # moment it is for: the memo sent, not yet answered. Timed here
+            # because only these deals reach it, and each deal the run makes
+            # lengthens both sides' history, so later reads carry more.
+            for reader, headers in (
+                ("creator", creator_headers),
+                ("brand", brand_headers),
+            ):
+                limiter.reset()
+                started = time.perf_counter()
+                checked = client.get(f"{memos}/{memo}/check", headers=headers)
+                timings[f"GET /deal-memos/{{id}}/check ({reader})"].append(
+                    (time.perf_counter() - started) * 1000
+                )
+                if checked.status_code != 200:
+                    raise SystemExit(f"check ({reader}): {checked.status_code}")
         write(
             name("POST /deal-memos/{id}/accept"),
             f"{memos}/{memo}/accept",
