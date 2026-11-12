@@ -39,6 +39,8 @@ from sqlalchemy import delete, exists, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.deadline import Deadline
+from app.core.job_runs import within_budget
 from app.core.storage import FileStore
 from app.modules.auth import step_up_service as step_ups
 from app.modules.auth.models.account import Account
@@ -199,8 +201,13 @@ def run_exports(
     session_factory: Callable[[], AbstractContextManager[Session]],
     store: FileStore,
     now: datetime,
+    *,
+    budget: Deadline | None = None,
 ) -> ExportRun:
     """One run of the job: build what was asked for, destroy what expired.
+
+    Once `budget` is spent no further build or destruction is started (item
+    118, D-186); the rest wait for the next run.
 
     Each export in its own transaction. A file is written to storage with no
     transaction open, then marked ready only if it still waits, so even an
@@ -215,8 +222,11 @@ def run_exports(
                 .limit(MAX_BUILDS_PER_RUN)
             ).all()
         )
-    outcomes = [_build(session_factory, store, export_id, now) for export_id in waiting]
-    expired = _destroy_expired(session_factory, store, now)
+    outcomes = [
+        _build(session_factory, store, export_id, now)
+        for export_id in within_budget(waiting, budget, "data_exports.build")
+    ]
+    expired = _destroy_expired(session_factory, store, now, budget)
     run = ExportRun(
         built=outcomes.count("built"),
         retrying=outcomes.count("retrying"),
@@ -340,8 +350,9 @@ def _destroy_expired(
     session_factory: Callable[[], AbstractContextManager[Session]],
     store: FileStore,
     now: datetime,
+    budget: Deadline | None = None,
 ) -> int:
-    """Destroy every file whose 24 hours passed undownloaded."""
+    """Destroy every file whose 24 hours passed undownloaded, within `budget`."""
     with session_factory() as db:
         due = list(
             db.scalars(
@@ -352,7 +363,8 @@ def _destroy_expired(
                 )
             ).all()
         )
-    for export_id in due:
+    destroyed = 0
+    for export_id in within_budget(due, budget, "data_exports.destroy"):
         store.destroy(object_key(export_id))
         with session_factory() as db:
             db.execute(
@@ -361,7 +373,8 @@ def _destroy_expired(
                 .values(file_deleted_at=now, updated_at=now)
             )
             db.commit()
-    return len(due)
+        destroyed += 1
+    return destroyed
 
 
 def destroy_files_of(

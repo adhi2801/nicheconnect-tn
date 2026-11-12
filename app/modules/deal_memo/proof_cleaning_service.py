@@ -40,6 +40,8 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.deadline import Deadline
+from app.core.job_runs import within_budget
 from app.core.storage import FileStore
 from app.modules.deal_memo import record_service as record
 from app.modules.deal_memo.draft_models import ContentDraft
@@ -251,12 +253,18 @@ class CleaningRun:
 
 
 def clean_attached(
-    db: Session, store: FileStore, now: datetime, *, limit: int = 20
+    db: Session,
+    store: FileStore,
+    now: datetime,
+    *,
+    limit: int = 20,
+    budget: Deadline | None = None,
 ) -> CleaningRun:
     """Work through the queue, oldest first, each file in its own transaction.
 
     One bad file never stops the rest: it is refused on its own and the run
-    goes on.
+    goes on. Once `budget` is spent no further file is started (item 118,
+    D-186); the rest stay queued for the next run.
     """
     queue = list(
         db.scalars(
@@ -268,7 +276,7 @@ def clean_attached(
     )
     db.rollback()
     outcomes = []
-    for file_id in queue:
+    for file_id in within_budget(queue, budget, "proof_files.clean"):
         try:
             outcomes.append(clean_one(db, store, file_id, now))
         except Exception:

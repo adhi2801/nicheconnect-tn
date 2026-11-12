@@ -33,6 +33,7 @@ from typing import Any, Literal, Protocol
 from PIL import Image
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from app.core.claude_calls import ClaudeCall, call_claude
 from app.core.config import settings
 
 # Changed whenever the instructions or the shape change, and stored with every
@@ -53,8 +54,10 @@ MAX_IMAGE_BYTES = 7_000_000
 # A clean copy too heavy to send is scaled to this long side first: the most
 # Opus 5.5 reads at full sharpness, so nothing it could read is lost.
 FIT_LONG_SIDE = 2576
+# The client's own default for a try; `call_claude` sets each try's limit
+# and does the retrying, so the SDK's retries are off (item 118, D-186).
 API_TIMEOUT_SECONDS = 60.0
-API_MAX_RETRIES = 3
+API_MAX_RETRIES = 0
 
 METRICS = ("views", "reach", "impressions", "likes", "comments", "saves", "shares")
 Metric = Literal["views", "reach", "impressions", "likes", "comments", "saves", "shares"]
@@ -225,9 +228,14 @@ class ClaudeReader:
     """Reads a screenshot with Claude. The client is passed in, so tests can
     hand it a fake that records the request and answers like the API."""
 
-    def __init__(self, client: Any, model: str) -> None:
+    def __init__(
+        self, client: Any, model: str, *, call: ClaudeCall = call_claude
+    ) -> None:
         self._client = client
         self.model = model
+        # The limits around each call (app.core.claude_calls); a test passes
+        # its own clock and waits through `functools.partial`.
+        self._call = call
 
     def _failed(self, failure: Failure, usage: Any = None) -> Reading:
         return Reading(
@@ -246,37 +254,39 @@ class ClaudeReader:
         if fitted is None:
             return self._failed("image_too_large")
         data, media_type = fitted
-        try:
-            response = self._client.messages.parse(
-                model=self.model,
-                max_tokens=MAX_TOKENS,
-                system=SYSTEM_PROMPT,
-                output_format=ScreenshotNumbers,
-                **effort_options(self.model),
-                messages=[
-                    {
-                        "role": "user",
-                        # Image first, then the words: what the vision
-                        # documentation recommends.
-                        "content": [
-                            {
-                                "type": "image",
-                                "source": {
-                                    "type": "base64",
-                                    "media_type": media_type,
-                                    "data": base64.standard_b64encode(data).decode(
-                                        "ascii"
-                                    ),
-                                },
+        request: dict[str, Any] = {
+            "model": self.model,
+            "max_tokens": MAX_TOKENS,
+            "system": SYSTEM_PROMPT,
+            "output_format": ScreenshotNumbers,
+            **effort_options(self.model),
+            "messages": [
+                {
+                    "role": "user",
+                    # Image first, then the words: what the vision
+                    # documentation recommends.
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": media_type,
+                                "data": base64.standard_b64encode(data).decode("ascii"),
                             },
-                            {"type": "text", "text": USER_PROMPT},
-                        ],
-                    }
-                ],
+                        },
+                        {"type": "text", "text": USER_PROMPT},
+                    ],
+                }
+            ],
+        }
+        try:
+            response = self._call(
+                lambda timeout: self._client.messages.parse(**request, timeout=timeout)
             )
         except anthropic.APIError, ValidationError:
-            # Retries are already spent by the SDK (API_MAX_RETRIES); an
-            # answer that does not fit the shape is the same failure to us.
+            # The tries are already spent within the call's limit
+            # (app.core.claude_calls); an answer that does not fit the shape
+            # is the same failure to us.
             return self._failed("api_error")
         if response.stop_reason == "refusal":
             return self._failed("refusal", response.usage)

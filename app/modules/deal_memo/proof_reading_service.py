@@ -39,6 +39,8 @@ from sqlalchemy.orm import Session
 
 from app.core.clock import india_date
 from app.core.config import settings
+from app.core.deadline import Deadline, DeadlinePassed
+from app.core.job_runs import within_budget
 from app.core.storage import FileStore, ObjectTooLarge
 from app.modules.campaigns.models import Application
 from app.modules.deal_memo import record_service as record
@@ -315,6 +317,12 @@ def read_one(
             except KeyError, ObjectTooLarge:
                 logger.warning("proof file %s: its clean copy cannot be read", file_id)
                 return SKIPPED
+            except DeadlinePassed:
+                # Storage too slow this time: still due, so the next run tries.
+                logger.warning(
+                    "proof file %s: its clean copy was too slow to read", file_id
+                )
+                return SKIPPED
             reading = reader.read(image, content_type)
             return save_reading(db, file_id, reading, now)
         finally:
@@ -329,10 +337,13 @@ def read_due(
     now: datetime,
     *,
     limit: int = PER_RUN,
+    budget: Deadline | None = None,
 ) -> ReadingRun:
     """One run: the oldest due files, each on its own, up to the daily limit.
 
-    With reading switched off (no reader) nothing happens at all.
+    With reading switched off (no reader) nothing happens at all. Once
+    `budget` is spent no further file is started (item 118, D-186); the rest
+    stay due for the next run.
     """
     if reader is None:
         return ReadingRun(
@@ -355,7 +366,10 @@ def read_due(
         ).all()
     )
     db.rollback()
-    outcomes = [read_one(db, store, reader, file_id, now) for file_id in queue]
+    outcomes = [
+        read_one(db, store, reader, file_id, now)
+        for file_id in within_budget(queue, budget, "proof_files.read")
+    ]
     return ReadingRun(
         read=outcomes.count(READ),
         no_numbers=outcomes.count(NO_NUMBERS),

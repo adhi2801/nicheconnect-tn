@@ -28,7 +28,9 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.deadline import Deadline
 from app.core.export import MAX_ROWS_PER_SECTION, ExportedSection, allow, build_section
+from app.core.job_runs import within_budget
 from app.modules.auth.brand_access import BrandAccess
 from app.modules.auth.models.account import Account
 from app.modules.campaigns.brief_drafter import BriefDrafter, Drafted
@@ -178,11 +180,18 @@ def draft_one(
 
 
 def run(
-    db: Session, drafter: BriefDrafter | None, now: datetime, *, limit: int = PER_RUN
+    db: Session,
+    drafter: BriefDrafter | None,
+    now: datetime,
+    *,
+    limit: int = PER_RUN,
+    budget: Deadline | None = None,
 ) -> DraftRun:
     """One run of the job: delete drafts past their week, then draft the oldest waiting.
 
     With drafting switched off (no drafter) nothing is drafted; old drafts still go.
+    Once `budget` is spent no further draft is started (item 118, D-186); the
+    rest stay waiting for the next run.
     """
     deleted = delete_old(db, now)
     if drafter is None:
@@ -201,7 +210,10 @@ def run(
         ).all()
     )
     db.rollback()
-    outcomes = [draft_one(db, drafter, draft_id, now) for draft_id in queue]
+    outcomes = [
+        draft_one(db, drafter, draft_id, now)
+        for draft_id in within_budget(queue, budget, "brief_drafts.run")
+    ]
     return DraftRun(
         drafted=outcomes.count("drafted"),
         failed=outcomes.count("failed"),

@@ -28,7 +28,9 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.deadline import Deadline
 from app.core.export import ExportedSection, allow, build_section
+from app.core.job_runs import within_budget
 from app.modules.auth.models.brand import Brand
 from app.modules.profiles import brand_domains as rules
 from app.modules.profiles.brand_domain_models import BrandDomain
@@ -263,12 +265,18 @@ def run_checks(
     session_factory: Callable[[], AbstractContextManager[Session]],
     lookup: DomainLookup,
     now: datetime,
+    *,
+    budget: Deadline | None = None,
 ) -> CheckRun:
-    """One run of the job: take, look up with no transaction open, apply."""
+    """One run of the job: take, look up with no transaction open, apply.
+
+    Once `budget` is spent no further claim is looked up (item 118, D-186):
+    those taken but not looked up are taken again once their LEASE ends.
+    """
     with session_factory() as db:
         due = take_due(db, now)
     verified = lapsed = 0
-    for check in due:
+    for check in within_budget(due, budget, "brand_domains.check"):
         outcome = rules.classify(lookup.txt(rules.record_name(check.domain)), check.token)
         registered_on = (
             lookup.registered_on(check.domain)

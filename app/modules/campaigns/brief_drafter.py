@@ -23,6 +23,7 @@ from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
+from app.core.claude_calls import ClaudeCall, call_claude
 from app.core.config import settings
 from app.core.taxonomy import MAX_NICHES, Niche
 from app.modules.campaigns.models import (
@@ -38,8 +39,10 @@ PROMPT_VERSION = "2026-11-04.1"
 # Writing a short brief is light work: effort is the control on Opus 5.5.
 DRAFTER_EFFORT = "low"
 MAX_TOKENS = 8000
+# The client's own default for a try; `call_claude` sets each try's limit
+# and does the retrying, so the SDK's retries are off (item 118, D-186).
 API_TIMEOUT_SECONDS = 60.0
-API_MAX_RETRIES = 3
+API_MAX_RETRIES = 0
 # A refusal on Opus 5.5 is re-run on the model Anthropic routes the category
 # to, inside the same call (the server-side fallback, Claude API only).
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
@@ -146,9 +149,14 @@ def token_counts(usage: Any) -> tuple[int | None, int | None]:
 
 
 class ClaudeDrafter:
-    def __init__(self, client: Any, model: str) -> None:
+    def __init__(
+        self, client: Any, model: str, *, call: ClaudeCall = call_claude
+    ) -> None:
         self._client = client
         self.model = model
+        # The limits around each call (app.core.claude_calls); a test passes
+        # its own clock and waits through `functools.partial`.
+        self._call = call
 
     def _failed(self, failure: Failure, usage: Any = None) -> Drafted:
         tokens = token_counts(usage)
@@ -157,20 +165,26 @@ class ClaudeDrafter:
     def draft(self, idea: str) -> Drafted:
         import anthropic
 
+        request: dict[str, Any] = {
+            "model": self.model,
+            "max_tokens": MAX_TOKENS,
+            "system": SYSTEM_PROMPT,
+            "output_format": DraftedBrief,
+            "output_config": {"effort": DRAFTER_EFFORT},
+            "betas": [FALLBACK_BETA],
+            "fallbacks": "default",
+            "messages": [{"role": "user", "content": USER_PROMPT.format(idea=idea)}],
+        }
         try:
-            response = self._client.beta.messages.parse(
-                model=self.model,
-                max_tokens=MAX_TOKENS,
-                system=SYSTEM_PROMPT,
-                output_format=DraftedBrief,
-                output_config={"effort": DRAFTER_EFFORT},
-                betas=[FALLBACK_BETA],
-                fallbacks="default",
-                messages=[{"role": "user", "content": USER_PROMPT.format(idea=idea)}],
+            response = self._call(
+                lambda timeout: self._client.beta.messages.parse(
+                    **request, timeout=timeout
+                )
             )
         except anthropic.APIError, ValidationError:
-            # Retries are already spent by the SDK (API_MAX_RETRIES); an answer
-            # that does not fit the shape is the same failure to us.
+            # The tries are already spent within the call's limit
+            # (app.core.claude_calls); an answer that does not fit the shape
+            # is the same failure to us.
             return self._failed("api_error")
         if response.stop_reason == "refusal":
             return self._failed("refusal", response.usage)

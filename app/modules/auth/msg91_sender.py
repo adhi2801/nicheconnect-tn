@@ -8,6 +8,9 @@ External-call rules (`backend.md` section 6): a 3 s connect and 10 s read
 timeout, at most 3 attempts, exponential backoff with jitter, and retries
 only where a retry can help: a network failure, 429, or a 5xx. A 4xx means
 the request itself is wrong, and sending it again would only repeat that.
+All of it within 15 s for the whole send (item 118, D-186): each try is cut
+to the time left, a trickling answer is cut off (`app.core.outside_http`),
+and no try starts once the 15 s are spent.
 
 Nothing here logs or raises a phone number, a code, or MSG91's reply text,
 which can echo either (`backend.md` section 9). Errors carry the status code
@@ -29,6 +32,9 @@ from typing import Any
 
 import httpx2
 
+from app.core.deadline import Clock, Deadline
+from app.core.outside_http import exchange
+
 logger = logging.getLogger(__name__)
 
 API_URL = "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/"
@@ -36,6 +42,9 @@ TIMEOUT = httpx2.Timeout(10.0, connect=3.0)
 MAX_ATTEMPTS = 3
 RETRY_STATUSES = frozenset({429, 500, 502, 503, 504})
 BASE_DELAY_SECONDS = 0.5
+# The whole send, every try and wait included: 3 s to connect and 10 s to
+# read for one try, with room for a quick retry (item 118, D-186).
+CALL_LIMIT_SECONDS = 15.0
 
 
 class OtpDeliveryFailed(RuntimeError):
@@ -94,6 +103,7 @@ class Msg91WhatsAppSender:
         client: httpx2.Client | None = None,
         sleep: Callable[[float], None] = time.sleep,
         jitter: Callable[[], float] = random.random,
+        clock: Clock = time.monotonic,
     ) -> None:
         self._auth_key = auth_key
         self._integrated_number = integrated_number
@@ -103,6 +113,7 @@ class Msg91WhatsAppSender:
         self._client = client or httpx2.Client(timeout=TIMEOUT)
         self._sleep = sleep
         self._jitter = jitter
+        self._clock = clock
 
     def send_code(self, phone: str, code: str) -> None:
         """Deliver `code` to `phone` (E.164, +91...). Raises OtpDeliveryFailed."""
@@ -116,10 +127,13 @@ class Msg91WhatsAppSender:
         )
         headers = {"authkey": self._auth_key, "accept": "application/json"}
 
+        deadline = Deadline(CALL_LIMIT_SECONDS, self._clock)
         failure = "no attempt made"
         for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
-                response = self._client.post(API_URL, json=payload, headers=headers)
+                response = exchange(
+                    self._client, "POST", API_URL, deadline, json=payload, headers=headers
+                )
             except httpx2.TransportError as exc:
                 failure = type(exc).__name__
             else:
@@ -133,11 +147,15 @@ class Msg91WhatsAppSender:
                         f"MSG91 refused the message (status {response.status_code})"
                     )
             logger.warning("otp.msg91_retry attempt=%d reason=%s", attempt, failure)
+            if deadline.expired():
+                break
             if attempt < MAX_ATTEMPTS:
                 # 0.5 s, then 1 s, each scaled by 0.5 to 1.5 so that many
-                # clients failing together do not retry together.
+                # clients failing together do not retry together; never
+                # past the send's limit.
                 delay = BASE_DELAY_SECONDS * 2 ** (attempt - 1)
-                self._sleep(delay * (0.5 + self._jitter()))
+                self._sleep(deadline.capped(delay * (0.5 + self._jitter())))
         raise OtpDeliveryFailed(
-            f"MSG91 unreachable after {MAX_ATTEMPTS} attempts ({failure})"
+            f"MSG91 unreachable within {CALL_LIMIT_SECONDS:.0f} s "
+            f"and {attempt} attempts ({failure})"
         )

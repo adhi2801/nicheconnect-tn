@@ -16,7 +16,9 @@ registration event gives the date. A registry that does not answer, or does
 not say, gives None, which is shown as "not known", never guessed.
 
 Every call has short timeouts and at most 3 attempts with backoff and
-jitter, and runs only in the background job (CLAUDE.md section 3).
+jitter, all within 15 s for the whole call (item 118, D-186: a trickling
+answer is cut off, `app.core.outside_http`), and runs only in the background
+job (CLAUDE.md section 3).
 """
 
 import logging
@@ -29,6 +31,8 @@ from typing import Any, Protocol
 
 import httpx2
 
+from app.core.deadline import Deadline
+from app.core.outside_http import exchange
 from app.modules.profiles.brand_domains import ResolverAnswer
 
 logger = logging.getLogger(__name__)
@@ -41,6 +45,8 @@ RDAP_BOOTSTRAP = "https://data.iana.org/rdap/dns.json"
 TIMEOUT = httpx2.Timeout(10.0, connect=3.0)
 MAX_ATTEMPTS = 3
 BASE_DELAY_SECONDS = 0.5
+# One URL asked, every try and wait included (item 118, D-186).
+CALL_LIMIT_SECONDS = 15.0
 RETRY_STATUSES = frozenset({429, 500, 502, 503, 504})
 TXT_TYPE = 16
 # DNS response codes: 0 is an answer, 3 is "no such name", which is an
@@ -174,10 +180,13 @@ class HttpsDomainLookup:
         headers: dict[str, str] | None = None,
     ) -> Any:
         """The JSON body, or None after MAX_ATTEMPTS. Never raises."""
+        deadline = Deadline(CALL_LIMIT_SECONDS, self._clock)
         failure = "no attempt made"
         for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
-                response = self._client.get(url, params=params, headers=headers)
+                response = exchange(
+                    self._client, "GET", url, deadline, params=params, headers=headers
+                )
             except httpx2.TransportError as exc:
                 failure = type(exc).__name__
             else:
@@ -199,9 +208,11 @@ class HttpsDomainLookup:
                 attempt,
                 failure,
             )
+            if deadline.expired():
+                break
             if attempt < MAX_ATTEMPTS:
                 delay = BASE_DELAY_SECONDS * 2 ** (attempt - 1)
-                self._sleep(delay * (0.5 + self._jitter()))
+                self._sleep(deadline.capped(delay * (0.5 + self._jitter())))
         return None
 
 

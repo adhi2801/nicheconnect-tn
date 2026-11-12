@@ -19,7 +19,9 @@ sorted: every byte kept, lengths unchanged. The token stored is the original.
 
 External-call rules (`backend.md` section 6): 3 s connect, 10 s read, at
 most 3 attempts with backoff and jitter, retrying only a network failure,
-429 or a 5xx. Only a SHA-256 fingerprint leaves the building.
+429 or a 5xx, all within 15 s for one authority's stamp (item 118, D-186; a
+trickling answer is cut off, `app.core.outside_http`). Only a SHA-256
+fingerprint leaves the building.
 """
 
 import logging
@@ -42,6 +44,9 @@ from rfc3161_client import (
 )
 from rfc3161_client.errors import VerificationError
 
+from app.core.deadline import Clock, Deadline
+from app.core.outside_http import exchange
+
 logger = logging.getLogger(__name__)
 
 # Run by different companies, so no single outage or compromise matters.
@@ -55,6 +60,8 @@ TIMEOUT = httpx2.Timeout(10.0, connect=3.0)
 MAX_ATTEMPTS = 3
 RETRY_STATUSES = frozenset({429, 500, 502, 503, 504})
 BASE_DELAY_SECONDS = 0.5
+# One authority's stamp, every try and wait included (item 118, D-186).
+CALL_LIMIT_SECONDS = 15.0
 CONTENT_TYPE = "application/timestamp-query"
 
 
@@ -171,12 +178,14 @@ class Rfc3161Authority:
         client: httpx2.Client | None = None,
         sleep: Callable[[float], None] = time.sleep,
         jitter: Callable[[], float] = random.random,
+        clock: Clock = time.monotonic,
     ) -> None:
         self.name = name
         self._url = url
         self._client = client or httpx2.Client(timeout=TIMEOUT)
         self._sleep = sleep
         self._jitter = jitter
+        self._clock = clock
 
     def stamp(self, fingerprint: bytes) -> Stamp:
         """Ask for, and check, a timestamp over `fingerprint`."""
@@ -193,11 +202,17 @@ class Rfc3161Authority:
         return Stamp(token=body, signed_at=signed_at)
 
     def _post(self, request: bytes) -> bytes:
+        deadline = Deadline(CALL_LIMIT_SECONDS, self._clock)
         failure = "no attempt made"
         for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
-                response = self._client.post(
-                    self._url, content=request, headers={"Content-Type": CONTENT_TYPE}
+                response = exchange(
+                    self._client,
+                    "POST",
+                    self._url,
+                    deadline,
+                    content=request,
+                    headers={"Content-Type": CONTENT_TYPE},
                 )
             except httpx2.TransportError as exc:
                 failure = type(exc).__name__
@@ -216,11 +231,14 @@ class Rfc3161Authority:
                 attempt,
                 failure,
             )
+            if deadline.expired():
+                break
             if attempt < MAX_ATTEMPTS:
                 delay = BASE_DELAY_SECONDS * 2 ** (attempt - 1)
-                self._sleep(delay * (0.5 + self._jitter()))
+                self._sleep(deadline.capped(delay * (0.5 + self._jitter())))
         raise TimestampFailed(
-            f"{self.name} unreachable after {MAX_ATTEMPTS} attempts ({failure})"
+            f"{self.name} unreachable within {CALL_LIMIT_SECONDS:.0f} s "
+            f"and {attempt} attempts ({failure})"
         )
 
 

@@ -18,17 +18,24 @@ minutes, for one object.
 import base64
 import hashlib
 import threading
+import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from http import HTTPStatus
 from typing import Any, Protocol
 
 from app.core.config import settings
+from app.core.deadline import Clock, Deadline, DeadlinePassed
 from app.core.errors import DomainError
 
 # Outside AWS nothing is uploaded for real, so the stand-in is only allowed
 # where nobody's files are at stake.
 MEMORY_STORE_ENVIRONMENTS = frozenset({"local", "test"})
+# Reading one stored file, from asking to the last byte (item 118, D-186):
+# the client's own limits bound each wait (connect 3 s, read 10 s, 3 tries),
+# and this bounds the whole, so a slow body cannot hold a job's worker.
+READ_LIMIT_SECONDS = 30.0
+READ_PIECE_BYTES = 64 * 1024
 
 
 class StorageNotConfigured(DomainError):
@@ -102,9 +109,10 @@ def sha256_base64(sha256_hex: str) -> str:
 class S3FileStore:
     """The real store: one private bucket, reached with the task's own role."""
 
-    def __init__(self, bucket: str, client: Any) -> None:
+    def __init__(self, bucket: str, client: Any, clock: Clock = time.monotonic) -> None:
         self.bucket = bucket
         self._client = client
+        self._clock = clock
 
     def upload_form(
         self,
@@ -161,14 +169,28 @@ class S3FileStore:
         )
 
     def read(self, key: str, *, max_bytes: int) -> bytes:
+        """The file, read piece by piece within READ_LIMIT_SECONDS.
+
+        Raises ObjectTooLarge, or DeadlinePassed once the limit is spent.
+        """
+        deadline = Deadline(READ_LIMIT_SECONDS, self._clock)
         response = self._client.get_object(Bucket=self.bucket, Key=key)
-        if int(response["ContentLength"]) > max_bytes:
-            response["Body"].close()
-            raise ObjectTooLarge(key)
-        data: bytes = response["Body"].read(max_bytes + 1)
-        if len(data) > max_bytes:
-            raise ObjectTooLarge(key)
-        return data
+        body = response["Body"]
+        try:
+            if int(response["ContentLength"]) > max_bytes:
+                raise ObjectTooLarge(key)
+            data = bytearray()
+            for piece in body.iter_chunks(chunk_size=READ_PIECE_BYTES):
+                data += piece
+                if len(data) > max_bytes:
+                    raise ObjectTooLarge(key)
+                if deadline.expired():
+                    raise DeadlinePassed("reading a stored file passed its limit")
+            if deadline.expired():
+                raise DeadlinePassed("reading a stored file passed its limit")
+            return bytes(data)
+        finally:
+            body.close()
 
     def write(self, key: str, data: bytes, *, content_type: str) -> None:
         self._client.put_object(
