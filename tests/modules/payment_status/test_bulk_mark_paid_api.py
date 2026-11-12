@@ -27,6 +27,7 @@ from tests.deal_flow import (
     creator_user,
 )
 from tests.factories import create_account
+from tests.query_counts import count_queries
 
 URL = "/api/v1/brands/me/payments/mark-paid"
 REDIS_URL = "redis://localhost:6379/2"
@@ -134,6 +135,51 @@ def test_a_reference_the_single_endpoint_would_refuse_is_refused_here_too(
     unchanged = client.get(f"{MEMOS_URL}/{bad}/payment", headers=brand.headers).json()
     assert unchanged["method"] is None
     assert unchanged["reference"] is None
+
+
+def statements_to_mark(client, brand: User, memo_ids: list[str]) -> list[str]:
+    """The SQL one bulk request runs, every row recorded."""
+    with count_queries() as statements:
+        response = mark(
+            client, brand, *(row(m, f"4123456789{i:02d}") for i, m in enumerate(memo_ids))
+        )
+    assert response.status_code == 200, response.text
+    assert response.json()["recorded"] == len(memo_ids)
+    return statements
+
+
+def test_a_long_batch_costs_the_same_queries_as_a_short_one(
+    client, db, clock, brand, unlimited
+):
+    """No query per row (audit C16, D-184). Before, each row cost eighteen
+    statements, counted by this test: 42 for two rows, 114 for six. A
+    savepoint and its release; the payment locked; the deal found and locked,
+    its parties and last entry read, the entry written; the notice's three
+    reads and its write; and the payment updated. Now the payments are
+    locked in one statement and every row's writes go out together: sixteen
+    statements counted here for two rows or six, the request's own included.
+    Two of them are this harness's SAVEPOINT and its release at the commit,
+    so production runs fourteen. And one is the payments' UPDATE, sent once
+    as an executemany with every row's values: the database still runs it
+    once a row; it is one statement to send, not one row's work."""
+    # Each batch its own creators: at least two of every kind (testing.md 2).
+    short = [approved_deal(client, brand, creator_user(db, clock)) for _ in range(2)]
+    long = [approved_deal(client, brand, creator_user(db, clock)) for _ in range(6)]
+
+    few = statements_to_mark(client, brand, short)
+    many = statements_to_mark(client, brand, long)
+
+    assert len(many) == len(few), "\n".join(many)
+    # The payments are locked in one statement, in id order: two batches that
+    # share payments take them in the same order, so they cannot deadlock.
+    locks = [s for s in many if "FROM payment_status" in s and "FOR UPDATE" in s]
+    assert len(locks) == 1, locks
+    assert "ORDER BY payment_status.id" in locks[0]
+    # Their deals too, by `record.append_each`, in one statement in id order:
+    # a single mark or a dispute entry locks the same deals one at a time.
+    deal_locks = [s for s in many if "FROM deal_memo" in s and "FOR UPDATE" in s]
+    assert len(deal_locks) == 1, deal_locks
+    assert "ORDER BY deal_memo.id" in deal_locks[0]
 
 
 # --- what it must not reveal or accept ------------------------------------------
