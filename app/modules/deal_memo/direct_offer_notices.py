@@ -31,3 +31,18 @@ CODE_MESSAGE = (
 def wording_ready() -> bool:
     """Whether every notice the feature serves is real wording, not a placeholder."""
     return not any(PLACEHOLDER_MARK in text for text in (LINK_PAGE_NOTICE, CODE_MESSAGE))
+
+
+def refuse_switch_without_wording(enabled: bool) -> None:
+    """Stop the app starting with direct offers on while any wording is a placeholder.
+
+    Called at startup (app/main.py), so the switch can never say "on" to a
+    client (`GET /api/v1/features`) while the feature would refuse; the
+    routes check `wording_ready()` again in any case.
+    """
+    if enabled and not wording_ready():
+        raise RuntimeError(
+            "DIRECT_OFFERS_ENABLED is on, but the direct offer notices are still "
+            "placeholders: put the validation pack's wording in "
+            "app/modules/deal_memo/direct_offer_notices.py first (constraint 6)"
+        )

@@ -71,6 +71,11 @@ ACCEPT_LIMIT = "10 per 10 minutes"
 router = APIRouter(
     prefix="/api/v1/direct-offers", tags=["direct offers"], route_class=IdempotentRoute
 )
+# Sending is never replayed for an `Idempotency-Key`: its answer carries the
+# link's token, which must never be kept in the idempotency store (as making
+# an assistant's token, D-138). A retry sends a second offer, which the
+# creator sees in their list and can withdraw.
+send_router = APIRouter(prefix="/api/v1/direct-offers", tags=["direct offers"])
 link_router = APIRouter(
     prefix="/api/v1/direct-offer-link",
     tags=["direct offers"],
@@ -157,7 +162,7 @@ def to_read(offer: DirectOffer, now: datetime) -> DirectOfferRead:
     )
 
 
-@router.post(
+@send_router.post(
     "",
     status_code=status.HTTP_201_CREATED,
     response_model=DirectOfferSent,

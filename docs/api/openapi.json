@@ -6150,6 +6150,734 @@
         "title": "DeviceRegister",
         "type": "object"
       },
+      "DirectOfferAcceptIn": {
+        "additionalProperties": false,
+        "description": "The brand's one step: its name, an email, the code, and the terms it saw.",
+        "properties": {
+          "brand_name": {
+            "examples": [
+              "Amma Sweets"
+            ],
+            "maxLength": 150,
+            "minLength": 1,
+            "title": "Brand Name",
+            "type": "string"
+          },
+          "code": {
+            "description": "The 6-digit code sent to the phone",
+            "examples": [
+              "042917"
+            ],
+            "pattern": "^[0-9]{6}$",
+            "title": "Code",
+            "type": "string"
+          },
+          "date_of_birth": {
+            "description": "Used once, to confirm you are 18 or over, and never stored: we keep only when you confirmed it",
+            "examples": [
+              "1999-04-14"
+            ],
+            "format": "date",
+            "title": "Date Of Birth",
+            "type": "string"
+          },
+          "email": {
+            "examples": [
+              "hello@ammasweets.in"
+            ],
+            "title": "Email",
+            "type": "string"
+          },
+          "terms_sha256": {
+            "description": "The SHA-256 of the offer's terms, as the deal record seals them",
+            "examples": [
+              "9f2c000000000000000000000000000000000000000000000000000000000000"
+            ],
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Terms Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "brand_name",
+          "email",
+          "date_of_birth",
+          "code",
+          "terms_sha256"
+        ],
+        "title": "DirectOfferAcceptIn",
+        "type": "object"
+      },
+      "DirectOfferAccepted": {
+        "description": "The brand is signed in to its new account, and the deal is agreed.",
+        "properties": {
+          "access_token": {
+            "title": "Access Token",
+            "type": "string"
+          },
+          "account": {
+            "$ref": "#/components/schemas/AccountSummary"
+          },
+          "deal_memo_id": {
+            "format": "uuid",
+            "title": "Deal Memo Id",
+            "type": "string"
+          },
+          "expires_in": {
+            "description": "Access token lifetime in seconds",
+            "examples": [
+              900
+            ],
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "refresh_expires_in": {
+            "description": "Refresh token lifetime in seconds",
+            "examples": [
+              2592000
+            ],
+            "title": "Refresh Expires In",
+            "type": "integer"
+          },
+          "refresh_token": {
+            "title": "Refresh Token",
+            "type": "string"
+          },
+          "token_type": {
+            "const": "bearer",
+            "default": "bearer",
+            "title": "Token Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token",
+          "expires_in",
+          "refresh_token",
+          "refresh_expires_in",
+          "account",
+          "deal_memo_id"
+        ],
+        "title": "DirectOfferAccepted",
+        "type": "object"
+      },
+      "DirectOfferCreate": {
+        "additionalProperties": false,
+        "description": "What a creator sends: the terms a memo carries, and who they are for.",
+        "properties": {
+          "approval_window_days": {
+            "default": 7,
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Approval Window Days",
+            "type": "integer"
+          },
+          "brand_name": {
+            "description": "The brand's name as you know it; the brand confirms or corrects it",
+            "examples": [
+              "Amma Sweets"
+            ],
+            "maxLength": 150,
+            "minLength": 1,
+            "title": "Brand Name",
+            "type": "string"
+          },
+          "brand_phone": {
+            "description": "The brand's WhatsApp number. Only this number can accept: the code that accepts goes to it. Never shown to anyone, and kept only while the offer waits",
+            "examples": [
+              "+919876543210"
+            ],
+            "pattern": "^\\+91[6-9][0-9]{9}$",
+            "title": "Brand Phone",
+            "type": "string"
+          },
+          "cancellation_fee_paise": {
+            "default": 0,
+            "maximum": 10000000000.0,
+            "minimum": 0.0,
+            "title": "Cancellation Fee Paise",
+            "type": "integer"
+          },
+          "content_due_on": {
+            "description": "The Tamil Nadu day the work is due: from today, at most a year ahead",
+            "format": "date",
+            "title": "Content Due On",
+            "type": "string"
+          },
+          "deliverable_items": {
+            "default": [],
+            "description": "The deliverables as a list, in order: at most 10 lines. The `deliverables` text stays, as the summary both sides read",
+            "items": {
+              "$ref": "#/components/schemas/DeliverableIn"
+            },
+            "maxItems": 10,
+            "title": "Deliverable Items",
+            "type": "array"
+          },
+          "deliverables": {
+            "examples": [
+              "3 Instagram reels, 1 story set"
+            ],
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Deliverables",
+            "type": "string"
+          },
+          "disclosure_required": {
+            "default": true,
+            "title": "Disclosure Required",
+            "type": "boolean"
+          },
+          "draft_review": {
+            "default": false,
+            "description": "A draft is shown and approved before posting (item 27)",
+            "title": "Draft Review",
+            "type": "boolean"
+          },
+          "extra_terms": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Terms"
+          },
+          "fee_amount_paise": {
+            "description": "Whole paise, e.g. 800000 is Rs 8,000",
+            "exclusiveMinimum": 0.0,
+            "maximum": 10000000000.0,
+            "title": "Fee Amount Paise",
+            "type": "integer"
+          },
+          "payment_due_days": {
+            "default": 7,
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Payment Due Days",
+            "type": "integer"
+          },
+          "usage_rights_days": {
+            "anyOf": [
+              {
+                "maximum": 3650.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usage Rights Days"
+          }
+        },
+        "required": [
+          "brand_name",
+          "brand_phone",
+          "deliverables",
+          "fee_amount_paise",
+          "content_due_on"
+        ],
+        "title": "DirectOfferCreate",
+        "type": "object"
+      },
+      "DirectOfferLinkRead": {
+        "description": "What the brand sees at the link: who it is from, and the terms.",
+        "properties": {
+          "approval_window_days": {
+            "title": "Approval Window Days",
+            "type": "integer"
+          },
+          "brand_name": {
+            "description": "The name the creator gave you; confirm or correct it",
+            "title": "Brand Name",
+            "type": "string"
+          },
+          "cancellation_fee_paise": {
+            "title": "Cancellation Fee Paise",
+            "type": "integer"
+          },
+          "content_due_on": {
+            "format": "date",
+            "title": "Content Due On",
+            "type": "string"
+          },
+          "creator": {
+            "$ref": "#/components/schemas/OfferingCreator"
+          },
+          "currency": {
+            "const": "INR",
+            "default": "INR",
+            "title": "Currency",
+            "type": "string"
+          },
+          "deliverable_items": {
+            "items": {
+              "$ref": "#/components/schemas/DeliverableRead"
+            },
+            "title": "Deliverable Items",
+            "type": "array"
+          },
+          "deliverables": {
+            "title": "Deliverables",
+            "type": "string"
+          },
+          "disclosure_required": {
+            "title": "Disclosure Required",
+            "type": "boolean"
+          },
+          "draft_review": {
+            "title": "Draft Review",
+            "type": "boolean"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "extra_terms": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Terms"
+          },
+          "fee_amount_paise": {
+            "title": "Fee Amount Paise",
+            "type": "integer"
+          },
+          "notice": {
+            "description": "What we do with the details given here, to show before accepting",
+            "title": "Notice",
+            "type": "string"
+          },
+          "payment_due_days": {
+            "title": "Payment Due Days",
+            "type": "integer"
+          },
+          "terms_sha256": {
+            "description": "The SHA-256 of the offer's terms, as the deal record seals them",
+            "examples": [
+              "9f2c000000000000000000000000000000000000000000000000000000000000"
+            ],
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Terms Sha256",
+            "type": "string"
+          },
+          "usage_rights_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usage Rights Days"
+          }
+        },
+        "required": [
+          "deliverables",
+          "deliverable_items",
+          "fee_amount_paise",
+          "cancellation_fee_paise",
+          "approval_window_days",
+          "payment_due_days",
+          "usage_rights_days",
+          "content_due_on",
+          "disclosure_required",
+          "draft_review",
+          "extra_terms",
+          "terms_sha256",
+          "creator",
+          "brand_name",
+          "expires_at",
+          "notice"
+        ],
+        "title": "DirectOfferLinkRead",
+        "type": "object"
+      },
+      "DirectOfferRead": {
+        "description": "One of the creator's own offers, as their sent list shows it.",
+        "properties": {
+          "approval_window_days": {
+            "title": "Approval Window Days",
+            "type": "integer"
+          },
+          "brand_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The name you gave the brand, while the offer waits; null once it ended, when it is erased (the accepted deal names the brand)",
+            "title": "Brand Name"
+          },
+          "cancellation_fee_paise": {
+            "title": "Cancellation Fee Paise",
+            "type": "integer"
+          },
+          "content_due_on": {
+            "format": "date",
+            "title": "Content Due On",
+            "type": "string"
+          },
+          "currency": {
+            "const": "INR",
+            "default": "INR",
+            "title": "Currency",
+            "type": "string"
+          },
+          "deal_memo_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The deal it became, once accepted; read it at /api/v1/deal-memos/{id}",
+            "title": "Deal Memo Id"
+          },
+          "deliverable_items": {
+            "items": {
+              "$ref": "#/components/schemas/DeliverableRead"
+            },
+            "title": "Deliverable Items",
+            "type": "array"
+          },
+          "deliverables": {
+            "title": "Deliverables",
+            "type": "string"
+          },
+          "disclosure_required": {
+            "title": "Disclosure Required",
+            "type": "boolean"
+          },
+          "draft_review": {
+            "title": "Draft Review",
+            "type": "boolean"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it was accepted, withdrawn, stopped or expired; null while it waits",
+            "title": "Ended At"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "extra_terms": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Terms"
+          },
+          "fee_amount_paise": {
+            "title": "Fee Amount Paise",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "opened_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the brand first opened the link; null until then",
+            "title": "Opened At"
+          },
+          "payment_due_days": {
+            "title": "Payment Due Days",
+            "type": "integer"
+          },
+          "sent_at": {
+            "format": "date-time",
+            "title": "Sent At",
+            "type": "string"
+          },
+          "status": {
+            "description": "`sent` while it waits, `accepted`, `withdrawn` by you, `stopped` by the number's holder, or `expired` after 14 days. Clients tolerate values they do not know",
+            "enum": [
+              "sent",
+              "accepted",
+              "withdrawn",
+              "stopped",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "terms_sha256": {
+            "description": "The SHA-256 of the offer's terms, as the deal record seals them",
+            "examples": [
+              "9f2c000000000000000000000000000000000000000000000000000000000000"
+            ],
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Terms Sha256",
+            "type": "string"
+          },
+          "usage_rights_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usage Rights Days"
+          }
+        },
+        "required": [
+          "deliverables",
+          "deliverable_items",
+          "fee_amount_paise",
+          "cancellation_fee_paise",
+          "approval_window_days",
+          "payment_due_days",
+          "usage_rights_days",
+          "content_due_on",
+          "disclosure_required",
+          "draft_review",
+          "extra_terms",
+          "terms_sha256",
+          "id",
+          "status",
+          "brand_name",
+          "sent_at",
+          "expires_at",
+          "opened_at",
+          "ended_at",
+          "deal_memo_id"
+        ],
+        "title": "DirectOfferRead",
+        "type": "object"
+      },
+      "DirectOfferSent": {
+        "description": "A new offer, with its link's token: shown this once, never again.",
+        "properties": {
+          "approval_window_days": {
+            "title": "Approval Window Days",
+            "type": "integer"
+          },
+          "brand_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The name you gave the brand, while the offer waits; null once it ended, when it is erased (the accepted deal names the brand)",
+            "title": "Brand Name"
+          },
+          "cancellation_fee_paise": {
+            "title": "Cancellation Fee Paise",
+            "type": "integer"
+          },
+          "content_due_on": {
+            "format": "date",
+            "title": "Content Due On",
+            "type": "string"
+          },
+          "currency": {
+            "const": "INR",
+            "default": "INR",
+            "title": "Currency",
+            "type": "string"
+          },
+          "deal_memo_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The deal it became, once accepted; read it at /api/v1/deal-memos/{id}",
+            "title": "Deal Memo Id"
+          },
+          "deliverable_items": {
+            "items": {
+              "$ref": "#/components/schemas/DeliverableRead"
+            },
+            "title": "Deliverable Items",
+            "type": "array"
+          },
+          "deliverables": {
+            "title": "Deliverables",
+            "type": "string"
+          },
+          "disclosure_required": {
+            "title": "Disclosure Required",
+            "type": "boolean"
+          },
+          "draft_review": {
+            "title": "Draft Review",
+            "type": "boolean"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it was accepted, withdrawn, stopped or expired; null while it waits",
+            "title": "Ended At"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "extra_terms": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Terms"
+          },
+          "fee_amount_paise": {
+            "title": "Fee Amount Paise",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "link_token": {
+            "description": "Put it in the link you send the brand, after a `#`, so no server ever receives it in a path. Shown only now; we keep only its keyed hash",
+            "title": "Link Token",
+            "type": "string"
+          },
+          "opened_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the brand first opened the link; null until then",
+            "title": "Opened At"
+          },
+          "payment_due_days": {
+            "title": "Payment Due Days",
+            "type": "integer"
+          },
+          "sent_at": {
+            "format": "date-time",
+            "title": "Sent At",
+            "type": "string"
+          },
+          "status": {
+            "description": "`sent` while it waits, `accepted`, `withdrawn` by you, `stopped` by the number's holder, or `expired` after 14 days. Clients tolerate values they do not know",
+            "enum": [
+              "sent",
+              "accepted",
+              "withdrawn",
+              "stopped",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "terms_sha256": {
+            "description": "The SHA-256 of the offer's terms, as the deal record seals them",
+            "examples": [
+              "9f2c000000000000000000000000000000000000000000000000000000000000"
+            ],
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Terms Sha256",
+            "type": "string"
+          },
+          "usage_rights_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usage Rights Days"
+          }
+        },
+        "required": [
+          "deliverables",
+          "deliverable_items",
+          "fee_amount_paise",
+          "cancellation_fee_paise",
+          "approval_window_days",
+          "payment_due_days",
+          "usage_rights_days",
+          "content_due_on",
+          "disclosure_required",
+          "draft_review",
+          "extra_terms",
+          "terms_sha256",
+          "id",
+          "status",
+          "brand_name",
+          "sent_at",
+          "expires_at",
+          "opened_at",
+          "ended_at",
+          "deal_memo_id",
+          "link_token"
+        ],
+        "title": "DirectOfferSent",
+        "type": "object"
+      },
       "DisputeClose": {
         "additionalProperties": false,
         "description": "How it ended. None of these say who was right.",
@@ -7088,6 +7816,10 @@
             "$ref": "#/components/schemas/FeatureRead",
             "description": "Connecting Instagram and YouTube (item 29): on once Meta and Google approve the apps and the connect notice exists"
           },
+          "direct_offers": {
+            "$ref": "#/components/schemas/FeatureRead",
+            "description": "A creator sending a memo to a brand not on the platform, accepted at a link (D-189): on once the link page's and the code message's notice wording exists"
+          },
           "passkeys": {
             "$ref": "#/components/schemas/FeatureRead",
             "description": "Signing in and proving changes with a passkey (item 79): on once the domain exists"
@@ -7111,7 +7843,8 @@
           "upi_ids",
           "passport_indexing",
           "results_from_proof",
-          "brief_drafting"
+          "brief_drafting",
+          "direct_offers"
         ],
         "title": "FeaturesRead",
         "type": "object"
@@ -9938,6 +10671,25 @@
         "title": "OfferRead",
         "type": "object"
       },
+      "OfferingCreator": {
+        "description": "Who the offer is from: their public name, nothing else.",
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "handle": {
+            "title": "Handle",
+            "type": "string"
+          }
+        },
+        "required": [
+          "display_name",
+          "handle"
+        ],
+        "title": "OfferingCreator",
+        "type": "object"
+      },
       "OtpRequestAccepted": {
         "properties": {
           "expires_in_seconds": {
@@ -10614,6 +11366,34 @@
           "items"
         ],
         "title": "Page[CreatorSearchResultRead]",
+        "type": "object"
+      },
+      "Page_DirectOfferRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DirectOfferRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as ?cursor= to get the next page",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[DirectOfferRead]",
         "type": "object"
       },
       "Page_FeedbackNoteRead_": {
@@ -20390,6 +21170,222 @@
         "summary": "Set up an authenticator app, with a founder's setup ticket",
         "tags": [
           "admin login"
+        ]
+      }
+    },
+    "/api/v1/auth/direct-offer-link/accept": {
+      "post": {
+        "description": "The brand's one step: confirm its name, give an email and a date of birth (adults only, D-086; only the confirmation's time is kept), the code sent to the offer's number, and the `terms_sha256` it was shown. In one transaction this makes the brand's account and profile and the deal, agreed by both, its record sealed with the creator's proposal and this acceptance; then signs the brand in. Limit: 10 in 10 minutes per address; each code allows 5 attempts.",
+        "operationId": "accept_offer_api_v1_auth_direct_offer_link_accept_post",
+        "parameters": [
+          {
+            "description": "The token from the offer's link (after its `#`)",
+            "in": "header",
+            "name": "Offer-Token",
+            "required": true,
+            "schema": {
+              "description": "The token from the offer's link (after its `#`)",
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Offer-Token",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DirectOfferAcceptIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectOfferAccepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The code is wrong, expired, already used, or was never sent"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`account_suspended`: the number's other account is suspended"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`direct_offer_not_found`: no offer has this token, or its creator is suspended or left"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The offer no longer waits: `direct_offer_expired` (its 14 days ran out), `direct_offer_withdrawn`, `direct_offer_stopped` or `direct_offer_already_accepted`; `direct_offer_terms_mismatch` (not the terms shown); `due_date_has_passed`; `brand_account_exists`; `direct_offer_own_number`; `email_taken`; `brand_name_needs_domain` (item 75); `role_mismatch`; `phone_change_waiting`. Each said only after the code was right, which stays unused"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A field is missing or invalid; `must_be_18_or_over`"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many attempts; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`direct_offers_unavailable`: direct offers are off until the notice wording exists"
+          }
+        },
+        "summary": "Accept an offer: become a brand here, and agree the deal",
+        "tags": [
+          "direct offers"
+        ]
+      }
+    },
+    "/api/v1/auth/direct-offer-link/code": {
+      "post": {
+        "description": "Sends a 6-digit code to the number the creator named, never to any other: the number is not shown, and needs no typing. The same caps as a login code: 3 codes in 10 minutes and 10 a day per number, and 3 requests in 10 minutes per address.",
+        "operationId": "request_offer_code_api_v1_auth_direct_offer_link_code_post",
+        "parameters": [
+          {
+            "description": "The token from the offer's link (after its `#`)",
+            "in": "header",
+            "name": "Offer-Token",
+            "required": true,
+            "schema": {
+              "description": "The token from the offer's link (after its `#`)",
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Offer-Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OtpRequestAccepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`direct_offer_not_found`: no offer has this token, or its creator is suspended or left"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The offer no longer waits: `direct_offer_expired` (its 14 days ran out), `direct_offer_withdrawn`, `direct_offer_stopped` or `direct_offer_already_accepted`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The `Offer-Token` header is missing or too long"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many codes requested; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`direct_offers_unavailable`: direct offers are off until the notice wording exists"
+          }
+        },
+        "summary": "Send the code that accepts an offer",
+        "tags": [
+          "direct offers"
         ]
       }
     },
@@ -38107,6 +39103,681 @@
         "summary": "Withdraw from an accepted deal (creator)",
         "tags": [
           "deal memos"
+        ]
+      }
+    },
+    "/api/v1/direct-offer-link": {
+      "get": {
+        "description": "Public: whoever holds the link reads who it is from (the creator's public name), the terms, and the notice to read before accepting. Nothing else: no number, no other deal. The first reading is shown to the creator as opened. The `terms_sha256` is what accepting names. Never cached. Limit: 60 a minute per address.",
+        "operationId": "read_offer_link_api_v1_direct_offer_link_get",
+        "parameters": [
+          {
+            "description": "The token from the offer's link (after its `#`)",
+            "in": "header",
+            "name": "Offer-Token",
+            "required": true,
+            "schema": {
+              "description": "The token from the offer's link (after its `#`)",
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Offer-Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectOfferLinkRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`direct_offer_not_found`: no offer has this token, or its creator is suspended or left"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The offer no longer waits: `direct_offer_expired` (its 14 days ran out), `direct_offer_withdrawn`, `direct_offer_stopped` or `direct_offer_already_accepted`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The `Offer-Token` header is missing or too long"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`direct_offers_unavailable`: direct offers are off until the notice wording exists"
+          }
+        },
+        "summary": "Read the offer a link carries",
+        "tags": [
+          "direct offers"
+        ]
+      }
+    },
+    "/api/v1/direct-offer-link/stop": {
+      "post": {
+        "description": "Public, no account needed: the link proves its holder received it. This creator can send this number no more direct offers, and this offer ends, its number and name erased. Works on a waiting, withdrawn or expired offer; a second tap changes nothing. Limit: 10 in 10 minutes per address.",
+        "operationId": "stop_offers_api_v1_direct_offer_link_stop_post",
+        "parameters": [
+          {
+            "description": "The token from the offer's link (after its `#`)",
+            "in": "header",
+            "name": "Offer-Token",
+            "required": true,
+            "schema": {
+              "description": "The token from the offer's link (after its `#`)",
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Offer-Token",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`direct_offer_not_found`: no offer has this token, or its creator is suspended or left"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`direct_offer_already_accepted`: it became a deal; block the creator from the brand's account instead. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The `Offer-Token` header is missing or too long. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`direct_offers_unavailable`: direct offers are off until the notice wording exists. Or: Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "summary": "Stop offers from this creator to my number",
+        "tags": [
+          "direct offers"
+        ]
+      }
+    },
+    "/api/v1/direct-offers": {
+      "get": {
+        "description": "Your offers, newest first: sent, opened, accepted (with the deal), withdrawn, stopped or expired. An offer that ended without a deal is deleted 30 days after it ended, except a stopped one.",
+        "operationId": "list_my_direct_offers_api_v1_direct_offers_get",
+        "parameters": [
+          {
+            "description": "Rows per page",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Rows per page",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "From a previous page's next_cursor",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "From a previous page's next_cursor",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_DirectOfferRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only a creator sends direct offers"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The creator profile has not been created yet"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A query parameter or the cursor is invalid"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`direct_offers_unavailable`: direct offers are off until the notice wording exists"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List my direct offers",
+        "tags": [
+          "direct offers"
+        ]
+      },
+      "post": {
+        "description": "Writes the terms a memo carries, for a brand named by its WhatsApp number, and answers with the link's token, shown this once: send the brand the link. It works for 14 days, until you withdraw it, or until the number's holder stops your offers. Only that number can accept, with a code we send it when they ask. Limits: 10 offers a Tamil Nadu day, and 3 in any 7 days to one number from anyone; 5 a minute. Never replayed for an `Idempotency-Key`: the answer carries the token, which is never kept.",
+        "operationId": "send_direct_offer_api_v1_direct_offers_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DirectOfferCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectOfferSent"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only a creator sends direct offers"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The creator profile has not been created yet; `due_date_has_passed`; `direct_offer_own_number` (your own number); `direct_offer_stopped_by_recipient` (the number stopped your offers); `creator_left`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A field is missing or invalid; `due_date_too_far` (more than a year ahead)"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`direct_offer_daily_limit` (10 today), `direct_offer_number_limit` (3 this week to that number), or too many requests; see Retry-After"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`direct_offers_unavailable`: direct offers are off until the notice wording exists"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Send a direct offer to a brand not on the platform",
+        "tags": [
+          "direct offers"
+        ]
+      }
+    },
+    "/api/v1/direct-offers/{offer_id}": {
+      "get": {
+        "description": "One of your own offers. Anyone else's, or none, is 404.",
+        "operationId": "read_my_direct_offer_api_v1_direct_offers__offer_id__get",
+        "parameters": [
+          {
+            "description": "The offer's id",
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "description": "The offer's id",
+              "format": "uuid",
+              "title": "Offer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectOfferRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only a creator sends direct offers"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`direct_offer_not_found`: no such offer of yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The creator profile has not been created yet"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The offer id is not a UUID"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`direct_offers_unavailable`: direct offers are off until the notice wording exists"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read one of my direct offers",
+        "tags": [
+          "direct offers"
+        ]
+      }
+    },
+    "/api/v1/direct-offers/{offer_id}/withdraw": {
+      "post": {
+        "description": "Takes back an offer still waiting: its link stops working at once, and the brand's number and name are erased.",
+        "operationId": "withdraw_direct_offer_api_v1_direct_offers__offer_id__withdraw_post",
+        "parameters": [
+          {
+            "description": "The offer's id",
+            "in": "path",
+            "name": "offer_id",
+            "required": true,
+            "schema": {
+              "description": "The offer's id",
+              "format": "uuid",
+              "title": "Offer Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectOfferRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No access token, or it is invalid or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Only a creator sends direct offers"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`direct_offer_not_found`: no such offer of yours"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The creator profile has not been created yet, or the offer ended: `direct_offer_expired` (its 14 days ran out), `direct_offer_withdrawn`, `direct_offer_stopped` or `direct_offer_already_accepted`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "The offer id is not a UUID. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`direct_offers_unavailable`: direct offers are off until the notice wording exists. Or: Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Withdraw a direct offer",
+        "tags": [
+          "direct offers"
         ]
       }
     },

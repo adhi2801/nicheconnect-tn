@@ -19,7 +19,12 @@ from fastapi import FastAPI
 from app.core.config import settings
 from app.modules.admin import report_clock_jobs
 from app.modules.campaigns import alert_jobs, brief_jobs
-from app.modules.deal_memo import anchor_jobs, proof_cleaning_jobs, proof_reading_jobs
+from app.modules.deal_memo import (
+    anchor_jobs,
+    direct_offer_jobs,
+    proof_cleaning_jobs,
+    proof_reading_jobs,
+)
 from app.modules.me import (
     account_deletion_jobs,
     connection_jobs,
@@ -60,6 +65,7 @@ def start(*, schema: str = DBOS_SCHEMA) -> None:
         + alert_jobs.schedules()
         + brief_jobs.schedules()
         + connection_jobs.schedules()
+        + direct_offer_jobs.schedules()
     )
 
 
