@@ -156,6 +156,9 @@ def check_reading(
 def creator_channel(
     db: Session, memo: DealMemo, platform: str | None
 ) -> CreatorChannel | None:
+    """The deal's creator's connected channel on `platform`, or None when the platform
+    is neither Instagram nor YouTube or no channel is connected there.
+    """
     if platform not in ("instagram", "youtube"):
         return None
     return db.scalars(
@@ -187,6 +190,10 @@ def due(now: datetime) -> ColumnElement[bool]:
 
 
 def readings_in_last_day(db: Session, now: datetime) -> int:
+    """How many proof files were read across the platform in the last 24 hours.
+
+    Read against `proof_reading_daily_limit`, the cap on the Claude API's daily cost.
+    """
     count = db.scalar(
         select(func.count(ProofFileReading.id)).where(
             ProofFileReading.read_at > now - timedelta(days=1)

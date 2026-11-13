@@ -92,6 +92,11 @@ def _check_canonical(value: Any) -> None:
 
 
 def canonical(value: Any) -> bytes:
+    """A value's one canonical spelling as bytes: sorted keys, no spaces, UTF-8.
+
+    Anything without a fixed JSON spelling is refused first (`_check_canonical`,
+    TypeError), so the same facts always hash the same.
+    """
     _check_canonical(value)
     return json.dumps(
         value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
@@ -139,6 +144,11 @@ def actor_fingerprint(account_id: uuid.UUID | None) -> str | None:
 
 
 def entry_body(entry: DealRecordEntry) -> dict[str, Any]:
+    """The fields of one record entry that its hash covers.
+
+    The actor is a fingerprint of the account id, never the id, so a record
+    shown to anyone names no one.
+    """
     return {
         "deal_memo_id": str(entry.deal_memo_id),
         "sequence": entry.sequence,
@@ -152,6 +162,9 @@ def entry_body(entry: DealRecordEntry) -> dict[str, Any]:
 
 
 def compute_hash(previous_hash: bytes, body: dict[str, Any]) -> bytes:
+    """An entry's hash: SHA-256 over the domain tag, the previous entry's hash and
+    the entry's canonical body, which chains each entry to the one before it.
+    """
     return hashlib.sha256(DOMAIN + previous_hash + canonical(body)).digest()
 
 
@@ -455,6 +468,7 @@ def actor_first_names(
 
 
 def entries_for(db: Session, memo_id: uuid.UUID) -> list[DealRecordEntry]:
+    """Every record entry of one memo, in order."""
     return list(
         db.scalars(
             select(DealRecordEntry)

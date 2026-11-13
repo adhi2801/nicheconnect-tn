@@ -48,6 +48,10 @@ def log_action(
     report_id: uuid.UUID | None = None,
     note: str | None = None,
 ) -> None:
+    """Add one admin act to the append-only admin log, in the caller's transaction.
+
+    The caller commits, so an act and its log line land together or not at all.
+    """
     db.add(
         AdminAction(
             admin_account_id=admin.id,
@@ -160,6 +164,11 @@ def find_accounts(
 def account_detail(
     db: Session, admin: Account, account_id: uuid.UUID, *, reason: str, now: datetime
 ) -> AccountDetail:
+    """Show an admin one account, and log the look with the reason given.
+
+    Every look at an account is logged (`security.md`: admin reads of personal
+    data are recorded). Raises AdminNotFound for an unknown account.
+    """
     account = db.get(Account, account_id)
     if account is None:
         raise AdminNotFound("No such account.")
@@ -214,6 +223,11 @@ def suspend(
 def restore(
     db: Session, admin: Account, account_id: uuid.UUID, *, note: str, now: datetime
 ) -> Account:
+    """Lift an account's suspension, logging the admin's note.
+
+    The account is read with its row locked, so two admins cannot act on it at
+    once. Raises NotSuspended, after rolling back, if it is not suspended.
+    """
     account = _target(db, admin, account_id)
     if account.suspended_at is None:
         db.rollback()
@@ -258,6 +272,12 @@ def resolve_report(
     note: str,
     now: datetime,
 ) -> Report:
+    """Close an open report with an outcome, and tell the reporter in the same transaction.
+
+    The report is locked first, so it cannot be resolved twice. The reporter is
+    told the outcome only, never the note and never who handled it (item 102).
+    Raises ReportNotFound or ReportAlreadyResolved, after rolling back.
+    """
     report = db.get(Report, report_id, with_for_update=True)
     if report is None:
         db.rollback()

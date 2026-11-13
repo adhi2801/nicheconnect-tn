@@ -1,3 +1,7 @@
+"""The campaign and application tables: what a brand posts, and each creator's
+application to it.
+"""
+
 import uuid
 from datetime import date, datetime
 

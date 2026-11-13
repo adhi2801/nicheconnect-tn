@@ -78,6 +78,12 @@ def file_report(
     note: str | None,
     now: datetime,
 ) -> Filed:
+    """File a report on an account or a thing, starting its IT Rules clock (item 51).
+
+    A second report by the same person on the same subject while one is open
+    returns the open one (`already_open`), never a duplicate. The reporter is
+    acknowledged without the note they wrote. Raises CannotReportYourself.
+    """
     if _owner_account_id(db, subject_kind, subject_id) == reporter.id:
         raise CannotReportYourself()
 

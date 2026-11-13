@@ -45,6 +45,7 @@ def _raise_for_conflict(error: IntegrityError) -> None:
 def find_profile[Profile: (Brand, Creator)](
     db: Session, model: type[Profile], account_id: uuid.UUID
 ) -> Profile | None:
+    """The brand or creator profile of one account, or None."""
     return db.scalars(select(model).where(model.account_id == account_id)).first()
 
 

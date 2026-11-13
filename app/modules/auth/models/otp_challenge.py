@@ -1,3 +1,7 @@
+"""The otp_challenge table: one login code sent to a phone, stored only as a keyed
+hash, with its expiry, the tries made, and when it was used.
+"""
+
 import uuid
 from datetime import datetime, timedelta
 

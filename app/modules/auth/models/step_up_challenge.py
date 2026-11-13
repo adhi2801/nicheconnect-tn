@@ -1,3 +1,7 @@
+"""The step_up_challenge table: a second code asked before a risky change, bound to
+that one action and its new value (item 82, D-107).
+"""
+
 import uuid
 from datetime import datetime, timedelta
 

@@ -173,6 +173,10 @@ def forget_all(db: Session, account_id: uuid.UUID) -> None:
 
 
 def export_for_account(db: Session, account_id: uuid.UUID) -> list[ExportedSection]:
+    """The account's registered phones, newest check-in first, for the data export.
+
+    The push address itself is left out: only our notification sender can use it.
+    """
     rows = list(
         db.scalars(
             select(DeviceToken)

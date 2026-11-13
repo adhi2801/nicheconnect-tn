@@ -112,6 +112,9 @@ def _attempt_context(account_id: uuid.UUID, platform: str, state_sha256: str) ->
 
 
 def token_context(creator_id: uuid.UUID, platform: str, kind: bytes) -> bytes:
+    """The context a platform token is sealed under: its kind, the creator and the
+    platform, so a sealed token cannot be moved to another creator or platform.
+    """
     return kind + creator_id.bytes + platform.encode()
 
 
@@ -309,6 +312,9 @@ def disconnect(db: Session, creator: Creator, platform: str) -> None:
 
 
 def tokens_of(connection: ConnectedAccount) -> Tokens | None:
+    """A connection's platform tokens, unsealed, or None when no token key is set or
+    the access token cannot be unsealed.
+    """
     access = (
         vault.unseal(
             connection.access_token_sealed,

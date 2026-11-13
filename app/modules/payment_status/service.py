@@ -178,6 +178,9 @@ def is_auto_matchable(payment: PaymentStatus) -> bool:
 
 
 def check_method(method: str) -> str:
+    """The method, if it is one of PAYMENT_METHODS; raises UnknownPaymentMethod,
+    naming the allowed ones, otherwise.
+    """
     if method not in PAYMENT_METHODS:
         raise UnknownPaymentMethod(f"Use one of: {', '.join(PAYMENT_METHODS)}.")
     return method
@@ -367,6 +370,7 @@ def confirm_received(
 
 
 def get_for_memo(db: Session, memo_id: uuid.UUID) -> PaymentStatus | None:
+    """The payment status of one memo, or None if none is recorded yet."""
     return db.scalars(
         select(PaymentStatus).where(PaymentStatus.deal_memo_id == memo_id)
     ).first()

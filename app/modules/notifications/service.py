@@ -365,6 +365,7 @@ def get_own(
 
 def unread_count(db: Session, account_id: uuid.UUID) -> int:
     # COUNT always returns a row; `or 0` only settles the Optional type.
+    """How many of the account's notifications are unread."""
     count = db.scalar(
         select(func.count())
         .select_from(Notification)

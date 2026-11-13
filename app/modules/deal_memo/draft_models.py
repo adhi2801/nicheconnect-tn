@@ -1,3 +1,7 @@
+"""The content_draft table: a draft a creator sends for the brand's approval before
+posting (item 27, D-140).
+"""
+
 import uuid
 from datetime import datetime
 

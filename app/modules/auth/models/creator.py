@@ -1,3 +1,5 @@
+"""The creator table: a creator account's profile, one per account (D-014)."""
+
 import uuid
 from datetime import date, datetime
 

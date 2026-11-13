@@ -188,6 +188,9 @@ def _closest_anchor(
 
 
 def encode_cursor(distance: float, row_id: uuid.UUID) -> str:
+    """An opaque page cursor for a ranked list: the last row's distance and id,
+    base64 without padding, so the next page starts exactly after it.
+    """
     raw = f"{distance!r}{_SEPARATOR}{row_id}".encode()
     return base64.urlsafe_b64encode(raw).decode().rstrip("=")
 

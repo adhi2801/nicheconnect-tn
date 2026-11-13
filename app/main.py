@@ -1,3 +1,7 @@
+"""The FastAPI app: its routers, middleware and error handlers put together, and the
+liveness and readiness checks.
+"""
+
 from http import HTTPStatus
 
 from fastapi import FastAPI, Request

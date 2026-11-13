@@ -1,3 +1,7 @@
+"""The agent_token table: scoped tokens an account gives an assistant or agent, stored
+only as a hash, revocable, and revoked when the account is suspended (item 11, D-138).
+"""
+
 import uuid
 from datetime import datetime, timedelta
 

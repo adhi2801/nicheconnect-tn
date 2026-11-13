@@ -1,3 +1,7 @@
+"""The deliverable_proof and proof_file tables: the proof a creator gives that a
+deliverable went up, and the files attached to it (D-065).
+"""
+
 import uuid
 from datetime import date, datetime
 

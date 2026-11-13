@@ -1,3 +1,7 @@
+"""The account table: one login, by phone number, in one role (D-014). One number may
+hold a brand account and a creator account, never one account in both roles (D-126).
+"""
+
 import uuid
 from datetime import datetime
 

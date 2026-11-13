@@ -1,3 +1,7 @@
+"""Every app setting, read from environment variables (or `.env` locally) and checked
+at start-up, so a wrong setting stops the app instead of failing on a request.
+"""
+
 import json
 import re
 from typing import Literal

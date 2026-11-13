@@ -1,3 +1,7 @@
+"""The auth_session table: one login on one device, with its refresh token stored only
+as a hash, rotated on every use, and ended at once by a logout.
+"""
+
 import uuid
 from datetime import datetime, timedelta
 

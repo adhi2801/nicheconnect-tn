@@ -610,6 +610,35 @@ def change_application_status(
     return application
 
 
+def _refuse_if_withheld(
+    db: Session,
+    campaign: Campaign,
+    application: Application,
+    actor: str,
+    new_status: str,
+) -> None:
+    """Withheld (item 52): no move towards a new deal, by either side.
+
+    Saying no (rejecting, declining, withdrawing) stays open to both. Each side
+    hears ContentWithheld about the other's withheld content and
+    OwnContentWithheld about its own. Rolls back before raising.
+    """
+    if (actor, new_status) == ("creator", "accepted"):
+        if campaign_is_withheld(db, campaign.id, campaign.brand_id):
+            db.rollback()
+            raise ContentWithheld()
+        if is_withheld(db, "creator", application.creator_id):
+            db.rollback()
+            raise OwnContentWithheld()
+    if actor == "brand" and new_status in {"shortlisted", "accepted"}:
+        if campaign_is_withheld(db, campaign.id, campaign.brand_id):
+            db.rollback()
+            raise OwnContentWithheld()
+        if is_withheld(db, "creator", application.creator_id):
+            db.rollback()
+            raise ContentWithheld()
+
+
 def move_application(
     db: Session,
     application: Application,
@@ -659,22 +688,7 @@ def move_application(
         ):
             db.rollback()
             raise ApplicationsClosed()
-    # Withheld (item 52): no move towards a new deal, by either side. Saying
-    # no (rejecting, declining, withdrawing) stays open to both.
-    if (actor, new_status) == ("creator", "accepted"):
-        if campaign_is_withheld(db, campaign.id, campaign.brand_id):
-            db.rollback()
-            raise ContentWithheld()
-        if is_withheld(db, "creator", application.creator_id):
-            db.rollback()
-            raise OwnContentWithheld()
-    if actor == "brand" and new_status in {"shortlisted", "accepted"}:
-        if campaign_is_withheld(db, campaign.id, campaign.brand_id):
-            db.rollback()
-            raise OwnContentWithheld()
-        if is_withheld(db, "creator", application.creator_id):
-            db.rollback()
-            raise ContentWithheld()
+    _refuse_if_withheld(db, campaign, application, actor, new_status)
     # A counter-offer (item 44, D-123): the figure is settled before the deal
     # moves on, so nobody can say afterwards which price was agreed; saying
     # no ends the open offer with the application.

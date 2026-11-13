@@ -53,6 +53,7 @@ class Arrival:
 
 
 def new_code() -> str:
+    """A new invite code: CODE_LENGTH characters of CODE_ALPHABET, drawn with `secrets`."""
     return "".join(secrets.choice(CODE_ALPHABET) for _ in range(CODE_LENGTH))
 
 

@@ -953,4 +953,5 @@ def names_for(
 
 
 def agreed_amount(db: Session, memo: DealMemo) -> int | None:
+    """One memo's agreed fee in paise, or None: the one-memo form of `agreed_amounts`."""
     return agreed_amounts(db, [memo])[memo.id]

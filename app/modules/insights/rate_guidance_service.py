@@ -49,6 +49,9 @@ AUDIENCE_BANDS: tuple[tuple[AudienceBand, int, int | None], ...] = (
 
 
 def audience_band(followers: int) -> tuple[AudienceBand, int, int | None]:
+    """The audience band a follower count falls in, with its bounds (the top band's
+    upper bound None). Raises ValueError only for a negative count.
+    """
     for band in AUDIENCE_BANDS:
         _, low, high = band
         if followers >= low and (high is None or followers < high):

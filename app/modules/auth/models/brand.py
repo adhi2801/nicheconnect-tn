@@ -1,3 +1,5 @@
+"""The brand table: a brand account's profile, one per account (D-014)."""
+
 import uuid
 from datetime import datetime
 

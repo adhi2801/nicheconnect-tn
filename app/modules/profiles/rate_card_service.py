@@ -60,6 +60,7 @@ def check_profile_url(platform: str, profile_url: str) -> None:
 
 
 def list_channels(db: Session, creator: Creator) -> list[CreatorChannel]:
+    """The creator's channels, by platform."""
     return list(
         db.scalars(
             select(CreatorChannel)
@@ -125,6 +126,7 @@ def save_channel(
 
 
 def delete_channel(db: Session, creator: Creator, platform: str) -> None:
+    """Remove the creator's channel on one platform; raises ChannelNotFound if none."""
     channel = db.scalars(
         select(CreatorChannel).where(
             CreatorChannel.creator_id == creator.id,
@@ -141,6 +143,7 @@ def delete_channel(db: Session, creator: Creator, platform: str) -> None:
 
 
 def list_packages(db: Session, creator: Creator) -> list[CreatorPackage]:
+    """The creator's packages, in the order the creator set."""
     return list(
         db.scalars(
             select(CreatorPackage)
@@ -215,6 +218,9 @@ def update_package(
 
 
 def delete_package(db: Session, creator: Creator, package_id: uuid.UUID) -> None:
+    """Remove one of the creator's packages; another creator's reads as
+    PackageNotFound, never a refusal that would confirm it exists.
+    """
     package = _owned_package(db, creator, package_id)
     db.delete(package)
     db.commit()

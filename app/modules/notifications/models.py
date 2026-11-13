@@ -1,3 +1,5 @@
+"""The notification table: what each account is told, and when it read it."""
+
 import uuid
 from datetime import datetime
 from typing import Any

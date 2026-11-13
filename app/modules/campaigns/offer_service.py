@@ -114,6 +114,7 @@ def summaries_for(
 
 
 def summary_for(db: Session, application_id: uuid.UUID) -> OfferSummary:
+    """One application's offer summary: the one-row form of `summaries_for`."""
     return summaries_for(db, [application_id])[application_id]
 
 
@@ -492,5 +493,8 @@ def read_applications(
 
 
 def read_application(db: Session, application: Application) -> ApplicationRead:
+    """One application as the API reads it: the one-row form of `read_applications`,
+    so a single read and a list share one way of building it.
+    """
     [read] = read_applications(db, [application])
     return read

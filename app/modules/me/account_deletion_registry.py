@@ -24,7 +24,7 @@ from app.core.config import Settings, settings
 
 ERASED: frozenset[str] = frozenset(
     {
-        # auth (auth.erasure)
+        # auth, erased by its own erasure module
         "auth_session",
         "agent_token",
         "device_token",

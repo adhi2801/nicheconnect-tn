@@ -1,3 +1,7 @@
+"""The brand_member and brand_invite tables: the people other than its owner who act
+for a brand, each in one role, and the invitations waiting for them (item 13).
+"""
+
 import uuid
 from datetime import datetime, timedelta
 

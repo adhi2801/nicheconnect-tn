@@ -159,6 +159,13 @@ select = [
     "DTZ",      # naive datetimes — we care about this one a lot
     "S",        # bandit: security
     "RUF",
+    # backend.md section 10, locked on 13 November 2026 (D-192): no `print` in
+    # app/, no commented-out code, no TODO without a linked item, and a
+    # function past 50 statements split.
+    "T20",
+    "ERA",
+    "TD003",
+    "PLR0915",
 ]
 ignore = [
     # Long lines are caught by the formatter; failing twice for one thing
@@ -190,7 +197,16 @@ extend-immutable-calls = [
     "S105", "S106",  # "hardcoded password" — test-only fake values
     "S311",  # random in test data is not cryptography
     "S113",  # request timeouts in probes
+    "T20",   # the contract snapshot is a command; its output is printed
 ]
+# Command-line scripts: printing is their output.
+"scripts/**" = ["T20"]
+# The four functions past 50 statements outside app/ on 13 November 2026, each
+# to be split (D-192): exempt by name, never by folder, so no new one joins them.
+"scripts/measure_performance.py" = ["T20", "PLR0915"]
+"scripts/seed_dev_data.py" = ["T20", "PLR0915"]
+"tests/modules/matching/test_words_reader_properties.py" = ["PLR0915"]
+"tests/modules/test_stranger_routes.py" = ["PLR0915"]
 # Migrations are generated and then hand-edited; their shape is alembic's.
 "alembic/**" = ["E402", "F401"]
 

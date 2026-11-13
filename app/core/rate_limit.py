@@ -1,3 +1,7 @@
+"""How routes are rate limited (constraint 4: every public endpoint): per address,
+per signed-in account, or one limit shared across routes that name the same scope.
+"""
+
 from collections.abc import Callable
 from typing import Any
 

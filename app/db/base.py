@@ -1,3 +1,7 @@
+"""The declarative base every model inherits, with one naming convention for
+constraints and indexes, so migrations name them the same way every time.
+"""
+
 from sqlalchemy import MetaData
 from sqlalchemy.orm import DeclarativeBase
 

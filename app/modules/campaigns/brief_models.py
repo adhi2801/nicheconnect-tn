@@ -1,3 +1,7 @@
+"""The campaign_brief_draft table: each campaign brief drafted from a brand's few
+sentences (item 40), kept to count against the daily drafting limit.
+"""
+
 import uuid
 from datetime import datetime
 from typing import Any

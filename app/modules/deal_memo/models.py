@@ -1,3 +1,7 @@
+"""The deal_memo table: the terms a brand offers a creator and both agree on; the
+terms sent are sealed in the deal record (`legal.md` section 3.5).
+"""
+
 import uuid
 from datetime import date, datetime
 

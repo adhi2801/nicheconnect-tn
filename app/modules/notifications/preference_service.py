@@ -153,6 +153,11 @@ def _next(moment: datetime, at: time) -> datetime:
 
 
 def in_quiet_hours(prefs: Preferences, moment: datetime) -> bool:
+    """Whether `moment` falls in the person's quiet hours, read in Tamil Nadu time.
+
+    A window that crosses midnight (22:00 to 08:00) is handled; no window set
+    means never quiet.
+    """
     if prefs.quiet_from is None or prefs.quiet_until is None:
         return False
     now = moment.astimezone(IST).time()

@@ -51,6 +51,9 @@ def covers_until(day: date) -> datetime:
 
 
 def leaf(memo_id: uuid.UUID, seal: bytes) -> bytes:
+    """The Merkle leaf for one memo's seal: the memo's id bytes, then the seal, so a
+    leaf names the memo it proves.
+    """
     return memo_id.bytes + seal
 
 
@@ -68,6 +71,9 @@ def leaves_at(db: Session, cutoff: datetime) -> list[tuple[uuid.UUID, bytes]]:
 
 
 def checkpoint_for(db: Session, day: date) -> DealRecordCheckpoint | None:
+    """The daily checkpoint covering everything sealed before midnight in Tamil Nadu
+    at the start of `day`, or None if it was not made.
+    """
     return db.scalars(
         select(DealRecordCheckpoint).where(
             DealRecordCheckpoint.covers_until == covers_until(day)

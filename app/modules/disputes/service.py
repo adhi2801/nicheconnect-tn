@@ -111,18 +111,23 @@ def is_open(dispute: Dispute, today: date) -> bool:
 
 
 def check_party(role: str) -> str:
+    """The role, if it is a party to disputes; raises NotADisputeParty otherwise."""
     if role not in DISPUTE_PARTIES:
         raise NotADisputeParty()
     return role
 
 
 def check_outcome(outcome: str) -> str:
+    """The outcome, if it is one of DISPUTE_OUTCOMES; raises UnknownDisputeOutcome,
+    naming the allowed ones, otherwise.
+    """
     if outcome not in DISPUTE_OUTCOMES:
         raise UnknownDisputeOutcome(f"Use one of: {', '.join(DISPUTE_OUTCOMES)}.")
     return outcome
 
 
 def get_for_payment(db: Session, payment_id: uuid.UUID) -> Dispute | None:
+    """The dispute about one payment, or None."""
     return db.scalars(
         select(Dispute).where(Dispute.payment_status_id == payment_id)
     ).first()
@@ -356,6 +361,7 @@ def timeline(db: Session, dispute: Dispute) -> list[DisputeEvent]:
 
 
 def get_or_404(db: Session, payment_id: uuid.UUID) -> Dispute:
+    """The dispute about one payment; raises DisputeNotFound if there is none."""
     dispute = get_for_payment(db, payment_id)
     if dispute is None:
         raise DisputeNotFound()

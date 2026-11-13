@@ -331,6 +331,9 @@ def list_for_memo(db: Session, memo: DealMemo, now: datetime) -> list[Deliverabl
 def get_for_memo(
     db: Session, memo: DealMemo, proof_id: uuid.UUID, now: datetime
 ) -> DeliverableProof:
+    """One proof of this memo, settled first if its review window has passed
+    (`settle_if_overdue`). Raises ProofNotFound for none, or another memo's proof.
+    """
     proof = db.scalars(
         select(DeliverableProof).where(
             DeliverableProof.id == proof_id, DeliverableProof.deal_memo_id == memo.id

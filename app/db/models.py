@@ -1,3 +1,5 @@
+"""Imports every model once, so the mapper and Alembic's autogenerate see every table."""
+
 from app.modules.admin.models.admin_action import AdminAction  # noqa: F401
 from app.modules.admin.models.report import Report  # noqa: F401
 from app.modules.auth.models.account import Account  # noqa: F401

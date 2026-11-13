@@ -112,6 +112,10 @@ def get(
 
 
 def drafted_in_last_day(db: Session, now: datetime) -> int:
+    """How many campaign briefs were drafted across the platform in the last 24 hours.
+
+    Read against `brief_drafting_daily_limit`, the cap on the Claude API's daily cost.
+    """
     count = db.scalar(
         select(func.count()).where(
             CampaignBriefDraft.drafted_at > now - timedelta(days=1)

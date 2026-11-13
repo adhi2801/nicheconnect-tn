@@ -39,6 +39,9 @@ SAFETY = "NicheConnect never asks anyone to pay to get a deal."
 
 
 def uid(memo: DealMemo, kind: str) -> str:
+    """A calendar event's UID for one memo and one kind of date (RFC 5545), the same
+    every time, so a file downloaded again updates the event instead of adding one.
+    """
     return f"deal-{memo.id}-{kind}@nicheconnect-tn"
 
 

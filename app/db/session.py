@@ -1,3 +1,5 @@
+"""The database engine and one session per request, always closed afterwards."""
+
 from collections.abc import Iterator
 
 from sqlalchemy import create_engine
