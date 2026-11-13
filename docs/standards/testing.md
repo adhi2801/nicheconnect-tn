@@ -107,6 +107,7 @@ tests/
   test_banned_terms.py     the money words, across every file and every commit message
   test_docs.py             every document's decision numbers, paths, links and section references exist
   test_finish_line.py      the backend's finish line counts what its tables say
+  test_readme_numbers.py   the README's countable numbers are the code's
   test_incident_response.py  every secret the app is given has a rotation step
 ```
 

@@ -49,7 +49,7 @@ One deployable FastAPI service, a **modular monolith** with enforced layers: a m
 flowchart TB
     subgraph clients [Clients]
         web[Website: Next.js]
-        mobile[Android and iOS app: Flutter]
+        mobile[Android and iOS apps]
     end
     subgraph api [FastAPI modular monolith]
         direction TB
@@ -69,19 +69,19 @@ flowchart TB
     api -. "retries with backoff, never blocking a request" .-> ext[Claude API · WhatsApp · RFC 3161 timestamp authorities]
 ```
 
-**Stack:** Python 3.14 · FastAPI · SQLAlchemy 2 · PostgreSQL 18 + pgvector · Valkey · DBOS · Alembic · OpenTelemetry · Sentry · Docker · AWS (Mumbai), described in OpenTofu. Frontend: Next.js 16 for the website and Flutter for the Android and iOS app, in the same repository. Both build against types generated from the committed API contract.
+**Stack:** Python 3.14 · FastAPI · SQLAlchemy 2 · PostgreSQL 18 + pgvector · Valkey · DBOS · Alembic · OpenTelemetry · Sentry · Docker · AWS (Mumbai), described in OpenTofu. Frontend: Next.js 16 for the website, then an Android app and an iOS app (D-046, proposed: Adhi's direction, awaiting Erode Harish); the first app code, from pull request #78, is in Flutter, and Flutter or Expo for the apps is still the founders' decision. All in the same repository. Both build against types generated from the committed API contract.
 
 ---
 
 ## Engineering, by the numbers
 
-Every number here comes from a tool, not an estimate.
+Every number here comes from a tool, not an estimate, counted on 13 November 2026; the contract's operations and the property-based tests are checked against the code on every test run (`tests/test_readme_numbers.py`).
 
 | | |
 |---|---|
-| **225** API routes | One contract (`docs/api/openapi.json`), committed. Any change to it shows up in review, and the apps' types are regenerated from it in CI |
-| **3,683** tests | Run against a real PostgreSQL, never a mock database; **98%** line coverage, and every `service.py` at **90% or more**, enforced in CI |
-| **155** property-based tests | Hypothesis checks rules over every input, not just examples: deal stages, payment states, dates, ranking order |
+| **226** API operations | One contract (`docs/api/openapi.json`), committed. Any change to it shows up in review, and the apps' types are regenerated from it in CI |
+| **6,182** tests | Run against a real PostgreSQL, never a mock database; **98%** coverage counting branches (6 November), and every `service.py` at **90% or more**, enforced in CI |
+| **151** property-based tests | Hypothesis checks rules over every input, not just examples: deal stages, payment states, dates, ranking order |
 | **Mutation testing** | mutmut, nightly, on every rule where a silent mistake costs money or trust. Survivors are named and driven down |
 | **Every rule broken on purpose** | A fix counts only when its test is shown failing without it |
 | **Contract fuzzing** | Schemathesis generates requests from the OpenAPI contract in CI; no input may produce a 500 |
@@ -143,4 +143,4 @@ The scripts refuse to run outside a local environment. Sample phones are `+91900
 
 ---
 
-**Status:** the backend carries the pilot's whole deal flow, from campaign to sealed, paid deal; what is left is tracked item by item in [`docs/BACKEND_COMPLETE.md`](docs/BACKEND_COMPLETE.md). The website and the app are in build. Built in Tamil Nadu by two founders.
+**Status:** the backend carries the pilot's whole deal flow, from campaign to sealed, paid deal; what is left is tracked item by item in [`docs/BACKEND_COMPLETE.md`](docs/BACKEND_COMPLETE.md). The website and the apps are in build. Built in Tamil Nadu by two founders.
