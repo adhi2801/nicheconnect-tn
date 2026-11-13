@@ -56,6 +56,7 @@ What moves a row from **(decision)** to binding: a founder's yes, recorded in `d
 | Free text another person reads | Its `text_flags`: what must flag and, just as carefully, ordinary wording that must not | *(review only)* |
 | A request body | Refuses unknown fields | `tests/test_architecture.py` |
 | A document, or a code comment naming a section | Its decision numbers, paths, links and section references exist | `tests/test_docs.py`, on every run |
+| An item built, or a capability audited | `docs/BACKEND_COMPLETE.md` marks it; every built item is named by exactly one capability; section 2's counts are the tables' counts | `tests/test_finish_line.py`, on every run (D-191) |
 
 ## 2. Proving a test can fail
 
@@ -105,6 +106,7 @@ tests/
   test_check_constraints.py  every CHECK in the models matches the migrated database
   test_banned_terms.py     the money words, across every file and every commit message
   test_docs.py             every document's decision numbers, paths, links and section references exist
+  test_finish_line.py      the backend's finish line counts what its tables say
   test_incident_response.py  every secret the app is given has a rotation step
 ```
 
