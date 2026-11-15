@@ -22,6 +22,7 @@ from app.modules.campaigns import alert_jobs
 from app.modules.deal_memo import (
     anchor_jobs,
     anchor_service,
+    direct_offer_jobs,
     proof_cleaning_jobs,
     proof_reading_jobs,
 )
@@ -425,3 +426,29 @@ def test_a_refresh_run_while_switched_off_reads_nothing(launched):
     run = connection_jobs.run_refresh(SCHEDULED)
 
     assert run.read == run.expired == run.unavailable == 0
+
+
+def test_direct_offers_are_expired_and_erased_hourly_with_no_backfill(launched):
+    """D-189: a number outlives its offer's end by an hour at most."""
+    schedule = DBOS.get_schedule(direct_offer_jobs.SCHEDULE_NAME)
+
+    assert schedule is not None
+    assert schedule["schedule"] == direct_offer_jobs.HOURLY_CRON == "15 * * * *"
+    assert schedule["automatic_backfill"] is False
+
+
+def test_the_direct_offer_workflow_runs_through_dbos(launched, monkeypatch):
+    runs = []
+    monkeypatch.setattr(
+        direct_offer_jobs, "run", lambda scheduled_at: runs.append(scheduled_at)
+    )
+
+    direct_offer_jobs.hourly(SCHEDULED, None)
+
+    assert runs == [SCHEDULED]
+
+
+def test_a_direct_offer_run_with_nothing_due_changes_nothing(launched):
+    run = direct_offer_jobs.run(SCHEDULED)
+
+    assert run.expired == run.deleted == 0

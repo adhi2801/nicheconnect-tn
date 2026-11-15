@@ -12,6 +12,7 @@ from app.core import features
 from app.core.config import settings
 from app.main import app
 from app.modules.auth.exceptions import PasskeysNotOpen
+from app.modules.deal_memo.exceptions import DirectOffersOff
 from app.modules.payment_status.exceptions import UpiNotOpenYet
 from app.modules.profiles.exceptions import ConnectionsOff
 
@@ -38,6 +39,7 @@ def test_it_needs_no_login_and_is_cached_for_five_minutes(client):
         "passport_indexing",
         "results_from_proof",
         "brief_drafting",
+        "direct_offers",
     }
 
 
@@ -47,6 +49,7 @@ def test_each_off_code_is_the_one_its_routes_answer():
     assert found.passkeys.off_code == PasskeysNotOpen.code
     assert found.connected_accounts.off_code == ConnectionsOff.code
     assert found.upi_ids.off_code == UpiNotOpenYet.code
+    assert found.direct_offers.off_code == DirectOffersOff.code
 
 
 @pytest.mark.parametrize(
@@ -56,6 +59,7 @@ def test_each_off_code_is_the_one_its_routes_answer():
         ("platform_connections_enabled", True, "connected_accounts"),
         ("upi_notice_version", "v1", "upi_ids"),
         ("passport_indexing", True, "passport_indexing"),
+        ("direct_offers_enabled", True, "direct_offers"),
     ],
 )
 def test_each_feature_follows_the_setting_its_routes_follow(

@@ -48,8 +48,12 @@ NOT_COVERED_PREFIX = "/api/v1/auth/"
 # - Meta's two callbacks (D-134): Meta calls them and sends no key, and a
 #   repeat is harmless, since a second deletion finds nothing left to remove;
 # - making an assistant's token (D-138): the answer carries the token, which
-#   must never be kept; a retry is refused, its code being spent.
+#   must never be kept; a retry is refused, its code being spent;
+# - sending a direct offer (D-189): the answer carries the link's token, which
+#   must never be kept either; a retry sends a second offer, which the creator
+#   sees in their list and can withdraw, within the same daily ceilings.
 NEVER_REPLAYED = {
+    "POST /api/v1/direct-offers",
     "POST /api/v1/me/agent-tokens",
     "POST /api/v1/me/exports/{export_id}/download",
     "POST /api/v1/platforms/meta/data-deletion",

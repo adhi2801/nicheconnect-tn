@@ -36,6 +36,10 @@ REACH = (
     "app.modules.matching.router.list_campaigns_for_me",
     "app.modules.payment_status.upi_router.read_pay_details",
     "app.modules.me.team_router.invite",
+    # A creator's direct offer to a brand's number (D-189); the link's code
+    # reaches that number only when its holder asks, under the number's own
+    # 10 codes a day (security.md section 1).
+    "app.modules.deal_memo.direct_offer_router.send_direct_offer",
 )
 
 

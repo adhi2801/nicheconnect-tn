@@ -679,3 +679,45 @@ def test_the_creator_reads_the_brands_open_campaign_as_not_found(
     response = client.get(f"/api/v1/campaigns/{campaign_id}", headers=creator.headers)
 
     assert (response.status_code, response.json()["code"]) == (404, "campaign_not_found")
+
+
+# --- a brand made at a direct offer's link (D-189) ----------------------------------------
+
+
+@pytest.mark.parametrize("blocker", ["creator", "brand", None])
+def test_a_block_holds_on_a_deal_agreed_at_a_link(
+    client, db, clock, monkeypatch, blocker
+):
+    """A brand that arrived by a direct offer is an ordinary brand: a block
+    either way stops a repeat of their deal, as it would any deal's; with no
+    block, the same repeat is made."""
+    from app.main import app
+    from app.modules.auth.sender import FakeOtpSender, get_otp_sender
+    from tests.direct_offers import accept, sent, switch_on
+    from tests.factories import fake_phone
+
+    switch_on(monkeypatch)
+    sender = FakeOtpSender()
+    app.dependency_overrides[get_otp_sender] = lambda: sender
+    creator = creator_user(db, clock)
+    phone = fake_phone()
+    accepted = accept(client, sender, sent(client, creator, phone), phone).json()
+    brand = User(uuid.UUID(accepted["account"]["id"]), "brand", clock)
+    brand_id, creator_id = ids(db, brand, creator)
+    if blocker == "creator":
+        client.post(URL, json={"brand_id": brand_id}, headers=creator.headers)
+    elif blocker == "brand":
+        client.post(URL, json={"creator_id": creator_id}, headers=brand.headers)
+    campaign_id = open_campaign(client, brand, title="Diwali")
+
+    response = client.post(
+        f"{MEMOS_URL}/{accepted['deal_memo_id']}/repeat",
+        json={"campaign_id": campaign_id},
+        headers=brand.headers,
+    )
+
+    if blocker is None:
+        assert response.status_code == 201, response.text
+    else:
+        assert response.status_code == 404
+        assert response.json()["code"] == "creator_not_found"

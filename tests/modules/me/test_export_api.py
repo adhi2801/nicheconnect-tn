@@ -23,6 +23,7 @@ from app.modules.auth.models.account import Account
 from app.modules.auth.tokens import create_access_token
 from app.modules.campaigns import service as campaigns_service
 from app.modules.campaigns.models import Application
+from app.modules.deal_memo import direct_offer_service
 from app.modules.deal_memo import service as deal_memo_service
 from app.modules.disputes import service as disputes_service
 from app.modules.me import export_service
@@ -63,6 +64,7 @@ FIELD_LISTS: dict[str, tuple[str, ...]] = {
     "payment_status": payment_service.EXPORT_FIELDS,
     "dispute": disputes_service.DISPUTE_EXPORT_FIELDS,
     "dispute_event": disputes_service.EVENT_EXPORT_FIELDS,
+    "direct_offer": direct_offer_service.EXPORT_FIELDS,
 }
 
 

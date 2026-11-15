@@ -192,7 +192,9 @@ def method(route: APIRoute) -> str:
 
 
 @pytest.fixture
-def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
+def world(
+    client: TestClient, db: Session, clock, monkeypatch: pytest.MonkeyPatch
+) -> dict[str, Any]:
     """Everything brand A and creator A own, made through the API."""
     brand, creator = brand_user(db, clock), creator_user(db, clock)
     memo_id = accepted_memo(client, brand, creator)
@@ -454,8 +456,16 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
         )
     )
 
+    # A direct offer the creator sent (D-189), the feature switched on with
+    # test wording so its routes answer as they will.
+    from tests.direct_offers import sent, switch_on
+
+    switch_on(monkeypatch)
+    direct_offer_id = sent(client, creator)["id"]
+
     ids = {
         "memo_id": memo_id,
+        "direct_offer_id": direct_offer_id,
         "brief_draft_id": brief_draft_id,
         "application_id": application_id,
         "campaign_id": campaign_id,

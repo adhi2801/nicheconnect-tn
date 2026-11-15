@@ -4,6 +4,8 @@ Mutated nightly with the module (pyproject.toml, D-091), so each boundary
 here is pinned by an exact example on both sides of it.
 """
 
+import hashlib
+import hmac
 from datetime import UTC, date, datetime, timedelta
 
 import pytest
@@ -11,7 +13,12 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from app.core.clock import IST
+from app.core.config import settings
 from app.modules.deal_memo import direct_offer_rules as rules
+from app.modules.deal_memo.direct_offer_models import (
+    DIRECT_OFFER_LIFETIME,
+    ENDED_OFFER_KEPT_FOR,
+)
 
 # 10:00 on 20 November 2026 in Tamil Nadu.
 NOW = datetime(2026, 11, 20, 4, 30, tzinfo=UTC)
@@ -51,6 +58,22 @@ def test_the_token_is_kept_only_as_a_keyed_hash_under_its_own_label():
     # The same value under the number's label hashes differently: one key,
     # two purposes, never interchangeable.
     assert stored != rules.hash_recipient_phone(token)
+
+
+def test_the_hashes_are_pinned_to_their_labels_and_key():
+    """Known answers, worked out here without the module: a change to a
+    label, or to the separator, would orphan every hash already stored (a
+    link would stop opening, a "stop these" stop blocking), so it must fail
+    a test, not pass silently."""
+    key = settings.otp_hash_key.get_secret_value().encode()
+
+    def expected(label: bytes, value: str) -> str:
+        return hmac.new(key, label + b"\x00" + value.encode(), hashlib.sha256).hexdigest()
+
+    token = "A" * 43
+    phone = "+919876543210"
+    assert rules.hash_link_token(token) == expected(b"direct-offer-link", token)
+    assert rules.hash_recipient_phone(phone) == expected(b"direct-offer-phone", phone)
 
 
 def test_a_number_s_hash_is_its_own_not_a_team_invite_s():
@@ -135,6 +158,10 @@ def test_the_limits_are_the_approved_ones():
     assert rules.WEEKLY_OFFERS_PER_NUMBER == 3
     assert timedelta(days=7) == rules.NUMBER_WINDOW
     assert timedelta(days=365) == rules.MAX_DUE_AHEAD
+    # The privacy impact assessment's numbers (D-189): a link works 14 days,
+    # and an offer ended without a deal is gone 30 days later.
+    assert timedelta(days=14) == DIRECT_OFFER_LIFETIME
+    assert timedelta(days=30) == ENDED_OFFER_KEPT_FOR
 
 
 # Hypothesis takes naive bounds and adds the zone itself (timezones=).
