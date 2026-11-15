@@ -60,6 +60,7 @@ Dated reports, the decision log and the papers in `decided/` are records: they k
 | `FRONTEND_COMPLETE.md` | **The one list of what the website and both apps still need**: 341 items in seventeen areas (decisions, identity, design system, components, experience, journeys, screens, landing page, motion, 3D, accessibility, performance, engineering, being found, the apps, what puts us ahead, release), each with its proof and gate, counted from the tables (31 October 2026). |
 | `PLATFORM_AND_TECH_PLAN.md` | The locked technology baseline (section 4.0) and the platform plan. |
 | `PRODUCT_BACKLOG.md` | The original product phases A to E, kept for `assign-task`'s progress view; open items are carried in `BACKEND_COMPLETE.md`. |
+| `DOCS_STATUS.md` | **Which documents meet the bar, file by file**: one row per Markdown file, its kind, status, check date and evidence; `tests/test_docs_status.py` keeps it complete and true. |
 | `PLAYBOOK_GAPS.md` | The 1 October gap audit; its open items are carried in `BACKEND_COMPLETE.md`. |
 
 ## 4. Research: read when the topic comes up
