@@ -2421,3 +2421,14 @@ Newest entries at the bottom.
   1. `.claude/agents/fault-finder.md` is the brief; `.gitignore` now tracks `.claude/agents/`. The caller still passes the branch, the approved proposal and a database name.
   2. `tests/test_reviewer_agent.py` fails if the brief loses a file in `docs/standards/`, gains a tool that edits files (Edit, Write), or drops its read-only, no-false-claims, section 2 or not-the-other-founder rules. Broken on purpose: Edit added and `legal.md` removed; both failed, then restored.
   3. Its review never counts as the other founder's (section 6); reports still say no second person reviewed the change.
+
+## D-195: OpenTelemetry 1.45.1 to 1.45.2, for GHSA-mf5v-w3w3-f6cg
+- Date: 2026-11-15
+- Approved by: Adhi, in this session: "Upgrade to 1.45.2 (Recommended)", then "Move all three (Recommended)" once the SDK's exact pin showed the three move together. **Not reviewed by the other founder** (D-051).
+- Context: CI's image gate failed on every branch from 15 November 2026 (first seen on `17a9df3`): Grype 0.119.0 found GHSA-mf5v-w3w3-f6cg (Medium) in opentelemetry-api 1.45.1, fixed in 1.45.2. Nothing in the code changed: the vulnerability database moved. Dependabot's own update failed, because opentelemetry-sdk 1.45.1 requires opentelemetry-api exactly 1.45.1.
+- Options considered: A) move the three pinned OpenTelemetry packages (api, sdk, exporter-otlp-proto-http) to 1.45.2 together; B) accept the advisory in `.grype.yaml`; C) leave CI red.
+- Chosen: A.
+- Reason: a patch release of the same project fixes it (D-047: security fixes at once); B would keep a fixable flaw, C blocks every merge.
+- Consequences / follow-ups:
+  1. `pyproject.toml` and `uv.lock`: those three at 1.45.2; uv moved only their own family with them (exporter-otlp-proto-common and opentelemetry-proto 1.45.2; semantic-conventions, exporter-otlp-common and exporter-http-transport 0.66b2). No other package changed.
+  2. Checked locally on 15 November 2026: the API image rebuilt and Grype 0.119.0 with `--only-fixed --fail-on negligible` found no vulnerabilities; `tests/core/test_tracing.py` and `tests/core/test_structured_logs.py`, 31 passed.
