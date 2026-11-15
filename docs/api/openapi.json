@@ -6410,7 +6410,6 @@
           },
           "currency": {
             "const": "INR",
-            "default": "INR",
             "title": "Currency",
             "type": "string"
           },
@@ -6487,6 +6486,7 @@
           "deliverables",
           "deliverable_items",
           "fee_amount_paise",
+          "currency",
           "cancellation_fee_paise",
           "approval_window_days",
           "payment_due_days",
@@ -6534,7 +6534,6 @@
           },
           "currency": {
             "const": "INR",
-            "default": "INR",
             "title": "Currency",
             "type": "string"
           },
@@ -6667,6 +6666,7 @@
           "deliverables",
           "deliverable_items",
           "fee_amount_paise",
+          "currency",
           "cancellation_fee_paise",
           "approval_window_days",
           "payment_due_days",
@@ -6718,7 +6718,6 @@
           },
           "currency": {
             "const": "INR",
-            "default": "INR",
             "title": "Currency",
             "type": "string"
           },
@@ -6856,6 +6855,7 @@
           "deliverables",
           "deliverable_items",
           "fee_amount_paise",
+          "currency",
           "cancellation_fee_paise",
           "approval_window_days",
           "payment_due_days",
@@ -39533,20 +39533,20 @@
         ]
       }
     },
-    "/api/v1/direct-offers/{offer_id}": {
+    "/api/v1/direct-offers/{direct_offer_id}": {
       "get": {
         "description": "One of your own offers. Anyone else's, or none, is 404.",
-        "operationId": "read_my_direct_offer_api_v1_direct_offers__offer_id__get",
+        "operationId": "read_my_direct_offer_api_v1_direct_offers__direct_offer_id__get",
         "parameters": [
           {
             "description": "The offer's id",
             "in": "path",
-            "name": "offer_id",
+            "name": "direct_offer_id",
             "required": true,
             "schema": {
               "description": "The offer's id",
               "format": "uuid",
-              "title": "Offer Id",
+              "title": "Direct Offer Id",
               "type": "string"
             }
           }
@@ -39651,20 +39651,20 @@
         ]
       }
     },
-    "/api/v1/direct-offers/{offer_id}/withdraw": {
+    "/api/v1/direct-offers/{direct_offer_id}/withdraw": {
       "post": {
         "description": "Takes back an offer still waiting: its link stops working at once, and the brand's number and name are erased.",
-        "operationId": "withdraw_direct_offer_api_v1_direct_offers__offer_id__withdraw_post",
+        "operationId": "withdraw_direct_offer_api_v1_direct_offers__direct_offer_id__withdraw_post",
         "parameters": [
           {
             "description": "The offer's id",
             "in": "path",
-            "name": "offer_id",
+            "name": "direct_offer_id",
             "required": true,
             "schema": {
               "description": "The offer's id",
               "format": "uuid",
-              "title": "Offer Id",
+              "title": "Direct Offer Id",
               "type": "string"
             }
           },

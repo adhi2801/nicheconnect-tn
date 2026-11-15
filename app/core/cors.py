@@ -48,6 +48,9 @@ ALLOWED_REQUEST_HEADERS = (
     # The brand acted for, for someone in more than one (D-148): auth.brand_access's
     # BRAND_HEADER, written here for the same reason.
     "Brand-Id",
+    # A direct offer's link token (D-189): deal_memo.direct_offer_router's
+    # header, read from the link's fragment by the website's link page.
+    "Offer-Token",
 )
 
 EXPOSED_RESPONSE_HEADERS = (
