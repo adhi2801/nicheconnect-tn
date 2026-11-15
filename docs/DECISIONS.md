@@ -2409,3 +2409,38 @@ Newest entries at the bottom.
   1. `.grype.yaml`: CVE-2026-119170 accepted for python 3.14.10 only, with its reason; the move to 3.14.11 drops it with the version.
   2. `Dockerfile`: the API stage fails the build if `_hashlib.get_fips_mode()` is not 0. The embeddings image is built from it and inherits the check.
   3. Follow-up: move to Python 3.14.11 when it ships (D-047: security fixes at once), removing this entry.
+
+## D-193: The independent review has one written brief, the fault-finder agent
+- Date: 2026-11-15
+- Approved by: Adhi, in this session: "carry on then we can use it if that will make even more efficient and useful to progress big", after the recommendation of one read-only reviewer agent and no others. **Not reviewed by the other founder** (D-051).
+- Context: D-139 requires an independent review of every change: a separate reviewer, told to find faults, reads the whole change. Each review was a fresh agent briefed from scratch, so its strength depended on that day's brief; no brief was kept in the repository. Four reviews were owed on 15 November 2026 (item 118, direct offers, the finish-line evidence, the section 10 lint rules).
+- Options considered: A) keep writing each brief by hand; B) one reviewer agent in `.claude/agents/`, its brief versioned and checked by a test; C) several agents (builder, researcher, one per module).
+- Chosen: B.
+- Reason: the same checks every time (section 2 first, every binding standard read in full, built-as-approved, access, concurrency, queries, tests that can fail, the whole job), from a reviewer that cannot edit files. C adds tokens and parallel work the one-feature rule (section 6) does not want.
+- Consequences / follow-ups:
+  1. `.claude/agents/fault-finder.md` is the brief; `.gitignore` now tracks `.claude/agents/`. The caller still passes the branch, the approved proposal and a database name.
+  2. `tests/test_reviewer_agent.py` fails if the brief loses a file in `docs/standards/`, gains a tool that edits files (Edit, Write), or drops its read-only, no-false-claims, section 2 or not-the-other-founder rules. Broken on purpose: Edit added and `legal.md` removed; both failed, then restored.
+  3. Its review never counts as the other founder's (section 6); reports still say no second person reviewed the change.
+
+## D-195: OpenTelemetry 1.45.1 to 1.45.2, for GHSA-mf5v-w3w3-f6cg
+- Date: 2026-11-15
+- Approved by: Adhi, in this session: "Upgrade to 1.45.2 (Recommended)", then "Move all three (Recommended)" once the SDK's exact pin showed the three move together. **Not reviewed by the other founder** (D-051).
+- Context: CI's image gate failed on every branch from 15 November 2026 (first seen on `17a9df3`): Grype 0.119.0 found GHSA-mf5v-w3w3-f6cg (Medium) in opentelemetry-api 1.45.1, fixed in 1.45.2. Nothing in the code changed: the vulnerability database moved. Dependabot's own update failed, because opentelemetry-sdk 1.45.1 requires opentelemetry-api exactly 1.45.1.
+- Options considered: A) move the three pinned OpenTelemetry packages (api, sdk, exporter-otlp-proto-http) to 1.45.2 together; B) accept the advisory in `.grype.yaml`; C) leave CI red.
+- Chosen: A.
+- Reason: a patch release of the same project fixes it (D-047: security fixes at once); B would keep a fixable flaw, C blocks every merge.
+- Consequences / follow-ups:
+  1. `pyproject.toml` and `uv.lock`: those three at 1.45.2; uv moved only their own family with them (exporter-otlp-proto-common and opentelemetry-proto 1.45.2; semantic-conventions, exporter-otlp-common and exporter-http-transport 0.66b2). No other package changed.
+  2. Checked locally on 15 November 2026: the API image rebuilt and Grype 0.119.0 with `--only-fixed --fail-on negligible` found no vulnerabilities; `tests/core/test_tracing.py` and `tests/core/test_structured_logs.py`, 31 passed.
+
+## D-196: Every Markdown file has a row saying whether it meets the bar, kept true by a test
+- Date: 2026-11-15
+- Approved by: Adhi, in this session: "i need all 102 to be ... proper ... go with your recommend", after the recommendation of a per-file status table enforced by a test, then batches read against the code. **Not reviewed by the other founder** (D-051).
+- Context: Adhi asked on 13 November 2026 for every .md file at the documents' bar (`docs/README.md` section 0), with a per-file record as the exit test. On 15 November no such record existed: the bar was raised in passes (D-098, D-139, the world-bar pass), but no file was ever recorded as checked against the code, and a machine check found 60 of 65 living documents without a "Checked against the code on <date>" line in their first lines (point 1 of the bar).
+- Options considered: A) `docs/DOCS_STATUS.md`, one row per file, with `tests/test_docs_status.py` failing on a missing row, a wrong kind, a passed row without a date and evidence, a passed living document without its dated first line, or a wrong count; B) a progress paragraph in `docs/README.md`, as before; C) no record, a pass from memory.
+- Chosen: A.
+- Reason: B and C are words; the passes they recorded could not say which file was checked. A fails the build when the record and the files disagree.
+- Consequences / follow-ups:
+  1. 103 rows (102 files and the table itself): 66 living, 34 records, 3 generated by Flutter and Next.js and exempt with the reason. Passed: 0 of 100. Every rule broken on purpose and seen failing (a row deleted, a living doc passed without its dated line, the count wrong, a record called living, a pass with no evidence, a row for a missing file).
+  2. A row is passed only after the independent review (D-193) reads the file against the code and every finding is fixed; the order: the eight standards, then `CLAUDE.md` and the two READMEs, the maps, the rest, a status line on each record.
+  3. Still to lock: a passed page going stale when the code it describes changes.
