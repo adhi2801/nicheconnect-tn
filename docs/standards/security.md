@@ -116,6 +116,12 @@ What moves a row from **(decision)** to binding: a founder's yes, recorded in `d
   - revoked one by one with no code, by logging out everywhere (and so by a phone change) and by suspension, so restoring an account taken over brings none back, and erased with the account; the answer carrying a new token is `no-store`;
   - **it does not stop** a SIM swapper who asks for the code from making one; the owner is told, and logging out everywhere ends it;
   - **enforced by** `tests/modules/me/test_agent_token_api.py`, `test_agent_token_concurrency.py`, `tests/modules/auth/test_agent_scopes.py` (every route of the API called with a token holding every scope), `test_agent_token_model.py` and `test_agent_token_properties.py`; each rule broken on purpose and seen caught.
+- **A direct offer's link** (D-189; built, off until its notice wording exists):
+  - the link carries 256 random bits (`secrets.token_urlsafe(32)`), shown to the creator once in the answer that sends the offer, which is never kept in the idempotency store and is `no-store`; only an HMAC-SHA256 of it is kept, keyed by `OTP_HASH_KEY` under its own label, so a copy of the table opens no offer (ASVS 5.0 V7.2.3, read 12 November 2026);
+  - it travels in the `Offer-Token` header, never a path or a query string the access log would keep; the website reads it from the link's fragment, which browsers never send;
+  - it works for 14 days, until the creator withdraws it, or until its number's holder taps "stop these"; a token of the wrong shape finds nothing without touching the database;
+  - accepting makes an account only for the number the creator typed, after that number's own login code (its caps on sending and guessing shared with login), on a number with no brand account, never an admin's, a suspended side's or one waiting to move (D-126); every refusal after the code leaves it unused, and says whether the number has an account only to its holder;
+  - **enforced by** `tests/modules/deal_memo/test_direct_offer_rules.py` (the token and its keyed hashes pinned to their labels), `test_direct_offer_api.py`, `test_direct_offer_accept_api.py` and `test_direct_offer_concurrency.py`; each rule broken on purpose and seen caught.
 - **Where you are logged in** (item 81, D-114; ASVS 5.0 7.5.2):
   - `GET /api/v1/me/sessions` lists each live session: what its app said it is (a platform and a label, never checked), when and how it signed in, when it last renewed, and which is the one asking. No address or location is kept;
   - `DELETE /api/v1/me/sessions/{session_id}` ends one at once. The asking session's own needs nothing more; any other needs a step-up code for `end_session` bound to that exact session (or a passkey's approval), so a stolen session cannot throw the owner out, and the owner is told by a notification nobody can mute. Someone else's session, or one already ended, is 404 before any code is asked for;
@@ -178,6 +184,8 @@ Examples:
 | Refresh and logout | 30 a minute | the address |
 | Listing sessions; ending one (item 81) | 60 a minute; 30 a minute | the account (and, for another session, the phone's code caps) |
 | Assistants' tokens (item 11): making one; listing; revoking | 5 a minute and 10 a day; 60 a minute; 30 a minute | the account (and, to make one, the phone's code caps). A token's own requests count against its account's limits |
+| Direct offers (D-189): sending one; the creator's list and withdrawing | 5 a minute and 10 a day, and in the database 10 a Tamil Nadu day per creator and 3 in any 7 days to one number; 60 and 30 a minute | the account (and the number's keyed hash) |
+| A direct offer's link: reading it; "stop these"; its code; accepting | 60 a minute; 10 in 10 minutes; 3 in 10 minutes; 10 in 10 minutes | the address (and, for the code and accepting, the number's own code caps) |
 | Writes | 30 a minute, most with a daily ceiling | the account |
 | Search and matching | 30 a minute | the account |
 | Public pages | 60 a minute | the address |
