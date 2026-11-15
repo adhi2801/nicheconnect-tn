@@ -2409,3 +2409,15 @@ Newest entries at the bottom.
   1. `.grype.yaml`: CVE-2026-119170 accepted for python 3.14.10 only, with its reason; the move to 3.14.11 drops it with the version.
   2. `Dockerfile`: the API stage fails the build if `_hashlib.get_fips_mode()` is not 0. The embeddings image is built from it and inherits the check.
   3. Follow-up: move to Python 3.14.11 when it ships (D-047: security fixes at once), removing this entry.
+
+## D-193: The independent review has one written brief, the fault-finder agent
+- Date: 2026-11-15
+- Approved by: Adhi, in this session: "carry on then we can use it if that will make even more efficient and useful to progress big", after the recommendation of one read-only reviewer agent and no others. **Not reviewed by the other founder** (D-051).
+- Context: D-139 requires an independent review of every change: a separate reviewer, told to find faults, reads the whole change. Each review was a fresh agent briefed from scratch, so its strength depended on that day's brief; no brief was kept in the repository. Four reviews were owed on 15 November 2026 (item 118, direct offers, the finish-line evidence, the section 10 lint rules).
+- Options considered: A) keep writing each brief by hand; B) one reviewer agent in `.claude/agents/`, its brief versioned and checked by a test; C) several agents (builder, researcher, one per module).
+- Chosen: B.
+- Reason: the same checks every time (section 2 first, every binding standard read in full, built-as-approved, access, concurrency, queries, tests that can fail, the whole job), from a reviewer that cannot edit files. C adds tokens and parallel work the one-feature rule (section 6) does not want.
+- Consequences / follow-ups:
+  1. `.claude/agents/fault-finder.md` is the brief; `.gitignore` now tracks `.claude/agents/`. The caller still passes the branch, the approved proposal and a database name.
+  2. `tests/test_reviewer_agent.py` fails if the brief loses a file in `docs/standards/`, gains a tool that edits files (Edit, Write), or drops its read-only, no-false-claims, section 2 or not-the-other-founder rules. Broken on purpose: Edit added and `legal.md` removed; both failed, then restored.
+  3. Its review never counts as the other founder's (section 6); reports still say no second person reviewed the change.
