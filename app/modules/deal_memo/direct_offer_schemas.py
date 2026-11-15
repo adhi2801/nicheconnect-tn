@@ -7,7 +7,6 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.literals import ensure_same_values
-from app.core.taxonomy import CURRENCY
 from app.modules.auth.schemas import (
     BrandEmail,
     BrandName,
@@ -84,7 +83,7 @@ class DirectOfferTerms(BaseModel):
     deliverables: str
     deliverable_items: list[DeliverableRead]
     fee_amount_paise: int
-    currency: Literal["INR"] = CURRENCY
+    currency: Literal["INR"]
     cancellation_fee_paise: int
     approval_window_days: int
     payment_due_days: int

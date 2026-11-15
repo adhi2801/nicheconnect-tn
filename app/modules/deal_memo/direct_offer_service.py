@@ -36,6 +36,7 @@ creator's row, then the number's advisory lock. Every refusal after a lock
 rolls back before it raises.
 """
 
+import logging
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
@@ -102,6 +103,8 @@ from app.modules.notifications import service as notifications
 from app.modules.profiles import brand_name_service
 from app.modules.profiles.exceptions import EmailTaken, MustBeAnAdult
 from app.modules.profiles.profile_service import is_adult
+
+logger = logging.getLogger(__name__)
 
 # Tables this module answers for in a data export.
 EXPORTED_TABLES = frozenset({"direct_offer"})
@@ -340,7 +343,8 @@ def _end(offer: DirectOffer, status: str, now: datetime) -> None:
 def withdraw(db: Session, offer: DirectOffer, now: datetime) -> DirectOffer:
     """Take back an offer still waiting. Locked first, so an acceptance at the
     same moment lands wholly before (and this is refused) or after (and it
-    finds the offer withdrawn). Raises the ended errors."""
+    finds the offer withdrawn). Raises the ended errors, and
+    DirectOfferNotFound if it was deleted meanwhile."""
     _lock(db, offer)
     _ensure_waiting(db, offer, now)
     _end(offer, "withdrawn", now)
@@ -350,12 +354,21 @@ def withdraw(db: Session, offer: DirectOffer, now: datetime) -> DirectOffer:
 
 
 def _lock(db: Session, offer: DirectOffer) -> None:
-    db.scalars(
+    """Lock the offer's row and read it again, every column.
+
+    Gone meanwhile (the job deleted it, or its creator's erasure did, which
+    holds the creator's row an acceptance waits on) is DirectOfferNotFound,
+    never a raw error. Raises DirectOfferNotFound.
+    """
+    found = db.scalars(
         select(DirectOffer)
         .where(DirectOffer.id == offer.id)
         .with_for_update()
         .execution_options(populate_existing=True)
-    ).one()
+    ).first()
+    if found is None:
+        db.rollback()
+        raise DirectOfferNotFound()
 
 
 # --- the link -----------------------------------------------------------------
@@ -713,6 +726,8 @@ def expire_and_erase(db: Session, now: datetime) -> JobRun:
         db.execute(delete(DirectOffer).where(DirectOffer.id.in_(old))),
     ).rowcount
     db.commit()
+    # Counts only: an offer's number or name never reaches a log line.
+    logger.info("direct_offers.run expired=%d deleted=%d", expired, deleted)
     return JobRun(expired=expired, deleted=deleted)
 
 

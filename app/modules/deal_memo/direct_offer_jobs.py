@@ -5,7 +5,10 @@ expired, their number and name erased, and offers that ended without a deal
 30 days ago are deleted (`direct_offer_service.expire_and_erase`). An hour
 is the most a number outlives its offer's end. It calls nothing outside the
 database, so item 118's limits on outside calls have nothing to bound here.
-No backfill: one run catches up on everything due.
+No backfill: each run takes up to 1,000 offers of each kind
+(`direct_offer_service.JOB_BATCH`), oldest work first in no particular
+order, and the next run takes the rest. Each run logs its counts, never a
+number or a name.
 
 The workflow's only input is the scheduled time: DBOS stores workflow
 inputs in Postgres, so nothing personal may ever be passed in (D-060 point 5).

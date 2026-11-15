@@ -87,7 +87,7 @@ link_login_router = APIRouter(
 
 Limit = Annotated[int, Query(ge=1, le=MAX_LIMIT, description="Rows per page")]
 Cursor = Annotated[str | None, Query(description="From a previous page's next_cursor")]
-OfferId = Annotated[uuid.UUID, Path(description="The offer's id")]
+DirectOfferId = Annotated[uuid.UUID, Path(description="The offer's id")]
 OfferToken = Annotated[
     str,
     Header(
@@ -243,7 +243,7 @@ def list_my_direct_offers(
 
 
 @router.get(
-    "/{offer_id}",
+    "/{direct_offer_id}",
     response_model=DirectOfferRead,
     summary="Read one of my direct offers",
     description="One of your own offers. Anyone else's, or none, is 404.",
@@ -256,17 +256,17 @@ def list_my_direct_offers(
 @rate_limit(READ_LIMIT)
 def read_my_direct_offer(
     request: Request,
-    offer_id: OfferId,
+    direct_offer_id: DirectOfferId,
     creator: CurrentCreatorProfile,
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> DirectOfferRead:
     offers.ensure_on()
-    return to_read(offers.get_mine(db, creator, offer_id), now)
+    return to_read(offers.get_mine(db, creator, direct_offer_id), now)
 
 
 @router.post(
-    "/{offer_id}/withdraw",
+    "/{direct_offer_id}/withdraw",
     response_model=DirectOfferRead,
     summary="Withdraw a direct offer",
     description=(
@@ -285,13 +285,13 @@ def read_my_direct_offer(
 @rate_limit(WRITE_LIMIT)
 def withdraw_direct_offer(
     request: Request,
-    offer_id: OfferId,
+    direct_offer_id: DirectOfferId,
     creator: CurrentCreatorProfile,
     db: Session = Depends(get_db),
     now: datetime = Depends(get_now),
 ) -> DirectOfferRead:
     offers.ensure_on()
-    offer = offers.get_mine(db, creator, offer_id)
+    offer = offers.get_mine(db, creator, direct_offer_id)
     return to_read(offers.withdraw(db, offer, now), now)
 
 
