@@ -21,8 +21,28 @@ more work"):
    (S3, the Claude API, the DNS and RDAP lookups, Instagram and YouTube,
    the timestamp authorities). Once the run's budget is spent no new item
    is started (`within_budget`), and what is left waits for the next run,
-   logged as `job.budget_spent`. Each item already holds its own limits, so
-   a run ends at most one item's limit after its budget.
+   logged as `job.budget_spent`. An item started just before the budget
+   ends still runs to its end, and an item makes several calls in turn,
+   each with its own whole limit, so a run can last its budget plus one
+   item's calls at their limits, as built today:
+
+   | Job (budget) | One item's calls at their limits | Run at most |
+   |---|---|---|
+   | proof cleaning (45 s) | S3 describe, read, write, delete: 4 x 30 s | 165 s |
+   | proof reading (45 s) | S3 read 30 s, Claude 150 s | 225 s |
+   | brief drafting (45 s) | Claude 150 s | 195 s |
+   | data exports (45 s) | one S3 destroy or write, 30 s | 75 s |
+   | brand domain checks (45 s) | TXT at two resolvers 2 x 15 s, RDAP's file and the registry 2 x 15 s | 105 s |
+   | account deletions (10 min) | S3 destroy 30 s for each export file the account still has | 600 s + 30 s a file |
+   | daily checkpoint stamps (10 min) | two timestamp authorities, 2 x 15 s | 630 s |
+   | connection refresh (10 min) | the platform's refresh and its profile, 2 x 15 s | 630 s |
+
+   The database's own work adds to these, each statement held to its
+   statement timeout. An S3 call can outlast its 30 s in the one way
+   `app.core.storage` names (a try already waiting for S3's headers), so
+   the S3 rows hold only while S3 answers its headers. One run at a time
+   (rule 1) keeps a long run from overlapping the next: those runs find
+   the lock taken and do nothing.
 """
 
 import logging
@@ -47,12 +67,43 @@ EVERY_MINUTE_BUDGET_SECONDS = 45.0
 # A job run every 15 minutes or once a day: still done before the next.
 LONG_BUDGET_SECONDS = 600.0
 
+# How soon a lock held by a lost host is let go. A crashed run's connection
+# closes and its lock with it; a host that vanishes (its task stopped
+# without a word, its network cut) closes nothing, and the database would
+# keep the session, and the lock, until its operating system gave up on the
+# connection: about 2 hours 11 minutes by Linux's defaults (tcp_keepalive_time
+# 7200 s, then 9 probes 75 s apart). Asked to probe after 30 s of quiet, every
+# 10 s, and to give up after 3 unanswered, the database ends the session
+# within about a minute (30 + 3 x 10 = 60 s), so a schedule is held up by a
+# lost run for a minute or two, not for hours. The same on our side (libpq's
+# `keepalives_*`), so a database that vanishes is noticed as soon.
+KEEPALIVE_IDLE_SECONDS = 30
+KEEPALIVE_INTERVAL_SECONDS = 10
+KEEPALIVE_COUNT = 3
+
 # Its own connections, one per run while it lasts, never pooled: the lock is
 # held for the whole run, and the API's pool is kept for requests (D-093).
+# At most one per schedule holds a lock at a time, 12 across every
+# container; a run that finds its schedule taken has one only for the try
+# (docs/ARCHITECTURE_SCALE.md S9). A session's advisory lock needs the
+# session itself, so behind a pooler in transaction mode (item 113) these
+# must keep a session of their own (session mode, or straight to the
+# database).
 _lock_engine = create_engine(
     settings.database_url,
     poolclass=NullPool,
-    connect_args={"options": f"-c statement_timeout={settings.db_statement_timeout_ms}"},
+    connect_args={
+        "options": (
+            f"-c statement_timeout={settings.db_statement_timeout_ms}"
+            f" -c tcp_keepalives_idle={KEEPALIVE_IDLE_SECONDS}"
+            f" -c tcp_keepalives_interval={KEEPALIVE_INTERVAL_SECONDS}"
+            f" -c tcp_keepalives_count={KEEPALIVE_COUNT}"
+        ),
+        "keepalives": 1,
+        "keepalives_idle": KEEPALIVE_IDLE_SECONDS,
+        "keepalives_interval": KEEPALIVE_INTERVAL_SECONDS,
+        "keepalives_count": KEEPALIVE_COUNT,
+    },
 )
 
 

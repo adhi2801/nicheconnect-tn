@@ -17,6 +17,7 @@ from app.core.claude_calls import (
     call_claude,
     claude_http_client,
     is_retryable,
+    try_timeout,
 )
 from app.core.outside_http import LimitedTransport
 from tests.misbehaving_server import misbehaving, timed
@@ -46,9 +47,12 @@ class Sender:
         self.errors = list(errors)
         self.takes = takes
         self.limits: list[float] = []
+        self.connects: list[float | None] = []
 
-    def __call__(self, timeout: float) -> str:
-        self.limits.append(timeout)
+    def __call__(self, timeout: httpx2.Timeout) -> str:
+        assert timeout.read is not None
+        self.limits.append(timeout.read)
+        self.connects.append(timeout.connect)
         self.clock.now += self.takes
         if self.errors:
             raise self.errors.pop(0)
@@ -138,6 +142,14 @@ def test_every_try_is_cut_to_what_the_150_seconds_leave():
 
     assert sender.limits[:2] == [60.0, 60.0]
     assert sender.limits[2] == pytest.approx(150 - 120 - 0.5 - 1.0)
+    # Each try's connect is held to 3 s, whatever the try may take.
+    assert sender.connects == [3.0, 3.0, 3.0]
+
+
+def test_a_try_with_less_than_three_seconds_left_connects_within_them():
+    """A connect never waits longer than the try itself may take."""
+    assert try_timeout(2.0) == httpx2.Timeout(2.0, connect=2.0)
+    assert try_timeout(60.0) == httpx2.Timeout(60.0, connect=3.0)
 
 
 # --- the SDK's client ---------------------------------------------------------------
@@ -149,6 +161,32 @@ def test_the_sdk_is_given_the_limited_client():
     assert isinstance(client._transport, LimitedTransport)
     assert client.timeout.read == TRY_LIMIT_SECONDS
     assert client.timeout.connect == 3.0
+
+
+def test_every_request_the_sdk_sends_carries_the_three_second_connect():
+    """Read from the request itself: the SDK turns the `timeout=` it is given
+    into the request's own timeout, the one its transport keeps to. A bare
+    number would make every phase, the connect too, wait the whole try."""
+    sent: list[httpx2.Request] = []
+
+    def overloaded(request: httpx2.Request) -> httpx2.Response:
+        sent.append(request)
+        return httpx2.Response(529, json={"type": "error", "error": {}})
+
+    client = anthropic.Anthropic(
+        api_key="sk-ant-test-only",
+        max_retries=0,
+        http_client=httpx2.Client(transport=httpx2.MockTransport(overloaded)),
+    )
+
+    with pytest.raises(anthropic.APIStatusError):
+        call_claude(ask(client), sleep=lambda _: None, jitter=lambda: 0.5)
+
+    assert len(sent) == TRIES
+    for request in sent:
+        timeout = request.extensions["timeout"]
+        assert timeout["connect"] == 3.0
+        assert timeout["read"] == pytest.approx(TRY_LIMIT_SECONDS, abs=0.01)
 
 
 def sdk(base_url: str) -> anthropic.Anthropic:

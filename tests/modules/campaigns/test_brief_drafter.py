@@ -138,8 +138,10 @@ def test_an_api_that_cannot_be_reached_is_a_failure_not_a_crash(error):
     drafted = drafter.draft("idea idea idea idea")
 
     assert drafted.failure == "api_error"
-    # Tried three times, each try told its own limit (item 118, D-186).
-    assert [call["timeout"] for call in messages.calls] == [60.0, 60.0, 60.0]
+    # Tried three times, each try told its own limit, its connect 3 s (D-186).
+    assert [call["timeout"] for call in messages.calls] == [
+        httpx2.Timeout(60.0, connect=3.0)
+    ] * 3
 
 
 def test_a_request_the_api_refuses_is_sent_once():

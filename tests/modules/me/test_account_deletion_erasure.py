@@ -18,7 +18,7 @@ import pytest
 from sqlalchemy import func, or_, select, text
 from sqlalchemy.orm import Session
 
-from app.core.deadline import Deadline
+from app.core.deadline import Deadline, DeadlinePassed
 from app.core.storage import memory_store
 from app.db.base import Base
 from app.main import app
@@ -979,3 +979,50 @@ def test_a_run_whose_budget_is_spent_erases_nobody_and_leaves_them_due(
         ).erased
         == 1
     )
+
+
+class _RefusingStore:
+    """The stand-in store, failing to destroy one key as a stuck S3 would."""
+
+    def __init__(self, refused: str) -> None:
+        self._inner = memory_store()
+        self._refused = refused
+
+    def __getattr__(self, name: str):
+        return getattr(self._inner, name)
+
+    def destroy(self, key: str) -> None:
+        if key == self._refused:
+            raise DeadlinePassed("a storage call passed its limit")
+        self._inner.destroy(key)
+
+
+def test_a_file_storage_cannot_destroy_holds_only_its_own_account(
+    db, clock, creator, brand
+):
+    """One account's stuck export file never stops the run: the next account
+    is still erased, and the stuck one stays due until its file is gone."""
+    stuck, other = person(db, creator), person(db, brand)
+    export = DataExport(
+        account_id=stuck.account_id,
+        requested_at=clock.now - timedelta(hours=2),
+        ready_at=clock.now - timedelta(hours=1),
+        expires_at=clock.now + timedelta(hours=23),
+        size_bytes=4,
+    )
+    db.add(export)
+    db.flush()
+    key = object_key(export.id)
+    memory_store().write(key, b"{}\n\n", content_type="application/json")
+    due(db, stuck, clock)
+    due(db, other, clock)
+
+    run_ = run(db, clock, _RefusingStore(key))
+
+    assert (run_.erased, run_.waiting_for_export) == (1, 1)
+    assert db.get_one(Account, other.account_id).deleted_at is not None
+    assert db.get_one(Account, stuck.account_id).deleted_at is None
+    assert key in memory_store().keys()  # noqa: SIM118 - a method, not a dict
+    # Still due: the next run, with storage well again, destroys it and erases.
+    assert run(db, clock).erased == 1
+    assert db.get_one(Account, stuck.account_id).deleted_at is not None

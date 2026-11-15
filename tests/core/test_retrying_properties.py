@@ -2,7 +2,8 @@
 
 Whatever fails, however long each try takes, and whatever the jitter draws:
 never more tries than allowed, no try given longer than its own limit or the
-time the call has left, and nothing begun after the whole limit.
+time the call has left, no try after the first given less than a second
+(or its own limit, if less), and nothing begun after the whole limit.
 """
 
 from contextlib import suppress
@@ -11,7 +12,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from app.core.deadline import Deadline
-from app.core.retrying import full_jitter_pause, within_tries
+from app.core.retrying import LEAST_TRY_SECONDS, full_jitter_pause, within_tries
 
 
 class Clock:
@@ -79,6 +80,9 @@ def test_the_loop_keeps_every_limit(outcomes, durations, tries, limit, try_limit
         )
 
     assert 1 <= len(started) <= tries
+    # Every try after the first was left at least LEAST_TRY_SECONDS, or its own limit.
+    for _, seconds in started[1:]:
+        assert seconds >= min(try_limit, LEAST_TRY_SECONDS) - 1e-9
     for at, seconds in started:
         assert seconds <= try_limit
         assert at < limit or len(started) == 1  # only the first try may start late

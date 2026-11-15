@@ -45,7 +45,8 @@ from rfc3161_client import (
 from rfc3161_client.errors import VerificationError
 
 from app.core.deadline import Clock, Deadline
-from app.core.outside_http import exchange, limited_client
+from app.core.outside_http import AnswerTooLarge, exchange, limited_client
+from app.core.retrying import time_for_another_try
 
 logger = logging.getLogger(__name__)
 
@@ -214,6 +215,10 @@ class Rfc3161Authority:
                     content=request,
                     headers={"Content-Type": CONTENT_TYPE},
                 )
+            except AnswerTooLarge:
+                # Longer than any answer it gives: asking again would repeat it.
+                failure = "AnswerTooLarge"
+                break
             except httpx2.TransportError as exc:
                 failure = type(exc).__name__
             else:
@@ -231,11 +236,14 @@ class Rfc3161Authority:
                 attempt,
                 failure,
             )
-            if deadline.expired():
+            if attempt == MAX_ATTEMPTS:
                 break
-            if attempt < MAX_ATTEMPTS:
-                delay = BASE_DELAY_SECONDS * 2 ** (attempt - 1)
-                self._sleep(deadline.capped(delay * (0.5 + self._jitter())))
+            delay = BASE_DELAY_SECONDS * 2 ** (attempt - 1)
+            pause = delay * (0.5 + self._jitter())
+            # No wait that would leave the next try too little time (D-186).
+            if not time_for_another_try(deadline, pause):
+                break
+            self._sleep(pause)
         raise TimestampFailed(
             f"{self.name} unreachable after {attempt} attempts "
             f"within {CALL_LIMIT_SECONDS:.0f} s ({failure})"

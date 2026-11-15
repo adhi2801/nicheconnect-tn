@@ -18,6 +18,7 @@ from urllib.parse import parse_qs, urlparse
 import boto3
 import pytest
 from botocore.exceptions import ReadTimeoutError
+from botocore.response import StreamingBody
 from moto import mock_aws
 
 from app.core import storage
@@ -257,23 +258,37 @@ def test_without_a_bucket_a_real_deployment_refuses(monkeypatch, environment):
 # --- the edges --------------------------------------------------------------------------
 
 
-class _Body:
-    """A body in pieces; each piece moves `clock` on by `step` seconds."""
+class _Raw:
+    """urllib3's answer as the store reaches it: `read1`, its socket's timeout, `close`.
+
+    Each read returns the next piece and moves `clock` on by `step` seconds;
+    every wait the store sets on the socket is kept in `waits`.
+    """
 
     def __init__(self, *pieces: bytes, clock=None, step: float = 0.0) -> None:
-        self._pieces = pieces
+        self._pieces = list(pieces)
         self._clock = clock
         self._step = step
         self.closed = False
+        self.waits: list[float] = []
+        # The path botocore's own `set_socket_timeout` takes to the socket.
+        socket = SimpleNamespace(settimeout=self.waits.append)
+        self._fp = SimpleNamespace(fp=SimpleNamespace(raw=SimpleNamespace(_sock=socket)))
 
-    def iter_chunks(self, chunk_size: int):
-        for piece in self._pieces:
-            if self._clock is not None:
-                self._clock.now += self._step
-            yield piece
+    def read1(self, amt=None) -> bytes:
+        if not self._pieces:
+            return b""
+        if self._clock is not None:
+            self._clock.now += self._step
+        return self._pieces.pop(0)
 
     def close(self) -> None:
         self.closed = True
+
+
+def _body(raw: _Raw, length: int) -> StreamingBody:
+    """botocore's own body over the fake raw stream, as S3's answer carries it."""
+    return StreamingBody(raw, length)
 
 
 class _Events:
@@ -291,17 +306,17 @@ class _LyingClient(_FakeClient):
     """Says an object is small, then sends more: the second check must hold."""
 
     def get_object(self, **kwargs):
-        return {"ContentLength": 1, "Body": _Body(DATA)}
+        return {"ContentLength": 1, "Body": _body(_Raw(DATA), len(DATA))}
 
 
 class _SlowBodyClient(_FakeClient):
     """Ten pieces of a file, each taking `step` seconds of `clock`."""
 
     def __init__(self, clock, step: float) -> None:
-        self.body = _Body(*([b"x"] * 10), clock=clock, step=step)
+        self.raw = _Raw(*([b"x"] * 10), clock=clock, step=step)
 
     def get_object(self, **kwargs):
-        return {"ContentLength": 10, "Body": self.body}
+        return {"ContentLength": 10, "Body": _body(self.raw, 10)}
 
 
 class _DeniedClient(_FakeClient):
@@ -393,16 +408,38 @@ def test_no_try_starts_once_the_call_has_spent_its_limit(timed_s3):
         sent.append(kwargs["request"].method)
         clock.now += 31
 
+    store.write("k", DATA, content_type="image/png")
     # After the store's own hook, so each request is begun in time, then takes 31 s.
     client.meta.events.register("before-send.s3", each_request_takes_31_seconds)
-    store.write("k", DATA, content_type="image/png")  # begun in time, so done
-    assert sent == ["PUT"]
+    assert store.describe("k") is not None  # begun in time, so done
+    assert sent == ["HEAD"]
 
     with pytest.raises(DeadlinePassed):
         # The listing takes the limit; no deletion may start after it.
         store.destroy("k")
 
-    assert sent == ["PUT", "GET"]
+    assert sent == ["HEAD", "GET"]
+
+
+def test_no_part_of_an_upload_is_handed_over_once_the_limit_has_passed(timed_s3):
+    """An upload whose try began in time but whose body is asked for after the
+    limit is refused, not sent: a slow store cannot stretch it (`_SentWithin`)."""
+    store, clock, client = timed_s3
+
+    def the_request_takes_31_seconds_before_its_body(**kwargs):
+        clock.now += 31
+
+    client.meta.events.register(
+        "before-send.s3", the_request_takes_31_seconds_before_its_body
+    )
+    with pytest.raises(DeadlinePassed):
+        store.write("k", DATA, content_type="image/png")
+
+    clock.now = 0.0
+    client.meta.events.unregister(
+        "before-send.s3", the_request_takes_31_seconds_before_its_body
+    )
+    assert store.describe("k") is None
 
 
 def test_a_call_within_its_limit_is_untouched(timed_s3):
@@ -448,7 +485,7 @@ def test_the_limit_hook_is_registered_once_however_many_stores_share_a_client(ti
 
 
 def test_a_body_still_coming_when_the_limit_passes_is_cut_off():
-    """The check after each piece: 4 s a piece, 30 s allowed, stops at the eighth."""
+    """No read begins once the limit is spent: 4 s a piece, 30 s allowed, stops at the eighth."""
     clock = Clock()
     client = _SlowBodyClient(clock, step=4.0)
 
@@ -456,7 +493,18 @@ def test_a_body_still_coming_when_the_limit_passes_is_cut_off():
         S3FileStore(BUCKET, client, clock=clock).read("k", max_bytes=100)
 
     assert clock.now == 32.0
-    assert client.body.closed
+    assert client.raw.closed
+
+
+def test_each_wait_for_the_body_is_cut_to_the_time_the_call_has_left():
+    """botocore's 10 s wait until less is left: then 6 s at 24 s, 2 s at 28 s."""
+    clock = Clock()
+    client = _SlowBodyClient(clock, step=4.0)
+
+    with pytest.raises(DeadlinePassed):
+        S3FileStore(BUCKET, client, clock=clock).read("k", max_bytes=100)
+
+    assert client.raw.waits == [10.0] * 6 + [6.0, 2.0]
 
 
 def test_a_body_read_in_time_is_returned_and_closed():
@@ -464,7 +512,19 @@ def test_a_body_read_in_time_is_returned_and_closed():
     client = _SlowBodyClient(clock, step=1.0)
 
     assert S3FileStore(BUCKET, client, clock=clock).read("k", max_bytes=10) == b"x" * 10
-    assert client.body.closed
+    assert client.raw.closed
+
+
+def test_botocore_still_checks_the_bodys_length():
+    """The body is botocore's own: one that ends short of its announced length is refused."""
+    from botocore.exceptions import IncompleteReadError
+
+    class ShortClient(_FakeClient):
+        def get_object(self, **kwargs):
+            return {"ContentLength": 10, "Body": _body(_Raw(b"x" * 4), 10)}
+
+    with pytest.raises(IncompleteReadError):
+        S3FileStore(BUCKET, ShortClient()).read("k", max_bytes=100)
 
 
 # --- the real thing, on a real socket ---------------------------------------------------
@@ -487,17 +547,55 @@ def s3_at(url: str, read_timeout: float = 10) -> Any:
     )
 
 
-def test_a_body_trickled_a_byte_at_a_time_is_cut_off_at_the_limit(monkeypatch):
-    """Each byte inside botocore's 10 s read wait: only the watchdog ends it."""
-    monkeypatch.setattr(storage, "CALL_LIMIT_SECONDS", 1.0)
-    with misbehaving("trickle_body", content_type="image/png") as server:
+LIMIT = 1.0
+# How far past its limit a call may end: the time to notice, never a wait.
+SLACK = 0.25
+
+
+@pytest.mark.parametrize("gap", [0.2, 0.03, 0.01])
+def test_a_body_trickled_at_any_rate_is_cut_off_at_the_limit(monkeypatch, gap):
+    """Each byte inside botocore's 10 s read wait, at any rate: a read that
+    waited for its whole piece would run 64 KiB times the gap (11 minutes at
+    0.01 s); one socket read at a time ends at the limit."""
+    monkeypatch.setattr(storage, "CALL_LIMIT_SECONDS", LIMIT)
+    with misbehaving("trickle_body", content_type="image/png", gap=gap) as server:
         store = S3FileStore(BUCKET, s3_at(server.url))
         outcome, elapsed = timed(lambda: store.read("k", max_bytes=20_000_000))
 
     assert isinstance(outcome, DeadlinePassed), outcome
     assert len(server.requests) == 1
-    # The limit, then at most one gap between the server's bytes (0.2 s).
-    assert 0.95 <= elapsed < 1.0 + 0.2 + 0.5
+    assert LIMIT - 0.05 <= elapsed < LIMIT + SLACK
+
+
+def test_a_body_that_stops_coming_is_cut_off_at_the_limit(monkeypatch):
+    """Headers, then silence: the wait for the body is cut to the time left,
+    not botocore's 10 s."""
+    monkeypatch.setattr(storage, "CALL_LIMIT_SECONDS", LIMIT)
+    with misbehaving("silent_body", content_type="image/png") as server:
+        store = S3FileStore(BUCKET, s3_at(server.url))
+        outcome, elapsed = timed(lambda: store.read("k", max_bytes=20_000_000))
+
+    assert isinstance(outcome, DeadlinePassed), outcome
+    assert len(server.requests) == 1
+    assert LIMIT - 0.05 <= elapsed < LIMIT + SLACK
+
+
+def test_an_upload_read_slowly_is_cut_off_within_one_block_of_the_limit(monkeypatch):
+    """A store reading 16 KiB every 0.05 s would take 26 s over 8 MiB, each
+    send inside botocore's wait; no block is handed over after the limit, so
+    the upload ends within one block's send (botocore's wait, 1 s here) of it."""
+    monkeypatch.setattr(storage, "CALL_LIMIT_SECONDS", 2.0)
+    data = b"x" * (8 * 1024 * 1024)
+    with misbehaving(
+        "slow_reader", receive_buffer=4096, gap=0.05, read_bytes=16384
+    ) as server:
+        store = S3FileStore(BUCKET, s3_at(server.url, read_timeout=1.0))
+        outcome, elapsed = timed(lambda: store.write("k", data, content_type="image/png"))
+
+    assert isinstance(outcome, DeadlinePassed), outcome
+    assert server.connections == 1
+    assert server.received < len(data)
+    assert 2.0 - 0.05 <= elapsed < 2.0 + 1.0 + 0.5
 
 
 def test_a_store_that_never_answers_gets_no_try_after_the_limit(monkeypatch):

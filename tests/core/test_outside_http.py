@@ -23,7 +23,7 @@ from app.core.outside_http import (
     limited_client,
     within,
 )
-from tests.misbehaving_server import misbehaving, timed
+from tests.misbehaving_server import full_backlog, misbehaving, timed
 
 TIMEOUT = httpx2.Timeout(10.0, connect=3.0)
 LIMIT = 1.0
@@ -214,4 +214,70 @@ def test_within_cuts_every_socket_wait_on_the_thread_to_the_time_left():
         outcome, elapsed = timed(read_all)
 
     assert isinstance(outcome, httpx2.ReadTimeout)
+    assert LIMIT - 0.05 <= elapsed < LIMIT + SLACK
+
+
+# --- every phase of a try, on a real socket ---------------------------------------
+# Each with a whole limit (1 s) shorter than the phase's own wait (connect 3 s,
+# write 10 s), so only the cut to the time left can end it in time.
+
+
+def test_a_connect_that_stalls_is_cut_off_at_the_limit():
+    """A listener whose queue is full: the connect would wait its own 3 s (or,
+    on Windows, be refused after about 2 s); cut to the time left, it ends at 1 s."""
+    client = limited_client(TIMEOUT)
+    with full_backlog() as url:
+        outcome, elapsed = timed(lambda: exchange(client, "GET", url, Deadline(LIMIT)))
+
+    assert isinstance(outcome, httpx2.ConnectTimeout), outcome
+    assert LIMIT - 0.05 <= elapsed < LIMIT + SLACK
+
+
+def test_a_tls_handshake_never_answered_is_cut_off_at_the_limit():
+    """The server takes the connection and never sends its hello: the handshake
+    would wait the connect's own 3 s; cut to the time left, it ends at 1 s."""
+    client = limited_client(TIMEOUT)
+    with misbehaving("deaf") as server:
+        url = f"https://127.0.0.1:{server.port}/"
+        outcome, elapsed = timed(lambda: exchange(client, "GET", url, Deadline(LIMIT)))
+
+    assert isinstance(outcome, httpx2.ConnectTimeout), outcome
+    assert server.connections == 1
+    assert LIMIT - 0.05 <= elapsed < LIMIT + SLACK
+
+
+BIG_REQUEST = b"x" * (32 * 1024 * 1024)
+
+
+def test_a_request_the_server_never_reads_is_cut_off_at_the_limit():
+    """32 MiB to a server that reads nothing: the socket's buffers fill and the
+    write would wait its own 10 s; cut to the time left, it ends at 1 s."""
+    client = limited_client(TIMEOUT)
+    with misbehaving("deaf", receive_buffer=4096) as server:
+        outcome, elapsed = timed(
+            lambda: exchange(
+                client, "POST", server.url, Deadline(LIMIT), content=BIG_REQUEST
+            )
+        )
+
+    assert isinstance(outcome, httpx2.WriteTimeout), outcome
+    assert LIMIT - 0.05 <= elapsed < LIMIT + SLACK
+
+
+def test_a_request_read_slowly_is_cut_off_within_one_piece_of_the_limit():
+    """The server reads 16 KiB every 0.05 s, each inside the write's wait: one
+    write of the whole 32 MiB would run about 100 s. In 16 KiB pieces, each cut
+    to the time left, it ends at the limit."""
+    client = limited_client(TIMEOUT)
+    with misbehaving(
+        "slow_reader", receive_buffer=4096, gap=0.05, read_bytes=16384
+    ) as server:
+        outcome, elapsed = timed(
+            lambda: exchange(
+                client, "POST", server.url, Deadline(LIMIT), content=BIG_REQUEST
+            )
+        )
+
+    assert isinstance(outcome, httpx2.WriteTimeout), outcome
+    assert 0 < server.received < len(BIG_REQUEST)
     assert LIMIT - 0.05 <= elapsed < LIMIT + SLACK

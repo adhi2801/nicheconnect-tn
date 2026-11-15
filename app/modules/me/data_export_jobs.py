@@ -1,7 +1,8 @@
 """Building data exports, and destroying unclaimed ones, as a scheduled DBOS workflow (D-111, D-060).
 
-Every minute: up to 10 exports asked for are built and their owners told,
-and every file 24 hours past ready and never downloaded is destroyed. DBOS
+Every minute: every file 24 hours past ready and never downloaded is
+destroyed, first, so no build can put it off; then up to 10 exports asked
+for are built and their owners told. DBOS
 records each run under an id fixed by its scheduled minute, so two app
 instances never both run the same one; within a run, an export is marked
 ready only if it still waits, so even an overlap would not mark one twice.

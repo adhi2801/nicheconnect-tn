@@ -7,7 +7,12 @@ by hand, so nothing sleeps (testing.md section 5).
 import pytest
 
 from app.core.deadline import Deadline
-from app.core.retrying import full_jitter_pause, within_tries
+from app.core.retrying import (
+    LEAST_TRY_SECONDS,
+    full_jitter_pause,
+    time_for_another_try,
+    within_tries,
+)
 
 
 class Clock:
@@ -137,6 +142,46 @@ def test_a_wait_shorter_than_the_time_left_is_still_taken():
     assert result == "answer"
     assert sleeps == [0.5]
     assert calls.limits[1] == pytest.approx(1.5)
+
+
+def test_no_wait_is_begun_that_would_leave_the_next_try_under_a_second():
+    """1.4 s left and a 0.5 s wait due: the try after it would have 0.9 s, too
+    little to connect and be answered. Give up now rather than send a try
+    that can only fail."""
+    clock = Clock()
+    calls = Calls(clock, Flaky(), takes=148.6)
+
+    with pytest.raises(Flaky):
+        tried(calls, clock)
+
+    assert len(calls.limits) == 1
+
+
+def test_a_wait_that_leaves_the_next_try_exactly_a_second_is_taken():
+    """1.5 s left, a 0.5 s wait: the next try has exactly LEAST_TRY_SECONDS."""
+    clock = Clock()
+    calls = Calls(clock, Flaky(), takes=148.5)
+
+    result, sleeps = tried(calls, clock)
+
+    assert result == "answer"
+    assert sleeps == [0.5]
+    assert calls.limits[1] == pytest.approx(LEAST_TRY_SECONDS)
+
+
+@pytest.mark.parametrize(
+    ("left", "pause", "fits"),
+    [
+        (2.0, 0.5, True),
+        (1.5, 0.5, True),
+        (1.4, 0.5, False),
+        (1.0, 0.0, True),
+        (0.9, 0.0, False),
+    ],
+)
+def test_time_for_another_try_means_a_second_left_after_the_wait(left, pause, fits):
+    clock = Clock()
+    assert time_for_another_try(Deadline(left, clock), pause) is fits
 
 
 def test_at_least_one_try_is_required():

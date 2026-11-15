@@ -7,13 +7,14 @@ ever reachable. What the file holds is tests/modules/me/test_export_api.py.
 """
 
 import json
+import uuid
 from contextlib import nullcontext
 from datetime import timedelta
 
 import pytest
 from sqlalchemy import select, update
 
-from app.core.deadline import Deadline
+from app.core.deadline import Deadline, DeadlinePassed
 from app.core.rate_limit import limiter
 from app.core.storage import memory_store
 from app.modules.auth.models.step_up_challenge import StepUpChallenge
@@ -458,4 +459,90 @@ def test_a_run_whose_budget_is_spent_destroys_nothing_and_leaves_it_due(
     assert memory_store().keys() == {object_key_for(export_id)}
     # Still due: the next run, with time to spare, destroys it.
     assert build_exports(Deadline(45)).expired == 1
+    assert memory_store().keys() == set()
+
+
+class _Seconds:
+    """A monotonic clock for a run's budget, moved by hand."""
+
+    def __init__(self) -> None:
+        self.now = 0.0
+
+    def __call__(self) -> float:
+        return self.now
+
+
+class _Store:
+    """The stand-in store, with a slow write or a destroy that fails for one key."""
+
+    def __init__(self, *, write_takes=None, refuse_destroying=None) -> None:
+        self._inner = memory_store()
+        self._write_takes = write_takes
+        self._refuse_destroying = refuse_destroying
+        self.destroy_tries: list[str] = []
+
+    def __getattr__(self, name: str):
+        return getattr(self._inner, name)
+
+    def write(self, key: str, data: bytes, *, content_type: str) -> None:
+        if self._write_takes is not None:
+            seconds, took = self._write_takes
+            seconds.now += took
+        self._inner.write(key, data, content_type=content_type)
+
+    def destroy(self, key: str) -> None:
+        self.destroy_tries.append(key)
+        if key == self._refuse_destroying:
+            raise DeadlinePassed("a storage call passed its limit")
+        self._inner.destroy(key)
+
+
+def test_expired_files_are_destroyed_before_builds_can_spend_the_budget(
+    client, db, clock, creator
+):
+    """A build that takes the whole 45 s cannot put off a file's 24 hours."""
+    expired_id = ready_export(client, creator)
+    clock.advance(EXPORT_KEPT_FOR)
+    other = creator_user(db, clock)
+    db.commit()
+    ask_for_export(client, other.headers)
+    seconds = _Seconds()
+    store = _Store(write_takes=(seconds, 46.0))
+
+    run = data_export_service.run_exports(
+        lambda: nullcontext(db), store, clock.now, budget=Deadline(45, seconds)
+    )
+
+    assert run.expired == 1
+    assert run.built == 1
+    assert object_key_for(expired_id) not in memory_store().keys()  # noqa: SIM118 - a method, not a dict
+
+
+def test_a_file_storage_cannot_destroy_stays_due_and_the_rest_are_destroyed(
+    client, db, clock, creator, caplog
+):
+    stuck_id = ready_export(client, creator)
+    other = creator_user(db, clock)
+    db.commit()
+    gone_id = ready_export(client, other)
+    clock.advance(EXPORT_KEPT_FOR)
+    store = _Store(refuse_destroying=object_key_for(stuck_id))
+
+    with caplog.at_level("WARNING"):
+        run = data_export_service.run_exports(lambda: nullcontext(db), store, clock.now)
+
+    assert run.expired == 1
+    assert len(store.destroy_tries) == 2
+    assert memory_store().keys() == {object_key_for(stuck_id)}
+    assert db.get_one(DataExport, uuid.UUID(stuck_id)).file_deleted_at is None
+    assert db.get_one(DataExport, uuid.UUID(gone_id)).file_deleted_at is not None
+    [line] = [
+        r.getMessage() for r in caplog.records if "destroy_failed" in r.getMessage()
+    ]
+    assert (
+        line
+        == f"data_export.destroy_failed export_id={stuck_id} error_type=DeadlinePassed"
+    )
+    # Still due: the next run, with storage well again, destroys it.
+    assert build_exports().expired == 1
     assert memory_store().keys() == set()

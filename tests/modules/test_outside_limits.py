@@ -25,6 +25,7 @@ import httpx2
 import pytest
 
 from app.core.config import settings
+from app.core.outside_http import MAX_ANSWER_BYTES
 from app.modules.auth import msg91_sender
 from app.modules.auth.msg91_sender import Msg91WhatsAppSender, OtpDeliveryFailed
 from app.modules.deal_memo import timestamp_authority
@@ -156,8 +157,10 @@ def test_a_server_that_holds_the_call_is_cut_off_at_the_limit(name, behaviour):
 
 
 @pytest.mark.parametrize("name", sorted(set(CLIENTS) - {"platform_exchange"}))
-def test_a_server_that_fails_once_then_answers_is_answered(name):
+def test_a_server_that_fails_once_then_answers_is_answered(name, monkeypatch):
+    """3 s here, so the 0.5 s wait still leaves the second try its second."""
     client = CLIENTS[name]
+    monkeypatch.setattr(client.module, "CALL_LIMIT_SECONDS", 3.0)
     with misbehaving(
         "flaky", body=client.body, content_type="application/json"
     ) as server:
@@ -243,15 +246,62 @@ def test_once_the_limit_has_passed_there_is_no_wait_and_no_other_try(name, monke
 
 
 @pytest.mark.parametrize("name", LOOPED)
-def test_no_wait_between_tries_runs_past_the_limit(name, monkeypatch):
-    """14.8 s spent on the first try, a 0.5 s wait due: it is cut to the 0.2 s left."""
+@pytest.mark.parametrize("took", [14.8, 13.6])
+def test_no_wait_is_begun_that_leaves_the_next_try_too_little_time(
+    name, took, monkeypatch
+):
+    """A 0.5 s wait due with 0.2 s or 1.4 s left: waiting would leave the next
+    try under the 1 s it needs (`retrying.LEAST_TRY_SECONDS`), a try that could
+    only fail. Give up now, without the wait or the try."""
     clock, sleeps = Clock(), []
     monkeypatch.setattr(CLIENTS[name].module, "CALL_LIMIT_SECONDS", 15.0)
+    client = failing_transport(clock, takes=took)
+    sent: list[int] = []
+    client.event_hooks["request"].append(lambda request: sent.append(1))
 
-    outcome, _ = timed(loops(clock, failing_transport(clock, takes=14.8), sleeps)[name])
+    outcome, _ = timed(loops(clock, client, sleeps)[name])
 
     assert CLIENTS[name].failed(outcome), outcome
-    assert sleeps == [pytest.approx(0.2)]
+    assert sleeps == []
+    assert sent == [1]
+
+
+@pytest.mark.parametrize("name", LOOPED)
+def test_a_wait_that_leaves_the_next_try_its_second_is_taken(name, monkeypatch):
+    """1.6 s left after a 13.4 s try: the 0.5 s wait leaves 1.1 s, so it is
+    waited and tried; after that second try nothing is left."""
+    clock, sleeps = Clock(), []
+    monkeypatch.setattr(CLIENTS[name].module, "CALL_LIMIT_SECONDS", 15.0)
+    client = failing_transport(clock, takes=13.4)
+    sent: list[int] = []
+    client.event_hooks["request"].append(lambda request: sent.append(1))
+
+    outcome, _ = timed(loops(clock, client, sleeps)[name])
+
+    assert CLIENTS[name].failed(outcome), outcome
+    assert sleeps == [0.5]
+    assert sent == [1, 1]
+
+
+@pytest.mark.parametrize("name", LOOPED)
+def test_an_answer_longer_than_any_we_ask_for_is_never_asked_for_again(name, monkeypatch):
+    """`AnswerTooLarge` is a transport error, but trying again would only
+    fetch the same endless answer: one try, then the client's own failure."""
+    clock, sleeps = Clock(), []
+    monkeypatch.setattr(CLIENTS[name].module, "CALL_LIMIT_SECONDS", 15.0)
+    sent: list[int] = []
+
+    def too_long(request: httpx2.Request) -> httpx2.Response:
+        sent.append(1)
+        return httpx2.Response(200, content=b"x" * (MAX_ANSWER_BYTES + 1))
+
+    client = httpx2.Client(transport=httpx2.MockTransport(too_long))
+
+    outcome, _ = timed(loops(clock, client, sleeps)[name])
+
+    assert CLIENTS[name].failed(outcome), outcome
+    assert sent == [1]
+    assert sleeps == []
 
 
 @pytest.mark.parametrize("name", LOOPED)

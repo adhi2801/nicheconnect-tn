@@ -11,6 +11,7 @@ import time
 import uuid
 
 import pytest
+from psycopg.conninfo import conninfo_to_dict
 from sqlalchemy import text
 
 from app.core import job_runs
@@ -159,6 +160,39 @@ def test_the_lock_never_takes_a_connection_from_the_pool_requests_use():
     with one_run_at_a_time(a_schedule()) as held:
         assert held is True
         assert engine.pool.checkedout() == before
+
+
+def test_a_lost_host_lets_its_lock_go_within_about_a_minute():
+    """Read from the lock's own session: the database probes it after 30 s of
+    quiet, every 10 s, 3 times (`pg_settings`, the server's side), and so does our
+    side (libpq's settings, read from the live connection's parameters)."""
+    assert (
+        job_runs.KEEPALIVE_IDLE_SECONDS
+        + job_runs.KEEPALIVE_COUNT * job_runs.KEEPALIVE_INTERVAL_SECONDS
+    ) == 60
+    with job_runs._lock_engine.connect() as lock:
+        server_side = dict(
+            lock.execute(
+                text(
+                    "SELECT name, setting FROM pg_settings WHERE name IN"
+                    " ('tcp_keepalives_idle', 'tcp_keepalives_interval',"
+                    " 'tcp_keepalives_count')"
+                )
+            ).all()
+        )
+        ours = conninfo_to_dict(lock.connection.dbapi_connection.info.dsn)
+
+    assert server_side == {
+        "tcp_keepalives_idle": "30",
+        "tcp_keepalives_interval": "10",
+        "tcp_keepalives_count": "3",
+    }
+    assert (
+        ours["keepalives"],
+        ours["keepalives_idle"],
+        ours["keepalives_interval"],
+        ours["keepalives_count"],
+    ) == ("1", "30", "10", "3")
 
 
 def test_the_lock_is_its_own_kind_of_lock():

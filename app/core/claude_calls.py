@@ -6,7 +6,10 @@ own retries are switched off (`max_retries=0`): it would retry inside each
 try, multiplying the 60 s wait by up to four with nothing bounding the sum.
 Instead:
 
-- at most 3 tries, each cut to 60 s or the time left, whichever is less;
+- at most 3 tries, each cut to 60 s or the time left, whichever is less,
+  and its connect to 3 s (`try_timeout`): the SDK sends one `Timeout` for
+  every phase of a request, so a bare number would let a connect wait the
+  whole 60 s;
 - 150 s for the whole call, so a job's run is never held longer by one item;
 - full-jitter waits of up to 1 s, then 2 s, between tries (`app.core.retrying`);
 - only an error a second try can cure is tried again: no connection or a
@@ -30,7 +33,8 @@ from app.core.outside_http import limited_client, within
 from app.core.retrying import within_tries
 
 # What a caller is given to make its call: `call_claude`, or a test's own.
-ClaudeCall = Callable[[Callable[[float], Any]], Any]
+# The send is given the try's timeout, to pass to the SDK as `timeout=`.
+ClaudeCall = Callable[[Callable[[httpx2.Timeout], Any]], Any]
 
 # The whole call: 3 tries of 60 s would be 180; the limit keeps the third short.
 CALL_LIMIT_SECONDS = 150.0
@@ -63,8 +67,13 @@ def claude_http_client() -> httpx2.Client:
     )
 
 
+def try_timeout(seconds: float) -> httpx2.Timeout:
+    """One try's timeout: `seconds` for each wait, the connect's at most 3 s."""
+    return httpx2.Timeout(seconds, connect=min(CONNECT_LIMIT_SECONDS, seconds))
+
+
 def call_claude[T](
-    send: Callable[[float], T],
+    send: Callable[[httpx2.Timeout], T],
     *,
     sleep: Callable[[float], None] = time.sleep,
     jitter: Callable[[], float] = random.random,
@@ -73,7 +82,7 @@ def call_claude[T](
     """`send(timeout_for_this_try)`, within the limits above. Raises the last error."""
     with within(Deadline(CALL_LIMIT_SECONDS, clock)) as deadline:
         return within_tries(
-            send,
+            lambda seconds: send(try_timeout(seconds)),
             deadline=deadline,
             tries=TRIES,
             try_limit=TRY_LIMIT_SECONDS,

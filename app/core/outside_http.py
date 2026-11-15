@@ -5,13 +5,16 @@ RDAP lookups, Instagram and YouTube, the timestamp authorities, and the
 Claude API through its SDK) is made by `limited_client`, and each call runs
 `within` one `Deadline` for the whole call, across its tries:
 
-- **every wait on the socket is cut to the time left.** A connect, a write
-  or a read waits at most its own limit (connect 3 s, read 10 s; backend.md
-  section 6) or what the call has left, whichever is less, and none starts
-  once the limit has passed. A server that trickles a byte at a time, each
-  inside the read timeout, in its headers or its body, is cut off at the
-  limit rather than holding a worker for ever: httpx2 itself has only
-  per-wait limits (connect, read, write, pool), never one on the whole;
+- **every wait on the socket is cut to the time left.** A connect, a TLS
+  handshake, a write or a read waits at most its own limit (connect 3 s,
+  read 10 s; backend.md section 6) or what the call has left, whichever is
+  less, and none starts once the limit has passed. A server that trickles a
+  byte at a time, each inside the read timeout, in its headers or its body,
+  is cut off at the limit rather than holding a worker for ever: httpx2
+  itself has only per-wait limits (connect, read, write, pool), never one
+  on the whole. A request is written in 16 KiB pieces, each its own cut
+  wait, so a server reading it slowly holds the call at most one piece's
+  sending past the limit;
 - **the answer is read piece by piece** (`exchange`), at most
   `MAX_ANSWER_BYTES` of it, so an answer that never ends cannot fill memory
   either.
@@ -22,6 +25,14 @@ does not cut:** a wait for a free connection in the client's own pool (100
 connections), which is not a socket wait; it keeps the client's pool limit. It is put
 into the transport httpx2 builds (`HTTPTransport._pool`, replaced with a
 pool given that backend), the one seam httpx2 offers no public way to set.
+
+**No proxy from the environment.** httpx2 reads `HTTPS_PROXY`, `HTTP_PROXY`
+and `NO_PROXY` only for a client given no transport of its own
+(`httpx2._client`, `allow_env_proxies = trust_env and transport is None`),
+so these clients go straight to the host whatever those say. The tasks as
+described in `infra/` reach the internet directly (a public address used
+for outbound only, `compute.tf`), with no proxy; one added later would need
+its own `httpcore2.HTTPProxy` given this backend, and a test.
 """
 
 import ssl
@@ -39,6 +50,10 @@ from app.core.deadline import Deadline
 # IANA's RDAP file (71,328 bytes, read 12 November 2026). 2 MiB is far above any
 # and far below what could hurt a worker.
 MAX_ANSWER_BYTES = 2 * 1024 * 1024
+# A request is written in pieces this size, each wait cut to the time left:
+# a JSON body or a timestamp query is one piece, a screenshot sent to the
+# Claude API many.
+WRITE_PIECE_BYTES = 16 * 1024
 # httpx2's own defaults (`httpx2.Limits`), kept for the pool built below.
 MAX_CONNECTIONS = 100
 MAX_KEEPALIVE_CONNECTIONS = 20
@@ -95,7 +110,15 @@ class _LimitedStream(httpcore2.NetworkStream):
         return self._inner.read(max_bytes, _cut(timeout, httpcore2.ReadTimeout))
 
     def write(self, buffer: bytes, timeout: float | None = None) -> None:
-        self._inner.write(buffer, _cut(timeout, httpcore2.WriteTimeout))
+        # In pieces, each cut to the time left: one write of a whole body
+        # sends for as long as the server keeps reading a little inside each
+        # wait, so a slow reader would otherwise outlast the limit.
+        view = memoryview(buffer)
+        for start in range(0, len(view), WRITE_PIECE_BYTES):
+            self._inner.write(
+                bytes(view[start : start + WRITE_PIECE_BYTES]),
+                _cut(timeout, httpcore2.WriteTimeout),
+            )
 
     def close(self) -> None:
         self._inner.close()

@@ -9,9 +9,19 @@ a socket open, so it cannot prove a limit cuts one.
   `gap` seconds, for ever, each byte inside any read timeout;
 - `trickle_body`: sends whole headers announcing a long body, then the body
   one byte every `gap` seconds;
+- `silent_body`: sends whole headers announcing a long body, then nothing;
 - `flaky`: answers the first request `fail_status`, every later one `status`
   with `body`;
-- `answer`: answers every request `status` with `body`.
+- `answer`: answers every request `status` with `body`;
+- `deaf`: accepts the connection and never reads from it or answers, so a
+  TLS handshake gets no reply and a large request fills the socket's
+  buffers and stops;
+- `slow_reader`: reads `read_bytes` of what it is sent every `gap` seconds,
+  and never answers.
+
+`receive_buffer` makes the listener's receive buffer that small, so a client
+sending a large request fills it quickly. `full_backlog` is a listener that
+never accepts and whose queue is full, so a new connection stalls.
 
 Every connection is closed after its answer, so each try is a new one.
 """
@@ -20,10 +30,21 @@ import socket
 import threading
 import time
 from collections.abc import Callable, Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from typing import Literal
 
-Behaviour = Literal["silent", "trickle_headers", "trickle_body", "flaky", "answer"]
+Behaviour = Literal[
+    "silent",
+    "trickle_headers",
+    "trickle_body",
+    "silent_body",
+    "flaky",
+    "answer",
+    "deaf",
+    "slow_reader",
+]
+# Behaviours that never read the request: they act on the socket at once.
+_UNREAD = frozenset({"deaf", "slow_reader"})
 
 REASONS = {
     200: "OK",
@@ -44,6 +65,8 @@ class MisbehavingServer:
         fail_status: int = 503,
         gap: float = 0.2,
         extra_headers: dict[str, str] | None = None,
+        receive_buffer: int | None = None,
+        read_bytes: int = 1024,
     ) -> None:
         self.behaviour = behaviour
         self.status = status
@@ -52,10 +75,18 @@ class MisbehavingServer:
         self.fail_status = fail_status
         self.gap = gap
         self.extra_headers = extra_headers or {}
+        self.read_bytes = read_bytes
         self.requests: list[bytes] = []
+        self.connections = 0
+        self.received = 0
         self._lock = threading.Lock()
         self._stop = threading.Event()
-        self._listener = socket.create_server(("127.0.0.1", 0))
+        self._listener = socket.socket()
+        if receive_buffer is not None:
+            # Before listening, so every accepted socket starts with it.
+            self._listener.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, receive_buffer)
+        self._listener.bind(("127.0.0.1", 0))
+        self._listener.listen()
         self._listener.settimeout(0.1)
         self.port = self._listener.getsockname()[1]
         self._threads: list[threading.Thread] = []
@@ -90,7 +121,12 @@ class MisbehavingServer:
             self._threads.append(serving)
 
     def _serve(self, conn: socket.socket) -> None:
+        with self._lock:
+            self.connections += 1
         try:
+            if self.behaviour in _UNREAD:
+                getattr(self, f"_{self.behaviour}")(conn, self.connections)
+                return
             request = self._read_request(conn)
             if request is None:
                 return
@@ -151,6 +187,22 @@ class MisbehavingServer:
         conn.sendall(self._head(self.status, 10_000_000))
         self._drip(conn, b" ")
 
+    def _silent_body(self, conn: socket.socket, number: int) -> None:
+        conn.sendall(self._head(self.status, 10_000_000))
+        self._stop.wait()
+
+    def _deaf(self, conn: socket.socket, number: int) -> None:
+        self._stop.wait()
+
+    def _slow_reader(self, conn: socket.socket, number: int) -> None:
+        conn.settimeout(5)
+        while not self._stop.wait(self.gap):
+            got = conn.recv(self.read_bytes)
+            if not got:
+                return
+            with self._lock:
+                self.received += len(got)
+
     def _flaky(self, conn: socket.socket, number: int) -> None:
         if number == 1:
             conn.sendall(self._head(self.fail_status, 0))
@@ -169,6 +221,36 @@ def misbehaving(behaviour: Behaviour, **options: object) -> Iterator[Misbehaving
         yield server
     finally:
         server.stop()
+
+
+@contextmanager
+def full_backlog() -> Iterator[str]:
+    """The URL of a listener that never accepts, its queue already full.
+
+    A new connection then stalls: Linux drops its SYN while the queue is
+    full, so the client waits out its connect timeout; Windows answers the
+    SYN with a reset, which its client tries again for about 2 s
+    (measured 13 November 2026) before refusing.
+    """
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(0)
+    port = listener.getsockname()[1]
+    fillers: list[socket.socket] = []
+    try:
+        for _ in range(16):
+            filler = socket.socket()
+            filler.setblocking(False)
+            with suppress(BlockingIOError, ConnectionRefusedError):
+                filler.connect(("127.0.0.1", port))
+            fillers.append(filler)
+        # Let the fillers' handshakes land in the queue before the test connects.
+        time.sleep(0.3)
+        yield f"http://127.0.0.1:{port}"
+    finally:
+        for filler in fillers:
+            filler.close()
+        listener.close()
 
 
 def timed[T](

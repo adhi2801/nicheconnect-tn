@@ -33,7 +33,8 @@ from typing import Any
 import httpx2
 
 from app.core.deadline import Clock, Deadline
-from app.core.outside_http import exchange, limited_client
+from app.core.outside_http import AnswerTooLarge, exchange, limited_client
+from app.core.retrying import time_for_another_try
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +135,10 @@ class Msg91WhatsAppSender:
                 response = exchange(
                     self._client, "POST", API_URL, deadline, json=payload, headers=headers
                 )
+            except AnswerTooLarge:
+                # Longer than any answer it gives: asking again would repeat it.
+                failure = "AnswerTooLarge"
+                break
             except httpx2.TransportError as exc:
                 failure = type(exc).__name__
             else:
@@ -147,14 +152,16 @@ class Msg91WhatsAppSender:
                         f"MSG91 refused the message (status {response.status_code})"
                     )
             logger.warning("otp.msg91_retry attempt=%d reason=%s", attempt, failure)
-            if deadline.expired():
+            if attempt == MAX_ATTEMPTS:
                 break
-            if attempt < MAX_ATTEMPTS:
-                # 0.5 s, then 1 s, each scaled by 0.5 to 1.5 so that many
-                # clients failing together do not retry together; never
-                # past the send's limit.
-                delay = BASE_DELAY_SECONDS * 2 ** (attempt - 1)
-                self._sleep(deadline.capped(delay * (0.5 + self._jitter())))
+            # 0.5 s, then 1 s, each scaled by 0.5 to 1.5 so that many clients
+            # failing together do not retry together; never a wait that
+            # would leave the next try too little time (D-186).
+            delay = BASE_DELAY_SECONDS * 2 ** (attempt - 1)
+            pause = delay * (0.5 + self._jitter())
+            if not time_for_another_try(deadline, pause):
+                break
+            self._sleep(pause)
         raise OtpDeliveryFailed(
             f"MSG91 unreachable after {attempt} attempts "
             f"within {CALL_LIMIT_SECONDS:.0f} s ({failure})"

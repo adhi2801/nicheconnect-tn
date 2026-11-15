@@ -204,15 +204,18 @@ def run_exports(
     *,
     budget: Deadline | None = None,
 ) -> ExportRun:
-    """One run of the job: build what was asked for, destroy what expired.
+    """One run of the job: destroy what expired, then build what was asked for.
 
-    Once `budget` is spent no further build or destruction is started (item
-    118, D-186); the rest wait for the next run.
+    Destroying comes first: a file's 24 hours are a promise to its owner, so
+    builds slow enough to spend the run's budget can never put it off. Once
+    `budget` is spent no further destruction or build is started (item 118,
+    D-186); the rest wait for the next run.
 
     Each export in its own transaction. A file is written to storage with no
     transaction open, then marked ready only if it still waits, so even an
     overlapping run cannot mark one twice.
     """
+    expired = _destroy_expired(session_factory, store, now, budget)
     with session_factory() as db:
         waiting = list(
             db.scalars(
@@ -226,7 +229,6 @@ def run_exports(
         _build(session_factory, store, export_id, now)
         for export_id in within_budget(waiting, budget, "data_exports.build")
     ]
-    expired = _destroy_expired(session_factory, store, now, budget)
     run = ExportRun(
         built=outcomes.count("built"),
         retrying=outcomes.count("retrying"),
@@ -352,7 +354,11 @@ def _destroy_expired(
     now: datetime,
     budget: Deadline | None = None,
 ) -> int:
-    """Destroy every file whose 24 hours passed undownloaded, within `budget`."""
+    """Destroy every file whose 24 hours passed undownloaded, within `budget`.
+
+    A file storage fails to destroy, or is too slow to, stays due and the
+    rest go on: one stuck file never keeps the others past their 24 hours.
+    """
     with session_factory() as db:
         due = list(
             db.scalars(
@@ -365,16 +371,42 @@ def _destroy_expired(
         )
     destroyed = 0
     for export_id in within_budget(due, budget, "data_exports.destroy"):
-        store.destroy(object_key(export_id))
-        with session_factory() as db:
-            db.execute(
-                update(DataExport)
-                .where(DataExport.id == export_id, DataExport.file_deleted_at.is_(None))
-                .values(file_deleted_at=now, updated_at=now)
-            )
-            db.commit()
-        destroyed += 1
+        if _destroy_file(session_factory, store, export_id, now):
+            destroyed += 1
     return destroyed
+
+
+def _destroy_file(
+    session_factory: Callable[[], AbstractContextManager[Session]],
+    store: FileStore,
+    export_id: uuid.UUID,
+    now: datetime,
+) -> bool:
+    """Destroy one export's file and note it. False, and still due, if storage fails.
+
+    Storage is called with no transaction open. Any failure of storage's is
+    caught here, so the caller's other files, and in a deletion run its
+    other accounts, still go ahead; the row keeps no `file_deleted_at`, so
+    the next run tries again (and an account waiting on it stays due).
+    """
+    try:
+        store.destroy(object_key(export_id))
+    except Exception as error:
+        # Its type only: a message could carry the key (backend.md 9).
+        logger.warning(
+            "data_export.destroy_failed export_id=%s error_type=%s",
+            export_id,
+            type(error).__name__,
+        )
+        return False
+    with session_factory() as db:
+        db.execute(
+            update(DataExport)
+            .where(DataExport.id == export_id, DataExport.file_deleted_at.is_(None))
+            .values(file_deleted_at=now, updated_at=now)
+        )
+        db.commit()
+    return True
 
 
 def destroy_files_of(
@@ -386,7 +418,9 @@ def destroy_files_of(
     """On deleting the account (D-122): destroy every file of its still stored.
 
     With no transaction open while storage is called, as for expired files.
-    Returns how many were destroyed.
+    A file storage fails to destroy stays, and so holds the erasure
+    (`blocks_erasure`) until a later run destroys it. Returns how many were
+    destroyed.
     """
     with session_factory() as db:
         stored = list(
@@ -398,16 +432,9 @@ def destroy_files_of(
                 )
             ).all()
         )
-    for export_id in stored:
-        store.destroy(object_key(export_id))
-        with session_factory() as db:
-            db.execute(
-                update(DataExport)
-                .where(DataExport.id == export_id, DataExport.file_deleted_at.is_(None))
-                .values(file_deleted_at=now, updated_at=now)
-            )
-            db.commit()
-    return len(stored)
+    return sum(
+        _destroy_file(session_factory, store, export_id, now) for export_id in stored
+    )
 
 
 def blocks_erasure(db: Session, account_id: uuid.UUID) -> bool:
