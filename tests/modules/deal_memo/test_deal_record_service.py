@@ -293,6 +293,77 @@ def test_occurred_and_recorded_can_differ(db):
     assert entry.recorded_at == FIXED_NOW
 
 
+# --- many deals at once (audit C16, D-184) ----------------------------------------
+
+
+def test_append_each_seals_what_append_would_on_every_deal(db):
+    """The batch form, entry for entry: each chained to its own deal's last
+    entry, naming that deal's own account for the side that acted, with its
+    own facts. Two deals, so a mix-up between them cannot pass by luck."""
+    memos = [make_memo(db), make_memo(db)]
+    for memo in memos:
+        record_service.append(
+            db, memo, kind="memo_sent", actor_role="brand", now=FIXED_NOW
+        )
+    later = FIXED_NOW + timedelta(hours=1)
+
+    record_service.append_each(
+        db,
+        {memo.id: {"row": n} for n, memo in enumerate(memos)},
+        kind="payment_marked_paid",
+        actor_role="brand",
+        now=later,
+    )
+
+    for n, memo in enumerate(memos):
+        sent, marked = record_service.entries_for(db, memo.id)
+        assert (marked.kind, marked.sequence, marked.facts) == (
+            "payment_marked_paid",
+            2,
+            {"row": n},
+        )
+        assert marked.previous_hash == sent.entry_hash
+        assert marked.actor_account_id == record_service._party_account_ids(db, memo)[0]
+        assert (marked.occurred_at, marked.recorded_at) == (later, later)
+        assert record_service.verify(memo, [sent, marked]).intact
+
+
+def test_append_each_opens_a_record_that_has_none(db):
+    """`append`'s rule, for a deal in a batch whose record never began."""
+    begun, fresh = make_memo(db), make_memo(db)
+    record_service.append(db, begun, kind="memo_sent", actor_role="brand", now=FIXED_NOW)
+
+    record_service.append_each(
+        db,
+        {begun.id: {}, fresh.id: {}},
+        kind="payment_opened",
+        actor_role="system",
+        now=FIXED_NOW,
+    )
+
+    assert [e.kind for e in record_service.entries_for(db, begun.id)] == [
+        "memo_sent",
+        "payment_opened",
+    ]
+    started, opened = record_service.entries_for(db, fresh.id)
+    assert started.kind == "record_started"
+    assert started.facts == {"terms_sha256": record_service.terms_fingerprint(fresh)}
+    assert (opened.sequence, opened.previous_hash) == (2, started.entry_hash)
+    assert opened.actor_account_id is None
+    assert record_service.verify(fresh, [started, opened]).intact
+
+
+def test_append_each_refuses_a_deal_that_does_not_exist(db):
+    with pytest.raises(LookupError):
+        record_service.append_each(
+            db,
+            {uuid.uuid4(): {}},
+            kind="payment_opened",
+            actor_role="system",
+            now=FIXED_NOW,
+        )
+
+
 # --- checking ------------------------------------------------------------------------
 
 

@@ -13,6 +13,7 @@ rows and delete them again.
 """
 
 import threading
+import time
 import uuid
 from collections.abc import Callable, Iterator
 from datetime import UTC, date, datetime
@@ -20,6 +21,7 @@ from typing import Any
 
 import pytest
 from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
 
 import app.db.models  # noqa: F401 — registers every table, as the app does
 from app.db.session import SessionLocal
@@ -27,6 +29,7 @@ from app.modules.auth.models.account import Account
 from app.modules.auth.models.brand import Brand
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.models import Application, Campaign
+from app.modules.deal_memo import record_service as deal_record
 from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.record_models import DealRecordEntry
 from app.modules.disputes import service as disputes
@@ -70,6 +73,34 @@ def run_at_once(work: Callable[[Any], Any], count: int) -> list[Any]:
                 results[index] = exc
 
     threads = [threading.Thread(target=worker, args=(i,)) for i in range(count)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=30)
+    return results
+
+
+def run_staggered(*jobs: tuple[float, Callable[[Session], Any]]) -> list[Any]:
+    """Run each `(delay, work)` on its own connection, released together, each
+    starting `delay` seconds after the others are released: the order the
+    race is meant to take, every run."""
+    barrier = threading.Barrier(len(jobs))
+    results: list[Any] = [None] * len(jobs)
+
+    def worker(index: int, delay: float, work: Callable[[Session], Any]) -> None:
+        with SessionLocal() as session:
+            barrier.wait()
+            time.sleep(delay)
+            try:
+                results[index] = work(session)
+                session.commit()
+            except Exception as exc:  # collected and asserted by the test
+                results[index] = exc
+
+    threads = [
+        threading.Thread(target=worker, args=(i, delay, work))
+        for i, (delay, work) in enumerate(jobs)
+    ]
     for thread in threads:
         thread.start()
     for thread in threads:
@@ -387,3 +418,249 @@ def test_nothing_is_added_to_a_dispute_after_it_closes(payment, slow_record):
         )
     after_close = kinds[kinds.index("dispute_closed") + 1 :]
     assert after_close == []
+
+
+def test_entries_added_at_once_each_land_once_and_the_record_still_verifies(
+    payment, slow_record
+):
+    """Both sides may add to an open dispute, so every one of these wins
+    (audit C17, D-184). What must hold is the record: each entry sealed once,
+    in an unbroken chain. Each locks the dispute and then the deal, as a
+    close does, so none can claim a place in the chain another holds.
+
+    Two locks guard this together, so removing either alone leaves it
+    passing (seen, 11 November): the dispute's is proven by the close races
+    above, the deal's by the batch racing an entry below."""
+    open_dispute(payment)
+    notes = [f"Entry {n}, on the record at the same moment." for n in range(AT_ONCE)]
+
+    results = run_at_once(
+        lambda s: disputes.add_entry(
+            s,
+            disputes.get_for_payment(s, payment),
+            actor_role="creator",
+            now=NOW,
+            note=notes.pop(),
+        ),
+        AT_ONCE,
+    )
+
+    won, _, unexpected = split(results, DisputeAlreadyClosed)
+    assert unexpected == [], f"a raw database error reached the caller: {unexpected}"
+    assert won == AT_ONCE
+    with SessionLocal() as session:
+        memo = session.get_one(
+            DealMemo, session.get_one(PaymentStatus, payment).deal_memo_id
+        )
+        entries = deal_record.entries_for(session, memo.id)
+        assert deal_record.verify(memo, entries).intact
+    assert [e.kind for e in entries].count("dispute_entry_added") == AT_ONCE
+    events = [e.kind for e in closed_events(payment)]
+    assert events.count("evidence") == AT_ONCE
+
+
+# --- marking many at once (audit C16, D-184) ---------------------------------------
+#
+# The bulk mark-paid locks every listed payment in one statement, in id order.
+# Before, it locked them one row at a time in the order the brand listed them,
+# so two batches listing the same deals in different orders each held a
+# payment the other was waiting for: PostgreSQL broke the deadlock by failing
+# one of them, a raw error and a 500.
+
+BATCH = 3
+
+
+@pytest.fixture
+def batch() -> Iterator[tuple[uuid.UUID, list[uuid.UUID]]]:
+    """One brand with BATCH approved, unpaid deals, each with its own creator,
+    committed; removed again afterwards. Yields the brand and its memos."""
+    with SessionLocal() as session:
+        brand_account = create_account(session, "brand", phone=unique_phone())
+        brand = build_brand(
+            session,
+            account_id=brand_account.id,
+            email=f"batch-{uuid.uuid4().hex[:12]}@example.com",
+        )
+        session.add(brand)
+        session.flush()
+        campaign = build_campaign(session, status="open", brand_id=brand.id)
+        session.add(campaign)
+        session.flush()
+        account_ids = [brand_account.id]
+        creator_ids, application_ids, memos = [], [], []
+        for _ in range(BATCH):
+            creator_account = create_account(session, "creator", phone=unique_phone())
+            account_ids.append(creator_account.id)
+            creator = build_creator(
+                session,
+                handle=f"batch{uuid.uuid4().hex[:12]}",
+                account_id=creator_account.id,
+            )
+            session.add(creator)
+            session.flush()
+            application = Application(
+                campaign_id=campaign.id,
+                creator_id=creator.id,
+                pitch="I run a Salem food page, for a batch concurrency test.",
+                status="accepted",
+                status_changed_at=NOW,
+                created_at=NOW,
+                updated_at=NOW,
+            )
+            session.add(application)
+            session.flush()
+            memo = DealMemo(
+                application_id=application.id,
+                deliverables="Three reels, for a batch concurrency test.",
+                fee_amount_paise=800_000,
+                status="accepted",
+                created_at=NOW,
+                updated_at=NOW,
+            )
+            session.add(memo)
+            session.flush()
+            creator_ids.append(creator.id)
+            application_ids.append(application.id)
+            memos.append(memo)
+        session.commit()
+        for memo in memos:
+            payments.create_for_memo(session, memo, approved_on=APPROVED_ON, now=NOW)
+        session.commit()
+        memo_ids = [memo.id for memo in memos]
+        brand_id, campaign_id = brand.id, campaign.id
+
+    try:
+        yield brand_id, memo_ids
+    finally:
+        with SessionLocal() as session:
+            remove_deal_records(memo_ids)
+            paid = select(PaymentStatus.id).where(
+                PaymentStatus.deal_memo_id.in_(memo_ids)
+            )
+            session.execute(delete(Dispute).where(Dispute.payment_status_id.in_(paid)))
+            session.execute(
+                delete(PaymentStatus).where(PaymentStatus.deal_memo_id.in_(memo_ids))
+            )
+            session.execute(delete(DealMemo).where(DealMemo.id.in_(memo_ids)))
+            session.execute(
+                delete(Application).where(Application.id.in_(application_ids))
+            )
+            session.execute(delete(Campaign).where(Campaign.id == campaign_id))
+            session.execute(delete(Creator).where(Creator.id.in_(creator_ids)))
+            session.execute(delete(Brand).where(Brand.id == brand_id))
+            session.execute(delete(Account).where(Account.id.in_(account_ids)))
+            session.commit()
+
+
+def mark_in_bulk(brand_id: uuid.UUID, memo_ids: list[uuid.UUID]) -> Callable[[Any], Any]:
+    return lambda s: payments.mark_paid_in_bulk(
+        s,
+        brand_id,
+        [payments.BulkMarkPaidRow(memo_id, "upi", RRN) for memo_id in memo_ids],
+        now=NOW,
+    )
+
+
+def marked_entries(memo_ids: list[uuid.UUID]) -> dict[uuid.UUID, int]:
+    """How many `payment_marked_paid` entries each deal's record holds."""
+    with SessionLocal() as session:
+        kinds = session.execute(
+            select(DealRecordEntry.deal_memo_id).where(
+                DealRecordEntry.deal_memo_id.in_(memo_ids),
+                DealRecordEntry.kind == "payment_marked_paid",
+            )
+        ).scalars()
+        counted = dict.fromkeys(memo_ids, 0)
+        for memo_id in kinds:
+            counted[memo_id] += 1
+        return counted
+
+
+def test_two_batches_listing_the_same_deals_in_opposite_orders_never_deadlock(
+    batch, slow_writes
+):
+    """Each payment is marked once, by whichever batch reached it first; the
+    other batch's row for it is refused cleanly, and neither fails."""
+    brand_id, memo_ids = batch
+    jobs = [memo_ids, list(reversed(memo_ids))]
+
+    results = run_at_once(lambda s: mark_in_bulk(brand_id, jobs.pop())(s), 2)
+
+    errors = [r for r in results if isinstance(r, Exception)]
+    assert errors == [], f"a raw database error reached the caller: {errors}"
+    outcomes = [outcome for result in results for outcome in result]
+    recorded = [o.memo_id for o in outcomes if o.payment is not None]
+    refused = [o.refusal for o in outcomes if o.refusal is not None]
+    assert sorted(recorded) == sorted(memo_ids)
+    assert len(refused) == BATCH
+    assert all(isinstance(r, PaymentAlreadyMarkedPaid) for r in refused)
+    assert marked_entries(memo_ids) == dict.fromkeys(memo_ids, 1)
+
+
+def test_a_batch_and_a_single_mark_at_once_mark_the_payment_once(batch, slow_writes):
+    """The single path locks the payment, then its deal; the batch takes the
+    same two in the same order, so they wait for each other, never deadlock."""
+    brand_id, memo_ids = batch
+    contested = memo_ids[-1]
+
+    def single(s):
+        payment = payments.get_for_memo(s, contested)
+        return payments.mark_paid(s, payment, method="upi", reference=RRN, now=NOW)
+
+    jobs = [("bulk", mark_in_bulk(brand_id, memo_ids)), ("single", single)]
+
+    def tagged(s):  # which thread takes which job is the scheduler's choice
+        name, job = jobs.pop()
+        try:
+            return name, job(s)
+        except Exception as exc:  # collected and asserted below
+            return name, exc
+
+    results = dict(run_at_once(tagged, 2))
+
+    bulk_result, single_result = results["bulk"], results["single"]
+    single_lost = isinstance(single_result, PaymentAlreadyMarkedPaid)
+    assert single_lost or not isinstance(single_result, Exception), single_result
+    assert not isinstance(bulk_result, Exception), bulk_result
+    bulk_won = {o.memo_id for o in bulk_result if o.payment is not None}
+    # Exactly one of them marked the contested payment.
+    assert (contested in bulk_won) == single_lost
+    assert marked_entries(memo_ids) == dict.fromkeys(memo_ids, 1)
+
+
+def test_a_batch_and_a_dispute_entry_on_one_deal_both_land_in_one_chain(
+    batch, slow_writes
+):
+    """Both append to the deal's record. The entry locks the dispute and then
+    the deal, and holds the deal while its write is held open; the batch,
+    holding the payments, must wait for the deal before reading the record's
+    last entry, or both would claim the same place in the chain."""
+    brand_id, memo_ids = batch
+    disputed = memo_ids[0]
+    with SessionLocal() as session:
+        payment_id = payments.get_for_memo(session, disputed).id
+    open_dispute(payment_id)
+
+    def entry(s):
+        return disputes.add_entry(
+            s,
+            disputes.get_for_payment(s, payment_id),
+            actor_role="creator",
+            now=NOW,
+            note="Said on the record while the batch runs.",
+        )
+
+    bulk_result, entry_result = run_staggered(
+        (0.0, mark_in_bulk(brand_id, memo_ids)), (0.1, entry)
+    )
+
+    assert not isinstance(bulk_result, Exception), bulk_result
+    assert not isinstance(entry_result, Exception), entry_result
+    assert all(outcome.payment is not None for outcome in bulk_result)
+    with SessionLocal() as session:
+        memo = session.get_one(DealMemo, disputed)
+        entries = deal_record.entries_for(session, disputed)
+        assert deal_record.verify(memo, entries).intact
+    kinds = [e.kind for e in entries]
+    assert kinds.count("payment_marked_paid") == 1
+    assert kinds.count("dispute_entry_added") == 1
