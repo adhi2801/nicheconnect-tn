@@ -85,6 +85,7 @@ from app.modules.deal_memo.exceptions import (
     BrandAccountExists,
     CreatorLeft,
     DirectOfferAlreadyAccepted,
+    DirectOfferCreatorNumberLimit,
     DirectOfferDailyLimit,
     DirectOfferExpired,
     DirectOfferNotFound,
@@ -151,11 +152,13 @@ EXPORT_FIELDS = allow(
 
 
 def is_on() -> bool:
-    """Whether direct offers are on: the switch and real notice wording both.
+    """Whether direct offers are on: the switch, the link page's real notice,
+    and the code message's template, all three.
 
-    A placeholder can never be served, whatever the switch says (constraint 6).
+    A placeholder can never be served, nor a code sent without its notice,
+    whatever the switch says (constraint 6).
     """
-    return settings.direct_offers_enabled and notices.wording_ready()
+    return settings.direct_offers_enabled and notices.ready()
 
 
 def ensure_on() -> None:
@@ -221,10 +224,14 @@ def send(
 
     The creator's row is locked first, so their offers are counted one at a
     time against the day's 10; then the number, by an advisory lock on its
-    keyed hash, so offers from anyone are counted one at a time against its
-    week's 3. Raises DueDateHasPassed, DueDateTooFar, CreatorLeft,
-    DirectOfferOwnNumber, DirectOfferStoppedByRecipient, DirectOfferDailyLimit
-    and DirectOfferNumberLimit (each 429 with Retry-After).
+    keyed hash, the lock "stop these" takes too, so a stop and a send to one
+    number land one after the other, and offers from everyone are counted
+    one at a time against the week's ceilings (3 from this creator, 10 from
+    everyone, a withdrawn offer in neither). Raises DueDateHasPassed,
+    DueDateTooFar, CreatorLeft, DirectOfferOwnNumber,
+    DirectOfferStoppedByRecipient, and DirectOfferDailyLimit,
+    DirectOfferCreatorNumberLimit and DirectOfferNumberLimit (each 429 with
+    Retry-After).
     """
     ensure_on()
     problem = rules.due_date_problem(fields["content_due_on"], now)
@@ -249,16 +256,6 @@ def send(
         db.rollback()
         raise DirectOfferOwnNumber()
     phone_hash = rules.hash_recipient_phone(phone)
-    stopped = db.scalar(
-        select(DirectOffer.id).where(
-            DirectOffer.creator_id == creator.id,
-            DirectOffer.recipient_phone_hash == phone_hash,
-            DirectOffer.status == "stopped",
-        )
-    )
-    if stopped is not None:
-        db.rollback()
-        raise DirectOfferStoppedByRecipient()
     today = db.scalar(
         select(func.count(DirectOffer.id)).where(
             DirectOffer.creator_id == creator.id,
@@ -271,24 +268,43 @@ def send(
             headers={"Retry-After": str(rules.seconds_until_tomorrow(now))}
         )
 
-    db.execute(
-        text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
-        {"key": f"direct-offer-number:{phone_hash}"},
+    _lock_number(db, phone_hash)
+    # Asked only under the number's lock, so a "stop these" landing at the
+    # same moment is either seen here or waited for.
+    stopped = db.scalar(
+        select(DirectOffer.id).where(
+            DirectOffer.creator_id == creator.id,
+            DirectOffer.recipient_phone_hash == phone_hash,
+            DirectOffer.status == "stopped",
+        )
     )
-    this_week = sorted(
-        db.scalars(
-            select(DirectOffer.created_at).where(
+    if stopped is not None:
+        db.rollback()
+        raise DirectOfferStoppedByRecipient()
+    sent_this_week = [
+        rules.SentToNumber(creator_id=row[0], status=row[1], created_at=row[2])
+        for row in db.execute(
+            select(
+                DirectOffer.creator_id, DirectOffer.status, DirectOffer.created_at
+            ).where(
                 DirectOffer.recipient_phone_hash == phone_hash,
                 DirectOffer.created_at > now - rules.NUMBER_WINDOW,
             )
-        ).all()
-    )
-    if len(this_week) >= rules.WEEKLY_OFFERS_PER_NUMBER:
-        db.rollback()
-        oldest = this_week[len(this_week) - rules.WEEKLY_OFFERS_PER_NUMBER]
-        raise DirectOfferNumberLimit(
-            headers={"Retry-After": str(rules.seconds_until_number_frees(oldest, now))}
         )
+    ]
+    ceiling = rules.number_ceiling(sent_this_week, creator.id, now)
+    if ceiling is not None:
+        db.rollback()
+        retry = {
+            "Retry-After": str(
+                rules.seconds_until_number_frees(
+                    ceiling.frees_at - rules.NUMBER_WINDOW, now
+                )
+            )
+        }
+        if ceiling.which == "creator":
+            raise DirectOfferCreatorNumberLimit(headers=retry)
+        raise DirectOfferNumberLimit(headers=retry)
 
     token = rules.new_link_token()
     fields["currency"] = CURRENCY
@@ -310,6 +326,16 @@ def send(
     db.commit()
     db.refresh(offer)
     return SentOffer(offer=offer, link_token=token)
+
+
+def _lock_number(db: Session, phone_hash: str) -> None:
+    """Lock one number for this transaction, by its keyed hash: taken by every
+    send to it and by "stop these" at its links, after any row lock either
+    holds on the creator, never before."""
+    db.execute(
+        text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
+        {"key": f"direct-offer-number:{phone_hash}"},
+    )
 
 
 def list_mine(
@@ -462,16 +488,31 @@ def stop(db: Session, token: str, now: datetime) -> None:
     """ "Stop these": this creator may send this number nothing more.
 
     No account is needed: the link proves the number's holder received it.
-    The offer ends as `stopped`, its number and name erased; its keyed hash
-    stays as the block. Allowed on a waiting, withdrawn or expired offer;
-    a second tap changes nothing. Raises DirectOfferNotFound and
-    DirectOfferAlreadyAccepted.
+    The offer ends as `stopped`, its number, name and terms erased; its
+    creator and the number's keyed hash stay, as the block, and nothing
+    else. Allowed on a waiting, withdrawn or expired offer; a second tap
+    changes nothing. Works whatever has become of the creator's account:
+    it is the number's holder's protection, not the creator's offer.
+
+    The number's lock is taken first, the one every send to it takes, so a
+    send at the same moment either lands before the block or is refused by
+    it; then the offer's row. Raises DirectOfferNotFound, DirectOffersOff
+    and DirectOfferAlreadyAccepted.
     """
     if not rules.is_link_token(token):
         raise DirectOfferNotFound()
+    token_hash = rules.hash_link_token(token)
+    phone_hash = db.scalar(
+        select(DirectOffer.recipient_phone_hash).where(
+            DirectOffer.token_hash == token_hash
+        )
+    )
+    if phone_hash is None:
+        raise DirectOfferNotFound()
+    _lock_number(db, phone_hash)
     offer = db.scalars(
         select(DirectOffer)
-        .where(DirectOffer.token_hash == rules.hash_link_token(token))
+        .where(DirectOffer.token_hash == token_hash)
         .with_for_update()
         .execution_options(populate_existing=True)
     ).first()
@@ -486,6 +527,11 @@ def stop(db: Session, token: str, now: datetime) -> None:
         raise DirectOfferAlreadyAccepted()
     if offer.status != "stopped":
         _end(offer, "stopped", now)
+        # A block for good keeps only what it needs: who, and which number.
+        offer.deliverables = None
+        offer.deliverable_items = []
+        offer.fee_amount_paise = None
+        offer.extra_terms = None
     db.commit()
 
 

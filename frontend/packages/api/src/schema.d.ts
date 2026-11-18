@@ -683,7 +683,7 @@ export interface paths {
         put?: never;
         /**
          * Send the code that accepts an offer
-         * @description Sends a 6-digit code to the number the creator named, never to any other: the number is not shown, and needs no typing. The same caps as a login code: 3 codes in 10 minutes and 10 a day per number, and 3 requests in 10 minutes per address.
+         * @description Sends a 6-digit code to the number the creator named, never to any other: the number is not shown, and needs no typing. It goes as the direct offer's own WhatsApp message, carrying its notice, never the login message. The same caps as a login code: 3 codes in 10 minutes and 10 a day per number, and 3 requests in 10 minutes per address.
          */
         post: operations["request_offer_code_api_v1_auth_direct_offer_link_code_post"];
         delete?: never;
@@ -2983,7 +2983,7 @@ export interface paths {
         put?: never;
         /**
          * Stop offers from this creator to my number
-         * @description Public, no account needed: the link proves its holder received it. This creator can send this number no more direct offers, and this offer ends, its number and name erased. Works on a waiting, withdrawn or expired offer; a second tap changes nothing. Limit: 10 in 10 minutes per address.
+         * @description Public, no account needed: the link proves its holder received it. This creator can send this number no more direct offers, and this offer ends, its number, name and terms erased: only the creator and the number's keyed hash stay, as the block. Works on a waiting, withdrawn or expired offer, whatever became of the creator's account; a second tap changes nothing. Limit: 10 in 10 minutes per address.
          */
         post: operations["stop_offers_api_v1_direct_offer_link_stop_post"];
         delete?: never;
@@ -3007,7 +3007,7 @@ export interface paths {
         put?: never;
         /**
          * Send a direct offer to a brand not on the platform
-         * @description Writes the terms a memo carries, for a brand named by its WhatsApp number, and answers with the link's token, shown this once: send the brand the link. It works for 14 days, until you withdraw it, or until the number's holder stops your offers. Only that number can accept, with a code we send it when they ask. Limits: 10 offers a Tamil Nadu day, and 3 in any 7 days to one number from anyone; 5 a minute. Never replayed for an `Idempotency-Key`: the answer carries the token, which is never kept.
+         * @description Writes the terms a memo carries, for a brand named by its WhatsApp number, and answers with the link's token, shown this once: send the brand the link. It works for 14 days, until you withdraw it, or until the number's holder stops your offers. Only that number can accept, with a code we send it when they ask. Limits: 10 offers a Tamil Nadu day; in any 7 days, 3 from you to one number and 10 to one number from everyone, a withdrawn offer counting in neither; 5 a minute. Never replayed for an `Idempotency-Key`: the answer carries the token, which is never kept.
          */
         post: operations["send_direct_offer_api_v1_direct_offers_post"];
         delete?: never;
@@ -6188,6 +6188,16 @@ export interface components {
              * @description Scored (non-barter) deals that reached an outcome
              */
             deals_completed: number;
+            /**
+             * Deals Completed From Campaigns
+             * @description Of the completed deals, those that came from a brand's campaign. Show it beside the next: the two add up to deals_completed (D-189)
+             */
+            deals_completed_from_campaigns: number;
+            /**
+             * Deals Completed From Direct Offers
+             * @description Of the completed deals, those that began as the creator's own direct offer, its brand made at the offer's link (D-189). Shown as its own count, so a record resting on direct offers alone reads as that
+             */
+            deals_completed_from_direct_offers: number;
             /** Deals Delivered */
             deals_delivered: number;
             /**
@@ -7084,8 +7094,11 @@ export interface components {
             deal_memo_id: string | null;
             /** Deliverable Items */
             deliverable_items: components["schemas"]["DeliverableRead"][];
-            /** Deliverables */
-            deliverables: string;
+            /**
+             * Deliverables
+             * @description Null once the number's holder stopped your offers: a stop keeps no terms
+             */
+            deliverables: string | null;
             /** Disclosure Required */
             disclosure_required: boolean;
             /** Draft Review */
@@ -7102,8 +7115,11 @@ export interface components {
             expires_at: string;
             /** Extra Terms */
             extra_terms: string | null;
-            /** Fee Amount Paise */
-            fee_amount_paise: number;
+            /**
+             * Fee Amount Paise
+             * @description Null once the number's holder stopped your offers: a stop keeps no terms
+             */
+            fee_amount_paise: number | null;
             /**
              * Id
              * Format: uuid
@@ -7167,8 +7183,11 @@ export interface components {
             deal_memo_id: string | null;
             /** Deliverable Items */
             deliverable_items: components["schemas"]["DeliverableRead"][];
-            /** Deliverables */
-            deliverables: string;
+            /**
+             * Deliverables
+             * @description Null once the number's holder stopped your offers: a stop keeps no terms
+             */
+            deliverables: string | null;
             /** Disclosure Required */
             disclosure_required: boolean;
             /** Draft Review */
@@ -7185,8 +7204,11 @@ export interface components {
             expires_at: string;
             /** Extra Terms */
             extra_terms: string | null;
-            /** Fee Amount Paise */
-            fee_amount_paise: number;
+            /**
+             * Fee Amount Paise
+             * @description Null once the number's holder stopped your offers: a stop keeps no terms
+             */
+            fee_amount_paise: number | null;
             /**
              * Id
              * Format: uuid
@@ -26884,7 +26906,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description `direct_offer_not_found`: no offer has this token, or its creator is suspended or left */
+            /** @description `direct_offer_not_found`: no offer has this token */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -27092,7 +27114,7 @@ export interface operations {
                     "application/problem+json": unknown;
                 };
             };
-            /** @description `direct_offer_daily_limit` (10 today), `direct_offer_number_limit` (3 this week to that number), or too many requests; see Retry-After */
+            /** @description `direct_offer_daily_limit` (10 today), `direct_offer_creator_number_limit` (3 from you to that number this week), `direct_offer_number_limit` (10 to that number this week from everyone), or too many requests; see Retry-After */
             429: {
                 headers: {
                     [name: string]: unknown;

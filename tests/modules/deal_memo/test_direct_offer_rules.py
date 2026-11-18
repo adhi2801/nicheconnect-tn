@@ -6,6 +6,7 @@ here is pinned by an exact example on both sides of it.
 
 import hashlib
 import hmac
+import uuid
 from datetime import UTC, date, datetime, timedelta
 
 import pytest
@@ -155,9 +156,93 @@ def test_a_number_frees_when_its_oldest_offer_of_the_week_leaves_it():
     )
 
 
+ME, OTHER = uuid.UUID(int=1), uuid.UUID(int=2)
+
+
+def to_number(creator, *, days_ago: float, status: str = "sent") -> rules.SentToNumber:
+    return rules.SentToNumber(
+        creator_id=creator, status=status, created_at=NOW - timedelta(days=days_ago)
+    )
+
+
+def test_a_creator_s_third_offer_to_a_number_in_a_week_is_its_last():
+    two = [to_number(ME, days_ago=5), to_number(ME, days_ago=1)]
+    three = [*two, to_number(ME, days_ago=3)]
+
+    assert rules.number_ceiling(two, ME, NOW) is None
+    ceiling = rules.number_ceiling(three, ME, NOW)
+    assert ceiling == rules.NumberCeiling(
+        which="creator", frees_at=NOW - timedelta(days=5) + rules.NUMBER_WINDOW
+    )
+    # Someone else's three are not this creator's.
+    assert rules.number_ceiling(three, OTHER, NOW) is None
+
+
+def test_ten_from_everyone_close_a_number_for_the_week():
+    nine = [to_number(uuid.UUID(int=10 + i), days_ago=6 - i * 0.5) for i in range(9)]
+    ten = [*nine, to_number(OTHER, days_ago=0.1)]
+
+    assert rules.number_ceiling(nine, ME, NOW) is None
+    assert rules.number_ceiling(ten, ME, NOW) == rules.NumberCeiling(
+        which="number", frees_at=NOW - timedelta(days=6) + rules.NUMBER_WINDOW
+    )
+
+
+def test_the_number_frees_with_its_oldest_counted_offer_not_the_first_ever():
+    """With more than ten in the window, the wait is until enough have left
+    it: the eleventh-newest, not the oldest of all."""
+    eleven = [to_number(uuid.UUID(int=10 + i), days_ago=6 - i * 0.5) for i in range(11)]
+
+    ceiling = rules.number_ceiling(eleven, ME, NOW)
+
+    assert ceiling is not None
+    assert ceiling.frees_at == NOW - timedelta(days=5.5) + rules.NUMBER_WINDOW
+
+
+def test_the_creator_s_own_ceiling_is_asked_first():
+    mine = [to_number(ME, days_ago=d) for d in (6, 4, 2)]
+    others = [to_number(uuid.UUID(int=10 + i), days_ago=1) for i in range(7)]
+
+    ceiling = rules.number_ceiling(mine + others, ME, NOW)
+
+    assert ceiling is not None and ceiling.which == "creator"
+
+
+def test_a_withdrawn_offer_counts_in_neither_ceiling():
+    mine = [to_number(ME, days_ago=1, status="withdrawn") for _ in range(3)]
+    everyone = [
+        to_number(uuid.UUID(int=10 + i), days_ago=1, status="withdrawn")
+        for i in range(10)
+    ]
+
+    assert rules.number_ceiling(mine + everyone, ME, NOW) is None
+    for status in ("sent", "accepted", "stopped", "expired"):
+        counted = [to_number(ME, days_ago=1, status=status) for _ in range(3)]
+        assert rules.number_ceiling(counted, ME, NOW) is not None, status
+
+
+def test_an_offer_a_week_old_has_left_the_window():
+    """The window is the 7 days before now: an offer sent exactly 7 days ago
+    no longer counts, one sent a moment later still does."""
+    at_edge = [to_number(ME, days_ago=7) for _ in range(3)]
+    inside = [
+        rules.SentToNumber(
+            creator_id=ME,
+            status="sent",
+            created_at=NOW - rules.NUMBER_WINDOW + timedelta(microseconds=1),
+        )
+        for _ in range(3)
+    ]
+
+    assert rules.number_ceiling(at_edge, ME, NOW) is None
+    assert rules.number_ceiling(inside, ME, NOW) is not None
+
+
 def test_the_limits_are_the_approved_ones():
     assert rules.DAILY_OFFERS_PER_CREATOR == 10
-    assert rules.WEEKLY_OFFERS_PER_NUMBER == 3
+    assert rules.WEEKLY_OFFERS_FROM_CREATOR_TO_NUMBER == 3
+    assert rules.WEEKLY_OFFERS_PER_NUMBER == 10
+    assert rules.NOT_COUNTED_WEEKLY == "withdrawn"
     assert timedelta(days=7) == rules.NUMBER_WINDOW
     assert timedelta(days=365) == rules.MAX_DUE_AHEAD
     # The privacy impact assessment's numbers (D-189): a link works 14 days,

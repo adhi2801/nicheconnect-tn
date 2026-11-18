@@ -383,6 +383,19 @@ class CreatorDeliveryRead(BaseModel):
             "the figures: twelve deals with one brand say less than twelve across nine"
         )
     )
+    deals_completed_from_campaigns: int = Field(
+        description=(
+            "Of the completed deals, those that came from a brand's campaign. Show "
+            "it beside the next: the two add up to deals_completed (D-189)"
+        )
+    )
+    deals_completed_from_direct_offers: int = Field(
+        description=(
+            "Of the completed deals, those that began as the creator's own direct "
+            "offer, its brand made at the offer's link (D-189). Shown as its own "
+            "count, so a record resting on direct offers alone reads as that"
+        )
+    )
 
 
 def to_delivery_read(record: DeliveryRecord) -> CreatorDeliveryRead:
@@ -398,6 +411,8 @@ def to_delivery_read(record: DeliveryRecord) -> CreatorDeliveryRead:
         barter_deals_delivered=record.barter_deals_delivered,
         barter_deals_not_delivered=record.barter_deals_not_delivered,
         distinct_brands=record.distinct_brands,
+        deals_completed_from_campaigns=record.deals_completed_from_campaigns,
+        deals_completed_from_direct_offers=record.deals_completed_from_direct_offers,
     )
 
 

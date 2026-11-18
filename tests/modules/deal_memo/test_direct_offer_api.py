@@ -120,20 +120,40 @@ def test_the_switch_alone_serves_nothing_while_the_wording_is_a_placeholder(
     assert notices.PLACEHOLDER_MARK not in response.text
 
 
-def test_the_placeholders_are_marked_and_never_ready():
+def test_the_placeholder_is_marked_and_never_ready():
     assert notices.PLACEHOLDER_MARK in notices.LINK_PAGE_NOTICE
-    assert notices.PLACEHOLDER_MARK in notices.CODE_MESSAGE
     assert not notices.wording_ready()
+    assert settings.msg91_direct_offer_template is None
+    assert not notices.ready()
 
 
-def test_the_app_refuses_to_start_switched_on_with_placeholder_wording():
-    with pytest.raises(RuntimeError, match="placeholders"):
+def test_the_switch_and_the_link_notice_serve_nothing_without_the_code_template(
+    client, db, clock, monkeypatch
+):
+    """Real link wording alone is not enough: the code would go out on the
+    login template, which carries no notice about the offer (constraint 6)."""
+    monkeypatch.setattr(settings, "direct_offers_enabled", True)
+    monkeypatch.setattr(notices, "LINK_PAGE_NOTICE", TEST_WORDING)
+
+    response = send(client, creator_user(db, clock))
+
+    assert response.status_code == 503
+    assert response.json()["code"] == "direct_offers_unavailable"
+
+
+def test_the_app_refuses_to_start_switched_on_without_both_notices(monkeypatch):
+    with pytest.raises(RuntimeError, match="placeholder"):
         notices.refuse_switch_without_wording(True)
+    monkeypatch.setattr(notices, "LINK_PAGE_NOTICE", TEST_WORDING)
+    with pytest.raises(RuntimeError, match="MSG91_DIRECT_OFFER_TEMPLATE"):
+        notices.refuse_switch_without_wording(True)
+    monkeypatch.setattr(settings, "msg91_direct_offer_template", "direct_offer_code")
+    notices.refuse_switch_without_wording(True)
     notices.refuse_switch_without_wording(False)
 
 
-def test_real_wording_and_the_switch_turn_it_on(client, db, clock, on):
-    assert notices.wording_ready()
+def test_real_wording_a_template_and_the_switch_turn_it_on(client, db, clock, on):
+    assert notices.ready()
     assert send(client, creator_user(db, clock)).status_code == 201
 
 
@@ -296,11 +316,48 @@ def test_another_creator_s_offers_do_not_count_against_the_day(
     assert send(client, second).status_code == 201
 
 
-def test_one_number_receives_three_offers_a_week_from_anyone(
+def test_one_creator_sends_one_number_three_offers_a_week(
     client, db, clock, on, unlimited
 ):
+    """Two numbers and two creators (testing.md section 2), so the ceiling is
+    seen to be this creator's to this number, and nobody else's."""
+    creator, other = creator_user(db, clock), creator_user(db, clock)
+    phone, other_phone = fake_phone(), fake_phone()
+    for _ in range(3):
+        assert send(client, creator, phone).status_code == 201
+    clock.advance(timedelta(days=1))
+
+    refused = send(client, creator, phone)
+
+    assert refused.status_code == 429
+    assert refused.json()["code"] == "direct_offer_creator_number_limit"
+    assert refused.headers["retry-after"] == str(6 * 86400)
+    assert send(client, creator, other_phone).status_code == 201
+    assert send(client, other, phone).status_code == 201
+    clock.advance(timedelta(days=6))
+    assert send(client, creator, phone).status_code == 201
+
+
+def test_a_withdrawn_offer_counts_in_neither_weekly_ceiling(
+    client, db, clock, on, unlimited
+):
+    creator = creator_user(db, clock)
     phone = fake_phone()
     for _ in range(3):
+        offer = sent(client, creator, phone)
+        withdrawn = client.post(
+            f"{OFFERS_URL}/{offer['id']}/withdraw", headers=creator.headers
+        )
+        assert withdrawn.status_code == 200
+
+    assert send(client, creator, phone).status_code == 201
+
+
+def test_one_number_receives_ten_offers_a_week_from_everyone(
+    client, db, clock, on, unlimited
+):
+    phone, other_phone = fake_phone(), fake_phone()
+    for _ in range(10):
         assert send(client, creator_user(db, clock), phone).status_code == 201
     clock.advance(timedelta(days=1))
 
@@ -309,8 +366,28 @@ def test_one_number_receives_three_offers_a_week_from_anyone(
     assert refused.status_code == 429
     assert refused.json()["code"] == "direct_offer_number_limit"
     assert refused.headers["retry-after"] == str(6 * 86400)
-    assert send(client, creator_user(db, clock)).status_code == 201
+    assert send(client, creator_user(db, clock), other_phone).status_code == 201
     clock.advance(timedelta(days=6))
+    assert send(client, creator_user(db, clock), phone).status_code == 201
+
+
+def test_a_withdrawn_offer_frees_its_place_in_the_number_s_ten(
+    client, db, clock, on, unlimited
+):
+    phone = fake_phone()
+    first_creator = creator_user(db, clock)
+    first = sent(client, first_creator, phone)
+    for _ in range(9):
+        assert send(client, creator_user(db, clock), phone).status_code == 201
+    assert send(client, creator_user(db, clock), phone).status_code == 429
+
+    assert (
+        client.post(
+            f"{OFFERS_URL}/{first['id']}/withdraw", headers=first_creator.headers
+        ).status_code
+        == 200
+    )
+
     assert send(client, creator_user(db, clock), phone).status_code == 201
 
 
@@ -547,14 +624,26 @@ def test_a_later_reading_writes_nothing(client, db, clock, on):
     assert touching[0].lstrip().upper().startswith("SELECT"), touching
 
 
-def test_a_link_nobody_sent_finds_nothing(client, db, clock, on):
+def link_calls(client, headers: dict[str, str]) -> dict[str, int]:
+    """Each of the four link routes, with these headers and a valid body."""
+    return {
+        "read": client.get(LINK_URL, headers=headers).status_code,
+        "stop": client.post(STOP_URL, headers=headers).status_code,
+        "code": client.post(CODE_URL, headers=headers).status_code,
+        "accept": client.post(
+            ACCEPT_URL, json=accept_body("042917", "0" * 64), headers=headers
+        ).status_code,
+    }
+
+
+def test_a_link_nobody_sent_finds_nothing(client, db, clock, on, sender):
+    """On every link route: a token nobody sent, or of the wrong shape, is not
+    found; none at all, or one too long to be any token, is refused unread."""
     sent(client, creator_user(db, clock))
     for token in ("b" * 64, "short", "x" * 128):
-        response = client.get(LINK_URL, headers=link(token))
-        assert response.status_code == 404
-        assert response.json()["code"] == "direct_offer_not_found"
-    assert client.get(LINK_URL).status_code == 422
-    assert client.get(LINK_URL, headers=link("x" * 129)).status_code == 422
+        assert set(link_calls(client, link(token)).values()) == {404}, token
+    assert set(link_calls(client, {}).values()) == {422}
+    assert set(link_calls(client, link("x" * 129)).values()) == {422}
 
 
 def test_a_token_of_the_wrong_shape_never_reaches_the_offers(client, db, clock, on):
@@ -562,10 +651,16 @@ def test_a_token_of_the_wrong_shape_never_reaches_the_offers(client, db, clock, 
     anything about offers (security.md section 1)."""
     from tests.query_counts import count_queries
 
-    for method, url in (("GET", LINK_URL), ("POST", STOP_URL)):
+    calls = (
+        ("GET", LINK_URL, None),
+        ("POST", STOP_URL, None),
+        ("POST", CODE_URL, None),
+        ("POST", ACCEPT_URL, accept_body("042917", "0" * 64)),
+    )
+    for method, url, body in calls:
         with count_queries() as statements:
-            response = client.request(method, url, headers=link("not-a-token"))
-        assert response.status_code == 404
+            response = client.request(method, url, json=body, headers=link("not-a-token"))
+        assert response.status_code == 404, url
         assert not [sql for sql in statements if "direct_offer" in sql], statements
 
 
@@ -643,6 +738,20 @@ def test_stop_these_blocks_that_creator_from_that_number_only(client, db, clock,
     stored = row(db, offer["id"])
     assert stored.status == "stopped"
     assert stored.recipient_phone is None and stored.brand_name is None
+    # A block keeps who and which number, never the terms (D-189).
+    assert (stored.deliverables, stored.fee_amount_paise, stored.extra_terms) == (
+        None,
+        None,
+        None,
+    )
+    assert stored.deliverable_items == []
+    assert stored.creator_id is not None and stored.recipient_phone_hash
+    listed = client.get(f"{OFFERS_URL}/{offer['id']}", headers=creator.headers).json()
+    assert (listed["status"], listed["deliverables"], listed["fee_amount_paise"]) == (
+        "stopped",
+        None,
+        None,
+    )
     refused = send(client, creator, phone)
     assert refused.status_code == 409
     assert refused.json()["code"] == "direct_offer_stopped_by_recipient"

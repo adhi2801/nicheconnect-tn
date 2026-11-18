@@ -30,11 +30,16 @@ DUE_ON = "2026-10-15"
 FEE = 900_000
 
 
+# A template name for a test run; nothing is registered under it.
+TEST_TEMPLATE = "test_direct_offer_code"
+
+
 def switch_on(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The switch on and test wording in place of the placeholders."""
+    """The switch on, test wording in place of the link page's placeholder,
+    and a test name for the code message's template."""
     monkeypatch.setattr(settings, "direct_offers_enabled", True)
     monkeypatch.setattr(notices, "LINK_PAGE_NOTICE", TEST_WORDING)
-    monkeypatch.setattr(notices, "CODE_MESSAGE", TEST_WORDING)
+    monkeypatch.setattr(settings, "msg91_direct_offer_template", TEST_TEMPLATE)
 
 
 def offer_body(phone: str | None = None, **overrides: Any) -> dict[str, Any]:

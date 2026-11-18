@@ -4,15 +4,22 @@ A brand who has never met us gives a name, an email and a number's code at
 the link; the law asks that they are told, before they do, what we do with
 those details (DPDP Rule 3; legal.md section 3.1). The link page's notice,
 and the message that carries the code, are therefore the lawyer's words,
-never ours. Until the validation pack gives them, each is a marked
-placeholder, and `wording_ready()` keeps the whole feature off whatever
-`DIRECT_OFFERS_ENABLED` says, so no placeholder can ever be served
-(`tests/modules/deal_memo/test_direct_offer_api.py` proves it).
+never ours.
 
-The code itself goes by the login template every code uses (D-058); a
-message of its own, carrying CODE_MESSAGE, waits for a template registered
-with MSG91 (item 62).
+- The link page's notice is served from here. Until the validation pack
+  gives it, it is a marked placeholder.
+- The code's message is a WhatsApp template registered with MSG91, whose
+  words are the validation pack's; the code goes out on it, never on the
+  login template (D-058), which says nothing about an offer. Until it is
+  registered and named in `MSG91_DIRECT_OFFER_TEMPLATE`, there is none.
+
+`ready()` keeps the whole feature off while either is missing, whatever
+`DIRECT_OFFERS_ENABLED` says, so no placeholder is ever served and no code
+for an offer goes out without its notice
+(`tests/modules/deal_memo/test_direct_offer_api.py` proves both).
 """
+
+from app.core.config import settings
 
 PLACEHOLDER_MARK = "PLACEHOLDER"
 
@@ -21,28 +28,39 @@ LINK_PAGE_NOTICE = (
     "PLACEHOLDER (constraint 6): the validation pack's notice for the direct "
     "offer link page goes here. Never served."
 )
-# Carried with the code sent to the number the creator named.
-CODE_MESSAGE = (
-    "PLACEHOLDER (constraint 6): the validation pack's wording for the direct "
-    "offer code message goes here. Never sent."
-)
 
 
 def wording_ready() -> bool:
-    """Whether every notice the feature serves is real wording, not a placeholder."""
-    return not any(PLACEHOLDER_MARK in text for text in (LINK_PAGE_NOTICE, CODE_MESSAGE))
+    """Whether the link page's notice is real wording, not a placeholder."""
+    return PLACEHOLDER_MARK not in LINK_PAGE_NOTICE
+
+
+def code_template_ready() -> bool:
+    """Whether a template carrying the code's notice is named for MSG91."""
+    return settings.msg91_direct_offer_template is not None
+
+
+def ready() -> bool:
+    """Whether both notices exist: the link page's, and the code message's."""
+    return wording_ready() and code_template_ready()
 
 
 def refuse_switch_without_wording(enabled: bool) -> None:
-    """Stop the app starting with direct offers on while any wording is a placeholder.
+    """Stop the app starting with direct offers on while either notice is missing.
 
     Called at startup (app/main.py), so the switch can never say "on" to a
     client (`GET /api/v1/features`) while the feature would refuse; the
-    routes check `wording_ready()` again in any case.
+    routes check `ready()` again in any case.
     """
     if enabled and not wording_ready():
         raise RuntimeError(
-            "DIRECT_OFFERS_ENABLED is on, but the direct offer notices are still "
-            "placeholders: put the validation pack's wording in "
+            "DIRECT_OFFERS_ENABLED is on, but the link page's notice is still a "
+            "placeholder: put the validation pack's wording in "
             "app/modules/deal_memo/direct_offer_notices.py first (constraint 6)"
+        )
+    if enabled and not code_template_ready():
+        raise RuntimeError(
+            "DIRECT_OFFERS_ENABLED is on, but MSG91_DIRECT_OFFER_TEMPLATE is unset: "
+            "register the code message's template, with the validation pack's "
+            "wording, and name it there first (constraint 6)"
         )

@@ -17,6 +17,11 @@ This migration:
   with 'direct', `application.origin` with 'direct', and the deal record's
   kinds with `direct_offer_proposed` and `direct_offer_accepted`.
 
+A stopped offer keeps only its creator and the number's keyed hash: its
+fee and deliverables are NULL then, and only then
+(`ck_direct_offer_terms_erased_only_when_stopped`; Adhi's review fixes, 18
+November 2026, before this revision reached `main`).
+
 Data impact: none on existing rows.
 
 Downgrade: refuses while any direct offer, direct campaign or application,
@@ -103,9 +108,9 @@ def upgrade() -> None:
     sa.Column('recipient_phone_hash', sa.String(length=64), nullable=False),
     sa.Column('recipient_phone', sa.String(length=16), nullable=True),
     sa.Column('brand_name', sa.String(length=150), nullable=True),
-    sa.Column('deliverables', sa.Text(), nullable=False),
+    sa.Column('deliverables', sa.Text(), nullable=True),
     sa.Column('deliverable_items', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'[]'::jsonb"), nullable=False),
-    sa.Column('fee_amount_paise', sa.BigInteger(), nullable=False),
+    sa.Column('fee_amount_paise', sa.BigInteger(), nullable=True),
     sa.Column('currency', sa.String(length=3), server_default=sa.text("'INR'"), nullable=False),
     sa.Column('cancellation_fee_paise', sa.BigInteger(), nullable=False),
     sa.Column('approval_window_days', sa.Integer(), nullable=False),
@@ -137,10 +142,11 @@ def upgrade() -> None:
     sa.CheckConstraint('approval_window_days BETWEEN 1 AND 30', name=op.f('ck_direct_offer_approval_window_range')),
     sa.CheckConstraint('brand_name IS NULL OR char_length(btrim(brand_name)) > 0', name=op.f('ck_direct_offer_brand_name_not_blank')),
     sa.CheckConstraint('cancellation_fee_paise >= 0', name=op.f('ck_direct_offer_cancellation_fee_not_negative')),
-    sa.CheckConstraint('char_length(btrim(deliverables)) > 0 AND char_length(deliverables) <= 2000', name=op.f('ck_direct_offer_deliverables_length')),
+    sa.CheckConstraint('deliverables IS NULL OR (char_length(btrim(deliverables)) > 0 AND char_length(deliverables) <= 2000)', name=op.f('ck_direct_offer_deliverables_length')),
+    sa.CheckConstraint("(status = 'stopped') = (deliverables IS NULL) AND (status = 'stopped') = (fee_amount_paise IS NULL) AND (status <> 'stopped' OR (extra_terms IS NULL AND deliverable_items = '[]'::jsonb))", name=op.f('ck_direct_offer_terms_erased_only_when_stopped')),
     sa.CheckConstraint('ended_at IS NULL OR ended_at >= created_at', name=op.f('ck_direct_offer_ended_after_sent')),
     sa.CheckConstraint('extra_terms IS NULL OR char_length(extra_terms) <= 2000', name=op.f('ck_direct_offer_extra_terms_length')),
-    sa.CheckConstraint('fee_amount_paise > 0', name=op.f('ck_direct_offer_fee_positive')),
+    sa.CheckConstraint('fee_amount_paise IS NULL OR fee_amount_paise > 0', name=op.f('ck_direct_offer_fee_positive')),
     sa.CheckConstraint('opened_at IS NULL OR opened_at >= created_at', name=op.f('ck_direct_offer_opened_after_sent')),
     sa.CheckConstraint('payment_due_days BETWEEN 1 AND 30', name=op.f('ck_direct_offer_payment_due_range')),
     sa.CheckConstraint('usage_rights_days IS NULL OR usage_rights_days BETWEEN 1 AND 3650', name=op.f('ck_direct_offer_usage_rights_range')),

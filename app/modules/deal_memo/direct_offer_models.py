@@ -21,7 +21,11 @@ What is kept, and for how long (the privacy impact assessment in D-189):
   the block when the number's holder says "stop these" (`status = 'stopped'`).
   A row that ended any other way and never became a deal is deleted 30 days
   after it ended (`direct_offer_jobs`); a stopped row stays, as the block
-  its holder asked for, until the creator's account is deleted.
+  its holder asked for, until the creator's account is deleted (approved by
+  Adhi, 18 November 2026), and keeps only what a block needs: its creator
+  and the number's keyed hash. Its terms (the fee, the deliverables and any
+  extra terms) are erased when it is stopped
+  (`ck_direct_offer_terms_erased_only_when_stopped`).
 
 The terms are the creator's own words, theirs to export and erased with
 their account unless they became a deal, when the memo holds them as it
@@ -129,16 +133,27 @@ class DirectOffer(Base):
         ),
         # The same terms, and limits, as a memo's (D-189).
         CheckConstraint(
-            "char_length(btrim(deliverables)) > 0"
-            f" AND char_length(deliverables) <= {DELIVERABLES_MAX_LENGTH}",
+            "deliverables IS NULL OR (char_length(btrim(deliverables)) > 0"
+            f" AND char_length(deliverables) <= {DELIVERABLES_MAX_LENGTH})",
             name="deliverables_length",
+        ),
+        # A stopped offer is a block, and keeps no terms; every other keeps
+        # them all.
+        CheckConstraint(
+            "(status = 'stopped') = (deliverables IS NULL)"
+            " AND (status = 'stopped') = (fee_amount_paise IS NULL)"
+            " AND (status <> 'stopped'"
+            " OR (extra_terms IS NULL AND deliverable_items = '[]'::jsonb))",
+            name="terms_erased_only_when_stopped",
         ),
         CheckConstraint(
             "jsonb_typeof(deliverable_items) = 'array'"
             f" AND jsonb_array_length(deliverable_items) <= {MAX_DELIVERABLES}",
             name="deliverable_items_list",
         ),
-        CheckConstraint("fee_amount_paise > 0", name="fee_positive"),
+        CheckConstraint(
+            "fee_amount_paise IS NULL OR fee_amount_paise > 0", name="fee_positive"
+        ),
         CheckConstraint(f"currency = '{CURRENCY}'", name="currency_allowed"),
         CheckConstraint(
             "cancellation_fee_paise >= 0", name="cancellation_fee_not_negative"
@@ -200,12 +215,13 @@ class DirectOffer(Base):
     brand_name: Mapped[str | None] = mapped_column(
         String(BRAND_NAME_MAX_LENGTH), nullable=True
     )
-    # The terms, as a memo holds them (D-024 to D-027, D-127, D-140).
-    deliverables: Mapped[str] = mapped_column(Text, nullable=False)
+    # The terms, as a memo holds them (D-024 to D-027, D-127, D-140). The
+    # deliverables and the fee are NULL only once the offer is stopped.
+    deliverables: Mapped[str | None] = mapped_column(Text, nullable=True)
     deliverable_items: Mapped[list[dict[str, Any]]] = mapped_column(
         JSONB, nullable=False, server_default=text("'[]'::jsonb")
     )
-    fee_amount_paise: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    fee_amount_paise: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     currency: Mapped[str] = mapped_column(
         String(3), nullable=False, server_default=text(f"'{CURRENCY}'")
     )

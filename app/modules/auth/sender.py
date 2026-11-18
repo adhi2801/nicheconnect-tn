@@ -76,6 +76,46 @@ def _msg91_sender() -> Msg91WhatsAppSender:
     )
 
 
+@cache
+def _msg91_sender_for(template: str) -> Msg91WhatsAppSender:
+    """One sender per template for the process, as `_msg91_sender`."""
+    if settings.msg91_auth_key is None or settings.msg91_whatsapp_number is None:
+        raise OtpSenderNotConfigured("otp_sender is msg91 but MSG91 is not configured")
+    return Msg91WhatsAppSender(
+        auth_key=settings.msg91_auth_key.get_secret_value(),
+        integrated_number=settings.msg91_whatsapp_number,
+        template=template,
+        language=settings.msg91_template_language,
+    )
+
+
+class _NoTemplateSender:
+    """Stands in while a purpose's template is unnamed: refuses to send.
+
+    Never reached in practice: the feature that would send is off until its
+    template is named (direct offers, D-189).
+    """
+
+    def send_code(self, phone: str, code: str) -> None:
+        raise OtpSenderNotConfigured("no WhatsApp template is named for this code")
+
+
+def direct_offer_code_sender(login_sender: OtpSender) -> OtpSender:
+    """The sender for a direct offer's code (D-189), given login's.
+
+    With MSG91 it carries the template registered for that message, whose
+    words are the validation pack's notice, never the login template.
+    Locally and in tests it is login's own sender (the fake), which keeps
+    the code.
+    """
+    if settings.otp_sender == "msg91":
+        template = settings.msg91_direct_offer_template
+        if template is None:
+            return _NoTemplateSender()
+        return _msg91_sender_for(template)
+    return login_sender
+
+
 def get_otp_sender() -> OtpSender:
     """FastAPI dependency: the sender this deployment is configured for.
 

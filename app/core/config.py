@@ -150,6 +150,14 @@ class Settings(BaseSettings):
     msg91_whatsapp_number: str | None = None
     msg91_otp_template: str = "login_code"
     msg91_template_language: str = Field(default="en", pattern=r"^[a-z]{2}(_[A-Z]{2})?$")
+    # The WhatsApp template that carries a direct offer's code (D-189), its
+    # words the validation pack's notice for that message (constraint 6),
+    # registered with MSG91 under this name. Unset, direct offers stay off
+    # whatever DIRECT_OFFERS_ENABLED says: the code never goes out on the
+    # login template, which says nothing about the offer.
+    msg91_direct_offer_template: str | None = Field(
+        default=None, pattern=r"^[a-z0-9_]{1,512}$"
+    )
     # Proof files (D-065): the private bucket infra/ creates, and its region.
     # Unset in local and test, which use the in-memory store instead.
     uploads_bucket: str | None = Field(
@@ -287,6 +295,7 @@ class Settings(BaseSettings):
         "retention_report_days",
         "retention_takedown_days",
         "retention_admin_log_days",
+        "msg91_direct_offer_template",
         mode="before",
     )
     @classmethod

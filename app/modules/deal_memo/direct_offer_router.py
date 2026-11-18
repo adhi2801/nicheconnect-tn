@@ -40,9 +40,9 @@ from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.auth import service as login
-from app.modules.auth.dependencies import get_now
+from app.modules.auth.dependencies import get_direct_offer_code_sender, get_now
 from app.modules.auth.schemas import AccountSummary, OtpRequestAccepted
-from app.modules.auth.sender import OtpSender, get_otp_sender
+from app.modules.auth.sender import OtpSender
 from app.modules.campaigns.dependencies import CurrentCreatorProfile
 from app.modules.deal_memo import direct_offer_service as offers
 from app.modules.deal_memo.direct_offer_models import DirectOffer
@@ -175,7 +175,8 @@ def to_read(offer: DirectOffer, now: datetime) -> DirectOfferRead:
         "brand the link. It works for 14 days, until you withdraw it, or until "
         "the number's holder stops your offers. Only that number can accept, "
         "with a code we send it when they ask. Limits: 10 offers a Tamil Nadu "
-        "day, and 3 in any 7 days to one number from anyone; 5 a minute. Never "
+        "day; in any 7 days, 3 from you to one number and 10 to one number from "
+        "everyone, a withdrawn offer counting in neither; 5 a minute. Never "
         "replayed for an `Idempotency-Key`: the answer carries the token, which "
         "is never kept."
     ),
@@ -191,8 +192,10 @@ def to_read(offer: DirectOffer, now: datetime) -> DirectOfferRead:
             "A field is missing or invalid; `due_date_too_far` (more than a year ahead)"
         ),
         429: problem_doc(
-            "`direct_offer_daily_limit` (10 today), `direct_offer_number_limit` "
-            "(3 this week to that number), or too many requests; see Retry-After"
+            "`direct_offer_daily_limit` (10 today), `direct_offer_creator_number_limit` "
+            "(3 from you to that number this week), `direct_offer_number_limit` (10 "
+            "to that number this week from everyone), or too many requests; see "
+            "Retry-After"
         ),
     },
 )
@@ -344,12 +347,17 @@ def read_offer_link(
     description=(
         "Public, no account needed: the link proves its holder received it. "
         "This creator can send this number no more direct offers, and this "
-        "offer ends, its number and name erased. Works on a waiting, withdrawn "
-        "or expired offer; a second tap changes nothing. "
+        "offer ends, its number, name and terms erased: only the creator and "
+        "the number's keyed hash stay, as the block. Works on a waiting, "
+        "withdrawn or expired offer, whatever became of the creator's account; "
+        "a second tap changes nothing. "
         "Limit: 10 in 10 minutes per address."
     ),
     responses={
         **_LINK_ERRORS,
+        # Its own: a stop works whatever became of the creator's account,
+        # since it protects the number's holder, not the creator's offer.
+        404: problem_doc("`direct_offer_not_found`: no offer has this token"),
         409: problem_doc(
             "`direct_offer_already_accepted`: it became a deal; block the "
             "creator from the brand's account instead"
@@ -374,9 +382,10 @@ def stop_offers(
     summary="Send the code that accepts an offer",
     description=(
         "Sends a 6-digit code to the number the creator named, never to any "
-        "other: the number is not shown, and needs no typing. The same caps as "
-        "a login code: 3 codes in 10 minutes and 10 a day per number, and 3 "
-        "requests in 10 minutes per address."
+        "other: the number is not shown, and needs no typing. It goes as the "
+        "direct offer's own WhatsApp message, carrying its notice, never the "
+        "login message. The same caps as a login code: 3 codes in 10 minutes "
+        "and 10 a day per number, and 3 requests in 10 minutes per address."
     ),
     responses={
         **_LINK_ERRORS,
@@ -390,7 +399,7 @@ def request_offer_code(
     offer_token: OfferToken,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    sender: OtpSender = Depends(get_otp_sender),
+    sender: OtpSender = Depends(get_direct_offer_code_sender),
     now: datetime = Depends(get_now),
 ) -> OtpRequestAccepted:
     pending = offers.request_code(db, offer_token, now)

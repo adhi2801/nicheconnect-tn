@@ -594,3 +594,32 @@ def test_the_brand_signs_in_with_its_tokens(client, db, clock, on, sender):
 
 def user_of(body: dict, clock) -> User:
     return User(body["account"]["id"], "brand", clock)
+
+
+def test_the_media_kit_counts_a_direct_offer_s_deal_on_its_own(
+    client, db, clock, on, sender
+):
+    """D-189: the deal made at a link is a real deal on the creator's record,
+    and the media kit says where it came from, apart from campaigns."""
+    from app.modules.auth.models.creator import Creator
+
+    creator = creator_user(db, clock)
+    phone = fake_phone()
+    offer = sent(client, creator, phone)
+    assert accept(client, sender, offer, phone).status_code == 200
+    creator_id = db.scalars(
+        select(Creator.id).where(Creator.account_id == creator.account_id)
+    ).one()
+    # Due on 15 October; 14 days of silence after it, the deal is completed
+    # and not delivered (D-038).
+    clock.advance(timedelta(days=45))
+
+    kit = client.get(
+        f"/api/v1/creators/{creator_id}/media-kit", headers=brand_user(db, clock).headers
+    )
+
+    assert kit.status_code == 200, kit.text
+    record = kit.json()["delivery_record"]
+    assert record["deals_completed"] == 1
+    assert record["deals_completed_from_direct_offers"] == 1
+    assert record["deals_completed_from_campaigns"] == 0

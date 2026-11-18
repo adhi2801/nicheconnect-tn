@@ -98,6 +98,12 @@ class DirectOfferTerms(BaseModel):
 class DirectOfferRead(DirectOfferTerms):
     """One of the creator's own offers, as their sent list shows it."""
 
+    deliverables: str | None = Field(  # type: ignore[assignment]
+        description="Null once the number's holder stopped your offers: a stop keeps no terms"
+    )
+    fee_amount_paise: int | None = Field(  # type: ignore[assignment]
+        description="Null once the number's holder stopped your offers: a stop keeps no terms"
+    )
     id: uuid.UUID
     status: DirectOfferStatus = Field(
         description=(

@@ -966,8 +966,10 @@ def measure_direct_offers(
     its list and one offer; the first link is opened, its code asked for and
     the offer accepted, making a brand and a deal in one transaction; the
     second is withdrawn, the third stopped at its link. Then the hourly job,
-    once. The switch is turned on, and the placeholders replaced by marked
-    measuring text, for this run only: nothing here is notice wording.
+    once. The switch is turned on, the link page's placeholder replaced by
+    marked measuring text and a measuring name given for the code's template
+    (the fake sender sends nothing), for this run only: nothing here is
+    notice wording.
     """
     from app.modules.deal_memo import direct_offer_notices as notices
     from app.modules.deal_memo import direct_offer_service
@@ -975,11 +977,11 @@ def measure_direct_offers(
     saved = (
         settings.direct_offers_enabled,
         notices.LINK_PAGE_NOTICE,
-        notices.CODE_MESSAGE,
+        settings.msg91_direct_offer_template,
     )
     settings.direct_offers_enabled = True
     notices.LINK_PAGE_NOTICE = "Measuring text, not a notice."
-    notices.CODE_MESSAGE = "Measuring text, not a notice."
+    settings.msg91_direct_offer_template = "measuring_only"
     try:
         # Ten offers a Tamil Nadu day per creator: three a round, so a
         # seeded creator for each three rounds.
@@ -1054,7 +1056,7 @@ def measure_direct_offers(
         (
             settings.direct_offers_enabled,
             notices.LINK_PAGE_NOTICE,
-            notices.CODE_MESSAGE,
+            settings.msg91_direct_offer_template,
         ) = saved
 
 

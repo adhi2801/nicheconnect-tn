@@ -311,10 +311,17 @@ class DirectOfferDailyLimit(DomainError):
 
 
 class DirectOfferNumberLimit(DomainError):
-    # Any 7 days' ceiling on one number, from anyone (D-189).
+    # Any 7 days' ceiling on one number, from everyone (D-189).
     status_code = HTTPStatus.TOO_MANY_REQUESTS
     code = "direct_offer_number_limit"
-    title = "This number has received 3 direct offers this week. Try again later"
+    title = "This number has received 10 direct offers this week. Try again later"
+
+
+class DirectOfferCreatorNumberLimit(DomainError):
+    # Any 7 days' ceiling from one creator to one number (D-189).
+    status_code = HTTPStatus.TOO_MANY_REQUESTS
+    code = "direct_offer_creator_number_limit"
+    title = "You have sent this number 3 direct offers this week. Try again later"
 
 
 class DirectOfferStoppedByRecipient(DomainError):

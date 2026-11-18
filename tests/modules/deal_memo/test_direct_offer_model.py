@@ -57,6 +57,12 @@ def test_a_valid_waiting_offer_is_accepted(db, offer):
 ENDED = (
     "status = 'withdrawn', ended_at = now(), recipient_phone = NULL, brand_name = NULL"
 )
+# A stop: ended, and its terms erased with the number and the name.
+STOPPED = (
+    "status = 'stopped', ended_at = now(), recipient_phone = NULL, brand_name = NULL,"
+    " deliverables = NULL, fee_amount_paise = NULL, extra_terms = NULL,"
+    " deliverable_items = '[]'::jsonb"
+)
 
 
 @pytest.mark.parametrize(
@@ -93,6 +99,25 @@ ENDED = (
             "status = 'accepted', ended_at = now(), recipient_phone = NULL,"
             " brand_name = NULL",
             "ck_direct_offer_deal_only_when_accepted",
+        ),
+        # A stopped offer keeps no terms, and only a stopped one may lack them.
+        ("deliverables = NULL", "ck_direct_offer_terms_erased_only_when_stopped"),
+        ("fee_amount_paise = NULL", "ck_direct_offer_terms_erased_only_when_stopped"),
+        (
+            STOPPED.replace("deliverables = NULL", "deliverables = 'Two reels'"),
+            "ck_direct_offer_terms_erased_only_when_stopped",
+        ),
+        (
+            STOPPED.replace("fee_amount_paise = NULL", "fee_amount_paise = 900000"),
+            "ck_direct_offer_terms_erased_only_when_stopped",
+        ),
+        (
+            STOPPED.replace("extra_terms = NULL", "extra_terms = 'Two weeks'"),
+            "ck_direct_offer_terms_erased_only_when_stopped",
+        ),
+        (
+            STOPPED.replace("'[]'::jsonb", """'[{"platform": "instagram"}]'::jsonb"""),
+            "ck_direct_offer_terms_erased_only_when_stopped",
         ),
         ("expires_at = created_at", "ck_direct_offer_lifetime_within_limit"),
         (
@@ -146,6 +171,22 @@ def test_an_offer_that_ended_keeps_neither_number_nor_name(db, offer):
         {"id": offer["id"]},
     ).one()
     assert tuple(kept) == (None, None)
+
+
+def test_a_stopped_offer_keeps_only_its_creator_and_the_number_s_hash(db, offer):
+    db.execute(
+        text(f"UPDATE direct_offer SET {STOPPED} WHERE id = :id"),  # noqa: S608 - a fixed change
+        {"id": offer["id"]},
+    )
+
+    kept = db.execute(
+        text(
+            "SELECT creator_id, recipient_phone_hash, deliverables, fee_amount_paise,"
+            " extra_terms, recipient_phone, brand_name FROM direct_offer WHERE id = :id"
+        ),
+        {"id": offer["id"]},
+    ).one()
+    assert tuple(kept) == (offer["creator_id"], HASH, None, None, None, None, None)
 
 
 def test_one_token_opens_one_offer(db, offer):

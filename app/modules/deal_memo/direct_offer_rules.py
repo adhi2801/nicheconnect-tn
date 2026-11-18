@@ -22,6 +22,9 @@ import hmac
 import math
 import os
 import re
+import uuid
+from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
 from app.core.clock import end_of_india_day, india_date
@@ -34,11 +37,18 @@ LINK_TOKEN_BYTES = 32
 LINK_TOKEN_PATTERN = r"^[0-9a-f]{64}$"  # noqa: S105 - a format check, not a secret
 _LINK_TOKEN = re.compile(LINK_TOKEN_PATTERN)
 
-# Abuse limits (D-189): a creator's offers in one Tamil Nadu day, and the
-# offers one number may receive, from anyone, in any 7 days.
+# Abuse limits (D-189): a creator's offers in one Tamil Nadu day; and in any
+# 7 days, at most 3 from one creator to one number, and 10 to one number
+# from everyone (Adhi, 18 November 2026, after the independent review: a
+# number-wide 3 let three creators shut a busy brand's number to everyone
+# else for a week). An offer its creator withdrew counts in neither weekly
+# ceiling: it reached nobody it was not taken back from.
 DAILY_OFFERS_PER_CREATOR = 10
-WEEKLY_OFFERS_PER_NUMBER = 3
+WEEKLY_OFFERS_FROM_CREATOR_TO_NUMBER = 3
+WEEKLY_OFFERS_PER_NUMBER = 10
 NUMBER_WINDOW = timedelta(days=7)
+# The one status the weekly ceilings leave out.
+NOT_COUNTED_WEEKLY = "withdrawn"
 # A due date further ahead than a year is a typing mistake, not a plan; it
 # also bounds a value a person types (the standards' checklist).
 MAX_DUE_AHEAD = timedelta(days=365)
@@ -113,3 +123,46 @@ def seconds_until_tomorrow(now: datetime) -> int:
 def seconds_until_number_frees(oldest_in_window: datetime, now: datetime) -> int:
     """Whole seconds until the oldest of a number's week of offers leaves it."""
     return max(1, math.ceil((oldest_in_window + NUMBER_WINDOW - now).total_seconds()))
+
+
+@dataclass(frozen=True)
+class SentToNumber:
+    """One offer already sent to the number, as the weekly ceilings read it."""
+
+    creator_id: uuid.UUID
+    status: str
+    created_at: datetime
+
+
+@dataclass(frozen=True)
+class NumberCeiling:
+    """Which weekly ceiling one more offer would pass, and when it frees."""
+
+    # "creator": this creator's 3 to this number; "number": everyone's 10.
+    which: str
+    frees_at: datetime
+
+
+def number_ceiling(
+    sent: Sequence[SentToNumber], creator_id: uuid.UUID, now: datetime
+) -> NumberCeiling | None:
+    """Whether one more offer from `creator_id` to this number passes a weekly
+    ceiling, or None. Counts offers sent in the 7 days before `now`, never a
+    withdrawn one; the creator's own ceiling is asked first, as the nearer.
+    """
+    counted = sorted(
+        offer
+        for offer in (
+            (row.created_at, row.creator_id)
+            for row in sent
+            if row.status != NOT_COUNTED_WEEKLY and row.created_at > now - NUMBER_WINDOW
+        )
+    )
+    mine = [created for created, creator in counted if creator == creator_id]
+    if len(mine) >= WEEKLY_OFFERS_FROM_CREATOR_TO_NUMBER:
+        oldest = mine[len(mine) - WEEKLY_OFFERS_FROM_CREATOR_TO_NUMBER]
+        return NumberCeiling(which="creator", frees_at=oldest + NUMBER_WINDOW)
+    if len(counted) >= WEEKLY_OFFERS_PER_NUMBER:
+        oldest = counted[len(counted) - WEEKLY_OFFERS_PER_NUMBER][0]
+        return NumberCeiling(which="number", frees_at=oldest + NUMBER_WINDOW)
+    return None

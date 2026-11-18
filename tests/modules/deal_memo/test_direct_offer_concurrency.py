@@ -9,8 +9,13 @@ success, the rest clean domain errors, and a consistent final state.
 - an acceptance racing a withdrawal, or a "stop these": the offer's lock,
   so one lands wholly before the other, never both;
 - a creator's 10 offers a Tamil Nadu day: the creator's row lock;
-- one number's 3 offers a week, from different creators: the number's
-  advisory lock.
+- one number's 10 offers a week, from different creators: the number's
+  advisory lock;
+- one creator's 3 offers a week to one number: the creator's row lock and
+  the number's advisory lock, either of which alone queues them (so no
+  break of one lock alone can fail this test; each lock has its own above);
+- a "stop these" and a send to its number at once: the number's advisory
+  lock, which both take, and the send's check for a stop made under it.
 """
 
 import threading
@@ -37,10 +42,12 @@ from app.modules.deal_memo import direct_offer_service as offers
 from app.modules.deal_memo.direct_offer_models import DIRECT_OFFER_LIFETIME, DirectOffer
 from app.modules.deal_memo.exceptions import (
     DirectOfferAlreadyAccepted,
+    DirectOfferCreatorNumberLimit,
     DirectOfferDailyLimit,
     DirectOfferNotFound,
     DirectOfferNumberLimit,
     DirectOfferStopped,
+    DirectOfferStoppedByRecipient,
     DirectOfferWithdrawn,
 )
 from tests.factories import build_creator, create_account, unique_test_phone
@@ -55,7 +62,7 @@ NOW = CONCURRENCY_NOW
 def on(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "direct_offers_enabled", True)
     monkeypatch.setattr(notices, "LINK_PAGE_NOTICE", "Test wording, not a notice.")
-    monkeypatch.setattr(notices, "CODE_MESSAGE", "Test wording, not a notice.")
+    monkeypatch.setattr(settings, "msg91_direct_offer_template", "test_direct_offer_code")
 
 
 def run_together(*works: Callable[[Any], Any]) -> list[Any]:
@@ -306,7 +313,7 @@ def test_a_creator_s_tenth_offer_of_the_day_is_sent_once(world, slow_writes):
         )
 
 
-def test_a_number_s_third_offer_of_the_week_is_sent_once(world, slow_writes):
+def test_a_number_s_tenth_offer_of_the_week_is_sent_once(world, slow_writes):
     phone = world.number()
     for _ in range(rules.WEEKLY_OFFERS_PER_NUMBER - 1):
         send(world.creator(), phone)
@@ -333,6 +340,97 @@ def test_a_number_s_third_offer_of_the_week_is_sent_once(world, slow_writes):
                 )
             )
             == rules.WEEKLY_OFFERS_PER_NUMBER
+        )
+
+
+def test_a_creator_s_third_offer_to_a_number_this_week_is_sent_once(world, slow_writes):
+    creator, phone = world.creator(), world.number()
+    for _ in range(rules.WEEKLY_OFFERS_FROM_CREATOR_TO_NUMBER - 1):
+        send(creator, phone)
+
+    results = run_together(
+        *(
+            lambda session: offers.send(session, creator, terms(phone), NOW)
+            for _ in range(4)
+        )
+    )
+
+    assert sum(isinstance(r, offers.SentOffer) for r in results) == 1, results
+    assert sum(isinstance(r, DirectOfferCreatorNumberLimit) for r in results) == 3, (
+        results
+    )
+    with SessionLocal() as session:
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(DirectOffer)
+                .where(DirectOffer.creator_id == creator.id)
+            )
+            == rules.WEEKLY_OFFERS_FROM_CREATOR_TO_NUMBER
+        )
+
+
+def test_a_send_waits_for_a_stop_to_its_number_and_is_refused_by_it(world, monkeypatch):
+    """The stop is held inside its transaction, after its locks; a send from
+    the same creator to the same number, started then, must wait for it and
+    find the block, never slip in beside it. Without the shared lock, or with
+    the send's check for a stop made before taking it, the send lands while
+    the stop is held, and both stand."""
+    creator, phone = world.creator(), world.number()
+    first = send(creator, phone)
+    stopping, release = threading.Event(), threading.Event()
+    real_end = offers._end
+
+    def held_end(offer, status, now):
+        real_end(offer, status, now)
+        if status == "stopped":
+            stopping.set()
+            release.wait(timeout=10)
+
+    monkeypatch.setattr(offers, "_end", held_end)
+    results: dict[str, Any] = {}
+
+    def run(name: str, work: Callable[[Any], Any]) -> None:
+        with SessionLocal() as session:
+            try:
+                results[name] = work(session)
+            except Exception as exc:  # collected and asserted below
+                session.rollback()
+                results[name] = exc
+
+    stopper = threading.Thread(
+        target=run,
+        args=("stop", lambda session: offers.stop(session, first.link_token, NOW)),
+    )
+    stopper.start()
+    assert stopping.wait(timeout=10)
+    sender = threading.Thread(
+        target=run,
+        args=(
+            "send",
+            lambda session: offers.send(
+                session, creator, terms(phone), NOW + timedelta(minutes=1)
+            ),
+        ),
+    )
+    sender.start()
+    sender.join(timeout=1)
+    sent_while_held = not sender.is_alive()
+    release.set()
+    stopper.join(timeout=10)
+    sender.join(timeout=10)
+
+    assert not sent_while_held, results
+    assert results["stop"] is None, results
+    assert isinstance(results["send"], DirectOfferStoppedByRecipient), results
+    with SessionLocal() as session:
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(DirectOffer)
+                .where(DirectOffer.creator_id == creator.id)
+            )
+            == 1
         )
 
 
