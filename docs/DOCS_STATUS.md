@@ -114,7 +114,7 @@
 | `docs/standards/database.md` | living | not yet | | checked against the code 18 November 2026, review owed |
 | `docs/standards/frontend.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
 | `docs/standards/legal.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
-| `docs/standards/security.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
+| `docs/standards/security.md` | living | not yet | | checked against the code 19 November 2026, review owed |
 | `docs/standards/testing.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
 | `docs/standards/trust-and-safety.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
 | `docs/standards/ux.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
