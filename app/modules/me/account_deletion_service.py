@@ -247,8 +247,13 @@ def run_deletions(
     the rest are still due at the next run.
 
     Each in its own transactions, so one that fails or is held leaves the
-    rest done. Every due account is looked at on every run, the held ones
-    too, so none waits behind another; at pilot scale they are a handful.
+    rest done. Due accounts are looked at oldest first, the held ones too,
+    until the budget is spent. A held account costs one short transaction,
+    and the destroy of an export file it still has, so at pilot scale (a
+    handful due) every one is reached each run. A run cut short leaves the
+    rest for the next, and held accounts first in line could keep a later
+    one waiting run after run; that is named in D-186 (point 14), not
+    prevented here.
     """
     with session_factory() as db:
         due = list(

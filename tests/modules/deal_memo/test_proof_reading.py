@@ -574,3 +574,52 @@ def test_a_store_that_fails_one_file_leaves_it_due_and_reads_the_rest(
     monkeypatch.setattr(store, "read", real_read)
     assert run(db, clock, reader).read == 1
     assert reading_for(db, first_id) is not None
+
+
+PER_RUN = reading_service.PER_RUN
+
+
+def _refusals():
+    from botocore.exceptions import ClientError
+
+    return [
+        KeyError("its clean copy is gone"),
+        ClientError({"Error": {"Code": "AccessDenied"}}, "GetObject"),
+    ]
+
+
+@pytest.mark.parametrize("refusal", _refusals(), ids=lambda e: type(e).__name__)
+def test_files_storage_refuses_never_hold_the_others_back(
+    client, db, clock, deal, monkeypatch, refusal
+):
+    """More files than a run reads (PER_RUN) are refused by the store, every
+    time: they are passed over without counting, so a file behind them is
+    still read in the same run. Looking only PER_RUN deep, none ever would be."""
+    _, creator, memo_id = deal
+    ids = cleaned(client, db, clock, creator, memo_id, count=PER_RUN + 2)
+    store = storage.memory_store()
+    real_read = store.read
+    calls: list[str] = []
+
+    def refuses_all_but_the_last(key: str, *, max_bytes: int) -> bytes:
+        calls.append(key)
+        if len(calls) <= PER_RUN + 1:
+            raise refusal
+        return real_read(key, max_bytes=max_bytes)
+
+    monkeypatch.setattr(store, "read", refuses_all_but_the_last)
+    result = run(db, clock, FakeReader())
+
+    assert (result.read, result.skipped) == (1, PER_RUN + 1)
+    assert [reading_for(db, file_id) is None for file_id in ids] == [True] * (
+        PER_RUN + 1
+    ) + [False]
+
+
+def test_a_run_reads_no_more_than_its_files(client, db, clock, deal):
+    """Looking further than PER_RUN never reads more than PER_RUN."""
+    _, creator, memo_id = deal
+    cleaned(client, db, clock, creator, memo_id, count=PER_RUN + 2)
+
+    assert run(db, clock, FakeReader()).read == PER_RUN
+    assert run(db, clock, FakeReader()).read == 2

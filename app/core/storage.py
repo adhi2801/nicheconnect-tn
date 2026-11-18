@@ -21,7 +21,10 @@ sum that fits: 2 tries in all, each connect at most 3 s and each wait for
 bytes at most 8 s, and botocore's longest pause between them 1 s, or 6 s
 when S3 asks with `x-amz-retry-after`. One request that never answers
 therefore ends within 2 x (3 + 8) + 6 = 28 s (`worst_request_seconds`,
-computed from the client's own configuration by a test). On top of that,
+computed from the client's own configuration by a test), for a name that
+resolves to one address: urllib3 tries each address with the whole 3 s
+connect, so each unreachable one adds 3 s (D-186 point 14, a gap awaiting
+a decision). On top of that,
 each call carries one `Deadline`:
 
 - botocore asks `_refuse_late_try` before every try, retries included, and
@@ -84,6 +87,9 @@ TRIES = 2
 # Registered once per client, however many stores share it.
 _HOOK_ID = "colyv-call-limit"
 _RETRY_HOOK_ID = "colyv-call-limit-retry"
+# The codes S3 answers for an object that is not there: HEAD has no body,
+# so only its status; GET names it.
+_NOT_FOUND = frozenset({"404", "NoSuchKey", "NotFound"})
 
 
 @dataclass
@@ -376,11 +382,7 @@ class S3FileStore:
             with self._call():
                 head = self._client.head_object(Bucket=self.bucket, Key=key)
         except ClientError as error:
-            if error.response.get("Error", {}).get("Code") in {
-                "404",
-                "NoSuchKey",
-                "NotFound",
-            }:
+            if error.response.get("Error", {}).get("Code") in _NOT_FOUND:
                 return None
             raise
         return StoredObject(
@@ -390,10 +392,18 @@ class S3FileStore:
     def read(self, key: str, *, max_bytes: int) -> bytes:
         """The file, read one socket read at a time within CALL_LIMIT_SECONDS.
 
-        Raises ObjectTooLarge, or DeadlinePassed once the limit is spent.
+        Raises KeyError when there is no such object (as the stand-in does),
+        ObjectTooLarge, or DeadlinePassed once the limit is spent.
         """
+        from botocore.exceptions import ClientError
+
         with self._call() as call:
-            response = self._client.get_object(Bucket=self.bucket, Key=key)
+            try:
+                response = self._client.get_object(Bucket=self.bucket, Key=key)
+            except ClientError as error:
+                if error.response.get("Error", {}).get("Code") in _NOT_FOUND:
+                    raise KeyError(key) from error
+                raise
             body = response["Body"]
             try:
                 if int(response["ContentLength"]) > max_bytes:

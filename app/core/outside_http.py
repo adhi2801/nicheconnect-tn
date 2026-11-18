@@ -12,9 +12,11 @@ Claude API through its SDK) is made by `limited_client`, and each call runs
   byte at a time, each inside the read timeout, in its headers or its body,
   is cut off at the limit rather than holding a worker for ever: httpx2
   itself has only per-wait limits (connect, read, write, pool), never one
-  on the whole. A request is written in 16 KiB pieces, each its own cut
-  wait, so a server reading it slowly holds the call at most one piece's
-  sending past the limit;
+  on the whole. A name that resolves to several addresses is connected
+  one address at a time, each connect's wait cut anew, so k unreachable
+  addresses still end at the limit. A request is sent one `send` at a time
+  (at most 16 KiB each), each `send`'s wait cut to the time left, so a
+  server reading it slowly is cut off at the limit too;
 - **the answer is read piece by piece** (`exchange`), at most
   `MAX_ANSWER_BYTES` of it, so an answer that never ends cannot fill memory
   either.
@@ -22,7 +24,11 @@ Claude API through its SDK) is made by `limited_client`, and each call runs
 The socket's waits are cut by a network backend that reads the deadline set
 by `within` on this thread; outside `within` it changes nothing. **What it
 does not cut:** a wait for a free connection in the client's own pool (100
-connections), which is not a socket wait; it keeps the client's pool limit. It is put
+connections), which is not a socket wait; it keeps the client's pool limit;
+the name lookup (`socket.getaddrinfo` takes no timeout, so a resolver that
+never answers holds the call for as long as the system's resolver waits;
+a gap named in D-186); and a TLS handshake trickled a byte at a time,
+whose several socket waits share the one cut made when it starts. It is put
 into the transport httpx2 builds (`HTTPTransport._pool`, replaced with a
 pool given that backend), the one seam httpx2 offers no public way to set.
 
@@ -35,6 +41,7 @@ for outbound only, `compute.tf`), with no proxy; one added later would need
 its own `httpcore2.HTTPProxy` given this backend, and a test.
 """
 
+import socket
 import ssl
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
@@ -110,15 +117,35 @@ class _LimitedStream(httpcore2.NetworkStream):
         return self._inner.read(max_bytes, _cut(timeout, httpcore2.ReadTimeout))
 
     def write(self, buffer: bytes, timeout: float | None = None) -> None:
-        # In pieces, each cut to the time left: one write of a whole body
-        # sends for as long as the server keeps reading a little inside each
-        # wait, so a slow reader would otherwise outlast the limit.
+        """Send `buffer`, each `send` on the socket its own wait cut to the time left.
+
+        httpcore2 sends a buffer with one timeout for every `send` in turn,
+        and a `send` returns as soon as the socket takes any bytes, so a
+        server reading a little inside each wait would hold a whole write
+        for as long as it liked. Here each `send` (at most
+        WRITE_PIECE_BYTES) waits only what the call has left when it
+        starts, and none starts once the limit has passed. A stream with no
+        socket of its own (httpcore2's TLS inside TLS, used only through a
+        proxy, which these clients never have) is written in pieces instead.
+        """
         view = memoryview(buffer)
-        for start in range(0, len(view), WRITE_PIECE_BYTES):
-            self._inner.write(
-                bytes(view[start : start + WRITE_PIECE_BYTES]),
-                _cut(timeout, httpcore2.WriteTimeout),
-            )
+        sock = self._inner.get_extra_info("socket")
+        if sock is None:
+            for start in range(0, len(view), WRITE_PIECE_BYTES):
+                self._inner.write(
+                    bytes(view[start : start + WRITE_PIECE_BYTES]),
+                    _cut(timeout, httpcore2.WriteTimeout),
+                )
+            return
+        while view:
+            sock.settimeout(_cut(timeout, httpcore2.WriteTimeout))
+            try:
+                sent = sock.send(view[:WRITE_PIECE_BYTES])
+            except TimeoutError as error:
+                raise httpcore2.WriteTimeout(str(error)) from error
+            except OSError as error:
+                raise httpcore2.WriteError(str(error)) from error
+            view = view[sent:]
 
     def close(self) -> None:
         self._inner.close()
@@ -139,6 +166,19 @@ class _LimitedStream(httpcore2.NetworkStream):
         return self._inner.get_extra_info(info)
 
 
+def _addresses(host: str, port: int) -> list[tuple[str, int]]:
+    """Every address `host` resolves to, in the resolver's order, as connect takes them.
+
+    The name lookup itself is not cut: `getaddrinfo` takes no timeout
+    (a gap named in D-186). Its failure is a ConnectError, as httpcore2's own.
+    """
+    try:
+        found = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    except OSError as error:
+        raise httpcore2.ConnectError(f"{host} could not be resolved") from error
+    return [(str(info[4][0]), int(info[4][1])) for info in found]
+
+
 class _LimitedBackend(httpcore2.NetworkBackend):
     """Opens sockets as httpcore2 does, each one a `_LimitedStream`."""
 
@@ -153,15 +193,36 @@ class _LimitedBackend(httpcore2.NetworkBackend):
         local_address: str | None = None,
         socket_options: Iterable[Any] | None = None,
     ) -> httpcore2.NetworkStream:
-        return _LimitedStream(
-            self._inner.connect_tcp(
-                host,
-                port,
-                _cut(timeout, httpcore2.ConnectTimeout),
-                local_address,
-                socket_options,
-            )
-        )
+        """Connect to each of the host's addresses in turn, each wait cut anew.
+
+        httpcore2 hands the name to `socket.create_connection`, which tries
+        every address the name resolves to with the same whole timeout, so a
+        name with k unreachable addresses would wait k times the cut. Here
+        the name is resolved once, then each address is tried with the time
+        the call has left at that moment, and none once it has passed. The
+        TLS handshake still names the host (httpcore2 passes it to
+        `start_tls` itself), so connecting by address changes no check.
+        Outside `within`, httpcore2's own path, unchanged.
+        """
+        options = list(socket_options or [])
+        if _current.get() is None:
+            stream = self._inner.connect_tcp(host, port, timeout, local_address, options)
+            return _LimitedStream(stream)
+        failure: httpcore2.NetworkError | httpcore2.TimeoutException | None = None
+        for address, address_port in _addresses(host, port):
+            # Raises once the limit has passed: no further address is tried.
+            wait = _cut(timeout, httpcore2.ConnectTimeout)
+            try:
+                stream = self._inner.connect_tcp(
+                    address, address_port, wait, local_address, options
+                )
+            except (httpcore2.ConnectError, httpcore2.ConnectTimeout) as error:
+                failure = error
+                continue
+            return _LimitedStream(stream)
+        if failure is None:
+            raise httpcore2.ConnectError(f"{host} has no address")
+        raise failure
 
     def connect_unix_socket(
         self,

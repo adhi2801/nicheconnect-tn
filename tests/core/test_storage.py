@@ -819,3 +819,25 @@ def test_a_store_that_fails_once_then_answers_is_read():
     assert outcome == DATA
     assert len(server.requests) == 2
     assert elapsed < storage.CALL_LIMIT_SECONDS
+
+
+def test_reading_an_object_that_is_not_there_is_a_key_error(timed_s3):
+    """As the stand-in answers: a job tells a missing file from a failing store."""
+    store, _, _ = timed_s3
+
+    with pytest.raises(KeyError):
+        store.read("not-there", max_bytes=SIZE)
+
+
+def test_any_other_refusal_on_reading_is_storage_s_own(timed_s3, monkeypatch):
+    from botocore.exceptions import ClientError
+
+    store, _, client = timed_s3
+
+    def denied(**kwargs):
+        raise ClientError({"Error": {"Code": "AccessDenied"}}, "GetObject")
+
+    monkeypatch.setattr(client, "get_object", denied)
+
+    with pytest.raises(ClientError):
+        store.read("k", max_bytes=SIZE)

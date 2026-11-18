@@ -41,9 +41,10 @@ more work"):
    statement timeout. An S3 call that never answers ends within its 30 s
    by the client's own configuration (two tries, at most 28 s; 17.0 s
    measured on 18 November 2026, `app.core.storage`); it can outlast them
-   only in the one way that module names and Adhi accepted on 15 November
-   2026, so the S3 rows hold unless a store trickles its answer's headers
-   a byte at a time. One run at a time
+   in the way that module names and Adhi accepted on 15 November 2026 (a
+   store trickling its answer's headers a byte at a time), and, like every
+   outside call, by a name lookup that hangs or a name with unreachable
+   addresses (D-186 point 14, awaiting a decision). One run at a time
    (rule 1) keeps a long run from overlapping the next: those runs find
    the lock taken and do nothing.
 """

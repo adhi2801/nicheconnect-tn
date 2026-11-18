@@ -264,10 +264,10 @@ def test_a_request_the_server_never_reads_is_cut_off_at_the_limit():
     assert LIMIT - 0.05 <= elapsed < LIMIT + SLACK
 
 
-def test_a_request_read_slowly_is_cut_off_within_one_piece_of_the_limit():
+def test_a_request_read_slowly_is_cut_off_at_the_limit():
     """The server reads 16 KiB every 0.05 s, each inside the write's wait: one
-    write of the whole 32 MiB would run about 100 s. In 16 KiB pieces, each cut
-    to the time left, it ends at the limit."""
+    write of the whole 32 MiB would run about 100 s. Each `send`'s wait cut to
+    the time left, it ends at the limit."""
     client = limited_client(TIMEOUT)
     with misbehaving(
         "slow_reader", receive_buffer=4096, gap=0.05, read_bytes=16384
@@ -281,3 +281,113 @@ def test_a_request_read_slowly_is_cut_off_within_one_piece_of_the_limit():
     assert isinstance(outcome, httpx2.WriteTimeout), outcome
     assert 0 < server.received < len(BIG_REQUEST)
     assert LIMIT - 0.05 <= elapsed < LIMIT + SLACK
+
+
+# --- a name with several addresses, and a slow reader send by send --------------
+
+
+def test_each_address_of_a_name_is_tried_with_the_time_left(monkeypatch):
+    """A name resolving to three addresses that never accept: each connect would
+    wait its own 0.9 s, 2.7 s in all, past the 1 s limit. Each address is tried
+    with what the call has left, so the call ends at the limit, two tried."""
+    import socket as sockets
+
+    real = sockets.getaddrinfo
+    with full_backlog() as a, full_backlog() as b, full_backlog() as c:
+        ports = [int(url.rsplit(":", 1)[1]) for url in (a, b, c)]
+        asked: list[str] = []
+
+        def three_addresses(host, port, *args, **kwargs):
+            if host != "unreachable.test":
+                return real(host, port, *args, **kwargs)
+            asked.append(host)
+            return [
+                (sockets.AF_INET, sockets.SOCK_STREAM, 6, "", ("127.0.0.1", p))
+                for p in ports
+            ]
+
+        monkeypatch.setattr(sockets, "getaddrinfo", three_addresses)
+        client = limited_client(httpx2.Timeout(10.0, connect=0.9))
+        outcome, elapsed = timed(
+            lambda: exchange(client, "GET", "http://unreachable.test/", Deadline(LIMIT))
+        )
+
+    assert isinstance(outcome, httpx2.ConnectTimeout), outcome
+    assert asked == ["unreachable.test"]
+    assert LIMIT - 0.05 <= elapsed < LIMIT + SLACK
+
+
+def test_the_next_address_is_tried_when_one_refuses(monkeypatch):
+    """The first address refuses at once; the second answers."""
+    import socket as sockets
+
+    real = sockets.getaddrinfo
+    closed = sockets.socket()
+    closed.bind(("127.0.0.1", 0))
+    refusing = closed.getsockname()[1]
+    closed.close()
+    with misbehaving("answer", body=b"ok") as server:
+
+        def refusing_then_answering(host, port, *args, **kwargs):
+            if host != "two.test":
+                return real(host, port, *args, **kwargs)
+            return [
+                (sockets.AF_INET, sockets.SOCK_STREAM, 6, "", ("127.0.0.1", p))
+                for p in (refusing, server.port)
+            ]
+
+        monkeypatch.setattr(sockets, "getaddrinfo", refusing_then_answering)
+        client = limited_client(TIMEOUT)
+        answer = exchange(client, "GET", "http://two.test/", Deadline(5.0))
+
+    assert answer.content == b"ok"
+
+
+def test_a_name_that_cannot_be_resolved_is_a_connect_error(monkeypatch):
+    import socket as sockets
+
+    def no_such_name(*args, **kwargs):
+        raise sockets.gaierror("no such name")
+
+    monkeypatch.setattr(sockets, "getaddrinfo", no_such_name)
+    client = limited_client(TIMEOUT)
+
+    with pytest.raises(httpx2.ConnectError):
+        exchange(client, "GET", "http://nowhere.test/", Deadline(LIMIT))
+
+
+class _TricklingSocket:
+    """Takes one byte per `send`, each after `step` seconds of the clock."""
+
+    def __init__(self, clock: Clock, step: float) -> None:
+        self.clock = clock
+        self.step = step
+        self.waits: list[float | None] = []
+        self.sent = b""
+
+    def settimeout(self, timeout: float | None) -> None:
+        self.waits.append(timeout)
+
+    def send(self, data) -> int:
+        self.clock.now += self.step
+        self.sent += bytes(data[:1])
+        return 1
+
+
+def test_each_send_waits_only_what_the_call_has_left():
+    """A reader taking a byte each 0.3 s: one write's every `send` would wait
+    its own 10 s. Each is cut to the time left, and the fourth, past the
+    limit, is never begun."""
+    import httpcore2
+
+    from app.core.outside_http import _LimitedStream
+
+    clock = Clock()
+    sock = _TricklingSocket(clock, step=0.3)
+    stream = _LimitedStream(httpcore2._backends.sync.SyncStream(sock))
+
+    with within(Deadline(LIMIT, clock)), pytest.raises(httpcore2.WriteTimeout):
+        stream.write(b"abcdef", timeout=10.0)
+
+    assert sock.sent == b"abcd"
+    assert sock.waits == pytest.approx([1.0, 0.7, 0.4, 0.1])
