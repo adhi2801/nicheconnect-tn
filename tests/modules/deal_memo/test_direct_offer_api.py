@@ -203,6 +203,39 @@ def test_a_creator_cannot_send_an_offer_to_their_own_number(client, db, clock, o
     assert response.json()["code"] == "direct_offer_own_number"
 
 
+def test_a_creator_who_left_meanwhile_sends_nothing(db, clock, on):
+    """A token is refused once its account is deleted, so only an erasure
+    landing between the sign-in check and the creator's lock reaches this:
+    the send reads the account again under that lock and starts nothing with
+    someone who left (D-122)."""
+    from app.modules.auth.models.creator import Creator
+    from app.modules.deal_memo import direct_offer_service
+    from app.modules.deal_memo.direct_offer_schemas import DirectOfferCreate
+    from app.modules.deal_memo.exceptions import CreatorLeft
+
+    creator = creator_user(db, clock)
+    profile = db.scalars(
+        select(Creator).where(Creator.account_id == creator.account_id)
+    ).one()
+    account = db.get_one(Account, creator.account_id)
+    account.deletion_requested_at = clock.now - timedelta(days=30)
+    account.deletion_takes_effect_at = clock.now
+    account.phone = None
+    account.deleted_at = clock.now
+    # Committed to the test's savepoint, so the send's own rollback keeps it
+    # and the last line asks a real question.
+    db.commit()
+    profile_id = profile.id
+    fields = DirectOfferCreate.model_validate(offer_body()).model_dump()
+
+    with pytest.raises(CreatorLeft):
+        direct_offer_service.send(db, profile, fields, clock.now)
+
+    assert db.scalar(
+        select(DirectOffer.id).where(DirectOffer.creator_id == profile_id)
+    ) is None
+
+
 def test_ten_offers_a_tamil_nadu_day_then_none_until_midnight(
     client, db, clock, on, unlimited
 ):
@@ -459,6 +492,18 @@ def test_a_link_nobody_sent_finds_nothing(client, db, clock, on):
         assert response.json()["code"] == "direct_offer_not_found"
     assert client.get(LINK_URL).status_code == 422
     assert client.get(LINK_URL, headers=link("x" * 129)).status_code == 422
+
+
+def test_a_token_of_the_wrong_shape_never_reaches_the_offers(client, db, clock, on):
+    """Each link route refuses a malformed token before asking the database
+    anything about offers (security.md section 1)."""
+    from tests.query_counts import count_queries
+
+    for method, url in (("GET", LINK_URL), ("POST", STOP_URL)):
+        with count_queries() as statements:
+            response = client.request(method, url, headers=link("not-a-token"))
+        assert response.status_code == 404
+        assert not [sql for sql in statements if "direct_offer" in sql], statements
 
 
 def test_an_expired_link_says_so(client, db, clock, on):

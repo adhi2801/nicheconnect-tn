@@ -257,6 +257,17 @@ def test_only_the_terms_shown_are_accepted_and_the_code_stays_unused(
     assert again.status_code == 200
 
 
+def test_a_successful_acceptance_uses_the_code_up(client, db, clock, on, sender):
+    """Else the code would still sign the number in for the rest of its
+    5 minutes."""
+    phone = fake_phone()
+    offer = sent(client, creator_user(db, clock), phone)
+
+    assert accept(client, sender, offer, phone).status_code == 200
+
+    assert not code_unused(db, phone)
+
+
 def test_a_number_with_a_brand_account_cannot_accept(client, db, clock, on, sender):
     brand = brand_user(db, clock)
     phone = phone_of(db, brand)
@@ -293,6 +304,97 @@ def test_an_admin_s_number_reads_as_a_mismatch(client, db, clock, on, sender):
 
     assert response.status_code == 409
     assert response.json()["code"] == "role_mismatch"
+
+
+def test_a_memo_that_drifts_from_the_accepted_terms_is_never_committed(
+    client, db, clock, on, sender, monkeypatch
+):
+    """The memo is held to the fingerprint the brand accepted before anything
+    is sealed: a fault that wrote other terms makes nothing at all."""
+    from app.modules.deal_memo import direct_offer_service
+
+    phone = fake_phone()
+    offer = sent(client, creator_user(db, clock), phone)
+    real = direct_offer_service.memos.replace_deliverables
+
+    def drifted(session, memo_id, items, now):
+        changed = [{**item, "quantity": item["quantity"] + 1} for item in items]
+        return real(session, memo_id, changed, now)
+
+    monkeypatch.setattr(direct_offer_service.memos, "replace_deliverables", drifted)
+
+    response = accept(client, sender, offer, phone)
+
+    # A bug, never a person's mistake: the generic 500, nothing made.
+    assert response.status_code == 500
+    assert response.json()["code"] == "internal_error"
+    assert accounts_on(db, phone) == []
+    assert offer_row(db, offer["id"]).status == "sent"
+
+
+def code_unused(db, phone: str) -> bool:
+    """Whether the number's newest code is still unused."""
+    from app.modules.auth.models.otp_challenge import OtpChallenge
+
+    newest = db.scalars(
+        select(OtpChallenge)
+        .where(OtpChallenge.phone == phone)
+        .order_by(OtpChallenge.created_at.desc())
+        .execution_options(populate_existing=True)
+    ).first()
+    return newest is not None and newest.consumed_at is None
+
+
+def test_a_suspended_side_on_the_number_takes_no_brand(client, db, clock, on, sender):
+    """A suspended creator cannot step round their suspension with a brand
+    made at a link, as at login (D-126); told only after the code was right."""
+    suspended = creator_user(db, clock)
+    account = db.get_one(Account, suspended.account_id)
+    phone = account.phone
+    offer = sent(client, creator_user(db, clock), phone)
+    account.suspended_at = clock.now
+    account.suspension_reason = "fake_profile"
+    db.flush()
+
+    response = accept(client, sender, offer, phone)
+
+    assert response.status_code == 403
+    assert response.json()["code"] == "account_suspended"
+    assert accounts_on(db, phone) == ["creator"]
+    assert offer_row(db, offer["id"]).status == "sent"
+    assert code_unused(db, phone)
+
+
+def test_a_number_an_account_waits_to_move_onto_takes_no_brand(
+    client, db, clock, on, sender
+):
+    """Else the moving account would land on a number a brand was just made
+    on, as login refuses (D-108)."""
+    from app.modules.auth.models.account_phone_change import (
+        PHONE_CHANGE_WAIT,
+        AccountPhoneChange,
+    )
+
+    phone = fake_phone()
+    offer = sent(client, creator_user(db, clock), phone)
+    mover = brand_user(db, clock)
+    db.add(
+        AccountPhoneChange(
+            account_id=mover.account_id,
+            new_phone=phone,
+            requested_at=clock.now,
+            takes_effect_at=clock.now + PHONE_CHANGE_WAIT,
+        )
+    )
+    db.flush()
+
+    response = accept(client, sender, offer, phone)
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "phone_change_waiting"
+    assert accounts_on(db, phone) == []
+    assert offer_row(db, offer["id"]).status == "sent"
+    assert code_unused(db, phone)
 
 
 def test_the_creator_s_own_number_never_accepts(client, db, clock, on, sender):

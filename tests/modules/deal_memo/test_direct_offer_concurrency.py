@@ -398,6 +398,33 @@ def test_an_offer_erased_while_an_acceptance_waits_is_not_found(world, monkeypat
     assert brands_on(phone) == 0
 
 
+def test_a_creator_suspended_while_an_acceptance_waits_is_not_found(world, monkeypatch):
+    """The link was read while the creator stood; their suspension lands
+    before the acceptance locks their row, which it reads again under that
+    lock, so no deal is made with a suspended creator."""
+    creator, phone = world.creator(), world.number()
+    sent = send(creator, phone)
+    code = code_for(phone)
+    real_check = login.check_phone_code
+
+    def check_then_suspend(db, *args, **kwargs):
+        challenge = real_check(db, *args, **kwargs)
+        with SessionLocal() as other:
+            account = other.get_one(Account, creator.account_id)
+            account.suspended_at = NOW
+            account.suspension_reason = "fake_profile"
+            other.commit()
+        return challenge
+
+    monkeypatch.setattr(login, "check_phone_code", check_then_suspend)
+
+    (result,) = run_together(accept_with(sent.link_token, code, sent.offer.terms_sha256))
+
+    assert isinstance(result, DirectOfferNotFound), result
+    assert brands_on(phone) == 0
+    assert offer_status(sent.offer.id) == "sent"
+
+
 def test_the_cleanup_leaves_nothing(world):
     """The fixture's removal is itself checked, so a race test never leaves
     rows that would change another test's counts."""
