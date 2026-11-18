@@ -39,9 +39,9 @@ from sqlalchemy.orm import Session
 
 from app.core.clock import india_date
 from app.core.config import settings
-from app.core.deadline import Deadline, DeadlinePassed
+from app.core.deadline import Deadline
 from app.core.job_runs import within_budget
-from app.core.storage import FileStore, ObjectTooLarge
+from app.core.storage import FileStore, ObjectTooLarge, storage_failures
 from app.modules.campaigns.models import Application
 from app.modules.deal_memo import record_service as record
 from app.modules.deal_memo.exceptions import (
@@ -317,10 +317,14 @@ def read_one(
             except KeyError, ObjectTooLarge:
                 logger.warning("proof file %s: its clean copy cannot be read", file_id)
                 return SKIPPED
-            except DeadlinePassed:
-                # Storage too slow this time: still due, so the next run tries.
+            except storage_failures() as error:
+                # Storage too slow, unreachable or refusing this time: still
+                # due, so the next run tries, and the rest are read now. Its
+                # type only: a message could carry the key (backend.md 9).
                 logger.warning(
-                    "proof file %s: its clean copy was too slow to read", file_id
+                    "proof file %s: its clean copy could not be read now (%s)",
+                    file_id,
+                    type(error).__name__,
                 )
                 return SKIPPED
             reading = reader.read(image, content_type)

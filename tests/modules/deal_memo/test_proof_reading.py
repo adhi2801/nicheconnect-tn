@@ -527,3 +527,50 @@ def test_a_clean_copy_too_slow_to_read_is_skipped_and_stays_due(
     assert reading_for(db, file_id) is None
     monkeypatch.setattr(store, "read", real_read)
     assert run(db, clock, reader).read == 1
+
+
+def _store_failures():
+    from botocore.exceptions import (
+        ClientError,
+        ConnectTimeoutError,
+        EndpointConnectionError,
+        ReadTimeoutError,
+    )
+
+    return [
+        ReadTimeoutError(endpoint_url="https://s3.example"),
+        ConnectTimeoutError(endpoint_url="https://s3.example"),
+        EndpointConnectionError(endpoint_url="https://s3.example"),
+        ClientError({"Error": {"Code": "InternalError"}}, "GetObject"),
+        DeadlinePassed("reading a stored file passed its limit"),
+    ]
+
+
+@pytest.mark.parametrize("failure", _store_failures(), ids=lambda e: type(e).__name__)
+def test_a_store_that_fails_one_file_leaves_it_due_and_reads_the_rest(
+    client, db, clock, deal, monkeypatch, failure
+):
+    """A stuck or unreachable S3 is this run's problem for that file only:
+    it stays due, and the next file is still read, in the same run."""
+    _, creator, memo_id = deal
+    first_id, second_id = cleaned(client, db, clock, creator, memo_id, count=2)
+    reader = FakeReader()
+    store = storage.memory_store()
+    real_read = store.read
+    calls: list[str] = []
+
+    def fails_once(key: str, *, max_bytes: int) -> bytes:
+        calls.append(key)
+        if len(calls) == 1:
+            raise failure
+        return real_read(key, max_bytes=max_bytes)
+
+    monkeypatch.setattr(store, "read", fails_once)
+    result = run(db, clock, reader)
+
+    assert (result.read, result.skipped) == (1, 1)
+    assert reading_for(db, first_id) is None
+    assert reading_for(db, second_id) is not None
+    monkeypatch.setattr(store, "read", real_read)
+    assert run(db, clock, reader).read == 1
+    assert reading_for(db, first_id) is not None

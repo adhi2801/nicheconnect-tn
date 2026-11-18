@@ -211,3 +211,56 @@ def test_a_run_whose_budget_is_spent_reads_nothing_and_leaves_it_for_the_next(
     )
     assert later.read == 1
     assert connection(db).verified_followers == 25_000
+
+
+def _spent_after(items: int):
+    """A budget's clock that holds for `items` connections, then is spent."""
+    ticks = iter([0.0] + [0.0] * items + [10_000.0] * 100)
+    return Deadline(1.0, lambda: next(ticks))
+
+
+def test_a_run_cut_short_reads_the_others_first_the_next_day(
+    client, db, clock, platforms
+):
+    """Two connections, a budget spent after one: the run reads the one this
+    job never read, or read longest ago, so the next day's run reads the other.
+    Ordered by id, the newer connection would be skipped every day."""
+    first, second = creator_user(db, clock), creator_user(db, clock)
+    connected(client, first, platforms, code="code-a", user_id="1001", followers=100)
+    clock.advance(timedelta(minutes=1))
+    connected(client, second, platforms, code="code-b", user_id="1002", followers=200)
+    platforms["instagram"].profiles["code-a"] = profile(user_id="1001", followers=101)
+    platforms["instagram"].profiles["code-b"] = profile(user_id="1002", followers=202)
+
+    def followers() -> list[int | None]:
+        db.expire_all()
+        return sorted(
+            row.verified_followers
+            for row in db.scalars(
+                select(ConnectedAccount).where(
+                    ConnectedAccount.platform_user_id.in_(["1001", "1002"])
+                )
+            )
+        )
+
+    for day in (1, 2):
+        clock.advance(timedelta(days=1))
+        run_ = refresh.refresh_all(
+            lambda: nullcontext(db),
+            clock.now,
+            connection_jobs.tell_creator,
+            budget=_spent_after(1),
+        )
+        assert run_.read == 1, day
+
+    assert followers() == [101, 202]
+    # And a third day reads the one read longest ago, the first again.
+    platforms["instagram"].profiles["code-a"] = profile(user_id="1001", followers=103)
+    clock.advance(timedelta(days=1))
+    refresh.refresh_all(
+        lambda: nullcontext(db),
+        clock.now,
+        connection_jobs.tell_creator,
+        budget=_spent_after(1),
+    )
+    assert followers() == [103, 202]

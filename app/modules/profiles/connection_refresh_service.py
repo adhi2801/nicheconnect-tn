@@ -79,7 +79,13 @@ def refresh_all(
     """One run of the job: every active connection, each in its own transactions.
 
     Once `budget` is spent no further connection is started (item 118,
-    D-186); the rest are read at the next run.
+    D-186); the rest are read at the next run. So that a run cut short never
+    leaves the same connections out day after day, they are read longest
+    unread first: those this job has never read (`updated_at` still the
+    moment they were connected), then by when each was last read, since a
+    read is the only change this job or anyone makes to an active
+    connection's `updated_at` after connecting. A connection left unread is
+    therefore first in line the next day.
     """
     if not settings.platform_connections_enabled:
         return RefreshRun(read=0, expired=0, unavailable=0, skipped=0)
@@ -88,7 +94,11 @@ def refresh_all(
             db.scalars(
                 select(ConnectedAccount.id)
                 .where(ConnectedAccount.status == "active")
-                .order_by(ConnectedAccount.id)
+                .order_by(
+                    ConnectedAccount.updated_at > ConnectedAccount.connected_at,
+                    ConnectedAccount.updated_at,
+                    ConnectedAccount.id,
+                )
             ).all()
         )
     outcomes = [

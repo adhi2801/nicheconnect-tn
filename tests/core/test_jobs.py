@@ -5,6 +5,7 @@ a throwaway schema for DBOS's state and a date in 2020 for the checkpoint, so
 no deal is covered, and they remove everything they wrote afterwards.
 """
 
+import uuid
 from collections.abc import Iterator
 from datetime import UTC, date, datetime
 
@@ -467,6 +468,19 @@ JOBS = [
 JOB_IDS = [module.SCHEDULE_NAME for module, *_ in JOBS]
 
 
+def own_lock_name(monkeypatch, module) -> str:
+    """The job's runs lock a name of this test's own, never the real schedule's.
+
+    The real DBOS scheduler runs while `launched`, and other tests or app
+    processes on this database may hold a real schedule's lock; a name no
+    one else uses keeps this test from waiting on them, or them on it. The
+    workflow reads its module's SCHEDULE_NAME when it runs, so it locks this.
+    """
+    name = f"test-{module.SCHEDULE_NAME}-{uuid.uuid4().hex}"
+    monkeypatch.setattr(module, "SCHEDULE_NAME", name)
+    return name
+
+
 def test_every_schedule_is_bounded_here():
     """A schedule added later must join JOBS, or this fails."""
     scheduled = {
@@ -485,6 +499,7 @@ def test_each_run_is_given_its_budget(
     launched, monkeypatch, module, work, workflow, budget
 ):
     given = []
+    own_lock_name(monkeypatch, module)
     monkeypatch.setattr(
         module, work, lambda scheduled_at, *budgets: given.append((scheduled_at, budgets))
     )
@@ -506,8 +521,9 @@ def test_a_run_while_the_last_is_still_going_does_nothing(
 ):
     given = []
     monkeypatch.setattr(module, work, lambda *args: given.append(args))
+    name = own_lock_name(monkeypatch, module)
 
-    with one_run_at_a_time(module.SCHEDULE_NAME) as held:
+    with one_run_at_a_time(name) as held:
         assert held is True  # the "last run", on a connection of its own
         getattr(module, workflow)(SCHEDULED, None)
 

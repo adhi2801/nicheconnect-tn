@@ -14,26 +14,37 @@ on one check alone.
 **Nothing is public.** Reading is only through a link signed for a few
 minutes, for one object.
 
-**Every call to S3 ends within CALL_LIMIT_SECONDS** (item 118, D-186).
-botocore bounds each wait (connect 3 s, read 10 s) and its tries (3), never
-their sum, and a body trickled a byte at a time, each inside the read
-timeout, would never end. So each call carries one `Deadline`: botocore asks
-`_refuse_late_try` before every try, retries included, and none starts once
-the limit has passed. A file's body is read one socket read at a time
-(`_OneWaitAtATime`), each wait cut to the time the call has left, so a body
-trickled at any rate ends at the limit; botocore's own checks on the body
-(its length, and its checksum when S3 sends one) still run.
-**What it cannot do**, since botocore offers no hook there: cut a try that
-is already waiting for S3's headers, a wait between tries already begun, or
-an upload already being sent. A store that never answers is given up within
-the limit, one try (connect 3 s, read 10 s) and the one wait botocore had
-begun (its cap is 20 s, and 5 s more when S3 asks with `x-amz-retry-after`);
-a store trickling its headers a byte at a time is held only by botocore's
-per-wait limit, with no end; a store reading an upload slowly holds that
-try for as long as each of the socket's sends keeps inside botocore's
-10 s read wait. S3 is AWS's own service in the same region, so this is the
-least likely of the outside calls to misbehave so; it is named in D-186 as
-a gap.
+**Every call to S3 ends within CALL_LIMIT_SECONDS** (item 118, D-186;
+Adhi's decision of 15 November 2026, "bound it by config"). botocore bounds
+each wait and its tries, never their sum, so the client is configured for a
+sum that fits: 2 tries in all, each connect at most 3 s and each wait for
+bytes at most 8 s, and botocore's longest pause between them 1 s, or 6 s
+when S3 asks with `x-amz-retry-after`. One request that never answers
+therefore ends within 2 x (3 + 8) + 6 = 28 s (`worst_request_seconds`,
+computed from the client's own configuration by a test). On top of that,
+each call carries one `Deadline`:
+
+- botocore asks `_refuse_late_try` before every try, retries included, and
+  none starts once the limit has passed; `_no_retry_past_the_limit` stops
+  botocore before its pause once the limit has passed or an upload was
+  stopped, so no pause is spent on a try that would be refused;
+- a file's body is read one socket read at a time (`_OneWaitAtATime`), each
+  wait cut to the time the call has left, so a body trickled at any rate
+  ends at the limit; botocore's own checks on the body (its length, and its
+  checksum when S3 sends one) still run;
+- an upload's next block is handed over only while a block's send and the
+  wait for the answer after it (2 x 8 s) still fit (`_SentWithin`), so an
+  upload ends within the limit;
+- a destroy starts each further request only while a whole request's worst
+  case still fits.
+
+**The one gap, accepted in writing by Adhi on 15 November 2026:** a store
+that trickles its answer's headers a byte at a time, each inside the 8 s
+wait, is not cut off, since botocore offers no hook on that socket. Only a
+hostile server does this, and ours is AWS's S3 itself, over TLS, in the
+same region. Measured on 15 November 2026 with this configuration and the
+30 s limit, a store that never answers ended in 16.1 s (two tries of 8 s;
+connecting locally takes no time).
 """
 
 import base64
@@ -62,19 +73,73 @@ MEMORY_STORE_ENVIRONMENTS = frozenset({"local", "test"})
 CALL_LIMIT_SECONDS = 30.0
 # The most one socket read may return; a read returns what has arrived.
 READ_PIECE_BYTES = 64 * 1024
-# botocore's own wait for the next bytes (`s3_client`), and the longest any
-# one read of a body may wait.
-READ_WAIT_SECONDS = 10.0
+# botocore's own waits (`s3_client`): a connect, and the wait for the next
+# bytes, which is also the longest one read of a body, or one send of an
+# upload's block, may wait.
+CONNECT_WAIT_SECONDS = 3.0
+READ_WAIT_SECONDS = 8.0
+# botocore's tries in all, the first included (`total_max_attempts`).
+TRIES = 2
 # Registered once per client, however many stores share it.
 _HOOK_ID = "colyv-call-limit"
+_RETRY_HOOK_ID = "colyv-call-limit-retry"
 
-_current_call: ContextVar[Deadline | None] = ContextVar("storage_call", default=None)
+
+@dataclass
+class _Call:
+    """One call's limit, and whether an upload of it was stopped."""
+
+    deadline: Deadline
+    stopped: bool = False
+
+
+_current_call: ContextVar[_Call | None] = ContextVar("storage_call", default=None)
+
+
+def worst_request_seconds(connect: float, read: float, tries: int) -> float:
+    """The longest one botocore request can take, every try and pause included.
+
+    Each try: its connect and one wait for the answer. Between tries,
+    botocore's standard retry mode pauses at most `min(2 ** (n - 1), 20)`
+    seconds before try n + 1, and up to 5 s more when the store asks with
+    `x-amz-retry-after` (botocore.retries.standard.ExponentialBackoff, read
+    from the installed botocore, never copied).
+    """
+    from botocore.retries.standard import ExponentialBackoff as Backoff
+
+    pauses = sum(
+        min(Backoff._BASE ** (n - 1), Backoff._MAX_BACKOFF)
+        + Backoff._RETRY_AFTER_MAX_ADDITIONAL
+        for n in range(1, tries)
+    )
+    return float(tries * (connect + read) + pauses)
 
 
 def _refuse_late_try(**_: Any) -> None:
     """botocore's `before-send` event, before every try: none once the limit has passed."""
-    deadline = _current_call.get()
-    if deadline is not None and deadline.expired():
+    call = _current_call.get()
+    if call is not None and call.deadline.expired():
+        raise DeadlinePassed("a storage call passed its limit")
+
+
+def _no_retry_past_the_limit(
+    response: Any = None, caught_exception: Exception | None = None, **_: Any
+) -> None:
+    """botocore's `needs-retry` event, asked after every try, before any pause.
+
+    Registered first, so it is asked before botocore's own retry handler. A
+    try that answered (below 400) is never a retry, and its answer stands
+    however late it came. A failed one, once the limit has passed or an upload
+    was stopped for want of time, has no try left to pause for.
+    """
+    if (
+        caught_exception is None
+        and response is not None
+        and response[0].status_code < 400
+    ):
+        return
+    call = _current_call.get()
+    if call is not None and (call.stopped or call.deadline.expired()):
         raise DeadlinePassed("a storage call passed its limit")
 
 
@@ -95,6 +160,19 @@ class _OneWaitAtATime:
         self._deadline = deadline
 
     def read(self, amt: int | None = None) -> bytes:
+        """At most `amt` bytes from one socket read; with no `amt`, all of the rest.
+
+        All of the rest is read one cut wait at a time, until the stream ends,
+        so it is never one socket read mistaken for the whole body.
+        """
+        if amt is None:
+            pieces: list[bytes] = []
+            while piece := self._read_once(READ_PIECE_BYTES):
+                pieces.append(piece)
+            return b"".join(pieces)
+        return self._read_once(amt)
+
+    def _read_once(self, amt: int) -> bytes:
         from botocore.compat import set_socket_timeout
         from urllib3.exceptions import ReadTimeoutError
 
@@ -123,23 +201,42 @@ class _OneWaitAtATime:
 
 
 class _SentWithin(io.BytesIO):
-    """An upload's bytes, handed to the socket only until the call's limit passes.
+    """An upload's bytes, handed to the socket only while there is time to send them.
 
-    The HTTP layer sends a body read from a file one block at a time, each
-    block's send bounded by the socket's own wait (botocore's 10 s); a store
-    reading slowly would otherwise hold the try for as long as the whole
-    file took. Asked for the next block after the limit, this refuses, so
-    an upload ends within one block's send of the limit.
+    The HTTP layer sends a body read from a file one block at a time (128 KiB
+    under botocore 1.43), each block's send bounded by the socket's own wait
+    (READ_WAIT_SECONDS, total for the send); after the last block it waits
+    up to as long again for the answer's first bytes. A block is therefore
+    handed over only while both waits still fit in what the call has left
+    (`keep_back`); once they do not, this refuses and marks the call stopped,
+    so an upload ends within the limit and botocore does not pause to try it
+    again (`_no_retry_past_the_limit`). Measured on 15 November 2026: before
+    this, the last block's send and botocore's pause before a refused retry
+    ran up to 1.9 s past a 2 s limit on GitHub's runner.
     """
 
-    def __init__(self, data: bytes, deadline: Deadline) -> None:
+    def __init__(self, data: bytes, call: _Call, keep_back: float) -> None:
         super().__init__(data)
-        self._deadline = deadline
+        self._call = call
+        self._keep_back = keep_back
 
     def read(self, size: int | None = -1) -> bytes:
-        if self._deadline.expired():
+        if self._call.deadline.remaining() < self._keep_back:
+            self._call.stopped = True
             raise DeadlinePassed("sending a file to storage passed its limit")
         return super().read(size)
+
+
+def storage_failures() -> tuple[type[Exception], ...]:
+    """Every way a call to the store can fail without the file being at fault.
+
+    The call's limit passing, and botocore's own failures: a timeout, no
+    connection, a refusal from S3 (`ClientError`). A job catches these to
+    leave one item due and go on with the rest.
+    """
+    from botocore.exceptions import BotoCoreError, ClientError
+
+    return (DeadlinePassed, BotoCoreError, ClientError)
 
 
 class StorageNotConfigured(DomainError):
@@ -220,14 +317,17 @@ class S3FileStore:
         client.meta.events.register(
             "before-send.s3", _refuse_late_try, unique_id=_HOOK_ID
         )
+        client.meta.events.register_first(
+            "needs-retry.s3", _no_retry_past_the_limit, unique_id=_RETRY_HOOK_ID
+        )
 
     @contextmanager
-    def _call(self) -> Iterator[Deadline]:
+    def _call(self) -> Iterator[_Call]:
         """One call's limit, seen by every try botocore makes inside the block."""
-        deadline = Deadline(CALL_LIMIT_SECONDS, self._clock)
-        token = _current_call.set(deadline)
+        call = _Call(Deadline(CALL_LIMIT_SECONDS, self._clock))
+        token = _current_call.set(call)
         try:
-            yield deadline
+            yield call
         finally:
             _current_call.reset(token)
 
@@ -291,14 +391,14 @@ class S3FileStore:
 
         Raises ObjectTooLarge, or DeadlinePassed once the limit is spent.
         """
-        with self._call() as deadline:
+        with self._call() as call:
             response = self._client.get_object(Bucket=self.bucket, Key=key)
             body = response["Body"]
             try:
                 if int(response["ContentLength"]) > max_bytes:
                     raise ObjectTooLarge(key)
                 # The one seam botocore leaves: the stream its body reads from.
-                body._raw_stream = _OneWaitAtATime(body._raw_stream, deadline)
+                body._raw_stream = _OneWaitAtATime(body._raw_stream, call.deadline)
                 data = bytearray()
                 for piece in body.iter_chunks(chunk_size=READ_PIECE_BYTES):
                     data += piece
@@ -309,11 +409,11 @@ class S3FileStore:
                 body.close()
 
     def write(self, key: str, data: bytes, *, content_type: str) -> None:
-        with self._call() as deadline:
+        with self._call() as call:
             self._client.put_object(
                 Bucket=self.bucket,
                 Key=key,
-                Body=_SentWithin(data, deadline),
+                Body=_SentWithin(data, call, keep_back=2 * READ_WAIT_SECONDS),
                 ContentType=content_type,
                 ChecksumSHA256=base64.b64encode(hashlib.sha256(data).digest()).decode(
                     "ascii"
@@ -328,11 +428,16 @@ class S3FileStore:
         # The bucket keeps versions, so a plain delete only hides an object
         # for a month (`tidy`). Deleting each version by its id removes it.
         # One limit for the listing and every deletion: a destroy that stops
-        # halfway is asked again by its job's next run.
-        with self._call():
+        # halfway is asked again by its job's next run. Each further request
+        # starts only while its whole worst case still fits.
+        with self._call() as call:
             listed = self._client.list_object_versions(Bucket=self.bucket, Prefix=key)
             for entry in [*listed.get("Versions", []), *listed.get("DeleteMarkers", [])]:
                 if entry["Key"] == key:
+                    if call.deadline.remaining() < worst_request_seconds(
+                        CONNECT_WAIT_SECONDS, READ_WAIT_SECONDS, TRIES
+                    ):
+                        raise DeadlinePassed("destroying a stored file passed its limit")
                     self._client.delete_object(
                         Bucket=self.bucket, Key=key, VersionId=entry["VersionId"]
                     )
@@ -366,9 +471,9 @@ def s3_client() -> Any:
         region_name=settings.aws_region,
         config=Config(
             signature_version="s3v4",
-            connect_timeout=3,
+            connect_timeout=CONNECT_WAIT_SECONDS,
             read_timeout=READ_WAIT_SECONDS,
-            retries={"mode": "standard", "max_attempts": 3},
+            retries={"mode": "standard", "total_max_attempts": TRIES},
         ),
     )
 
