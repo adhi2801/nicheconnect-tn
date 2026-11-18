@@ -63,7 +63,7 @@ def row(db, offer_id) -> DirectOffer:
 
 def test_every_route_is_off_by_default(client, db, clock):
     creator = creator_user(db, clock)
-    token = "a" * 43
+    token = "a" * 64
     answers = [
         client.post(OFFERS_URL, json=offer_body(), headers=creator.headers),
         client.get(OFFERS_URL, headers=creator.headers),
@@ -231,9 +231,10 @@ def test_a_creator_who_left_meanwhile_sends_nothing(db, clock, on):
     with pytest.raises(CreatorLeft):
         direct_offer_service.send(db, profile, fields, clock.now)
 
-    assert db.scalar(
-        select(DirectOffer.id).where(DirectOffer.creator_id == profile_id)
-    ) is None
+    assert (
+        db.scalar(select(DirectOffer.id).where(DirectOffer.creator_id == profile_id))
+        is None
+    )
 
 
 def test_ten_offers_a_tamil_nadu_day_then_none_until_midnight(
@@ -516,7 +517,7 @@ def test_a_later_reading_writes_nothing(client, db, clock, on):
 
 def test_a_link_nobody_sent_finds_nothing(client, db, clock, on):
     sent(client, creator_user(db, clock))
-    for token in ("b" * 43, "short", "x" * 128):
+    for token in ("b" * 64, "short", "x" * 128):
         response = client.get(LINK_URL, headers=link(token))
         assert response.status_code == 404
         assert response.json()["code"] == "direct_offer_not_found"
@@ -582,7 +583,9 @@ def test_the_other_routes_have_their_rate_limits(client, db, clock, on, route, a
     offer = sent(client, creator)
     calls = {
         "list": lambda: client.get(OFFERS_URL, headers=creator.headers),
-        "read": lambda: client.get(f"{OFFERS_URL}/{offer['id']}", headers=creator.headers),
+        "read": lambda: client.get(
+            f"{OFFERS_URL}/{offer['id']}", headers=creator.headers
+        ),
         "withdraw": lambda: client.post(
             f"{OFFERS_URL}/{offer['id']}/withdraw", headers=creator.headers
         ),
@@ -632,7 +635,7 @@ def test_stop_these_works_after_a_withdrawal_or_expiry_and_twice(client, db, clo
 
 
 def test_stop_these_on_an_unknown_link_finds_nothing(client, db, clock, on):
-    response = client.post(STOP_URL, headers=link("c" * 43))
+    response = client.post(STOP_URL, headers=link("c" * 64))
     assert response.status_code == 404
     assert client.post(STOP_URL, headers=link("short")).status_code == 404
     assert client.post(STOP_URL).status_code == 422
@@ -671,7 +674,7 @@ def test_no_code_for_an_ended_or_unknown_offer(client, db, clock, on, sender):
     client.post(f"{OFFERS_URL}/{offer['id']}/withdraw", headers=creator.headers)
 
     ended = client.post(CODE_URL, headers=link(offer["link_token"]))
-    unknown = client.post(CODE_URL, headers=link("d" * 43))
+    unknown = client.post(CODE_URL, headers=link("d" * 64))
 
     assert ended.status_code == 409 and ended.json()["code"] == "direct_offer_withdrawn"
     assert unknown.status_code == 404

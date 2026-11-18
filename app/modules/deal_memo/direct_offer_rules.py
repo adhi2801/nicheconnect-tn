@@ -5,7 +5,9 @@ database (testing.md section 3) and mutated nightly (D-091): the link's
 token and its keyed hash, the number's keyed hash, what an offer shows as
 now, whether its due date may be agreed, and the two ceilings' arithmetic.
 
-**The link's token** is 256 random bits, shown to the creator once, in the
+**The link's token** is 256 random bits from the operating system's
+CSPRNG (`os.urandom`, which `secrets` itself uses), written as 64 hex
+characters, shown to the creator once, in the
 answer that sends the offer, for them to send the brand; only its HMAC is
 kept, keyed by OTP_HASH_KEY under its own label, as assistants' tokens are
 (D-138; OWASP ASVS 5.0 V7.2.3, a reference token of at least 128 bits of
@@ -18,16 +20,18 @@ which a browser never sends to any server.
 import hashlib
 import hmac
 import math
+import os
 import re
-import secrets
 from datetime import date, datetime, timedelta
 
 from app.core.clock import end_of_india_day, india_date
 from app.core.config import settings
 
 LINK_TOKEN_BYTES = 32
-# `secrets.token_urlsafe(32)`: 43 characters of the URL-safe alphabet.
-LINK_TOKEN_PATTERN = r"^[A-Za-z0-9_-]{43}$"  # noqa: S105 - a format check, not a secret
+# 32 bytes as lowercase hex: 64 characters. Not `secrets.token_urlsafe(32)`,
+# whose 32 is also its default, so a mutation dropping the argument could
+# never be caught (D-189: the nightly mutation run).
+LINK_TOKEN_PATTERN = r"^[0-9a-f]{64}$"  # noqa: S105 - a format check, not a secret
 _LINK_TOKEN = re.compile(LINK_TOKEN_PATTERN)
 
 # Abuse limits (D-189): a creator's offers in one Tamil Nadu day, and the
@@ -42,7 +46,7 @@ MAX_DUE_AHEAD = timedelta(days=365)
 
 def new_link_token() -> str:
     """A fresh link token, shown to the creator once and never stored."""
-    return secrets.token_urlsafe(LINK_TOKEN_BYTES)
+    return os.urandom(LINK_TOKEN_BYTES).hex()
 
 
 def is_link_token(value: str) -> bool:

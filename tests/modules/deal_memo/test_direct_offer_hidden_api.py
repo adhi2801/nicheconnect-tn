@@ -217,7 +217,10 @@ def test_no_application_route_reaches_the_hidden_application(client, world):
             assert client.get(f"{hidden}{tail}", headers=headers).status_code == 404
     # Beside it, the normal application answers its brand and its creator.
     assert client.get(normal, headers=world["brand"].headers).status_code == 200
-    assert client.get(f"{normal}/offers", headers=world["applicant"].headers).status_code == 200
+    assert (
+        client.get(f"{normal}/offers", headers=world["applicant"].headers).status_code
+        == 200
+    )
     shortlisted = client.post(f"{normal}/shortlist", headers=world["brand"].headers)
     assert shortlisted.status_code == 200, shortlisted.text
 

@@ -132,25 +132,30 @@ def terms_fingerprint(memo: DealMemo) -> str:
             for item in memo.deliverable_items
         ]
         if memo.terms_version >= 2
-        else [],
+        else None,
         memo.terms_version,
     )
 
 
 def fingerprint_of_terms(
-    values: dict[str, Any], items: list[dict[str, Any]], terms_version: int
+    values: dict[str, Any], items: list[dict[str, Any]] | None, terms_version: int
 ) -> str:
     """`terms_fingerprint` for terms not yet in a memo: a direct offer's (D-189).
 
     `values` holds every TERMS_FIELDS field and `draft_review`; `items` the
-    deliverables, each with DELIVERABLE_FIELDS. One definition, so an offer's
-    fingerprint at sending and its memo's at acceptance cannot drift apart.
+    deliverables, each with DELIVERABLE_FIELDS, given exactly when the terms
+    version reads them (2 and later) and None before, so a caller that
+    loaded or skipped them by mistake is refused rather than ignored. One
+    definition, so an offer's fingerprint at sending and its memo's at
+    acceptance cannot drift apart. Raises ValueError.
     """
+    if (items is None) == (terms_version >= 2):
+        raise ValueError("Deliverables are part of the terms from version 2 on")
     terms: dict[str, Any] = {}
     for field in TERMS_FIELDS:
         value = values[field]
         terms[field] = value.isoformat() if isinstance(value, date) else value
-    if terms_version >= 2:
+    if items is not None:
         terms["deliverable_items"] = [
             {field: item[field] for field in DELIVERABLE_FIELDS} for item in items
         ]

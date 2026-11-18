@@ -158,6 +158,21 @@ def test_the_list_never_touches_a_version_1_fingerprint():
     ) == record_service.terms_fingerprint(plain)
 
 
+@pytest.mark.parametrize(("version", "items"), [(1, []), (2, None), (3, None)])
+def test_the_list_is_given_exactly_when_the_version_reads_it(version, items):
+    """A direct offer's terms are fingerprinted without a memo (D-189): a
+    list given to version 1, or none to version 2 or 3, is a caller's
+    mistake, refused rather than silently ignored or read as empty."""
+    memo = make_memo_terms()
+    values = {
+        field: getattr(memo, field)
+        for field in (*record_service.TERMS_FIELDS, "draft_review")
+    }
+
+    with pytest.raises(ValueError, match="version 2"):
+        record_service.fingerprint_of_terms(values, items, version)
+
+
 def test_a_memo_with_no_terms_version_has_no_fingerprint():
     memo = make_memo_terms()
     memo.terms_version = None

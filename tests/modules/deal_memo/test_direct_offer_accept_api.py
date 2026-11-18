@@ -558,7 +558,7 @@ def test_accepting_validates_its_body_and_its_link(client, db, clock, on, sender
         response = client.post(ACCEPT_URL, json=body, headers=link(offer["link_token"]))
         assert response.status_code == 422, body
     assert client.post(ACCEPT_URL, json=good).status_code == 422
-    unknown = client.post(ACCEPT_URL, json=good, headers=link("e" * 43))
+    unknown = client.post(ACCEPT_URL, json=good, headers=link("e" * 64))
     assert unknown.status_code == 404
 
 
@@ -568,7 +568,7 @@ def test_accepting_has_a_rate_limit_by_address(client, db, clock, on, sender):
         client.post(
             ACCEPT_URL,
             json=accept_body("123456", "0" * 64),
-            headers=link("f" * 43),
+            headers=link("f" * 64),
         ).status_code
         for _ in range(11)
     ]

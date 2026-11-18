@@ -25,23 +25,25 @@ NOW = datetime(2026, 11, 20, 4, 30, tzinfo=UTC)
 TODAY = date(2026, 11, 20)
 
 
-def test_a_link_token_is_256_bits_in_43_characters_and_never_repeats():
+def test_a_link_token_is_256_bits_in_64_hex_characters_and_never_repeats():
     tokens = {rules.new_link_token() for _ in range(200)}
 
     assert len(tokens) == 200
-    assert all(len(token) == 43 and rules.is_link_token(token) for token in tokens)
+    assert all(len(token) == 64 and rules.is_link_token(token) for token in tokens)
+    assert rules.LINK_TOKEN_BYTES * 8 == 256
 
 
 @pytest.mark.parametrize(
     "value",
     [
         "",
-        "a" * 42,
-        "a" * 44,
-        "a" * 42 + "!",
-        "a" * 42 + "=",
-        " " + "a" * 42,
-        "a" * 43 + "\n",
+        "a" * 63,
+        "a" * 65,
+        "A" * 64,
+        "g" * 64,
+        "a" * 63 + "=",
+        " " + "a" * 63,
+        "a" * 64 + "\n",
     ],
 )
 def test_anything_but_a_token_s_shape_is_no_token(value):
@@ -70,7 +72,7 @@ def test_the_hashes_are_pinned_to_their_labels_and_key():
     def expected(label: bytes, value: str) -> str:
         return hmac.new(key, label + b"\x00" + value.encode(), hashlib.sha256).hexdigest()
 
-    token = "A" * 43
+    token = "a" * 64
     phone = "+919876543210"
     assert rules.hash_link_token(token) == expected(b"direct-offer-link", token)
     assert rules.hash_recipient_phone(phone) == expected(b"direct-offer-phone", phone)

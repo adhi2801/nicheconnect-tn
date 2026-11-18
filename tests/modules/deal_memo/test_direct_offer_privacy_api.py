@@ -81,15 +81,23 @@ def test_the_creator_exports_every_offer_and_never_a_number(
 
 
 def test_the_brand_exports_the_offer_that_became_its_deal(client, db, clock, on, sender):
+    """Two brands, each made by accepting an offer (testing.md section 2: two
+    of every kind), so a missing brand condition cannot pass by luck."""
     creator = creator_user(db, clock)
-    phone = fake_phone()
+    phone, other_phone = fake_phone(), fake_phone()
     offer = sent(client, creator, phone)
+    other_offer = sent(client, creator, other_phone)
     sent(client, creator)
     brand_account = accept(client, sender, offer, phone).json()["account"]["id"]
+    other_account = accept(client, sender, other_offer, other_phone).json()["account"][
+        "id"
+    ]
 
     rows = section(db, brand_account, clock)
+    other_rows = section(db, other_account, clock)
 
     assert [row["id"] for row in rows] == [offer["id"]]
+    assert [row["id"] for row in other_rows] == [other_offer["id"]]
 
 
 def test_erasing_a_creator_erases_offers_that_never_became_deals(
