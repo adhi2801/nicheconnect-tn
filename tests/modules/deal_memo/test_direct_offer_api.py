@@ -127,6 +127,15 @@ def test_the_placeholder_is_marked_and_never_ready():
     assert not notices.ready()
 
 
+def test_ready_needs_the_link_notice_and_the_code_template_both(monkeypatch):
+    monkeypatch.setattr(notices, "LINK_PAGE_NOTICE", TEST_WORDING)
+    assert notices.wording_ready()
+    assert not notices.ready()
+
+    monkeypatch.setattr(settings, "msg91_direct_offer_template", "direct_offer_code")
+    assert notices.ready()
+
+
 def test_the_switch_and_the_link_notice_serve_nothing_without_the_code_template(
     client, db, clock, monkeypatch
 ):
@@ -795,6 +804,26 @@ def test_the_code_goes_to_the_number_the_creator_named(client, db, clock, on, se
     assert response.json() == {"expires_in_seconds": 300}
     assert sender.last_code_for(phone) is not None
     assert phone not in response.text
+
+
+def test_the_code_goes_through_the_offer_s_own_sender(client, db, clock, on, sender):
+    """The code route sends through the direct offer's sender (its own
+    template, D-189), never login's own: faked apart here, the code reaches
+    only the offer's."""
+    from app.modules.auth.dependencies import get_direct_offer_code_sender
+
+    offer_sender = FakeOtpSender()
+    app.dependency_overrides[get_direct_offer_code_sender] = lambda: offer_sender
+    phone = fake_phone()
+    offer = sent(client, creator_user(db, clock), phone)
+    try:
+        response = client.post(CODE_URL, headers=link(offer["link_token"]))
+    finally:
+        app.dependency_overrides.pop(get_direct_offer_code_sender, None)
+
+    assert response.status_code == 202
+    assert offer_sender.last_code_for(phone) is not None
+    assert sender.last_code_for(phone) is None
 
 
 def test_the_code_keeps_the_number_s_own_caps(client, db, clock, on, sender, unlimited):

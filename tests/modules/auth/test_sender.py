@@ -65,3 +65,44 @@ def test_no_sender_outside_local_and_test(monkeypatch, environment):
 
     with pytest.raises(OtpSenderNotConfigured):
         get_otp_sender()
+
+
+def msg91_on(monkeypatch, template: str | None) -> None:
+    from pydantic import SecretStr
+
+    monkeypatch.setattr(settings, "otp_sender", "msg91")
+    monkeypatch.setattr(settings, "msg91_auth_key", SecretStr("test-key-not-a-secret"))
+    monkeypatch.setattr(settings, "msg91_whatsapp_number", "919000000001")
+    monkeypatch.setattr(settings, "msg91_direct_offer_template", template)
+
+
+def test_a_direct_offer_s_code_goes_on_its_own_template(monkeypatch):
+    """D-189: never the login template, which says nothing about the offer."""
+    from app.modules.auth.sender import direct_offer_code_sender
+
+    msg91_on(monkeypatch, "direct_offer_code")
+
+    sender = direct_offer_code_sender(FakeOtpSender())
+
+    assert sender._template == "direct_offer_code"  # type: ignore[attr-defined]
+    assert sender._template != settings.msg91_otp_template  # type: ignore[attr-defined]
+
+
+def test_without_its_template_a_direct_offer_s_code_is_never_sent(monkeypatch):
+    from app.modules.auth.sender import direct_offer_code_sender
+
+    msg91_on(monkeypatch, None)
+    login = FakeOtpSender()
+
+    with pytest.raises(OtpSenderNotConfigured):
+        direct_offer_code_sender(login).send_code(fake_phone(), "123456")
+    assert login.sent == []
+
+
+def test_locally_a_direct_offer_s_code_is_kept_by_login_s_fake(monkeypatch):
+    from app.modules.auth.sender import direct_offer_code_sender
+
+    monkeypatch.setattr(settings, "otp_sender", "fake")
+    login = FakeOtpSender()
+
+    assert direct_offer_code_sender(login) is login
