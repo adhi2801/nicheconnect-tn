@@ -11,3 +11,4 @@ build
 playwright-report
 test-results
 .next-e2e
+.lighthouseci

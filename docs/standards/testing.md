@@ -170,7 +170,7 @@ Nightly, in its own workflow: **mutation testing** (`mutation.yml`, D-091). A ni
 
 Every job runs on an exact runner image (`ubuntu-24.04`), never `ubuntu-latest`, so CI cannot change under us (D-086).
 
-**"Blocked" is a convention today, not a lock: `main` has no branch protection** (GitHub's public branch API, 14 October), so nothing stops a merge with a red run (gap 1). CI results are read through GitHub's public API, without a login.
+**"Blocked" is a lock since 18 November 2026** (D-197): the ruleset "main protection" (id 27525028, read back through GitHub's public API, `GET /repos/adhi2801/nicheconnect-tn/rules/branches/main`, the same day) requires a pull request with a code owner's approval (`.github/CODEOWNERS`), the `test`, `frontend`, `image`, `infrastructure` and `repository-settings` jobs green on a branch up to date with `main`, and CodeQL with no high alert; it refuses force-pushes and deleting `main`. Only the repository admin role may bypass it, for the merges D-101 lets Claude make after CI is seen green on the exact commit. CI results are read through GitHub's public API, without a login.
 
 ## 10. Honesty
 
@@ -188,7 +188,7 @@ Every job runs on an exact runner image (`ubuntu-24.04`), never `ubuntu-latest`,
 
 | # | Gap | Risk | Acting on it |
 |---|---|---|---|
-| 1 | **`main` has no branch protection**, so a merge with a failing run is not stopped. Until 14 October, a false positive in the secret scan also stopped every run at its second step from 12 October on, unseen, so no later gate ran on GitHub | A red build can reach `main` | A founder turns on branch protection for `main`, requiring the `test`, `image`, `infrastructure`, `frontend` and `repository-settings` jobs |
+| 1 | **Closed 18 November 2026 (D-197).** `main` had no branch protection, so a merge with a failing run was not stopped; until 14 October a false positive in the secret scan also stopped every run at its second step, unseen. Now the ruleset above blocks it | A bypass by the admin role skips the checks | D-101 allows a bypass only after CI is seen green on the exact commit; each such merge says so in its report |
 | 2 | **Two required tests are *(review only)***: the query-count test per list and the concurrency test per "only if" rule. The stranger test per route became mechanical on 14 October (item 100) | One missed test is a missed bug, found by a user | Each gains a check when one is practical |
 | 3 | **Fuzzing gates only server errors**, and its findings file was last updated in September, with 64 operations then and 123 routes now | Contract drift the other checks would catch goes unseen | Re-run every check, update the findings, then gate what passes; a CI change, so an Infrastructure gate |
 | 4 | **Mutation testing covers eight files**; 186 mutants survived the wider run | Weak tests outside those files are invisible | Item 93 |

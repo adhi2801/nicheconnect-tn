@@ -8,5 +8,22 @@ allowBuilds:
 # glob (GitHub alert 92, moderate). Only the linter's TypeScript parser uses
 # it, and its newest release (8.72.1, 2 November 2026) still asks for 10, so
 # it is pinned here for that one package. Remove when it asks for 11.
+#
+# Lighthouse CI (test only, D-197) reaches basic-ftp through puppeteer's
+# proxy support: three advisories (GHSA-r4jh-29pc-gfqr high, two moderate),
+# all fixed in 6.2.4. @puppeteer/browsers asks for proxy-agent 8, which
+# Lighthouse's tree still resolves to 6; both are pinned here. Remove when
+# @lhci/cli's own tree resolves them.
 overrides:
   "@typescript-eslint/typescript-estree>minimatch": "11.0.1"
+  "basic-ftp": "6.2.6"
+  "proxy-agent": "8.0.3"
+# The dependency audit in CI (D-197) fails on any advisory not listed here.
+# GHSA-fc5q-39xc-vjpf (picomatch, ReDoS through repeated extglobs, high):
+# no fixed release exists (4.0.7 is the newest, checked 18 November 2026).
+# Only the linter reaches it (eslint-config-next > fast-glob > micromatch),
+# matching our own file names at lint time, never a person's input, and it
+# never ships to a browser. Remove the line the day a fixed release ships.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-fc5q-39xc-vjpf

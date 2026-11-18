@@ -1,0 +1,16 @@
+# Who must review a change before it reaches main (D-197). The ruleset
+# "main protection" requires a code owner's approval on every pull request,
+# so nothing in these paths merges on its author's word alone.
+# Adhi owns the whole repository while he builds the backend alone (D-051);
+# the lines below name the paths whose standards bind every contributor,
+# so a later split of ownership starts from them.
+
+*                       @adhi2801
+
+# The website and apps, built to docs/standards/frontend.md and ux.md
+/frontend/              @adhi2801
+
+# The binding rules themselves, and the gates that enforce them
+/docs/standards/        @adhi2801
+/CLAUDE.md              @adhi2801
+/.github/               @adhi2801

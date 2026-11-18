@@ -546,6 +546,29 @@ jobs:
           done
           node scripts/check-no-js.mjs http://127.0.0.1:3100/
 
+      # frontend.md section 4 (D-171, D-197): Lighthouse on the same production
+      # build, mobile, throttled to the reference network, three runs a page,
+      # the median judged against the budgets in apps/web/lighthouserc.cjs:
+      # Performance 95, the other three 100, LCP 2.0 s, CLS 0.05, and the
+      # JavaScript each page sends. The server above is still running.
+      - name: Lighthouse budgets
+        run: pnpm --filter web exec lhci autorun --config=lighthouserc.cjs
+
+      # frontend.md sections 6, 11 and 12 (D-171, D-197): the browser tests
+      # against their own production build and a stand-in for the backend
+      # (apps/web/e2e/mock-api.mjs), in the Chrome the runner ships. They
+      # include the automated accessibility check: WCAG 2.2 AA and 7:1 body
+      # text on every page, light and dark, motion on and off, phone and
+      # laptop widths. No reruns: a test that fails once is a failure.
+      - name: Browser tests, accessibility included
+        run: pnpm --filter web e2e
+
+      # frontend.md section 10: every package audited, the test-only ones
+      # too. An accepted advisory is listed, with its reason, in
+      # pnpm-workspace.yaml; anything else fails the job.
+      - name: Dependency audit
+        run: pnpm audit
+
   # SECURITY.md and /.well-known/security.txt send researchers to GitHub's
   # private vulnerability reporting. Switched off, that link leads nowhere
   # and a report has nowhere private to go, so CI checks the setting itself

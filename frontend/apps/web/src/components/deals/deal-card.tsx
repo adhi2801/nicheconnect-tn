@@ -30,7 +30,7 @@ export function DealCard({ memo, who, role, preview = false }: { memo: Memo; who
         {memo.content_due_on && <Pill tone="neutral">{t("deals.card.due", { date: formatDayMonth(memo.content_due_on) })}</Pill>}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-        <span className={`inline-flex items-center gap-1.5 font-semibold ${yours ? "text-highlight-deep" : "text-muted"}`}>
+        <span className={`inline-flex items-center gap-1.5 font-semibold ${yours ? "text-highlight" : "text-muted"}`}>
           {yours && <span aria-hidden className="size-1.5 rounded-full bg-highlight-deep" />}
           {move === "yours" ? t("deals.yourMove") : move === "theirs" ? t(memo.waiting_on === "brand" ? "deals.waitingOn.brand" : "deals.waitingOn.creator") : t("deals.ended")}
         </span>
@@ -40,7 +40,9 @@ export function DealCard({ memo, who, role, preview = false }: { memo: Memo; who
   );
   if (preview) return <div className={className}>{body}</div>;
   return (
-    <Link href={`/app/deals/${memo.id}`} aria-label={`${t("deals.card.open")}: ${who.title ?? t("deals.card.untitled")}${name ? `, ${name}` : ""}`} className={className}>
+    // No aria-label: it would replace the card's words, so a screen reader would hear the title and
+    // name but never the amount, the due date or whose move it is (WCAG 2.5.3, label in name).
+    <Link href={`/app/deals/${memo.id}`} className={className}>
       {body}
     </Link>
   );
