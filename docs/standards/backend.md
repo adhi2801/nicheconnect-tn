@@ -1,6 +1,6 @@
 # Backend Standard
 
-**For:** anyone writing endpoints, services, schemas or background jobs under `app/`, read before the first file (`CLAUDE.md` section 6). **Last checked against the code: 14 October 2026**, on branch `docs/standards-bar`. Every claim below was re-checked then. Three that had stopped being true were corrected; they are listed in section 12. **Section 0 added 6 November 2026**, each of its "Today" cells checked against the code that day. Section 0 extended 11 November 2026 with four operations bars (error budgets, on-call, game days, postmortems), approved that day (D-185); the rest of this file is due its re-check against the code (Adhi, 11 November: everything to the world bar).
+**For:** anyone writing endpoints, services, schemas or background jobs under `app/`, read before the first file (`CLAUDE.md` section 6). **Checked against the code on 18 November 2026**: every path, test name, number and "enforced by" below was read against `main` at `97d08e6` that day, and six claims that had stopped being true were corrected (the count of request bodies, the files a proof may hold, the settings infra passes, which test holds the documented 503, which images get a bill of materials, and the timeouts of the Claude API calls, now a named gap in section 12). Section 0 was added 6 November 2026 and extended 11 November 2026 with four operations bars (D-185).
 
 **The bar** is `CLAUDE.md` section 7.0: the best published practice, from Stripe's API, Google's API Improvement Proposals, Zalando's RESTful API guidelines and the IETF RFCs (sources in section 13), proven by tests rather than claimed. Each rule says what **enforces** it. A rule nothing enforces is marked *(review only)*, so the difference between a checked rule and a hope stays visible.
 
@@ -41,7 +41,7 @@ The frontend names Stripe, Linear, Vercel and Apple as its bar (`frontend.md` se
 | **The tail, not the average** (Google SRE) | "a high-order percentile, such as the 99th or 99.9th, shows you a plausible worst-case value" (same chapter) | p95 at most 300 ms for reads and 500 ms for writes (section 6), and now **p99 at most 800 ms for reads and 1,200 ms for writes** at pilot scale **(approved, D-179)** | `scripts/measure_performance.py` and `scripts/load_test.py`, their numbers in `docs/PERFORMANCE.md` | p95 measured per route; p99 not yet a gate |
 | **Telling a client its limits** (GitHub; IETF) | GitHub sends `x-ratelimit-limit`, `-remaining`, `-used`, `-reset` and `-resource` on every response ([GitHub REST docs](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api)); the IETF's `RateLimit` and `RateLimit-Policy` fields are a standards-track draft, version 11 of May 2026 ([IETF](https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-ratelimit-headers-11)) | Every rate-limited response carries the draft's `RateLimit-Policy` and `RateLimit`, as idempotency already follows its own draft; `Retry-After` stays on every 429 **(approved, D-179)** | A test over every route's headers | `Retry-After` on 429 only |
 | **Security verified, not assumed** (OWASP) | ASVS 5.0.0, published 30 May 2025 ([OWASP ASVS](https://asvs.owasp.org/)) | **Level 2** on every route; **Level 3** on login, tokens, account deletion, payment status and the admin API (**approved, D-166**); each requirement mapped to the test or file that meets it, re-checked every release | A requirement map in `docs/standards/security.md`, its gaps listed there | The OWASP API Security Top 10 (2023) is the bar today (section 13) |
-| **A build anyone can verify** (SLSA) | SLSA build levels: L1, provenance exists; L2, a hosted platform signs it; L3, a hardened platform keeps the signing secrets from build steps (version 1.2 is current; [SLSA v1.1 levels](https://slsa.dev/spec/v1.1/levels)) | **SLSA Build L2** for the API image now (provenance signed by GitHub Actions), **L3** before launch (**approved, D-166**) | The release job, and a verification step before every deploy | A CycloneDX SBOM per image (D-082); no signed provenance |
+| **A build anyone can verify** (SLSA) | SLSA build levels: L1, provenance exists; L2, a hosted platform signs it; L3, a hardened platform keeps the signing secrets from build steps (version 1.2 is current; [SLSA v1.1 levels](https://slsa.dev/spec/v1.1/levels)) | **SLSA Build L2** for the API image now (provenance signed by GitHub Actions), **L3** before launch (**approved, D-166**) | The release job, and a verification step before every deploy | A CycloneDX SBOM for the API image on every CI run (D-082), none for the embeddings image; no signed provenance |
 | **Proven by breaking it** | Beyond what the leaders publish | Every rule shown to fail when broken; mutation testing on every rule where a silent mistake costs money or trust, its survivors falling every release (`testing.md` section 2) | The nightly mutation run and its floor (D-139) | **Holds**, its survivors named |
 
 What moves a row from **(decision)** to binding: a founder's yes, recorded in `docs/DECISIONS.md` (`CLAUDE.md` section 5), with its enforcement built in the same change.
@@ -108,7 +108,7 @@ What moves a row from **(decision)** to binding: a founder's yes, recorded in `d
 | Unexpected | 500, with a generic message only |
 
 - **Pagination** applies to every list that can grow without a bound. It is keyset, newest first (Google AIP-158): `?limit=20&cursor=<opaque>`, default 20, maximum 100, answering `{"items": [...], "next_cursor": "<opaque or null>"}`. Never page numbers or offsets, which skip and repeat rows while data changes.
-  - A list a rule bounds may come whole, and its description states the bound: at most 10 packages (D-055), 20 files a proof, 5 admin search results, sign-ups by source over the weeks asked for.
+  - A list a rule bounds may come whole, and its description states the bound: at most 10 packages (D-055), 10 files a proof (`MAX_FILES_PER_PROOF`), 5 admin search results, sign-ups by source over the weeks asked for.
   - A document is one response: the campaign report, a deal's record. The data export, which grows with an account's whole history, is built by a job and downloaded once (D-111).
   - **Enforced by** a query-count test on every paginated list, proving a long page costs the same queries as a short one (`docs/PERFORMANCE.md`). That a new list is paginated at all is *(review only)*.
 - **Filtering** uses explicit, allow-listed query parameters; unknown or malformed values get 422. **Enforced by** FastAPI's parameter validation, and Schemathesis fuzzing every operation.
@@ -127,7 +127,7 @@ What moves a row from **(decision)** to binding: a founder's yes, recorded in `d
   - **Enforced by** `tests/test_api_contract.py`:
     - the running app matches the committed copy;
     - every operation needs a login unless it is on a named public list;
-    - 401, 422, 429, 400 and the 503 "busy" answer are documented where they apply;
+    - 401, 422, 429 and 400 are documented where they apply (the 503 "busy" answer on every operation is held by `tests/core/test_load_shedding.py`);
     - every error uses the one format;
     - every success has a documented shape.
   - CI fuzzes every operation against the contract (Schemathesis).
@@ -158,7 +158,7 @@ One shape for every non-2xx answer, RFC 9457 Problem Details:
 ## 4. Validation and schemas
 
 - A schema per direction: `CampaignCreate`, `CampaignUpdate`, `CampaignRead`. Never return an ORM object, or reuse an input shape for output.
-- Every request body refuses unknown fields (`extra="forbid"`), which blocks mass assignment (OWASP API3:2023). **Enforced by** `tests/test_architecture.py::test_every_request_body_refuses_unknown_fields`, across all 39 body shapes, with a guard that fails if it ever finds none.
+- Every request body refuses unknown fields (`extra="forbid"`), which blocks mass assignment (OWASP API3:2023). **Enforced by** `tests/test_architecture.py::test_every_request_body_refuses_unknown_fields`, across every body shape the app accepts (68 on 18 November), with a guard that fails if it finds fewer than 30.
 - Constrain every field: lengths, ranges, `Literal` enums, patterns for handles and codes, UUID types. Strip whitespace; lowercase emails.
 - Every `Literal` that mirrors a database allow-list is tied to it with `ensure_same_values`. **Enforced at startup**: the app refuses to start if they differ.
 - Server-controlled fields (`id`, owner ids, `status`, timestamps) never appear in create or update shapes.
@@ -182,7 +182,7 @@ One shape for every non-2xx answer, RFC 9457 Problem Details:
 - **Budgets** at pilot scale, with seeded data: p95 ≤ 300 ms for reads, ≤ 500 ms for writes, measured (`docs/PERFORMANCE.md`). Anything over budget is investigated before merge.
 - **A fixed number of queries per request**, whatever the page size: related rows load in one query per kind (`IN (...)`, a join, or `selectinload`). **Enforced by** a query-count test on every list, each shown failing when a per-row query is added.
 - A screen needs at most two calls; more is a backend request (`ux.md` section 7).
-- External calls (WhatsApp, the Claude API, SMS, timestamp authorities, the trace exporter): explicit timeouts (connect 3 s, read 10 s; traces 3 s), retry with exponential backoff and jitter (at most 3 attempts), and never inside a request a person waits on.
+- External calls (WhatsApp, the Claude API, SMS, timestamp authorities, the trace exporter): explicit timeouts (connect 3 s, read 10 s; traces 3 s), retry with exponential backoff and jitter (at most 3 attempts), and never inside a request a person waits on. The two Claude API callers (`brief_drafter.py`, `proof_reader.py`) run only in jobs and use one 60 s timeout and the SDK's 3 retries instead (section 12).
 - Cache only with a written reason, a time to live, and an invalidation rule.
 - **Overload is a quick 503, never a freeze** (D-093, after Google SRE's "Handling Overload"):
   - `app/core/load_shedding.py` admits at most `MAX_IN_FLIGHT_REQUESTS` at once, fewer than the pool's connections, so an admitted request can always get one;
@@ -202,7 +202,7 @@ One shape for every non-2xx answer, RFC 9457 Problem Details:
 - Every setting comes from environment variables through `app/core/config.py` (pydantic-settings), as the Twelve-Factor App's config factor sets out. **Enforced by** `tests/test_architecture.py::test_settings_are_read_only_through_config`, which fails on `os.getenv` or `os.environ` anywhere else.
 - The app refuses to start if a setting is missing, malformed, unsafe or still a placeholder, with a message naming the fix. **Enforced by** `tests/core/test_config.py`.
 - `.env.example` lists every setting with a safe placeholder and a one-line comment. **Enforced by** `tests/core/test_config.py`.
-- **Infra passes every setting that must differ by environment.** The rest run on the code's defaults. On 14 October, 13 of 36 settings were not passed (the three added that day, for the app's own database login and the log format, are), among them the pool and overload settings and `TRACES_ENDPOINT` (section 12).
+- **Infra passes every setting that must differ by environment.** The rest run on the code's defaults. On 18 November, 28 of the 60 settings in `app/core/config.py` are not named in `infra/modules/app/compute.tf`, among them the pool and overload settings, `TRACES_ENDPOINT` and the passkey settings (section 12).
 
 ## 9. Logging and observability
 
@@ -224,7 +224,7 @@ One shape for every non-2xx answer, RFC 9457 Problem Details:
 - Functions do one thing; about 40 lines is a smell worth questioning. *(review only)*
 - Names say what things are: `get_open_campaigns_for_brand`, not `get_data`. *(review only)*
 - Every module and every public service function has a docstring: what it does, why it is built this way, and what it raises. The *why* matters most; nobody should have to rediscover a decision. *(review only)*
-- No commented-out code, no `print`, no `assert` in `app/` (it vanishes under `-O`), and no `TODO` without a linked item. Checked by search on 14 October: none present. *(review only)*
+- No commented-out code, no `print`, no `assert` in `app/` (it vanishes under `-O`), and no `TODO` without a linked item. Checked by search on 18 November: none present. *(review only)*
 
 ## 11. How this file is kept true
 
@@ -235,10 +235,11 @@ One shape for every non-2xx answer, RFC 9457 Problem Details:
 
 | Gap | Risk | Acting on it |
 |---|---|---|
-| **13 of 36 settings not passed by infra**, among them `TRACES_ENDPOINT`, `DB_POOL_SIZE`, `MAX_IN_FLIGHT_REQUESTS` and `BUSY_QUEUE_MS`. The rule said "infra passes every one" until 14 October. | Production cannot turn tracing on, or tune capacity, without an infra change | Items 88 and 89; passing them is an infrastructure decision |
+| **28 of 60 settings not passed by infra** (18 November), among them `TRACES_ENDPOINT`, `DB_POOL_SIZE`, `MAX_IN_FLIGHT_REQUESTS`, `BUSY_QUEUE_MS`, `PASSKEY_RP_ID` and `PASSKEY_ORIGINS`, and the seven `RETENTION_*` periods. The rule said "infra passes every one" until 14 October. | Production cannot turn tracing or passkeys on, or tune capacity, without an infra change; the retention periods run on the code's defaults | Items 88 and 89; passing them is an infrastructure decision |
 | **Error `type` URLs are on `nicheconnect.in`**, a domain we do not own | A public contract pointing at someone else's domain | Item 4: the name and the domain decide it, before any client exists |
 | **The list of proofs on a deal has no cap** | Tiny in practice; unbounded in principle | Cap resubmissions, or paginate, when proof volume says so |
 | **The deal domain still imports across itself** | Changes there ripple further than they should | Item 96 |
+| **The Claude API calls do not follow section 6's timeouts**: one 60 s timeout and the SDK's 3 retries (`API_TIMEOUT_SECONDS`, `API_MAX_RETRIES` in `brief_drafter.py` and `proof_reader.py`) | None on a person's request (both run in jobs); a slow model holds a job for up to a minute a try | A founder decides: a rule for model calls in jobs, or the code brought to connect 3 s and a read limit |
 | **`Deprecation` and `Sunset` never used** | None yet: nothing has been removed | Applies at the first breaking change |
 | Several rules are *(review only)* | They hold only while someone reads for them | Each gains a test when one is practical; two gained tests on 14 October |
 

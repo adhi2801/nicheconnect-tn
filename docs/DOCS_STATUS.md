@@ -110,8 +110,8 @@
 | `docs/research/TAMIL_DESIGN_ROOTS.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
 | `docs/research/TYPOGRAPHY_2026.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
 | `docs/research/UI_STYLES_2026.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
-| `docs/standards/backend.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
-| `docs/standards/database.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
+| `docs/standards/backend.md` | living | not yet | | checked against the code 18 November 2026, review owed |
+| `docs/standards/database.md` | living | not yet | | checked against the code 18 November 2026, review owed |
 | `docs/standards/frontend.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
 | `docs/standards/legal.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
 | `docs/standards/security.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
