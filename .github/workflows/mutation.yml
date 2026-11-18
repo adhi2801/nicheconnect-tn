@@ -59,9 +59,9 @@ jobs:
       # and is caught (testing.md section 5). POSIX form, needing no tzdata.
       TZ: "IST-5:30"
       # The accepted number of surviving mutants, each one read and listed
-      # in D-091 as equivalent or out of reach. Lower it when a test kills
-      # one; never raise it without a decision.
-      MAX_SURVIVORS: "21"
+      # in D-091 and D-194 as equivalent or out of reach. Lower it when a test
+      # kills one; never raise it without a decision.
+      MAX_SURVIVORS: "14"
 
     steps:
       # Pinned to commit SHAs, as in ci.yml (D-047).

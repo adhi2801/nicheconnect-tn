@@ -92,7 +92,7 @@ Lessons from 10 October 2026, now rules:
 
 **Mutation testing (mutmut 3.8, D-091)** automates this every night for the rule-heavy files listed in `[tool.mutmut]` (`pyproject.toml`): deal stage, the Merkle proofs, the record's fingerprint, the approval clock, payment state and its dates, the text flags, cursors, the report spreadsheet, and since 8 November a campaign's budget rules, a change's nulls and the ETag comparison (`budget.py`, `partial_update.py`, `http_cache.py`: 81 mutants; the 9 that first survived, an ETag's shape and which field a null names, each now killed by a test), and since 11 November when a Tamil Nadu day ends and whether a campaign takes creators (`clock.py`, `applying.py`; audit C11, D-180). Since 12 November, a call's whole limit and the retry loop inside it (`app/core/deadline.py`, `app/core/retrying.py`, item 118, D-186), with their example and property tests; not yet run by the nightly job when added.
 - It runs in `.github/workflows/mutation.yml` with the machine's clock set to Tamil Nadu time, so code that leans on the machine's zone is caught.
-- It fails when more than 21 mutants survive. Each accepted survivor is listed in D-091 as equivalent, or as out of reach with the reason.
+- It fails when more than 14 mutants survive. Each accepted survivor is listed in D-091 (as narrowed by D-194) as equivalent, or as out of reach with the reason.
 - A new survivor gets a test, or a decision; the count is never raised quietly.
 - Its first run found real gaps, each now closed by a test: exact boundary days, a reference's length limits, the record's fields and order, and a tampered link in the chain.
 - A wider run over more of `app/` left 186 survivors, worked down area by area as item 93.

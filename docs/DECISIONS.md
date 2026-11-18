@@ -2455,6 +2455,18 @@ Newest entries at the bottom.
   2. `tests/test_reviewer_agent.py` fails if the brief loses a file in `docs/standards/`, gains a tool that edits files (Edit, Write), or drops its read-only, no-false-claims, section 2 or not-the-other-founder rules. Broken on purpose: Edit added and `legal.md` removed; both failed, then restored.
   3. Its review never counts as the other founder's (section 6); reports still say no second person reviewed the change.
 
+## D-194: The nightly mutation run green again, its accepted survivors cut from 21 to 14
+- Date: 2026-11-15
+- Approved by: Adhi, in this session: "Drop the conditions (Recommended)", after the choice between that and accepting four more survivors. **Not reviewed by the other founder** (D-051).
+- Context: the nightly run failed on 13, 14 and 15 November 2026 (CI: "32 mutants survived; 21 are accepted"). Reproduced in a Linux container on Python 3.14.10 with the zone set to Tamil Nadu, on `main` at `4380f11`: 1,045 mutants, 32 survived, 4 timed out, 1 reached by no fast test. Twenty were D-091's accepted ones (the review clock's, once accepted, is caught). All 12 new ones were in `record_service.append_each`, added by D-184 for bulk mark-paid: its tests named only the brand side, chained only to one-entry records, never sent a first memo in a batch, never held a stale deal, and checked the lock order only in an API test outside the nightly selection.
+- Options considered: A) tests for the 8 that a test can see, and the 4 equivalent joins (a condition SQLAlchemy infers by itself) written without the condition, in `append_each` and in `_party_account_ids`, which had 6 of the same, accepted under D-091; B) the same tests, and the 4 accepted, the limit raised to 24.
+- Chosen: A.
+- Reason: a condition that cannot be written wrong cannot survive a mutation, so 10 accepted survivors go and the limit tightens to 14. A second foreign key between those tables would make SQLAlchemy refuse the join, failing every test that reaches it, never a silent wrong join.
+- Consequences / follow-ups:
+  1. Five tests in `tests/modules/deal_memo/test_deal_record_service.py`: each deal's own creator named (two creators); chained to the newest of three entries; a first send opens no record and a revised one does; the terms sealed as the database holds them, not as the session last saw them; the deals locked in one statement in id order. Run on `append_each` alone, before: 12 survived; after: the 4 joins only; the full run on the final code (same container, 15 November 2026): 14 survived, every one on the list below, 4 timed out, 1 reached by no fast test.
+  2. `record_service.py`: Brand and Creator joined on their one foreign key, in both queries.
+  3. `MAX_SURVIVORS` in `.github/workflows/mutation.yml` and `docs/standards/testing.md` section 2: 14. D-091's list now stands at: the cursor's padding (3), the email substitution (1), the Merkle loop bound (1), `ensure_ascii` and "UTF-8" (3), `.limit(1)` against `.limit(2)` (2), the lock inside `append` (3), one split message (1).
+
 ## D-195: OpenTelemetry 1.45.1 to 1.45.2, for GHSA-mf5v-w3w3-f6cg
 - Date: 2026-11-15
 - Approved by: Adhi, in this session: "Upgrade to 1.45.2 (Recommended)", then "Move all three (Recommended)" once the SDK's exact pin showed the three move together. **Not reviewed by the other founder** (D-051).
