@@ -551,8 +551,14 @@ jobs:
       # the median judged against the budgets in apps/web/lighthouserc.cjs:
       # Performance 95, the other three 100, LCP 2.0 s, CLS 0.05, and the
       # JavaScript each page sends. The server above is still running.
+      # The numbers are printed whether the budgets pass or fail, so each
+      # ratchet line is lowered from what this runner measured.
       - name: Lighthouse budgets
-        run: pnpm --filter web exec lhci autorun --config=lighthouserc.cjs
+        run: |
+          status=0
+          pnpm --filter web exec lhci autorun --config=lighthouserc.cjs || status=$?
+          node scripts/lighthouse-summary.mjs apps/web/.lighthouseci
+          exit "$status"
 
       # frontend.md sections 6, 11 and 12 (D-171, D-197): the browser tests
       # against their own production build and a stand-in for the backend
