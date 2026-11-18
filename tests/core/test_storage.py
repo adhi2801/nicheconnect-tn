@@ -589,7 +589,31 @@ UPLOAD_LIMIT = 4.0
 UPLOAD_WAIT = 1.0
 
 
-def test_an_upload_read_slowly_ends_within_the_limit(monkeypatch):
+@pytest.fixture
+def pauses(monkeypatch) -> list[float]:
+    """Every pause botocore takes between tries, still taken for real.
+
+    botocore sleeps in one place, `botocore.endpoint`, before a retry.
+    """
+    import time
+
+    import botocore.endpoint
+
+    taken: list[float] = []
+
+    class _Time:
+        def __getattr__(self, name: str) -> Any:
+            return getattr(time, name)
+
+        def sleep(self, seconds: float) -> None:
+            taken.append(seconds)
+            time.sleep(seconds)
+
+    monkeypatch.setattr(botocore.endpoint, "time", _Time())
+    return taken
+
+
+def test_an_upload_read_slowly_ends_within_the_limit(monkeypatch, pauses):
     """A store reading 16 KiB every 0.05 s would take 26 s over 8 MiB, each
     send inside the socket's 1 s wait. Its parts, as traced on 15 November
     2026: botocore waits up to 1 s for "100 Continue", then sends 128 KiB
@@ -608,10 +632,45 @@ def test_an_upload_read_slowly_ends_within_the_limit(monkeypatch):
         outcome, elapsed = timed(lambda: store.write("k", data, content_type="image/png"))
 
     assert isinstance(outcome, DeadlinePassed), outcome
-    # One try only: no retry is begun, or paused for, once the upload stopped.
+    # One try only: no retry is begun, or paused for, once the upload stopped
+    # (botocore sees the refused block as a closed connection, which it would
+    # otherwise pause for and try again).
     assert server.connections == 1
+    assert pauses == []
     assert 0 < server.received < len(data)
     assert elapsed < UPLOAD_LIMIT
+
+
+def test_a_try_that_fails_after_the_limit_is_not_paused_for(pauses):
+    """S3 answers 500 once the call's limit has passed: botocore would pause
+    before its second try, only for that try to be refused. It is stopped
+    before the pause instead, and the store is asked once."""
+    clock = Clock()
+    with misbehaving("flaky", body=DATA, content_type="image/png") as server:
+        client = s3_at(server.url)
+        store = S3FileStore(BUCKET, client, clock=clock)
+
+        def the_try_outlasts_the_limit(**kwargs):
+            clock.now = storage.CALL_LIMIT_SECONDS + 1
+
+        # After the store's own hook, so the try is begun in time.
+        client.meta.events.register("before-send.s3", the_try_outlasts_the_limit)
+        outcome, _ = timed(lambda: store.read("k", max_bytes=SIZE))
+
+    assert isinstance(outcome, DeadlinePassed), outcome
+    assert len(server.requests) == 1
+    assert pauses == []
+
+
+def test_a_try_that_fails_in_time_is_tried_again(pauses):
+    """The same 500 with time left: botocore's own pause and second try."""
+    with misbehaving("flaky", body=DATA, content_type="image/png") as server:
+        store = S3FileStore(BUCKET, s3_at(server.url), clock=Clock())
+        outcome, _ = timed(lambda: store.read("k", max_bytes=SIZE))
+
+    assert outcome == DATA
+    assert len(server.requests) == 2
+    assert len(pauses) == 1
 
 
 def test_an_upload_never_hands_over_a_block_it_could_not_finish_in_time(timed_s3):

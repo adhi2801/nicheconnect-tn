@@ -42,8 +42,9 @@ each call carries one `Deadline`:
 that trickles its answer's headers a byte at a time, each inside the 8 s
 wait, is not cut off, since botocore offers no hook on that socket. Only a
 hostile server does this, and ours is AWS's S3 itself, over TLS, in the
-same region. Measured on 15 November 2026 with this configuration and the
-30 s limit, a store that never answers ended in 16.1 s (two tries of 8 s;
+same region. Measured on 18 November 2026 with this configuration and the
+30 s limit, a store that never answers ended within 17.0 s, the worst of 3
+runs (16.4 to 17.0 s: two tries of 8 s and botocore's pause between them;
 connecting locally takes no time).
 """
 

@@ -38,9 +38,12 @@ more work"):
    | connection refresh (10 min) | the platform's refresh and its profile, 2 x 15 s | 630 s |
 
    The database's own work adds to these, each statement held to its
-   statement timeout. An S3 call can outlast its 30 s in the one way
-   `app.core.storage` names (a try already waiting for S3's headers), so
-   the S3 rows hold only while S3 answers its headers. One run at a time
+   statement timeout. An S3 call that never answers ends within its 30 s
+   by the client's own configuration (two tries, at most 28 s; 17.0 s
+   measured on 18 November 2026, `app.core.storage`); it can outlast them
+   only in the one way that module names and Adhi accepted on 15 November
+   2026, so the S3 rows hold unless a store trickles its answer's headers
+   a byte at a time. One run at a time
    (rule 1) keeps a long run from overlapping the next: those runs find
    the lock taken and do nothing.
 """
