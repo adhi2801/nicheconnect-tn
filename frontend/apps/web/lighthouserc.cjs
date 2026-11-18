@@ -16,13 +16,16 @@ const TARGET = {
   lcpMs: 2000, cls: 0.05, tbtMs: 200, scriptKb: { landing: 50, signIn: 150 },
 };
 
-// Measured 18 November 2026: landing Performance 0.83, Best practices 0.81, LCP 2,926 ms, TBT 349 ms,
-// script 524,986 bytes; sign-in 0.91, 0.77, 2,523 ms, 245 ms, 520,127 bytes. Accessibility and SEO were
-// already 100 on both, so they hold the target. Timing lines carry a margin for the runner's speed; sizes,
-// which do not vary between runs, carry none beyond the next kilobyte.
+// Measured by CI's runner on 19 November 2026 (the median run, printed by scripts/lighthouse-summary.mjs):
+// landing Performance 100, Best practices 100, LCP 755 ms, TBT 91 ms, script 159,800 bytes;
+// sign-in 100, 96, 800 ms, 47 ms, 154,941 bytes; Accessibility and SEO 100 on both. Every line CI already
+// meets holds the TARGET itself. Only what misses is ratcheted: both pages' JavaScript (sizes do not vary
+// between runs, so each line is the measured size rounded up to the next KiB) and sign-in's Best practices.
+// (A laptop, loaded with other tests, measured about 3.3 times the JavaScript and far slower timings on
+// 18 November; that difference is not explained, so laptop figures are never used for these lines.)
 const RATCHET = {
-  landing: { performance: 0.8, bestPractices: 0.81, lcpMs: 3200, tbtMs: 450, scriptBytes: 513 * 1024 },
-  signIn: { performance: 0.86, bestPractices: 0.77, lcpMs: 2800, tbtMs: 350, scriptBytes: 509 * 1024 },
+  landing: { ...TARGET, scriptBytes: 157 * 1024 },
+  signIn: { ...TARGET, bestPractices: 0.96, scriptBytes: 152 * 1024 },
 };
 
 const median = { aggregationMethod: "median" };
