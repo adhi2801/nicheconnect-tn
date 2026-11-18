@@ -189,9 +189,11 @@ def _party_account_ids(db: Session, memo: DealMemo) -> tuple[uuid.UUID, uuid.UUI
     row = db.execute(
         select(Brand.account_id, Creator.account_id)
         .select_from(Application)
-        .join(Campaign, Campaign.id == Application.campaign_id)
-        .join(Brand, Brand.id == Campaign.brand_id)
-        .join(Creator, Creator.id == Application.creator_id)
+        # Each table joined by its one foreign key, so no condition can be
+        # written wrong; a second key would make SQLAlchemy refuse.
+        .join(Campaign)
+        .join(Brand)
+        .join(Creator)
         .where(Application.id == memo.application_id)
     ).one()
     return row[0], row[1]
@@ -353,8 +355,9 @@ def append_each(
         for application_id, brand_account, creator_account in db.execute(
             select(Application.id, Brand.account_id, Creator.account_id)
             .join(Campaign, Campaign.id == Application.campaign_id)
-            .join(Brand, Brand.id == Campaign.brand_id)
-            .join(Creator, Creator.id == Application.creator_id)
+            # By their one foreign key, as in `_party_account_ids`.
+            .join(Brand)
+            .join(Creator)
             .where(Application.id.in_([memo.application_id for memo in memos]))
         )
     }
