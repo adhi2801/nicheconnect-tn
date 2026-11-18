@@ -313,3 +313,14 @@ def test_with_time_to_spare_the_waits_are_the_usual_ones(name, monkeypatch):
 
     assert CLIENTS[name].failed(outcome), outcome
     assert sleeps == [0.5, 1.0]  # 0.5 s then 1 s, at the middle of the jitter
+
+
+def test_the_image_bounds_every_name_lookup():
+    """D-186 point 14a: getaddrinfo takes no timeout, so the image's resolver does.
+
+    glibc reads RES_OPTIONS over resolv.conf. Measured in the built image on
+    18 November 2026 against a nameserver that never answers: 2.1 s with
+    this setting, 10.1 s without it (glibc's 5 s a try, twice).
+    """
+    dockerfile = (pathlib.Path(__file__).parents[2] / "Dockerfile").read_text()
+    assert re.search(r'^\s*RES_OPTIONS="timeout:1 attempts:2"', dockerfile, re.MULTILINE)

@@ -23,8 +23,8 @@ when S3 asks with `x-amz-retry-after`. One request that never answers
 therefore ends within 2 x (3 + 8) + 6 = 28 s (`worst_request_seconds`,
 computed from the client's own configuration by a test), for a name that
 resolves to one address: urllib3 tries each address with the whole 3 s
-connect, so each unreachable one adds 3 s (D-186 point 14, a gap awaiting
-a decision). On top of that,
+connect, so each unreachable one adds 3 s (D-186 point 14, accepted in
+writing by Adhi on 18 November 2026). On top of that,
 each call carries one `Deadline`:
 
 - botocore asks `_refuse_late_try` before every try, retries included, and

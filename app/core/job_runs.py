@@ -43,8 +43,8 @@ more work"):
    measured on 18 November 2026, `app.core.storage`); it can outlast them
    in the way that module names and Adhi accepted on 15 November 2026 (a
    store trickling its answer's headers a byte at a time), and, like every
-   outside call, by a name lookup that hangs or a name with unreachable
-   addresses (D-186 point 14, awaiting a decision). One run at a time
+   outside call, by S3's connect to a name with unreachable addresses,
+   accepted by Adhi on 18 November 2026 (D-186 point 14). One run at a time
    (rule 1) keeps a long run from overlapping the next: those runs find
    the lock taken and do nothing.
 """

@@ -26,8 +26,8 @@ by `within` on this thread; outside `within` it changes nothing. **What it
 does not cut:** a wait for a free connection in the client's own pool (100
 connections), which is not a socket wait; it keeps the client's pool limit;
 the name lookup (`socket.getaddrinfo` takes no timeout, so a resolver that
-never answers holds the call for as long as the system's resolver waits;
-a gap named in D-186); and a TLS handshake trickled a byte at a time,
+never answers would hold the call; the image bounds every lookup instead,
+`RES_OPTIONS` at 1 s a try, twice, D-186 point 14); and a TLS handshake trickled a byte at a time,
 whose several socket waits share the one cut made when it starts. It is put
 into the transport httpx2 builds (`HTTPTransport._pool`, replaced with a
 pool given that backend), the one seam httpx2 offers no public way to set.
@@ -170,7 +170,7 @@ def _addresses(host: str, port: int) -> list[tuple[str, int]]:
     """Every address `host` resolves to, in the resolver's order, as connect takes them.
 
     The name lookup itself is not cut: `getaddrinfo` takes no timeout
-    (a gap named in D-186). Its failure is a ConnectError, as httpcore2's own.
+    (the image's `RES_OPTIONS` bounds it, D-186 point 14). Its failure is a ConnectError, as httpcore2's own.
     """
     try:
         found = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
