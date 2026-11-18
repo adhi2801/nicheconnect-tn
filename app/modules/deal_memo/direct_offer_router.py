@@ -12,7 +12,9 @@ Three groups:
 
 The link's token travels in the `Offer-Token` header, never a path or a
 query string, which the access log would keep (backend.md section 9).
-Every route answers 503 `direct_offers_unavailable` while the feature is off.
+While the feature is off every route answers 503 `direct_offers_unavailable`,
+except that a link whose token opens no offer is 404 as always (no offer
+can be sent while it is off).
 """
 
 import uuid

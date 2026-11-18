@@ -150,13 +150,25 @@ EXPORT_FIELDS = allow(
 )
 
 
-def ensure_on() -> None:
-    """Refuse every direct offer route while the feature is off (DirectOffersOff).
+def is_on() -> bool:
+    """Whether direct offers are on: the switch and real notice wording both.
 
-    On only with the switch and real notice wording: a placeholder can
-    never be served, whatever the switch says (constraint 6).
+    A placeholder can never be served, whatever the switch says (constraint 6).
     """
-    if not (settings.direct_offers_enabled and notices.wording_ready()):
+    return settings.direct_offers_enabled and notices.wording_ready()
+
+
+def ensure_on() -> None:
+    """Refuse a direct offer route while the feature is off (DirectOffersOff).
+
+    The creator's routes ask first. The link's routes ask once the token has
+    found its offer: a link that opens nothing is not found whether or not
+    the feature is on, as no offer can be sent while it is off, and only a
+    link that exists says the feature is off. So the public routes answer a
+    stranger's guess 404, never a 5xx (the contract fuzzing, testing.md
+    section 6).
+    """
+    if not is_on():
         raise DirectOffersOff()
 
 
@@ -405,8 +417,8 @@ def open_link(db: Session, token: str, now: datetime) -> LinkView:
     that only an unopened offer matches. Raises DirectOfferNotFound and the
     ended errors, so a link that no longer works says why.
     """
-    ensure_on()
     view = _find_by_token(db, token)
+    ensure_on()
     _ensure_waiting(db, view.offer, now)
     # Only an unopened offer is written to: every later reading is the one
     # query that found it.
@@ -439,8 +451,8 @@ def request_code(db: Session, token: str, now: datetime) -> login.PendingOtp:
 
     Raises DirectOfferNotFound, the ended errors, and OtpSendLimitReached.
     """
-    ensure_on()
     view = _find_by_token(db, token)
+    ensure_on()
     _ensure_waiting(db, view.offer, now)
     phone = cast("str", view.offer.recipient_phone)
     return login.request_otp(db, phone, now)
@@ -455,7 +467,6 @@ def stop(db: Session, token: str, now: datetime) -> None:
     a second tap changes nothing. Raises DirectOfferNotFound and
     DirectOfferAlreadyAccepted.
     """
-    ensure_on()
     if not rules.is_link_token(token):
         raise DirectOfferNotFound()
     offer = db.scalars(
@@ -467,6 +478,9 @@ def stop(db: Session, token: str, now: datetime) -> None:
     if offer is None:
         db.rollback()
         raise DirectOfferNotFound()
+    if not is_on():
+        db.rollback()
+        raise DirectOffersOff()
     if offer.status == "accepted":
         db.rollback()
         raise DirectOfferAlreadyAccepted()
@@ -493,8 +507,8 @@ def accept(db: Session, token: str, fields: dict[str, Any], now: datetime) -> Ac
     DirectOfferOwnNumber, PhoneChangeWaiting, RoleMismatch, AccountSuspended,
     MustBeAnAdult, EmailTaken and BrandNameNeedsDomain (item 75).
     """
-    ensure_on()
     view = _find_by_token(db, token)
+    ensure_on()
     _ensure_waiting(db, view.offer, now)
     phone = cast("str", view.offer.recipient_phone)
     challenge = login.check_phone_code(db, phone, fields["code"], now)

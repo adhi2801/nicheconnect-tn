@@ -20,12 +20,14 @@ from app.modules.deal_memo.direct_offer_models import DirectOffer
 from app.modules.deal_memo.direct_offer_rules import hash_link_token, is_link_token
 from tests.deal_flow import brand_user, creator_user
 from tests.direct_offers import (
+    ACCEPT_URL,
     CODE_URL,
     FEE,
     LINK_URL,
     OFFERS_URL,
     STOP_URL,
     TEST_WORDING,
+    accept_body,
     link,
     offer_body,
     phone_of,
@@ -61,19 +63,49 @@ def row(db, offer_id) -> DirectOffer:
 # --- the switch, and the wording it guards -------------------------------------
 
 
-def test_every_route_is_off_by_default(client, db, clock):
+def test_every_route_is_off_by_default(client, db, clock, monkeypatch):
+    """The creator's routes, and a link that exists, say the feature is off.
+    A link sent while it was on still serves nothing once it is off."""
     creator = creator_user(db, clock)
-    token = "a" * 64
+    switch_on(monkeypatch)
+    offer = sent(client, creator)
+    monkeypatch.setattr(settings, "direct_offers_enabled", False)
+    held = link(offer["link_token"])
     answers = [
         client.post(OFFERS_URL, json=offer_body(), headers=creator.headers),
         client.get(OFFERS_URL, headers=creator.headers),
-        client.get(LINK_URL, headers=link(token)),
-        client.post(STOP_URL, headers=link(token)),
-        client.post(CODE_URL, headers=link(token)),
+        client.get(f"{OFFERS_URL}/{offer['id']}", headers=creator.headers),
+        client.post(f"{OFFERS_URL}/{offer['id']}/withdraw", headers=creator.headers),
+        client.get(LINK_URL, headers=held),
+        client.post(STOP_URL, headers=held),
+        client.post(CODE_URL, headers=held),
+        client.post(
+            ACCEPT_URL, json=accept_body("042917", offer["terms_sha256"]), headers=held
+        ),
     ]
 
-    assert [a.status_code for a in answers] == [503] * 5
+    assert [a.status_code for a in answers] == [503] * 8
     assert {a.json()["code"] for a in answers} == {"direct_offers_unavailable"}
+    # Refused before anything is written: not ended, and not even opened.
+    stored = row(db, offer["id"])
+    assert (stored.status, stored.opened_at) == ("sent", None)
+
+
+def test_while_off_a_link_that_opens_nothing_is_not_found(client, db, clock):
+    """No offer can be sent while the feature is off, so a token that opens
+    none is not found, as when it is on: a stranger's guess at a public route
+    meets a 404, never a 5xx (the contract fuzzing, testing.md section 6)."""
+    for token in ("a" * 64, "not-a-token"):
+        held = link(token)
+        answers = [
+            client.get(LINK_URL, headers=held),
+            client.post(STOP_URL, headers=held),
+            client.post(CODE_URL, headers=held),
+            client.post(ACCEPT_URL, json=accept_body("042917", "0" * 64), headers=held),
+        ]
+
+        assert [a.status_code for a in answers] == [404] * 4, token
+        assert {a.json()["code"] for a in answers} == {"direct_offer_not_found"}
 
 
 def test_the_switch_alone_serves_nothing_while_the_wording_is_a_placeholder(
