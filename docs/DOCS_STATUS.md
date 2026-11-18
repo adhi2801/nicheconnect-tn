@@ -116,7 +116,7 @@
 | `docs/standards/legal.md` | living | not yet | | checked against the code 19 November 2026, review owed |
 | `docs/standards/security.md` | living | not yet | | checked against the code 19 November 2026, review owed |
 | `docs/standards/testing.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
-| `docs/standards/trust-and-safety.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
+| `docs/standards/trust-and-safety.md` | living | not yet | | checked against the code 19 November 2026, review owed |
 | `docs/standards/ux.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
 | `frontend/3d/temple/README.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
 | `frontend/README.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
