@@ -7,7 +7,7 @@ is where they live.
 **Budgets** (`docs/standards/backend.md` section 6): p95 ≤ 300 ms for reads,
 ≤ 500 ms for writes, on seeded local data.
 
-**Last measured: 18 November 2026, D-189 with `main` merged in** (section "Added 18 November: direct offers" below): 101 timings, 100 within budget, the one over the export job, as before. On 13 November, before the merge and this session's fixes: the same counts, measured by the session that built it. Before that, **12 November 2026, D-184 with `main` merged in** (section "Added 12 November: the deal domain's locks, measured again on a quiet database" below): 86 timings, 85 within budget, the one over the export job. On 11 November after D-184 (section "Added 11 November: the deal domain's locks" below): 84 timings, 83 within budget, on a machine loaded by another job's test run. Earlier the same day (section "Every route, 11 November" below): 83 timings, all 83 within budget. Before that, 6 November: 73 timings, 71 within budget. Before that, per section as dated:
+**Last measured: 19 November 2026, D-189 after its independent review, with `main` merged in** (section "Added 19 November: direct offers" below): 101 timings, 100 within budget, the one over the export job, as before. On 18 November, before the review's fixes, on a loaded laptop, and on 13 November, before the merge: the same counts. Before that, **12 November 2026, D-184 with `main` merged in** (section "Added 12 November: the deal domain's locks, measured again on a quiet database" below): 86 timings, 85 within budget, the one over the export job. On 11 November after D-184 (section "Added 11 November: the deal domain's locks" below): 84 timings, 83 within budget, on a machine loaded by another job's test run. Earlier the same day (section "Every route, 11 November" below): 83 timings, all 83 within budget. Before that, 6 November: 73 timings, 71 within budget. Before that, per section as dated:
 30 September 2026 for creator search and reports (next
 section); 26 September 2026 for everything else, on PostgreSQL 18.6 with pgvector 0.8.6
 (D-049), seeded with 10 brands, 200 creators, 150 campaigns, 785
@@ -16,23 +16,23 @@ whole deals, 5 bank bulk transfers of 25 rows, and 30 rounds of rate card
 edits. All from one run, on a developer laptop under Docker Desktop for
 Windows.
 
-## Added 18 November: direct offers (D-189)
+## Added 19 November: direct offers (D-189)
 
-On `feature/direct-offers` at `73dbfa1` (`main` merged in), `scripts/measure_performance.py --runs 50` (30 rounds for the writes), against a database of its own (`nicheconnect_direct`: 150 campaigns, 785 applications, 200 creators, 958 packages), the same laptop; the database server had no other active query when the run began, but the laptop was not otherwise idle, and the routes measured on 12 November came out two to four times slower at p95 this time (a memo's acceptance 48.2 ms then, 134.7 ms now; an edit 46.6 then, 93.7 now). The script's phase for this change (`measure_direct_offers`): each round a seeded creator sends three offers to new numbers and reads its list and one offer; the first link is opened, its code asked for and the offer accepted; the second is withdrawn, the third stopped at its link; then the hourly job once. The switch is turned on, and the placeholders replaced by marked measuring text, for the run only; everything is rolled back. **101 timings, 100 within budget**; the one over is the export job (1,316.0 ms p95), not on this change's path and nobody's request, over as on every run since 11 November.
+On `feature/direct-offers` at `ee2c088` (the independent review's fixes, `main` merged in), `scripts/measure_performance.py --runs 50` (30 rounds for the writes), against a database of its own (`nicheconnect_direct`: 150 campaigns, 785 applications, 200 creators, 958 packages), the same laptop, the database server with no other active query when the run began. The routes measured on 12 November came out alike (a memo's acceptance 48.2 ms p95 then, 46.4 now; an edit 46.6 then, 32.6 now). The script's phase for this change (`measure_direct_offers`): each round a seeded creator sends three offers to new numbers and reads its list and one offer; the first link is opened, its code asked for and the offer accepted; the second is withdrawn, the third stopped at its link; then the hourly job once. The switch is turned on, the link page's placeholder replaced by marked measuring text and a measuring name given for the code's template (the fake sender sends nothing), for the run only; everything is rolled back. **101 timings, 100 within budget**; the one over is the export job (756.9 ms p95), not on this change's path and nobody's request, over as on every run since 11 November.
 
 | Route | p50 ms | p95 ms | max ms | Budget | Samples |
 |---|---|---|---|---|---|
-| `POST /direct-offers` | 47.3 | 152.2 | 412.0 | 500 | 90 |
-| `GET /direct-offers` | 30.6 | 88.6 | 117.2 | 300 | 30 |
-| `GET /direct-offers/{id}` | 27.3 | 68.3 | 174.2 | 300 | 30 |
-| `GET /direct-offer-link` | 31.5 | 93.4 | 99.8 | 300 | 30 |
-| `POST /auth/direct-offer-link/code` | 46.6 | 102.1 | 159.2 | 500 | 30 |
-| `POST /auth/direct-offer-link/accept` (account, profile, hidden campaign and application, memo, two sealed entries, a notice and a login, one transaction) | 132.3 | 234.5 | 250.8 | 500 | 30 |
-| `POST /direct-offers/{id}/withdraw` | 37.7 | 78.3 | 193.4 | 500 | 30 |
-| `POST /direct-offer-link/stop` | 20.9 | 47.2 | 73.7 | 500 | 30 |
-| The hourly job, one run over the round's 90 offers | 11.7 (one run) | | | none (a job) | 1 |
+| `POST /direct-offers` (now reading the number's week for both ceilings, under its lock) | 22.7 | 30.9 | 34.4 | 500 | 90 |
+| `GET /direct-offers` | 15.1 | 23.5 | 32.3 | 300 | 30 |
+| `GET /direct-offers/{id}` | 14.5 | 24.3 | 30.1 | 300 | 30 |
+| `GET /direct-offer-link` | 16.1 | 23.4 | 27.9 | 300 | 30 |
+| `POST /auth/direct-offer-link/code` | 23.7 | 30.3 | 59.2 | 500 | 30 |
+| `POST /auth/direct-offer-link/accept` (account, profile, hidden campaign and application, memo, two sealed entries, a notice and a login, one transaction) | 54.1 | 74.8 | 109.3 | 500 | 30 |
+| `POST /direct-offers/{id}/withdraw` | 19.3 | 25.5 | 28.5 | 500 | 30 |
+| `POST /direct-offer-link/stop` (now taking the number's lock, and erasing the terms) | 13.7 | 18.6 | 21.0 | 500 | 30 |
+| The hourly job, one run over the round's 90 offers | 11.3 (one run) | | | none (a job) | 1 |
 
-Every maximum here is under D-179's 99th-percentile bars (800 ms for reads, 1,200 ms for writes). The creator's list is one query whatever its length (`tests/modules/deal_memo/test_direct_offer_api.py::test_a_long_page_costs_the_queries_a_short_one_does`), and a link read after its first opening is the one query that finds it (`test_a_later_reading_writes_nothing`). Thirty samples a route make each p95 close to its maximum; the budget verdict holds with room. The 13 November run of the same phase, before the merge, measured every route lower (the acceptance 94.4 ms p95); the difference is the laptop's load, seen on the old routes too, not this change.
+Every maximum here is under D-179's 99th-percentile bars (800 ms for reads, 1,200 ms for writes). The creator's list is one query whatever its length (`tests/modules/deal_memo/test_direct_offer_api.py::test_a_long_page_costs_the_queries_a_short_one_does`), and a link read after its first opening is the one query that finds it (`test_a_later_reading_writes_nothing`). Thirty samples a route make each p95 close to its maximum; the budget verdict holds with room. The 18 November run, on a loaded laptop, measured these routes two to five times slower (the acceptance 234.5 ms p95), as it did the old ones.
 
 ## Added 12 November: the deal domain's locks, measured again on a quiet database (D-184)
 
