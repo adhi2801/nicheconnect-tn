@@ -187,6 +187,41 @@ def test_the_brand_s_campaigns_and_the_creator_s_applications_leave_it_out(clien
     assert hidden_application.status_code == 404
 
 
+def test_no_application_route_reaches_the_hidden_application(client, world):
+    """Each of the three application checks (the brand's, the creator's own,
+    and either party's read) leaves the direct application out, while the
+    normal one beside it answers. The hidden one is accepted, so without the
+    checks these answer 409 or 200, never 404."""
+    hidden = f"/api/v1/applications/{world['hidden_application']}"
+    normal_items = client.get(
+        f"{CAMPAIGNS_URL}/{world['normal']}/applications",
+        headers=world["brand"].headers,
+    ).json()["items"]
+    (normal_application,) = normal_items
+    normal = f"/api/v1/applications/{normal_application['id']}"
+    brand, creator = world["direct_brand"], world["offering"].headers
+
+    # The brand's own application routes (get_owned_application).
+    for tail in ("/shortlist", "/accept", "/withdraw-invitation"):
+        response = client.post(f"{hidden}{tail}", headers=brand)
+        assert (tail, response.status_code) == (tail, 404), response.text
+        assert response.json()["code"] == "application_not_found"
+    # The creator's own (get_own_application).
+    for tail in ("/withdraw", "/accept-invitation", "/decline-invitation"):
+        response = client.post(f"{hidden}{tail}", headers=creator)
+        assert (tail, response.status_code) == (tail, 404), response.text
+        assert response.json()["code"] == "application_not_found"
+    # Either party's reads (get_visible_application).
+    for headers in (brand, creator):
+        for tail in ("", "/offers"):
+            assert client.get(f"{hidden}{tail}", headers=headers).status_code == 404
+    # Beside it, the normal application answers its brand and its creator.
+    assert client.get(normal, headers=world["brand"].headers).status_code == 200
+    assert client.get(f"{normal}/offers", headers=world["applicant"].headers).status_code == 200
+    shortlisted = client.post(f"{normal}/shortlist", headers=world["brand"].headers)
+    assert shortlisted.status_code == 200, shortlisted.text
+
+
 def test_only_the_normal_campaign_is_embedded_for_matching(db, world):
     embedder.set_model(FakeEncoder())
     try:

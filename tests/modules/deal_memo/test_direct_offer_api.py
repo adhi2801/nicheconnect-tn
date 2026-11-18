@@ -484,6 +484,36 @@ def test_the_first_opening_is_shown_to_the_creator_once(client, db, clock, on):
     assert listed["opened_at"] == "2026-09-17T14:00:00Z"
 
 
+def test_a_first_opening_noted_twice_keeps_the_earlier(client, db, clock, on):
+    """Two first readings at once both find the offer unopened; the statement
+    that notes it matches only an unopened offer, so the later never moves it."""
+    from app.modules.deal_memo.direct_offer_service import note_first_opening
+
+    offer = sent(client, creator_user(db, clock))
+    first = clock.now + timedelta(minutes=1)
+
+    note_first_opening(db, offer["id"], first)
+    note_first_opening(db, offer["id"], first + timedelta(minutes=5))
+
+    assert row(db, offer["id"]).opened_at == first
+
+
+def test_a_later_reading_writes_nothing(client, db, clock, on):
+    """Once opened, a reading of the link is the one query that finds it."""
+    from tests.query_counts import count_queries
+
+    offer = sent(client, creator_user(db, clock))
+    token = link(offer["link_token"])
+    assert client.get(LINK_URL, headers=token).status_code == 200
+
+    with count_queries() as statements:
+        assert client.get(LINK_URL, headers=token).status_code == 200
+
+    touching = [sql for sql in statements if "direct_offer" in sql]
+    assert len(touching) == 1, statements
+    assert touching[0].lstrip().upper().startswith("SELECT"), touching
+
+
 def test_a_link_nobody_sent_finds_nothing(client, db, clock, on):
     sent(client, creator_user(db, clock))
     for token in ("b" * 43, "short", "x" * 128):
@@ -538,6 +568,30 @@ def test_the_link_has_a_rate_limit_by_address(client, db, clock, on):
 
     assert answers[:60] == [200] * 60
     assert answers[60] == 429
+
+
+@pytest.mark.parametrize(
+    ("route", "allowed"),
+    [("list", 60), ("read", 60), ("withdraw", 30), ("stop", 10)],
+)
+def test_the_other_routes_have_their_rate_limits(client, db, clock, on, route, allowed):
+    """The creator's list, one offer and withdrawing, per account; "stop
+    these", per address. The answer before the limit may be a refusal (a
+    second withdrawal is 409), but the one after it is always 429."""
+    creator = creator_user(db, clock)
+    offer = sent(client, creator)
+    calls = {
+        "list": lambda: client.get(OFFERS_URL, headers=creator.headers),
+        "read": lambda: client.get(f"{OFFERS_URL}/{offer['id']}", headers=creator.headers),
+        "withdraw": lambda: client.post(
+            f"{OFFERS_URL}/{offer['id']}/withdraw", headers=creator.headers
+        ),
+        "stop": lambda: client.post(STOP_URL, headers=link(offer["link_token"])),
+    }
+    answers = [calls[route]().status_code for _ in range(allowed + 1)]
+
+    assert 429 not in answers[:allowed], answers
+    assert answers[allowed] == 429
 
 
 # --- "stop these" ----------------------------------------------------------------

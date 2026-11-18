@@ -408,15 +408,24 @@ def open_link(db: Session, token: str, now: datetime) -> LinkView:
     ensure_on()
     view = _find_by_token(db, token)
     _ensure_waiting(db, view.offer, now)
+    # Only an unopened offer is written to: every later reading is the one
+    # query that found it.
     if view.offer.opened_at is None:
-        db.execute(
-            update(DirectOffer)
-            .where(DirectOffer.id == view.offer.id, DirectOffer.opened_at.is_(None))
-            .values(opened_at=now, updated_at=now)
-        )
-        db.commit()
+        note_first_opening(db, view.offer.id, now)
         db.refresh(view.offer)
     return view
+
+
+def note_first_opening(db: Session, offer_id: uuid.UUID, now: datetime) -> None:
+    """Note when the offer was first opened, and never move it: the statement
+    matches only an unopened offer, so of two first readings at once the
+    earlier to commit stands. Commits."""
+    db.execute(
+        update(DirectOffer)
+        .where(DirectOffer.id == offer_id, DirectOffer.opened_at.is_(None))
+        .values(opened_at=now, updated_at=now)
+    )
+    db.commit()
 
 
 def link_notice() -> str:
@@ -569,12 +578,11 @@ def _make_brand(
     """The brand's account and profile, as login and profile creation make them.
 
     Adults only (D-086), checked by the caller; only the time of the
-    confirmation is kept. Raises EmailTaken and BrandNameNeedsDomain.
+    confirmation is kept. An email another brand holds is refused by the
+    database's unique key alone, as profile creation refuses it, so two
+    acceptances racing for one email cannot both pass a check made before.
+    Raises EmailTaken and BrandNameNeedsDomain.
     """
-    email: str = fields["email"]
-    if db.scalar(select(Brand.id).where(Brand.email == email)) is not None:
-        db.rollback()
-        raise EmailTaken()
     account = Account(phone=phone, role="brand", adult_confirmed_at=now)
     db.add(account)
     db.flush()
@@ -582,7 +590,7 @@ def _make_brand(
     brand = Brand(
         account_id=account.id,
         name=fields["brand_name"],
-        email=email,
+        email=fields["email"],
         created_at=now,
         updated_at=now,
     )
