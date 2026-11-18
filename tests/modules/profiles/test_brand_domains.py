@@ -59,6 +59,11 @@ def test_a_website_s_own_domain_is_accepted(typed, claimed):
         ("-smallshop.in", "cannot start or end with a hyphen"),
         ("smallshop-.in", "cannot start or end with a hyphen"),
         ("a" * 64 + ".in", "Use only letters a to z"),
+        # An ending that starts with a digit is no website's (Hypothesis found
+        # "0.0" accepted here and refused by the database, D-189's run).
+        ("0.0", "ends in a letter"),
+        ("smallshop.123", "ends in a letter"),
+        ("smallshop.1in", "ends in a letter"),
         # Other scripts, as typed and as punycode.
         ("nykаa.com", "Use only letters a to z"),  # noqa: RUF001 - the look-alike letter is the point of the test
         ("xn--nyka-x2a.com", "Domains in other scripts cannot be claimed"),
