@@ -56,6 +56,25 @@
 # the build if FIPS mode is ever on, so this reason is enforced, not assumed.
 # Remove this entry with the move to 3.14.11.
 #
+# Four more, accepted on 18 November 2026 (D-197), found by this gate that
+# day on every branch at once (the database changed, not our code), each
+# fixed only in 3.16 and no 3.14.11 released (Docker Hub, checked the same
+# day). Each reason was read against app/ and scripts/ that day:
+#   CVE-2026-124249 (Medium): http.cookiejar lets an expired Set-Cookie
+#     delete other domains' cookies in a shared jar. httpx2 keeps a jar per
+#     client, and a client can reach more than one host (the timestamp
+#     authorities, the DNS and RDAP lookups); but nothing we send depends on
+#     a cookie: no call passes cookies=, every credential goes in a header
+#     or the body, so a cookie deleted from the jar changes no request.
+#   CVE-2026-115559 (Medium): imaplib's STARTTLS keeps plaintext read ahead.
+#     Nothing imports imaplib.
+#   CVE-2026-115791 (Medium): the tarfile and zipfile command lines
+#     (python -m) can run a shadowing script. Never run; pip, the one tool
+#     that unpacks archives, is removed from the image.
+#   CVE-2026-19552 (Negligible): ssl.get_server_certificate(ca_certs=...)
+#     does not check the certificate's name. Nothing in app/ calls it; the
+#     only installed reference is redis's OCSP check, which we never turn on.
+#
 # Remove each entry when a 3.14 release carries its fix.
 ignore:
   - vulnerability: CVE-2025-15367
@@ -73,3 +92,15 @@ ignore:
   - vulnerability: CVE-2026-119170
     package: { name: python, version: 3.14.10, type: binary }
     reason: "hashlib FIPS enforcement regression; applies only with OpenSSL in FIPS mode, which is off in our image and checked at build (D-190)."
+  - vulnerability: CVE-2026-124249
+    package: { name: python, version: 3.14.10, type: binary }
+    reason: "http.cookiejar cross-domain deletion; no outbound call depends on a cookie, credentials go in headers or bodies (D-197)."
+  - vulnerability: CVE-2026-115559
+    package: { name: python, version: 3.14.10, type: binary }
+    reason: "imaplib STARTTLS read-ahead; imaplib is not used (D-197)."
+  - vulnerability: CVE-2026-115791
+    package: { name: python, version: 3.14.10, type: binary }
+    reason: "tarfile/zipfile command-line script shadowing; never run, pip removed from the image (D-197)."
+  - vulnerability: CVE-2026-19552
+    package: { name: python, version: 3.14.10, type: binary }
+    reason: "ssl.get_server_certificate skips the name check; never called, redis OCSP never enabled (D-197)."
