@@ -17,6 +17,7 @@ from app.modules.deal_memo.models import DealMemo
 from app.modules.deal_memo.record_models import GENESIS_HASH, DealRecordEntry
 from tests.factories import FIXED_NOW
 from tests.modules.deal_memo.test_deal_record_model import make_memo
+from tests.query_counts import count_queries
 
 
 def make_memo_terms() -> DealMemo:
@@ -351,6 +352,123 @@ def test_append_each_opens_a_record_that_has_none(db):
     assert (opened.sequence, opened.previous_hash) == (2, started.entry_hash)
     assert opened.actor_account_id is None
     assert record_service.verify(fresh, [started, opened]).intact
+
+
+def test_append_each_names_each_deals_own_creator(db):
+    """The creator side's entry names that deal's creator, not another's:
+    two deals with two creators, so a join that matched the wrong creator,
+    or none, cannot pass (nightly mutation run, 15 November 2026)."""
+    memos = [make_memo(db), make_memo(db)]
+    for memo in memos:
+        record_service.append(
+            db, memo, kind="memo_sent", actor_role="brand", now=FIXED_NOW
+        )
+
+    record_service.append_each(
+        db,
+        {memo.id: {} for memo in memos},
+        kind="payment_confirmed",
+        actor_role="creator",
+        now=FIXED_NOW,
+    )
+
+    creators = set()
+    for memo in memos:
+        confirmed = record_service.entries_for(db, memo.id)[-1]
+        creator_account = record_service._party_account_ids(db, memo)[1]
+        assert confirmed.actor_account_id == creator_account
+        creators.add(creator_account)
+    assert len(creators) == 2
+
+
+def test_append_each_chains_to_the_newest_entry_of_a_long_record(db):
+    """Each deal's newest entry is the one chained to, however long its
+    record: three entries already, so reading any other one would repeat a
+    sequence number or break the chain."""
+    memos = [make_memo(db), make_memo(db)]
+    for memo in memos:
+        for kind, actor in (
+            ("memo_sent", "brand"),
+            ("memo_accepted", "creator"),
+            ("payment_opened", "system"),
+        ):
+            record_service.append(db, memo, kind=kind, actor_role=actor, now=FIXED_NOW)
+
+    record_service.append_each(
+        db,
+        {memo.id: {} for memo in memos},
+        kind="payment_marked_paid",
+        actor_role="brand",
+        now=FIXED_NOW,
+    )
+
+    for memo in memos:
+        entries = record_service.entries_for(db, memo.id)
+        assert [e.sequence for e in entries] == [1, 2, 3, 4]
+        assert entries[3].previous_hash == entries[2].entry_hash
+        assert record_service.verify(memo, entries).intact
+
+
+def test_append_each_opens_no_record_for_a_first_send(db):
+    """`append`'s rule for a first send in a batch: an unrevised memo's
+    `memo_sent` begins its record itself, with no `record_started` before it;
+    a revised one's history began earlier, so its record opens first."""
+    first, revised = make_memo(db), make_memo(db)
+    revised.revision_count = 1
+    db.flush()
+
+    record_service.append_each(
+        db,
+        {first.id: {}, revised.id: {}},
+        kind="memo_sent",
+        actor_role="brand",
+        now=FIXED_NOW,
+    )
+
+    assert [e.kind for e in record_service.entries_for(db, first.id)] == ["memo_sent"]
+    assert [e.kind for e in record_service.entries_for(db, revised.id)] == [
+        "record_started",
+        "memo_sent",
+    ]
+
+
+def test_append_each_seals_the_terms_as_they_are_in_the_database(db):
+    """The deals are read afresh under their lock: a deal this session holds
+    from before, changed in the database since, is sealed as it now is, not
+    as the session last saw it."""
+    memo = make_memo(db)
+    db.execute(
+        text("UPDATE deal_memo SET fee_amount_paise = 900000 WHERE id = :id"),
+        {"id": memo.id},
+    )
+
+    record_service.append_each(
+        db, {memo.id: {}}, kind="payment_opened", actor_role="system", now=FIXED_NOW
+    )
+
+    started = record_service.entries_for(db, memo.id)[0]
+    db.refresh(memo)
+    assert memo.fee_amount_paise == 900_000
+    assert started.facts == {"terms_sha256": record_service.terms_fingerprint(memo)}
+
+
+def test_append_each_locks_the_deals_in_one_statement_in_id_order(db):
+    """Two batches sharing deals take their locks in the same order, so
+    neither can wait on a lock the other holds while holding one it wants."""
+    memos = [make_memo(db) for _ in range(3)]
+
+    with count_queries() as statements:
+        record_service.append_each(
+            db,
+            {memo.id: {} for memo in memos},
+            kind="payment_opened",
+            actor_role="system",
+            now=FIXED_NOW,
+        )
+
+    locks = [s for s in statements if "FROM deal_memo" in s and "FOR UPDATE" in s]
+    assert len(locks) == 1, locks
+    assert "ORDER BY deal_memo.id" in locks[0]
 
 
 def test_append_each_refuses_a_deal_that_does_not_exist(db):
