@@ -67,6 +67,13 @@ def registrable_domain(typed: str) -> str:
                 "Domains in other scripts cannot be claimed: their letters can "
                 "pass for someone else's"
             )
+    # Every top-level domain starts with a letter, and DOMAIN_PATTERN (which
+    # the database enforces) says so; refusing here keeps "0.0" a refusal in
+    # words instead of a database error.
+    if not labels[-1][0].isalpha():
+        raise DomainNotAccepted(
+            "A website's domain ends in a letter, such as .in or .com"
+        )
     if len(labels) < 2 or _SUFFIXES.is_public(domain):
         raise DomainNotAccepted(
             "That is a suffix many sites share, not one website: enter your own domain"
