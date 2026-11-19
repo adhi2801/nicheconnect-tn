@@ -505,7 +505,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # The tokens are generated (scripts/build-tokens.mjs). The script fails
-      # if any of the 112 text and background pairs misses its contrast floor
+      # if any of the 116 text and background pairs misses its contrast floor
       # (7, 4.5 or 3 to 1); the diff fails if the committed CSS, JSON or Dart
       # is not what the tokens make.
       - name: Check the design tokens and their contrast
