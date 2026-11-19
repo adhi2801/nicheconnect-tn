@@ -1,7 +1,10 @@
+import { readdirSync } from "node:fs";
+import { join, relative, sep } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-// frontend.md sections 6 and 12 (D-171, D-198): every page passes the automated
+// frontend.md sections 6 and 12 (D-171, D-198): every page (each page.tsx under
+// src/app, found by walking the folder, so a new page is checked without being listed) passes the automated
 // WCAG 2.2 AA checks in light and dark, with motion on and off, at a phone's
 // width and a laptop's, and body text meets 7:1 (AAA's enhanced contrast rule
 // checks exactly our bar: 7:1 for body text, 4.5:1 for large text).
@@ -13,8 +16,39 @@ const MOCK = "http://localhost:8098";
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const RULES_ABOVE_AA = ["color-contrast-enhanced"];
 
-const PUBLIC_PAGES = ["/", "/sign-in", "/design"];
-const SIGNED_IN_PAGES = ["/app", "/app/deals", "/app/me"];
+// A dynamic segment is visited at a sample value. One not listed here fails the run below, so a new
+// dynamic page is never skipped unseen.
+const SAMPLE_SEGMENTS: Record<string, string> = {
+  "[...slug]": "deals/1", // the screens not built yet answer at /app/<anything> (app/app/[...slug])
+};
+
+const APP_DIR = join(__dirname, "..", "src", "app");
+
+function pageFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) return pageFiles(path);
+    return entry.name === "page.tsx" ? [path] : [];
+  });
+}
+
+function routeOf(file: string): string {
+  const segments = relative(APP_DIR, file).split(sep).slice(0, -1)
+    .filter((segment) => !(segment.startsWith("(") && segment.endsWith(")"))) // route groups add no segment
+    .map((segment) => {
+      if (!segment.startsWith("[")) return segment;
+      const sample = SAMPLE_SEGMENTS[segment];
+      if (sample === undefined) throw new Error(`${relative(APP_DIR, file)}: give ${segment} a sample value in SAMPLE_SEGMENTS`);
+      return sample;
+    });
+  return `/${segments.join("/")}`;
+}
+
+const PAGE_FILES = pageFiles(APP_DIR);
+const ROUTES = PAGE_FILES.map(routeOf).sort();
+const isSignedIn = (route: string) => route === "/app" || route.startsWith("/app/");
+const PUBLIC_PAGES = ROUTES.filter((route) => !isSignedIn(route));
+const SIGNED_IN_PAGES = ROUTES.filter(isSignedIn);
 
 const VIEWS = [
   { name: "phone", width: 360, height: 780 },
@@ -59,8 +93,11 @@ async function violations(page: Page) {
 }
 
 test("the pages checked are the website's pages, none forgotten", () => {
-  // A list a test reads must be shown not empty (testing.md section 2).
-  expect(PUBLIC_PAGES.length + SIGNED_IN_PAGES.length).toBeGreaterThanOrEqual(6);
+  // Every page.tsx became exactly one route checked below (routeOf throws on a dynamic segment with no
+  // sample), and the walk found the real tree, not an empty folder (testing.md section 2).
+  expect(PUBLIC_PAGES.length + SIGNED_IN_PAGES.length).toBe(PAGE_FILES.length);
+  expect(new Set(ROUTES).size).toBe(ROUTES.length);
+  expect(ROUTES).toEqual(expect.arrayContaining(["/", "/sign-in", "/app", "/app/deals", "/app/me"]));
 });
 
 for (const view of VIEWS) {
