@@ -12,7 +12,7 @@
 
 `main` is protected by the GitHub ruleset "main protection" (id 27525028, read back from GitHub's API on 19 November 2026). Nothing reaches it except through these steps:
 
-1. **A branch of your own**, named `feature/<name>`, `fix/<name>`, `chore/<name>`, `docs/<name>` or `ci/<name>`. Never commit to `main`.
+1. **A branch of your own**, named `feature/<name>`, `fix/<name>`, `chore/<name>` or `docs/<name>` (`CLAUDE.md` section 6). Never commit to `main`.
 2. **Small commits** in Conventional Commits style, for example `feat(campaigns): close applications at midnight in Tamil Nadu`.
 3. **A pull request to `main`**. It needs:
    - **every required CI job green** on a branch up to date with `main`: `test`, `frontend`, `image`, `infrastructure` and `repository-settings` (`.github/workflows/ci.yml`), and CodeQL with no high alert;
