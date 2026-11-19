@@ -39,6 +39,14 @@
 - [ ] ruff, format, mypy, lint-imports, Squawk, migration round trip, gitleaks: run locally and passed
 - [ ] The affected suites and the cross-cutting tests passed locally; the full suite runs in CI
 
+## Frontend (write "none" if nothing under `frontend/` changed)
+
+- [ ] `pnpm --filter web lint`, `test` and `build` passed locally
+- [ ] `pnpm --filter web e2e` passed locally: the browser tests and the axe accessibility check (WCAG 2.2 AA plus 7:1 body text, light and dark, motion on and off, phone and laptop)
+- [ ] Lighthouse within `frontend/apps/web/lighthouserc.cjs`, no ratchet line loosened; the numbers CI printed:
+- [ ] `pnpm audit` clean, or each accepted advisory listed with its reason in `frontend/pnpm-workspace.yaml` under a recorded decision
+- [ ] Each new or changed screen meets `docs/standards/frontend.md` section 14: all five states (loading, empty, error, success, offline), at 360 px and at desktop width, in light and dark; every string in the catalogue; built against `docs/api/openapi.json`
+
 ## Merge
 
 - [ ] CI seen green on the exact commit to be merged
