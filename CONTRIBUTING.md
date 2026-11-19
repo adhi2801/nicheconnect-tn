@@ -10,13 +10,14 @@
 
 ## 2. How a change reaches `main`
 
-`main` is protected by the GitHub ruleset "main protection" (read back from GitHub's API on 18 November 2026). Nothing reaches it except through these steps:
+`main` is protected by the GitHub ruleset "main protection" (id 27525028, read back from GitHub's API on 19 November 2026). Nothing reaches it except through these steps:
 
 1. **A branch of your own**, named `feature/<name>`, `fix/<name>`, `chore/<name>`, `docs/<name>` or `ci/<name>`. Never commit to `main`.
 2. **Small commits** in Conventional Commits style, for example `feat(campaigns): close applications at midnight in Tamil Nadu`.
 3. **A pull request to `main`**. It needs:
    - **every required CI job green** on a branch up to date with `main`: `test`, `frontend`, `image`, `infrastructure` and `repository-settings` (`.github/workflows/ci.yml`), and CodeQL with no high alert;
-   - **an approving review** from someone other than the last person who pushed;
+   - **an approving review from a code owner** (the CODEOWNERS file in `.github/`, which names Adhi for the whole repository; it lands with pull request #131), from someone other than the last person who pushed;
+   - **approval of the latest push**: a new push dismisses earlier approvals, so the pull request is approved again after every change;
    - every review conversation resolved.
 4. **No force-push to `main`, and `main` is never deleted.** Rewriting shared history is refused.
 
