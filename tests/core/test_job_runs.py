@@ -6,6 +6,8 @@ and a run's budget, on a clock the test moves.
 """
 
 import logging
+import pathlib
+import re
 import threading
 import time
 import uuid
@@ -229,3 +231,24 @@ def test_no_session_holds_the_lock_once_a_run_ends_however_it_ends(fails):
         run_alone(schedule, work)
 
     assert lock_holders(schedule) == 0
+
+
+def test_every_schedule_has_its_own_lock_key():
+    """Each run's lock is keyed by `hashtext` of its schedule's name, so two
+    names hashing alike would skip each other's runs without a word."""
+    app_dir = pathlib.Path(__file__).parents[2] / "app"
+    names = [
+        found
+        for path in app_dir.rglob("*_jobs.py")
+        for found in re.findall(
+            r'^SCHEDULE_NAME = "([^"]+)"', path.read_text(encoding="utf-8"), re.M
+        )
+    ]
+    assert len(names) == len(set(names)) >= 12
+
+    with engine.connect() as connection:
+        keys = connection.execute(
+            text("SELECT hashtext(name) FROM unnest(CAST(:names AS text[])) AS name"),
+            {"names": names},
+        ).scalars()
+        assert len(set(keys)) == len(names)

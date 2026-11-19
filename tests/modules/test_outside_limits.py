@@ -322,5 +322,12 @@ def test_the_image_bounds_every_name_lookup():
     18 November 2026 against a nameserver that never answers: 2.1 s with
     this setting, 10.1 s without it (glibc's 5 s a try, twice).
     """
-    dockerfile = (pathlib.Path(__file__).parents[2] / "Dockerfile").read_text()
-    assert re.search(r'^\s*RES_OPTIONS="timeout:1 attempts:2"', dockerfile, re.MULTILINE)
+    dockerfile = (pathlib.Path(__file__).parents[2] / "Dockerfile").read_text(
+        encoding="utf-8"
+    )
+    stages = re.split(r"^FROM\s", dockerfile, flags=re.MULTILINE)
+    api_stage = next(
+        stage for stage in stages if re.match(r"\S+\s+AS\s+api\s*$", stage, re.M)
+    )
+    # In the api stage itself: the embeddings image is built FROM api, so it inherits it.
+    assert re.search(r'^\s*RES_OPTIONS="timeout:1 attempts:2"', api_stage, re.MULTILINE)
