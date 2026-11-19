@@ -39244,7 +39244,7 @@
     },
     "/api/v1/direct-offer-link/stop": {
       "post": {
-        "description": "Public, no account needed: the link proves its holder received it. This creator can send this number no more direct offers, and this offer ends, its number, name and terms erased: only the creator and the number's keyed hash stay, as the block. Works on a waiting, withdrawn or expired offer, whatever became of the creator's account; a second tap changes nothing. Limit: 10 in 10 minutes per address.",
+        "description": "Public, no account needed: the link proves its holder received it. This creator can send this number no more direct offers, and this offer ends, its number, name and terms erased: only the creator and the number's keyed hash stay, as the block. Works on a waiting, withdrawn or expired offer, whatever became of the creator's account, and while direct offers are switched off; a second tap changes nothing, and it takes no `Idempotency-Key`, needing none. Limit: 10 in 10 minutes per address.",
         "operationId": "stop_offers_api_v1_direct_offer_link_stop_post",
         "parameters": [
           {
@@ -39257,18 +39257,6 @@
               "maxLength": 128,
               "minLength": 1,
               "title": "Offer-Token",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "required": false,
-            "schema": {
-              "maxLength": 128,
-              "minLength": 8,
-              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
               "type": "string"
             }
           }
@@ -39297,7 +39285,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "`direct_offer_already_accepted`: it became a deal; block the creator from the brand's account instead. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+            "description": "`direct_offer_already_accepted`: it became a deal; block the creator from the brand's account instead"
           },
           "422": {
             "content": {
@@ -39308,7 +39296,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "The `Offer-Token` header is missing or too long. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+            "description": "The `Offer-Token` header is missing or too long"
           },
           "429": {
             "content": {
@@ -39323,14 +39311,21 @@
           },
           "503": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
-              },
-              "application/problem+json": {}
+              }
             },
-            "description": "`direct_offers_unavailable`: direct offers are off until the notice wording exists. Or: Can't guarantee this request runs only once right now. Safe to retry"
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "summary": "Stop offers from this creator to my number",

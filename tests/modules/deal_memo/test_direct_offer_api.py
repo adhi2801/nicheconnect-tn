@@ -65,7 +65,8 @@ def row(db, offer_id) -> DirectOffer:
 
 def test_every_route_is_off_by_default(client, db, clock, monkeypatch):
     """The creator's routes, and a link that exists, say the feature is off.
-    A link sent while it was on still serves nothing once it is off."""
+    A link sent while it was on still serves nothing once it is off, except
+    "stop these" (below)."""
     creator = creator_user(db, clock)
     switch_on(monkeypatch)
     offer = sent(client, creator)
@@ -77,18 +78,55 @@ def test_every_route_is_off_by_default(client, db, clock, monkeypatch):
         client.get(f"{OFFERS_URL}/{offer['id']}", headers=creator.headers),
         client.post(f"{OFFERS_URL}/{offer['id']}/withdraw", headers=creator.headers),
         client.get(LINK_URL, headers=held),
-        client.post(STOP_URL, headers=held),
         client.post(CODE_URL, headers=held),
         client.post(
             ACCEPT_URL, json=accept_body("042917", offer["terms_sha256"]), headers=held
         ),
     ]
 
-    assert [a.status_code for a in answers] == [503] * 8
+    assert [a.status_code for a in answers] == [503] * 7
     assert {a.json()["code"] for a in answers} == {"direct_offers_unavailable"}
     # Refused before anything is written: not ended, and not even opened.
     stored = row(db, offer["id"])
     assert (stored.status, stored.opened_at) == ("sent", None)
+
+
+def test_stop_these_works_while_the_feature_is_off(client, db, clock, monkeypatch):
+    """A number's holder keeps "stop these" for a link they were sent while
+    the feature was on, whatever the switch says now; and the block holds
+    once it is on again."""
+    creator = creator_user(db, clock)
+    switch_on(monkeypatch)
+    phone = fake_phone()
+    offer = sent(client, creator, phone)
+    monkeypatch.setattr(settings, "direct_offers_enabled", False)
+
+    stopped = client.post(STOP_URL, headers=link(offer["link_token"]))
+
+    assert stopped.status_code == 204
+    assert row(db, offer["id"]).status == "stopped"
+    monkeypatch.setattr(settings, "direct_offers_enabled", True)
+    refused = send(client, creator, phone)
+    assert refused.json()["code"] == "direct_offer_stopped_by_recipient"
+
+
+def test_stop_these_is_never_replayed_for_another_link(client, db, clock, on):
+    """One address, one `Idempotency-Key`, two links: each stop is done, never
+    the first's 204 replayed for the second (the re-review of 19 November
+    2026: the store's key holds the address and the body, not the token)."""
+    creator = creator_user(db, clock)
+    first, second = sent(client, creator), sent(client, creator)
+    key = {"Idempotency-Key": "stop-key-0001"}
+
+    answers = [
+        client.post(STOP_URL, headers={**link(offer["link_token"]), **key})
+        for offer in (first, second)
+    ]
+
+    assert [a.status_code for a in answers] == [204, 204]
+    assert all("idempotency-replayed" not in a.headers for a in answers)
+    assert row(db, first["id"]).status == "stopped"
+    assert row(db, second["id"]).status == "stopped"
 
 
 def test_while_off_a_link_that_opens_nothing_is_not_found(client, db, clock):

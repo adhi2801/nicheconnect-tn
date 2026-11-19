@@ -51,9 +51,14 @@ NOT_COVERED_PREFIX = "/api/v1/auth/"
 #   must never be kept; a retry is refused, its code being spent;
 # - sending a direct offer (D-189): the answer carries the link's token, which
 #   must never be kept either; a retry sends a second offer, which the creator
-#   sees in their list and can withdraw, within the same daily ceilings.
+#   sees in their list and can withdraw, within the same daily ceilings;
+# - "stop these" at a direct offer's link (D-189): idempotent by nature, a
+#   second stop changing nothing; and the store's key holds the address and
+#   the body, never the `Offer-Token` header, so a key reused for a second
+#   link would replay the first 204 and stop nothing (re-review, 19 November).
 NEVER_REPLAYED = {
     "POST /api/v1/direct-offers",
+    "POST /api/v1/direct-offer-link/stop",
     "POST /api/v1/me/agent-tokens",
     "POST /api/v1/me/exports/{export_id}/download",
     "POST /api/v1/platforms/meta/data-deletion",

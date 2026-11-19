@@ -496,8 +496,8 @@ def stop(db: Session, token: str, now: datetime) -> None:
 
     The number's lock is taken first, the one every send to it takes, so a
     send at the same moment either lands before the block or is refused by
-    it; then the offer's row. Raises DirectOfferNotFound, DirectOffersOff
-    and DirectOfferAlreadyAccepted.
+    it; then the offer's row. Works while the feature is off too. Raises
+    DirectOfferNotFound and DirectOfferAlreadyAccepted.
     """
     if not rules.is_link_token(token):
         raise DirectOfferNotFound()
@@ -519,9 +519,9 @@ def stop(db: Session, token: str, now: datetime) -> None:
     if offer is None:
         db.rollback()
         raise DirectOfferNotFound()
-    if not is_on():
-        db.rollback()
-        raise DirectOffersOff()
+    # Never asks whether the feature is on: a number's holder can say "stop
+    # these" to a link they received while it was on, whatever the switch
+    # says now (the independent re-review, 19 November 2026).
     if offer.status == "accepted":
         db.rollback()
         raise DirectOfferAlreadyAccepted()

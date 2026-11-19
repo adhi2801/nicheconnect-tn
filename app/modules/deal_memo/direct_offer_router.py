@@ -14,7 +14,8 @@ The link's token travels in the `Offer-Token` header, never a path or a
 query string, which the access log would keep (backend.md section 9).
 While the feature is off every route answers 503 `direct_offers_unavailable`,
 except that a link whose token opens no offer is 404 as always (no offer
-can be sent while it is off).
+can be sent while it is off), and "stop these", which a number's holder can
+always use on a link they were sent.
 """
 
 import uuid
@@ -78,11 +79,12 @@ router = APIRouter(
 # an assistant's token, D-138). A retry sends a second offer, which the
 # creator sees in their list and can withdraw.
 send_router = APIRouter(prefix="/api/v1/direct-offers", tags=["direct offers"])
-link_router = APIRouter(
-    prefix="/api/v1/direct-offer-link",
-    tags=["direct offers"],
-    route_class=IdempotentRoute,
-)
+# Not an IdempotentRoute: its one write, "stop these", is idempotent by
+# nature (a second stop changes nothing), and a stored answer is keyed by the
+# caller's address and the body, never the `Offer-Token` header, so a key
+# reused for a second link would replay the first 204 and stop nothing (the
+# independent re-review, 19 November 2026).
+link_router = APIRouter(prefix="/api/v1/direct-offer-link", tags=["direct offers"])
 link_login_router = APIRouter(
     prefix="/api/v1/auth/direct-offer-link", tags=["direct offers"]
 )
@@ -349,15 +351,18 @@ def read_offer_link(
         "This creator can send this number no more direct offers, and this "
         "offer ends, its number, name and terms erased: only the creator and "
         "the number's keyed hash stay, as the block. Works on a waiting, "
-        "withdrawn or expired offer, whatever became of the creator's account; "
-        "a second tap changes nothing. "
+        "withdrawn or expired offer, whatever became of the creator's account, "
+        "and while direct offers are switched off; a second tap changes nothing, "
+        "and it takes no `Idempotency-Key`, needing none. "
         "Limit: 10 in 10 minutes per address."
     ),
     responses={
-        **_LINK_ERRORS,
-        # Its own: a stop works whatever became of the creator's account,
-        # since it protects the number's holder, not the creator's offer.
+        # Its own 404: a stop works whatever became of the creator's account,
+        # since it protects the number's holder, not the creator's offer; and
+        # no 503 of its own, since it works while the feature is off.
         404: problem_doc("`direct_offer_not_found`: no offer has this token"),
+        422: _LINK_ERRORS[422],
+        429: _LINK_ERRORS[429],
         409: problem_doc(
             "`direct_offer_already_accepted`: it became a deal; block the "
             "creator from the brand's account instead"
