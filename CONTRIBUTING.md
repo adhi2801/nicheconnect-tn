@@ -66,7 +66,7 @@ CI runs more than these (the secret scan, migration round trip, API fuzzing, ima
 - **Screens are built against the committed contract**, `docs/api/openapi.json`. A screen that needs a field the API does not answer is a backend request, never a workaround in the client (`CLAUDE.md` section 0).
 - **Every string lives in the message catalogue**, never in a component; every colour, size and duration comes from the tokens in `frontend/tokens/`.
 - **Every screen designs five states** (loading, empty, error, success, offline), works at 360 px and on a laptop, in light and dark, by keyboard and screen reader (`frontend.md` sections 5, 6 and 14).
-- **Every visual choice traces to a root** in `docs/research/TAMIL_DESIGN_ROOTS.md` or `docs/PSYCHOLOGY_AND_TRUST.md`, and nothing reads as any political party's mark (`frontend.md` section 8a).
+- **Every visual choice traces to a root** in `docs/research/TAMIL_DESIGN_ROOTS.md` or `docs/PSYCHOLOGY_AND_TRUST.md`, and nothing reads as the BJP's: no lotus, no saffron or orange (D-143, `frontend.md` section 8a). Other parties' marks are not banned; a sunrise appears only as natural light in a scene, never as an emblem.
 
 ## 6. Words we never use
 
