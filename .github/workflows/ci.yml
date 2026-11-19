@@ -553,6 +553,14 @@ jobs:
       # JavaScript each page sends. The server above is still running.
       # The numbers are printed whether the budgets pass or fail, so each
       # ratchet line is lowered from what this runner measured.
+      # The ratchet only tightens (D-198): every Lighthouse line is compared
+      # with main's and the job fails if one is looser. The checkout is
+      # shallow, so main is fetched first (public repository, no token).
+      - name: The Lighthouse ratchet only tightens
+        run: |
+          git fetch --no-tags --depth=1 origin +refs/heads/main:refs/remotes/origin/main
+          node scripts/check-lighthouse-ratchet.mjs origin/main
+
       - name: Lighthouse budgets
         run: |
           status=0

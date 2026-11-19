@@ -7,7 +7,8 @@
 // A RATCHET (Adhi, 18 November 2026, D-198). The first measurement (the same day, on a laptop) found both
 // pages far over the targets, so the check blocks at today's numbers: a page that gets worse fails, and every
 // change that improves a page lowers its line here, never raises it. TARGET is the standard's bar; a line may
-// only move toward it. When a page meets its target, its RATCHET line is deleted and TARGET is what it holds.
+// only move toward it (scripts/check-lighthouse-ratchet.mjs fails CI otherwise). When a page meets its target,
+// its RATCHET line is deleted and TARGET is what it holds.
 //
 // Pages: the public ones a stranger lands on. The signed-in screens are judged by the browser tests
 // (accessibility, every state) until a signed-in Lighthouse run is wired to the stand-in backend.
@@ -60,8 +61,8 @@ module.exports = {
     },
     assert: {
       assertMatrix: [
-        { matchingUrlPattern: "3100/$", assertions: assertionsFor(RATCHET.landing) },
-        { matchingUrlPattern: "/sign-in$", assertions: assertionsFor(RATCHET.signIn) },
+        { matchingUrlPattern: "3100/$", assertions: assertionsFor(RATCHET.landing ?? TARGET.landing) },
+        { matchingUrlPattern: "/sign-in$", assertions: assertionsFor(RATCHET.signIn ?? TARGET.signIn) },
       ],
     },
     upload: { target: "filesystem", outputDir: ".lighthouseci" },
