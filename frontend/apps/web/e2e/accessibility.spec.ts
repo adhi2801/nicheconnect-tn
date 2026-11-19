@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-// frontend.md sections 6 and 12 (D-171, D-197): every page passes the automated
+// frontend.md sections 6 and 12 (D-171, D-198): every page passes the automated
 // WCAG 2.2 AA checks in light and dark, with motion on and off, at a phone's
 // width and a laptop's, and body text meets 7:1 (AAA's enhanced contrast rule
 // checks exactly our bar: 7:1 for body text, 4.5:1 for large text).

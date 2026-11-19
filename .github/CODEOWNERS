@@ -1,4 +1,4 @@
-# Who must review a change before it reaches main (D-197). The ruleset
+# Who must review a change before it reaches main (D-198). The ruleset
 # "main protection" requires a code owner's approval on every pull request,
 # so nothing in these paths merges on its author's word alone.
 # Adhi owns the whole repository while he builds the backend alone (D-051);
