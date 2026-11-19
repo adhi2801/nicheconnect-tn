@@ -44,10 +44,10 @@ docker compose up -d
 uv sync
 uv run alembic upgrade head
 uv run pytest
-uv run ruff check app tests
-uv run ruff format --check app tests
-uv run mypy app
-uv run lint-imports
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy
+uv run lint-imports --no-cache
 ```
 
 **Frontend** (from `frontend/`, pnpm through Corepack):
