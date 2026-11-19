@@ -72,7 +72,7 @@ What moves a row from **(decision)** to binding: a founder's yes, recorded in `d
   - Every view of an account's details and every admin action is written to the admin log with a reason. The log refuses updates and deletes at the database (`database.md` section 3).
   - **Enforced by** `tests/modules/auth/test_admin_login_api.py` and `tests/modules/admin/`.
 - **A second check before a risky change** (item 82, D-107; ASVS 5.0 7.5.1 to 7.5.3):
-  - setting a UPI ID, downloading the data export (a code for that exact export, D-111; asking for one needs none, D-112), logging out everywhere, changing the phone number (item 80) and deleting the account (item 6) each need a 6-digit code from `POST /api/v1/me/step-up`, in the `Step-Up-Code` header;
+  - setting a UPI ID, downloading the data export (a code for that exact export, D-111; asking for one needs none, D-112), logging out everywhere, changing the phone number (item 80) and deleting the account (item 6) each need a 6-digit code from `POST /api/v1/me/step-up`, in the `Step-Up-Code` header, which error reports drop (Sentry's own list does not name it; on `EXTRA_DENYLIST` in `app/core/error_tracking.py` since 19 November 2026, with its test);
   - a code works once, for 5 minutes, for one action and, for a UPI ID or a new phone number, that exact one (only HMACs of the code and the value are stored); only the newest counts; 5 wrong tries use it up;
   - without one, 401 `step_up_required` with RFC 9470's `insufficient_user_authentication` challenge;
   - step-up codes and login codes share the phone's caps, for sending and for guessing, under one per-phone lock;
