@@ -1,0 +1,254 @@
+"""How a background job's run is bounded (item 118, D-186).
+
+One run at a time per schedule, against the real database's advisory locks,
+with a concurrency test driven by events, not sleeps (testing.md section 4);
+and a run's budget, on a clock the test moves.
+"""
+
+import logging
+import pathlib
+import re
+import threading
+import time
+import uuid
+
+import pytest
+from psycopg.conninfo import conninfo_to_dict
+from sqlalchemy import text
+
+from app.core import job_runs
+from app.core.deadline import Deadline
+from app.core.job_runs import (
+    EVERY_MINUTE_BUDGET_SECONDS,
+    LONG_BUDGET_SECONDS,
+    one_run_at_a_time,
+    run_alone,
+    within_budget,
+)
+from app.db.session import engine
+
+
+def a_schedule() -> str:
+    """A name no other test, or session sharing the database, is using."""
+    return f"test-schedule-{uuid.uuid4()}"
+
+
+class Clock:
+    def __init__(self) -> None:
+        self.now = 0.0
+
+    def __call__(self) -> float:
+        return self.now
+
+
+# --- the budget -----------------------------------------------------------------
+
+
+def test_the_budgets_are_the_approved_ones():
+    """D-186: 45 s for a job run every minute, 10 minutes for the others."""
+    assert (EVERY_MINUTE_BUDGET_SECONDS, LONG_BUDGET_SECONDS) == (45.0, 600.0)
+
+
+def test_without_a_budget_every_item_is_worked():
+    assert list(within_budget(range(5), None, "test")) == [0, 1, 2, 3, 4]
+
+
+def test_with_time_to_spare_every_item_is_worked():
+    clock = Clock()
+
+    assert list(within_budget(range(5), Deadline(45, clock), "test")) == [0, 1, 2, 3, 4]
+
+
+def test_once_the_budget_is_spent_no_new_item_is_started(caplog):
+    """Each item takes 20 s of a 45 s budget: the third starts at 40 s, the fourth never."""
+    clock = Clock()
+    started = []
+
+    with caplog.at_level(logging.WARNING, logger="app.core.job_runs"):
+        for item in within_budget(range(6), Deadline(45, clock), "proof_files.read"):
+            started.append(item)
+            clock.now += 20
+
+    assert started == [0, 1, 2]
+    assert "job.budget_spent job=proof_files.read left=3" in caplog.text
+
+
+def test_a_budget_spent_before_the_first_item_starts_none(caplog):
+    clock = Clock()
+    budget = Deadline(45, clock)
+    clock.now = 45
+
+    with caplog.at_level(logging.WARNING, logger="app.core.job_runs"):
+        assert list(within_budget(["a", "b"], budget, "test")) == []
+    assert "left=2" in caplog.text
+
+
+def test_nothing_is_logged_when_the_budget_holds(caplog):
+    with caplog.at_level(logging.WARNING, logger="app.core.job_runs"):
+        list(within_budget(range(3), Deadline(45, Clock()), "test"))
+
+    assert "job.budget_spent" not in caplog.text
+
+
+# --- one run at a time ---------------------------------------------------------
+
+
+def test_a_run_holds_its_schedule_and_lets_it_go_when_done():
+    schedule = a_schedule()
+
+    with one_run_at_a_time(schedule) as first:
+        assert first is True
+    with one_run_at_a_time(schedule) as again:
+        assert again is True
+
+
+def test_a_second_run_while_the_first_works_stops_at_once(caplog):
+    """Two runs of one schedule at the same moment: the second does nothing,
+    and does not wait for the first. Driven by events, so the overlap happens
+    on every run of the test."""
+    schedule = a_schedule()
+    holding, release = threading.Event(), threading.Event()
+    ran: list[str] = []
+
+    def first_run() -> None:
+        run_alone(
+            schedule, lambda: (ran.append("first"), holding.set(), release.wait(10))
+        )
+
+    worker = threading.Thread(target=first_run)
+    worker.start()
+    try:
+        assert holding.wait(10), "the first run never started"
+        started = time.monotonic()
+        with caplog.at_level(logging.WARNING, logger="app.core.job_runs"):
+            second = run_alone(schedule, lambda: ran.append("second"))
+        waited = time.monotonic() - started
+    finally:
+        release.set()
+        worker.join(10)
+
+    assert second is False
+    assert ran == ["first"]
+    assert waited < 1.0  # it tried the lock; it never waited on it
+    assert f"job.already_running schedule={schedule}" in caplog.text
+    # Once the first is done, the schedule is free again.
+    assert run_alone(schedule, lambda: ran.append("third")) is True
+    assert ran == ["first", "third"]
+
+
+def test_two_schedules_never_hold_each_other_up():
+    one, other = a_schedule(), a_schedule()
+
+    with one_run_at_a_time(one) as first, one_run_at_a_time(other) as second:
+        assert (first, second) == (True, True)
+
+
+def test_a_run_that_fails_still_lets_its_schedule_go():
+    schedule = a_schedule()
+
+    def fails() -> None:
+        raise RuntimeError("a job's own failure")
+
+    with pytest.raises(RuntimeError):
+        run_alone(schedule, fails)
+
+    assert run_alone(schedule, lambda: None) is True
+
+
+def test_the_lock_never_takes_a_connection_from_the_pool_requests_use():
+    """D-093: requests always find a connection. A run's lock is held on its own."""
+    before = engine.pool.checkedout()
+
+    with one_run_at_a_time(a_schedule()) as held:
+        assert held is True
+        assert engine.pool.checkedout() == before
+
+
+def test_a_lost_host_lets_its_lock_go_within_about_a_minute():
+    """Read from the lock's own session: the database probes it after 30 s of
+    quiet, every 10 s, 3 times (`pg_settings`, the server's side), and so does our
+    side (libpq's settings, read from the live connection's parameters)."""
+    assert (
+        job_runs.KEEPALIVE_IDLE_SECONDS
+        + job_runs.KEEPALIVE_COUNT * job_runs.KEEPALIVE_INTERVAL_SECONDS
+    ) == 60
+    with job_runs._lock_engine.connect() as lock:
+        server_side = dict(
+            lock.execute(
+                text(
+                    "SELECT name, setting FROM pg_settings WHERE name IN"
+                    " ('tcp_keepalives_idle', 'tcp_keepalives_interval',"
+                    " 'tcp_keepalives_count')"
+                )
+            ).all()
+        )
+        ours = conninfo_to_dict(lock.connection.dbapi_connection.info.dsn)
+
+    assert server_side == {
+        "tcp_keepalives_idle": "30",
+        "tcp_keepalives_interval": "10",
+        "tcp_keepalives_count": "3",
+    }
+    assert (
+        ours["keepalives"],
+        ours["keepalives_idle"],
+        ours["keepalives_interval"],
+        ours["keepalives_count"],
+    ) == ("1", "30", "10", "3")
+
+
+def test_the_lock_is_its_own_kind_of_lock():
+    """Its first key is its own, so it never meets a draft's (40) or a proof file's (70 070)."""
+    assert job_runs.RUN_LOCK_NAMESPACE == 118
+
+
+def lock_holders(schedule: str) -> int:
+    """How many sessions hold this schedule's lock, read from PostgreSQL's own table."""
+    with engine.connect() as db:
+        return db.scalar(
+            text(
+                "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory'"
+                " AND classid = :namespace AND objsubid = 2"
+                " AND objid = ((hashtext(:schedule)::bigint & 4294967295)::oid)"
+            ),
+            {"namespace": job_runs.RUN_LOCK_NAMESPACE, "schedule": schedule},
+        )
+
+
+@pytest.mark.parametrize("fails", [False, True], ids=["finished", "failed"])
+def test_no_session_holds_the_lock_once_a_run_ends_however_it_ends(fails):
+    schedule = a_schedule()
+
+    def work() -> None:
+        assert lock_holders(schedule) == 1
+        if fails:
+            raise RuntimeError("a job's own failure")
+
+    if fails:
+        with pytest.raises(RuntimeError):
+            run_alone(schedule, work)
+    else:
+        run_alone(schedule, work)
+
+    assert lock_holders(schedule) == 0
+
+
+def test_every_schedule_has_its_own_lock_key():
+    """Each run's lock is keyed by `hashtext` of its schedule's name, so two
+    names hashing alike would skip each other's runs without a word."""
+    app_dir = pathlib.Path(__file__).parents[2] / "app"
+    names = [
+        found
+        for path in app_dir.rglob("*_jobs.py")
+        for found in re.findall(
+            r'^SCHEDULE_NAME = "([^"]+)"', path.read_text(encoding="utf-8"), re.M
+        )
+    ]
+    assert len(names) == len(set(names)) >= 12
+
+    with engine.connect() as connection:
+        keys = connection.execute(
+            text("SELECT hashtext(name) FROM unnest(CAST(:names AS text[])) AS name"),
+            {"names": names},
+        ).scalars()
+        assert len(set(keys)) == len(names)

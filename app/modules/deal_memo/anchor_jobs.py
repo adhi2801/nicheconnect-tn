@@ -15,6 +15,8 @@ from typing import Any
 
 from dbos import DBOS, ScheduleInput
 
+from app.core.deadline import Deadline
+from app.core.job_runs import LONG_BUDGET_SECONDS, run_alone
 from app.db.session import SessionLocal
 from app.modules.deal_memo import anchor_service
 from app.modules.deal_memo.timestamp_authority import default_authorities
@@ -25,17 +27,27 @@ DAILY_CHECKPOINT_CRON = "40 18 * * *"
 SCHEDULE_NAME = "deal-record-daily-checkpoint"
 
 
-def run_checkpoint(scheduled_at: datetime) -> anchor_service.DailyRun:
-    """The work itself, callable without DBOS (tests, and a manual rerun)."""
+def run_checkpoint(
+    scheduled_at: datetime, budget: Deadline | None = None
+) -> anchor_service.DailyRun:
+    """The work itself, callable without DBOS (tests, and a manual rerun).
+
+    No budget unless one is given: the scheduled step gives its own.
+    """
     with SessionLocal() as db:
-        return anchor_service.run_daily(db, scheduled_at, default_authorities())
+        return anchor_service.run_daily(
+            db, scheduled_at, default_authorities(), budget=budget
+        )
 
 
 @DBOS.step(name="deal_record.checkpoint_and_stamp")
 def checkpoint_step(scheduled_at: datetime) -> None:
     # One step: run_daily is idempotent, so a crash halfway is safely redone,
     # and the timestamp client already retries within backend.md's limits.
-    run_checkpoint(scheduled_at)
+    # One run at a time per schedule (item 118, D-186).
+    run_alone(
+        SCHEDULE_NAME, lambda: run_checkpoint(scheduled_at, Deadline(LONG_BUDGET_SECONDS))
+    )
 
 
 @DBOS.workflow(name="deal_record.daily_checkpoint")

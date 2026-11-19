@@ -11,6 +11,7 @@ import pytest
 from sqlalchemy import delete, func, select, text
 
 from app.core.clock import IST
+from app.core.deadline import Deadline
 from app.modules.deal_memo import anchor_service, merkle, record_service
 from app.modules.deal_memo.anchor_models import DealRecordCheckpoint, DealRecordTimestamp
 from app.modules.deal_memo.anchor_service import NotInCheckpoint
@@ -234,3 +235,21 @@ def test_a_deal_with_no_record_is_in_no_checkpoint(db):
     anchor_service.create_checkpoint(db, DAY)
 
     assert anchor_service.latest_checkpoint_with(db, memo.id) is None
+
+
+def test_a_run_whose_budget_is_spent_still_checkpoints_but_stamps_nothing(db):
+    """Item 118 (D-186): the day's checkpoint is always made (no outside call);
+    once the budget is spent no day is stamped, and the next run asks again."""
+    authority = FakeAuthority("digicert")
+
+    run = anchor_service.run_daily(
+        db, MIDNIGHT + timedelta(minutes=10), [authority], budget=Deadline(0)
+    )
+
+    assert run.checkpoint_day == DAY
+    assert run.stamped == {}
+    assert authority.asked == []
+    again = anchor_service.run_daily(
+        db, MIDNIGHT + timedelta(minutes=10), [authority], budget=Deadline(600)
+    )
+    assert set(again.stamped) == {DAY}
