@@ -33,17 +33,25 @@ def text() -> str:
     return FINISH_LINE.read_text(encoding="utf-8")
 
 
+def status_of(rest: str) -> str:
+    """An item's status, read from its last cell (the Gate column, where every
+    table writes it), never from the item's name or its "why": a row whose
+    reason mentions **Built** work elsewhere is not itself built."""
+    cells = [cell for cell in rest.split("|") if cell.strip()]
+    status_cell = cells[-1] if cells else ""
+    if BUILT.search(status_cell):
+        return "built"
+    if PARTLY_BUILT.search(status_cell):
+        return "partly built"
+    return "open"
+
+
 def items() -> dict[str, str]:
     """Every item row in the tables, by its number, with its status."""
     found: dict[str, str] = {}
     for number, rest in ITEM_ROW.findall(text()):
         assert number not in found, f"item {number} is listed twice"
-        if BUILT.search(rest):
-            found[number] = "built"
-        elif PARTLY_BUILT.search(rest):
-            found[number] = "partly built"
-        else:
-            found[number] = "open"
+        found[number] = status_of(rest)
     return found
 
 
@@ -66,6 +74,24 @@ def test_the_tables_are_read() -> None:
     assert len(statuses) > 140
     assert list(statuses.values()).count("built") > 60
     assert len(capabilities()) > 30
+
+
+def test_the_status_is_read_from_the_status_cell_only() -> None:
+    # A Why column that bolds **Built** (naming other, finished work) must not
+    # count the row as built; only the last cell says what the item's state is.
+    why_mentions_built = (
+        " **Item** | Extends the **Built** search (item 9) | Gate · open |"
+    )
+    assert status_of(why_mentions_built) == "open"
+    assert (
+        status_of(" **Item** | **Built** 9 earlier | Dependency · **Piece 1 built** |")
+        == "partly built"
+    )
+    assert (
+        status_of(" **Item** | Why | Dependency · **Built 1 October (D-072)** |")
+        == "built"
+    )
+    assert status_of(" **Item** | Database · **Built 2 October** |") == "built"
 
 
 def test_every_built_item_belongs_to_exactly_one_capability() -> None:
