@@ -26,7 +26,7 @@ Three things it does **not** mean:
 
 **Counted from the tables, and checked against them on every test run (`tests/test_finish_line.py`, D-191): 148 items listed: 63 built, 3 partly built, 82 open. Capabilities audited: 11 of 37.** Corrected on 13 November 2026: the "64 built" below counted item 27, whose table marks only its first piece built; the tables hold 63 built and 3 partly built (items 14, 27 and 103).
 
-**144 items listed: 64 built, 80 open**, counted from the tables on 11 November 2026 (61 built on 6 November; then items 144 on 7 November, 130 on 8 November and 133 on 11 November): items 103 and 104 added by D-167, items 105 to 143 by the world-bar pass and the research (section 3.13). **Added on 11 November 2026:** items 145 to 148 (D-185, operations), all open, so 148 items are listed: 64 built, 84 open. **Built capabilities audited against the world bar: 11 of 32** (C1 to C11, 6 to 12 November; section 2a). The counts below are as of 5 November, before section 3.13.
+*Historical, kept for the record and superseded by the counted line above:* 144 items listed, 64 built, 80 open, counted from the tables on 11 November 2026 (61 built on 6 November; then items 144 on 7 November, 130 on 8 November and 133 on 11 November): items 103 and 104 added by D-167, items 105 to 143 by the world-bar pass and the research (section 3.13). Added on 11 November 2026: items 145 to 148 (D-185, operations), all open, so 148 items were listed, 64 built, 84 open; built capabilities audited against the world bar then: 11 of 32 (C1 to C11, 6 to 12 November; section 2a). The counts below are as of 5 November, before section 3.13.
 
 **All 102 items listed on 5 November: 61 built, 41 open** (39 in section 3, items 12 and 20 in section 4).
 
