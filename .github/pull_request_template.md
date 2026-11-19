@@ -24,9 +24,22 @@
 7. **The whole job in this change:** code, tests, decision entry, OpenAPI snapshot and frontend types, the data export, `docs/BACKEND_COMPLETE.md`, `docs/README.md` and every document affected:
 8. **Honest report:** what is not built or not proven:
 
-## Gates
+## Definition of done (`CLAUDE.md` section 8)
+
+- [ ] Proposed with all twelve dimensions and approved before it was built (step 4 above)
+- [ ] Tests for the success case **and** the failure cases (validation, permission, not found), run in this session and passing
+- [ ] Every public endpoint rate limited, with an access check on every object it reads or changes (owner, party, or public by design)
+- [ ] Error format, pagination and naming match `docs/standards/backend.md`
+- [ ] Schema changes only through a migration with a working downgrade
+- [ ] No new dependency without a recorded approval (name the D-entry, or "none added")
+- [ ] Every document it affects still meets the bar of `docs/README.md`
+
+## Backend gates (write "none" if no backend file changed)
 
 - [ ] ruff, format, mypy, lint-imports, Squawk, migration round trip, gitleaks: run locally and passed
 - [ ] The affected suites and the cross-cutting tests passed locally; the full suite runs in CI
+
+## Merge
+
 - [ ] CI seen green on the exact commit to be merged
 - [ ] Reviewed by the other founder, or this says plainly that no second person reviewed it
