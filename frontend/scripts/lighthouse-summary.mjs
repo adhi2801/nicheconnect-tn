@@ -2,15 +2,23 @@
 // are lowered from CI's own numbers, never from a laptop's. Reads the reports `lhci autorun` saved in
 // apps/web/.lighthouseci; uses the run Lighthouse marks as representative (the median run) for each page.
 //   node scripts/lighthouse-summary.mjs apps/web/.lighthouseci
+import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 const dir = process.argv[2];
 if (!dir) throw new Error("usage: node scripts/lighthouse-summary.mjs <.lighthouseci folder>");
 
 const manifest = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"));
 const representative = manifest.filter((run) => run.isRepresentativeRun);
-if (representative.length === 0) throw new Error(`no representative run in ${dir}/manifest.json`);
+
+// Every page lighthouserc.cjs collects must have its report, or a page that failed to load would pass unseen.
+const expected = createRequire(import.meta.url)(resolve(dir, "..", "lighthouserc.cjs")).ci.collect.url;
+const missing = expected.filter((url) => !representative.some((run) => run.url === url));
+if (missing.length > 0) {
+  console.error(`no Lighthouse report for ${missing.join(", ")} in ${dir}/manifest.json`);
+  process.exitCode = 1;
+}
 
 for (const run of representative) {
   const report = JSON.parse(readFileSync(run.jsonPath, "utf8"));
