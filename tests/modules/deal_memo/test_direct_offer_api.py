@@ -438,6 +438,17 @@ def test_a_withdrawn_offer_frees_its_place_in_the_number_s_ten(
     assert send(client, creator_user(db, clock), phone).status_code == 201
 
 
+def test_stopped_offers_count_in_no_number_s_ten(client, db, clock, on, unlimited):
+    """A number that stopped ten creators stays open to an eleventh (Adhi, 19
+    November 2026): each stopped creator can send it nothing more anyway."""
+    phone = fake_phone()
+    for _ in range(10):
+        offer = sent(client, creator_user(db, clock), phone)
+        assert client.post(STOP_URL, headers=link(offer["link_token"])).status_code == 204
+
+    assert send(client, creator_user(db, clock), phone).status_code == 201
+
+
 def test_sending_has_a_rate_limit(client, db, clock, on):
     creator = creator_user(db, clock)
     answers = [send(client, creator).status_code for _ in range(6)]

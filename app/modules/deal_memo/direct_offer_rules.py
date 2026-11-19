@@ -42,13 +42,19 @@ _LINK_TOKEN = re.compile(LINK_TOKEN_PATTERN)
 # from everyone (Adhi, 18 November 2026, after the independent review: a
 # number-wide 3 let three creators shut a busy brand's number to everyone
 # else for a week). An offer its creator withdrew counts in neither weekly
-# ceiling: it reached nobody it was not taken back from.
+# ceiling: it reached nobody it was not taken back from. A stopped one counts
+# in no number's 10 (Adhi, 19 November 2026, after the independent
+# re-review): its creator can send that number nothing more anyway, and
+# counting it would let one creator's stopped offers shut the number to
+# everyone else.
 DAILY_OFFERS_PER_CREATOR = 10
 WEEKLY_OFFERS_FROM_CREATOR_TO_NUMBER = 3
 WEEKLY_OFFERS_PER_NUMBER = 10
 NUMBER_WINDOW = timedelta(days=7)
-# The one status the weekly ceilings leave out.
+# The status both weekly ceilings leave out.
 NOT_COUNTED_WEEKLY = "withdrawn"
+# The status the number's 10 from everyone leaves out as well.
+NOT_COUNTED_FOR_NUMBER = "stopped"
 # A due date further ahead than a year is a typing mistake, not a plan; it
 # also bounds a value a person types (the standards' checklist).
 MAX_DUE_AHEAD = timedelta(days=365)
@@ -148,21 +154,22 @@ def number_ceiling(
 ) -> NumberCeiling | None:
     """Whether one more offer from `creator_id` to this number passes a weekly
     ceiling, or None. Counts offers sent in the 7 days before `now`, never a
-    withdrawn one; the creator's own ceiling is asked first, as the nearer.
+    withdrawn one, and for the number's 10 never a stopped one either; the
+    creator's own ceiling is asked first, as the nearer.
     """
     counted = sorted(
-        offer
-        for offer in (
-            (row.created_at, row.creator_id)
-            for row in sent
-            if row.status != NOT_COUNTED_WEEKLY and row.created_at > now - NUMBER_WINDOW
-        )
+        (row.created_at, row.creator_id, row.status)
+        for row in sent
+        if row.status != NOT_COUNTED_WEEKLY and row.created_at > now - NUMBER_WINDOW
     )
-    mine = [created for created, creator in counted if creator == creator_id]
+    mine = [created for created, creator, _ in counted if creator == creator_id]
     if len(mine) >= WEEKLY_OFFERS_FROM_CREATOR_TO_NUMBER:
         oldest = mine[len(mine) - WEEKLY_OFFERS_FROM_CREATOR_TO_NUMBER]
         return NumberCeiling(which="creator", frees_at=oldest + NUMBER_WINDOW)
-    if len(counted) >= WEEKLY_OFFERS_PER_NUMBER:
-        oldest = counted[len(counted) - WEEKLY_OFFERS_PER_NUMBER][0]
+    everyone = [
+        created for created, _, status in counted if status != NOT_COUNTED_FOR_NUMBER
+    ]
+    if len(everyone) >= WEEKLY_OFFERS_PER_NUMBER:
+        oldest = everyone[len(everyone) - WEEKLY_OFFERS_PER_NUMBER]
         return NumberCeiling(which="number", frees_at=oldest + NUMBER_WINDOW)
     return None

@@ -17,7 +17,9 @@ What is kept, and for how long (the privacy impact assessment in D-189):
   that name. Once it ends, however it ends, both are emptied in the same
   statement that ends it (`ck_direct_offer_recipient_kept_only_while_waiting`);
 - the number's keyed hash (`recipient_phone_hash`) for as long as the row
-  lives: it counts the 3 offers a week one number may receive, and it is
+  lives: it counts the weekly ceilings (in any 7 days, 3 from one creator to
+  one number and 10 to one number from everyone; a withdrawn offer counted
+  in neither, a stopped one in no number's 10), and it is
   the block when the number's holder says "stop these" (`status = 'stopped'`).
   A row that ended any other way and never became a deal is deleted 30 days
   after it ended (`direct_offer_jobs`); a stopped row stays, as the block

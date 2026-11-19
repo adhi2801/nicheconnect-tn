@@ -185,7 +185,7 @@ Examples:
 | Refresh and logout | 30 a minute | the address |
 | Listing sessions; ending one (item 81) | 60 a minute; 30 a minute | the account (and, for another session, the phone's code caps) |
 | Assistants' tokens (item 11): making one; listing; revoking | 5 a minute and 10 a day; 60 a minute; 30 a minute | the account (and, to make one, the phone's code caps). A token's own requests count against its account's limits |
-| Direct offers (D-189): sending one; the creator's list and withdrawing | 5 a minute and 10 a day, and in the database 10 a Tamil Nadu day per creator and, in any 7 days, 3 from one creator to one number and 10 to one number from everyone, a withdrawn offer counting in neither; 60 and 30 a minute | the account (and the number's keyed hash) |
+| Direct offers (D-189): sending one; the creator's list and withdrawing | 5 a minute and 10 a day, and in the database 10 a Tamil Nadu day per creator and, in any 7 days, 3 from one creator to one number and 10 to one number from everyone, a withdrawn offer counting in neither and a stopped one in no number's 10; 60 and 30 a minute | the account (and the number's keyed hash) |
 | A direct offer's link: reading it; "stop these"; its code; accepting | 60 a minute; 10 in 10 minutes; 3 in 10 minutes; 10 in 10 minutes | the address (and, for the code and accepting, the number's own code caps) |
 | Writes | 30 a minute, most with a daily ceiling | the account |
 | Search and matching | 30 a minute | the account |

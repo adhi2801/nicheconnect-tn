@@ -221,6 +221,41 @@ def test_a_withdrawn_offer_counts_in_neither_ceiling():
         assert rules.number_ceiling(counted, ME, NOW) is not None, status
 
 
+def test_a_stopped_offer_counts_in_no_number_s_ten():
+    """Ten stopped offers from others leave the number open to everyone; the
+    same ten waiting, accepted or expired close it. A stopped offer still
+    counts in its own creator's 3, which its block makes moot."""
+    stopped = [
+        to_number(uuid.UUID(int=10 + i), days_ago=1, status="stopped") for i in range(10)
+    ]
+
+    assert rules.number_ceiling(stopped, ME, NOW) is None
+    for status in ("sent", "accepted", "expired"):
+        counted = [
+            to_number(uuid.UUID(int=10 + i), days_ago=1, status=status) for i in range(10)
+        ]
+        assert rules.number_ceiling(counted, ME, NOW) == rules.NumberCeiling(
+            which="number", frees_at=NOW - timedelta(days=1) + rules.NUMBER_WINDOW
+        ), status
+    nine_and_a_stop = [
+        *[to_number(uuid.UUID(int=10 + i), days_ago=2) for i in range(9)],
+        to_number(OTHER, days_ago=1, status="stopped"),
+    ]
+    assert rules.number_ceiling(nine_and_a_stop, ME, NOW) is None
+
+
+def test_the_number_frees_with_its_oldest_counted_offer_not_a_stopped_one():
+    """A stopped offer older than the ten counted never sets the wait."""
+    ten = [to_number(uuid.UUID(int=10 + i), days_ago=4) for i in range(10)]
+    older_stop = to_number(OTHER, days_ago=6, status="stopped")
+
+    ceiling = rules.number_ceiling([older_stop, *ten], ME, NOW)
+
+    assert ceiling == rules.NumberCeiling(
+        which="number", frees_at=NOW - timedelta(days=4) + rules.NUMBER_WINDOW
+    )
+
+
 def test_an_offer_a_week_old_has_left_the_window():
     """The window is the 7 days before now: an offer sent exactly 7 days ago
     no longer counts, one sent a moment later still does."""
@@ -243,6 +278,7 @@ def test_the_limits_are_the_approved_ones():
     assert rules.WEEKLY_OFFERS_FROM_CREATOR_TO_NUMBER == 3
     assert rules.WEEKLY_OFFERS_PER_NUMBER == 10
     assert rules.NOT_COUNTED_WEEKLY == "withdrawn"
+    assert rules.NOT_COUNTED_FOR_NUMBER == "stopped"
     assert timedelta(days=7) == rules.NUMBER_WINDOW
     assert timedelta(days=365) == rules.MAX_DUE_AHEAD
     # The privacy impact assessment's numbers (D-189): a link works 14 days,

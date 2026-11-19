@@ -23,7 +23,9 @@ Threat model (security.md section 4, STRIDE):
   number and the name are erased when the offer ends; whether a number has
   a brand account is said only after its own code was right.
 - **Denial of service**: rate limits on every route, the phone's code caps,
-  10 offers a Tamil Nadu day per creator and 3 a week to one number.
+  10 offers a Tamil Nadu day per creator, and in any 7 days 3 from one
+  creator to one number and 10 to one number from everyone (a withdrawn
+  offer counted in neither, a stopped one in no number's 10).
 - **Elevation of privilege**: accepting makes an ordinary brand account, on
   a number that has none, after the checks a second side on a number takes
   (D-126); never on an admin's number, a suspended side or a moving one.
@@ -227,7 +229,8 @@ def send(
     keyed hash, the lock "stop these" takes too, so a stop and a send to one
     number land one after the other, and offers from everyone are counted
     one at a time against the week's ceilings (3 from this creator, 10 from
-    everyone, a withdrawn offer in neither). Raises DueDateHasPassed,
+    everyone, a withdrawn offer in neither and a stopped one not in the 10).
+    Raises DueDateHasPassed,
     DueDateTooFar, CreatorLeft, DirectOfferOwnNumber,
     DirectOfferStoppedByRecipient, and DirectOfferDailyLimit,
     DirectOfferCreatorNumberLimit and DirectOfferNumberLimit (each 429 with

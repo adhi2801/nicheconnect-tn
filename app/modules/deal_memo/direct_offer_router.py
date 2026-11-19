@@ -59,8 +59,9 @@ from app.modules.deal_memo.direct_offer_schemas import (
 )
 
 # A ceiling per day as well as per minute (trust-and-safety.md rule 2): the
-# send reaches a person. The Tamil Nadu day's 10, and a number's 3 a week,
-# are counted in the database (direct_offer_service.send).
+# send reaches a person. The Tamil Nadu day's 10, and in any 7 days 3 from
+# one creator to one number and 10 to one number from everyone, are counted
+# in the database (direct_offer_service.send).
 SEND_LIMIT = "5 per minute;10 per day"
 WRITE_LIMIT = "30 per minute"
 READ_LIMIT = "60 per minute"
@@ -178,7 +179,8 @@ def to_read(offer: DirectOffer, now: datetime) -> DirectOfferRead:
         "the number's holder stops your offers. Only that number can accept, "
         "with a code we send it when they ask. Limits: 10 offers a Tamil Nadu "
         "day; in any 7 days, 3 from you to one number and 10 to one number from "
-        "everyone, a withdrawn offer counting in neither; 5 a minute. Never "
+        "everyone, a withdrawn offer counting in neither and a stopped one not in "
+        "the number's 10; 5 a minute. Never "
         "replayed for an `Idempotency-Key`: the answer carries the token, which "
         "is never kept."
     ),

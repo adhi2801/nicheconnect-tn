@@ -3007,7 +3007,7 @@ export interface paths {
         put?: never;
         /**
          * Send a direct offer to a brand not on the platform
-         * @description Writes the terms a memo carries, for a brand named by its WhatsApp number, and answers with the link's token, shown this once: send the brand the link. It works for 14 days, until you withdraw it, or until the number's holder stops your offers. Only that number can accept, with a code we send it when they ask. Limits: 10 offers a Tamil Nadu day; in any 7 days, 3 from you to one number and 10 to one number from everyone, a withdrawn offer counting in neither; 5 a minute. Never replayed for an `Idempotency-Key`: the answer carries the token, which is never kept.
+         * @description Writes the terms a memo carries, for a brand named by its WhatsApp number, and answers with the link's token, shown this once: send the brand the link. It works for 14 days, until you withdraw it, or until the number's holder stops your offers. Only that number can accept, with a code we send it when they ask. Limits: 10 offers a Tamil Nadu day; in any 7 days, 3 from you to one number and 10 to one number from everyone, a withdrawn offer counting in neither and a stopped one not in the number's 10; 5 a minute. Never replayed for an `Idempotency-Key`: the answer carries the token, which is never kept.
          */
         post: operations["send_direct_offer_api_v1_direct_offers_post"];
         delete?: never;
