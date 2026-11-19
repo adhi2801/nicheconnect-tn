@@ -15,7 +15,7 @@
 1. **A branch of your own**, named `feature/<name>`, `fix/<name>`, `chore/<name>` or `docs/<name>` (`CLAUDE.md` section 6). Never commit to `main`.
 2. **Small commits** in Conventional Commits style, for example `feat(campaigns): close applications at midnight in Tamil Nadu`.
 3. **A pull request to `main`**. It needs:
-   - **every required CI job green** on a branch up to date with `main`: `test`, `frontend`, `image`, `infrastructure` and `repository-settings` (`.github/workflows/ci.yml`), and CodeQL with no high alert;
+   - **every required CI job green** on a branch up to date with `main`: `test`, `frontend`, `image`, `infrastructure` and `repository-settings` (`.github/workflows/ci.yml`), and CodeQL with no open alert of error severity and no security alert of high severity or above;
    - **an approving review from a code owner** (the CODEOWNERS file in `.github/`, which names Adhi for the whole repository; it lands with pull request #131), from someone other than the last person who pushed;
    - **approval of the latest push**: a new push dismisses earlier approvals, so the pull request is approved again after every change;
    - every review conversation resolved.
