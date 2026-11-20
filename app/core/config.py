@@ -225,6 +225,12 @@ class Settings(BaseSettings):
     # until the publish notice says search engines will show the Passport
     # (legal.md section 3.1, a Confirm item).
     passport_indexing: bool = False
+    # The quarterly city rate report's agreed-fee section (item 84, D-200):
+    # built from accepted memos with one deliverable. Off until the lawyer
+    # answers legal.md section 3.1's Confirm items and a founder amends D-078,
+    # which says no public figure is built from a deal. A report keeps what
+    # was true when it was built, so switching this on changes no past report.
+    rate_report_agreed_fees: bool = False
     # Connected Instagram and YouTube accounts (item 29, D-134): numbers read
     # from the platform with the creator's consent. Off until Meta App Review
     # and Google's verification approve the apps, and the connect notice's
