@@ -29,9 +29,9 @@ from typing import Any
 from sqlalchemy import ColumnElement, and_, func, select, true
 from sqlalchemy.orm import Session
 
-from app.core.taxonomy import CURRENCY, Niche
+from app.core.taxonomy import Niche
 from app.modules.auth.models.creator import Creator
-from app.modules.auth.suspension import account_is_active
+from app.modules.insights import asking_prices
 from app.modules.insights.schemas import AudienceBand
 from app.modules.profiles.models import CreatorChannel, CreatorPackage
 
@@ -116,11 +116,9 @@ def for_group(
         .where(
             CreatorPackage.platform == platform,
             CreatorPackage.format == package_format,
-            CreatorPackage.currency == CURRENCY,
-            Creator.rate_card_public_at.is_not(None),
-            # A suspended creator's prices stop counting (D-061): a fake
-            # profile's numbers must not shape what others are told is fair.
-            account_is_active(Creator.account_id),
+            # Published rate cards, active accounts, rupees (D-056, D-061):
+            # the rule city figures and the rate report count by too.
+            *asking_prices.counted(),
             CreatorChannel.followers >= low,
             CreatorChannel.followers < high if high is not None else true(),
         )
