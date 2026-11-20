@@ -12,6 +12,7 @@ from datetime import timedelta
 
 import pytest
 
+from app.core.deadline import Deadline
 from app.modules.campaigns import brief_service
 from app.modules.campaigns.brief_drafter import BriefFields, Drafted, set_drafter
 from tests.deal_flow import brand_user, creator_user
@@ -208,3 +209,22 @@ def test_a_week_old_draft_is_not_read_even_before_the_job_deletes_it(
     problem(
         client.get(f"{URL}/{made}", headers=brand.headers), 404, "brief_draft_not_found"
     )
+
+
+def test_a_run_whose_budget_is_spent_drafts_nothing_and_leaves_it_waiting(
+    client, db, clock, drafter
+):
+    """Item 118 (D-186): no draft is started once the run's budget is spent."""
+    brand = brand_user(db, clock)
+    asked = ask(client, brand)
+
+    spent = brief_service.run(db, drafter, clock.now, budget=Deadline(0))
+
+    assert spent.drafted == 0
+    assert drafter.ideas == []
+    assert (
+        client.get(asked.headers["Location"], headers=brand.headers).json()["status"]
+        == "waiting"
+    )
+    # Still waiting: the next run, with time to spare, drafts it.
+    assert brief_service.run(db, drafter, clock.now, budget=Deadline(45)).drafted == 1

@@ -18,6 +18,7 @@ from typing import Any
 
 from dbos import DBOS, ScheduleInput
 
+from app.core.job_runs import run_alone
 from app.db.session import SessionLocal
 from app.modules.me import phone_change_service
 
@@ -34,7 +35,8 @@ def run_changes(scheduled_at: datetime) -> phone_change_service.ChangeRun:
 def change_step(scheduled_at: datetime) -> None:
     # One step: each change is made in its own transaction, only if it is
     # still due, so a crash halfway is safely redone.
-    run_changes(scheduled_at)
+    # One run at a time per schedule (item 118, D-186).
+    run_alone(SCHEDULE_NAME, lambda: run_changes(scheduled_at))
 
 
 @DBOS.workflow(name="phone_changes.make")

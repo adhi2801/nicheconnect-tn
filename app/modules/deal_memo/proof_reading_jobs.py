@@ -19,6 +19,8 @@ from typing import Any
 
 from dbos import DBOS, ScheduleInput
 
+from app.core.deadline import Deadline
+from app.core.job_runs import EVERY_MINUTE_BUDGET_SECONDS, run_alone
 from app.core.storage import get_file_store
 from app.db.session import SessionLocal
 from app.modules.deal_memo import proof_reading_service
@@ -28,11 +30,16 @@ EVERY_MINUTE_CRON = "* * * * *"
 SCHEDULE_NAME = "proof-files-read"
 
 
-def run_reading(scheduled_at: datetime) -> proof_reading_service.ReadingRun:
-    """The work itself, callable without DBOS (tests, and a manual rerun)."""
+def run_reading(
+    scheduled_at: datetime, budget: Deadline | None = None
+) -> proof_reading_service.ReadingRun:
+    """The work itself, callable without DBOS (tests, and a manual rerun).
+
+    No budget unless one is given: the scheduled step gives its own.
+    """
     with SessionLocal() as db:
         return proof_reading_service.read_due(
-            db, get_file_store(), get_reader(), scheduled_at
+            db, get_file_store(), get_reader(), scheduled_at, budget=budget
         )
 
 
@@ -40,7 +47,11 @@ def run_reading(scheduled_at: datetime) -> proof_reading_service.ReadingRun:
 def reading_step(scheduled_at: datetime) -> None:
     # One step: each file is its own transaction and a read file is never
     # due again, so a crash halfway is safely redone from where it stopped.
-    run_reading(scheduled_at)
+    # One run at a time per schedule (item 118, D-186).
+    run_alone(
+        SCHEDULE_NAME,
+        lambda: run_reading(scheduled_at, Deadline(EVERY_MINUTE_BUDGET_SECONDS)),
+    )
 
 
 @DBOS.workflow(name="proof_files.read")

@@ -18,6 +18,8 @@ from typing import Any
 
 from dbos import DBOS, ScheduleInput
 
+from app.core.deadline import Deadline
+from app.core.job_runs import EVERY_MINUTE_BUDGET_SECONDS, run_alone
 from app.db.session import SessionLocal
 from app.modules.profiles import brand_domain_service
 from app.modules.profiles.domain_lookup import get_domain_lookup
@@ -26,10 +28,15 @@ EVERY_MINUTE_CRON = "* * * * *"
 SCHEDULE_NAME = "brand-domains-check"
 
 
-def run_checks(scheduled_at: datetime) -> brand_domain_service.CheckRun:
-    """The work itself, callable without DBOS (tests, and a manual rerun)."""
+def run_checks(
+    scheduled_at: datetime, budget: Deadline | None = None
+) -> brand_domain_service.CheckRun:
+    """The work itself, callable without DBOS (tests, and a manual rerun).
+
+    No budget unless one is given: the scheduled step gives its own.
+    """
     return brand_domain_service.run_checks(
-        SessionLocal, get_domain_lookup(), scheduled_at
+        SessionLocal, get_domain_lookup(), scheduled_at, budget=budget
     )
 
 
@@ -37,7 +44,11 @@ def run_checks(scheduled_at: datetime) -> brand_domain_service.CheckRun:
 def checking_step(scheduled_at: datetime) -> None:
     # One step: each claim is applied in its own transaction, only if it
     # still has the token looked up, so a crash halfway is safely redone.
-    run_checks(scheduled_at)
+    # One run at a time per schedule (item 118, D-186).
+    run_alone(
+        SCHEDULE_NAME,
+        lambda: run_checks(scheduled_at, Deadline(EVERY_MINUTE_BUDGET_SECONDS)),
+    )
 
 
 @DBOS.workflow(name="brand_domains.check")

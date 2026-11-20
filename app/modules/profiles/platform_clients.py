@@ -15,9 +15,11 @@ the switch stays off and every test uses `FakePlatformClient`.
   `access_type=offline` for a refresh token; `channels.list?mine=true`
   (1 quota unit) gives the channel's id, handle and subscriber count.
 
-Every call has explicit timeouts (connect 3 s, read 10 s). A code is used
-once, so its exchange is never retried; reads retry at most 3 times with
-backoff and jitter (backend.md section 6). Nothing here logs a token, a
+Every call has explicit timeouts (connect 3 s, read 10 s), and 15 s for
+the whole call, tries and waits included (item 118, D-186; a trickling answer
+is cut off, `app.core.outside_http`). A code is used once, so its exchange is
+never retried; reads retry at most 3 times with backoff and jitter (backend.md
+section 6). Nothing here logs a token, a
 code or a handle.
 """
 
@@ -33,6 +35,9 @@ from urllib.parse import urlencode
 import httpx2
 
 from app.core.config import settings
+from app.core.deadline import Clock, Deadline
+from app.core.outside_http import AnswerTooLarge, exchange, limited_client
+from app.core.retrying import time_for_another_try
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +45,8 @@ TIMEOUT = httpx2.Timeout(10.0, connect=3.0)
 MAX_ATTEMPTS = 3
 BASE_DELAY_SECONDS = 0.5
 RETRY_STATUSES = frozenset({429, 500, 502, 503, 504})
+# One call, every try and wait included (item 118, D-186).
+CALL_LIMIT_SECONDS = 15.0
 
 INSTAGRAM_AUTHORIZE = "https://www.instagram.com/oauth/authorize"
 INSTAGRAM_TOKEN = "https://api.instagram.com/oauth/access_token"  # noqa: S105 - a public URL, not a secret
@@ -103,24 +110,34 @@ class _Http:
         client: httpx2.Client | None = None,
         sleep: Callable[[float], None] = time.sleep,
         jitter: Callable[[], float] = random.random,
+        clock: Clock = time.monotonic,
     ) -> None:
-        self._client = client or httpx2.Client(timeout=TIMEOUT)
+        self._client = client or limited_client(TIMEOUT)
         self._sleep = sleep
         self._jitter = jitter
+        self._clock = clock
 
     def post_once(self, url: str, data: dict[str, str]) -> Any:
         """A POST that must not repeat (a code is single use)."""
+        deadline = Deadline(CALL_LIMIT_SECONDS, self._clock)
         try:
-            response = self._client.post(url, data=data)
+            response = exchange(self._client, "POST", url, deadline, data=data)
         except httpx2.TransportError as exc:
             raise PlatformUnavailable(type(exc).__name__) from exc
         return self._body(response, url)
 
     def get(self, url: str, *, params: dict[str, str], headers: dict[str, str]) -> Any:
+        deadline = Deadline(CALL_LIMIT_SECONDS, self._clock)
         failure = "no attempt made"
         for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
-                response = self._client.get(url, params=params, headers=headers)
+                response = exchange(
+                    self._client, "GET", url, deadline, params=params, headers=headers
+                )
+            except AnswerTooLarge:
+                # Longer than any answer it gives: asking again would repeat it.
+                failure = "AnswerTooLarge"
+                break
             except httpx2.TransportError as exc:
                 failure = type(exc).__name__
             else:
@@ -133,9 +150,14 @@ class _Http:
                 attempt,
                 failure,
             )
-            if attempt < MAX_ATTEMPTS:
-                delay = BASE_DELAY_SECONDS * 2 ** (attempt - 1)
-                self._sleep(delay * (0.5 + self._jitter()))
+            if attempt == MAX_ATTEMPTS:
+                break
+            delay = BASE_DELAY_SECONDS * 2 ** (attempt - 1)
+            pause = delay * (0.5 + self._jitter())
+            # No wait that would leave the next try too little time (D-186).
+            if not time_for_another_try(deadline, pause):
+                break
+            self._sleep(pause)
         raise PlatformUnavailable(failure)
 
     @staticmethod

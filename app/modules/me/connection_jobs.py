@@ -20,6 +20,8 @@ from dbos import DBOS, ScheduleInput
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.deadline import Deadline
+from app.core.job_runs import LONG_BUDGET_SECONDS, run_alone
 from app.db.session import SessionLocal
 from app.modules.auth.models.creator import Creator
 from app.modules.notifications import service as notifications
@@ -47,16 +49,24 @@ def tell_creator(db: Session, connection: ConnectedAccount) -> None:
     )
 
 
-def run_refresh(scheduled_at: datetime) -> refresh.RefreshRun:
-    """The work itself, callable without DBOS (tests, and a manual rerun)."""
-    return refresh.refresh_all(SessionLocal, scheduled_at, tell_creator)
+def run_refresh(
+    scheduled_at: datetime, budget: Deadline | None = None
+) -> refresh.RefreshRun:
+    """The work itself, callable without DBOS (tests, and a manual rerun).
+
+    No budget unless one is given: the scheduled step gives its own.
+    """
+    return refresh.refresh_all(SessionLocal, scheduled_at, tell_creator, budget=budget)
 
 
 @DBOS.step(name="connections.refresh_all")
 def refresh_step(scheduled_at: datetime) -> None:
     # One step: each connection is its own transactions, and one already
     # read today is simply read again, so a crash halfway is safely redone.
-    run_refresh(scheduled_at)
+    # One run at a time per schedule (item 118, D-186).
+    run_alone(
+        SCHEDULE_NAME, lambda: run_refresh(scheduled_at, Deadline(LONG_BUDGET_SECONDS))
+    )
 
 
 @DBOS.workflow(name="connections.refresh")

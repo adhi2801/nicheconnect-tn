@@ -67,9 +67,15 @@ RUN apt-get update \
         libapt-pkg7.0=3.0.4 \
         zlib1g=1:1.3.dfsg+really1.3.1-1+deb13u1 \
     && rm -rf /var/lib/apt/lists/*
+# RES_OPTIONS bounds every name lookup (D-186 point 14a, Adhi, 18 November
+# 2026): glibc's resolver reads it over resolv.conf, so a lookup waits at
+# most 1 s a try and tries twice per nameserver, not glibc's 5 s. Python's
+# getaddrinfo takes no timeout of its own, so this is what keeps a slow
+# resolver inside an outside call's limit wherever the image runs.
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    RES_OPTIONS="timeout:1 attempts:2"
 COPY --from=build /opt/venv /opt/venv
 # Nothing is installed at run time, so the running image carries no
 # installer. uv's environment never had pip; the base image's Python does,

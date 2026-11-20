@@ -14,6 +14,7 @@ from pydantic import SecretStr
 from sqlalchemy import select
 
 from app.core.config import settings
+from app.core.deadline import Deadline
 from app.modules.me import connection_jobs
 from app.modules.notifications.models import Notification
 from app.modules.profiles import connection_refresh_service as refresh
@@ -183,3 +184,116 @@ def test_when_a_token_is_renewed(clock, platform, age_days, left_days, renew):
     )
 
     assert refresh.needs_renewal(item, now) is renew
+
+
+def test_a_run_whose_budget_is_spent_reads_nothing_and_leaves_it_for_the_next(
+    client, db, clock, creator, platforms
+):
+    """Item 118 (D-186): no connection is started once the run's budget is spent."""
+    connected(client, creator, platforms, followers=24_000)
+    platforms["instagram"].profiles["good-code"] = profile(followers=25_000)
+    clock.advance(timedelta(days=2))
+
+    spent = refresh.refresh_all(
+        lambda: nullcontext(db),
+        clock.now,
+        connection_jobs.tell_creator,
+        budget=Deadline(0),
+    )
+
+    assert spent.read == 0
+    assert connection(db).verified_followers == 24_000
+    later = refresh.refresh_all(
+        lambda: nullcontext(db),
+        clock.now,
+        connection_jobs.tell_creator,
+        budget=Deadline(600),
+    )
+    assert later.read == 1
+    assert connection(db).verified_followers == 25_000
+
+
+def _spent_after(items: int):
+    """A budget's clock that holds for `items` connections, then is spent."""
+    ticks = iter([0.0] + [0.0] * items + [10_000.0] * 100)
+    return Deadline(1.0, lambda: next(ticks))
+
+
+def test_a_run_cut_short_reads_the_others_first_the_next_day(
+    client, db, clock, platforms
+):
+    """Two connections, a budget spent after one: the run reads the one this
+    job never read, or read longest ago, so the next day's run reads the other.
+    Ordered by id, the newer connection would be skipped every day."""
+    first, second = creator_user(db, clock), creator_user(db, clock)
+    connected(client, first, platforms, code="code-a", user_id="1001", followers=100)
+    clock.advance(timedelta(minutes=1))
+    connected(client, second, platforms, code="code-b", user_id="1002", followers=200)
+    platforms["instagram"].profiles["code-a"] = profile(user_id="1001", followers=101)
+    platforms["instagram"].profiles["code-b"] = profile(user_id="1002", followers=202)
+
+    def followers() -> list[int | None]:
+        db.expire_all()
+        return sorted(
+            row.verified_followers
+            for row in db.scalars(
+                select(ConnectedAccount).where(
+                    ConnectedAccount.platform_user_id.in_(["1001", "1002"])
+                )
+            )
+        )
+
+    for day in (1, 2):
+        clock.advance(timedelta(days=1))
+        run_ = refresh.refresh_all(
+            lambda: nullcontext(db),
+            clock.now,
+            connection_jobs.tell_creator,
+            budget=_spent_after(1),
+        )
+        assert run_.read == 1, day
+
+    assert followers() == [101, 202]
+    # And a third day reads the one read longest ago, the first again.
+    platforms["instagram"].profiles["code-a"] = profile(user_id="1001", followers=103)
+    clock.advance(timedelta(days=1))
+    refresh.refresh_all(
+        lambda: nullcontext(db),
+        clock.now,
+        connection_jobs.tell_creator,
+        budget=_spent_after(1),
+    )
+    assert followers() == [103, 202]
+
+
+def test_a_connection_never_read_goes_before_one_read_earlier(
+    client, db, clock, platforms
+):
+    """A connection made after another was last read is still first in line:
+    ordered by when each was last changed alone, the older read would win and
+    the new connection would wait a day more for its first read."""
+    first, second = creator_user(db, clock), creator_user(db, clock)
+    connected(client, first, platforms, code="code-a", user_id="1001", followers=100)
+    platforms["instagram"].profiles["code-a"] = profile(user_id="1001", followers=101)
+    clock.advance(timedelta(days=1))
+    assert run(db, clock).read == 1  # the first, read today
+
+    clock.advance(timedelta(hours=1))
+    connected(client, second, platforms, code="code-b", user_id="1002", followers=200)
+    platforms["instagram"].profiles["code-a"] = profile(user_id="1001", followers=102)
+    platforms["instagram"].profiles["code-b"] = profile(user_id="1002", followers=202)
+    clock.advance(timedelta(days=1))
+    cut_short = refresh.refresh_all(
+        lambda: nullcontext(db),
+        clock.now,
+        connection_jobs.tell_creator,
+        budget=_spent_after(1),
+    )
+
+    assert cut_short.read == 1
+    db.expire_all()
+    read_now = {
+        row.platform_user_id: row.verified_followers
+        for row in db.scalars(select(ConnectedAccount))
+    }
+    assert read_now == {"1001": 101, "1002": 202}

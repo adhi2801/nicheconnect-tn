@@ -250,6 +250,10 @@ only_mutate = [
     # (audit C11, D-180).
     "app/core/clock.py",
     "app/modules/campaigns/applying.py",
+    # A call's whole limit and the retry loop inside it (item 118, D-186):
+    # a limit that silently never fires is a worker held for ever.
+    "app/core/deadline.py",
+    "app/core/retrying.py",
 ]
 # Only lines the chosen tests reach: a function they never call is not
 # evidence of a weak test, and would bury the real survivors.
@@ -280,6 +284,10 @@ pytest_add_cli_args_test_selection = [
     "tests/core/test_clock_properties.py",
     "tests/modules/campaigns/test_applying_rules.py",
     "tests/modules/campaigns/test_applying_sql.py",
+    "tests/core/test_deadline.py",
+    "tests/core/test_deadline_properties.py",
+    "tests/core/test_retrying.py",
+    "tests/core/test_retrying_properties.py",
 ]
 
 [tool.importlinter]

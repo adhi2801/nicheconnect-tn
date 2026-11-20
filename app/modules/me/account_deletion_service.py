@@ -49,6 +49,8 @@ from typing import Literal
 from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
 
+from app.core.deadline import Deadline
+from app.core.job_runs import within_budget
 from app.core.storage import FileStore
 from app.modules.auth import erasure
 from app.modules.auth import service as login
@@ -236,12 +238,22 @@ def run_deletions(
     session_factory: Callable[[], AbstractContextManager[Session]],
     store: FileStore,
     now: datetime,
+    *,
+    budget: Deadline | None = None,
 ) -> DeletionRun:
     """One run of the job: erase every account whose 30 days are over.
 
+    Once `budget` is spent no further account is started (item 118, D-186);
+    the rest are still due at the next run.
+
     Each in its own transactions, so one that fails or is held leaves the
-    rest done. Every due account is looked at on every run, the held ones
-    too, so none waits behind another; at pilot scale they are a handful.
+    rest done. Due accounts are looked at oldest first, the held ones too,
+    until the budget is spent. A held account costs one short transaction,
+    and the destroy of an export file it still has, so at pilot scale (a
+    handful due) every one is reached each run. A run cut short leaves the
+    rest for the next, and held accounts first in line could keep a later
+    one waiting run after run; that is named in D-186 (point 14), not
+    prevented here.
     """
     with session_factory() as db:
         due = list(
@@ -255,7 +267,8 @@ def run_deletions(
             ).all()
         )
     outcomes = [
-        delete_account(session_factory, store, account_id, now) for account_id in due
+        delete_account(session_factory, store, account_id, now)
+        for account_id in within_budget(due, budget, "account_deletions.run")
     ]
     run = DeletionRun(
         due=len(due),
