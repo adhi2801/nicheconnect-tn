@@ -75,6 +75,15 @@
 #     does not check the certificate's name. Nothing in app/ calls it; the
 #     only installed reference is redis's OCSP check, which we never turn on.
 #
+# A tenth, accepted on 19 November 2026 (D-199): CVE-2026-16052 (Low;
+# published 12 November), http.cookies.Morsel keeping a semicolon inside an
+# attribute's value, so a cookie whose attributes a caller controls can have
+# its Domain or SameSite loosened when written. Fixed only in 3.16.0; no
+# 3.14.11 released (Docker Hub, checked the same day). Our use: the API
+# writes no cookie at all (nothing in app/, scripts/ or alembic/ calls
+# set_cookie or uses http.cookies; sign-in is a bearer token in a header,
+# and CORS refuses credentials, app/core/cors.py).
+#
 # Remove each entry when a 3.14 release carries its fix.
 ignore:
   - vulnerability: CVE-2025-15367
@@ -104,3 +113,6 @@ ignore:
   - vulnerability: CVE-2026-19552
     package: { name: python, version: 3.14.10, type: binary }
     reason: "ssl.get_server_certificate skips the name check; never called, redis OCSP never enabled (D-197)."
+  - vulnerability: CVE-2026-16052
+    package: { name: python, version: 3.14.10, type: binary }
+    reason: "http.cookies.Morsel keeps semicolons in attribute values; the API writes no cookies (D-199)."
