@@ -175,4 +175,5 @@ NOT_PERSONAL: dict[str, str] = {
     "campaign_embedding": "Numbers worked out from a campaign's brief, not a person",
     "deal_record_checkpoint": "One fingerprint a day over every deal, and a count",
     "deal_record_timestamp": "Timestamp authorities' signatures over a checkpoint",
+    "city_rate_report": "A quarter's figures across many creators, naming nobody",
 }
