@@ -2503,3 +2503,15 @@ Newest entries at the bottom.
 - Consequences / follow-ups:
   1. Each entry names version 3.14.10, so any Python change brings all four back to be judged again; remove each when a 3.14 release carries its fix.
   2. The readings are of the code, not tests; a new use of `http.cookiejar` cookies, `imaplib`, the archive command lines or `ssl.get_server_certificate` voids its entry.
+
+## D-199: Python 3.14.10's CVE-2026-16052 accepted in the image scan: the API writes no cookies
+- Date: 2026-11-19
+- Approved by: Adhi, in this session, choosing A after seeing the reason checked against the code, then allowing the edit ("allow"). **Not reviewed by the other founder** (D-051).
+- Context: on 19 November 2026 the `image` job's Grype gate (D-064) failed on `feature/outside-call-limits` (027d619) and then on every branch, on CVE-2026-16052 (Low; NVD published 12 November, modified 17 November): `http.cookies.Morsel` allows semicolons in attribute values and writes them verbatim, so a caller who controls those values could loosen a cookie's Domain or SameSite. Grype lists it as fixed only in 3.16.0; no 3.14.11 is released (Docker Hub's python tags, checked the same day). With `main` protected and the `image` job required, it blocks every merge.
+- Options considered: A) accept it in `.grype.yaml`, pinned to 3.14.10 with its reason, as D-149, D-159, D-190 and D-197 did; B) leave CI red until a 3.14 release carries the fix.
+- Chosen: A.
+- Reason: the flaw is in writing a cookie, and the API writes none: `git grep` for `set_cookie`, `Set-Cookie`, `http.cookies`, `Morsel` and `SimpleCookie` over `app/`, `scripts/` and `alembic/` finds nothing (19 November 2026); sign-in is a bearer token in the `Authorization` header and CORS refuses credentials (`app/core/cors.py`). That is a reading of the code, not a test.
+- Consequences / follow-ups:
+  1. The entry names version 3.14.10, so any Python change brings it back to be judged; remove it when a 3.14 release carries the fix.
+  2. Any cookie the API ever sets voids this entry and is judged first.
+  3. Proven by CI's `image` job on this branch passing the Grype gate with the entry, having failed without it on 027d619.
