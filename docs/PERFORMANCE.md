@@ -7,7 +7,7 @@ is where they live.
 **Budgets** (`docs/standards/backend.md` section 6): p95 ≤ 300 ms for reads,
 ≤ 500 ms for writes, on seeded local data.
 
-**Last measured: 12 November 2026, D-184 with `main` merged in** (section "Added 12 November: the deal domain's locks, measured again on a quiet database" below): 86 timings, 85 within budget, the one over the export job. On 11 November after D-184 (section "Added 11 November: the deal domain's locks" below): 84 timings, 83 within budget, on a machine loaded by another job's test run. Earlier the same day (section "Every route, 11 November" below): 83 timings, all 83 within budget. Before that, 6 November: 73 timings, 71 within budget. Before that, per section as dated:
+**Last measured: 20 November 2026, item 84 (D-200)** (section "Added 20 November: the quarterly city rate report" below): 98 timings, all 98 within budget. Before that, **12 November 2026, D-184 with `main` merged in** (section "Added 12 November: the deal domain's locks, measured again on a quiet database" below): 86 timings, 85 within budget, the one over the export job. On 11 November after D-184 (section "Added 11 November: the deal domain's locks" below): 84 timings, 83 within budget, on a machine loaded by another job's test run. Earlier the same day (section "Every route, 11 November" below): 83 timings, all 83 within budget. Before that, 6 November: 73 timings, 71 within budget. Before that, per section as dated:
 30 September 2026 for creator search and reports (next
 section); 26 September 2026 for everything else, on PostgreSQL 18.6 with pgvector 0.8.6
 (D-049), seeded with 10 brands, 200 creators, 150 campaigns, 785
@@ -15,6 +15,20 @@ applications and 958 rate card packages. 100 runs per read. For writes: 30
 whole deals, 5 bank bulk transfers of 25 rows, and 30 rounds of rate card
 edits. All from one run, on a developer laptop under Docker Desktop for
 Windows.
+
+## Added 20 November: the quarterly city rate report (item 84, D-200)
+
+On `feature/city-rate-report`, `scripts/measure_performance.py --runs 50` (30 whole deals for the writes), against a database of its own on the same server (`nc_item84`, freshly migrated and seeded: 150 campaigns, 785 applications, 200 creators, 958 packages). The report is built 30 times over every seeded creator with agreed fees switched on (the heavier build), published, read and withdrawn, all inside the writes' rolled-back transaction. **98 timings, all 98 within budget**; the export job, over its budget on 12 November, measured 480.2 ms p95 this run.
+
+| Route | p50 ms | p95 ms | max ms | Budget |
+|---|---|---|---|---|
+| `GET /rate-reports/{quarter}` | 11.0 | 15.2 | 17.4 | 300 |
+| `GET /rate-reports` | 22.1 | 30.9 | 32.8 | 300 |
+| `POST /admin/rate-reports/{quarter}/publish` | 17.6 | 22.0 | 31.0 | 500 |
+| `POST /admin/rate-reports/{quarter}/withdraw` | 18.4 | 23.2 | 60.5 | 500 |
+| The daily job's build of one report (four queries) | 16.6 | 29.5 | 34.3 | 30,000 (a job's run) |
+
+A report read is one query by its unique quarter (`test_a_report_read_costs_one_query`); the archive costs the same queries however many reports (`test_the_archive_costs_the_same_queries_however_long`); the build is four queries for one city or three (`test_the_build_costs_the_same_queries_for_one_city_or_three`). The seeded data has few cities with five published creators, so the build's time at 20 cities is not measured; its query count does not grow with them.
 
 ## Added 12 November: the deal domain's locks, measured again on a quiet database (D-184)
 

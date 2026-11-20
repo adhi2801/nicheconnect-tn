@@ -1,0 +1,62 @@
+# How the quarterly city rate report is made (method version 1)
+
+**For:** anyone reading, quoting or checking a NicheConnect TN quarterly city rate report: creators pricing work, brands budgeting, journalists, and anyone who wants to know exactly what a figure means. **Method version 1**, in force from 20 November 2026 (item 84, D-200). Every report says which version made it (`method_version`); a change to anything below is a new version, and a report already published never changes.
+
+This page is the plain-English twin of the code: `app/modules/insights/rate_report_rules.py` (the floors and the rounding), `app/modules/insights/rate_report_figures.py` (which facts are counted) and `app/modules/insights/asking_prices.py` (which asking prices count, shared with city figures and fair-rate guidance).
+
+---
+
+## 1. What a report covers
+
+- **One closed quarter** of the Tamil Nadu calendar, written `YYYY-Qn`: Q1 is 1 January to 31 March, Q2 April to June, Q3 July to September, Q4 October to December. A quarter runs from midnight at its start in Tamil Nadu to midnight at its end.
+- **Built once**, on the first morning (06:00 Tamil Nadu time) after the quarter ends, and never rebuilt. `as_of` is the day it was built.
+- **Published by a person.** A report starts unpublished; an admin reads it and publishes it. From then on the database refuses any change to it. If a report is found wrong, it is **withdrawn**, with the reason shown to everyone who asks for it, and never quietly edited.
+
+## 2. What creators ask (asking prices)
+
+- **Only published rate cards**, by creators who chose to show their prices to anyone; only active accounts (a suspended account's prices never count); rupees only.
+- **By city, platform and format**, for every city with at least five creators who published their Passport. A city is matched however people spell its capitals or spaces, and shown as most of its creators spell it.
+- **Statewide by audience band**: the creator's own channel on that platform decides the band (under 10k, 10k to 50k, 50k to 100k, 100k to 500k, 500k and over). Follower counts are what creators stated, with the date they stated them; we did not check them. `audience_figures_from` is the oldest such date behind a band.
+- **Each creator counts once.** A creator's packages for one platform and format are reduced to their own median first, so one creator with five Reel packages counts as one voice.
+- **A cell shows its lower quarter, median and upper quarter only when at least 5 creators are behind it.** Never a minimum or a maximum: each of those is one person's price.
+
+Asking prices are the published rate cards **on the day the report was built**. Rate cards are edited in place, with no history, so a past quarter's asking prices cannot be worked out again later; that is why the report is a stored snapshot.
+
+## 3. What was agreed (agreed fees)
+
+**Switched off today** (`RATE_REPORT_AGREED_FEES`, D-200 Decision 1). Every report built while it is off says `agreed_fees_included: false`, and every city's `agreed_fees` is null. It stays off until a lawyer answers the questions in section 6 and a founder amends D-078, which says no public figure is built from a deal. Switching it on changes no report already built.
+
+When it is on:
+
+- **Which deals count:** a deal memo accepted inside the quarter and still accepted when the report is built (never cancelled), in rupees, with **exactly one deliverable, of quantity 1**, so its fee is for one piece of work on one platform in one format. Both sides' accounts must be active. The city is the creator's.
+- **Barter deals** (goods, not money) count towards the cell's number of deals and are shown as a share (`barter_share_percent`), never as a price.
+- **A cell is shown only when:** at least **5 deals**, from at least **5 different creators** and **3 different brands**, with **no single brand behind more than half** of them. Below that, every figure in the cell is null.
+- **The fee figures** need the same of the paid deals alone. Each creator's own median fee comes first, so one creator with many deals counts once. Below **10 creators** a cell shows the **median only**; from 10, the lower and upper quarters too.
+
+## 4. Why these floors (Decision 2, option A)
+
+- **Five creators** is the floor city figures and fair-rate guidance already use (D-056, D-078), so the three never disagree about what is enough to say.
+- **Counts of one or two people are disclosive**, and hiding small cells does not stop someone working a figure out by subtracting one table from another (UK Government Statistical Service, "Statistical disclosure control for tables produced from administrative data", 19 August 2026). The quarterly freeze helps here: a figure that changes live lets someone watch one price move; a frozen one does not.
+- **The three-brand and no-brand-over-half rules** follow the "dominance" rules statistics offices apply to tables of money, where one large contributor can otherwise be read off a total (the (n, k) and p% rules, as cited from the *Handbook on Statistical Disclosure Control*, 2nd edition, 2025; seen through a secondary source, not read in full).
+- **Any fixed floor can be met with fake accounts** (Kenthapadi and Tran, PriPeARL, CIKM 2018: "the attacker can create k−1 or more fake accounts"). For asking prices the harm is small, since a published rate card is already public. For agreed fees the attack needs three brands and five accepted deals, under the dominance rule.
+- **We add no noise.** Our figures are facts from the record (`docs/standards/legal.md` section 1, rule 4); a noisy figure would not be.
+
+## 5. Rounding, nulls and the fingerprint
+
+- **Every figure is rounded to the nearest ₹100** (half up), in paise in the data (`10000` paise is ₹100), so a published figure is not one person's exact price.
+- **Null means "not enough to say"**, never zero. A screen must draw it as "not enough to say".
+- **`body_sha256`** is the SHA-256 of the report's `body` written as canonical JSON: keys sorted, no spaces, plain ASCII, with JSON's own `\uXXXX` escape for any other letter (Python's `json.dumps(body, sort_keys=True, separators=(",", ":"))`). Anyone holding a copy can recompute it and compare.
+
+## 6. Open questions (constraint 6: asked, never guessed)
+
+These wait on the lawyer, through the validation pack (`docs/standards/legal.md` section 3.1):
+
+1. Whether an aggregate held to these floors is personal data under the DPDP Act.
+2. Whether counting agreed fees, even anonymously, needs a notice, consent or a term in the deal memo.
+3. Whether a creator who later unpublishes or deletes their account must leave a past quarter's figures.
+
+## 7. Versions
+
+| Version | From | What changed |
+|---|---|---|
+| 1 | 20 November 2026 | First version (D-200) |

@@ -60,11 +60,15 @@ from app.modules.auth.tokens import (
 )
 from app.modules.campaigns.models import Campaign
 from app.modules.deal_memo import proof_cleaning_service
+from app.modules.insights import rate_report_service
+from app.modules.insights.rate_report_models import CityRateReport
 from app.modules.me import data_export_service, phone_change_service
 from app.modules.payment_status.service import MAX_BULK_MARK_PAID
 
 READ_BUDGET_MS = 300
 WRITE_BUDGET_MS = 500
+# A background job's run, not a request (the rate report's build, item 84).
+JOB_BUDGET_MS = 30_000
 
 # Queries behind the list endpoints, checked with EXPLAIN to confirm the
 # indexes are used (database.md section 5).
@@ -736,6 +740,52 @@ def measure_writes(
                 {"note": "Measured, then rolled back."},
             )
 
+        # The quarterly city rate report (item 84, D-200): built over every
+        # seeded creator, agreed fees included (the heavier build), then
+        # published, read as the public reads it, and withdrawn, `deals`
+        # times; rolled back with the rest. The build is the job's work, not
+        # a request, so it is held to the job's 30-second budget.
+        for round_number in range(deals):
+            quarter = f"{1000 + round_number}-Q1"
+            started = time.perf_counter()
+            body = rate_report_service.build_body(
+                db, quarter, now, agreed_fees=True
+            ).model_dump(mode="json")
+            db.add(
+                CityRateReport(
+                    quarter=quarter,
+                    method_version=1,
+                    body=body,
+                    body_sha256=rate_report_service.fingerprint(body),
+                    built_at=now,
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+            db.flush()
+            timings["JOB build the rate report"].append(
+                (time.perf_counter() - started) * 1000
+            )
+            write(
+                "POST /admin/rate-reports/{quarter}/publish",
+                f"/api/v1/admin/rate-reports/{quarter}/publish",
+                admin_headers,
+            )
+            write(
+                "GET /rate-reports/{quarter}",
+                f"/api/v1/rate-reports/{quarter}",
+                {},
+                method="GET",
+            )
+            write("GET /rate-reports", "/api/v1/rate-reports", {}, method="GET")
+        for round_number in range(deals):
+            write(
+                "POST /admin/rate-reports/{quarter}/withdraw",
+                f"/api/v1/admin/rate-reports/{1000 + round_number}-Q1/withdraw",
+                admin_headers,
+                {"reason": "Measured, then rolled back."},
+            )
+
         # The second check (item 82). The phone's caps, like the limiter,
         # are not what is measured, so they are lifted for the run; the
         # code is read from a fake sender, as in the tests.
@@ -948,12 +998,12 @@ def measure_writes(
         outer.rollback()
         connection.close()
 
-    return [
-        summarise(
-            name, values, READ_BUDGET_MS if name.startswith("GET ") else WRITE_BUDGET_MS
-        )
-        for name, values in timings.items()
-    ]
+    def budget(name: str) -> int:
+        if name.startswith("JOB "):
+            return JOB_BUDGET_MS
+        return READ_BUDGET_MS if name.startswith("GET ") else WRITE_BUDGET_MS
+
+    return [summarise(name, values, budget(name)) for name, values in timings.items()]
 
 
 def main() -> int:

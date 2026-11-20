@@ -93,6 +93,7 @@ Dated reports, the decision log and the papers in `decided/` are records: they k
 | `../infra/README.md` | How the AWS setup is created and run |
 | `../README.md` | What Colyv is, for a reader outside the team, and how to run it |
 | `../SECURITY.md` | How a researcher reports a vulnerability, and what we promise them |
+| `RATE_REPORT_METHOD.md` | How the free quarterly city rate report is made, in plain English: what counts, the floors, the rounding, the fingerprint, and what waits on the lawyer (item 84, D-200); changed with the report's rules, as a new method version |
 | `RANKING_EXPLAINED.md` | The public page's text: what moves a person or campaign up each list we rank, most important first (`standards/legal.md` section 3.4); changed with the ranking code |
 
 ## Keeping this true
