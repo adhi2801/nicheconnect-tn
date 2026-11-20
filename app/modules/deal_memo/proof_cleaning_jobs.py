@@ -17,6 +17,8 @@ from typing import Any
 
 from dbos import DBOS, ScheduleInput
 
+from app.core.deadline import Deadline
+from app.core.job_runs import EVERY_MINUTE_BUDGET_SECONDS, run_alone
 from app.core.storage import get_file_store
 from app.db.session import SessionLocal
 from app.modules.deal_memo import proof_cleaning_service
@@ -25,17 +27,28 @@ EVERY_MINUTE_CRON = "* * * * *"
 SCHEDULE_NAME = "proof-files-clean"
 
 
-def run_cleaning(scheduled_at: datetime) -> proof_cleaning_service.CleaningRun:
-    """The work itself, callable without DBOS (tests, and a manual rerun)."""
+def run_cleaning(
+    scheduled_at: datetime, budget: Deadline | None = None
+) -> proof_cleaning_service.CleaningRun:
+    """The work itself, callable without DBOS (tests, and a manual rerun).
+
+    No budget unless one is given: the scheduled step gives its own.
+    """
     with SessionLocal() as db:
-        return proof_cleaning_service.clean_attached(db, get_file_store(), scheduled_at)
+        return proof_cleaning_service.clean_attached(
+            db, get_file_store(), scheduled_at, budget=budget
+        )
 
 
 @DBOS.step(name="proof_files.clean_attached")
 def cleaning_step(scheduled_at: datetime) -> None:
     # One step: each file is its own transaction and a cleaned file is never
     # queued again, so a crash halfway is safely redone from where it stopped.
-    run_cleaning(scheduled_at)
+    # One run at a time per schedule (item 118, D-186).
+    run_alone(
+        SCHEDULE_NAME,
+        lambda: run_cleaning(scheduled_at, Deadline(EVERY_MINUTE_BUDGET_SECONDS)),
+    )
 
 
 @DBOS.workflow(name="proof_files.clean")

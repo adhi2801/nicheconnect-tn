@@ -29,6 +29,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.deadline import Deadline
+from app.core.job_runs import within_budget
 from app.modules.profiles import connection_secrets as vault
 from app.modules.profiles import platform_clients
 from app.modules.profiles.connection_models import ConnectedAccount
@@ -68,9 +70,23 @@ def needs_renewal(connection: ConnectedAccount, now: datetime) -> bool:
 
 
 def refresh_all(
-    session_factory: SessionFactory, now: datetime, on_expired: OnExpired
+    session_factory: SessionFactory,
+    now: datetime,
+    on_expired: OnExpired,
+    *,
+    budget: Deadline | None = None,
 ) -> RefreshRun:
-    """One run of the job: every active connection, each in its own transactions."""
+    """One run of the job: every active connection, each in its own transactions.
+
+    Once `budget` is spent no further connection is started (item 118,
+    D-186); the rest are read at the next run. So that a run cut short never
+    leaves the same connections out day after day, they are read longest
+    unread first: those this job has never read (`updated_at` still the
+    moment they were connected), then by when each was last read, since a
+    read is the only change this job or anyone makes to an active
+    connection's `updated_at` after connecting. A connection left unread is
+    therefore first in line the next day.
+    """
     if not settings.platform_connections_enabled:
         return RefreshRun(read=0, expired=0, unavailable=0, skipped=0)
     with session_factory() as db:
@@ -78,10 +94,17 @@ def refresh_all(
             db.scalars(
                 select(ConnectedAccount.id)
                 .where(ConnectedAccount.status == "active")
-                .order_by(ConnectedAccount.id)
+                .order_by(
+                    ConnectedAccount.updated_at > ConnectedAccount.connected_at,
+                    ConnectedAccount.updated_at,
+                    ConnectedAccount.id,
+                )
             ).all()
         )
-    outcomes = [refresh_one(session_factory, i, now, on_expired) for i in ids]
+    outcomes = [
+        refresh_one(session_factory, i, now, on_expired)
+        for i in within_budget(ids, budget, "connections.refresh")
+    ]
     run = RefreshRun(
         read=outcomes.count("read"),
         expired=outcomes.count("expired"),

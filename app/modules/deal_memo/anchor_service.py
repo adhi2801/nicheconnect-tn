@@ -26,6 +26,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.clock import IST, india_date
+from app.core.deadline import Deadline
+from app.core.job_runs import within_budget
 from app.modules.deal_memo import merkle
 from app.modules.deal_memo.anchor_models import DealRecordCheckpoint, DealRecordTimestamp
 from app.modules.deal_memo.exceptions import RecordDoesNotMatchCheckpoint
@@ -142,12 +144,22 @@ class DailyRun:
     stamped: dict[date, list[str]]
 
 
-def run_daily(db: Session, now: datetime, authorities: Sequence[Authority]) -> DailyRun:
-    """Today's checkpoint, and any missing stamps from the last few days."""
+def run_daily(
+    db: Session,
+    now: datetime,
+    authorities: Sequence[Authority],
+    *,
+    budget: Deadline | None = None,
+) -> DailyRun:
+    """Today's checkpoint, and any missing stamps from the last few days.
+
+    The checkpoint is always made; once `budget` is spent no further day is
+    stamped (item 118, D-186), and the next day's run asks again.
+    """
     today = india_date(now)
     checkpoint = create_checkpoint(db, today)
     stamped: dict[date, list[str]] = {}
-    for back in range(RESTAMP_DAYS, -1, -1):
+    for back in within_budget(range(RESTAMP_DAYS, -1, -1), budget, "deal_record.stamp"):
         day = today - timedelta(days=back)
         row = checkpoint if back == 0 else checkpoint_for(db, day)
         if row is not None:
