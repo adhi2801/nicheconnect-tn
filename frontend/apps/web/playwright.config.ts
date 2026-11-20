@@ -10,7 +10,8 @@ export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
   workers: 1,
-  retries: process.env.CI ? 1 : 0,
+  // No reruns: a test that fails once is a failure (testing.md section 0, Google's flaky-test practice).
+  retries: 0,
   reporter: [["list"]],
   use: { baseURL: `http://localhost:${WEB}`, channel: "chrome", trace: "retain-on-failure", extraHTTPHeaders: { "x-forwarded-for": "203.0.113.7" } },
   webServer: [

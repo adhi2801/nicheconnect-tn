@@ -303,6 +303,12 @@
         "bg": "ground",
         "min": 3,
         "ratio": 7.7
+      },
+      {
+        "fg": "accent-soft",
+        "bg": "ink",
+        "min": 7,
+        "ratio": 15.15
       }
     ],
     "light/green": [
@@ -473,6 +479,12 @@
         "bg": "ground",
         "min": 3,
         "ratio": 7.7
+      },
+      {
+        "fg": "accent-soft",
+        "bg": "ink",
+        "min": 7,
+        "ratio": 15.4
       }
     ],
     "dark/burgundy": [
@@ -643,6 +655,12 @@
         "bg": "ground",
         "min": 3,
         "ratio": 9.48
+      },
+      {
+        "fg": "accent-soft",
+        "bg": "ink",
+        "min": 7,
+        "ratio": 13.1
       }
     ],
     "dark/green": [
@@ -813,6 +831,12 @@
         "bg": "ground",
         "min": 3,
         "ratio": 9.48
+      },
+      {
+        "fg": "accent-soft",
+        "bg": "ink",
+        "min": 7,
+        "ratio": 12.66
       }
     ]
   }
