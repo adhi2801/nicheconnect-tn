@@ -7,7 +7,7 @@
 ## How a row is read
 
 - **Kind.** *living*: kept true, held to all nine points of the bar. *record*: the decision log, dated reports, papers in `docs/decided/` and assignments; they keep what was true when written and need only a status line saying what became of them. *generated*: a tool's output, exempt, with the reason.
-- **Status.** *passed* only after the file was read against the code by the independent review (D-139, D-193) and every finding fixed; the evidence names the commit and the review. *not yet* is every file today: the bar was raised in passes (D-098, D-139, the world-bar pass of 6 November), but no file was ever recorded as checked, point by point, against the code.
+- **Status.** *passed* only after the file was read against the code by the independent review (D-139, D-193) and every finding fixed; the evidence names the commit and the review. *not yet* is every file today: the bar was raised in passes (D-098, D-139, the world-bar pass of 6 November), but until 18 November 2026 no file was recorded here as checked, point by point, against the code. The six standards of batch 1 have been checked since, their rows say so, and each waits on its independent review before it can pass.
 - **What the machine found on 15 November 2026:** of the 65 living documents besides this one, 5 say "Checked against the code on <date>" in their first lines; 60 do not, so point 1 of the bar fails for them before anything is read.
 
 ## The order of the batches
@@ -110,14 +110,14 @@
 | `docs/research/TAMIL_DESIGN_ROOTS.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
 | `docs/research/TYPOGRAPHY_2026.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
 | `docs/research/UI_STYLES_2026.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
-| `docs/standards/backend.md` | living | not yet | | checked against the code 18 November 2026, review owed |
-| `docs/standards/database.md` | living | not yet | | checked against the code 18 November 2026, review owed |
+| `docs/standards/backend.md` | living | not yet | | checked against the code 18 November 2026; the review of 19 November found faults, fixed on `docs/standards-batch1-check`, re-review owed |
+| `docs/standards/database.md` | living | not yet | | checked against the code 18 November 2026; the review of 19 November found faults, fixed on `docs/standards-batch1-check`, re-review owed |
 | `docs/standards/frontend.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
-| `docs/standards/legal.md` | living | not yet | | checked against the code 19 November 2026, review owed |
-| `docs/standards/security.md` | living | not yet | | checked against the code 19 November 2026, review owed |
+| `docs/standards/legal.md` | living | not yet | | checked against the code 19 November 2026; the review of 19 November found faults, fixed on `docs/standards-batch1-check`, re-review owed |
+| `docs/standards/security.md` | living | not yet | | checked against the code 19 November 2026; the review of 19 November found faults, fixed on `docs/standards-batch1-check`, re-review owed |
 | `docs/standards/testing.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
-| `docs/standards/trust-and-safety.md` | living | not yet | | checked against the code 19 November 2026, review owed |
-| `docs/standards/ux.md` | living | not yet | | checked against the code 19 November 2026, review owed |
+| `docs/standards/trust-and-safety.md` | living | not yet | | checked against the code 19 November 2026; the review of 19 November found faults, fixed on `docs/standards-batch1-check`, re-review owed |
+| `docs/standards/ux.md` | living | not yet | | checked against the code 19 November 2026; the review of 19 November found faults, fixed on `docs/standards-batch1-check`, re-review owed |
 | `frontend/3d/temple/README.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
 | `frontend/README.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
 | `frontend/apps/mobile/README.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
