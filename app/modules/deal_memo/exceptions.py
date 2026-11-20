@@ -250,3 +250,108 @@ class DraftNotApproved(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "draft_not_approved"
     title = "Show the brand a draft and have it approved before submitting proof"
+
+
+# --- direct offers (D-189) ----------------------------------------------------
+
+
+class DirectOffersOff(DomainError):
+    # Off until the validation pack gives the link page's and the code
+    # message's notice wording (constraint 6), and `DIRECT_OFFERS_ENABLED`.
+    status_code = HTTPStatus.SERVICE_UNAVAILABLE
+    code = "direct_offers_unavailable"
+    title = "Direct offers are not available yet"
+
+
+class DirectOfferNotFound(DomainError):
+    # An unknown link, someone else's offer, or an offer from a creator who
+    # is suspended or left: all alike, so nothing is confirmed to exist.
+    status_code = HTTPStatus.NOT_FOUND
+    code = "direct_offer_not_found"
+    title = "That offer does not exist"
+
+
+class DirectOfferExpired(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "direct_offer_expired"
+    title = "This offer's 14 days have run out. Ask the creator to send it again"
+
+
+class DirectOfferWithdrawn(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "direct_offer_withdrawn"
+    title = "The creator withdrew this offer"
+
+
+class DirectOfferStopped(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "direct_offer_stopped"
+    title = "This number asked to receive no more offers from this creator"
+
+
+class DirectOfferAlreadyAccepted(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "direct_offer_already_accepted"
+    title = "This offer has already been accepted. Sign in to see the deal"
+
+
+class DirectOfferTermsMismatch(DomainError):
+    # The brand accepts the exact terms it was shown (their fingerprint), or
+    # none: the creator cannot change an offer, only withdraw it.
+    status_code = HTTPStatus.CONFLICT
+    code = "direct_offer_terms_mismatch"
+    title = "These are not the terms of this offer. Open the link again"
+
+
+class DirectOfferDailyLimit(DomainError):
+    # A Tamil Nadu day's ceiling, counted in the database (D-189).
+    status_code = HTTPStatus.TOO_MANY_REQUESTS
+    code = "direct_offer_daily_limit"
+    title = "You have sent 10 direct offers today. Try again tomorrow"
+
+
+class DirectOfferNumberLimit(DomainError):
+    # Any 7 days' ceiling on one number, from everyone (D-189).
+    status_code = HTTPStatus.TOO_MANY_REQUESTS
+    code = "direct_offer_number_limit"
+    title = "This number has received 10 direct offers this week. Try again later"
+
+
+class DirectOfferCreatorNumberLimit(DomainError):
+    # Any 7 days' ceiling from one creator to one number (D-189).
+    status_code = HTTPStatus.TOO_MANY_REQUESTS
+    code = "direct_offer_creator_number_limit"
+    title = "You have sent this number 3 direct offers this week. Try again later"
+
+
+class DirectOfferStoppedByRecipient(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "direct_offer_stopped_by_recipient"
+    title = "This number asked to receive no more offers from you"
+
+
+class DirectOfferOwnNumber(DomainError):
+    # One person's two sides never deal with each other (D-126).
+    status_code = HTTPStatus.CONFLICT
+    code = "direct_offer_own_number"
+    title = "That is your own number. Send the offer to the brand's"
+
+
+class DueDateTooFar(DomainError):
+    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
+    code = "due_date_too_far"
+    title = "The due date is more than a year away"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.errors = [
+            {"field": "content_due_on", "message": "At most a year from today"}
+        ]
+
+
+class BrandAccountExists(DomainError):
+    # Said only after the number's own code was right, so only its holder
+    # learns that the number has a brand account.
+    status_code = HTTPStatus.CONFLICT
+    code = "brand_account_exists"
+    title = "This number already has a brand account, so it cannot accept a direct offer"

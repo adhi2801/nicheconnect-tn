@@ -938,6 +938,7 @@ def measure_writes(
                     {"budget_max_paise": 1_500_000 + round_number},
                     method="PATCH",
                 )
+            measure_direct_offers(db, write, sender, deals, now)
         finally:
             login.OTP_SEND_LIMITS = caps
             settings.upi_notice_version = notice
@@ -954,6 +955,109 @@ def measure_writes(
         )
         for name, values in timings.items()
     ]
+
+
+def measure_direct_offers(
+    db: Session, write, sender: FakeOtpSender, deals: int, now: datetime
+) -> None:
+    """Direct offers (D-189), `deals` rounds, rolled back with the rest.
+
+    Each round: a seeded creator sends three offers to new numbers and reads
+    its list and one offer; the first link is opened, its code asked for and
+    the offer accepted, making a brand and a deal in one transaction; the
+    second is withdrawn, the third stopped at its link. Then the hourly job,
+    once. The switch is turned on, the link page's placeholder replaced by
+    marked measuring text and a measuring name given for the code's template
+    (the fake sender sends nothing), for this run only: nothing here is
+    notice wording.
+    """
+    from app.modules.deal_memo import direct_offer_notices as notices
+    from app.modules.deal_memo import direct_offer_service
+
+    saved = (
+        settings.direct_offers_enabled,
+        notices.LINK_PAGE_NOTICE,
+        settings.msg91_direct_offer_template,
+    )
+    settings.direct_offers_enabled = True
+    notices.LINK_PAGE_NOTICE = "Measuring text, not a notice."
+    settings.msg91_direct_offer_template = "measuring_only"
+    try:
+        # Ten offers a Tamil Nadu day per creator: three a round, so a
+        # seeded creator for each three rounds.
+        creators = list(db.scalars(select(Creator.account_id).limit(deals // 3 + 1)))
+        offers = "/api/v1/direct-offers"
+        link = "/api/v1/direct-offer-link"
+        due_on = (now + timedelta(days=30)).date().isoformat()
+        for round_number in range(deals):
+            token, _ = create_access_token(creators[round_number // 3], "creator", now)
+            headers = {"Authorization": f"Bearer {token}"}
+            sent = []
+            for _ in range(3):
+                phone = f"+9193{uuid.uuid4().int % 10**8:08d}"
+                body = write(
+                    "POST /direct-offers",
+                    offers,
+                    headers,
+                    {
+                        "brand_name": "Measured Sweets",
+                        "brand_phone": phone,
+                        "deliverables": "2 Instagram reels, measured then rolled back",
+                        "deliverable_items": [
+                            {"platform": "instagram", "format": "reel", "quantity": 2}
+                        ],
+                        "fee_amount_paise": 900_000,
+                        "content_due_on": due_on,
+                    },
+                )
+                sent.append((body, phone))
+            write("GET /direct-offers", offers, headers, method="GET")
+            write(
+                "GET /direct-offers/{id}",
+                f"{offers}/{sent[0][0]['id']}",
+                headers,
+                method="GET",
+            )
+            (first, phone), (second, _), (third, _) = sent
+            held = {"Offer-Token": first["link_token"]}
+            write("GET /direct-offer-link", link, held, method="GET")
+            write(
+                "POST /auth/direct-offer-link/code",
+                "/api/v1/auth/direct-offer-link/code",
+                held,
+            )
+            write(
+                "POST /auth/direct-offer-link/accept",
+                "/api/v1/auth/direct-offer-link/accept",
+                held,
+                {
+                    "brand_name": "Measured Sweets",
+                    "email": f"measured-{uuid.uuid4().hex[:12]}@example.com",
+                    "date_of_birth": "1990-04-14",
+                    "code": sender.last_code_for(phone) or "",
+                    "terms_sha256": first["terms_sha256"],
+                },
+            )
+            write(
+                "POST /direct-offers/{id}/withdraw",
+                f"{offers}/{second['id']}/withdraw",
+                headers,
+            )
+            write(
+                "POST /direct-offer-link/stop",
+                f"{link}/stop",
+                {"Offer-Token": third["link_token"]},
+            )
+        started = time.perf_counter()
+        direct_offer_service.expire_and_erase(db, now + timedelta(days=45))
+        write_timing = (time.perf_counter() - started) * 1000
+        print(f"  job: direct offers expired and erased, one run: {write_timing:.1f} ms")
+    finally:
+        (
+            settings.direct_offers_enabled,
+            notices.LINK_PAGE_NOTICE,
+            settings.msg91_direct_offer_template,
+        ) = saved
 
 
 def main() -> int:

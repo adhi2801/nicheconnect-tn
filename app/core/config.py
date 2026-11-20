@@ -150,6 +150,14 @@ class Settings(BaseSettings):
     msg91_whatsapp_number: str | None = None
     msg91_otp_template: str = "login_code"
     msg91_template_language: str = Field(default="en", pattern=r"^[a-z]{2}(_[A-Z]{2})?$")
+    # The WhatsApp template that carries a direct offer's code (D-189), its
+    # words the validation pack's notice for that message (constraint 6),
+    # registered with MSG91 under this name. Unset, direct offers stay off
+    # whatever DIRECT_OFFERS_ENABLED says: the code never goes out on the
+    # login template, which says nothing about the offer.
+    msg91_direct_offer_template: str | None = Field(
+        default=None, pattern=r"^[a-z0-9_]{1,512}$"
+    )
     # Proof files (D-065): the private bucket infra/ creates, and its region.
     # Unset in local and test, which use the in-memory store instead.
     uploads_bucket: str | None = Field(
@@ -225,6 +233,12 @@ class Settings(BaseSettings):
     # until the publish notice says search engines will show the Passport
     # (legal.md section 3.1, a Confirm item).
     passport_indexing: bool = False
+    # Direct offers (D-189): a creator's memo to a brand not on the platform,
+    # accepted at a link with a code. Off until the validation pack gives the
+    # link page's and the code message's notice wording (constraint 6); while
+    # either is still a placeholder (`deal_memo.direct_offer_notices`), the
+    # feature stays off even with this on.
+    direct_offers_enabled: bool = False
     # Connected Instagram and YouTube accounts (item 29, D-134): numbers read
     # from the platform with the creator's consent. Off until Meta App Review
     # and Google's verification approve the apps, and the connect notice's
@@ -281,6 +295,7 @@ class Settings(BaseSettings):
         "retention_report_days",
         "retention_takedown_days",
         "retention_admin_log_days",
+        "msg91_direct_offer_template",
         mode="before",
     )
     @classmethod

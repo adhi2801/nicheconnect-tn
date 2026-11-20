@@ -107,6 +107,9 @@ KEPT: tuple[KeptKind, ...] = (
                 # sides keep a record of.
                 "quote_offer",
                 "deal_memo",
+                # Direct offers that became deals (D-189), their number and
+                # name already erased; those that never did are erased.
+                "direct_offer",
                 "deliverable_proof",
                 "deal_record_entry",
             }
@@ -114,7 +117,8 @@ KEPT: tuple[KeptKind, ...] = (
         setting="retention_deal_record_days",
         what=(
             "Your deals as the other side agreed them: campaigns, "
-            "applications and the offers on them, memos, proof links and the "
+            "applications and the offers on them, direct offers that became "
+            "deals, memos, proof links and the "
             "sealed record of each. "
             "The other side keeps their own record of the deal, with you "
             "shown as someone who left."

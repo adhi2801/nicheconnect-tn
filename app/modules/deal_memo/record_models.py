@@ -81,7 +81,19 @@ RECORD_KINDS: tuple[str, ...] = (
     "draft_changes_requested",
     # An image on a draft was cleaned, as a proof file is (item 27, piece 2).
     "draft_file_cleaned",
+    # A direct offer (D-189): the creator proposed these terms to a brand not
+    # yet on the platform (their fingerprint, dated when the offer was sent),
+    # and the brand accepted exactly them with a code sent to the number the
+    # creator named. A direct deal's record opens with the first.
+    "direct_offer_proposed",
+    "direct_offer_accepted",
 )
+# The entries that open a chain of their own; any other first entry is
+# preceded by `record_started`.
+OPENING_KINDS: frozenset[str] = frozenset({"memo_sent", "direct_offer_proposed"})
+# The entries that agree terms: the record checks the terms against the
+# latest of them.
+ACCEPTING_KINDS: frozenset[str] = frozenset({"memo_accepted", "direct_offer_accepted"})
 # "system" is us acting on the deal's own rules, such as approving work at the
 # end of the review window (D-025) or opening the payment record it causes.
 RECORD_ACTORS: tuple[str, ...] = ("brand", "creator", "system")

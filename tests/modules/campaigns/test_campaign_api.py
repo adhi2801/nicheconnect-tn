@@ -761,7 +761,14 @@ def test_a_closing_date_already_past_is_refused(client, db, clock, step):
         "draft",
         "2026-09-20",
     )
-    queued = db.scalar(select(func.count()).select_from(CampaignAlertSend))
+    # Counted for this brand's campaigns only (testing.md section 4): a row
+    # another test left committed must not change the count.
+    queued = db.scalar(
+        select(func.count())
+        .select_from(CampaignAlertSend)
+        .join(Campaign, Campaign.id == CampaignAlertSend.campaign_id)
+        .where(Campaign.brand_id == brand.id)
+    )
     assert queued == 0
 
 

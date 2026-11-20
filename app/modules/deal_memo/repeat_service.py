@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from app.modules.auth.models.brand import Brand
 from app.modules.campaigns import invitation_service as invitations
 from app.modules.campaigns.exceptions import CampaignNotFound
-from app.modules.campaigns.models import Application, Campaign
+from app.modules.campaigns.models import DIRECT_CAMPAIGN_TYPE, Application, Campaign
 from app.modules.deal_memo import service as deal_memos
 from app.modules.deal_memo.models import DealMemo
 
@@ -38,7 +38,12 @@ def repeat_deal(
     MemoStatusConflict, the fee errors, and everything invite_creator raises.
     """
     campaign = db.scalars(
-        select(Campaign).where(Campaign.id == campaign_id, Campaign.brand_id == brand.id)
+        select(Campaign).where(
+            Campaign.id == campaign_id,
+            Campaign.brand_id == brand.id,
+            # Never onto a direct offer's hidden campaign (D-189).
+            Campaign.campaign_type != DIRECT_CAMPAIGN_TYPE,
+        )
     ).first()
     if campaign is None:
         raise CampaignNotFound()

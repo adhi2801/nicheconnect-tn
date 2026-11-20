@@ -260,7 +260,7 @@ def verify_otp(
         db.rollback()
         raise PhoneChangeWaiting()
     if account is None and on_number:
-        _ensure_second_side_allowed(db, on_number)
+        ensure_second_side_allowed(db, on_number)
     if account is not None and account.suspended_at is not None:
         # The code is right, so the person is told; it stays unused (D-061).
         db.rollback()
@@ -287,14 +287,16 @@ def verify_otp(
     return replace(result, is_new_account=is_new_account)
 
 
-def _ensure_second_side_allowed(db: Session, on_number: list[Account]) -> None:
+def ensure_second_side_allowed(db: Session, on_number: list[Account]) -> None:
     """Refuse a second side on a number already in use, where it cannot be (D-126).
 
     An admin's number holds the admin alone, refused as a role mismatch was
     before, so nothing reveals who is an admin. A suspended side cannot be
     stepped round by starting the other. And a side waiting to move to a
     new number would carry the new account with it to the owner's number.
-    Raises RoleMismatch, AccountSuspended and PhoneChangeWaiting.
+    Public for the one other place that makes an account on a proven
+    number: accepting a direct offer (D-189). Raises RoleMismatch,
+    AccountSuspended and PhoneChangeWaiting.
     """
     if any(found.role not in sides.SIDES for found in on_number):
         db.rollback()

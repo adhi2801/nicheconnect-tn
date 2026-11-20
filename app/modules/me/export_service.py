@@ -42,6 +42,7 @@ from app.modules.campaigns import alert_service as campaign_alerts
 from app.modules.campaigns import brief_service as brief_drafts
 from app.modules.campaigns import offer_service as quote_offers
 from app.modules.campaigns import service as campaigns
+from app.modules.deal_memo import direct_offer_service as direct_offers
 from app.modules.deal_memo import draft_service as content_drafts
 from app.modules.deal_memo import feedback_service as deal_feedback
 from app.modules.deal_memo import note_service as deal_notes
@@ -483,6 +484,7 @@ def collect_sections(
         *brief_drafts.export_for_account(db, account.id),
         *deal_notes.export_for_account(db, account.id),
         *deal_memos.export_for_account(db, account.id),
+        *direct_offers.export_for_account(db, account.id),
         *shipments.export_for_account(db, account.id),
         *content_drafts.export_for_account(db, account.id),
         *deal_feedback.export_for_account(db, account.id, now),
@@ -565,6 +567,7 @@ def exported_tables() -> frozenset[str]:
         | brief_drafts.EXPORTED_TABLES
         | deal_notes.EXPORTED_TABLES
         | deal_memos.EXPORTED_TABLES
+        | direct_offers.EXPORTED_TABLES
         | shipments.EXPORTED_TABLES
         | content_drafts.EXPORTED_TABLES
         | deal_feedback.EXPORTED_TABLES

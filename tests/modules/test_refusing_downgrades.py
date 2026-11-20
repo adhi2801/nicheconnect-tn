@@ -1,7 +1,7 @@
 """Every downgrade that would destroy unrecoverable data refuses while it exists.
 
 database.md section 6: losing such data must be a deliberate act, never a
-side effect of a rollback. Thirty-two migrations refuse. Until 14 October 2026 each
+side effect of a rollback. Thirty-six migrations refuse. Until 14 October 2026 each
 refusal had been proven only by hand, in the session that wrote it
 (database.md gap 6, item 98); a later edit to one could have let a rollback
 drop a deal's record or a person's block without anyone noticing.
@@ -71,6 +71,7 @@ REFUSING = {
     "2d1e67a96a45": "images on drafts, and their sealed cleanings",
     "6de6ca38de81": "brand team memberships and invites, live or ended",
     "7ac9c63d532e": "notices telling creators a brand changed hands",
+    "35180212908a": "direct offers, their hidden campaigns and applications, sealed entries",
 }
 
 
@@ -761,3 +762,72 @@ def test_brand_changed_hands_notices(db, clock):
     db.flush()
 
     assert f"{before + 1} creators were told" in refusal(db, "7ac9c63d532e")
+
+
+DIRECT_OFFERS = "35180212908a"
+
+
+def test_direct_offers(db, clock):
+    from tests.modules.deal_memo.test_direct_offer_model import insert
+
+    creator = creator_user(db, clock)
+    creator_id = db.execute(
+        text("SELECT id FROM creator WHERE account_id = :a"), {"a": creator.account_id}
+    ).scalar_one()
+    before = count(db, "SELECT count(*) FROM direct_offer")
+    insert(db, creator_id)
+
+    assert f"{before + 1} direct offers" in refusal(db, DIRECT_OFFERS)
+
+
+def test_direct_campaigns_and_applications(db, clock):
+    from app.modules.campaigns.models import Application
+    from tests.factories import build_campaign
+
+    creator = creator_user(db, clock)
+    creator_id = db.execute(
+        text("SELECT id FROM creator WHERE account_id = :a"), {"a": creator.account_id}
+    ).scalar_one()
+    campaigns = count(db, "SELECT count(*) FROM campaign WHERE campaign_type = 'direct'")
+    applications = count(db, "SELECT count(*) FROM application WHERE origin = 'direct'")
+    campaign = build_campaign(
+        db,
+        campaign_type="direct",
+        status="closed",
+        budget_min_paise=None,
+        budget_max_paise=None,
+    )
+    db.add(campaign)
+    db.flush()
+    db.add(
+        Application(
+            campaign_id=campaign.id,
+            creator_id=creator_id,
+            origin="direct",
+            status="accepted",
+            status_changed_at=clock.now,
+            created_at=clock.now,
+            updated_at=clock.now,
+        )
+    )
+    db.flush()
+
+    refused = refusal(db, DIRECT_OFFERS)
+    assert f"{campaigns + 1} direct campaigns" in refused
+    assert f"{applications + 1} direct applications" in refused
+
+
+@pytest.mark.parametrize("kind", ["direct_offer_proposed", "direct_offer_accepted"])
+def test_sealed_direct_entries(client, db, clock, kind):
+    before = count(
+        db,
+        "SELECT count(*) FROM deal_record_entry"
+        " WHERE kind IN ('direct_offer_proposed', 'direct_offer_accepted')",
+    )
+    memo_id = accepted_memo(client, brand_user(db, clock), creator_user(db, clock))
+    memo = db.get(DealMemo, uuid.UUID(memo_id))
+    assert memo is not None
+    record_service.append(db, memo, kind=kind, actor_role="system", now=clock.now)
+    db.flush()
+
+    assert f"{before + 1} sealed direct entries" in refusal(db, DIRECT_OFFERS)

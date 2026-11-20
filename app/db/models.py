@@ -38,6 +38,7 @@ from app.modules.deal_memo.anchor_models import (
     DealRecordTimestamp,  # noqa: F401
 )
 from app.modules.deal_memo.deliverable_models import MemoDeliverable  # noqa: F401
+from app.modules.deal_memo.direct_offer_models import DirectOffer  # noqa: F401
 from app.modules.deal_memo.draft_models import ContentDraft  # noqa: F401
 from app.modules.deal_memo.feedback_models import DealFeedback  # noqa: F401
 from app.modules.deal_memo.models import DealMemo  # noqa: F401

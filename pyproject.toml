@@ -250,6 +250,9 @@ only_mutate = [
     # (audit C11, D-180).
     "app/core/clock.py",
     "app/modules/campaigns/applying.py",
+    # A direct offer's link token and keyed hashes, its expiry, its due
+    # date's bounds and its two ceilings' arithmetic (D-189).
+    "app/modules/deal_memo/direct_offer_rules.py",
 ]
 # Only lines the chosen tests reach: a function they never call is not
 # evidence of a weak test, and would bury the real survivors.
@@ -280,6 +283,7 @@ pytest_add_cli_args_test_selection = [
     "tests/core/test_clock_properties.py",
     "tests/modules/campaigns/test_applying_rules.py",
     "tests/modules/campaigns/test_applying_sql.py",
+    "tests/modules/deal_memo/test_direct_offer_rules.py",
 ]
 
 [tool.importlinter]

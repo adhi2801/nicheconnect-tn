@@ -151,6 +151,29 @@ def test_a_crash_report_carries_no_personal_data(sent):
     assert "user" not in sent.events[0]
 
 
+def test_a_direct_offer_link_token_never_reaches_a_report(sent):
+    """The link's token is the whole credential for an offer (D-189); Sentry's
+    own list matches whole header names, so `Offer-Token` must be on ours."""
+    link_token = "ab12" * 16
+    TestClient(make_app(), raise_server_exceptions=False).post(
+        "/crash", headers={"Offer-Token": link_token}
+    )
+
+    assert link_token not in text_of(sent.events[0])
+
+
+def test_a_step_up_code_never_reaches_a_report(sent):
+    """The extra confirmation's code proves the person just signed in again;
+    Sentry's own list matches whole header names, so `Step-Up-Code` must be
+    on ours."""
+    step_up_code = "481926"
+    TestClient(make_app(), raise_server_exceptions=False).post(
+        "/crash", headers={"Step-Up-Code": step_up_code}
+    )
+
+    assert step_up_code not in text_of(sent.events[0])
+
+
 def test_a_crash_report_still_says_what_went_wrong(sent):
     TestClient(make_app(), raise_server_exceptions=False).post("/crash")
 

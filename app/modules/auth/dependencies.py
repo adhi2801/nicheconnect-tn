@@ -21,6 +21,7 @@ from app.modules.auth.exceptions import (
     RoleNotAllowed,
 )
 from app.modules.auth.models.account import Account
+from app.modules.auth.sender import OtpSender, direct_offer_code_sender, get_otp_sender
 from app.modules.auth.step_up_service import STEP_UP_HEADER
 from app.modules.auth.tokens import (
     AccessTokenClaims,
@@ -235,3 +236,12 @@ StepUpCode = Annotated[
         ),
     ),
 ]
+
+
+def get_direct_offer_code_sender(
+    login_sender: OtpSender = Depends(get_otp_sender),
+) -> OtpSender:
+    """The sender for a direct offer's code (D-189): its own WhatsApp template,
+    carrying its notice, never the login one (`sender.direct_offer_code_sender`).
+    Built on login's dependency, so a test that fakes login's fakes this too."""
+    return direct_offer_code_sender(login_sender)

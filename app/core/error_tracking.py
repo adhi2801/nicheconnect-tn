@@ -58,7 +58,22 @@ REDACTIONS = ((EMAIL_OR_UPI, "[email]"), (PHONE, "[phone]"), (LONG_NUMBER, "[num
 
 # Header and field names whose values are dropped wherever they appear, on
 # top of Sentry's own list (authorization, cookie, token, password, ...).
-EXTRA_DENYLIST = ["phone", "otp", "code", "upi", "upi_id", "account_number", "ifsc"]
+# Sentry matches whole names, never parts, so a header such as a direct
+# offer's `Offer-Token` (D-189) or the extra confirmation's `Step-Up-Code`
+# is named here in each spelling it arrives in.
+EXTRA_DENYLIST = [
+    "phone",
+    "otp",
+    "code",
+    "upi",
+    "upi_id",
+    "account_number",
+    "ifsc",
+    "offer-token",
+    "offer_token",
+    "step-up-code",
+    "step_up_code",
+]
 
 # The parts of a request event that can carry what a person typed or who
 # they are. The method, the path and the scrubbed headers stay.

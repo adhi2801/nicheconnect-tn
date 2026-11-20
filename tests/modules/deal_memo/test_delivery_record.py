@@ -339,3 +339,29 @@ def test_barter_and_unfinished_deals_do_not_count_a_brand():
     record = build(on_barter, not_due_yet)
 
     assert record.distinct_brands == 0
+
+
+def test_deals_from_campaigns_and_from_direct_offers_are_two_counts():
+    """D-189: a record resting on the creator's own direct offers reads as that.
+    Completed deals only, delivered or not; barter and work still owed are in
+    neither count."""
+    record = build(
+        delivered(campaign_type="direct"),
+        silent(campaign_type="direct"),
+        delivered(),
+        silent(),
+        delivered(campaign_type="barter"),
+        silent(campaign_type="direct", content_due_on=date(2026, 10, 30)),
+    )
+
+    assert record.deals_completed == 4
+    assert record.deals_completed_from_campaigns == 2
+    assert record.deals_completed_from_direct_offers == 2
+
+
+def test_a_record_of_direct_offers_alone_says_so():
+    record = build(*(delivered(campaign_type="direct") for _ in range(3)))
+
+    assert record.status == delivery_record.HAS_HISTORY
+    assert record.deals_completed_from_campaigns == 0
+    assert record.deals_completed_from_direct_offers == 3

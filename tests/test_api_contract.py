@@ -79,6 +79,20 @@ PUBLIC = {
     ("GET", "/api/v1/platforms/meta/data-deletion/{confirmation_code}"): (
         "the status page Meta requires: a random code, naming no one (D-134)"
     ),
+    # A direct offer's link (D-189): its token, in the `Offer-Token` header,
+    # is the credential, held by whoever the creator sent it to.
+    ("GET", "/api/v1/direct-offer-link"): (
+        "a direct offer's link: its token is the credential (D-189)"
+    ),
+    ("POST", "/api/v1/direct-offer-link/stop"): (
+        "stopping a creator's direct offers: the link's token is the credential (D-189)"
+    ),
+    ("POST", "/api/v1/auth/direct-offer-link/code"): (
+        "a code to the offer's number: the link's token names it (D-189)"
+    ),
+    ("POST", "/api/v1/auth/direct-offer-link/accept"): (
+        "accepting a direct offer: the token and the number's code are the credential (D-189)"
+    ),
 }
 
 # The admin API answers anyone who is not an admin, a caller without a token

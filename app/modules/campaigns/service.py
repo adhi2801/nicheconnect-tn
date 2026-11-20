@@ -51,7 +51,12 @@ from app.modules.campaigns.exceptions import (
     InvitationPending,
     OfferOpen,
 )
-from app.modules.campaigns.models import Application, Campaign
+from app.modules.campaigns.models import (
+    DIRECT_CAMPAIGN_TYPE,
+    DIRECT_ORIGIN,
+    Application,
+    Campaign,
+)
 from app.modules.notifications import service as notifications
 from app.modules.profiles import brand_domain_service as brand_domains
 from app.modules.profiles import brand_name_service
@@ -157,6 +162,10 @@ def get_visible_campaign(
     if found is None:
         raise CampaignNotFound()
     campaign, brand_active, not_blocked = found
+    if campaign.campaign_type == DIRECT_CAMPAIGN_TYPE:
+        # A direct offer's hidden campaign (D-189) is nobody's to read as a
+        # campaign, its own brand's included: its deal has its own routes.
+        raise CampaignNotFound()
     withheld = campaign_is_withheld(db, campaign.id, campaign.brand_id)
     hidden = campaign.status != "open" or not brand_active or not not_blocked
     # Only now asked whether the reader is of the brand: an open campaign,
@@ -371,8 +380,10 @@ def list_brand_campaigns(
     cursor: str | None = None,
     status: str | None = None,
 ) -> Slice[Campaign]:
-    """A brand's own campaigns, in every status."""
-    query = select(Campaign).where(Campaign.brand_id == brand.id)
+    """A brand's own campaigns, in every status; never a direct offer's hidden one."""
+    query = select(Campaign).where(
+        Campaign.brand_id == brand.id, Campaign.campaign_type != DIRECT_CAMPAIGN_TYPE
+    )
     if status is not None:
         query = query.where(Campaign.status == status)
     return _paginate(db, query, limit, cursor)
@@ -764,8 +775,11 @@ def list_creator_applications(
     cursor: str | None = None,
     status: str | None = None,
 ) -> Slice[Application]:
-    """A creator's own applications, across every campaign."""
-    query = select(Application).where(Application.creator_id == creator.id)
+    """A creator's own applications, across every campaign; never a direct
+    offer's (D-189), which is a deal, not an application they made."""
+    query = select(Application).where(
+        Application.creator_id == creator.id, Application.origin != DIRECT_ORIGIN
+    )
     if status is not None:
         query = query.where(Application.status == status)
     return _paginate_applications(db, query, limit, cursor)

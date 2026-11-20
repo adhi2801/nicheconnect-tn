@@ -25,6 +25,14 @@ counts, so a free-product trial that fell through is not weighed like a
 broken paid deal, and a creator cannot hide behind barter either.
 
 Every date is read on Tamil Nadu's calendar (D-030 point 1).
+
+**Where the deals came from** is shown as two counts (D-189, Adhi's
+decision of 18 November 2026): completed deals from campaigns, and from
+direct offers. A direct offer's brand is made at its link, by whoever holds
+the number the creator typed, so a creator holding a second number could
+build a record of deals with brands that are themselves. The counts do not
+stop that; they make a record resting on direct offers alone read as
+exactly that, beside `distinct_brands`.
 """
 
 import uuid
@@ -39,7 +47,7 @@ from sqlalchemy.orm import Session
 
 from app.core.clock import india_date
 from app.modules.auth.models.creator import Creator
-from app.modules.campaigns.models import Application, Campaign
+from app.modules.campaigns.models import DIRECT_CAMPAIGN_TYPE, Application, Campaign
 from app.modules.deal_memo.draft_models import ContentDraft
 from app.modules.deal_memo.draft_rules import (
     agreed_at,
@@ -99,6 +107,10 @@ class DeliveryRecord:
     # Twelve deals with one brand say less than twelve across nine, and two
     # accounts run by one person can only ever make it one.
     distinct_brands: int
+    # The completed deals, by where they came from (D-189): the two add up
+    # to `deals_completed`.
+    deals_completed_from_campaigns: int
+    deals_completed_from_direct_offers: int
 
 
 def is_approved(
@@ -204,6 +216,7 @@ def build_record(
     barter_delivered = 0
     barter_not_delivered = 0
     completed_with: set[uuid.UUID | None] = set()
+    completed_from_direct_offers = 0
     drafts_of = drafts_by_memo or {}
     for memo, campaign_type in deals:
         proofs = proofs_by_memo.get(memo.id, [])
@@ -214,12 +227,14 @@ def build_record(
             elif outcome is Outcome.NOT_DELIVERED:
                 barter_not_delivered += 1
             continue
+        if outcome in (Outcome.DELIVERED, Outcome.NOT_DELIVERED):
+            completed_with.add(brand_of.get(memo.id))
+            if campaign_type == DIRECT_CAMPAIGN_TYPE:
+                completed_from_direct_offers += 1
         if outcome is Outcome.DELIVERED:
             delivered.append(memo)
-            completed_with.add(brand_of.get(memo.id))
         elif outcome is Outcome.NOT_DELIVERED:
             not_delivered += 1
-            completed_with.add(brand_of.get(memo.id))
             # A silent no-show still owes the work; a cancelled deal does not.
             if memo.status != "cancelled":
                 overdue_now += 1
@@ -263,6 +278,8 @@ def build_record(
         barter_deals_delivered=barter_delivered,
         barter_deals_not_delivered=barter_not_delivered,
         distinct_brands=len(completed_with - {None}),
+        deals_completed_from_campaigns=completed - completed_from_direct_offers,
+        deals_completed_from_direct_offers=completed_from_direct_offers,
     )
 
 

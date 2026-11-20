@@ -41,7 +41,12 @@ from app.modules.auth.models.brand_team import BrandMember
 from app.modules.auth.models.creator import Creator
 from app.modules.campaigns.models import Application, Campaign
 from app.modules.deal_memo.models import DealMemo
-from app.modules.deal_memo.record_models import GENESIS_HASH, DealRecordEntry
+from app.modules.deal_memo.record_models import (
+    ACCEPTING_KINDS,
+    GENESIS_HASH,
+    OPENING_KINDS,
+    DealRecordEntry,
+)
 from app.modules.payment_status.models import PaymentStatus
 
 DOMAIN = b"deal-record/v1\n"
@@ -115,21 +120,47 @@ def terms_fingerprint(memo: DealMemo) -> str:
     2 adds the list of deliverables, in order (D-127). Version 3 adds
     `draft_review`, whether a draft is shown before posting (item 27, D-140).
     """
-    terms: dict[str, Any] = {}
-    for field in TERMS_FIELDS:
-        value = getattr(memo, field)
-        terms[field] = value.isoformat() if isinstance(value, date) else value
     if memo.terms_version is None:
         # Set when the memo is saved; a fingerprint of terms not yet on the
         # record would prove nothing.
         raise ValueError("A memo has no terms version until it is saved")
-    if memo.terms_version >= 2:
-        terms["deliverable_items"] = [
+    return fingerprint_of_terms(
+        {field: getattr(memo, field) for field in (*TERMS_FIELDS, "draft_review")},
+        # Version 1 never reads the list, so it is never loaded for one.
+        [
             {field: getattr(item, field) for field in DELIVERABLE_FIELDS}
             for item in memo.deliverable_items
         ]
-    if memo.terms_version >= 3:
-        terms["draft_review"] = memo.draft_review
+        if memo.terms_version >= 2
+        else None,
+        memo.terms_version,
+    )
+
+
+def fingerprint_of_terms(
+    values: dict[str, Any], items: list[dict[str, Any]] | None, terms_version: int
+) -> str:
+    """`terms_fingerprint` for terms not yet in a memo: a direct offer's (D-189).
+
+    `values` holds every TERMS_FIELDS field and `draft_review`; `items` the
+    deliverables, each with DELIVERABLE_FIELDS, given exactly when the terms
+    version reads them (2 and later) and None before, so a caller that
+    loaded or skipped them by mistake is refused rather than ignored. One
+    definition, so an offer's fingerprint at sending and its memo's at
+    acceptance cannot drift apart. Raises ValueError.
+    """
+    if (items is None) == (terms_version >= 2):
+        raise ValueError("Deliverables are part of the terms from version 2 on")
+    terms: dict[str, Any] = {}
+    for field in TERMS_FIELDS:
+        value = values[field]
+        terms[field] = value.isoformat() if isinstance(value, date) else value
+    if items is not None:
+        terms["deliverable_items"] = [
+            {field: item[field] for field in DELIVERABLE_FIELDS} for item in items
+        ]
+    if terms_version >= 3:
+        terms["draft_review"] = values["draft_review"]
     return hashlib.sha256(canonical(terms)).hexdigest()
 
 
@@ -199,8 +230,9 @@ def _accounts(
 def _needs_opening(previous: DealRecordEntry | None, kind: str, memo: DealMemo) -> bool:
     """Whether a `record_started` entry goes first: a deal whose history began
     before the record existed, so no deal pretends its record reaches further
-    back than it does."""
-    return previous is None and (kind != "memo_sent" or memo.revision_count > 0)
+    back than it does. A memo's first sending, and a direct offer's proposal
+    (D-189), open a chain themselves (OPENING_KINDS)."""
+    return previous is None and (kind not in OPENING_KINDS or memo.revision_count > 0)
 
 
 def _sealed(
@@ -257,7 +289,8 @@ def append(
 
     A deal whose history began before the record existed gets an opening
     `record_started` entry first, so no deal pretends its record reaches
-    further back than it does.
+    further back than it does. A memo's first sending, and a direct offer's
+    proposal (D-189), open a chain themselves (OPENING_KINDS).
     """
     db.execute(select(DealMemo.id).where(DealMemo.id == memo.id).with_for_update())
     accounts = _accounts(db, *_party_account_ids(db, memo))
@@ -489,7 +522,7 @@ def verify(memo: DealMemo, entries: list[DealRecordEntry]) -> Verification:
             or compute_hash(previous_hash, entry_body(entry)) != entry.entry_hash
         ):
             return Verification(False, entry.sequence, None)
-        if entry.kind == "memo_accepted":
+        if entry.kind in ACCEPTING_KINDS:
             accepted_terms = entry.facts.get("terms_sha256")
         previous_hash = entry.entry_hash
 

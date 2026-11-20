@@ -93,6 +93,13 @@ class FeaturesRead(BaseModel):
             "validation pack question"
         )
     )
+    direct_offers: FeatureRead = Field(
+        description=(
+            "A creator sending a memo to a brand not on the platform, accepted at "
+            "a link (D-189): on once the link page's and the code message's "
+            "notice wording exists"
+        )
+    )
 
 
 def _feature(
@@ -143,6 +150,14 @@ def current(account_id: uuid.UUID | None = None) -> FeaturesRead:
             "brief_drafting",
             settings.brief_drafting_enabled and settings.anthropic_api_key is not None,
             "brief_drafting_unavailable",
+            account_id,
+        ),
+        # The app refuses to start with this on while the notice wording is
+        # a placeholder (app/main.py), so the setting alone says it.
+        direct_offers=_feature(
+            "direct_offers",
+            settings.direct_offers_enabled,
+            "direct_offers_unavailable",
             account_id,
         ),
     )
