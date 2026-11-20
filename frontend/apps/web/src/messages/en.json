@@ -342,8 +342,7 @@
     "card": {
       "untitled": "Deal memo",
       "someone": "Awaiting details",
-      "due": "Due {date}",
-      "open": "Open this deal"
+      "due": "Due {date}"
     },
     "closed": {
       "label": "Closed deals",

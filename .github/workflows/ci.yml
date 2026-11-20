@@ -505,7 +505,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # The tokens are generated (scripts/build-tokens.mjs). The script fails
-      # if any of the 112 text and background pairs misses its contrast floor
+      # if any of the 116 text and background pairs misses its contrast floor
       # (7, 4.5 or 3 to 1); the diff fails if the committed CSS, JSON or Dart
       # is not what the tokens make.
       - name: Check the design tokens and their contrast
@@ -545,6 +545,43 @@ jobs:
             sleep 1
           done
           node scripts/check-no-js.mjs http://127.0.0.1:3100/
+
+      # frontend.md section 4 (D-171, D-198): Lighthouse on the same production
+      # build, mobile, throttled to the reference network, three runs a page,
+      # the median judged against the budgets in apps/web/lighthouserc.cjs:
+      # Performance 95, the other three 100, LCP 2.0 s, CLS 0.05, and the
+      # JavaScript each page sends. The server above is still running.
+      # The numbers are printed whether the budgets pass or fail, so each
+      # ratchet line is lowered from what this runner measured.
+      # The ratchet only tightens (D-198): every Lighthouse line is compared
+      # with main's and the job fails if one is looser. The checkout is
+      # shallow, so main is fetched first (public repository, no token).
+      - name: The Lighthouse ratchet only tightens
+        run: |
+          git fetch --no-tags --depth=1 origin +refs/heads/main:refs/remotes/origin/main
+          node scripts/check-lighthouse-ratchet.mjs origin/main
+
+      - name: Lighthouse budgets
+        run: |
+          status=0
+          pnpm --filter web exec lhci autorun --config=lighthouserc.cjs || status=$?
+          node scripts/lighthouse-summary.mjs apps/web/.lighthouseci
+          exit "$status"
+
+      # frontend.md sections 6, 11 and 12 (D-171, D-198): the browser tests
+      # against their own production build and a stand-in for the backend
+      # (apps/web/e2e/mock-api.mjs), in the Chrome the runner ships. They
+      # include the automated accessibility check: WCAG 2.2 AA and 7:1 body
+      # text on every page, light and dark, motion on and off, phone and
+      # laptop widths. No reruns: a test that fails once is a failure.
+      - name: Browser tests, accessibility included
+        run: pnpm --filter web e2e
+
+      # frontend.md section 10: every package audited, the test-only ones
+      # too. An accepted advisory is listed, with its reason, in
+      # pnpm-workspace.yaml; anything else fails the job.
+      - name: Dependency audit
+        run: pnpm audit
 
   # SECURITY.md and /.well-known/security.txt send researchers to GitHub's
   # private vulnerability reporting. Switched off, that link leads nowhere
