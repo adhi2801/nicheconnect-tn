@@ -254,6 +254,12 @@ only_mutate = [
     # a limit that silently never fires is a worker held for ever.
     "app/core/deadline.py",
     "app/core/retrying.py",
+    # The quarterly rate report's floors, rounding and quarters, and its
+    # build, archive and publishing (item 84, D-200): a floor that silently
+    # lets one person's price through is the harm. 485 mutants, all killed
+    # (20 November 2026, Linux container, Tamil Nadu zone).
+    "app/modules/insights/rate_report_rules.py",
+    "app/modules/insights/rate_report_service.py",
 ]
 # Only lines the chosen tests reach: a function they never call is not
 # evidence of a weak test, and would bury the real survivors.
@@ -288,6 +294,11 @@ pytest_add_cli_args_test_selection = [
     "tests/core/test_deadline_properties.py",
     "tests/core/test_retrying.py",
     "tests/core/test_retrying_properties.py",
+    "tests/modules/insights/test_rate_report_rules.py",
+    "tests/modules/insights/test_rate_report_rules_properties.py",
+    "tests/modules/insights/test_rate_report_service.py",
+    "tests/modules/insights/test_rate_report_api.py",
+    "tests/modules/insights/test_rate_report_concurrency.py",
 ]
 
 [tool.importlinter]

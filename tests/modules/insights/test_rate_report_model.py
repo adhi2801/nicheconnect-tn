@@ -63,9 +63,13 @@ def published(db: Session) -> str:
 def test_a_built_report_is_stored(db):
     quarter = insert(db)
 
-    assert db.scalar(
-        text("SELECT count(*) FROM city_rate_report WHERE quarter = :q"), {"q": quarter}
-    ) == 1
+    assert (
+        db.scalar(
+            text("SELECT count(*) FROM city_rate_report WHERE quarter = :q"),
+            {"q": quarter},
+        )
+        == 1
+    )
 
 
 @pytest.mark.parametrize(
@@ -78,7 +82,10 @@ def test_a_built_report_is_stored(db):
         ({"body_sha256": "A" * 64}, "ck_city_rate_report_body_sha256_shape"),
         ({"body_sha256": "a" * 63}, "ck_city_rate_report_body_sha256_shape"),
         ({"published_at": FIXED_NOW}, "ck_city_rate_report_published_with_its_admin"),
-        ({"withdrawn_reason": "A good long reason."}, "ck_city_rate_report_withdrawn_with_its_reason"),
+        (
+            {"withdrawn_reason": "A good long reason."},
+            "ck_city_rate_report_withdrawn_with_its_reason",
+        ),
         (
             {"withdrawn_at": FIXED_NOW, "withdrawn_reason": "A good long reason."},
             "ck_city_rate_report_withdrawn_only_once_published",
@@ -132,7 +139,9 @@ def test_the_admin_who_published_cannot_be_deleted(db):
     admin = create_account(db, "admin")
     insert(db, published_at=FIXED_NOW, published_by_account_id=admin.id)
 
-    said = refused(db, lambda: db.execute(text("DELETE FROM account WHERE id = :a"), {"a": admin.id}))
+    said = refused(
+        db, lambda: db.execute(text("DELETE FROM account WHERE id = :a"), {"a": admin.id})
+    )
 
     assert said.constraint_name == "fk_city_rate_report_published_by_account_id_account"
 
@@ -153,9 +162,13 @@ def test_an_unpublished_report_can_be_changed_or_removed(db):
     change(db, quarter, "body = '{\"a\": 1}'::jsonb")()
     db.execute(text("DELETE FROM city_rate_report WHERE quarter = :q"), {"q": quarter})
 
-    assert db.scalar(
-        text("SELECT count(*) FROM city_rate_report WHERE quarter = :q"), {"q": quarter}
-    ) == 0
+    assert (
+        db.scalar(
+            text("SELECT count(*) FROM city_rate_report WHERE quarter = :q"),
+            {"q": quarter},
+        )
+        == 0
+    )
 
 
 @pytest.mark.parametrize(
@@ -210,10 +223,14 @@ def test_a_published_report_is_withdrawn_once_and_stays_withdrawn(db):
 
     change(db, quarter, withdraw, r="A figure was built from a wrong city.")()
     again = refused(db, change(db, quarter, withdraw, r="Another reason, written later."))
-    undone = refused(db, change(db, quarter, "withdrawn_at = NULL, withdrawn_reason = NULL"))
+    undone = refused(
+        db, change(db, quarter, "withdrawn_at = NULL, withdrawn_reason = NULL")
+    )
 
-    assert again.message_primary == undone.message_primary == (
-        f"city_rate_report_sealed: {quarter} was withdrawn, and stays withdrawn"
+    assert (
+        again.message_primary
+        == undone.message_primary
+        == (f"city_rate_report_sealed: {quarter} was withdrawn, and stays withdrawn")
     )
 
 
@@ -253,7 +270,10 @@ def test_nothing_deleted_by_the_orm_bypasses_the_seal(db):
     quarter = published(db)
 
     said = refused(
-        db, lambda: db.execute(delete(CityRateReport).where(CityRateReport.quarter == quarter))
+        db,
+        lambda: db.execute(
+            delete(CityRateReport).where(CityRateReport.quarter == quarter)
+        ),
     )
 
     assert "DELETE refused" in said.message_primary

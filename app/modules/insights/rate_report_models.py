@@ -9,7 +9,9 @@ section 2), this one is stored once, when the quarter has closed.
 - `body` holds aggregate numbers only: no id, handle or name of anyone
   (`rate_report_rules`, `rate_report_schemas.RateReportBody`).
 - `body_sha256` is the SHA-256 of the body's canonical JSON (keys sorted, no
-  spaces, UTF-8), shown with the report so any copy can be checked.
+  spaces, ASCII with JSON's escapes for any other letter,
+  `rate_report_service.canonical_json`), shown with the report so any copy
+  can be checked.
 - It is built unpublished, read by an admin, then published. **Once
   published, the database refuses any change to what it says** (a trigger,
   the pattern of the deal record's seal, D-057), and refuses deleting it, so

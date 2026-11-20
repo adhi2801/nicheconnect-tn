@@ -33,8 +33,14 @@ def test_each_quarter_has_its_calendar_days(quarter, first, last):
     "key", ["2026-Q0", "2026-Q5", "26-Q1", "2026Q1", "2026-q1", "0000-Q1", " 2026-Q1", ""]
 )
 def test_anything_else_is_not_a_quarter(key):
-    with pytest.raises(rules.NotAQuarter):
+    with pytest.raises(rules.NotAQuarter) as refused:
         rules.parse_quarter(key)
+
+    assert str(refused.value) == key
+
+
+def test_the_first_year_is_a_year():
+    assert rules.parse_quarter("0001-Q1") == (1, 1)
 
 
 def test_a_quarter_starts_and_ends_at_midnight_in_tamil_nadu():

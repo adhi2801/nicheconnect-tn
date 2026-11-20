@@ -32,7 +32,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.core.clock import india_date
-from app.core.pagination import Slice, encode_cursor, older_than_cursor
+from app.core.pagination import Slice, build_slice, older_than_cursor
 from app.modules.insights import rate_report_figures as figures
 from app.modules.insights import rate_report_rules as rules
 from app.modules.insights.exceptions import (
@@ -68,10 +68,10 @@ CELLS: tuple[tuple[str, str], ...] = tuple(
 
 
 def canonical_json(body: dict[str, Any]) -> bytes:
-    """The bytes the fingerprint is taken over: keys sorted, no spaces, UTF-8."""
-    return json.dumps(
-        body, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    ).encode()
+    """The bytes the fingerprint is taken over: keys sorted, no spaces, and
+    plain ASCII, any other letter written as JSON's `\\uXXXX` escape (its
+    own), so the bytes are the same whatever a reader's tools do with text."""
+    return json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
 
 
 def fingerprint(body: dict[str, Any]) -> str:
@@ -119,12 +119,12 @@ def build_body(
     first_day, last_day = rules.quarter_days(quarter)
     cities = figures.listed_cities(db)
     keys = [city.key for city in cities]
-    asking = figures.asking_by_city(db, keys) if keys else {}
+    asking = figures.asking_by_city(db, keys)
     bands = figures.asking_by_band(db)
     deals: dict[figures.CellKey, list[rules.Deal]] | None = None
     if agreed_fees:
         start, end = rules.quarter_window(quarter)
-        deals = figures.agreed_by_city(db, keys, start, end) if keys else {}
+        deals = figures.agreed_by_city(db, keys, start, end)
 
     city_rows = [
         CityRatesRead(
@@ -225,7 +225,7 @@ def build_due(db: Session, now: datetime, *, agreed_fees: bool) -> BuildRun:
             created_at=now,
             updated_at=now,
         )
-        .on_conflict_do_nothing(index_elements=[CityRateReport.quarter])
+        .on_conflict_do_nothing()
         .returning(CityRateReport.id)
     ).scalar()
     db.commit()
@@ -251,11 +251,9 @@ def published(db: Session, *, limit: int, cursor: str | None) -> Slice[CityRateR
         query = query.where(
             older_than_cursor(CityRateReport.created_at, CityRateReport.id, cursor)
         )
-    rows = list(db.scalars(query))
-    if len(rows) <= limit:
-        return Slice(rows=rows, next_cursor=None)
-    last = rows[limit - 1]
-    return Slice(rows=rows[:limit], next_cursor=encode_cursor(last.created_at, last.id))
+    return build_slice(
+        list(db.scalars(query)), limit, key=lambda row: (row.created_at, row.id)
+    )
 
 
 def read_published(db: Session, quarter: str) -> CityRateReport:

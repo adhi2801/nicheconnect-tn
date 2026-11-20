@@ -61,6 +61,7 @@ def published(db, admin: User, quarter: str | None = None, **kwargs) -> CityRate
 
 def test_a_published_report_is_read_by_anyone(client, db, admin):
     World(db).listed()
+    published(db, admin)  # another quarter's, so the right one must be chosen
     row = published(db, admin)
 
     response = client.get(f"{URL}/{row.quarter}")

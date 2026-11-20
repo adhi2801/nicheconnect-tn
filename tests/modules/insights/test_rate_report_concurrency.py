@@ -154,3 +154,32 @@ def test_four_admins_publishing_at_once_publish_it_once(built_report, slow_write
             )
         )
     assert logged == 1
+
+
+def test_a_session_holding_an_old_copy_still_sees_it_published(built_report):
+    """The lock re-reads the row: a copy loaded before another admin published
+    must not let a second publish through."""
+    first, second = built_report["admins"][:2]
+    with SessionLocal() as stale:
+        # An unpublished copy, held, so it stays in this session's memory.
+        old_copy = stale.scalars(
+            select(CityRateReport).where(
+                CityRateReport.quarter == built_report["quarter"]
+            )
+        ).one()
+        assert old_copy.published_at is None
+        with SessionLocal() as other:
+            admin_service.publish(
+                other,
+                other.get_one(Account, first),
+                built_report["quarter"],
+                CONCURRENCY_NOW,
+            )
+
+        with pytest.raises(RateReportAlreadyPublished):
+            admin_service.publish(
+                stale,
+                stale.get_one(Account, second),
+                built_report["quarter"],
+                CONCURRENCY_NOW,
+            )

@@ -10061,7 +10061,7 @@ export interface components {
             body: components["schemas"]["RateReportBody"];
             /**
              * Body Sha256
-             * @description SHA-256 of `body` as canonical JSON (keys sorted, no spaces, UTF-8), so any copy can be checked against this one
+             * @description SHA-256 of `body` as canonical JSON: keys sorted, no spaces, ASCII, any other letter as JSON's `\uXXXX` escape. Any copy can be checked against this one
              */
             body_sha256: string;
             /**

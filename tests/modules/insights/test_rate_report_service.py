@@ -329,9 +329,42 @@ def test_the_last_closed_quarter_is_built_unpublished_and_fingerprinted(db):
     assert run == service.BuildRun(quarter="2030-Q4", built=True)
     assert row.published_at is None
     assert row.method_version == rules.METHOD_VERSION
-    assert row.built_at == FAR
+    assert row.built_at == row.created_at == row.updated_at == FAR
     assert row.body_sha256 == service.fingerprint(row.body)
     assert RateReportBody.model_validate(row.body).quarter == "2030-Q4"
+
+
+def test_a_built_quarter_s_figures_are_never_worked_out_again(db, monkeypatch):
+    service.build_due(db, FAR, agreed_fees=False)
+
+    def no_second_build(*args, **kwargs):
+        raise AssertionError("a built quarter was worked out again")
+
+    monkeypatch.setattr(service, "build_body", no_second_build)
+
+    assert service.build_due(db, FAR, agreed_fees=False).built is False
+
+
+def test_a_page_of_the_archive_reads_one_row_past_the_page(db):
+    """Enough to know whether there is a next page, never the whole table."""
+    from sqlalchemy import event
+
+    from app.db.session import engine
+
+    limits: list[object] = []
+
+    def capture(conn, cursor, statement, parameters, context, executemany):
+        if "FROM city_rate_report" in statement and "LIMIT" in statement:
+            limits.append(parameters)
+
+    event.listen(engine, "before_cursor_execute", capture)
+    try:
+        service.published(db, limit=7, cursor=None)
+    finally:
+        event.remove(engine, "before_cursor_execute", capture)
+
+    [parameters] = limits
+    assert 8 in dict(parameters).values()
 
 
 def test_a_built_quarter_is_never_built_again(db):
@@ -349,7 +382,7 @@ def test_the_fingerprint_is_sha256_of_canonical_json():
 
     data = {"b": [1, "₹"], "a": None}
 
-    assert service.canonical_json(data) == '{"a":null,"b":[1,"₹"]}'.encode()
+    assert service.canonical_json(data) == b'{"a":null,"b":[1,"\u20b9"]}'
     assert (
         service.fingerprint(data)
         == hashlib.sha256(service.canonical_json(data)).hexdigest()
