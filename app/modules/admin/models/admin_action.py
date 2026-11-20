@@ -27,6 +27,9 @@ ADMIN_ACTIONS: tuple[str, ...] = (
     # withdrawn (item 75, D-119).
     "clear_brand_name",
     "withdraw_brand_name_clearance",
+    # A quarterly city rate report published, and withdrawn (item 84, D-200).
+    "publish_rate_report",
+    "withdraw_rate_report",
 )
 NOTE_MAX_LENGTH = 1000
 
