@@ -60,11 +60,11 @@ What moves a row from **(decision)** to binding: a founder's yes, recorded in `d
 | Allowed values | `VARCHAR` + `CHECK` listing them, built from the same tuple as the API's `Literal`; `app/core/literals.py` stops the app starting if the two drift | free text; Postgres `ENUM` (an allowed value cannot be removed from one) | `tests/test_schema_rules.py` (no enums); `ensure_same_values` at import |
 | Tags | `TEXT[]` with a cardinality `CHECK`. From a fixed vocabulary (niches, languages, muted types): a containment `CHECK` against it. Free text (cities): each element is limited by the API | comma-separated strings | the `CHECK`s; `tests/test_check_constraints.py` |
 | Email | `VARCHAR(320)`, stored lowercase by a `CHECK` (`email = lower(email)`), so a plain unique constraint is case-insensitive | case-sensitive uniqueness | the `CHECK` |
-| Phone | `VARCHAR(16)` in E.164 | local formats | `CHECK`s on `account` and `otp_challenge` |
+| Phone | `VARCHAR(16)` in E.164 | local formats | `CHECK`s on `account`, `otp_challenge` and `account_phone_change` (`new_phone_format`) |
 | Embeddings | `vector(<dim>)`, the dimension fixed by D-052 | | `tests/modules/matching/test_embedding_model.py` |
 | Words for matching | `tsvector`, a stored generated column computed from the text in the row, in matching's config, deferred in the model (D-173: `creator.bio_words`, `campaign.brief_words`) | written by the app; computed per request | `tests/modules/matching/test_stored_words_model.py` |
 
-- Every table has `id`, `created_at` and `updated_at`, except the named ones: the two embedding tables are keyed by their owner; the six append-only tables have no `updated_at`, because they are never updated (dispute events, sealed later by item 99, keep one that always equals `created_at`); `deal_record_entry`'s moment is `recorded_at`, inside its seal (D-057). **Enforced by** `tests/test_schema_rules.py`. The app sets `updated_at` in the same statement as every change. *(review only)*
+- Every table has `id`, `created_at` and `updated_at`, except the named ones: the two embedding tables are keyed by their owner; six of the seven append-only tables have no `updated_at`, because they are never updated (dispute events, sealed later by item 99, keep one that always equals `created_at`); `deal_record_entry`'s moment is `recorded_at`, inside its seal (D-057). **Enforced by** `tests/test_schema_rules.py`. The app sets `updated_at` in the same statement as every change. *(review only)*
 - `NOT NULL` is the default. A nullable column says what NULL means, in a comment beside it in the model ("NULL means never published"). *(review only)*: the schema has 181 nullable columns.
 
 ## 3. Integrity
@@ -113,7 +113,7 @@ What moves a row from **(decision)** to binding: a founder's yes, recorded in `d
 - Lists are bounded: keyset pages (`(created_at, id) < cursor`), never `OFFSET` (none in `app/`), or a whole list only where a rule caps it (`backend.md` section 2).
 - A request makes a fixed number of queries whatever its page size. **Enforced by** a query-count test on every list (`tests/query_counts.py`; `backend.md` section 6).
 - Never `SELECT *` in raw SQL. *(review only)*
-- Transactions stay short: no network calls inside them. A row a rule depends on is locked before the rule is checked (`backend.md` section 5). *(review only)* for the first; concurrency tests prove the locks. Three exceptions today (gap 5): submitting proof or a draft asks S3 for each file's size while the file rows are locked (`app/modules/deal_memo/proof_file_service.py`); the job that cleans a file reads it from S3 and writes the clean copy while holding its row (`app/modules/deal_memo/proof_cleaning_service.py`, `FOR UPDATE SKIP LOCKED`); and downloading a data export reads the file from S3 and destroys it while the export's row is locked (`app/modules/me/data_export_service.py`), so two downloads at once hand it over once.
+- Transactions stay short: no network calls inside them. A row a rule depends on is locked before the rule is checked (`backend.md` section 5). *(review only)* for the first; concurrency tests prove the locks. Three exceptions today (gap 5): submitting proof or a draft asks S3 for each file's size while the file rows are locked (`app/modules/deal_memo/proof_file_service.py`); the job that cleans a file checks it, reads it from S3 and writes the clean copy while holding its row (`app/modules/deal_memo/proof_cleaning_service.py`, `FOR UPDATE SKIP LOCKED`); and downloading a data export reads the file from S3 and destroys it while the export's row is locked (`app/modules/me/data_export_service.py`), so two downloads at once hand it over once.
 - Every connection has a statement timeout (5 s by default, `DB_STATEMENT_TIMEOUT_MS`), the pool uses `pool_pre_ping`, and a request waits at most `DB_POOL_TIMEOUT_SECONDS` for a connection before a 503 (D-093). Set in `app/db/session.py`.
 
 ## 8. Operations
@@ -155,7 +155,7 @@ What moves a row from **(decision)** to binding: a founder's yes, recorded in `d
 
 ## 12. Sources
 
-Each link checked to exist on 14 October 2026.
+Links checked on 14 October 2026; later links on the dates beside them.
 
 - PostgreSQL 18 documentation: [UUID functions, `uuidv7()`](https://www.postgresql.org/docs/18/functions-uuid.html); [constraints](https://www.postgresql.org/docs/18/ddl-constraints.html), including why a referencing column should usually be indexed; [`ALTER TABLE`](https://www.postgresql.org/docs/18/sql-altertable.html): `NOT VALID`, `VALIDATE CONSTRAINT`, and that the owner may disable triggers; [`CREATE INDEX … CONCURRENTLY`](https://www.postgresql.org/docs/18/sql-createindex.html); [`GRANT`](https://www.postgresql.org/docs/18/sql-grant.html).
 - [RFC 9562](https://www.rfc-editor.org/rfc/rfc9562): UUID version 7.
