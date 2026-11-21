@@ -31,7 +31,7 @@ Each row: the strongest published benchmark, with its source; ours against it; h
 |---|---|---|---|---|
 | **How usable it feels** (MeasuringU) | The System Usability Scale averages **68** across 500 studies and over 5,000 users; above **80.3** is an A, the top 10% ([MeasuringU, "Measuring usability with the System Usability Scale", 3 February 2011](https://measuringu.com/sus/)) | Every core journey (section 3) scores **above 80.3** with brand owners and with creators, before launch and after each redesign of it (**approved, D-171**) | The ten SUS questions after each usability session (section 2), at least five people per side | No session run yet |
 | **Whether people succeed** (Google HEART) | Happiness, engagement, adoption, retention and task success, chosen per product (section 9) | Task completion of at least 90%, no critical confusion point, a first campaign and a first application each in under 5 minutes (section 2) | The usability sessions, then the product's own events after launch | The bar is set; no session run yet |
-| **Accessible to everyone** (W3C) | WCAG 2.2, level AA (section 9) | AA on every screen, checked by tools in CI and by a person with TalkBack and VoiceOver on the reference phones before each release (`frontend.md` section 6) | CI's accessibility checks; the release checklist | **In CI since 18 November 2026** (D-198): axe-core over every page of the website (WCAG 2.2 AA plus 7:1 body text, light and dark, motion on and off, phone and laptop) and Lighthouse's Accessibility 100 on the public pages, both failing the build; the TalkBack and VoiceOver pass stays a release step and has not been run |
+| **Accessible to everyone** (W3C) | WCAG 2.2, level AA (section 9) | AA on every screen, checked by tools in CI and by a person with TalkBack and VoiceOver on the reference phones before each release (`frontend.md` section 6) | CI's accessibility checks; the release checklist | **Decided 18 November 2026 (D-198), gating `main` since 20 November 2026**: axe-core over every page of the website (WCAG 2.2 AA plus 7:1 body text, light and dark, motion on and off, phone and laptop) and Lighthouse's Accessibility 100 on the public pages, both failing the build; the TalkBack and VoiceOver pass stays a release step and has not been run |
 
 What moves a row from **(decision)** to binding: a founder's yes, recorded in `docs/DECISIONS.md` (`CLAUDE.md` section 5), with its measurement built in the same change.
 
@@ -118,7 +118,7 @@ What moves a row from **(decision)** to binding: a founder's yes, recorded in `d
 
 ## 8. Gaps, named
 
-**Closed on 31 October:** colour and product psychology researched only at the brand book's depth (gap 5): `docs/research/COLOUR_PSYCHOLOGY_2026.md` and `docs/research/INTERFACE_PSYCHOLOGY_2026.md`, with dated studies.
+**Closed on 31 October:** colour and product psychology researched only at the brand book's depth (the former gap 5, its number since reused): `docs/research/COLOUR_PSYCHOLOGY_2026.md` and `docs/research/INTERFACE_PSYCHOLOGY_2026.md`, with dated studies.
 
 **Corrected on 14 October:** the design direction's place (on `main`, not a branch), and the core journeys, which missed the report outcome, the campaign report and the calendar file.
 
@@ -132,7 +132,7 @@ What moves a row from **(decision)** to binding: a founder's yes, recorded in `d
 
 ## 9. Sources
 
-Each link checked to exist on 14 October 2026.
+Links checked on 14 October 2026; later links on the dates beside them.
 
 - [Google: Measuring the User Experience on a Large Scale (the HEART framework)](https://research.google/pubs/measuring-the-user-experience-on-a-large-scale-user-centered-metrics-for-web-applications/).
 - [Nielsen Norman Group: Response Times, the 3 important limits](https://www.nngroup.com/articles/response-times-3-important-limits/) (Jakob Nielsen, 1993): 0.1 second feels instant; the link checked live on 20 November 2026.
