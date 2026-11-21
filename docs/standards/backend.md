@@ -50,17 +50,17 @@ What moves a row from **(decision)** to binding: a founder's yes, recorded in `d
 
 ## 1. Architecture: layers and module layout
 
-**Layers** (D-099). A module imports only from layers below it:
+**Layers** (D-099), numbered as in `CLAUDE.md` section 3, from 1 (the top) to 6 (`auth`). A module imports only from layers with a higher number, and from `app/core` and `app/db`:
 
 | Layer | Modules | What lives there |
 |---|---|---|
-| 7 | `me` | Views of one account that read every module: attention, the data export; and the two account actions that need modules above `auth`: asking for a step-up code (it checks a UPI ID by `payment_status`'s rule) and logging out everywhere (its alert needs `notifications`), item 82; and changing the phone number, with its job (its alerts too), item 80; and listing sessions and ending one (its alert too), item 81; and deleting the account, with its job, which reaches every module, item 6 |
-| 6 | `admin` | The admin API and its log, the founders' numbers, user reports |
-| 5 | `matching` \| `insights` \| `passport` | Who fits whom and creator search; anonymous market figures; how a creator is shown |
+| 1 | `me` | Views of one account that read every module: attention, the data export; and the two account actions that need modules above `auth`: asking for a step-up code (it checks a UPI ID by `payment_status`'s rule) and logging out everywhere (its alert needs `notifications`), item 82; and changing the phone number, with its job (its alerts too), item 80; and listing sessions and ending one (its alert too), item 81; and deleting the account, with its job, which reaches every module, item 6 |
+| 2 | `admin` | The admin API and its log, the founders' numbers, user reports |
+| 3 | `matching` \| `insights` \| `passport` | Who fits whom and creator search; anonymous market figures; how a creator is shown |
 | 4 | `campaigns` : `deal_memo` : `payment_status` : `disputes` | The deal domain. `:` lets them import each other until item 96 untangles them |
-| 3 | `profiles` \| `safety` \| `notifications` | What people say about themselves; blocking; in-app notifications |
-| 2 | `auth` | Login, tokens, sessions, devices, attribution, suspension, access checks, the identity tables |
-| 1 | `app/core`, `app/db` | Never import a module, except the two registries named in `pyproject.toml` |
+| 5 | `profiles` \| `safety` \| `notifications` | What people say about themselves; blocking; in-app notifications |
+| 6 | `auth` | Login, tokens, sessions, devices, attribution, suspension, access checks, the identity tables |
+| below 6 | `app/core`, `app/db` | Never import a module, except the two registries named in `pyproject.toml` |
 
 - `|` keeps siblings independent. Something two layers need moves down, never sideways.
 - Where a piece belongs is decided by what it imports, not what it is named after. The Passport shows deal records, so it sits above the deal domain.
@@ -158,7 +158,7 @@ One shape for every non-2xx answer, RFC 9457 Problem Details:
 ## 4. Validation and schemas
 
 - A schema per direction: `CampaignCreate`, `CampaignUpdate`, `CampaignRead`. Never return an ORM object, or reuse an input shape for output.
-- Every request body refuses unknown fields (`extra="forbid"`), which blocks mass assignment (OWASP API3:2023). **Enforced by** `tests/test_architecture.py::test_every_request_body_refuses_unknown_fields`, across every body shape the app accepts (68 on 18 November), with a guard that fails if it finds fewer than 30.
+- Every request body refuses unknown fields (`extra="forbid"`), which blocks mass assignment (OWASP API3:2023). **Enforced by** `tests/test_architecture.py::test_every_request_body_refuses_unknown_fields`, across every body shape the app accepts (68 on 20 November 2026), with a guard that fails if it finds fewer than 30.
 - Constrain every field: lengths, ranges, `Literal` enums, patterns for handles and codes, UUID types. Strip whitespace; lowercase emails.
 - Every `Literal` that mirrors a database allow-list is tied to it with `ensure_same_values`. **Enforced at startup**: the app refuses to start if they differ.
 - Server-controlled fields (`id`, owner ids, `status`, timestamps) never appear in create or update shapes.
@@ -265,7 +265,7 @@ One shape for every non-2xx answer, RFC 9457 Problem Details:
 
 ## 13. Sources
 
-Each link checked to exist on 14 October 2026.
+Links checked on 14 October 2026; later links on the dates beside them.
 
 - Problem Details: [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457). HTTP semantics: [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110). Timestamps: [RFC 3339](https://www.rfc-editor.org/rfc/rfc3339). Deprecation and sunset: [RFC 9745](https://www.rfc-editor.org/rfc/rfc9745), [RFC 8594](https://www.rfc-editor.org/rfc/rfc8594).
 - Google API Improvement Proposals: [AIP-158 pagination](https://google.aip.dev/158), [AIP-193 errors](https://google.aip.dev/193), [AIP-180 backwards compatibility](https://google.aip.dev/180).
