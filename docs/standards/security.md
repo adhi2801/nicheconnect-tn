@@ -14,7 +14,7 @@ Rules marked **(decision)** need a founder decision in `docs/DECISIONS.md`. Rule
 | Security | All of it |
 | Privacy and law | Section 7; the law itself is `legal.md` |
 | Trust and safety | Blocks (2) and daily ceilings (5); the rest is `trust-and-safety.md` |
-| Architecture | Every access check lives in `auth` (layer 2, above only `app/core` and `app/db`: `backend.md` section 1); the database's own user, section 9 |
+| Architecture | Every access check lives in `auth` (the lowest module layer, above only `app/core` and `app/db`: `backend.md` section 1); the database's own user, section 9 |
 | Performance | Rate limits and the overload answer protect capacity, section 5; the budgets are `backend.md` section 6 |
 | Research | Section 12 |
 | Novelty, design, business | Security is judged against the world's published bars (section 0), not competitors. What the screens show for errors is `backend.md` section 3 |
@@ -179,7 +179,9 @@ Examples:
 | Listing sessions; ending one (item 81) | 60 a minute; 30 a minute | the account (and, for another session, the phone's code caps) |
 | Assistants' tokens (item 11): making one; listing; revoking | 5 a minute and 10 a day; 60 a minute; 30 a minute | the account (and, to make one, the phone's code caps). A token's own requests count against its account's limits |
 | Writes | 30 a minute, most with a daily ceiling | the account |
-| Search and matching | 30 a minute | the account |
+| Search, similar creators and the creators list | 30 a minute, 600 a day | the account |
+| Admin API: accounts, reports, takedowns, look-alike names | 60 a minute | the account |
+| Admin: the founders' numbers; the sign-up sources view | 20 a minute; 30 a minute | the account |
 | Public pages | 60 a minute | the address |
 | Admin login; passkey login | 10 in 10 minutes each | the address |
 | Reporting someone | 10 an hour, 30 a day | the account |
@@ -232,6 +234,7 @@ The table names classes, not every route: each route's own limit is the `*_LIMIT
   - `pip-audit` blocks merge on any known vulnerability (D-031): in the app's own packages and tools `--strict`, and in every other dependency group since D-125, after six advisories in the `ml` and `load` groups passed every run unseen (D-124); that second audit is not `--strict`, so a package it cannot check, torch's CPU build, is skipped (gap 7).
   - Prefer maintained libraries with recent releases; avoid anything abandoned for over a year. *(review only)*
 - **CI:**
+  - **A new code-scanning alert blocks the merge:** the ruleset on `main` (id 27525028, D-198) requires CodeQL with no open alert of error severity and none of high security severity or above (`testing.md` section on blocked merges). The alerts already open are gap 1.
   - Every action is pinned to a commit hash, credentials are not persisted, and permissions are least-privilege.
   - zizmor audits the workflows on every run (D-047), which enforces all three.
 - **Images:**
@@ -241,7 +244,7 @@ The table names classes, not every route: each route's own limit is the `*_LIMIT
 - **Licences:** the rule, what CI checks and what it does not are kept in one place, `legal.md` section 3.15, with the gap in its section 6 (D-086); the frontend's share of that gap is gap 5 here.
 - **SBOM:** a CycloneDX bill of materials of the API image, written by Syft on every CI run and kept 90 days (D-082); published with each release once releases exist.
 - **To add before launch:** signed images with provenance (Sigstore cosign, SLSA build level 2) **(not yet built: waits for a registry to push images to, D-063)**.
-- **Least privilege in AWS:** the app's IAM role can reach only its own proof-file folder in its bucket, and its secrets through the execution role. **The app's database login is least privilege** (item 97, D-100): it reads and writes rows and nothing more, and on the sealed tables only reads and adds, and on takedowns never deletes (item 52), so it cannot switch off a seal, remove a preserved takedown or drop a table. Only the release step connects as the owner (`database.md` section 8). Proven by `tests/modules/test_app_role.py`, and by CI running the suite as that login.
+- **Least privilege in AWS:** the app's IAM role can reach only the `proof-files/` and `exports/` prefixes of its own bucket (it lists versions under `exports/` only, and holds `s3:ListBucket` on the bucket so a missing file answers 404, not 403), and its secrets through the execution role. **The app's database login is least privilege** (item 97, D-100): it reads and writes rows and nothing more, and on the sealed tables only reads and adds, and on takedowns never deletes (item 52), so it cannot switch off a seal, remove a preserved takedown or drop a table. Only the release step connects as the owner (`database.md` section 8). Proven by `tests/modules/test_app_role.py`, and by CI running the suite as that login.
 - **Incident response:** `docs/INCIDENT_RESPONSE.md` covers who is called, how to rotate every secret, how to take the API down safely, and how to tell people (D-082). **Rehearsal not yet done**: once on staging before launch.
 - **Disclosure:** `SECURITY.md` (report privately through GitHub, response targets, safe harbour) and `/.well-known/security.txt` (RFC 9116) on the API, whose `Expires` a test makes us renew (D-082). Private vulnerability reporting is on, and CI fails if it is switched off (testing.md gate 13).
 
@@ -280,7 +283,7 @@ The table names classes, not every route: each route's own limit is the `*_LIMIT
 
 | # | Gap | Risk | Acting on it |
 |---|---|---|---|
-| 1 | **15 code-scanning alerts are open on GitHub**, none answered (read through GitHub's API with `gh` on 20 November 2026; the first opened 10 October 2026). They come from GitHub's default CodeQL setup, whose Analyze jobs run on every commit; no workflow here configures it. None is in `app/`: 11 `js/xss-through-dom` in the two HTML prototypes (`frontend/prototypes/dashboard.html`, `homepage.html`), one `js/resource-exhaustion` in the browser tests' stand-in API (`frontend/apps/web/e2e/mock-api.mjs`), one `js/bad-tag-filter` in a CI script (`frontend/scripts/check-no-js.mjs`), and two `py/incomplete-url-substring-sanitization` on assertions in tests (`tests/core/test_links.py`, `tests/modules/campaigns/test_brand_name_flag_api.py`). CodeQL rates each high | Each is most likely harmless where it sits (prototypes, tests and a CI script are not served), but that is our reading, not a fix, and open alerts hide a real one when it comes | Each fixed, or dismissed on GitHub by a founder with its reason; then a rule that a new alert fails review. Section 10 holds launch on it |
+| 1 | **15 code-scanning alerts are open on GitHub**, none answered (read through GitHub's API with `gh` on 20 November 2026; the first opened 10 October 2026). They come from GitHub's default CodeQL setup, whose Analyze jobs run on every commit; no workflow here configures it. None is in `app/`: 11 `js/xss-through-dom` in the two HTML prototypes (`frontend/prototypes/dashboard.html`, `homepage.html`), one `js/resource-exhaustion` in the browser tests' stand-in API (`frontend/apps/web/e2e/mock-api.mjs`), one `js/bad-tag-filter` in a CI script (`frontend/scripts/check-no-js.mjs`), and two `py/incomplete-url-substring-sanitization` on assertions in tests (`tests/core/test_links.py`, `tests/modules/campaigns/test_brand_name_flag_api.py`). CodeQL rates each high | Each is most likely harmless where it sits (prototypes, tests and a CI script are not served), but that is our reading, not a fix, and open alerts hide a real one when it comes | The 15 existing alerts each fixed, or dismissed on GitHub by a founder with its reason; new ones are already blocked by the `main` ruleset (section 9). Section 10 holds launch on it |
 | 2 | **No chapter-by-chapter ASVS 5.0 mapping** | "Level 2" cannot be claimed | Map V1 to V17 before the penetration test, so the tester checks what we claim |
 | 3 | **Brands and creators log in with one factor unless they add a passkey** (D-113, built, off until the domain exists), and the admins' second factor (D-105) can still be phished in real time, as any typed code can | A SIM swap is a brand's or creator's account; a convincing fake admin page could take both admin codes. Since item 82 a stolen session cannot change where a creator is paid, but a SIM swap still gets every code, so a week-old login before either change (D-109), then a new UPI ID's 24-hour wait or a new phone number's 72-hour wait, with an in-app alert, are the answer to it: a swap must go unnoticed for over a week. Nothing yet delivers the alert outside the app (E1), and malware holding an old login's tokens on the owner's own device, together with a SIM swap, still beats it. Someone whose old number is already gone moves their account only from a login 14 days old, with a 7-day wait (D-110, D-174); without one, it cannot be recovered, by design | Passkeys built (D-113) for brands and creators, switched on with the domain (item 4); admins' wait for their web page |
 | 4 | Incident plan not rehearsed; no penetration test; images not signed | Untested plans fail when needed | Section 10 |
@@ -290,7 +293,7 @@ The table names classes, not every route: each route's own limit is the `*_LIMIT
 
 ## 12. Sources
 
-Each link checked to exist on 14 October 2026.
+Links checked on 14 October 2026; later links on the dates beside them.
 
 - [OWASP ASVS](https://owasp.org/www-project-application-security-verification-standard/) (5.0, May 2025) and the [OWASP API Security Top 10, 2023](https://owasp.org/API-Security/editions/2023/en/0x11-t10/).
 - [OWASP Authorization cheat sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html): deny by default, check every object.
