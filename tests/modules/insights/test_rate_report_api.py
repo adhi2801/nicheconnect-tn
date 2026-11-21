@@ -377,6 +377,236 @@ def test_a_withdrawal_needs_a_real_reason(client, db, admin, body):
     assert withdraw(client, admin, row.quarter, body).status_code == 422
 
 
+# --- an admin's read, in any state (D-201) ----------------------------------------------
+
+
+def admin_read(client, user: User, quarter: str, **params):
+    return client.get(f"{ADMIN_URL}/{quarter}", params=params, headers=user.headers)
+
+
+@pytest.mark.parametrize("state", ["built", "published", "withdrawn"])
+def test_an_admin_reads_a_report_in_any_state_with_its_figures(client, db, admin, state):
+    World(db).listed()
+    row = built(db) if state == "built" else published(db, admin)
+    if state == "withdrawn":
+        row.withdrawn_at = FIXED_NOW
+        row.withdrawn_reason = REASON["reason"]
+        db.flush()
+
+    response = admin_read(client, admin, row.quarter)
+
+    assert response.status_code == 200, response.text
+    answer = response.json()
+    assert answer["id"] == str(row.id)
+    assert answer["quarter"] == row.quarter
+    assert service.fingerprint(answer["body"]) == row.body_sha256
+    assert (answer["published_at"] is None) == (state == "built")
+    assert (answer["withdrawn_reason"] is None) == (state != "withdrawn")
+    assert answer["supersedes_id"] is None
+
+
+def test_an_admin_s_read_is_logged(client, db, admin):
+    row = built(db)
+
+    admin_read(client, admin, row.quarter)
+
+    notes = db.scalars(
+        select(AdminAction.note).where(
+            AdminAction.admin_account_id == admin.account_id,
+            AdminAction.action == "view_rate_report",
+        )
+    ).all()
+    assert notes == [f"Read the {row.quarter} report, method version 1."]
+
+
+def test_an_unbuilt_quarter_reads_as_not_built(client, admin):
+    response = admin_read(client, admin, a_quarter())
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "rate_report_not_built"
+
+
+@pytest.mark.parametrize("params", [{"method_version": 0}, {"method_version": "x"}])
+def test_a_method_version_that_is_not_one_is_refused(client, db, admin, params):
+    row = built(db)
+
+    assert admin_read(client, admin, row.quarter, **params).status_code == 422
+
+
+@pytest.mark.parametrize("role", ["brand", "creator"])
+def test_no_one_but_an_admin_reads_an_unpublished_report(client, db, clock, role):
+    row = built(db)
+    user = brand_user(db, clock) if role == "brand" else creator_user(db, clock)
+
+    answer = admin_read(client, user, row.quarter)
+
+    assert answer.status_code == 404
+    assert answer.json()["code"] == "not_found"
+    assert client.get(f"{ADMIN_URL}/{row.quarter}").status_code == 404  # no login
+
+
+def test_an_admin_without_a_second_factor_is_told_it_does_not_exist(client, db, clock):
+    from app.modules.auth.tokens import PHONE_CODE_ONLY, create_access_token
+
+    row = built(db)
+    token, _ = create_access_token(
+        create_account(db, "admin").id, "admin", clock.now, methods=PHONE_CODE_ONLY
+    )
+
+    answer = client.get(
+        f"{ADMIN_URL}/{row.quarter}", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert answer.status_code == 404
+
+
+def test_admin_reads_are_rate_limited(client, admin):
+    answers = [admin_read(client, admin, a_quarter()).status_code for _ in range(31)]
+
+    assert answers[:30] == [404] * 30
+    assert answers[30] == 429
+
+
+def test_an_admin_read_costs_a_fixed_number_of_queries(client, db, admin):
+    small = built(db)
+    World(db).listed()
+    large = built(db)  # a body with one more city
+
+    assert queries_for(client, f"{ADMIN_URL}/{small.quarter}", admin.headers) == (
+        queries_for(client, f"{ADMIN_URL}/{large.quarter}", admin.headers)
+    )
+
+
+# --- correcting a withdrawn quarter (D-201) ----------------------------------------------
+
+
+def rebuild(client, user: User, quarter: str):
+    return client.post(f"{ADMIN_URL}/{quarter}/rebuild", headers=user.headers)
+
+
+@pytest.fixture
+def newer_method(monkeypatch):
+    from app.modules.insights import rate_report_rules as rules
+
+    monkeypatch.setattr(rules, "METHOD_VERSION", 2)
+
+
+def withdrawn(db, admin: User) -> CityRateReport:
+    row = published(db, admin)
+    row.withdrawn_at = FIXED_NOW
+    row.withdrawn_reason = REASON["reason"]
+    db.flush()
+    return row
+
+
+def test_a_withdrawn_quarter_is_built_again_under_a_newer_method(
+    client, db, admin, newer_method
+):
+    old = withdrawn(db, admin)
+
+    response = rebuild(client, admin, old.quarter)
+
+    assert response.status_code == 200, response.text
+    answer = response.json()
+    assert answer["method_version"] == 2
+    assert answer["supersedes_id"] == str(old.id)
+    assert answer["published_at"] is None
+    assert client.get(f"{URL}/{old.quarter}").status_code == 410  # until published
+    notes = db.scalars(
+        select(AdminAction.note).where(
+            AdminAction.admin_account_id == admin.account_id,
+            AdminAction.action == "rebuild_rate_report",
+        )
+    ).all()
+    assert notes == [
+        f"Built the {old.quarter} report again, method version 2, to replace the "
+        "withdrawn one."
+    ]
+
+
+def test_once_published_readers_get_the_correction(client, db, admin, newer_method):
+    old = withdrawn(db, admin)
+    rebuild(client, admin, old.quarter)
+    db.expire_all()
+
+    published_now = publish(client, admin, old.quarter)
+    read = client.get(f"{URL}/{old.quarter}")
+    listed = archive(client, limit=100)
+
+    assert published_now.status_code == 200, published_now.text
+    assert read.status_code == 200
+    assert read.json()["method_version"] == 2
+    versions = sorted(
+        (item["method_version"], item["withdrawn_at"] is not None)
+        for item in listed["items"]
+        if item["quarter"] == old.quarter
+    )
+    assert versions == [(1, True), (2, False)]
+    assert admin_read(client, admin, old.quarter).json()["method_version"] == 2
+    assert (
+        admin_read(client, admin, old.quarter, method_version=1).json()[
+            "withdrawn_reason"
+        ]
+        == (REASON["reason"])
+    )
+
+
+def test_when_every_version_is_withdrawn_readers_get_the_newest_reason(
+    client, db, admin, newer_method
+):
+    old = withdrawn(db, admin)
+    rebuild(client, admin, old.quarter)
+    publish(client, admin, old.quarter)
+    later = {"reason": "The corrected figures were wrong as well, sadly."}
+    assert withdraw(client, admin, old.quarter, later).status_code == 200
+
+    response = client.get(f"{URL}/{old.quarter}")
+
+    assert response.status_code == 410
+    assert response.json()["detail"] == later["reason"]
+
+
+@pytest.mark.parametrize("state", ["published", "built"])
+def test_a_standing_or_unpublished_quarter_is_never_built_again(
+    client, db, admin, newer_method, state
+):
+    # One per test: a refused request rolls back what the test wrote.
+    row = published(db, admin) if state == "published" else built(db)
+
+    response = rebuild(client, admin, row.quarter)
+
+    assert (response.status_code, response.json()["code"]) == (
+        409,
+        "rate_report_not_withdrawn",
+    )
+
+
+def test_an_unbuilt_quarter_is_never_built_again(client, admin, newer_method):
+    nothing = rebuild(client, admin, a_quarter())
+
+    assert (nothing.status_code, nothing.json()["code"]) == (404, "rate_report_not_built")
+
+
+def test_a_correction_needs_a_newer_method_version(client, db, admin):
+    old = withdrawn(db, admin)
+
+    response = rebuild(client, admin, old.quarter)
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "rate_report_method_unchanged"
+
+
+@pytest.mark.parametrize("role", ["brand", "creator"])
+def test_no_one_but_an_admin_builds_a_quarter_again(
+    client, db, clock, admin, role, newer_method
+):
+    old = withdrawn(db, admin)
+    user = brand_user(db, clock) if role == "brand" else creator_user(db, clock)
+
+    assert rebuild(client, user, old.quarter).status_code == 404
+    assert client.post(f"{ADMIN_URL}/{old.quarter}/rebuild").status_code == 404
+
+
 def test_admin_writes_are_rate_limited(client, db, admin):
     answers = [publish(client, admin, a_quarter()).status_code for _ in range(31)]
 

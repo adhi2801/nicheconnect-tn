@@ -41,3 +41,17 @@ class RateReportAlreadyWithdrawn(DomainError):
     status_code = HTTPStatus.CONFLICT
     code = "rate_report_already_withdrawn"
     title = "This rate report was already withdrawn"
+
+
+class RateReportNotWithdrawn(DomainError):
+    status_code = HTTPStatus.CONFLICT
+    code = "rate_report_not_withdrawn"
+    title = "Only a quarter whose newest report was withdrawn can be built again"
+
+
+class RateReportMethodUnchanged(DomainError):
+    # A correction is a new method version: the same rules over the same
+    # quarter would say what the withdrawn report said, from today's cards.
+    status_code = HTTPStatus.CONFLICT
+    code = "rate_report_method_unchanged"
+    title = "A corrected report needs a newer method version than the one withdrawn"

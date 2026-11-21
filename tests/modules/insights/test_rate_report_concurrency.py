@@ -21,7 +21,10 @@ from app.modules.admin.models.admin_action import AdminAction
 from app.modules.auth.models.account import Account
 from app.modules.insights import rate_report_rules as rules
 from app.modules.insights import rate_report_service as service
-from app.modules.insights.exceptions import RateReportAlreadyPublished
+from app.modules.insights.exceptions import (
+    RateReportAlreadyPublished,
+    RateReportNotWithdrawn,
+)
 from app.modules.insights.rate_report_models import CityRateReport
 from tests.factories import create_account, unique_test_phone
 from tests.modules.conftest import CONCURRENCY_NOW
@@ -156,6 +159,47 @@ def test_four_admins_publishing_at_once_publish_it_once(built_report, slow_write
             )
         )
     assert logged == 1
+
+
+def test_four_admins_rebuilding_a_withdrawn_quarter_at_once_build_it_once(
+    built_report, slow_writes, monkeypatch
+):
+    """D-201: the newest version is locked, and the database refuses a second
+    report of the same quarter and version; the others are told cleanly."""
+    with SessionLocal() as session:
+        first = session.get_one(Account, built_report["admins"][0])
+        admin_service.publish(session, first, built_report["quarter"], CONCURRENCY_NOW)
+        admin_service.withdraw(
+            session,
+            first,
+            built_report["quarter"],
+            "A figure was built from a wrong city.",
+            CONCURRENCY_NOW,
+        )
+    monkeypatch.setattr(rules, "METHOD_VERSION", 2)
+
+    def rebuild(index: int) -> str:
+        with SessionLocal() as session:
+            admin = session.get_one(Account, built_report["admins"][index])
+            try:
+                admin_service.rebuild(
+                    session, admin, built_report["quarter"], CONCURRENCY_NOW
+                )
+            except RateReportNotWithdrawn:
+                return "refused"
+            return "rebuilt"
+
+    outcomes, errors = race(rebuild)
+
+    assert errors == []
+    assert sorted(outcomes) == ["rebuilt"] + ["refused"] * (THREADS - 1)
+    with SessionLocal() as session:
+        versions = session.scalars(
+            select(CityRateReport.method_version).where(
+                CityRateReport.quarter == built_report["quarter"]
+            )
+        ).all()
+    assert sorted(versions) == [1, 2]
 
 
 def test_a_session_holding_an_old_copy_still_sees_it_published(built_report):

@@ -9,6 +9,7 @@ cell comes with a new `method_version`.
 null, and must never be drawn as zero.
 """
 
+import uuid
 from datetime import date, datetime
 from typing import Literal
 
@@ -175,7 +176,8 @@ class WithdrawRateReportIn(BaseModel):
 
 
 class AdminRateReportRead(BaseModel):
-    """A report's state as an admin sees it after publishing or withdrawing."""
+    """A report's state as an admin sees it after publishing, withdrawing or
+    building it again."""
 
     quarter: str
     method_version: int
@@ -184,3 +186,15 @@ class AdminRateReportRead(BaseModel):
     withdrawn_at: datetime | None
     withdrawn_reason: str | None
     body_sha256: str
+    supersedes_id: uuid.UUID | None = Field(
+        description="The withdrawn report of the same quarter this one corrects"
+    )
+
+
+class AdminRateReportFullRead(AdminRateReportRead):
+    """A report in any state, its figures included: what an admin reads
+    before publishing it."""
+
+    id: uuid.UUID
+    published_by_account_id: uuid.UUID | None
+    body: RateReportBody

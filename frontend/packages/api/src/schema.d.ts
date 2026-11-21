@@ -204,6 +204,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/rate-reports/{quarter}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read a quarter's city rate report in any state
+         * @description The quarter's newest report, or the one of `method_version`, whether unpublished, published or withdrawn, with all its figures: what an admin reads before publishing it. Written to the admin log as read. Limit: 30 requests per minute.
+         */
+        get: operations["read_rate_report_api_v1_admin_rate_reports__quarter__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/rate-reports/{quarter}/publish": {
         parameters: {
             query?: never;
@@ -215,9 +235,29 @@ export interface paths {
         put?: never;
         /**
          * Publish a quarter's city rate report
-         * @description Makes a built report public, after an admin has read it. From then on nothing it says can change: the database refuses it. Written to the admin log. Limit: 30 requests per minute.
+         * @description Makes the quarter's newest built report public, once an admin has read it (`GET /api/v1/admin/rate-reports/{quarter}`). From then on nothing it says can change: the database refuses it. Written to the admin log. Limit: 30 requests per minute.
          */
         post: operations["publish_rate_report_api_v1_admin_rate_reports__quarter__publish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/rate-reports/{quarter}/rebuild": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Build a withdrawn quarter's report again
+         * @description For a quarter whose newest report was withdrawn, once the method has a newer version: builds the quarter again under it, unpublished, replacing the withdrawn report, which stays as it was. Its asking prices are today's rate cards, as `built_at` says. Read it, then publish it. Written to the admin log. Limit: 30 requests per minute.
+         */
+        post: operations["rebuild_rate_report_api_v1_admin_rate_reports__quarter__rebuild_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -235,7 +275,7 @@ export interface paths {
         put?: never;
         /**
          * Withdraw a published city rate report
-         * @description For a report found wrong after publishing: readers then get 410 with the reason, and the archive lists it as withdrawn. Its figures stay as they were, never rewritten; a corrected report comes as a new method version. Once only. Written to the admin log with the reason. Limit: 30 requests per minute.
+         * @description For a report found wrong after publishing: readers then get 410 with the reason, and the archive lists it as withdrawn. Its figures stay as they were, never rewritten. Once only. A correction comes once the method has a newer version: `.../rebuild` builds the quarter again, and once that is published readers get it instead. Written to the admin log with the reason. Limit: 30 requests per minute.
          */
         post: operations["withdraw_rate_report_api_v1_admin_rate_reports__quarter__withdraw_post"];
         delete?: never;
@@ -3885,7 +3925,7 @@ export interface paths {
         };
         /**
          * Published quarterly rate reports
-         * @description Every published quarterly city rate report, newest first, withdrawn ones included with when they were withdrawn. Paged with `cursor`. Cached for a day, with an ETag. Limit: 60 requests per minute.
+         * @description Every published quarterly city rate report, newest first, withdrawn ones included with when they were withdrawn. Paged with `cursor`. Sent with an ETag and `Cache-Control: public, no-cache`: a cache asks again each time, and an unchanged list answers 304. Limit: 60 requests per minute.
          */
         get: operations["list_rate_reports_api_v1_rate_reports_get"];
         put?: never;
@@ -3905,7 +3945,7 @@ export interface paths {
         };
         /**
          * One quarter's city rate report
-         * @description What creators ask by city, platform and format, and statewide by audience band, for one closed quarter, from anonymous figures: each creator counted once, every figure rounded to the nearest ₹100, and `null` wherever too few are behind it, meaning **not enough to say**, never zero. Agreed fees appear only in a report built with them (`agreed_fees_included`). A published report never changes; `body_sha256` lets any copy be checked. A withdrawn report answers 410 with why. Cached for a day, with an ETag. Limit: 60 requests per minute.
+         * @description What creators ask by city, platform and format, and statewide by audience band, for one closed quarter, from anonymous figures: each creator counted once, every figure rounded to the nearest ₹100, and `null` wherever too few are behind it, meaning **not enough to say**, never zero. Agreed fees appear only in a report built with them (`agreed_fees_included`). A published report never changes; `body_sha256` lets any copy be checked. A withdrawn report answers 410 with why. Sent with an ETag and `Cache-Control: public, no-cache`: a cache asks again each time, so a withdrawal shows at once, and an unchanged report answers 304. Limit: 60 requests per minute.
          */
         get: operations["read_rate_report_api_v1_rate_reports__quarter__get"];
         put?: never;
@@ -4207,8 +4247,46 @@ export interface components {
             name: string;
         };
         /**
+         * AdminRateReportFullRead
+         * @description A report in any state, its figures included: what an admin reads
+         *     before publishing it.
+         */
+        AdminRateReportFullRead: {
+            body: components["schemas"]["RateReportBody"];
+            /** Body Sha256 */
+            body_sha256: string;
+            /**
+             * Built At
+             * Format: date-time
+             */
+            built_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Method Version */
+            method_version: number;
+            /** Published At */
+            published_at: string | null;
+            /** Published By Account Id */
+            published_by_account_id: string | null;
+            /** Quarter */
+            quarter: string;
+            /**
+             * Supersedes Id
+             * @description The withdrawn report of the same quarter this one corrects
+             */
+            supersedes_id: string | null;
+            /** Withdrawn At */
+            withdrawn_at: string | null;
+            /** Withdrawn Reason */
+            withdrawn_reason: string | null;
+        };
+        /**
          * AdminRateReportRead
-         * @description A report's state as an admin sees it after publishing or withdrawing.
+         * @description A report's state as an admin sees it after publishing, withdrawing or
+         *     building it again.
          */
         AdminRateReportRead: {
             /** Body Sha256 */
@@ -4224,6 +4302,11 @@ export interface components {
             published_at: string | null;
             /** Quarter */
             quarter: string;
+            /**
+             * Supersedes Id
+             * @description The withdrawn report of the same quarter this one corrects
+             */
+            supersedes_id: string | null;
             /** Withdrawn At */
             withdrawn_at: string | null;
             /** Withdrawn Reason */
@@ -8296,7 +8379,15 @@ export interface components {
             agreed_deals: number;
             /** Agreed Max Brand Share Percent */
             agreed_max_brand_share_percent: number;
-            /** Agreed Quartiles Creators */
+            /**
+             * Agreed P Percent
+             * @description The p% rule's p: fees left after the two largest contributors must come to at least this share of the largest
+             */
+            agreed_p_percent: number;
+            /**
+             * Agreed Quartiles Creators
+             * @description Paid creators needed before any fee figure: the median and quarters
+             */
             agreed_quartiles_creators: number;
             /** Asking Creators */
             asking_creators: number;
@@ -12366,6 +12457,72 @@ export interface operations {
             };
         };
     };
+    read_rate_report_api_v1_admin_rate_reports__quarter__get: {
+        parameters: {
+            query?: {
+                method_version?: number | null;
+            };
+            header?: never;
+            path: {
+                /** @description A quarter of the Tamil Nadu calendar, `YYYY-Qn` */
+                quarter: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRateReportFullRead"];
+                };
+            };
+            /** @description `rate_report_not_built`; also the answer for anyone who is not an admin */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description That is not a quarter, or the method version is not one */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     publish_rate_report_api_v1_admin_rate_reports__quarter__publish_post: {
         parameters: {
             query?: never;
@@ -12401,6 +12558,82 @@ export interface operations {
                 };
             };
             /** @description `rate_report_already_published`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description That is not a quarter, or the reason is missing or too short. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    rebuild_rate_report_api_v1_admin_rate_reports__quarter__rebuild_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description A quarter of the Tamil Nadu calendar, `YYYY-Qn` */
+                quarter: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRateReportRead"];
+                };
+            };
+            /** @description `rate_report_not_built`; also the answer for anyone who is not an admin */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `rate_report_not_withdrawn` or `rate_report_method_unchanged`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
             409: {
                 headers: {
                     [name: string]: unknown;

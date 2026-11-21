@@ -458,9 +458,12 @@
         "title": "AdminProfileRead",
         "type": "object"
       },
-      "AdminRateReportRead": {
-        "description": "A report's state as an admin sees it after publishing or withdrawing.",
+      "AdminRateReportFullRead": {
+        "description": "A report in any state, its figures included: what an admin reads\nbefore publishing it.",
         "properties": {
+          "body": {
+            "$ref": "#/components/schemas/RateReportBody"
+          },
           "body_sha256": {
             "title": "Body Sha256",
             "type": "string"
@@ -468,6 +471,11 @@
           "built_at": {
             "format": "date-time",
             "title": "Built At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
             "type": "string"
           },
           "method_version": {
@@ -486,9 +494,34 @@
             ],
             "title": "Published At"
           },
+          "published_by_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published By Account Id"
+          },
           "quarter": {
             "title": "Quarter",
             "type": "string"
+          },
+          "supersedes_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The withdrawn report of the same quarter this one corrects",
+            "title": "Supersedes Id"
           },
           "withdrawn_at": {
             "anyOf": [
@@ -521,7 +554,93 @@
           "published_at",
           "withdrawn_at",
           "withdrawn_reason",
-          "body_sha256"
+          "body_sha256",
+          "supersedes_id",
+          "id",
+          "published_by_account_id",
+          "body"
+        ],
+        "title": "AdminRateReportFullRead",
+        "type": "object"
+      },
+      "AdminRateReportRead": {
+        "description": "A report's state as an admin sees it after publishing, withdrawing or\nbuilding it again.",
+        "properties": {
+          "body_sha256": {
+            "title": "Body Sha256",
+            "type": "string"
+          },
+          "built_at": {
+            "format": "date-time",
+            "title": "Built At",
+            "type": "string"
+          },
+          "method_version": {
+            "title": "Method Version",
+            "type": "integer"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "quarter": {
+            "title": "Quarter",
+            "type": "string"
+          },
+          "supersedes_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The withdrawn report of the same quarter this one corrects",
+            "title": "Supersedes Id"
+          },
+          "withdrawn_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Withdrawn At"
+          },
+          "withdrawn_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Withdrawn Reason"
+          }
+        },
+        "required": [
+          "quarter",
+          "method_version",
+          "built_at",
+          "published_at",
+          "withdrawn_at",
+          "withdrawn_reason",
+          "body_sha256",
+          "supersedes_id"
         ],
         "title": "AdminRateReportRead",
         "type": "object"
@@ -9457,7 +9576,13 @@
             "title": "Agreed Max Brand Share Percent",
             "type": "integer"
           },
+          "agreed_p_percent": {
+            "description": "The p% rule's p: fees left after the two largest contributors must come to at least this share of the largest",
+            "title": "Agreed P Percent",
+            "type": "integer"
+          },
           "agreed_quartiles_creators": {
+            "description": "Paid creators needed before any fee figure: the median and quarters",
             "title": "Agreed Quartiles Creators",
             "type": "integer"
           },
@@ -9478,6 +9603,7 @@
           "agreed_brands",
           "agreed_max_brand_share_percent",
           "agreed_quartiles_creators",
+          "agreed_p_percent",
           "rounded_to_paise"
         ],
         "title": "MinCountsRead",
@@ -18021,9 +18147,122 @@
         ]
       }
     },
+    "/api/v1/admin/rate-reports/{quarter}": {
+      "get": {
+        "description": "The quarter's newest report, or the one of `method_version`, whether unpublished, published or withdrawn, with all its figures: what an admin reads before publishing it. Written to the admin log as read. Limit: 30 requests per minute.",
+        "operationId": "read_rate_report_api_v1_admin_rate_reports__quarter__get",
+        "parameters": [
+          {
+            "description": "A quarter of the Tamil Nadu calendar, `YYYY-Qn`",
+            "in": "path",
+            "name": "quarter",
+            "required": true,
+            "schema": {
+              "description": "A quarter of the Tamil Nadu calendar, `YYYY-Qn`",
+              "examples": [
+                "2026-Q4"
+              ],
+              "pattern": "^[0-9]{4}-Q[1-4]$",
+              "title": "Quarter",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "method_version",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 32767,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Method Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminRateReportFullRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`rate_report_not_built`; also the answer for anyone who is not an admin"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "That is not a quarter, or the method version is not one"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read a quarter's city rate report in any state",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/rate-reports/{quarter}/publish": {
       "post": {
-        "description": "Makes a built report public, after an admin has read it. From then on nothing it says can change: the database refuses it. Written to the admin log. Limit: 30 requests per minute.",
+        "description": "Makes the quarter's newest built report public, once an admin has read it (`GET /api/v1/admin/rate-reports/{quarter}`). From then on nothing it says can change: the database refuses it. Written to the admin log. Limit: 30 requests per minute.",
         "operationId": "publish_rate_report_api_v1_admin_rate_reports__quarter__publish_post",
         "parameters": [
           {
@@ -18132,9 +18371,120 @@
         ]
       }
     },
+    "/api/v1/admin/rate-reports/{quarter}/rebuild": {
+      "post": {
+        "description": "For a quarter whose newest report was withdrawn, once the method has a newer version: builds the quarter again under it, unpublished, replacing the withdrawn report, which stays as it was. Its asking prices are today's rate cards, as `built_at` says. Read it, then publish it. Written to the admin log. Limit: 30 requests per minute.",
+        "operationId": "rebuild_rate_report_api_v1_admin_rate_reports__quarter__rebuild_post",
+        "parameters": [
+          {
+            "description": "A quarter of the Tamil Nadu calendar, `YYYY-Qn`",
+            "in": "path",
+            "name": "quarter",
+            "required": true,
+            "schema": {
+              "description": "A quarter of the Tamil Nadu calendar, `YYYY-Qn`",
+              "examples": [
+                "2026-Q4"
+              ],
+              "pattern": "^[0-9]{4}-Q[1-4]$",
+              "title": "Quarter",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminRateReportRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`rate_report_not_built`; also the answer for anyone who is not an admin"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`rate_report_not_withdrawn` or `rate_report_method_unchanged`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "That is not a quarter, or the reason is missing or too short. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Build a withdrawn quarter's report again",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/rate-reports/{quarter}/withdraw": {
       "post": {
-        "description": "For a report found wrong after publishing: readers then get 410 with the reason, and the archive lists it as withdrawn. Its figures stay as they were, never rewritten; a corrected report comes as a new method version. Once only. Written to the admin log with the reason. Limit: 30 requests per minute.",
+        "description": "For a report found wrong after publishing: readers then get 410 with the reason, and the archive lists it as withdrawn. Its figures stay as they were, never rewritten. Once only. A correction comes once the method has a newer version: `.../rebuild` builds the quarter again, and once that is published readers get it instead. Written to the admin log with the reason. Limit: 30 requests per minute.",
         "operationId": "withdraw_rate_report_api_v1_admin_rate_reports__quarter__withdraw_post",
         "parameters": [
           {
@@ -44984,7 +45334,7 @@
     },
     "/api/v1/rate-reports": {
       "get": {
-        "description": "Every published quarterly city rate report, newest first, withdrawn ones included with when they were withdrawn. Paged with `cursor`. Cached for a day, with an ETag. Limit: 60 requests per minute.",
+        "description": "Every published quarterly city rate report, newest first, withdrawn ones included with when they were withdrawn. Paged with `cursor`. Sent with an ETag and `Cache-Control: public, no-cache`: a cache asks again each time, and an unchanged list answers 304. Limit: 60 requests per minute.",
         "operationId": "list_rate_reports_api_v1_rate_reports_get",
         "parameters": [
           {
@@ -45093,7 +45443,7 @@
     },
     "/api/v1/rate-reports/{quarter}": {
       "get": {
-        "description": "What creators ask by city, platform and format, and statewide by audience band, for one closed quarter, from anonymous figures: each creator counted once, every figure rounded to the nearest ₹100, and `null` wherever too few are behind it, meaning **not enough to say**, never zero. Agreed fees appear only in a report built with them (`agreed_fees_included`). A published report never changes; `body_sha256` lets any copy be checked. A withdrawn report answers 410 with why. Cached for a day, with an ETag. Limit: 60 requests per minute.",
+        "description": "What creators ask by city, platform and format, and statewide by audience band, for one closed quarter, from anonymous figures: each creator counted once, every figure rounded to the nearest ₹100, and `null` wherever too few are behind it, meaning **not enough to say**, never zero. Agreed fees appear only in a report built with them (`agreed_fees_included`). A published report never changes; `body_sha256` lets any copy be checked. A withdrawn report answers 410 with why. Sent with an ETag and `Cache-Control: public, no-cache`: a cache asks again each time, so a withdrawal shows at once, and an unchanged report answers 304. Limit: 60 requests per minute.",
         "operationId": "read_rate_report_api_v1_rate_reports__quarter__get",
         "parameters": [
           {

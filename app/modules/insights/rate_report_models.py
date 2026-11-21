@@ -1,4 +1,4 @@
-"""The quarterly city rate report, one row a quarter (item 84, D-200).
+"""The quarterly city rate report, one row a quarter and method version (item 84, D-200, D-201).
 
 A snapshot, because the facts behind it do not keep their past: rate cards
 are edited in place, so last quarter's asking prices cannot be worked out
@@ -17,9 +17,14 @@ section 2), this one is stored once, when the quarter has closed.
   the pattern of the deal record's seal, D-057), and refuses deleting it, so
   a cited figure can be withdrawn with its reason, never quietly rewritten or
   removed. Withdrawing is the one change left, made once.
+- **A withdrawn quarter can be corrected** (D-201): a new row for the same
+  quarter, under a higher method version, pointing at the withdrawn one it
+  replaces (`supersedes_id`). A second trigger refuses any other kind of
+  second row: a new row for a quarter that already has one must supersede
+  its newest version, which must be withdrawn, with a higher version.
 
-Nobody's personal data is here (`NOT_EXPORTED`, `NOT_PERSONAL`); which admin
-published it is recorded, as in the admin log.
+No creator's or brand's data is here (`NOT_EXPORTED`, `NOT_PERSONAL`);
+which admin published it is recorded, as in the admin log.
 """
 
 import uuid
@@ -34,6 +39,7 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Text,
+    UniqueConstraint,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -68,6 +74,22 @@ class CityRateReport(Base):
             "withdrawn_at IS NULL OR published_at IS NOT NULL",
             name="withdrawn_only_once_published",
         ),
+        # Withdrawn after it was published, never before.
+        CheckConstraint(
+            "withdrawn_at IS NULL OR withdrawn_at >= published_at",
+            name="withdrawn_after_published",
+        ),
+        # One report a quarter and method version. The unique constraint is
+        # what makes a second build of the same quarter a no-op (ON CONFLICT
+        # DO NOTHING), however many runs race.
+        UniqueConstraint(
+            "quarter",
+            "method_version",
+            name="uq_city_rate_report_quarter_method_version",
+        ),
+        # A report is superseded at most once; the unique index is also the
+        # foreign key's index (database.md section 5).
+        Index("uq_city_rate_report_supersedes_id", "supersedes_id", unique=True),
         CheckConstraint(
             "withdrawn_reason IS NULL OR char_length(btrim(withdrawn_reason))"
             f" BETWEEN {WITHDRAWN_REASON_MIN_LENGTH} AND {WITHDRAWN_REASON_MAX_LENGTH}",
@@ -81,10 +103,8 @@ class CityRateReport(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=text("uuidv7()")
     )
-    # One report a quarter, keyed `YYYY-Qn` in the Tamil Nadu calendar. The
-    # unique constraint is what makes a second build of the same quarter a
-    # no-op (ON CONFLICT DO NOTHING), however many runs race.
-    quarter: Mapped[str] = mapped_column(String(7), nullable=False, unique=True)
+    # The quarter, keyed `YYYY-Qn` in the Tamil Nadu calendar.
+    quarter: Mapped[str] = mapped_column(String(7), nullable=False)
     # Which rules built it (docs/RATE_REPORT_METHOD.md); never changes.
     method_version: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     body: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
@@ -105,6 +125,13 @@ class CityRateReport(Base):
         DateTime(timezone=True), nullable=True
     )
     withdrawn_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The withdrawn report of the same quarter this one corrects (D-201).
+    # RESTRICT: a published report is never deleted anyway (the seal).
+    supersedes_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("city_rate_report.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

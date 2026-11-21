@@ -71,16 +71,21 @@ def per_creator(
     adds `figures_as_of`, the oldest date behind its follower count. A
     creator with no channel on that platform has no band, and is left out.
     """
-    columns: list[ColumnElement[Any]] = [
-        *groups,
-        CreatorPackage.platform,
-        CreatorPackage.format,
-        func.percentile_cont(0.5).within_group(CreatorPackage.price_paise).label("price"),
-    ]
-    if by_audience:
-        columns.append(func.min(CreatorChannel.figures_as_of).label("figures_as_of"))
+    figures: list[ColumnElement[Any]] = (
+        [func.min(CreatorChannel.figures_as_of).label("figures_as_of")]
+        if by_audience
+        else []
+    )
     query = (
-        select(*columns)
+        select(
+            *groups,
+            CreatorPackage.platform,
+            CreatorPackage.format,
+            func.percentile_cont(0.5)
+            .within_group(CreatorPackage.price_paise)
+            .label("price"),
+            *figures,
+        )
         .select_from(CreatorPackage)
         .join(Creator, Creator.id == CreatorPackage.creator_id)
     )

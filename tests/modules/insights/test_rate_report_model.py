@@ -1,7 +1,9 @@
-"""The quarterly rate report's rules, held by the database itself (item 84, D-200).
+"""The quarterly rate report's rules, held by the database itself (item 84, D-200, D-201).
 
 Each check is broken with raw SQL and refused by name; the seal is shown
-refusing every change to a published report but its one withdrawal.
+refusing every change to a published report but its one withdrawal; and a
+second row for a quarter is refused unless it supersedes the newest,
+withdrawn one under a higher method version.
 """
 
 import random
@@ -40,19 +42,30 @@ def insert(db: Session, **overrides) -> str:
         "published_by_account_id": None,
         "withdrawn_at": None,
         "withdrawn_reason": None,
+        "supersedes_id": None,
     }
     fields.update(overrides)
     db.execute(
         text(
             "INSERT INTO city_rate_report (quarter, method_version, body, body_sha256,"
             " built_at, published_at, published_by_account_id, withdrawn_at,"
-            " withdrawn_reason) VALUES (:quarter, :method_version, CAST(:body AS jsonb),"
-            " :body_sha256, :built_at, :published_at, :published_by_account_id,"
-            " :withdrawn_at, :withdrawn_reason)"
+            " withdrawn_reason, supersedes_id) VALUES (:quarter, :method_version,"
+            " CAST(:body AS jsonb), :body_sha256, :built_at, :published_at,"
+            " :published_by_account_id, :withdrawn_at, :withdrawn_reason,"
+            " :supersedes_id)"
         ),
         fields,
     )
     return str(fields["quarter"])
+
+
+def id_of(db: Session, quarter: str, method_version: int = 1):
+    return db.scalar(
+        text(
+            "SELECT id FROM city_rate_report WHERE quarter = :q AND method_version = :v"
+        ),
+        {"q": quarter, "v": method_version},
+    )
 
 
 def published(db: Session) -> str:
@@ -127,12 +140,123 @@ def test_a_withdrawal_s_reason_has_a_real_length(db, reason):
     assert said.constraint_name == "ck_city_rate_report_withdrawn_reason_length"
 
 
-def test_one_report_a_quarter(db):
+def test_a_withdrawal_is_never_dated_before_its_publishing(db):
+    from datetime import timedelta
+
+    admin = create_account(db, "admin")
+
+    said = refused(
+        db,
+        lambda: insert(
+            db,
+            published_at=FIXED_NOW,
+            published_by_account_id=admin.id,
+            withdrawn_at=FIXED_NOW - timedelta(seconds=1),
+            withdrawn_reason="A good long reason.",
+        ),
+    )
+
+    assert said.constraint_name == "ck_city_rate_report_withdrawn_after_published"
+
+
+def test_one_report_a_quarter_and_method_version(db):
     quarter = insert(db)
 
     said = refused(db, lambda: insert(db, quarter=quarter))
 
-    assert said.constraint_name == "uq_city_rate_report_quarter"
+    assert said.constraint_name == "uq_city_rate_report_quarter_method_version"
+
+
+# --- correcting a withdrawn quarter (D-201) ------------------------------------------
+
+
+def withdrawn(db: Session, method_version: int = 1, quarter: str | None = None) -> str:
+    admin = create_account(db, "admin")
+    return insert(
+        db,
+        quarter=quarter or a_quarter(),
+        method_version=method_version,
+        published_at=FIXED_NOW,
+        published_by_account_id=admin.id,
+        withdrawn_at=FIXED_NOW,
+        withdrawn_reason="A figure was built from a wrong city.",
+    )
+
+
+SUPERSEDE_REFUSED = (
+    "city_rate_report_supersedes: a new {q} report must supersede its newest, "
+    "withdrawn version under a higher method version"
+)
+
+
+def test_a_withdrawn_report_is_superseded_by_a_higher_version(db):
+    quarter = withdrawn(db)
+
+    insert(db, quarter=quarter, method_version=2, supersedes_id=id_of(db, quarter))
+
+    assert id_of(db, quarter, 2) is not None
+
+
+def test_a_standing_report_cannot_be_superseded(db):
+    quarter = published(db)
+
+    said = refused(
+        db,
+        lambda: insert(
+            db, quarter=quarter, method_version=2, supersedes_id=id_of(db, quarter)
+        ),
+    )
+
+    assert said.message_primary == SUPERSEDE_REFUSED.format(q=quarter)
+
+
+def test_a_second_report_must_say_what_it_supersedes(db):
+    quarter = withdrawn(db)
+
+    said = refused(db, lambda: insert(db, quarter=quarter, method_version=2))
+
+    assert said.message_primary == SUPERSEDE_REFUSED.format(q=quarter)
+
+
+def test_a_correction_needs_a_higher_method_version(db):
+    quarter = withdrawn(db, method_version=2)
+
+    said = refused(
+        db,
+        lambda: insert(
+            db, quarter=quarter, method_version=1, supersedes_id=id_of(db, quarter, 2)
+        ),
+    )
+
+    assert said.message_primary == SUPERSEDE_REFUSED.format(q=quarter)
+
+
+def test_only_the_newest_version_is_superseded(db):
+    quarter = withdrawn(db)
+    first = id_of(db, quarter)
+    insert(db, quarter=quarter, method_version=2, supersedes_id=first)
+
+    said = refused(
+        db, lambda: insert(db, quarter=quarter, method_version=3, supersedes_id=first)
+    )
+
+    assert said.message_primary == SUPERSEDE_REFUSED.format(q=quarter)
+
+
+def test_a_report_of_another_quarter_is_never_superseded(db):
+    other = withdrawn(db)
+    quarter = a_quarter()
+
+    said = refused(
+        db,
+        lambda: insert(
+            db, quarter=quarter, method_version=2, supersedes_id=id_of(db, other)
+        ),
+    )
+
+    assert said.message_primary == (
+        f"city_rate_report_supersedes: {quarter} has no report to supersede"
+    )
 
 
 def test_the_admin_who_published_cannot_be_deleted(db):
@@ -181,6 +305,8 @@ def test_an_unpublished_report_can_be_changed_or_removed(db):
         "published_at = published_at + interval '1 day'",
         "quarter = '1999-Q1'",
         "created_at = created_at - interval '1 day'",
+        "id = uuidv7()",
+        "supersedes_id = id",
     ],
 )
 def test_a_published_report_never_changes_what_it_says(db, assignment):
@@ -261,7 +387,11 @@ def test_the_seal_and_its_triggers_are_in_place(db):
         )
     )
 
-    assert triggers == {"city_rate_report_sealed", "city_rate_report_no_truncate"}
+    assert triggers == {
+        "city_rate_report_sealed",
+        "city_rate_report_no_truncate",
+        "city_rate_report_supersedes",
+    }
 
 
 def test_nothing_deleted_by_the_orm_bypasses_the_seal(db):

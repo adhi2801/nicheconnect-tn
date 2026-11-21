@@ -2,9 +2,13 @@
 
 One report a closed quarter, in the Tamil Nadu calendar. A daily job builds
 the last closed quarter's report if it has none (`build_due`); it starts
-unpublished, an admin publishes it after reading it, and from then on the
-database refuses any change to what it says (`rate_report_models`). Readers
-see published reports only; a withdrawn one answers 410 with why.
+unpublished, an admin reads it (`read_any`) and publishes it, and from then
+on the database refuses any change to what it says (`rate_report_models`).
+Readers see published reports only; a withdrawn one answers 410 with why.
+
+A withdrawn quarter can be corrected (D-201): `rebuild` builds it again
+under a newer method version, superseding the withdrawn report, which stays
+as it was. Readers then get the newest published version that stands.
 
 Why a stored snapshot, when every other figure in `insights` is worked out
 on read (backend.md section 2): rate cards are edited in place, so a past
@@ -29,6 +33,7 @@ from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, load_only
 
 from app.core.clock import india_date
@@ -38,9 +43,11 @@ from app.modules.insights import rate_report_rules as rules
 from app.modules.insights.exceptions import (
     RateReportAlreadyPublished,
     RateReportAlreadyWithdrawn,
+    RateReportMethodUnchanged,
     RateReportNotBuilt,
     RateReportNotFound,
     RateReportNotPublished,
+    RateReportNotWithdrawn,
     RateReportWithdrawn,
 )
 from app.modules.insights.rate_guidance_service import AUDIENCE_BANDS
@@ -286,7 +293,8 @@ def published(db: Session, *, limit: int, cursor: str | None) -> Slice[CityRateR
     """Published reports, newest first, withdrawn ones included (they say so).
 
     A report is built once its quarter has closed, so the order they were
-    built in is the quarters' order. One query, of the summary's columns
+    built in is the quarters' order; a corrected quarter (D-201) lists its
+    new version where it was built, its withdrawn one where that was. One query, of the summary's columns
     only: never the body, which the archive does not show and which is the
     row's bulk. Reading a body from these rows raises rather than quietly
     costing a query a row.
@@ -319,13 +327,23 @@ def published(db: Session, *, limit: int, cursor: str | None) -> Slice[CityRateR
 
 
 def read_published(db: Session, quarter: str) -> CityRateReport:
-    """One published report. Raises RateReportNotFound for a quarter with no
-    published report (an unpublished one included), and RateReportWithdrawn,
-    with the reason, for one withdrawn."""
+    """A quarter's newest published report that stands. One query.
+
+    Raises RateReportNotFound for a quarter with no published report (an
+    unpublished one included), and RateReportWithdrawn, with the newest
+    one's reason, when every published version was withdrawn.
+    """
     report = db.scalar(
-        select(CityRateReport).where(
+        select(CityRateReport)
+        .where(
             CityRateReport.quarter == quarter, CityRateReport.published_at.is_not(None)
         )
+        # Standing before withdrawn, then the newest method.
+        .order_by(
+            CityRateReport.withdrawn_at.is_not(None),
+            CityRateReport.method_version.desc(),
+        )
+        .limit(1)
     )
     if report is None:
         raise RateReportNotFound()
@@ -334,13 +352,31 @@ def read_published(db: Session, quarter: str) -> CityRateReport:
     return report
 
 
+def read_any(
+    db: Session, quarter: str, method_version: int | None = None
+) -> CityRateReport:
+    """A quarter's newest report in any state, or the one of `method_version`,
+    body included: the admin's read. One query. Raises RateReportNotBuilt."""
+    query = select(CityRateReport).where(CityRateReport.quarter == quarter)
+    if method_version is not None:
+        query = query.where(CityRateReport.method_version == method_version)
+    report = db.scalar(query.order_by(CityRateReport.method_version.desc()).limit(1))
+    if report is None:
+        raise RateReportNotBuilt()
+    return report
+
+
 # --- publishing and withdrawing (the admin API's, which logs and commits) -------------
 
 
 def _locked(db: Session, quarter: str) -> CityRateReport:
+    """The quarter's newest version, locked: the one an admin publishes,
+    withdraws or supersedes."""
     report = db.scalar(
         select(CityRateReport)
         .where(CityRateReport.quarter == quarter)
+        .order_by(CityRateReport.method_version.desc())
+        .limit(1)
         .with_for_update()
         .execution_options(populate_existing=True)
     )
@@ -366,6 +402,51 @@ def publish(
     report.published_at = now
     report.published_by_account_id = admin_account_id
     report.updated_at = now
+    return report
+
+
+def rebuild(
+    db: Session, quarter: str, built_at: datetime, *, agreed_fees: bool
+) -> CityRateReport:
+    """Build a withdrawn quarter again, under the current method version,
+    superseding the withdrawn report. Unpublished, like any new build; does
+    not commit: the caller logs it first.
+
+    The newest version is locked first, and a second admin building at the
+    same moment is refused by the database (one row a quarter and version,
+    and a report superseded once) and told the quarter's newest report is
+    no longer the withdrawn one. Asking prices are today's rate cards, as
+    `built_at` and `as_of` say: a past quarter's cards are not kept.
+
+    Raises NotAQuarter, RateReportNotBuilt, RateReportNotWithdrawn and
+    RateReportMethodUnchanged.
+    """
+    newest = _locked(db, quarter)
+    if newest.withdrawn_at is None:
+        db.rollback()
+        raise RateReportNotWithdrawn()
+    if newest.method_version >= rules.METHOD_VERSION:
+        db.rollback()
+        raise RateReportMethodUnchanged()
+    body = build_body(db, quarter, built_at, agreed_fees=agreed_fees).model_dump(
+        mode="json"
+    )
+    report = CityRateReport(
+        quarter=quarter,
+        method_version=rules.METHOD_VERSION,
+        body=body,
+        body_sha256=fingerprint(body),
+        built_at=built_at,
+        supersedes_id=newest.id,
+        created_at=built_at,
+        updated_at=built_at,
+    )
+    db.add(report)
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        raise RateReportNotWithdrawn() from None
     return report
 
 
