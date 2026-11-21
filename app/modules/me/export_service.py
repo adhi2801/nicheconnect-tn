@@ -163,8 +163,10 @@ NOT_EXPORTED: dict[str, str] = {
     "city_rate_report": (
         "The free quarterly report of what creators ask, by city: counts and "
         "rounded figures across many creators, each shown only when at least "
-        "five are behind it. It holds no name, handle or id of anyone, so "
-        "nothing in it is about you; the report itself is public."
+        "five are behind it. The report names no creator or brand, so nothing "
+        "in it is about you; the report itself is public. Each one also "
+        "records which of our admins published it, kept for ever with the "
+        "published report."
     ),
 }
 
