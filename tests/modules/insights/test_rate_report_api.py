@@ -73,7 +73,8 @@ def test_a_published_report_is_read_by_anyone(client, db, admin):
     assert service.fingerprint(answer["body"]) == row.body_sha256
     assert answer["method_url"].endswith("docs/RATE_REPORT_METHOD.md")
     assert answer["body"]["agreed_fees_included"] is False
-    assert response.headers["Cache-Control"] == "public, max-age=86400"
+    # No time to live: a withdrawal changes the answer, not the body.
+    assert response.headers["Cache-Control"] == "public, no-cache"
 
 
 def test_signed_in_brands_and_creators_read_it_the_same(client, db, clock, admin):
@@ -117,6 +118,39 @@ def test_a_withdrawn_report_answers_410_with_why(client, db, admin):
     assert response.status_code == 410
     assert response.json()["code"] == "rate_report_withdrawn"
     assert response.json()["detail"] == REASON["reason"]
+
+
+def test_a_cache_holding_a_withdrawn_report_is_told_410(client, db, admin):
+    """A cache revalidates every time (`no-cache`), so the ETag it holds for
+    the figures it kept never earns a 304 once the report is withdrawn."""
+    row = built(db)
+    assert publish(client, admin, row.quarter).status_code == 200
+    first = client.get(f"{URL}/{row.quarter}")
+    assert first.headers["Cache-Control"] == "public, no-cache"
+    etag = first.headers["ETag"]
+    assert withdraw(client, admin, row.quarter).status_code == 200
+
+    again = client.get(f"{URL}/{row.quarter}", headers={"If-None-Match": etag})
+
+    assert again.status_code == 410
+    assert again.json()["code"] == "rate_report_withdrawn"
+
+
+def test_the_archive_is_revalidated_and_shows_a_withdrawal_at_once(client, db, admin):
+    row = built(db)
+    assert publish(client, admin, row.quarter).status_code == 200
+    first = client.get(URL, params={"limit": 100})
+    assert first.headers["Cache-Control"] == "public, no-cache"
+    etag = first.headers["ETag"]
+    unchanged = client.get(URL, params={"limit": 100}, headers={"If-None-Match": etag})
+    assert unchanged.status_code == 304
+    assert withdraw(client, admin, row.quarter).status_code == 200
+
+    again = client.get(URL, params={"limit": 100}, headers={"If-None-Match": etag})
+
+    assert again.status_code == 200
+    [item] = [item for item in again.json()["items"] if item["quarter"] == row.quarter]
+    assert item["withdrawn_at"] is not None
 
 
 @pytest.mark.parametrize("quarter", ["2026-Q5", "2026Q1", "26-Q1", "latest"])

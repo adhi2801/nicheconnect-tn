@@ -1,8 +1,10 @@
 """The quarterly city rate report, readable without logging in (HTTP; item 84, D-200).
 
 Public by design, like city figures: hand-built responses, nothing that
-depends on who is asking, a cache header and an ETag. A published report
-never changes (the database refuses it), so it is cached for a day. The
+depends on who is asking, a cache header and an ETag. A published report's
+figures never change (the database refuses it), but a withdrawal changes
+what a read answers (410) without changing the figures, so every cache must
+ask again each time (`no-cache`); an unchanged answer costs a 304. The
 rules are `rate_report_service`.
 """
 
@@ -25,10 +27,14 @@ from app.modules.insights.rate_report_schemas import (
     RateReportSummaryRead,
 )
 
-# A published report never changes, so a day is safe; the list changes only
-# when a report is published or withdrawn, so a day there too is at worst a
-# day late (backend.md section 6). Invalidation: the ETag hashes the answer.
-CACHE_SECONDS = 86_400
+# Why no time to live (backend.md section 6): a published report's figures
+# never change, but it can be withdrawn, and a withdrawal changes the answer
+# (410), not the body, so a cache keeping a body for any time would keep
+# serving withdrawn figures. `no-cache` lets any cache store the answer but
+# makes it ask again every time; the ETag, hashed from the answer, makes the
+# unchanged answer a 304 with no body. The archive follows the same rule, so a
+# withdrawal or a new report shows at once. Invalidation: every read revalidates.
+CACHE_CONTROL = "public, no-cache"
 PUBLIC_READ_LIMIT = "60 per minute"
 
 router = APIRouter(prefix="/api/v1/rate-reports", tags=["public"])
@@ -52,7 +58,7 @@ def _cached(
 ) -> Response | None:
     """Set the cache headers; a 304 when the reader already has this answer."""
     etag = etag_for(body.model_dump_json().encode())
-    headers = {"Cache-Control": f"public, max-age={CACHE_SECONDS}", "ETag": etag}
+    headers = {"Cache-Control": CACHE_CONTROL, "ETag": etag}
     if holds_current(if_none_match, etag):
         return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=headers)
     response.headers.update(headers)
@@ -79,7 +85,9 @@ def _summary(report: CityRateReport) -> RateReportSummaryRead:
     description=(
         "Every published quarterly city rate report, newest first, withdrawn "
         "ones included with when they were withdrawn. Paged with `cursor`. "
-        "Cached for a day, with an ETag. Limit: 60 requests per minute."
+        "Sent with an ETag and `Cache-Control: public, no-cache`: a cache "
+        "asks again each time, and an unchanged list answers 304. Limit: 60 "
+        "requests per minute."
     ),
     responses={**_ERRORS, 422: problem_doc("A limit out of range, or a bad cursor")},
 )
@@ -112,7 +120,9 @@ def list_rate_reports(
         "never zero. Agreed fees appear only in a report built with them "
         "(`agreed_fees_included`). A published report never changes; "
         "`body_sha256` lets any copy be checked. A withdrawn report answers "
-        "410 with why. Cached for a day, with an ETag. Limit: 60 requests per "
+        "410 with why. Sent with an ETag and `Cache-Control: public, "
+        "no-cache`: a cache asks again each time, so a withdrawal shows at "
+        "once, and an unchanged report answers 304. Limit: 60 requests per "
         "minute."
     ),
     responses={
