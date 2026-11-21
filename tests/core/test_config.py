@@ -332,6 +332,18 @@ def test_an_invalid_region_is_refused(region):
     assert_rejected("aws_region", aws_region=region)
 
 
+# --- the quarterly city rate report (item 84, D-200) -----------------------------------
+
+
+def test_agreed_fees_are_left_out_of_rate_reports_by_default(monkeypatch):
+    """D-078: no public figure from a deal until a founder amends it, so the
+    report's agreed-fee section is off unless switched on deliberately."""
+    monkeypatch.delenv("RATE_REPORT_AGREED_FEES", raising=False)
+
+    assert load().rate_report_agreed_fees is False
+    assert load(rate_report_agreed_fees=True).rate_report_agreed_fees is True
+
+
 # --- results read from proof (D-070) ---------------------------------------------------
 
 
