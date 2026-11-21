@@ -29,7 +29,7 @@ from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 
 from app.core.clock import india_date
 from app.core.pagination import Slice, build_slice, older_than_cursor
@@ -285,10 +285,25 @@ def published(db: Session, *, limit: int, cursor: str | None) -> Slice[CityRateR
     """Published reports, newest first, withdrawn ones included (they say so).
 
     A report is built once its quarter has closed, so the order they were
-    built in is the quarters' order. One query.
+    built in is the quarters' order. One query, of the summary's columns
+    only: never the body, which the archive does not show and which is the
+    row's bulk. Reading a body from these rows raises rather than quietly
+    costing a query a row.
     """
     query = (
         select(CityRateReport)
+        .options(
+            load_only(
+                CityRateReport.id,
+                CityRateReport.quarter,
+                CityRateReport.method_version,
+                CityRateReport.published_at,
+                CityRateReport.withdrawn_at,
+                CityRateReport.body_sha256,
+                CityRateReport.created_at,
+                raiseload=True,
+            )
+        )
         .where(CityRateReport.published_at.is_not(None))
         .order_by(CityRateReport.created_at.desc(), CityRateReport.id.desc())
         .limit(limit + 1)

@@ -412,6 +412,30 @@ def test_a_page_of_the_archive_reads_one_row_past_the_page(db):
     assert 8 in dict(parameters).values()
 
 
+def test_the_archive_never_reads_a_report_s_body(db):
+    """The body is the row's bulk and the archive shows none of it."""
+    import re
+
+    from sqlalchemy import event
+
+    from app.db.session import engine
+
+    statements: list[str] = []
+
+    def capture(conn, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+
+    event.listen(engine, "before_cursor_execute", capture)
+    try:
+        service.published(db, limit=7, cursor=None)
+    finally:
+        event.remove(engine, "before_cursor_execute", capture)
+
+    [statement] = [s for s in statements if "FROM city_rate_report" in s]
+    assert "city_rate_report.body_sha256" in statement
+    assert not re.search(r"city_rate_report\.body\b(?!_)", statement)
+
+
 def test_a_built_quarter_is_never_built_again(db):
     service.build_due(db, FAR, built_at=FAR, agreed_fees=False)
     World(db).listed()  # the figures move; the report must not

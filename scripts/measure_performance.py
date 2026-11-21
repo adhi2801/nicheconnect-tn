@@ -143,6 +143,8 @@ def summarise(name: str, timings: list[float], budget: int) -> dict:
 # production, stayed flat at 269-341 ms. A slow bulk number here is worth
 # re-checking with real commits before it is believed.
 BULK_ROUNDS = 5
+# The cities a real quarter's rate report lists (item 84, D-200).
+REPORT_CITIES = 20
 # The most a brand may send in one call: the worst case is the one that matters.
 BULK_ROWS = MAX_BULK_MARK_PAID
 
@@ -748,9 +750,20 @@ def measure_writes(
         for round_number in range(deals):
             quarter = f"{1000 + round_number}-Q1"
             started = time.perf_counter()
-            body = rate_report_service.build_body(
-                db, quarter, now, agreed_fees=True
-            ).model_dump(mode="json")
+            report = rate_report_service.build_body(db, quarter, now, agreed_fees=True)
+            # The seeded data lists few cities; a real quarter's report lists
+            # about 20, so the stored body is filled out to REPORT_CITIES by
+            # repeating the cities found, and the reads are timed on a body
+            # that large. The build's time includes this small step.
+            if not report.cities:
+                raise SystemExit("rate report: no listed city in the seeded data")
+            report.cities = [
+                report.cities[i % len(report.cities)].model_copy(
+                    update={"city": f"Measured city {i + 1}"}
+                )
+                for i in range(REPORT_CITIES)
+            ]
+            body = report.model_dump(mode="json")
             db.add(
                 CityRateReport(
                     quarter=quarter,
