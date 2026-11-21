@@ -610,8 +610,10 @@ def change_status(
             db, memo, kind=f"memo_{new_status}", actor_role=actor, now=now, facts=facts
         )
 
-    # Tell the other side, in the same transaction as the change itself.
-    if new_status == "cancelled":
+    # Tell the other side, in the same transaction as the change itself. A
+    # draft cancelled before it was sent is told to nobody: the creator could
+    # never open it, and it is not on the record (audit C13, 22 November 2026).
+    if new_status == "cancelled" and memo.sent_at is not None:
         _notify_other_side(
             db,
             memo,

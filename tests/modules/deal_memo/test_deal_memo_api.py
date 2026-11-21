@@ -609,6 +609,25 @@ def test_cancelling_before_work_costs_nothing(client, db, clock):
     assert "memo_cancelled" in notification_types(client, creator)
 
 
+def test_a_draft_cancelled_before_it_was_sent_tells_the_creator_nothing(
+    client, db, clock
+):
+    """Audit C13, 22 November 2026. A draft is the brand's own workspace,
+    "visible only to the brand until it is sent": the creator cannot read
+    it, and its cancellation is not on the deal record. Yet cancelling one
+    sent the creator a `memo_cancelled` notice about a memo they could
+    never open. A memo the creator was sent, then cancelled, still tells
+    them (above)."""
+    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    memo = draft_memo(client, brand, accepted_application(client, brand, creator))
+
+    cancelled = client.post(f"{MEMOS_URL}/{memo['id']}/cancel", headers=brand.headers)
+
+    assert cancelled.status_code == 200, cancelled.text
+    assert cancelled.json()["status"] == "cancelled"
+    assert "memo_cancelled" not in notification_types(client, creator)
+
+
 def test_cancelling_after_work_started_counts(client, db, clock):
     brand, creator = brand_user(db, clock), creator_user(db, clock)
     memo = sent_memo(client, brand, accepted_application(client, brand, creator))
