@@ -17,27 +17,46 @@ from app.modules.insights import rate_report_service as service
 # 06:00 there, two and three days on.
 TWO_DAYS_ON = datetime(2026, 10, 3, 0, 30, tzinfo=UTC)
 THREE_DAYS_ON = datetime(2026, 10, 4, 0, 30, tzinfo=UTC)
+# A retry, later the same morning than its schedule.
+RETRIED_AT = datetime(2026, 10, 3, 0, 41, 7, tzinfo=UTC)
 
 
 @pytest.mark.parametrize("switched_on", [False, True])
 def test_a_run_builds_the_last_closed_quarter_with_the_setting(monkeypatch, switched_on):
     asked = []
 
-    def build_due(db, now, *, agreed_fees):
-        asked.append((now, agreed_fees))
+    def build_due(db, now, *, built_at, agreed_fees):
+        asked.append((now, built_at, agreed_fees))
         return service.BuildRun(quarter="2026-Q3", built=True)
 
     monkeypatch.setattr(service, "build_due", build_due)
     monkeypatch.setattr(settings, "rate_report_agreed_fees", switched_on)
 
-    run = jobs.run_build(TWO_DAYS_ON)
+    run = jobs.run_build(TWO_DAYS_ON, clock=lambda: RETRIED_AT)
 
     assert run == service.BuildRun(quarter="2026-Q3", built=True)
-    assert asked == [(TWO_DAYS_ON, switched_on)]
+    # The schedule decides the quarter; the clock says when it was built.
+    assert asked == [(TWO_DAYS_ON, RETRIED_AT, switched_on)]
+
+
+def test_a_run_reads_the_real_clock_by_default(monkeypatch):
+    asked = []
+
+    def build_due(db, now, *, built_at, agreed_fees):
+        asked.append(built_at)
+        return service.BuildRun(quarter="2026-Q3", built=False)
+
+    monkeypatch.setattr(service, "build_due", build_due)
+    before = datetime.now(UTC)
+
+    jobs.run_build(TWO_DAYS_ON)
+
+    [built_at] = asked
+    assert before <= built_at <= datetime.now(UTC)
 
 
 def failing(monkeypatch) -> None:
-    def build_due(db, now, *, agreed_fees):
+    def build_due(db, now, *, built_at, agreed_fees):
         raise RuntimeError("the database went away")
 
     monkeypatch.setattr(service, "build_due", build_due)

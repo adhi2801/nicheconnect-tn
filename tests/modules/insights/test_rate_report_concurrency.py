@@ -93,7 +93,9 @@ def test_four_builds_at_once_leave_one_report(moment, monkeypatch):
 
     def build(_: int) -> bool:
         with SessionLocal() as session:
-            return service.build_due(session, moment, agreed_fees=False).built
+            return service.build_due(
+                session, moment, built_at=moment, agreed_fees=False
+            ).built
 
     outcomes, errors = race(build)
 
@@ -114,7 +116,7 @@ def test_four_builds_at_once_leave_one_report(moment, monkeypatch):
 def built_report() -> Iterator[dict[str, object]]:
     now = far_moment()
     with SessionLocal() as session:
-        service.build_due(session, now, agreed_fees=False)
+        service.build_due(session, now, built_at=now, agreed_fees=False)
         admins = [
             create_account(session, "admin", phone=unique_test_phone())
             for _ in range(THREADS)

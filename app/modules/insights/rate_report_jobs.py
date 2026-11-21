@@ -18,7 +18,8 @@ would have. The workflow's only input is the scheduled time (D-060 point 5).
 """
 
 import logging
-from datetime import datetime, timedelta
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from dbos import DBOS, ScheduleInput
@@ -41,12 +42,25 @@ SCHEDULE_NAME = "city-rate-report-build"
 OVERDUE_AFTER = timedelta(days=3)
 
 
-def run_build(scheduled_at: datetime) -> rate_report_service.BuildRun:
-    """The work itself, callable without DBOS (tests, and a manual rerun)."""
+def _clock() -> datetime:
+    return datetime.now(UTC)
+
+
+def run_build(
+    scheduled_at: datetime, clock: Callable[[], datetime] = _clock
+) -> rate_report_service.BuildRun:
+    """The work itself, callable without DBOS (tests, and a manual rerun).
+
+    The scheduled time decides the quarter; the report says when it was
+    really built, which `clock` tells (a retry runs later than scheduled).
+    """
     try:
         with SessionLocal() as db:
             run = rate_report_service.build_due(
-                db, scheduled_at, agreed_fees=settings.rate_report_agreed_fees
+                db,
+                scheduled_at,
+                built_at=clock(),
+                agreed_fees=settings.rate_report_agreed_fees,
             )
     except Exception:
         quarter = rules.last_closed_quarter(scheduled_at)

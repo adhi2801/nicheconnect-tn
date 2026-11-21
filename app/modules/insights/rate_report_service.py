@@ -202,8 +202,15 @@ class BuildRun:
     built: bool
 
 
-def build_due(db: Session, now: datetime, *, agreed_fees: bool) -> BuildRun:
+def build_due(
+    db: Session, now: datetime, *, built_at: datetime, agreed_fees: bool
+) -> BuildRun:
     """Build the last closed quarter's report, unless it has one. Commits.
+
+    `now` is the run's scheduled time, which decides the quarter, so a run
+    retried or delayed past midnight still builds the quarter it was for;
+    `built_at` is the clock's time as the figures are read, which the report
+    states (`built_at`, and `as_of`, its day).
 
     Idempotent: a quarter already built is left as it is, and two runs at
     once leave one row, since the second insert does nothing on the unique
@@ -213,7 +220,9 @@ def build_due(db: Session, now: datetime, *, agreed_fees: bool) -> BuildRun:
     quarter = rules.last_closed_quarter(now)
     if db.scalar(select(CityRateReport.id).where(CityRateReport.quarter == quarter)):
         return BuildRun(quarter=quarter, built=False)
-    body = build_body(db, quarter, now, agreed_fees=agreed_fees).model_dump(mode="json")
+    body = build_body(db, quarter, built_at, agreed_fees=agreed_fees).model_dump(
+        mode="json"
+    )
     inserted = db.execute(
         insert(CityRateReport)
         .values(
@@ -221,9 +230,9 @@ def build_due(db: Session, now: datetime, *, agreed_fees: bool) -> BuildRun:
             method_version=rules.METHOD_VERSION,
             body=body,
             body_sha256=fingerprint(body),
-            built_at=now,
-            created_at=now,
-            updated_at=now,
+            built_at=built_at,
+            created_at=built_at,
+            updated_at=built_at,
         )
         .on_conflict_do_nothing()
         .returning(CityRateReport.id)

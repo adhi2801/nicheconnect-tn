@@ -359,31 +359,35 @@ def test_the_build_costs_the_same_queries_for_one_city_or_three(db):
 # --- building once a quarter ------------------------------------------------------------
 
 FAR = datetime(2031, 2, 3, 0, 30, tzinfo=UTC)  # a quarter no other test builds
+# A run scheduled at FAR but retried until past midnight in Tamil Nadu.
+FAR_LATER = datetime(2031, 2, 3, 19, 0, tzinfo=UTC)
 
 
 def test_the_last_closed_quarter_is_built_unpublished_and_fingerprinted(db):
     World(db).listed()
 
-    run = service.build_due(db, FAR, agreed_fees=False)
+    run = service.build_due(db, FAR, built_at=FAR_LATER, agreed_fees=False)
     row = db.scalar(select(CityRateReport).where(CityRateReport.quarter == "2030-Q4"))
 
     assert run == service.BuildRun(quarter="2030-Q4", built=True)
     assert row.published_at is None
     assert row.method_version == rules.METHOD_VERSION
-    assert row.built_at == row.created_at == row.updated_at == FAR
+    # When it was really built, not when the run was scheduled.
+    assert row.built_at == row.created_at == row.updated_at == FAR_LATER
+    assert row.body["as_of"] == "2031-02-04"
     assert row.body_sha256 == service.fingerprint(row.body)
     assert RateReportBody.model_validate(row.body).quarter == "2030-Q4"
 
 
 def test_a_built_quarter_s_figures_are_never_worked_out_again(db, monkeypatch):
-    service.build_due(db, FAR, agreed_fees=False)
+    service.build_due(db, FAR, built_at=FAR, agreed_fees=False)
 
     def no_second_build(*args, **kwargs):
         raise AssertionError("a built quarter was worked out again")
 
     monkeypatch.setattr(service, "build_body", no_second_build)
 
-    assert service.build_due(db, FAR, agreed_fees=False).built is False
+    assert service.build_due(db, FAR, built_at=FAR, agreed_fees=False).built is False
 
 
 def test_a_page_of_the_archive_reads_one_row_past_the_page(db):
@@ -409,10 +413,12 @@ def test_a_page_of_the_archive_reads_one_row_past_the_page(db):
 
 
 def test_a_built_quarter_is_never_built_again(db):
-    service.build_due(db, FAR, agreed_fees=False)
+    service.build_due(db, FAR, built_at=FAR, agreed_fees=False)
     World(db).listed()  # the figures move; the report must not
 
-    again = service.build_due(db, FAR + timedelta(days=1), agreed_fees=False)
+    again = service.build_due(
+        db, FAR + timedelta(days=1), built_at=FAR + timedelta(days=1), agreed_fees=False
+    )
 
     assert again == service.BuildRun(quarter="2030-Q4", built=False)
     assert db.scalar(select(func.count()).where(CityRateReport.quarter == "2030-Q4")) == 1
