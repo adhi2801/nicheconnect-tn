@@ -4,7 +4,7 @@ Every floor is tested at its boundary, from both sides, with at least two
 of every kind of thing (testing.md section 2).
 """
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
@@ -48,6 +48,40 @@ def test_a_quarter_starts_and_ends_at_midnight_in_tamil_nadu():
 
     assert start == datetime(2026, 3, 31, 18, 30, tzinfo=UTC)
     assert end == datetime(2026, 6, 30, 18, 30, tzinfo=UTC)
+
+
+def test_the_quarter_after_q4_is_next_year_s_q1():
+    assert rules.next_quarter("2026-Q4") == "2027-Q1"
+    assert rules.next_quarter("2026-Q1") == "2026-Q2"
+
+
+# 2026-Q3 closed at midnight ending 30 September in Tamil Nadu; 06:00 there,
+# two and three days on.
+TWO_DAYS_ON = datetime(2026, 10, 3, 0, 30, tzinfo=UTC)
+THREE_DAYS_ON = datetime(2026, 10, 4, 0, 30, tzinfo=UTC)
+GRACE = timedelta(days=3)
+
+
+def test_the_last_closed_quarter_is_overdue_only_after_its_grace():
+    assert rules.overdue_quarters(set(), TWO_DAYS_ON, GRACE) == []
+    assert rules.overdue_quarters(set(), THREE_DAYS_ON, GRACE) == ["2026-Q3"]
+    assert rules.overdue_quarters({"2026-Q3"}, THREE_DAYS_ON, GRACE) == []
+
+
+def test_a_gap_since_the_first_report_is_overdue_however_old():
+    built = {"2025-Q3", "2026-Q1", "2026-Q3"}
+
+    assert rules.overdue_quarters(built, THREE_DAYS_ON, GRACE) == [
+        "2025-Q4",
+        "2026-Q2",
+    ]
+    # Inside the last quarter's grace, an older gap is still said.
+    assert rules.overdue_quarters({"2026-Q1"}, TWO_DAYS_ON, GRACE) == ["2026-Q2"]
+
+
+def test_quarters_after_the_last_closed_are_ignored():
+    assert rules.overdue_quarters({"2026-Q3", "2027-Q2"}, THREE_DAYS_ON, GRACE) == []
+    assert rules.overdue_quarters({"2027-Q2"}, THREE_DAYS_ON, GRACE) == ["2026-Q3"]
 
 
 def test_the_quarter_before_q1_is_last_year_s_q4():

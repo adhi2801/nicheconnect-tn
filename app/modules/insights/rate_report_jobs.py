@@ -7,9 +7,13 @@ failed, heals itself the next morning, with no catch-up logic to get wrong;
 on every other day of the quarter the run finds the report already built
 and does one small query.
 
-A quarter that closed more than three days ago and still has no report means
-the job has failed every morning since: that is logged as an error, which
-reaches error tracking (D-074).
+Every run, whether its build succeeded, failed after its tries or did
+nothing, then checks once (`rate_report_service.health`, a step of its own,
+so the build's retries do not repeat it) and logs, as errors reaching error
+tracking (D-074): every closed quarter with no report three days after it
+closed, a quarter missed for longer than a quarter included (it is never
+built late: its asking prices cannot be worked out again), in one line; and
+every report built more than 14 days ago and still unpublished, in another.
 
 DBOS records each run under an id fixed by its scheduled time, so two app
 instances never both run the same one; the unique quarter makes even an
@@ -19,16 +23,14 @@ would have. The workflow's only input is the scheduled time (D-060 point 5).
 
 import logging
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any
 
 from dbos import DBOS, ScheduleInput
 
-from app.core.clock import india_date
 from app.core.config import settings
 from app.core.job_runs import run_alone
 from app.db.session import SessionLocal
-from app.modules.insights import rate_report_rules as rules
 from app.modules.insights import rate_report_service
 
 logger = logging.getLogger(__name__)
@@ -37,9 +39,6 @@ logger = logging.getLogger(__name__)
 # cron is exact and needs no timezone database.
 DAILY_CRON = "30 0 * * *"
 SCHEDULE_NAME = "city-rate-report-build"
-# How long after a quarter closes its report may be missing before it is an
-# error someone must look at.
-OVERDUE_AFTER = timedelta(days=3)
 
 
 def _clock() -> datetime:
@@ -62,14 +61,28 @@ def run_build(
                 built_at=clock(),
                 agreed_fees=settings.rate_report_agreed_fees,
             )
-    except Exception:
-        quarter = rules.last_closed_quarter(scheduled_at)
-        closed_on = rules.quarter_days(quarter)[1] + timedelta(days=1)
-        if india_date(scheduled_at) - closed_on >= OVERDUE_AFTER:
-            logger.error("rate_report.overdue quarter=%s", quarter)
+    except Exception as error:
+        # A try failing is a warning: DBOS tries again, and the run's check
+        # says whether a report is really overdue.
+        logger.warning("rate_report.run_failed error=%s", type(error).__name__)
         raise
     logger.info("rate_report.run quarter=%s built=%s", run.quarter, run.built)
     return run
+
+
+def run_check(scheduled_at: datetime) -> rate_report_service.Health:
+    """Log, once, what someone must look at (see the module's notes)."""
+    with SessionLocal() as db:
+        found = rate_report_service.health(db, scheduled_at)
+    if found.overdue:
+        logger.error("rate_report.overdue quarters=%s", ",".join(found.overdue))
+    if found.unpublished:
+        logger.error(
+            "rate_report.unpublished quarters=%s days=%d",
+            ",".join(found.unpublished),
+            rate_report_service.UNPUBLISHED_AFTER.days,
+        )
+    return found
 
 
 @DBOS.step(name="rate_report.build", retries_allowed=True, max_attempts=3)
@@ -79,9 +92,18 @@ def build_step(scheduled_at: datetime) -> None:
     run_alone(SCHEDULE_NAME, lambda: run_build(scheduled_at))
 
 
+@DBOS.step(name="rate_report.check")
+def check_step(scheduled_at: datetime) -> None:
+    run_check(scheduled_at)
+
+
 @DBOS.workflow(name="rate_report.daily")
 def build_rate_report(scheduled_at: datetime, context: Any) -> None:
-    build_step(scheduled_at)
+    try:
+        build_step(scheduled_at)
+    finally:
+        # Once a run, after the build's last try, whether it worked or not.
+        check_step(scheduled_at)
 
 
 def schedules() -> list[ScheduleInput]:

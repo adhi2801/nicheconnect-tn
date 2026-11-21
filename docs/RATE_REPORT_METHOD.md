@@ -9,7 +9,7 @@ This page is the plain-English twin of the code: `app/modules/insights/rate_repo
 ## 1. What a report covers
 
 - **One closed quarter** of the Tamil Nadu calendar, written `YYYY-Qn`: Q1 is 1 January to 31 March, Q2 April to June, Q3 July to September, Q4 October to December. A quarter runs from midnight at its start in Tamil Nadu to midnight at its end.
-- **Built once**, on the first morning (06:00 Tamil Nadu time) after the quarter ends, and never rebuilt. `as_of` is the day it was built.
+- **Built once**, on the first morning (06:00 Tamil Nadu time) after the quarter ends, and never rebuilt. `built_at` is the moment it was really built, and `as_of` that day. Every morning's run then checks, once: a closed quarter with no report **three days** after it closed (however long ago), or a built report still unpublished after **14 days**, is logged as an error for us to act on. A quarter whose report was missed is never built late, since its asking prices cannot be worked out again.
 - **Published by a person.** A report starts unpublished; an admin reads it and publishes it. From then on the database refuses any change to it. If a report is found wrong, it is **withdrawn**, with the reason shown to everyone who asks for it, and never quietly edited.
 
 ## 2. What creators ask (asking prices)

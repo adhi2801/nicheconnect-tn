@@ -464,6 +464,38 @@ def test_the_rate_report_workflow_runs_through_dbos(launched, monkeypatch):
     assert runs == [SCHEDULED]
 
 
+def test_a_failing_rate_report_run_is_checked_once_not_once_a_try(launched, monkeypatch):
+    """The build is tried 3 times; whether a report is overdue is said once,
+    after the last try (item 84, D-200)."""
+    tries, checks = [], []
+
+    def failing(scheduled_at):
+        tries.append(scheduled_at)
+        raise RuntimeError("the database went away")
+
+    monkeypatch.setattr(rate_report_jobs, "run_build", failing)
+    monkeypatch.setattr(rate_report_jobs, "run_check", checks.append)
+    monkeypatch.setattr(
+        rate_report_jobs, "SCHEDULE_NAME", f"test-rate-report-{uuid.uuid4().hex}"
+    )
+
+    with pytest.raises(Exception):  # noqa: B017 - DBOS's own after the tries
+        rate_report_jobs.build_rate_report(SCHEDULED, None)
+
+    assert tries == [SCHEDULED] * 3
+    assert checks == [SCHEDULED]
+
+
+def test_a_rate_report_run_that_builds_is_checked_once(launched, monkeypatch):
+    checks = []
+    monkeypatch.setattr(rate_report_jobs, "run_build", lambda scheduled_at: None)
+    monkeypatch.setattr(rate_report_jobs, "run_check", checks.append)
+
+    rate_report_jobs.build_rate_report(SCHEDULED, None)
+
+    assert checks == [SCHEDULED]
+
+
 # --- one run at a time, and each run's budget (item 118, D-186) ----------------------
 
 JOBS = [

@@ -36,7 +36,7 @@ meaning *not enough to say*: never zero, never an estimate (D-038).
 import math
 import re
 from collections import Counter, defaultdict
-from collections.abc import Hashable, Sequence
+from collections.abc import Collection, Hashable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 
@@ -102,6 +102,39 @@ def previous_quarter(quarter: str) -> str:
 def last_closed_quarter(now: datetime) -> str:
     """The newest quarter that has wholly ended in Tamil Nadu at `now`."""
     return previous_quarter(quarter_of(india_date(now)))
+
+
+def next_quarter(quarter: str) -> str:
+    year, number = parse_quarter(quarter)
+    return f"{year + 1:04d}-Q1" if number == 4 else f"{year:04d}-Q{number + 1}"
+
+
+def overdue_quarters(
+    built: Collection[str], now: datetime, grace: timedelta
+) -> list[str]:
+    """Closed quarters with no report that should have one, oldest first.
+
+    Every quarter from the oldest one built (or, with none built, the last
+    closed one) to the last closed one, less those built; the last closed
+    one only once `grace` has passed since it closed in Tamil Nadu. Quarters
+    after the last closed one are ignored. A quarter missed for longer than a
+    quarter stays here, run after run: the daily job builds only the last
+    closed quarter, since asking prices cannot be worked out for a past one.
+    """
+    last = last_closed_quarter(now)
+    known = {
+        quarter for quarter in built if parse_quarter(quarter) <= parse_quarter(last)
+    }
+    quarter = min(known, key=parse_quarter) if known else last
+    missing: list[str] = []
+    while parse_quarter(quarter) <= parse_quarter(last):
+        if quarter not in known:
+            missing.append(quarter)
+        quarter = next_quarter(quarter)
+    closed_on = quarter_days(last)[1] + timedelta(days=1)
+    if missing and missing[-1] == last and india_date(now) - closed_on < grace:
+        missing.pop()
+    return missing
 
 
 # --- numbers ----------------------------------------------------------------------------

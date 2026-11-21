@@ -24,7 +24,7 @@ import hashlib
 import json
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select
@@ -239,6 +239,43 @@ def build_due(
     ).scalar()
     db.commit()
     return BuildRun(quarter=quarter, built=inserted is not None)
+
+
+# --- what someone must look at --------------------------------------------------------
+
+# How long after a quarter closes its report may be missing before it is an
+# error someone must look at: three mornings' runs.
+OVERDUE_AFTER = timedelta(days=3)
+# How long a built report may wait for an admin to publish it before that is
+# an error: two weeks (docs/RATE_REPORT_METHOD.md section 1).
+UNPUBLISHED_AFTER = timedelta(days=14)
+
+
+@dataclass(frozen=True)
+class Health:
+    overdue: list[str]  # closed quarters with no report, oldest first
+    unpublished: list[str]  # quarters built over UNPUBLISHED_AFTER ago, unpublished
+
+
+def health(db: Session, now: datetime) -> Health:
+    """What the daily run reports as errors, as at `now`. One query, of the
+    small columns only: one row a quarter."""
+    rows = db.execute(
+        select(
+            CityRateReport.quarter, CityRateReport.built_at, CityRateReport.published_at
+        )
+    ).all()
+    return Health(
+        overdue=rules.overdue_quarters({row.quarter for row in rows}, now, OVERDUE_AFTER),
+        unpublished=sorted(
+            {
+                row.quarter
+                for row in rows
+                if row.published_at is None and now - row.built_at > UNPUBLISHED_AFTER
+            },
+            key=rules.parse_quarter,
+        ),
+    )
 
 
 # --- reading ----------------------------------------------------------------------------

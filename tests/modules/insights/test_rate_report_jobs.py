@@ -62,19 +62,61 @@ def failing(monkeypatch) -> None:
     monkeypatch.setattr(service, "build_due", build_due)
 
 
-def test_a_failure_soon_after_the_quarter_is_raised_for_a_retry(monkeypatch, caplog):
+@pytest.mark.parametrize("scheduled_at", [TWO_DAYS_ON, THREE_DAYS_ON])
+def test_a_failed_try_is_raised_for_a_retry_and_never_an_error(
+    monkeypatch, caplog, scheduled_at
+):
+    """Whether a report is overdue is the run's check, said once a run; a
+    try failing, retried up to three times, is a warning each time."""
     failing(monkeypatch)
 
-    with caplog.at_level(logging.ERROR), pytest.raises(RuntimeError):
-        jobs.run_build(TWO_DAYS_ON)
+    with caplog.at_level(logging.WARNING), pytest.raises(RuntimeError):
+        jobs.run_build(scheduled_at)
 
-    assert "rate_report.overdue" not in caplog.text
+    assert "rate_report.run_failed error=RuntimeError" in caplog.text
+    assert not [record for record in caplog.records if record.levelno >= logging.ERROR]
 
 
-def test_a_quarter_three_days_closed_and_still_unbuilt_is_an_error(monkeypatch, caplog):
-    failing(monkeypatch)
+def checked(monkeypatch, found: service.Health) -> list[datetime]:
+    asked: list[datetime] = []
 
-    with caplog.at_level(logging.ERROR), pytest.raises(RuntimeError):
-        jobs.run_build(THREE_DAYS_ON)
+    def health(db, now):
+        asked.append(now)
+        return found
 
-    assert "rate_report.overdue quarter=2026-Q3" in caplog.text
+    monkeypatch.setattr(service, "health", health)
+    return asked
+
+
+def test_the_check_logs_overdue_quarters_in_one_error(monkeypatch, caplog):
+    asked = checked(
+        monkeypatch, service.Health(overdue=["2026-Q2", "2026-Q3"], unpublished=[])
+    )
+
+    with caplog.at_level(logging.ERROR):
+        jobs.run_check(THREE_DAYS_ON)
+
+    assert asked == [THREE_DAYS_ON]
+    assert [record.getMessage() for record in caplog.records] == [
+        "rate_report.overdue quarters=2026-Q2,2026-Q3"
+    ]
+
+
+def test_the_check_logs_reports_waiting_to_be_published(monkeypatch, caplog):
+    checked(monkeypatch, service.Health(overdue=[], unpublished=["2026-Q2"]))
+
+    with caplog.at_level(logging.ERROR):
+        jobs.run_check(THREE_DAYS_ON)
+
+    assert [record.getMessage() for record in caplog.records] == [
+        "rate_report.unpublished quarters=2026-Q2 days=14"
+    ]
+
+
+def test_a_healthy_check_logs_no_error(monkeypatch, caplog):
+    checked(monkeypatch, service.Health(overdue=[], unpublished=[]))
+
+    with caplog.at_level(logging.ERROR):
+        jobs.run_check(THREE_DAYS_ON)
+
+    assert caplog.records == []

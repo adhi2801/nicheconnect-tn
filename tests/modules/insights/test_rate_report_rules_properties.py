@@ -86,6 +86,33 @@ def test_quarters_follow_each_other_with_no_gap_or_overlap(quarter):
     assert india_date(end - timedelta(microseconds=1)) == rules.quarter_days(quarter)[1]
 
 
+@given(quarters)
+def test_next_and_previous_quarter_undo_each_other(quarter):
+    assert rules.previous_quarter(rules.next_quarter(quarter)) == quarter
+    assert rules.next_quarter(rules.previous_quarter(quarter)) == quarter
+
+
+@given(st.sets(quarters, max_size=12), moments, st.integers(min_value=0, max_value=120))
+def test_overdue_quarters_are_closed_unbuilt_and_in_order(built, now, grace_days):
+    grace = timedelta(days=grace_days)
+    last = rules.last_closed_quarter(now)
+
+    overdue = rules.overdue_quarters(built, now, grace)
+
+    assert not set(overdue) & built
+    assert all(rules.parse_quarter(q) <= rules.parse_quarter(last) for q in overdue)
+    assert overdue == sorted(overdue, key=rules.parse_quarter)
+    assert len(overdue) == len(set(overdue))
+    # Every quarter strictly between the oldest built and the last closed
+    # that was not built is overdue, whatever the grace.
+    known = [q for q in built if rules.parse_quarter(q) <= rules.parse_quarter(last)]
+    if known:
+        quarter = rules.next_quarter(min(known, key=rules.parse_quarter))
+        while rules.parse_quarter(quarter) < rules.parse_quarter(last):
+            assert (quarter in overdue) == (quarter not in built)
+            quarter = rules.next_quarter(quarter)
+
+
 @given(moments)
 def test_the_last_closed_quarter_has_ended_and_the_next_has_not(now):
     closed = rules.last_closed_quarter(now)

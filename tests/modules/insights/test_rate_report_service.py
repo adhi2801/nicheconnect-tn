@@ -424,6 +424,77 @@ def test_a_built_quarter_is_never_built_again(db):
     assert db.scalar(select(func.count()).where(CityRateReport.quarter == "2030-Q4")) == 1
 
 
+# --- what the daily run reports as errors -------------------------------------------
+
+# 2040-Q4 closed at midnight ending 31 December 2040 in Tamil Nadu.
+CHECKED = datetime(2041, 1, 5, 0, 30, tzinfo=UTC)
+
+
+def a_report(db, quarter: str, built_at: datetime, *, published: bool = False):
+    body = {"quarter": quarter}
+    row = CityRateReport(
+        quarter=quarter,
+        method_version=1,
+        body=body,
+        body_sha256=service.fingerprint(body),
+        built_at=built_at,
+        created_at=built_at,
+        updated_at=built_at,
+    )
+    if published:
+        from tests.factories import create_account
+
+        row.published_at = built_at
+        row.published_by_account_id = create_account(db, "admin").id
+    db.add(row)
+    db.flush()
+    return row
+
+
+def test_quarters_missing_since_the_first_report_are_overdue(db):
+    a_report(db, "2040-Q2", CHECKED - timedelta(days=100), published=True)
+
+    found = service.health(db, CHECKED)
+    early = service.health(db, datetime(2041, 1, 3, 0, 30, tzinfo=UTC))
+
+    assert {"2040-Q3", "2040-Q4"} <= set(found.overdue)
+    assert "2040-Q2" not in found.overdue
+    assert "2040-Q3" in early.overdue  # a whole quarter late, whatever the grace
+    assert "2040-Q4" not in early.overdue  # two days closed: inside the grace
+
+
+def test_a_report_unpublished_over_two_weeks_is_said(db):
+    a_report(db, "2040-Q2", CHECKED - timedelta(days=14, minutes=1))
+    a_report(db, "2040-Q3", CHECKED - timedelta(days=14))
+    a_report(db, "2040-Q4", CHECKED - timedelta(days=30), published=True)
+
+    unpublished = service.health(db, CHECKED).unpublished
+
+    assert "2040-Q2" in unpublished
+    assert "2040-Q3" not in unpublished
+    assert "2040-Q4" not in unpublished
+
+
+def test_the_health_check_reads_no_report_body(db):
+    from sqlalchemy import event
+
+    from app.db.session import engine
+
+    statements: list[str] = []
+
+    def capture(conn, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+
+    event.listen(engine, "before_cursor_execute", capture)
+    try:
+        service.health(db, CHECKED)
+    finally:
+        event.remove(engine, "before_cursor_execute", capture)
+
+    [statement] = [s for s in statements if "city_rate_report" in s]
+    assert "body" not in statement
+
+
 def test_the_fingerprint_is_sha256_of_canonical_json():
     import hashlib
 
