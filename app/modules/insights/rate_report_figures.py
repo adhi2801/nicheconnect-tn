@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import ColumnElement, and_, case, func, select, true
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.orm import Session
 
 from app.core.taxonomy import CURRENCY
@@ -24,7 +24,6 @@ from app.modules.deal_memo.models import DealMemo
 from app.modules.insights import asking_prices, city_figures_service
 from app.modules.insights.rate_guidance_service import AUDIENCE_BANDS
 from app.modules.insights.rate_report_rules import AskingCell, Deal, asking_cell
-from app.modules.profiles.models import CreatorChannel, CreatorPackage
 
 # (key, platform, format): the key a city, or an audience band.
 CellKey = tuple[str, str, str]
@@ -46,8 +45,7 @@ def listed_cities(db: Session) -> list[ListedCity]:
     """The cities city figures list: five or more published creators, largest
     first. One query."""
     return [
-        ListedCity(key=row.key, name=row.city)
-        for row in city_figures_service.cities(db)
+        ListedCity(key=row.key, name=row.city) for row in city_figures_service.cities(db)
     ]
 
 
@@ -79,46 +77,10 @@ def asking_by_city(db: Session, keys: list[str]) -> dict[CellKey, AskingCell]:
 
 def asking_by_band(db: Session) -> dict[CellKey, BandCell]:
     """Statewide asking prices per audience band, platform and format, as
-    fair-rate guidance counts them: the creator's own channel on the
-    package's platform decides the band. One query."""
-    followers = CreatorChannel.followers
-    band = case(
-        *[
-            (
-                and_(followers >= low, followers < high if high is not None else true()),
-                label,
-            )
-            for label, low, high in AUDIENCE_BANDS
-        ]
-    ).label("band")
-    per_creator = (
-        select(
-            band,
-            CreatorPackage.platform,
-            CreatorPackage.format,
-            func.percentile_cont(0.5)
-            .within_group(CreatorPackage.price_paise)
-            .label("price"),
-            func.min(CreatorChannel.figures_as_of).label("figures_as_of"),
-        )
-        .select_from(CreatorPackage)
-        .join(Creator, Creator.id == CreatorPackage.creator_id)
-        .join(
-            CreatorChannel,
-            and_(
-                CreatorChannel.creator_id == CreatorPackage.creator_id,
-                CreatorChannel.platform == CreatorPackage.platform,
-            ),
-        )
-        .where(*asking_prices.counted())
-        .group_by(
-            CreatorPackage.creator_id,
-            band,
-            CreatorPackage.platform,
-            CreatorPackage.format,
-        )
-        .subquery()
-    )
+    fair-rate guidance counts them (`asking_prices.band_of`: the creator's
+    own channel on the package's platform decides the band). One query."""
+    band = asking_prices.band_of(AUDIENCE_BANDS).label("band")
+    per_creator = asking_prices.per_creator([], band, by_audience=True)
     rows = db.execute(
         select(
             per_creator.c.band,

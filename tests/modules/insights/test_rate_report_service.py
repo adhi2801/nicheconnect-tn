@@ -195,6 +195,31 @@ def test_audience_bands_count_creators_by_their_own_channel(db):
     assert len(after.audience_bands) == 5 * 14
 
 
+def test_a_creator_on_a_band_s_edge_counts_in_the_band_above(db):
+    """The same edges as fair-rate guidance (`asking_prices.in_band`):
+    10,000 followers is 10k_50k's first count; 50,000 is 50k_100k's."""
+    before = body(db)
+    world = World(db)
+    for price in (400_000, 450_000, 500_000, 550_000, 600_000):
+        world.creator(prices={REEL: [price]}, followers=10_000)
+    world.creator(prices={REEL: [900_000]}, followers=50_000)
+
+    after = body(db)
+
+    def grown(label: str) -> int:
+        def count(report: RateReportBody) -> int:
+            return next(
+                row.creators or 0
+                for row in report.audience_bands
+                if (row.audience_band, row.platform, row.format) == (label, *REEL)
+            )
+
+        return count(after) - count(before)
+
+    assert grown("10k_50k") == 5
+    assert grown("under_10k") == 0
+
+
 # --- agreed fees ------------------------------------------------------------------------
 
 

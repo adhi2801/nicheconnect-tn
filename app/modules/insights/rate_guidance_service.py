@@ -33,7 +33,7 @@ from app.core.taxonomy import Niche
 from app.modules.auth.models.creator import Creator
 from app.modules.insights import asking_prices
 from app.modules.insights.schemas import AudienceBand
-from app.modules.profiles.models import CreatorChannel, CreatorPackage
+from app.modules.profiles.models import CreatorPackage
 
 MIN_CREATORS = 5
 
@@ -92,46 +92,29 @@ def for_group(
     band, low, high = audience_band(followers)
     city = city.strip() if city else None
 
-    per_creator = (
-        select(
-            CreatorPackage.creator_id,
-            func.percentile_cont(0.5)
-            .within_group(CreatorPackage.price_paise)
-            .label("price"),
-            (Creator.niches.any_() == niche if niche else true()).label("in_niche"),
-            # Cities are typed by people, so "madurai" finds "Madurai".
-            (func.lower(Creator.city) == city.lower() if city else true()).label(
-                "in_city"
-            ),
-            func.min(CreatorChannel.figures_as_of).label("figures_as_of"),
-        )
-        .join(Creator, Creator.id == CreatorPackage.creator_id)
-        .join(
-            CreatorChannel,
-            and_(
-                CreatorChannel.creator_id == CreatorPackage.creator_id,
-                CreatorChannel.platform == CreatorPackage.platform,
-            ),
-        )
-        .where(
+    # Published rate cards, active accounts, rupees, each creator once, and
+    # the band from their own channel (D-056, D-061): the rules city figures
+    # and the rate report count by too (`asking_prices`).
+    per_creator = asking_prices.per_creator(
+        [
             CreatorPackage.platform == platform,
             CreatorPackage.format == package_format,
-            # Published rate cards, active accounts, rupees (D-056, D-061):
-            # the rule city figures and the rate report count by too.
-            *asking_prices.counted(),
-            CreatorChannel.followers >= low,
-            CreatorChannel.followers < high if high is not None else true(),
-        )
-        .group_by(CreatorPackage.creator_id, Creator.niches, Creator.city)
-        .subquery()
+            asking_prices.in_band(low, high),
+        ],
+        Creator.niches.label("niches"),
+        Creator.city.label("city"),
+        by_audience=True,
     )
+    in_niche = per_creator.c.niches.any_() == niche if niche else true()
+    # Cities are typed by people, so "madurai" finds "Madurai".
+    in_city = func.lower(per_creator.c.city) == city.lower() if city else true()
 
     levels = _levels(niche, city)
     columns: list[ColumnElement[Any]] = []
     for level_niche, level_city in levels:
         condition = and_(
-            per_creator.c.in_niche if level_niche else true(),
-            per_creator.c.in_city if level_city else true(),
+            in_niche if level_niche else true(),
+            in_city if level_city else true(),
         )
         columns += [
             func.count().filter(condition),
