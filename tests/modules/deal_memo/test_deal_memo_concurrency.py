@@ -338,6 +338,59 @@ def test_an_accept_and_a_cancel_at_once_leave_a_sequence_the_rules_allow(
         assert memo.cancellation_kind == "withdrawn_early"
 
 
+def test_a_draft_s_sends_and_cancels_at_once_leave_a_sequence_the_rules_allow(
+    draft_memo, slow_writes
+):
+    """Audit C13, 22 November 2026, the first race D-184 left untested. The
+    brand may send a draft or cancel it, and may cancel a sent memo, so the
+    only histories are a draft cancelled unseen (nothing on the record), or
+    sent once and then cancelled. Never two sends, two cancellations, or a
+    send after a cancellation."""
+    jobs = [("sent", "brand"), ("cancelled", "brand")] * (AT_ONCE // 2)
+
+    results = run_at_once(lambda s: move(draft_memo, *jobs.pop())(s), AT_ONCE)
+
+    won, refused, unexpected = split(results, MemoStatusConflict)
+    assert unexpected == [], f"a raw error reached the caller: {unexpected}"
+    history = [e.kind for e in memo_entries(draft_memo)]
+    assert history in ([], ["memo_sent", "memo_cancelled"])
+    assert (won, refused) == (max(len(history), 1), AT_ONCE - max(len(history), 1))
+    with SessionLocal() as session:
+        memo = session.get_one(DealMemo, draft_memo)
+        assert memo.status == "cancelled"
+        assert (memo.sent_at is not None) == bool(history)
+        assert memo.cancellation_kind == "withdrawn_early"
+
+
+@pytest.mark.parametrize("answer", ["declined", "change_requested"])
+def test_the_creator_s_answer_and_the_brand_s_cancel_at_once_never_mix(
+    sent_memo, slow_writes, answer
+):
+    """Audit C13, 22 November 2026, the third race D-184 left untested. A
+    declined memo is finished, so a decline and a cancel cannot both win;
+    a memo sent back for a change may still be cancelled, so a change
+    request then a cancel may. Never a cancel then an answer, and the
+    memo's marks match what the record says happened."""
+    jobs = [(answer, "creator"), ("cancelled", "brand")] * (AT_ONCE // 2)
+
+    results = run_at_once(lambda s: move(sent_memo, *jobs.pop())(s), AT_ONCE)
+
+    won, refused, unexpected = split(results, MemoStatusConflict)
+    assert unexpected == [], f"a raw error reached the caller: {unexpected}"
+    answers = [e.kind for e in memo_entries(sent_memo)][1:]
+    allowed = [[f"memo_{answer}"], ["memo_cancelled"]]
+    if answer == "change_requested":
+        allowed.append(["memo_change_requested", "memo_cancelled"])
+    assert answers in allowed
+    assert (won, refused) == (len(answers), AT_ONCE - len(answers))
+    with SessionLocal() as session:
+        memo = session.get_one(DealMemo, sent_memo)
+        assert f"memo_{memo.status}" == answers[-1]
+        assert memo.revision_count == answers.count("memo_change_requested")
+        assert (memo.declined_at is not None) == ("memo_declined" in answers)
+        assert (memo.cancelled_at is not None) == ("memo_cancelled" in answers)
+
+
 @pytest.fixture
 def change_requested_memo(sent_memo) -> uuid.UUID:
     """A sent memo the creator asked to change: the brand's to edit and send again."""
@@ -386,6 +439,30 @@ def test_four_re_sends_and_an_edit_at_once_seal_the_terms_once(
     # What the creator was sent again is exactly what the record sealed.
     assert entries[-1].facts["fee_amount_paise"] == memo.fee_amount_paise
     assert entries[-1].facts["terms_sha256"] == terms_now
+
+
+def test_re_sends_and_cancels_of_a_questioned_memo_at_once_never_mix(
+    change_requested_memo, slow_writes
+):
+    """Audit C13, 22 November 2026, the second race D-184 left untested.
+    After a change request the brand may send again or cancel, and may
+    cancel what it sent again: cancelled at once, or sent once more and
+    then cancelled. Never two re-sends, and never a send after the
+    cancellation, which would put terms before a creator on a deal that
+    had ended."""
+    jobs = [("sent", "brand"), ("cancelled", "brand")] * (AT_ONCE // 2)
+
+    results = run_at_once(lambda s: move(change_requested_memo, *jobs.pop())(s), AT_ONCE)
+
+    won, refused, unexpected = split(results, MemoStatusConflict)
+    assert unexpected == [], f"a raw error reached the caller: {unexpected}"
+    after = [e.kind for e in memo_entries(change_requested_memo)][2:]
+    assert after in (["memo_cancelled"], ["memo_sent", "memo_cancelled"])
+    assert (won, refused) == (len(after), AT_ONCE - len(after))
+    with SessionLocal() as session:
+        memo = session.get_one(DealMemo, change_requested_memo)
+        assert memo.status == "cancelled"
+        assert memo.revision_count == 1
 
 
 def deliverables_of(quantity: int) -> list[dict[str, Any]]:
