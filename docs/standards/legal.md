@@ -1,6 +1,6 @@
 # Legal Standard
 
-**For:** anyone building a feature, writing a word the product says, keeping a record about a person, adding an outside service or making a promise; read before building anything in the areas of section 3, and by the lawyer and chartered accountant answering section 4. **Checked against the code on 19 November 2026**, at `main` `97d08e6`: every **Built** and **Owed** status, setting, clock and number that names the code was read against it that day, and one claim corrected (section 3.15's licence check), then corrected again after the independent reviews of 19 and 20 November, on 20 November 2026 at `4a87b6c` (`main` at `b2dcbbd` merged in), in section 3.15 and its gap row only: the check reads only the default environment, three dependency groups lie outside it, and the `ml` group, checked by hand on Linux, has five licences off the list. The rest of the file was not re-read on 20 November, so the check date stays 19 November. The law itself was not re-researched in that check: its rows keep the dates they were read (section 5). The bar is `CLAUDE.md` section 7.0: **no regulator's letter, court notice or user complaint should ever find us unprepared.**
+**For:** anyone building a feature, writing a word the product says, keeping a record about a person, adding an outside service or making a promise; read before building anything in the areas of section 3, and by the lawyer and chartered accountant answering section 4. **Checked against the code whole on 22 November 2026**, at `c1a8774` (the app, `uv.lock`, `pyproject.toml`, the `Dockerfile`, the workflows and `infra/` are unchanged since `4a87b6c`, so the check stands for it too): every **Built** and **Owed** status, setting, clock, number, file path and test name that names the code was read against it, and the date of section 6's heading corrected. The earlier checks were on 19 November 2026 at `97d08e6` and, for section 3.15 and its gap row, on 20 November 2026 at `4a87b6c`: the licence check reads only the default environment, three dependency groups lie outside it, and the `ml` group, checked by hand on Linux, has five licences off the list. The law itself was not re-researched in that check: its rows keep the dates they were read (section 5). The bar is `CLAUDE.md` section 7.0: **no regulator's letter, court notice or user complaint should ever find us unprepared.**
 
 **What this file is, and is not.** It is our map of the Indian law that touches a brand–creator marketplace, researched from public sources and dated (10 October 2026). It is **not legal advice**, and constraint 6 still holds: wherever a rule's exact reach, wording or number decides what we build, the row says **Confirm**, and a lawyer or chartered accountant answers it in the validation pack before launch. Nothing marked Confirm is built on a guess.
 
@@ -292,7 +292,7 @@ Creators are independent professionals contracting with brands, never anyone's e
 
 ---
 
-## 6. Gaps, named (19 November 2026)
+## 6. Gaps, named (20 November 2026)
 
 | Gap | Risk | Acting on it |
 |---|---|---|

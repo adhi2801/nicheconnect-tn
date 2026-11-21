@@ -114,7 +114,7 @@
 | `docs/standards/backend.md` | living | not yet | | checked against the code 20 November 2026 at `4a87b6c`, the whole file; the re-review of 20 November found faults, fixed on `docs/standards-batch1-check`; re-review owed |
 | `docs/standards/database.md` | living | not yet | | checked against the code 20 November 2026 at `4a87b6c`, the whole file and a freshly migrated catalogue; the re-review of 20 November found faults, fixed on `docs/standards-batch1-check`; re-review owed |
 | `docs/standards/frontend.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
-| `docs/standards/legal.md` | living | not yet | | checked against the code 19 November 2026; section 3.15 and its gap row corrected 20 November 2026 at `4a87b6c` after the re-review; re-review owed |
+| `docs/standards/legal.md` | living | not yet | | checked against the code whole on 22 November 2026 at `c1a8774`; the earlier check was 19 November 2026, with section 3.15 and its gap row corrected 20 November; findings fixed, re-review owed |
 | `docs/standards/security.md` | living | not yet | | checked against the code 20 November 2026 at `4a87b6c`, the whole file; the re-review of 20 November found faults, fixed on `docs/standards-batch1-check`; re-review owed |
 | `docs/standards/testing.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
 | `docs/standards/trust-and-safety.md` | living | passed | 19 November 2026 | independent re-review at `beeabc0`, 20 November 2026: passed. The merge of `main` to `4a87b6c` left the file unchanged and changed none of the limits, ceilings, clocks or routes it names (its diff read 20 November 2026) |
