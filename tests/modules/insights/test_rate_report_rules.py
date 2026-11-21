@@ -222,18 +222,23 @@ def test_too_few_deals_say_nothing_at_all():
     assert rules.agreed_cell(spread(4, 3)) == rules.NOT_ENOUGH_AGREED
 
 
-def test_a_cell_below_ten_creators_shows_the_median_only():
-    cell = rules.agreed_cell(spread(5, 3))
+def test_a_cell_below_ten_paid_creators_shows_counts_but_no_fee():
+    """D-201: the median no longer appears alone on five to nine voices,
+    even where the p% rule would allow it (five brands, fees alike)."""
+    paid = spread(9, 5)
+    assert rules.enough_to_show(paid) and rules.fees_protected(paid)
 
-    assert cell.deals == cell.creators == 5
-    assert cell.brands == 3
+    cell = rules.agreed_cell(paid)
+
+    assert cell.deals == cell.creators == 9
+    assert cell.brands == 5
     assert cell.barter_share_percent == 0
-    assert cell.median_paise == 520_000
+    assert cell.median_paise is None
     assert cell.lower_quarter_paise is None
     assert cell.upper_quarter_paise is None
 
 
-def test_ten_creators_show_the_quarters_too():
+def test_ten_creators_show_the_median_and_the_quarters():
     cell = rules.agreed_cell(spread(10, 4))
 
     assert cell.creators == 10
@@ -243,28 +248,104 @@ def test_ten_creators_show_the_quarters_too():
 
 
 def test_each_creator_counts_once_with_their_own_median():
-    # c0 made three deals at 1,000,000 paise; alone it would drag the median.
-    cell = spread(5, 3, fee=100_000) + deals(
-        [("c0", "b1", 1_000_000), ("c0", "b2", 1_000_000)]
+    # c0 made three deals at 300,000 paise; alone they would drag the median.
+    cell = spread(10, 4, fee=100_000) + deals(
+        [("c0", "b1", 300_000), ("c0", "b2", 300_000)]
     )
 
     shown = rules.agreed_cell(cell)
 
-    assert shown.deals == 7
-    assert shown.creators == 5
-    # c0's own median is 1,000,000; the others 110,000 to 140,000.
-    assert shown.median_paise == 130_000
+    assert shown.deals == 12
+    assert shown.creators == 10
+    # c0's own median is 300,000; the others 110,000 to 190,000: the
+    # median of the ten is 155,000, rounded half up.
+    assert shown.median_paise == 160_000
 
 
 def test_barter_deals_are_counted_as_a_share_never_a_price():
-    paid = spread(5, 3)
-    barter = deals([("c5", "b0", None), ("c6", "b1", None), ("c7", "b2", None)])
+    paid = spread(10, 4)
+    barter = deals([("c10", "b0", None), ("c11", "b1", None), ("c12", "b2", None)])
 
     cell = rules.agreed_cell(paid + barter)
 
-    assert cell.deals == 8
-    assert cell.barter_share_percent == 38  # 3 of 8, half up
-    assert cell.median_paise == 520_000
+    assert cell.deals == 13
+    assert cell.barter_share_percent == 23  # 3 of 13, half up
+    assert cell.median_paise == 550_000
+
+
+# --- the p% rule (D-201) ----------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("contributions", "safe"),
+    [
+        ([100, 50, 40, 10], True),  # 10 left after the top three: exactly 10%
+        ([100, 50, 40, 9], False),  # 9 is not
+        ([100, 50, 10], False),  # the second and third together know the first
+        ([100, 100, 5, 5, 4], False),
+        ([100, 100, 5, 5, 5], True),
+        ([1_000, 1, 1, 1], False),
+        ([100], False),
+        ([], False),
+    ],
+)
+def test_the_p_percent_rule_for_two_who_collude_at_its_edge(contributions, safe):
+    assert rules.p_percent_safe(contributions) is safe
+
+
+@pytest.mark.parametrize(
+    ("contributions", "safe"),
+    [([100, 50, 10], True), ([100, 50, 9], False), ([100, 100], False)],
+)
+def test_the_plain_p_percent_rule_is_the_coalition_of_one(contributions, safe):
+    assert rules.p_percent_safe(contributions, coalition=1) is safe
+
+
+def test_three_brands_never_show_a_fee_against_two_who_collude():
+    """With three brands, the other two know everything but the third's."""
+    assert not rules.fees_protected(spread(12, 3))
+    assert rules.agreed_cell(spread(12, 3)).median_paise is None
+
+
+def test_the_rule_is_ten_percent_against_two():
+    assert (rules.AGREED_P_PERCENT, rules.AGREED_P_COALITION) == (10, 2)
+
+
+def test_the_p_percent_rule_does_not_care_about_order():
+    assert rules.p_percent_safe([10, 100, 50]) is rules.p_percent_safe([100, 50, 10])
+
+
+def test_brands_a_and_b_together_cannot_read_brand_c_s_fee():
+    """The review's example: A and B each pay small fees, C one large fee.
+    Every count floor is met (10 creators, 3 brands, no brand over half),
+    but A and B together, knowing their own fees, could read C's fee off a
+    published figure. The p% rule suppresses the fee figures."""
+    cell = deals(
+        [(f"a{i}", "A", 10_000) for i in range(5)]
+        + [(f"b{i}", "B", 10_000) for i in range(4)]
+        + [("c0", "C", 5_000_000)]
+    )
+    assert rules.enough_to_show(cell)
+    assert len({deal.creator for deal in cell}) == 10
+
+    shown = rules.agreed_cell(cell)
+
+    assert shown.deals == 10 and shown.brands == 3  # the counts still show
+    assert shown.median_paise is None
+    assert shown.lower_quarter_paise is shown.upper_quarter_paise is None
+
+
+def test_one_creator_s_large_fees_are_protected_too():
+    """Safe brand by brand, but one creator's fees dwarf the other nine's."""
+    cell = [
+        Deal(creator=f"c{i}", brand=f"b{i % 5}", fee_paise=10_000) for i in range(9)
+    ] + [Deal(creator="big", brand=f"b{i}", fee_paise=700_000) for i in range(4)]
+    by_brand = [720_000, 720_000, 720_000, 720_000, 10_000]
+    assert rules.p_percent_safe(by_brand)
+    assert rules.enough_to_show(cell)
+
+    assert not rules.fees_protected(cell)
+    assert rules.agreed_cell(cell).median_paise is None
 
 
 def test_barter_deals_alone_show_counts_but_no_fee():
@@ -276,9 +357,11 @@ def test_barter_deals_alone_show_counts_but_no_fee():
 
 
 def test_paid_deals_must_meet_the_floors_on_their_own():
-    # Five deals in the cell, but only four paid: the fee is not shown.
-    cell = rules.agreed_cell(spread(4, 3) + deals([("c9", "b1", None)]))
+    # Eleven deals in the cell, but only nine paid: the fee is not shown.
+    cell = rules.agreed_cell(
+        spread(9, 3) + deals([("c90", "b1", None), ("c91", "b2", None)])
+    )
 
-    assert cell.deals == 5
-    assert cell.barter_share_percent == 20
+    assert cell.deals == 11
+    assert cell.barter_share_percent == 18
     assert cell.median_paise is None

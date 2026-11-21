@@ -25,8 +25,19 @@ deliverable of quantity 1, so the fee is for one platform and format:
 - the fee figures need the same of the paid deals alone; barter deals are
   counted in the cell and shown as a share, never as a price;
 - each creator's own median first, so one creator with many deals counts once;
-- the median only, until the paid deals rest on at least 10 creators, then
-  the quarters too.
+- no fee figure at all until the paid deals rest on at least 10 creators;
+  from 10, the median and both quarters (amended 22 November 2026, D-201:
+  below 10 the median alone was shown, which with five creators sits on
+  one of five voices);
+- the **p% rule** with p = 10 (D-201), over the paid fees summed per creator
+  and, separately, per brand, in its form for a coalition of two: the fee
+  figures are shown only when the fees left after taking away the three
+  largest contributors come to at least 10% of the largest. So no two
+  contributors together (the second and third largest, the worst pair),
+  knowing their own fees, can estimate the largest's to within 10% from the
+  cell's total. It implies the plain rule (the second-largest alone, the
+  two largest taken away). Three who collude are not covered: the stated
+  residual (`docs/RATE_REPORT_METHOD.md` section 4).
 
 **Every figure is rounded to the nearest ₹100** (half up), so a published
 figure is not one person's exact price. Below its floor a figure is None,
@@ -50,6 +61,14 @@ AGREED_MIN_CREATORS = 5
 AGREED_MIN_BRANDS = 3
 AGREED_MAX_BRAND_SHARE_PERCENT = 50
 AGREED_QUARTILES_MIN_CREATORS = 10
+# No agreed fee figure below this many paid creators (D-201): the median comes
+# with the quarters, never alone on a handful of voices.
+AGREED_FEES_MIN_CREATORS = AGREED_QUARTILES_MIN_CREATORS
+# The p% rule's p (D-201): what is left after the largest contributor and the
+# coalition must be at least this share of the largest, in percent.
+AGREED_P_PERCENT = 10
+# How many contributors may collude against another (D-201): two.
+AGREED_P_COALITION = 2
 ROUND_TO_PAISE = 10_000  # ₹100
 
 _QUARTER = re.compile(r"^([0-9]{4})-Q([1-4])$")
@@ -224,6 +243,37 @@ def enough_to_show(deals: Sequence[Deal]) -> bool:
     return most * 100 <= AGREED_MAX_BRAND_SHARE_PERCENT * len(deals)
 
 
+def p_percent_safe(
+    contributions: Sequence[int],
+    p: int = AGREED_P_PERCENT,
+    coalition: int = AGREED_P_COALITION,
+) -> bool:
+    """The p% rule for a coalition of `coalition` contributors (Handbook on
+    Statistical Disclosure Control, 2nd edition, section 4, table 4.2 and its
+    note): a cell is unsafe when its total less its `coalition + 1` largest
+    contributions is under p% of the largest, since the coalition, knowing
+    their own, could then estimate the largest to within p%. True when safe.
+    `coalition=1` is the plain rule. Nothing to protect is never safe."""
+    if not contributions:
+        return False
+    ordered = sorted(contributions, reverse=True)
+    rest = sum(ordered[coalition + 1 :])
+    return rest * 100 >= p * ordered[0]
+
+
+def fees_protected(paid: Sequence[Deal]) -> bool:
+    """The p% rule over the paid fees, summed per creator and per brand."""
+    by_creator: Counter[Hashable] = Counter()
+    by_brand: Counter[Hashable] = Counter()
+    for deal in paid:
+        if deal.fee_paise is not None:
+            by_creator[deal.creator] += deal.fee_paise
+            by_brand[deal.brand] += deal.fee_paise
+    return p_percent_safe(list(by_creator.values())) and p_percent_safe(
+        list(by_brand.values())
+    )
+
+
 def _per_creator_medians(fees: Sequence[tuple[Hashable, int]]) -> list[float]:
     """Each creator's own median fee: one creator counts once, however many
     deals they made."""
@@ -249,22 +299,19 @@ def agreed_cell(deals: Sequence[Deal]) -> AgreedCell:
         upper_quarter_paise=None,
     )
     paid = [deal for deal in deals if deal.fee_paise is not None]
-    if not enough_to_show(paid):
+    if not enough_to_show(paid) or not fees_protected(paid):
         return shown
     medians = _per_creator_medians(
         [(deal.creator, deal.fee_paise) for deal in paid if deal.fee_paise is not None]
     )
-    with_quarters = len(medians) >= AGREED_QUARTILES_MIN_CREATORS
+    if len(medians) < AGREED_FEES_MIN_CREATORS:
+        return shown
     return AgreedCell(
         deals=shown.deals,
         creators=shown.creators,
         brands=shown.brands,
         barter_share_percent=shown.barter_share_percent,
-        lower_quarter_paise=(
-            round_paise(percentile_cont(medians, 0.25)) if with_quarters else None
-        ),
+        lower_quarter_paise=round_paise(percentile_cont(medians, 0.25)),
         median_paise=round_paise(percentile_cont(medians, 0.5)),
-        upper_quarter_paise=(
-            round_paise(percentile_cont(medians, 0.75)) if with_quarters else None
-        ),
+        upper_quarter_paise=round_paise(percentile_cont(medians, 0.75)),
     )

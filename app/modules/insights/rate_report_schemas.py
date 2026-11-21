@@ -94,7 +94,15 @@ class MinCountsRead(BaseModel):
     agreed_creators: int
     agreed_brands: int
     agreed_max_brand_share_percent: int
-    agreed_quartiles_creators: int
+    agreed_quartiles_creators: int = Field(
+        description="Paid creators needed before any fee figure: the median and quarters"
+    )
+    agreed_p_percent: int = Field(
+        description=(
+            "The p% rule's p: fees left after the two largest contributors must "
+            "come to at least this share of the largest"
+        )
+    )
     rounded_to_paise: int = Field(description="Every figure to the nearest of these")
 
 

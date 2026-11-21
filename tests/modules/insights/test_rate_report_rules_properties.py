@@ -45,8 +45,58 @@ def test_no_figure_shown_rests_on_fewer_than_its_floors(deals):
     paid = [d for d in deals if d.fee_paise is not None]
     if cell.median_paise is not None:
         assert rules.enough_to_show(paid)
+        assert len({d.creator for d in paid}) >= rules.AGREED_FEES_MIN_CREATORS
     if cell.lower_quarter_paise is not None:
         assert len({d.creator for d in paid}) >= rules.AGREED_QUARTILES_MIN_CREATORS
+    # The median and the quarters come together, never the median alone.
+    assert (cell.median_paise is None) == (cell.lower_quarter_paise is None)
+
+
+def _sums(deals, key) -> list[int]:
+    totals: Counter = Counter()
+    for deal in deals:
+        if deal.fee_paise is not None:
+            totals[key(deal)] += deal.fee_paise
+    return list(totals.values())
+
+
+@given(cells)
+def test_no_fee_is_shown_that_two_contributors_could_estimate(deals):
+    """The p% rule (p = 10) against two who collude, per creator and per
+    brand: whenever a fee figure shows, the fees left after the three
+    largest contributors are at least 10% of the largest, and so, a
+    fortiori, those left after the two largest."""
+    if rules.agreed_cell(deals).median_paise is None:
+        return
+    for sums in (_sums(deals, lambda d: d.creator), _sums(deals, lambda d: d.brand)):
+        ordered = sorted(sums, reverse=True)
+        assert len(ordered) >= 4
+        assert sum(ordered[3:]) * 100 >= rules.AGREED_P_PERCENT * ordered[0]
+        assert sum(ordered[2:]) * 100 >= rules.AGREED_P_PERCENT * ordered[0]
+
+
+@given(
+    st.lists(st.integers(min_value=1, max_value=10**9), max_size=12), st.integers(1, 1000)
+)
+def test_the_p_percent_rule_ignores_scale_and_order(contributions, scale):
+    safe = rules.p_percent_safe(contributions)
+
+    assert rules.p_percent_safe([c * scale for c in contributions]) is safe
+    assert rules.p_percent_safe(list(reversed(contributions))) is safe
+
+
+@given(st.lists(st.integers(min_value=1, max_value=10**9), min_size=1, max_size=12))
+def test_one_more_small_contributor_never_makes_a_safe_cell_unsafe(contributions):
+    if not rules.p_percent_safe(contributions):
+        return
+
+    assert rules.p_percent_safe([*contributions, min(contributions)])
+
+
+@given(st.lists(st.integers(min_value=1, max_value=10**9), max_size=12))
+def test_safe_against_two_is_safe_against_one(contributions):
+    if rules.p_percent_safe(contributions, coalition=2):
+        assert rules.p_percent_safe(contributions, coalition=1)
 
 
 @given(cells)

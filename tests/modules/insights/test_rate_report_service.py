@@ -241,7 +241,8 @@ def test_agreed_fees_are_left_out_while_switched_off(db):
     assert city_of(report, world).agreed_fees is None
 
 
-def test_five_deals_five_creators_three_brands_show_the_median(db):
+def test_five_deals_five_creators_three_brands_show_counts_but_no_fee(db):
+    """D-201: no fee figure below ten paid creators."""
     world, _ = agreed_world(db)
     other, _ = agreed_world(db)
 
@@ -250,9 +251,22 @@ def test_five_deals_five_creators_three_brands_show_the_median(db):
 
     assert report.agreed_fees_included is True
     assert (cell.deals, cell.creators, cell.brands) == (5, 5, 3)
-    assert cell.median_paise == 500_000
-    assert cell.lower_quarter_paise is None
+    assert cell.median_paise is cell.lower_quarter_paise is None
     assert agreed(report, other).deals == 5
+
+
+def test_ten_paid_creators_show_the_median_and_quarters(db):
+    world = World(db)
+    brands = [world.brand() for _ in range(4)]
+    for index in range(10):
+        world.deal(world.creator(), brands[index % 4], fee=400_000 + index * 50_000)
+
+    cell = agreed(body(db, agreed_fees=True), world)
+
+    assert (cell.deals, cell.creators, cell.brands) == (10, 10, 4)
+    assert cell.lower_quarter_paise == 510_000
+    assert cell.median_paise == 630_000
+    assert cell.upper_quarter_paise == 740_000
 
 
 @pytest.mark.parametrize(
@@ -318,7 +332,7 @@ def test_barter_deals_count_as_a_share(db):
 
     assert cell.deals == 6
     assert cell.barter_share_percent == 17
-    assert cell.median_paise == 500_000
+    assert cell.median_paise is None  # five paid creators: below ten
 
 
 # --- what the body holds ----------------------------------------------------------------
