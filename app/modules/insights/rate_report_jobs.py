@@ -23,7 +23,7 @@ would have. The workflow's only input is the scheduled time (D-060 point 5).
 
 import logging
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 from dbos import DBOS, ScheduleInput
@@ -31,6 +31,7 @@ from dbos import DBOS, ScheduleInput
 from app.core.config import settings
 from app.core.job_runs import run_alone
 from app.db.session import SessionLocal
+from app.modules.auth.dependencies import get_now
 from app.modules.insights import rate_report_service
 
 logger = logging.getLogger(__name__)
@@ -41,12 +42,8 @@ DAILY_CRON = "30 0 * * *"
 SCHEDULE_NAME = "city-rate-report-build"
 
 
-def _clock() -> datetime:
-    return datetime.now(UTC)
-
-
 def run_build(
-    scheduled_at: datetime, clock: Callable[[], datetime] = _clock
+    scheduled_at: datetime, clock: Callable[[], datetime] = get_now
 ) -> rate_report_service.BuildRun:
     """The work itself, callable without DBOS (tests, and a manual rerun).
 
