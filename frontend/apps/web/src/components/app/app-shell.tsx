@@ -48,12 +48,15 @@ function Frame({ children, role }: { children: ReactNode; role: Role }) {
             <div className="lg:hidden"><Logo /></div>
             <div className="flex items-center gap-2.5 lg:ml-auto">
               <Bell unread={unread} />
-              <Link href="/app/me" aria-label={t("nav.yourAccount")} className="t-base flex min-h-11 items-center gap-3 rounded-full bg-surface p-1 shadow-card hover:bg-sunk lg:pr-5">
-                <span className="grid size-9 place-items-center rounded-full bg-accent text-[13px] font-semibold text-on-accent">{name ? initials(name) : <span aria-hidden className="size-2 rounded-full bg-highlight-deep" />}</span>
+              {/* No aria-label: what a sighted person reads (the name and role) starts the link's spoken name,
+                  as WCAG 2.5.3 asks, and "Your account" ends it; the initials are a picture of the name. */}
+              <Link href="/app/me" className="t-base flex min-h-11 items-center gap-3 rounded-full bg-surface p-1 shadow-card hover:bg-sunk lg:pr-5">
+                <span aria-hidden className="grid size-9 place-items-center rounded-full bg-accent text-[13px] font-semibold text-on-accent">{name ? initials(name) : <span aria-hidden className="size-2 rounded-full bg-highlight-deep" />}</span>
                 <span className="hidden min-w-0 text-left leading-tight lg:grid">
                   <span className="max-w-40 truncate text-sm font-semibold">{name ?? " "}</span>
                   <span className="text-xs text-muted">{t(`nav.role.${role}`)}</span>
                 </span>
+                <span className="sr-only">{t("nav.yourAccount")}</span>
               </Link>
             </div>
           </header>

@@ -31,6 +31,7 @@
 | `.claude/commands/handoff.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
 | `.claude/commands/wrap-up.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
 | `CLAUDE.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
+| `CONTRIBUTING.md` | living | not yet | | written 19 November 2026, with its dated first line; not yet read against the code by the independent review |
 | `README.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
 | `SECURITY.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
 | `docs/API_CONTRACT_FINDINGS.md` | living | not yet | | no 'Checked against the code on <date>' line up top; not yet read against the code |
