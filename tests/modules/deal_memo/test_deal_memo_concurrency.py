@@ -75,6 +75,35 @@ def test_two_simultaneous_memos_for_one_application_give_one_memo_and_conflicts(
     assert (won, refused) == (1, AT_ONCE - 1)
 
 
+def test_a_memo_refused_for_its_fee_lets_go_of_the_application_at_once(
+    committed_application,
+):
+    """Audit C13, 22 November 2026: the fix D-184 made to an edit, made to
+    drafting. `create_memo` locks the application first, so a paid memo with
+    no fee was refused while it held that lock, and kept it until the
+    request's session was finally closed: another memo for it, or the
+    erasure of a creator who left, waited behind a refusal. It rolls back
+    before raising now, as the service's other refusals do."""
+    with SessionLocal() as drafting:
+        with pytest.raises(PaidMemoNeedsFee):
+            memos.create_memo(
+                drafting,
+                drafting.get_one(Application, committed_application),
+                {"deliverables": "Three reels.", "fee_amount_paise": None},
+                NOW,
+            )
+        # The refused session is still open, as a request's is while its
+        # error is answered. NOWAIT fails at once if the lock is still held.
+        with SessionLocal() as other:
+            locked = other.scalars(
+                select(Application.id)
+                .where(Application.id == committed_application)
+                .with_for_update(nowait=True)
+            ).one()
+            other.rollback()
+    assert locked == committed_application
+
+
 def test_two_simultaneous_proof_submissions_give_one_proof_and_conflicts(
     committed_memo, monkeypatch
 ):

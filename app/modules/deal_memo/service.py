@@ -301,7 +301,12 @@ def create_memo(
         if agreed is not None:
             fields = {**fields, "fee_amount_paise": agreed}
     campaign = _campaign_of(db, application)
-    _check_fee_against_campaign(campaign, fields.get("fee_amount_paise"))
+    try:
+        _check_fee_against_campaign(campaign, fields.get("fee_amount_paise"))
+    except BarterMemoHasNoFee, PaidMemoNeedsFee:
+        # Let go of the application's lock with the refusal (audit C13).
+        db.rollback()
+        raise
 
     memo = DealMemo(
         application_id=application.id,
