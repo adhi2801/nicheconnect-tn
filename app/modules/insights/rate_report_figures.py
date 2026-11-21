@@ -32,7 +32,7 @@ CellKey = tuple[str, str, str]
 
 @dataclass(frozen=True)
 class ListedCity:
-    key: str  # lower-cased and trimmed, as creators' cities are matched
+    key: str  # `lower(btrim(city))`, worked out by the database, as it matches
     name: str  # as most of its creators spell it
 
 
@@ -46,7 +46,7 @@ def listed_cities(db: Session) -> list[ListedCity]:
     """The cities city figures list: five or more published creators, largest
     first. One query."""
     return [
-        ListedCity(key=row.city.lower(), name=row.city)
+        ListedCity(key=row.key, name=row.city)
         for row in city_figures_service.cities(db)
     ]
 

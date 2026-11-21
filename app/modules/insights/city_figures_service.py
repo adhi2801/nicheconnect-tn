@@ -56,6 +56,10 @@ def _published_creators() -> list[ColumnElement[bool]]:
 class CityCount:
     city: str
     published_creators: int
+    # How the database matches the city (`lower(btrim(city))`), as it worked
+    # it out: the rate report matches creators on this, never on Python's
+    # own lower-casing, which differs from PostgreSQL's for some letters.
+    key: str
 
 
 @dataclass(frozen=True)
@@ -82,13 +86,17 @@ def cities(db: Session) -> list[CityCount]:
         select(
             func.mode().within_group(func.btrim(Creator.city)),
             func.count(Creator.id),
+            key,
         )
         .where(*_published_creators())
         .group_by(key)
         .having(func.count(Creator.id) >= MIN_COUNT)
         .order_by(func.count(Creator.id).desc(), key)
     ).all()
-    return [CityCount(city=name, published_creators=count) for name, count in rows]
+    return [
+        CityCount(city=name, published_creators=count, key=city_key)
+        for name, count, city_key in rows
+    ]
 
 
 def for_city(db: Session, city: str, today: date) -> CityFigures:

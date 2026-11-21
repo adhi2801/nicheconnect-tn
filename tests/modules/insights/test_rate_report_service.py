@@ -5,6 +5,7 @@ it (testing.md section 2), in a city of its own.
 """
 
 import json
+import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -126,6 +127,21 @@ def test_a_city_is_matched_whatever_its_case_or_spaces(db):
         world.creator(prices={REEL: [400_000 + index * 50_000]}, city=spelling)
 
     assert asking(body(db), world).creators == 5
+
+
+@pytest.mark.parametrize("letters", ["İzmir", "ΣΑΣ"])
+def test_a_city_python_and_postgres_lower_differently_still_has_figures(db, letters):
+    """Python lowers "İ" to two characters and a last "Σ" to "ς"; PostgreSQL
+    does neither. The city is matched on the database's own key, so its
+    cells are filled, never left null by a key that matches nobody."""
+    world = World(db, city=f"{letters} {uuid.uuid4().hex[:8]}")
+    for price in (400_000, 450_000, 500_000, 550_000, 600_000):
+        world.creator(prices={REEL: [price]})
+
+    cell = asking(body(db), world)
+
+    assert cell.creators == 5
+    assert cell.median_paise == 500_000
 
 
 def test_a_city_with_fewer_than_five_published_creators_is_not_listed(db):
