@@ -40,6 +40,9 @@ from app.modules.deal_memo.schemas import (
 from app.modules.deal_memo.stage import stages_for
 
 WRITE_LIMIT = "30 per minute"
+# Each move reaches the other side (a notice, terms to answer), so each has
+# a daily ceiling per account as well (trust-and-safety.md rule 2).
+MOVE_LIMIT = "30 per minute;200 per day"
 READ_LIMIT = "60 per minute"
 
 router = APIRouter(
@@ -224,10 +227,30 @@ def update_memo(
     return _read(db, service.update_memo(db, memo, changes, now))
 
 
+def _named[Endpoint: Callable[..., Any]](endpoint: Endpoint, name: str) -> Endpoint:
+    """The endpoint, called `name`, before its rate limit is attached.
+
+    slowapi names a route's limits, and keys their counters, by the
+    function's module and name. Every move below is made by one factory, so
+    unnamed they were all `endpoint`: one counter for five routes, charged
+    five times a request (audit C13; `tests/test_rate_limit.py`).
+    """
+    endpoint.__name__ = endpoint.__qualname__ = name
+    return endpoint
+
+
 def _brand_move(
     action: str, new_status: str, summary: str, description: str
 ) -> Callable[..., Any]:
-    @router.post(
+    def endpoint(
+        request: Request,
+        memo: BrandMemo,
+        db: Session = Depends(get_db),
+        now: datetime = Depends(get_now),
+    ) -> MemoRead:
+        return _read(db, service.change_status(db, memo, new_status, now, actor="brand"))
+
+    return router.post(
         f"/{{memo_id}}/{action}",
         response_model=MemoRead,
         summary=summary,
@@ -238,17 +261,7 @@ def _brand_move(
             404: problem_doc("No such memo, or it is not yours"),
             409: problem_doc("The memo is not in a state where that is allowed"),
         },
-    )
-    @rate_limit(WRITE_LIMIT)
-    def endpoint(
-        request: Request,
-        memo: BrandMemo,
-        db: Session = Depends(get_db),
-        now: datetime = Depends(get_now),
-    ) -> MemoRead:
-        return _read(db, service.change_status(db, memo, new_status, now, actor="brand"))
-
-    return endpoint
+    )(rate_limit(MOVE_LIMIT)(_named(endpoint, f"memo_{action}")))
 
 
 send_memo = _brand_move(
@@ -279,19 +292,6 @@ cancel_memo_as_brand = _brand_move(
 def _creator_move(
     action: str, new_status: str, summary: str, description: str
 ) -> Callable[..., Any]:
-    @router.post(
-        f"/{{memo_id}}/{action}",
-        response_model=MemoRead,
-        summary=summary,
-        description=description,
-        name=f"memo_{action}",
-        responses={
-            **_COMMON_ERRORS,
-            404: problem_doc("No such memo, or it was not sent to you"),
-            409: problem_doc("The memo is not in a state where that is allowed"),
-        },
-    )
-    @rate_limit(WRITE_LIMIT)
     def endpoint(
         request: Request,
         memo: CreatorMemo,
@@ -302,7 +302,18 @@ def _creator_move(
             db, service.change_status(db, memo, new_status, now, actor="creator")
         )
 
-    return endpoint
+    return router.post(
+        f"/{{memo_id}}/{action}",
+        response_model=MemoRead,
+        summary=summary,
+        description=description,
+        name=f"memo_{action}",
+        responses={
+            **_COMMON_ERRORS,
+            404: problem_doc("No such memo, or it was not sent to you"),
+            409: problem_doc("The memo is not in a state where that is allowed"),
+        },
+    )(rate_limit(MOVE_LIMIT)(_named(endpoint, f"memo_{action}")))
 
 
 accept_memo = _creator_move(

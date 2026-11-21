@@ -628,6 +628,26 @@ def test_a_draft_cancelled_before_it_was_sent_tells_the_creator_nothing(
     assert "memo_cancelled" not in notification_types(client, creator)
 
 
+def test_each_memo_move_has_its_own_thirty_a_minute(client, db, clock):
+    """Audit C13, 22 November 2026. The five moves were made by one factory
+    and all named `endpoint`, so the limiter kept one counter for them and
+    charged it five times a request: the seventh send in a minute was
+    refused, and a send counted against the brand's next cancel."""
+    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    memo = sent_memo(client, brand, accepted_application(client, brand, creator))
+    url = f"{MEMOS_URL}/{memo['id']}"
+
+    # The first send above was one; a sent memo refuses the next 29.
+    resends = [
+        client.post(f"{url}/send", headers=brand.headers).status_code for _ in range(29)
+    ]
+
+    assert resends == [409] * 29
+    assert_problem(client.post(f"{url}/send", headers=brand.headers), 429, "rate_limited")
+    # Another move keeps its own count.
+    assert client.post(f"{url}/cancel", headers=brand.headers).status_code == 200
+
+
 def test_cancelling_after_work_started_counts(client, db, clock):
     brand, creator = brand_user(db, clock), creator_user(db, clock)
     memo = sent_memo(client, brand, accepted_application(client, brand, creator))
