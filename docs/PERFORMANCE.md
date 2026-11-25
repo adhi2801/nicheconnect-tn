@@ -7,7 +7,7 @@ is where they live.
 **Budgets** (`docs/standards/backend.md` section 6): p95 ≤ 300 ms for reads,
 ≤ 500 ms for writes, on seeded local data.
 
-**Last measured: 22 November 2026, item 84 after its independent review (D-201)** (section "Added 22 November: the rate report's archive reads no body" below): 98 timings, 97 within budget, the one over the export job. Before that, **20 November 2026, item 84 (D-200)** (section "Added 20 November: the quarterly city rate report" below): 98 timings, all 98 within budget. Before that, **12 November 2026, D-184 with `main` merged in** (section "Added 12 November: the deal domain's locks, measured again on a quiet database" below): 86 timings, 85 within budget, the one over the export job. On 11 November after D-184 (section "Added 11 November: the deal domain's locks" below): 84 timings, 83 within budget, on a machine loaded by another job's test run. Earlier the same day (section "Every route, 11 November" below): 83 timings, all 83 within budget. Before that, 6 November: 73 timings, 71 within budget. Before that, per section as dated:
+**Last measured: 26 November 2026, item 84's admin read and correctable quarters (D-201)** (section "Added 26 November: the rate report's admin read and rebuild" below): 100 timings, 99 within budget, the one over the export job. Before that, **22 November 2026, item 84 after its independent review (D-201)** (section "Added 22 November: the rate report's archive reads no body" below): 98 timings, 97 within budget, the one over the export job. Before that, **20 November 2026, item 84 (D-200)** (section "Added 20 November: the quarterly city rate report" below): 98 timings, all 98 within budget. Before that, **12 November 2026, D-184 with `main` merged in** (section "Added 12 November: the deal domain's locks, measured again on a quiet database" below): 86 timings, 85 within budget, the one over the export job. On 11 November after D-184 (section "Added 11 November: the deal domain's locks" below): 84 timings, 83 within budget, on a machine loaded by another job's test run. Earlier the same day (section "Every route, 11 November" below): 83 timings, all 83 within budget. Before that, 6 November: 73 timings, 71 within budget. Before that, per section as dated:
 30 September 2026 for creator search and reports (next
 section); 26 September 2026 for everything else, on PostgreSQL 18.6 with pgvector 0.8.6
 (D-049), seeded with 10 brands, 200 creators, 150 campaigns, 785
@@ -15,6 +15,22 @@ applications and 958 rate card packages. 100 runs per read. For writes: 30
 whole deals, 5 bank bulk transfers of 25 rows, and 30 rounds of rate card
 edits. All from one run, on a developer laptop under Docker Desktop for
 Windows.
+
+## Added 26 November: the rate report's admin read and rebuild (item 84, D-201)
+
+On `feature/city-rate-report`, `scripts/measure_performance.py --runs 50` (30 whole deals for the writes), against the branch's own database (`nc_item84`: 150 campaigns, 785 applications, 200 creators, 958 packages), everything rolled back, each stored report carrying 20 cities as on 22 November. Two routes are new: an admin's read of a report in any state, its body and an admin log entry included, timed before each publish; and the rebuild of each withdrawn quarter under a raised method version, whose request builds the report over every seeded creator (agreed fees off, as the setting stands) and logs it. Publishing, withdrawing and the public read now pick the quarter's newest version (`ORDER BY method_version DESC LIMIT 1`, or standing before withdrawn), so they are measured again. **100 timings, 99 within budget**: the export job over, as on 12 and 22 November (713.0 ms p95; untouched by this change).
+
+| Route | p50 ms | p95 ms | max ms | Budget |
+|---|---|---|---|---|
+| `GET /admin/rate-reports/{quarter}` (new) | 30.7 | 39.3 | 39.7 | 300 |
+| `POST /admin/rate-reports/{quarter}/rebuild` (new) | 83.5 | 101.8 | 112.8 | 500 |
+| `POST /admin/rate-reports/{quarter}/publish` | 23.7 | 32.3 | 38.0 | 500 |
+| `POST /admin/rate-reports/{quarter}/withdraw` | 23.7 | 37.4 | 38.1 | 500 |
+| `GET /rate-reports/{quarter}` | 18.1 | 25.9 | 28.4 | 300 |
+| `GET /rate-reports` (the archive) | 13.4 | 19.6 | 21.7 | 300 |
+| The daily job's build of one report | 27.2 | 75.0 | 76.8 | 30,000 (a job's run) |
+
+The rebuild is the slowest because it is a whole build inside a request; at a fifth of its budget it needs no job of its own. The admin read is a fixed number of queries whatever the body's size (`test_an_admin_read_costs_a_fixed_number_of_queries`).
 
 ## Added 22 November: the rate report's archive reads no body (item 84, D-201)
 

@@ -60,7 +60,7 @@ from app.modules.auth.tokens import (
 )
 from app.modules.campaigns.models import Campaign
 from app.modules.deal_memo import proof_cleaning_service
-from app.modules.insights import rate_report_service
+from app.modules.insights import rate_report_rules, rate_report_service
 from app.modules.insights.rate_report_models import CityRateReport
 from app.modules.me import data_export_service, phone_change_service
 from app.modules.payment_status.service import MAX_BULK_MARK_PAID
@@ -779,6 +779,13 @@ def measure_writes(
             timings["JOB build the rate report"].append(
                 (time.perf_counter() - started) * 1000
             )
+            # What an admin reads before publishing (D-201), logged.
+            write(
+                "GET /admin/rate-reports/{quarter}",
+                f"/api/v1/admin/rate-reports/{quarter}",
+                admin_headers,
+                method="GET",
+            )
             write(
                 "POST /admin/rate-reports/{quarter}/publish",
                 f"/api/v1/admin/rate-reports/{quarter}/publish",
@@ -798,6 +805,19 @@ def measure_writes(
                 admin_headers,
                 {"reason": "Measured, then rolled back."},
             )
+        # Each withdrawn quarter corrected under a newer method (D-201): the
+        # rebuild is a request, its build over every seeded creator inside it.
+        # The method version is raised for these requests only.
+        method, rate_report_rules.METHOD_VERSION = rate_report_rules.METHOD_VERSION, 2
+        try:
+            for round_number in range(deals):
+                write(
+                    "POST /admin/rate-reports/{quarter}/rebuild",
+                    f"/api/v1/admin/rate-reports/{1000 + round_number}-Q1/rebuild",
+                    admin_headers,
+                )
+        finally:
+            rate_report_rules.METHOD_VERSION = method
 
         # The second check (item 82). The phone's caps, like the limiter,
         # are not what is measured, so they are lifted for the run; the
