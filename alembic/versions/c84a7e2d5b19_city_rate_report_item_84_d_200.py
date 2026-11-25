@@ -309,8 +309,8 @@ def downgrade() -> None:
     ).scalar_one()
     if logged:
         raise RuntimeError(
-            f"{logged} admin log entries record publishing or withdrawing a rate "
-            "report. The log is append-only and cannot lose them; the narrower "
+            f"{logged} admin log entries record publishing, withdrawing, reading "
+            "or building again a rate report. The log is append-only and cannot lose them; the narrower "
             "list of actions cannot hold them."
         )
     _swap_actions(OLD_ACTIONS)

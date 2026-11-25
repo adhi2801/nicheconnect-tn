@@ -783,19 +783,31 @@ def test_published_rate_reports(db):
     )
 
 
-def test_log_entries_of_publishing_rate_reports(db):
+@pytest.mark.parametrize(
+    "action",
+    [
+        "publish_rate_report",
+        "withdraw_rate_report",
+        # An admin's read and a rebuild are in the log too (D-201): the
+        # narrower list of actions could not hold them either.
+        "view_rate_report",
+        "rebuild_rate_report",
+    ],
+)
+def test_log_entries_of_publishing_rate_reports(db, action):
     before = count(
         db,
         "SELECT count(*) FROM admin_action WHERE action IN"
-        " ('publish_rate_report', 'withdraw_rate_report')",
+        " ('publish_rate_report', 'withdraw_rate_report',"
+        " 'view_rate_report', 'rebuild_rate_report')",
     )
     admin = create_account(db, "admin")
     db.execute(
         text(
             "INSERT INTO admin_action (admin_account_id, action, note)"
-            " VALUES (:a, 'withdraw_rate_report', 'checked')"
+            " VALUES (:a, :action, 'checked')"
         ),
-        {"a": admin.id},
+        {"a": admin.id, "action": action},
     )
 
     assert f"{before + 1} admin log entries record publishing" in refusal(

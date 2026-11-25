@@ -4177,7 +4177,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "view_account" | "suspend" | "restore" | "resolve_report" | "withhold" | "lift_withhold" | "clear_brand_name" | "withdraw_brand_name_clearance" | "publish_rate_report" | "withdraw_rate_report";
+            action: "view_account" | "suspend" | "restore" | "resolve_report" | "withhold" | "lift_withhold" | "clear_brand_name" | "withdraw_brand_name_clearance" | "publish_rate_report" | "withdraw_rate_report" | "view_rate_report" | "rebuild_rate_report";
             /**
              * Admin Account Id
              * Format: uuid
