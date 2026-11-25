@@ -38,7 +38,7 @@ It does **not** mean:
 
 ## 2. Where we are
 
-**352 items: 0 built on `main` (0.0%), 4 built on a branch and not merged (1.1%), 52 started (14.8%), 282 open, 14 blocked.** Counted from the tables of 31 October, plus section 20a (6 November); the statuses of 31 October have not been re-read against `main` since.
+**352 items: 0 built on `main` (0.0%), 4 built on a branch and not merged (1.1%), 57 started (16.2%), 277 open, 14 blocked.** Counted from the tables of 31 October, plus section 20a (6 November) and the five creator screens started on 25 November (D-200); the other statuses of 31 October have not been re-read against `main` since.
 
 | Section | Items | Built | On a branch | Started | Open | Blocked |
 |---|---|---|---|---|---|---|
@@ -48,7 +48,7 @@ It does **not** mean:
 | 7. Components | 68 | 0 | 0 | 19 | 49 | 0 |
 | 8. Experience and research with people | 17 | 0 | 0 | 2 | 15 | 0 |
 | 9. Journeys, end to end | 16 | 0 | 0 | 1 | 15 | 0 |
-| 10. Screens | 69 | 0 | 0 | 8 | 59 | 2 |
+| 10. Screens | 69 | 0 | 0 | 13 | 54 | 2 |
 | 11. The landing page and public pages | 15 | 0 | 0 | 0 | 11 | 4 |
 | 12. Motion | 14 | 0 | 0 | 1 | 13 | 0 |
 | 13. Animation, 3D and the signature moments | 16 | 0 | 0 | 3 | 13 | 0 |
@@ -60,7 +60,7 @@ It does **not** mean:
 | 19. Ahead of everyone | 6 | 0 | 0 | 1 | 4 | 1 |
 | 20. Release and operations | 6 | 0 | 0 | 0 | 6 | 0 |
 | 20a. Found by the research of 6 November | 11 | 0 | 0 | 0 | 6 | 5 |
-| **All** | **352** | **0** | **4** | **52** | **282** | **14** |
+| **All** | **352** | **0** | **4** | **57** | **277** | **14** |
 
 **Read honestly:**
 - **Nothing is built to the bar on `main` yet.** The merged web app (pull request #78) is a first version: its screens and components are counted as *Started*, to be rebuilt, not patched (`frontend.md`, "Gaps, named").
@@ -289,12 +289,12 @@ Every screen in `frontend/design/screen-plan.md` (Harish's plan, with his IDs) a
 |---|---|---|---|---|
 | F157 | **S1 Sign in** (Both; Must) | `frontend.md` section 14, on web and both apps | — | Started |
 | F158 | **S2 Enter code** (Both; Must) | `frontend.md` section 14, on web and both apps | — | Started |
-| F159 | **C0 Onboarding, two steps** (Creator; Must) | `frontend.md` section 14, on web and both apps | — | Open |
+| F159 | **C0 Onboarding, two steps** (Creator; Must) | `frontend.md` section 14, on web and both apps | — | Started. Started 25 November 2026 on the website, on `feature/creator-apply-journey` (D-200); not in the apps, not judged, not on a real phone |
 | F160 | **C1 Today** (Creator; Must) | `frontend.md` section 14, on web and both apps | — | Started |
-| F161 | **C2 Discover** (Creator; Must) | `frontend.md` section 14, on web and both apps | — | Open |
-| F162 | **C3 Campaign** (Creator; Must) | `frontend.md` section 14, on web and both apps | — | Open |
-| F163 | **C4 Apply** (Creator; Must) | `frontend.md` section 14, on web and both apps | — | Open |
-| F164 | **C5 My applications** (Creator; Must) | `frontend.md` section 14, on web and both apps | — | Open |
+| F161 | **C2 Discover** (Creator; Must) | `frontend.md` section 14, on web and both apps | — | Started. Started 25 November 2026 on the website, on `feature/creator-apply-journey` (D-200); not in the apps, not judged, not on a real phone |
+| F162 | **C3 Campaign** (Creator; Must) | `frontend.md` section 14, on web and both apps | — | Started. Started 25 November 2026 on the website, on `feature/creator-apply-journey` (D-200); not in the apps, not judged, not on a real phone |
+| F163 | **C4 Apply** (Creator; Must) | `frontend.md` section 14, on web and both apps | — | Started. Started 25 November 2026 on the website, on `feature/creator-apply-journey` (D-200); not in the apps, not judged, not on a real phone |
+| F164 | **C5 My applications** (Creator; Must) | `frontend.md` section 14, on web and both apps | — | Started. Started 25 November 2026 on the website, on `feature/creator-apply-journey` (D-200); not in the apps, not judged, not on a real phone |
 | F165 | **C6 Deals** (Creator; Must) | `frontend.md` section 14, on web and both apps | — | Started |
 | F166 | **C7 Deal pass** (Creator; Must) | `frontend.md` section 14, on web and both apps | — | Open |
 | F167 | **C8 Memo, read and answer** (Creator; Must) | `frontend.md` section 14, on web and both apps | — | Open |

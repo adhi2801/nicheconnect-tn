@@ -1,6 +1,6 @@
 # Proposal: six API requests from the frontend
 
-**Checked 6 November 2026:** R1, R2, R3 and R6 are on `main` (their branches merged); R4 and R5 stand as below. The frontend item that waited on R6 (F304) is unblocked.
+**25 November 2026:** R7 to R10 added by the creator journey's build (D-200), each with the stopgap the website uses meanwhile. **Checked 6 November 2026:** R1, R2, R3 and R6 are on `main` (their branches merged); R4 and R5 stand as below. The frontend item that waited on R6 (F304) is unblocked.
 
 **Status, 4 November 2026:** R1 and R6 approved (Adhi: "do it yourself", D-153) and built on `feature/campaign-names`; R2 likewise (D-154), on `feature/applicant-summary`; R3 built as item 27 (D-140, D-144). R4 and R5 still open: R4 waits on the validation pack's consent wording, R5 on a decision for after launch, as this file recommends. **Originally:** Proposed. Written 28 October 2026 by the design and frontend side (Erode Harish's track, with Claude), for Adhi.
 
@@ -129,6 +129,77 @@ Option B:     The frontend carries constants and flips them with each release.
 Recommended:  A. frontend.md already asks for feature flags (section 14).
 Risk & rollback: A read-only route; removing it returns clients to constants.
 Needed by:    About 10 November.
+→ Approve A, B, or modify?
+```
+
+## R7. A campaign's title and brand on each of a creator's applications
+
+```
+DECISION NEEDED: Name the campaign on GET /api/v1/applications/me
+Context:      My applications (C5, built 25 November 2026, D-200) lists a creator's
+              applications. Each carries only campaign_id, so the screen reads each
+              distinct campaign once: 1 + N calls, against ux.md's two-call rule.
+              Checked on the real backend with seeded data that day.
+Option A:     campaign_title and brand_name on each item of /applications/me (and on
+              one application), as R1 did for memos.   | + one call; the stopgap goes
+              | - two more fields to keep; effort S
+Option B:     Keep the stopgap.   | + nothing to build | - a creator with 40
+              applications to 30 campaigns waits on 31 calls
+Recommended:  A.
+Risk & rollback: Response fields only; clients ignore what they do not read.
+Needed by:    Before the pilot; the stopgap works until then.
+→ Approve A, B, or modify?
+```
+
+## R8. Whether a handle is free, before the form is sent
+
+```
+DECISION NEEDED: A handle check for onboarding (C0)
+Context:      A taken handle is found only when POST /creators/me answers 409
+              handle_taken; the screen then takes the creator back to step 1. There is
+              no route that says whether a handle is free (/creators/by-handle answers
+              only published Passports).
+Option A:     GET /api/v1/handles/{handle} answering { available: bool }, signed in,
+              rate limited.   | + the field says "taken" as it is typed
+              | - one more route, and it tells anyone signed in which handles exist
+              (they are public on Passports anyway); effort S
+Option B:     Keep the 409.   | + nothing to build | - a step back after Finish
+Recommended:  B for the pilot; A if the usability sessions show people trip on it.
+Risk & rollback: A read-only route.
+→ Approve A, B, or modify?
+```
+
+## R9. "Your application" on a campaign a creator reads
+
+```
+DECISION NEEDED: The reader's own application on GET /api/v1/campaigns/{id}
+Context:      The campaign screen (C3) shows Apply, or the application already sent.
+              To know which, it reads the creator's whole application list, shared
+              with Discover and usually cached; opened from a link, it is a third call.
+Option A:     my_application { id, status, created_at } on a campaign read by a
+              creator, null otherwise.   | + two calls always | - one field; effort S
+Option B:     Keep reading the list.   | + nothing to build | - a third call from a link
+Recommended:  A, after R7.
+Risk & rollback: A response field only.
+→ Approve A, B, or modify?
+```
+
+## R10. A text's warnings before it is sent
+
+```
+DECISION NEEDED: Show the author the warning before sending (ux.md section 5, item 60)
+Context:      ux.md says the author sees the same warning the reader will, before
+              sending. The rules (money asked for, contact details) live in the backend;
+              the website shows the pitch's warning only after it is sent, from the
+              answer's text_flags. Writing the rules again in the client would let the
+              two disagree.
+Option A:     POST /api/v1/text-flags { field, text } answering the flags, rate
+              limited.   | + one source of rules | - a call while typing (debounced);
+              effort S
+Option B:     Keep showing it after sending.   | + nothing to build | - the author
+              learns after the brand can already read it
+Recommended:  A.
+Risk & rollback: A read-only check; removing it returns to after-sending.
 → Approve A, B, or modify?
 ```
 

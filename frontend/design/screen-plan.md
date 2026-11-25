@@ -116,6 +116,8 @@ Format: **Job** (the one feature) · **Asks** (the question in the person's head
 - Why: relieves uncertainty first; one clear next step lowers the effort to act (Fogg: motivation plus ability plus a prompt).
 - Gap: the memo list carries `stage` and `waiting_on`, so the "waiting on others" group works. Each row still needs the brand name and campaign title (R1).
 
+**C0, C2 to C5 built on the website, 25 November 2026 (D-200),** on `feature/creator-apply-journey`, checked in a browser against the real backend and seeded data as well as the stand-in: onboarding at `/app/onboarding`, Discover at `/app/discover` with its filters in the address, a campaign at `/app/discover/{id}` with Apply as a sheet, My applications at `/app/applications`. Gaps found while building are requests R7 to R10 (`docs/PROPOSAL_FRONTEND_API_REQUESTS.md`): the campaign's name on each application, a handle check, "your application" on a campaign, a text's warnings before sending. Left for later: rate guidance on Apply (needs the creator's channels), answering invitations.
+
 **C2. Discover**
 - Job: find a campaign worth applying to.
 - Asks: "Is this worth my time?"

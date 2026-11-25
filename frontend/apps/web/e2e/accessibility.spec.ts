@@ -20,6 +20,7 @@ const RULES_ABOVE_AA = ["color-contrast-enhanced"];
 // dynamic page is never skipped unseen.
 const SAMPLE_SEGMENTS: Record<string, string> = {
   "[...slug]": "deals/1", // the screens not built yet answer at /app/<anything> (app/app/[...slug])
+  "[id]": "c-flagged", // a campaign (app/app/discover/[id]); the one with a warning beside its text, so the warning is checked too
 };
 
 const APP_DIR = join(__dirname, "..", "src", "app");
@@ -121,6 +122,30 @@ for (const view of VIEWS) {
             expect(await violations(page)).toEqual([]);
           });
         }
+
+        // States a page visit never reaches: the onboarding form (anyone with a profile is sent past it), with its errors showing,
+        // and the Apply sheet open over a campaign.
+        test("a new creator's onboarding steps and the Apply sheet have no accessibility violation", async ({ page }) => {
+          await fetch(`${MOCK}/__scenario`, { method: "POST", body: JSON.stringify({ profile: "missing", attention: "empty" }) });
+          await signIn(page, "Creator");
+          await page.goto("/app/onboarding");
+          await settled(page);
+          await page.getByRole("button", { name: "Continue" }).click();
+          expect(await violations(page), "onboarding step 1, with errors").toEqual([]);
+          await page.getByLabel("Your name, as brands will see it").fill("Meena Makes Food");
+          await page.getByLabel("Handle").fill("meena.makes");
+          await page.getByRole("button", { name: "Continue" }).click();
+          await page.getByRole("button", { name: "Food" }).click();
+          await settled(page);
+          expect(await violations(page), "onboarding step 2").toEqual([]);
+          await page.goto("/app/discover/c-5");
+          await settled(page);
+          await page.getByRole("button", { name: "Apply" }).click();
+          await page.getByRole("button", { name: "Send application" }).click();
+          await expect(page.getByText("Write at least 20 characters.")).toBeVisible();
+          await settled(page);
+          expect(await violations(page), "the Apply sheet, with an error").toEqual([]);
+        });
 
         for (const role of ["Creator", "Brand"] as const) {
           test(`a ${role.toLowerCase()}'s signed-in pages have no accessibility violation`, async ({ page }) => {

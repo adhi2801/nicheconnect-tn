@@ -5,9 +5,41 @@ import { createServer } from "node:http";
 const port = Number(process.env.PORT ?? 8098);
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "POST, GET, PUT, PATCH, DELETE, OPTIONS", "Access-Control-Expose-Headers": "Retry-After, X-Request-ID, WWW-Authenticate" };
 
-let n, valid, used, reuseDetected, refreshCalls, lastForwardedFor, refreshDelayMs, tokens, scenario, calls;
-const defaults = () => ({ attention: "items", profile: "found", totals: "money", unread: 3, busyOnce: false, deals: "full", names: true });
-const reset = () => { n = 0; valid = new Map(); used = new Set(); tokens = new Map(); reuseDetected = false; refreshCalls = 0; lastForwardedFor = null; refreshDelayMs = 0; scenario = defaults(); calls = {}; };
+let n, valid, used, reuseDetected, refreshCalls, lastForwardedFor, refreshDelayMs, tokens, scenario, calls, writes, created, lastQuery, sentApps, withdrawn;
+const defaults = () => ({ attention: "items", profile: "found", totals: "money", unread: 3, busyOnce: false, deals: "full", names: true, createProfile: "ok", discover: "items", apply: "ok", applications: "some", withdraw: "ok", applicationsDelayMs: 0 });
+const reset = () => { n = 0; valid = new Map(); used = new Set(); tokens = new Map(); reuseDetected = false; refreshCalls = 0; lastForwardedFor = null; refreshDelayMs = 0; scenario = defaults(); calls = {}; writes = []; created = false; lastQuery = null; sentApps = []; withdrawn = new Set(); };
+
+// ---- The creator's journey: campaigns, applications (contract: CampaignRead, ApplicationRead, BrandReliabilityRead) ----
+const CAMPAIGN_TITLES = ["Diwali sweets reel", "Filter coffee tasting", "Silk saree styling", "Millet snacks launch", "Temple town food walk"];
+const campaign = (i, extra = {}) => ({
+  id: `c-${i}`, brand_id: i % 2 ? "b-new" : "b-good", brand_name: i % 2 ? "Kovai Organics" : "Chennai Bakes", brand_name_flag: null,
+  title: `${CAMPAIGN_TITLES[i % 5]} ${i}`, description: "Looking for Tamil Nadu creators to feature our products. Content in Tamil is welcome.",
+  deliverables: "2 reels", deliverable_items: [{ format: "reel", platform: "instagram", quantity: 2, note: null }],
+  campaign_type: i % 7 === 3 ? "barter" : "paid", budget_min_paise: i % 7 === 3 ? null : 500_000, budget_max_paise: i % 7 === 3 ? null : 1_500_000,
+  cities: ["Madurai", "Chennai"], niches: i % 3 ? ["food"] : ["fashion", "lifestyle"], applications_close_on: "2026-12-15", applications_close_at: "2026-12-15T18:30:00Z",
+  applications_open: true, status: "open", applicant_count: null, verified_domain: i % 2 ? null : { domain: "chennaibakes.in", dnssec_validated: false, last_checked_at: "2026-11-20T00:00:00Z", registered_on: null, verified_since: "2026-10-01T00:00:00Z" },
+  text_flags: [], created_at: "2026-11-01T00:00:00Z", updated_at: "2026-11-01T00:00:00Z", currency: "INR", ...extra,
+});
+const ALL_CAMPAIGNS = Array.from({ length: 25 }, (_, i) => campaign(i + 1));
+const SPECIAL = {
+  "c-flagged": campaign(90, { id: "c-flagged", description: "Pay a ₹500 registration fee to apply.", text_flags: [{ field: "description", flag: "asks_for_money" }] }),
+  "c-closed": campaign(91, { id: "c-closed", applications_open: false }),
+};
+const application = (id, campaignId, status, changed, extra = {}) => ({
+  id, campaign_id: campaignId, creator_id: "cr-1", status, status_changed_at: changed, created_at: changed, updated_at: changed, pitch: "I make Madurai food reels every week.",
+  quoted_amount_paise: 600_000, agreed_amount_paise: null, currency: "INR", rejection_reason: null, rejection_note: null, decline_reason: null, first_answered_at: null,
+  invitation_note: null, open_offer: null, origin: "applied", repeat_of_application_id: null, text_flags: [], ...extra,
+});
+const myApplications = () => {
+  if (scenario.applications === "empty") return [...sentApps];
+  const base = [
+    application("a-1", "c-2", "submitted", "2026-11-20T05:00:00Z"),
+    application("a-2", "c-4", "shortlisted", "2026-11-22T05:00:00Z"),
+    application("a-3", "c-6", "rejected", "2026-11-18T19:00:00Z", { rejection_reason: "budget_mismatch", rejection_note: "Call me on 98765 43210 to discuss.", text_flags: [{ field: "rejection_note", flag: "phone_number" }] }),
+    application("a-4", "c-gone", "withdrawn", "2026-11-10T05:00:00Z"),
+  ];
+  return [...sentApps, ...base].map((a) => (withdrawn.has(a.id) ? { ...a, status: "withdrawn" } : a));
+};
 reset();
 
 const send = (res, status, body, extra = {}) => { res.writeHead(status, { ...cors, "Content-Type": status >= 400 ? "application/problem+json" : "application/json", ...extra }); res.end(body === undefined ? undefined : JSON.stringify(body)); };
@@ -26,7 +58,7 @@ createServer((req, res) => {
   req.on("data", (c) => (raw += c));
   req.on("end", async () => {
     const body = raw ? JSON.parse(raw) : {};
-    if (req.url === "/__state") return send(res, 200, { reuseDetected, refreshCalls, lastForwardedFor, liveLogins: valid.size, calls });
+    if (req.url === "/__state") return send(res, 200, { reuseDetected, refreshCalls, lastForwardedFor, liveLogins: valid.size, calls, writes, lastQuery });
     if (req.url === "/__scenario") { scenario = { ...defaults(), ...body }; return send(res, 200, scenario); }
     if (req.url === "/__reset") { reset(); return send(res, 200, {}); }
     if (req.url === "/__slow-refresh") { refreshDelayMs = Number(body.ms ?? 0); return send(res, 200, {}); }
@@ -37,8 +69,74 @@ createServer((req, res) => {
     if (path.startsWith("/api/v1/") && !path.startsWith("/api/v1/auth/")) {
       calls[path] = (calls[path] ?? 0) + 1;
       if (!role) return fail(res, 401, "not_authenticated");
+      const query = new URL(req.url, "http://mock").searchParams;
+      const key = req.headers["idempotency-key"] ?? null;
+      const record = (what) => writes.push({ what, key, body });
+
+      if (path === "/api/v1/creators/me" && req.method === "POST") {
+        record("create-profile");
+        const mode = scenario.createProfile;
+        if (mode === "busyOnce" && writes.filter((w) => w.what === "create-profile").length === 1) return fail(res, 503, "service_busy", { "Retry-After": "1" });
+        if (mode === "handle_taken") return fail(res, 409, "handle_taken");
+        if (mode === "underage") return fail(res, 422, "must_be_18_or_over");
+        if (mode === "rate") return fail(res, 429, "rate_limited", { "Retry-After": "40" });
+        created = true;
+        return send(res, 201, { id: "cr-1", account_id: "acc-creator", display_name: body.display_name, handle: body.handle, city: body.city, niches: body.niches, languages: body.languages, bio: null, passport_published_at: null, rate_card_public_at: null, created_at: "2026-11-26T00:00:00Z", updated_at: "2026-11-26T00:00:00Z" });
+      }
+      if (path === "/api/v1/cities") return send(res, 200, [{ city: "Madurai", published_creators: 12 }, { city: "Chennai", published_creators: 30 }, { city: "Coimbatore", published_creators: 9 }]);
+      if (path === "/api/v1/campaigns/discover") {
+        lastQuery = Object.fromEntries(query);
+        if (scenario.discover === "error") return fail(res, 500, "unexpected_error");
+        let items = scenario.discover === "empty" ? [] : [...ALL_CAMPAIGNS];
+        if (query.get("niche")) items = items.filter((c) => c.niches.includes(query.get("niche")));
+        if (query.get("campaign_type")) items = items.filter((c) => c.campaign_type === query.get("campaign_type"));
+        const start = query.get("cursor") === "page-2" ? 20 : 0;
+        return send(res, 200, { items: items.slice(start, start + 20), next_cursor: start === 0 && items.length > 20 ? "page-2" : null });
+      }
+      const campaignMatch = path.match(/^\/api\/v1\/campaigns\/([^/]+)$/);
+      if (campaignMatch && req.method === "GET") {
+        const id = campaignMatch[1];
+        if (id === "c-gone") return fail(res, 404, "campaign_not_found");
+        if (id === "c-withheld") return fail(res, 451, "content_withheld");
+        const found = SPECIAL[id] ?? ALL_CAMPAIGNS.find((c) => c.id === id);
+        return found ? send(res, 200, found) : fail(res, 404, "campaign_not_found");
+      }
+      const reliabilityMatch = path.match(/^\/api\/v1\/brands\/([^/]+)\/reliability$/);
+      if (reliabilityMatch) {
+        const base = { brand_id: reliabilityMatch[1], brand_name_flag: null, verified_domain: null };
+        if (reliabilityMatch[1] === "b-new") return send(res, 200, { ...base, status: "new_brand_no_history_yet", deals_completed: 1, deals_paid: 1, deals_unpaid: 0, currently_overdue: 1, paid_on_time_share: null, median_days_to_pay: null, distinct_creators: 1 });
+        return send(res, 200, { ...base, status: "has_payment_history", deals_completed: 9, deals_paid: 8, deals_unpaid: 1, currently_overdue: 0, paid_on_time_share: 0.875, median_days_to_pay: 3, distinct_creators: 6 });
+      }
+      const applyMatch = path.match(/^\/api\/v1\/campaigns\/([^/]+)\/applications$/);
+      if (applyMatch && req.method === "POST") {
+        record("apply");
+        const mode = scenario.apply;
+        if (mode === "busyOnce" && writes.filter((w) => w.what === "apply").length === 1) return fail(res, 503, "service_busy", { "Retry-After": "1" });
+        if (mode === "already") return fail(res, 409, "already_applied");
+        if (mode === "closed") return fail(res, 409, "applications_closed");
+        if (mode === "rate") return fail(res, 429, "rate_limited", { "Retry-After": "40" });
+        const sent = application(`a-new-${sentApps.length + 1}`, applyMatch[1], "submitted", "2026-11-25T19:30:00Z", { pitch: body.pitch, quoted_amount_paise: body.quoted_amount_paise, text_flags: /fee|deposit/i.test(body.pitch) ? [{ field: "pitch", flag: "asks_for_money" }] : [] });
+        sentApps.unshift(sent);
+        return send(res, 201, sent);
+      }
+      if (path === "/api/v1/applications/me") {
+        if (scenario.applicationsDelayMs) await new Promise((r) => setTimeout(r, scenario.applicationsDelayMs));
+        if (scenario.applications === "error") return fail(res, 500, "unexpected_error");
+        return send(res, 200, { items: myApplications(), next_cursor: null });
+      }
+      if (path === "/api/v1/applications/me/feedback") {
+        return send(res, 200, { as_of: "2026-11-26", applications: 6, by_status: {}, rejections: 3, rejections_by_reason: {}, most_common_reason: "budget_mismatch", quotes_compared: 4, quotes_above_budget: 3, open_campaigns_in_your_niches: 7, open_campaigns_in_your_niches_and_city: 2, has_bio: false, passport_published: false });
+      }
+      const withdrawMatch = path.match(/^\/api\/v1\/applications\/([^/]+)\/withdraw$/);
+      if (withdrawMatch && req.method === "POST") {
+        record("withdraw");
+        if (scenario.withdraw === "conflict") return fail(res, 409, "application_status_conflict");
+        withdrawn.add(withdrawMatch[1]);
+        return send(res, 200, myApplications().find((a) => a.id === withdrawMatch[1]));
+      }
+
       if (path === "/api/v1/creators/me" || path === "/api/v1/brands/me") {
-        if (scenario.profile === "missing") return fail(res, 404, "profile_not_found");
+        if (scenario.profile === "missing" && !(created && path === "/api/v1/creators/me")) return fail(res, 404, "profile_not_found");
         return send(res, 200, role === "creator" ? { id: "cr-1", display_name: "Lakshmi Loves", handle: "lakshmi" } : { id: "br-1", name: "Chennai Bakes" });
       }
       if (path === "/api/v1/notifications/unread-count") return send(res, 200, { unread: scenario.unread });

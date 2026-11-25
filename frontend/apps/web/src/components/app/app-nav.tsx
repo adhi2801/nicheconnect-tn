@@ -8,20 +8,22 @@ import { BellIcon, CompassIcon, HomeIcon, LogoutIcon, MegaphoneIcon, TicketIcon,
 import { t, type MessageKey } from "@/lib/messages";
 import { signOut, type Role } from "@/lib/session";
 
-type Item = { href: string; label: MessageKey; icon: ReactNode };
+// `also`: other pages that belong to the same place, so the place stays marked while you are on them.
+type Item = { href: string; label: MessageKey; icon: ReactNode; also?: string[] };
 
 // Five places, the most a thumb-reach bar holds, in the order people use them (frontend/design/screen-plan.md section 4).
 export function itemsFor(role: Role): Item[] {
   return [
     { href: "/app", label: "nav.today", icon: <HomeIcon /> },
-    role === "creator" ? { href: "/app/discover", label: "nav.discover", icon: <CompassIcon /> } : { href: "/app/campaigns", label: "nav.campaigns", icon: <MegaphoneIcon /> },
+    role === "creator" ? { href: "/app/discover", label: "nav.discover", icon: <CompassIcon />, also: ["/app/applications"] } : { href: "/app/campaigns", label: "nav.campaigns", icon: <MegaphoneIcon /> },
     { href: "/app/deals", label: "nav.deals", icon: <TicketIcon /> },
     { href: "/app/inbox", label: "nav.inbox", icon: <BellIcon /> },
     { href: "/app/me", label: "nav.me", icon: <UserIcon /> },
   ];
 }
 
-const isActive = (pathname: string, href: string): boolean => (href === "/app" ? pathname === "/app" : pathname === href || pathname.startsWith(`${href}/`));
+const under = (pathname: string, href: string): boolean => pathname === href || pathname.startsWith(`${href}/`);
+const isActive = (pathname: string, href: string, also: string[] = []): boolean => (href === "/app" ? pathname === "/app" : under(pathname, href) || also.some((a) => under(pathname, a)));
 
 function Caption({ children }: { children: ReactNode }) {
   return <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">{children}</p>;
@@ -39,7 +41,7 @@ export function SideNav({ role, unread }: { role: Role; unread: number }) {
         <Caption>{t("nav.menu")}</Caption>
         <ul className="grid gap-1">
           {menu.map((item) => {
-            const active = isActive(pathname, item.href);
+            const active = isActive(pathname, item.href, item.also);
             return (
               <li key={item.href}>
                 <Link href={item.href} aria-current={active ? "page" : undefined} className={`${row} ${active ? "font-semibold !text-ink" : ""}`}>
@@ -79,7 +81,7 @@ export function BottomNav({ role }: { role: Role }) {
     <nav aria-label={t("nav.label")} className="fixed inset-x-0 bottom-0 z-30 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:hidden">
       <ul className="mx-auto grid max-w-md grid-cols-5 gap-1 rounded-[1.75rem] bg-surface/95 p-1.5 shadow-[0_0_0_1px_var(--c-line),0_18px_40px_-18px_rgb(15_27_21/0.35)] backdrop-blur-md">
         {itemsFor(role).map((item) => {
-          const active = isActive(pathname, item.href);
+          const active = isActive(pathname, item.href, item.also);
           return (
             <li key={item.href}>
               <Link href={item.href} aria-current={active ? "page" : undefined} className={`t-base grid min-h-14 place-items-center content-center gap-0.5 rounded-2xl text-[11px] font-semibold ${active ? "bg-accent text-on-accent" : "text-muted"}`}>
