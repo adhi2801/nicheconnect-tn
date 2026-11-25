@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page, Slice
-from app.core.rate_limit import rate_limit
+from app.core.rate_limit import named_as, rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.campaigns.dependencies import (
@@ -227,18 +227,6 @@ def update_memo(
     return _read(db, service.update_memo(db, memo, changes, now))
 
 
-def _named[Endpoint: Callable[..., Any]](endpoint: Endpoint, name: str) -> Endpoint:
-    """The endpoint, called `name`, before its rate limit is attached.
-
-    slowapi names a route's limits, and keys their counters, by the
-    function's module and name. Every move below is made by one factory, so
-    unnamed they were all `endpoint`: one counter for five routes, charged
-    five times a request (audit C13; `tests/test_rate_limit.py`).
-    """
-    endpoint.__name__ = endpoint.__qualname__ = name
-    return endpoint
-
-
 def _brand_move(
     action: str, new_status: str, summary: str, description: str
 ) -> Callable[..., Any]:
@@ -261,7 +249,7 @@ def _brand_move(
             404: problem_doc("No such memo, or it is not yours"),
             409: problem_doc("The memo is not in a state where that is allowed"),
         },
-    )(rate_limit(MOVE_LIMIT)(_named(endpoint, f"memo_{action}")))
+    )(rate_limit(MOVE_LIMIT)(named_as(f"memo_{action}")(endpoint)))
 
 
 send_memo = _brand_move(
@@ -313,7 +301,7 @@ def _creator_move(
             404: problem_doc("No such memo, or it was not sent to you"),
             409: problem_doc("The memo is not in a state where that is allowed"),
         },
-    )(rate_limit(MOVE_LIMIT)(_named(endpoint, f"memo_{action}")))
+    )(rate_limit(MOVE_LIMIT)(named_as(f"memo_{action}")(endpoint)))
 
 
 accept_memo = _creator_move(
@@ -359,7 +347,7 @@ withdraw_memo_as_creator = _creator_move(
         422: problem_doc("The message is missing or too short"),
     },
 )
-@rate_limit(WRITE_LIMIT)
+@rate_limit(MOVE_LIMIT)
 def request_change(
     request: Request,
     body: ChangeRequest,

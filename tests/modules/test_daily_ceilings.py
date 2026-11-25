@@ -19,6 +19,13 @@ REACH = (
     "app.modules.campaigns.application_router.apply_to_campaign",
     "app.modules.campaigns.offer_router.make_offer",
     "app.modules.deal_memo.note_router.write_note",
+    # A memo's moves each tell the other side, or put terms to it (audit C13).
+    "app.modules.deal_memo.router.memo_send",
+    "app.modules.deal_memo.router.memo_cancel",
+    "app.modules.deal_memo.router.memo_accept",
+    "app.modules.deal_memo.router.memo_decline",
+    "app.modules.deal_memo.router.memo_withdraw",
+    "app.modules.deal_memo.router.request_change",
     "app.modules.deal_memo.shipment_router.record_shipment",
     "app.modules.deal_memo.shipment_router.receive_shipment",
     "app.modules.deal_memo.feedback_router.give_feedback",
