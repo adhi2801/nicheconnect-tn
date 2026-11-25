@@ -243,6 +243,27 @@ def test_only_the_newest_version_is_superseded(db):
     assert said.message_primary == SUPERSEDE_REFUSED.format(q=quarter)
 
 
+@pytest.mark.owner
+def test_a_report_is_superseded_at_most_once(db):
+    """Two corrections racing under different method versions both find the
+    withdrawn report the newest (neither sees the other's uncommitted row),
+    so the trigger lets both through; the unique index is what refuses the
+    second. The trigger is set aside here, inside the test's own rolled-back
+    transaction, to reach the index alone (hence `owner`)."""
+    quarter = withdrawn(db)
+    first = id_of(db, quarter)
+    insert(db, quarter=quarter, method_version=2, supersedes_id=first)
+    db.execute(
+        text("ALTER TABLE city_rate_report DISABLE TRIGGER city_rate_report_supersedes")
+    )
+
+    said = refused(
+        db, lambda: insert(db, quarter=quarter, method_version=3, supersedes_id=first)
+    )
+
+    assert said.constraint_name == "uq_city_rate_report_supersedes_id"
+
+
 def test_a_report_of_another_quarter_is_never_superseded(db):
     other = withdrawn(db)
     quarter = a_quarter()

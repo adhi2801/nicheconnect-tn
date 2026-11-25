@@ -220,10 +220,12 @@ def build_due(
     `built_at` is the clock's time as the figures are read, which the report
     states (`built_at`, and `as_of`, its day).
 
-    Idempotent: a quarter already built is left as it is, and two runs at
-    once leave one row, since the second insert does nothing on the unique
-    quarter (`ON CONFLICT DO NOTHING`). A quarter is never rebuilt: what was
-    true when it closed is what it says.
+    Idempotent: a quarter already built, in any method version, is left as
+    it is, and two runs at once leave one row, since the second insert does
+    nothing on the unique quarter and method version (`ON CONFLICT DO
+    NOTHING`). The job never builds a quarter again: what was true when it
+    closed is what it says; only an admin's `rebuild` corrects a withdrawn
+    one (D-201).
     """
     quarter = rules.last_closed_quarter(now)
     if db.scalar(select(CityRateReport.id).where(CityRateReport.quarter == quarter)):
@@ -267,7 +269,7 @@ class Health:
 
 def health(db: Session, now: datetime) -> Health:
     """What the daily run reports as errors, as at `now`. One query, of the
-    small columns only: one row a quarter."""
+    small columns only: one row a quarter, or two for a corrected one."""
     rows = db.execute(
         select(
             CityRateReport.quarter, CityRateReport.built_at, CityRateReport.published_at
@@ -294,9 +296,9 @@ def published(db: Session, *, limit: int, cursor: str | None) -> Slice[CityRateR
 
     A report is built once its quarter has closed, so the order they were
     built in is the quarters' order; a corrected quarter (D-201) lists its
-    new version where it was built, its withdrawn one where that was. One query, of the summary's columns
-    only: never the body, which the archive does not show and which is the
-    row's bulk. Reading a body from these rows raises rather than quietly
+    new version where it was built, its withdrawn one where that was. One
+    query, of the summary's columns only: never the body, which the archive
+    does not show and which is the row's bulk. Reading a body from these rows raises rather than quietly
     costing a query a row.
     """
     query = (
