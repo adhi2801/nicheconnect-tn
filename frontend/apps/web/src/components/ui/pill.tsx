@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { AlertIcon, CheckIcon, ClockIcon, DotIcon } from "./icons";
+import type { Tone } from "@/lib/tone";
 
-export type Tone = "ok" | "warn" | "bad" | "neutral" | "dark";
+export type { Tone };
 
 const tones: Record<Tone, { cls: string; icon: ReactNode }> = {
   ok: { cls: "bg-ok-soft text-ok", icon: <CheckIcon width={14} height={14} /> },

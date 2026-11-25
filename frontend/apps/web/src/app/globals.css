@@ -76,6 +76,13 @@ body {
   outline-offset: 2px;
 }
 
+/* A control inside a drawn field (TextField, TextAreaField, SelectField) shows focus on the field itself: its border turns ink and
+   thickens to 2px. The ring above would draw a second, square box inside the rounded one. Plain CSS outside Tailwind's layers beats a
+   utility class, so this has to be said here rather than with outline-none. */
+.field-control:focus-visible {
+  outline: none;
+}
+
 /* On the dark card the focus ring has to be light to be seen. */
 .on-dark :where(a, button, input, [tabindex]):focus-visible {
   outline-color: var(--c-highlight);

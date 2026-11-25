@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ApiError, apiErrorFrom, kindFromStatus, retryDelayMs, shouldRetry } from "./errors.ts";
+import { ApiError, apiErrorFrom, commonWordsKey, kindFromStatus, retryDelayMs, shouldRetry } from "./errors.ts";
 
 test("status and code decide the kind", () => {
   assert.equal(kindFromStatus(503), "busy");
@@ -9,7 +9,27 @@ test("status and code decide the kind", () => {
   assert.equal(kindFromStatus(401), "unauthorized");
   assert.equal(kindFromStatus(403), "forbidden");
   assert.equal(kindFromStatus(404), "not_found");
+  assert.equal(kindFromStatus(409), "conflict");
+  assert.equal(kindFromStatus(422), "invalid");
+  assert.equal(kindFromStatus(400), "invalid");
+  assert.equal(kindFromStatus(451), "withheld");
   assert.equal(kindFromStatus(500), "unknown");
+});
+
+test("a 422's field errors are kept, and a body of the wrong shape gives none instead of a crash", () => {
+  const response = new Response(null, { status: 422 });
+  const error = apiErrorFrom(response, { code: "validation_failed", errors: [{ field: "handle", message: "bad" }, { field: 3 }, null, "x"] });
+  assert.deepEqual(error.fields, [{ field: "handle", message: "bad" }]);
+  assert.deepEqual(apiErrorFrom(response, { errors: "nope" }).fields, []);
+  assert.deepEqual(apiErrorFrom(response, undefined).fields, []);
+});
+
+test("a failure with no words of its own gets the common ones, never a status code", () => {
+  assert.equal(commonWordsKey(new ApiError("network")), "common.offline");
+  assert.equal(commonWordsKey(new ApiError("busy", 503)), "common.busy");
+  assert.equal(commonWordsKey(new ApiError("rate_limited", 429)), "common.rateLimited");
+  assert.equal(commonWordsKey(new ApiError("unknown", 500)), "common.somethingWrong");
+  assert.equal(commonWordsKey(new Error("x")), "common.somethingWrong");
 });
 
 test("the problem body's reference and the Retry-After wait are kept", () => {

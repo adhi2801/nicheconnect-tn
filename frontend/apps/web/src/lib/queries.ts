@@ -1,5 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueries, useQuery } from "@tanstack/react-query";
 import { api } from "./api";
+import type { Application } from "./applications";
+import { discoverQuery, type Filters } from "./campaigns";
 import { ApiError, apiErrorFrom } from "./errors";
 import type { Memo } from "./deals";
 import type { Role } from "./session";
@@ -63,3 +65,51 @@ export const useDeals = () =>
 
 /** The newest payments, each with its campaign, brand and creator, so a table needs no call per row. */
 export const usePayments = () => useQuery({ queryKey: ["payments"], queryFn: async () => (await unwrap(api.GET("/api/v1/payments/mine", { params: { query: { limit: 100 } } }))).items });
+
+// ---- Finding work and applying (screen-plan C0 to C5) ----
+
+/** Cities where creators have published Passports, to suggest while typing. A suggestion only: any city may be typed. */
+export const useCities = () => useQuery({ queryKey: ["cities"], staleTime: 60 * 60_000, queryFn: () => unwrap(api.GET("/api/v1/cities")) });
+
+/** Open campaigns, twenty at a time by cursor, for these filters. */
+export const useDiscover = (filters: Filters) =>
+  useInfiniteQuery({
+    queryKey: ["discover", filters],
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) => unwrap(api.GET("/api/v1/campaigns/discover", { params: { query: discoverQuery(filters, pageParam) } })),
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
+  });
+
+const campaignQuery = (id: string) => ({ queryKey: ["campaign", id], staleTime: 60_000, queryFn: () => unwrap(api.GET("/api/v1/campaigns/{campaign_id}", { params: { path: { campaign_id: id } } })) });
+
+export const useCampaign = (id: string) => useQuery(campaignQuery(id));
+
+/** A brand's payment record. Read only once the campaign has said which brand it is. */
+export const useReliability = (brandId: string | undefined) =>
+  useQuery({ queryKey: ["reliability", brandId], enabled: !!brandId, staleTime: 5 * 60_000, queryFn: () => unwrap(api.GET("/api/v1/brands/{brand_id}/reliability", { params: { path: { brand_id: brandId ?? "" } } })) });
+
+/** Every application the creator sent. Pilot scale: up to five pages of a hundred, as Deals does. Shared by Discover (to mark what
+ *  was applied to), a campaign (to show your application) and My applications. */
+export const useMyApplications = (enabled = true) =>
+  useQuery({
+    queryKey: ["my-applications"],
+    enabled,
+    queryFn: async () => {
+      const items: Application[] = [];
+      let cursor: string | undefined;
+      for (let page = 0; page < 5; page++) {
+        const result = await unwrap(api.GET("/api/v1/applications/me", { params: { query: { limit: 100, cursor } } }));
+        items.push(...result.items);
+        if (!result.next_cursor) break;
+        cursor = result.next_cursor;
+      }
+      return items;
+    },
+  });
+
+export const useApplicationFeedback = () => useQuery({ queryKey: ["application-feedback"], queryFn: () => unwrap(api.GET("/api/v1/applications/me/feedback")) });
+
+/** STOPGAP for request R7: an application carries no campaign title or brand name, so each distinct campaign is read once (shared
+ *  with the campaign screen's cache). This breaks ux.md's two-call rule and goes when the backend adds the names. */
+export const useCampaignsFor = (ids: string[]) =>
+  useQueries({ queries: ids.map((id) => campaignQuery(id)), combine: (results) => new Map(ids.map((id, i) => [id, results[i]])) });

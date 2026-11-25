@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { formatDate, formatDayMonth, formatLongDate, formatPaise, initials, partOfDay } from "./format.ts";
+import { formatDate, formatDayMonth, formatLongDate, formatPaise, indiaDay, initials, partOfDay } from "./format.ts";
 
 test("money is in whole rupees with Indian grouping, and paise only when there are some", () => {
   assert.equal(formatPaise(15_000_000), "₹1,50,000");
@@ -34,4 +34,10 @@ test("initials", () => {
   assert.equal(initials("Chennai Bakes"), "CB");
   assert.equal(initials("Priya"), "PR");
   assert.equal(initials("  "), "?");
+});
+
+test("a moment's date is Tamil Nadu's, not UTC's", () => {
+  assert.equal(indiaDay("2026-11-25T19:30:00Z"), "2026-11-26"); // 01:00 in India
+  assert.equal(indiaDay("2026-11-25T18:29:59Z"), "2026-11-25"); // 23:59 in India
+  assert.equal(indiaDay("2026-11-25T18:30:00+00:00"), "2026-11-26");
 });

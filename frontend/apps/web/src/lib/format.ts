@@ -22,6 +22,11 @@ const longDay = new Intl.DateTimeFormat("en-IN", { weekday: "long", day: "numeri
 // Intl's Indian English writes September as "Sept"; our style, and the standard's example, is "Sep".
 const shorten = (text: string): string => text.replace(/\./g, "").replace("Sept", "Sep");
 
+/** The Tamil Nadu calendar date of a moment ("2026-11-25T19:30:00Z" is 26 Nov in India). A timestamp's own first ten characters are
+ *  its UTC date, which is the wrong day for anything after 18:30 UTC. */
+const indiaParts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" });
+export const indiaDay = (timestamp: string): string => indiaParts.format(new Date(timestamp));
+
 /** "17 Sep 2026" */
 export const formatDate = (isoDate: string): string => shorten(day.format(calendarDate(isoDate)));
 
