@@ -568,10 +568,19 @@ def test_when_every_version_is_withdrawn_readers_get_the_newest_reason(
 
 @pytest.mark.parametrize("state", ["published", "built"])
 def test_a_standing_or_unpublished_quarter_is_never_built_again(
-    client, db, admin, newer_method, state
+    client, db, admin, newer_method, monkeypatch, state
 ):
     # One per test: a refused request rolls back what the test wrote.
     row = published(db, admin) if state == "published" else built(db)
+    # Refused before any figure is read: the database would refuse the row
+    # too (the supersedes trigger), but only after a whole build. One guard,
+    # one test (testing.md section 2): this one is the service's.
+    from app.modules.insights import rate_report_service
+
+    def never(*args, **kwargs):
+        raise AssertionError("a standing quarter's figures were read")
+
+    monkeypatch.setattr(rate_report_service, "build_body", never)
 
     response = rebuild(client, admin, row.quarter)
 
