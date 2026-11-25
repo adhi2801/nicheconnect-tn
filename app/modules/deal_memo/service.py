@@ -243,7 +243,9 @@ def _check_fee_against_campaign(campaign: Campaign, fee_amount_paise: int | None
 FURTHEST_DUE_DATE = timedelta(days=365)
 
 
-def _ensure_due_date_within_reach(db: Session, due_on: date | None, now: datetime) -> None:
+def _ensure_due_date_within_reach(
+    db: Session, due_on: date | None, now: datetime
+) -> None:
     """Refuse a due date more than a year after today in Tamil Nadu.
 
     A date already past is left to sending and accepting, which refuse it
