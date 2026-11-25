@@ -2171,7 +2171,7 @@ export interface paths {
         put?: never;
         /**
          * Draft a deal memo for an accepted application
-         * @description Creates the memo as a draft, visible only to the brand until it is sent. Paid and local-business campaigns need a fee; barter campaigns must not have one. One memo per application.
+         * @description Creates the memo as a draft, visible only to the brand until it is sent. Paid and local-business campaigns need a fee; barter campaigns must not have one. One memo per application. A `content_due_on` more than a year ahead in Tamil Nadu is refused (422): almost certainly a mistyped year.
          */
         post: operations["create_memo_api_v1_deal_memos_for_application__application_id__post"];
         delete?: never;
@@ -2219,7 +2219,7 @@ export interface paths {
         head?: never;
         /**
          * Change a deal memo
-         * @description Only while the brand holds it: a draft, or after the creator asked for a change. Once accepted the terms stop moving, so a creator can rely on what they agreed to.
+         * @description Only while the brand holds it: a draft, or after the creator asked for a change. Once accepted the terms stop moving, so a creator can rely on what they agreed to. A `content_due_on` more than a year ahead is refused (422).
          */
         patch: operations["update_memo_api_v1_deal_memos__memo_id__patch"];
         trace?: never;

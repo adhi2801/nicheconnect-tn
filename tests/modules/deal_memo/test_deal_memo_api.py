@@ -577,6 +577,50 @@ def test_a_creator_cannot_accept_a_date_that_passed_while_the_memo_waited(
     assert asked.status_code == 200, asked.text
 
 
+def test_a_due_date_more_than_a_year_ahead_is_refused(client, db, clock):
+    """Audit C13, 22 November 2026. The date had no upper bound: a memo due
+    9999-12-31, accepted, then a draft the brand held a day, answered 500 on
+    the memo, both sides' lists and the creator's delivery record that every
+    brand reads, and its calendar file at once."""
+    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    application = accepted_application(client, brand, creator)
+    year_ahead = clock.now.date() + timedelta(days=365)
+
+    def create(client, brand, application, **fields):
+        body = {"deliverables": "3 Instagram reels.", "fee_amount_paise": 800_000}
+        return client.post(
+            f"{MEMOS_URL}/for-application/{application}",
+            json={**body, **fields},
+            headers=brand.headers,
+        )
+
+    too_far = create(client, brand, application, content_due_on="9999-12-31")
+    assert_problem(too_far, 422, "validation_failed")
+    assert too_far.json()["errors"][0]["field"] == "content_due_on"
+    assert_problem(
+        create(
+            client,
+            brand,
+            application,
+            content_due_on=(year_ahead + timedelta(days=1)).isoformat(),
+        ),
+        422,
+        "validation_failed",
+    )
+
+    memo = create(client, brand, application, content_due_on=year_ahead.isoformat())
+    assert memo.status_code == 201, memo.text
+    url = f"{MEMOS_URL}/{memo.json()['id']}"
+    assert_problem(
+        client.patch(url, json={"content_due_on": "9999-12-31"}, headers=brand.headers),
+        422,
+        "validation_failed",
+    )
+    assert client.get(url, headers=brand.headers).json()["content_due_on"] == (
+        year_ahead.isoformat()
+    )
+
+
 def test_removing_the_date_during_a_change_blocks_the_resend(client, db, clock):
     brand, creator = brand_user(db, clock), creator_user(db, clock)
     memo = sent_memo(client, brand, accepted_application(client, brand, creator))

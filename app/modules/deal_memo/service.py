@@ -6,7 +6,7 @@ must be able to rely on what they said yes to.
 """
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import Select, select
@@ -35,6 +35,7 @@ from app.modules.deal_memo.exceptions import (
     CreatorLeft,
     DraftReviewNeedsNewTerms,
     DueDateHasPassed,
+    DueDateTooFar,
     MemoAlreadyExists,
     MemoNeedsDueDate,
     MemoNotEditable,
@@ -237,12 +238,31 @@ def _check_fee_against_campaign(campaign: Campaign, fee_amount_paise: int | None
         raise PaidMemoNeedsFee()
 
 
+# A year, as a campaign's closing date and availability allow: anything
+# further is a mistyped year (audit C13).
+FURTHEST_DUE_DATE = timedelta(days=365)
+
+
+def _ensure_due_date_within_reach(db: Session, due_on: date | None, now: datetime) -> None:
+    """Refuse a due date more than a year after today in Tamil Nadu.
+
+    A date already past is left to sending and accepting, which refuse it
+    (`_check_due_date`): a draft may hold one while the brand works on it.
+    Raises DueDateTooFar, rolled back first so no lock is held meanwhile.
+    """
+    if due_on is not None and due_on > india_date(now) + FURTHEST_DUE_DATE:
+        db.rollback()
+        raise DueDateTooFar()
+
+
 def _check_due_date(db: Session, memo: DealMemo, *, to_send: bool, now: datetime) -> None:
     """The agreed date must exist to send a scored deal, and must not be past.
 
     Checked when the brand sends and again when the creator accepts, on
     Tamil Nadu's calendar: a date can pass while a memo waits for an answer.
-    Raises MemoNeedsDueDate and DueDateHasPassed.
+    Raises MemoNeedsDueDate and DueDateHasPassed. A date too far ahead
+    never reaches here: writing one is refused (`_ensure_due_date_within_reach`),
+    and a repeat deal starts with none.
     """
     if memo.content_due_on is None:
         if to_send:
@@ -262,7 +282,7 @@ def create_memo(
     """Draft a memo for an accepted application.
 
     Raises ApplicationNotAccepted, CreatorLeft (the creator deleted their
-    account, D-122), MemoAlreadyExists, and the fee errors.
+    account, D-122), MemoAlreadyExists, DueDateTooFar, and the fee errors.
 
     The application's row is locked and read again first: two requests at
     once would otherwise both find no memo, and the database's unique rule
@@ -291,6 +311,7 @@ def create_memo(
     if existing is not None:
         db.rollback()
         raise MemoAlreadyExists()
+    _ensure_due_date_within_reach(db, fields.get("content_due_on"), now)
 
     # The list of deliverables (item 26, D-127): left out, the campaign's.
     items = fields.pop("deliverable_items", None)
@@ -440,7 +461,8 @@ def update_memo(
 ) -> DealMemo:
     """Change a memo the brand still holds (draft, or a change was requested).
 
-    Raises MemoNotEditable, DraftReviewNeedsNewTerms and the fee errors.
+    Raises MemoNotEditable, DraftReviewNeedsNewTerms, DueDateTooFar and the
+    fee errors.
 
     The memo is locked and read again, every column, before the check, as
     every status move does (backend.md section 5). Read unlocked, an edit
@@ -470,6 +492,8 @@ def update_memo(
         except BarterMemoHasNoFee, PaidMemoNeedsFee:
             db.rollback()
             raise
+
+    _ensure_due_date_within_reach(db, changes.get("content_due_on"), now)
 
     # A memo made before terms version 3 would never seal the draft review,
     # so it cannot take one (item 27); it is drafted again instead.
