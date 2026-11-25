@@ -111,6 +111,18 @@ class DeliverableRead(BaseModel):
     note: str | None
 
 
+def deliverable_notes(items: list[DeliverableRead]) -> dict[str, str | None]:
+    """Each line's note, named by its place, for `text_flags`.
+
+    A note is the brand's own words and the creator reads it beside the
+    summary, so a fee request fits in one as well as in the summary: 200
+    characters, on each of 10 lines (audit C13, 22 November 2026).
+    """
+    return {
+        f"deliverable_items.{place}.note": item.note for place, item in enumerate(items)
+    }
+
+
 DeliverableItems = Annotated[
     list[DeliverableIn],
     Field(
@@ -275,6 +287,7 @@ class CampaignRead(BaseModel):
                 "title": self.title,
                 "description": self.description,
                 "deliverables": self.deliverables,
+                **deliverable_notes(self.deliverable_items),
             },
             money=True,
             contact=True,
