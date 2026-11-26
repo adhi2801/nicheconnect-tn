@@ -68,6 +68,11 @@ RUN apt-get update \
         apt=3.0.4 \
         libapt-pkg7.0=3.0.4 \
         zlib1g=1:1.3.dfsg+really1.3.1-1+deb13u1 \
+        libc6=2.41-12+deb13u5 \
+        libc-bin=2.41-12+deb13u5 \
+        libzstd1=1.5.7+dfsg-1+deb13u1 \
+        passwd=1:4.17.4-2+deb13u1 \
+        login.defs=1:4.17.4-2+deb13u1 \
     && rm -rf /var/lib/apt/lists/*
 # RES_OPTIONS bounds every name lookup (D-186 point 14a, Adhi, 18 November
 # 2026): glibc's resolver reads it over resolv.conf, so a lookup waits at
