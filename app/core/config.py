@@ -128,6 +128,19 @@ class Settings(BaseSettings):
     # release step (app/db/prepare.py), which sets it on the login. The app
     # itself connects with DATABASE_URL; in production that is the login.
     app_database_password: SecretStr | None = None
+    # The monthly restore test (item 90, app/db/restore_check.py), given only
+    # to its own task by infra: the database restored from, and the subnet
+    # group and security group its scratch copy is put in. Unset everywhere
+    # else; the restore test refuses to run without all three.
+    restore_check_source_db: str | None = Field(
+        default=None, pattern=r"^[a-z][a-z0-9-]{0,62}$"
+    )
+    restore_check_subnet_group: str | None = Field(
+        default=None, pattern=r"^[a-z][a-z0-9-]{0,254}$"
+    )
+    restore_check_security_group: str | None = Field(
+        default=None, pattern=r"^sg-[0-9a-f]{8,17}$"
+    )
     # Requests one process works on at once. Below the pool's connections,
     # so every request let in can always get one: the load test froze a
     # process when 40 worker threads waited on 15 connections (D-092). One
@@ -310,6 +323,9 @@ class Settings(BaseSettings):
         "retention_report_days",
         "retention_takedown_days",
         "retention_admin_log_days",
+        "restore_check_source_db",
+        "restore_check_subnet_group",
+        "restore_check_security_group",
         mode="before",
     )
     @classmethod
