@@ -2542,3 +2542,15 @@ Newest entries at the bottom.
   1. `Dockerfile`: `libc6` and `libc-bin` 2.41-12+deb13u5, `libzstd1` 1.5.7+dfsg-1+deb13u1, `passwd` and `login.defs` 1:4.17.4-2+deb13u1, exact, upgrade only; removed when the base digest carries them.
   2. OpenSSL's High findings in the same scan have no Debian fix yet, so `--only-fixed` does not fail on them; they are patched here when a fix is published.
   3. Proven by CI's `image` job on this branch passing the Grype gate, having failed on `cfd9198`.
+
+## D-204: Work goes straight to `main`, no pull requests, while Adhi builds alone
+- Date: 2026-11-26
+- Approved by: Adhi, in this session: "i used to just push them and it gets saved everytime and why are we not doing that". Reviewed by Adhi only; no second person.
+- Context: with one builder, pull requests and long-lived branches caught nothing a local test run does not, and cost conflicts on shared lines (the decision log, the counts) and repeated CI rounds every day.
+- Options considered: A) keep pull requests under D-101; B) commit and push straight to `main`, gates run locally first and CI checked on `main` after.
+- Chosen: B.
+- Reason: the founder's direction; the tests and CI that protect the product are kept, only the review step that had no second reviewer is dropped.
+- Consequences / follow-ups:
+  1. `CLAUDE.md` sections 6 and 8: commit on `main`, run the affected tests and linters, push; no force-push or rewritten history; a red `main` is fixed first.
+  2. Replaces D-101's pull-request merging while Adhi builds alone; if Erode Harish returns to backend work, branches and pull requests come back.
+  3. The independent review (D-139) still runs on every feature and audit before its push.
