@@ -29,7 +29,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, select, tuple_, update
 from sqlalchemy.orm import Session
 
 from app.core import rollout
@@ -39,6 +39,7 @@ from app.core.export import MAX_ROWS_PER_SECTION, ExportedSection, allow, build_
 from app.core.job_runs import within_budget
 from app.modules.auth.brand_access import BrandAccess
 from app.modules.auth.models.account import Account
+from app.modules.auth.models.brand import Brand
 from app.modules.campaigns.brief_drafter import BriefDrafter, Drafted
 from app.modules.campaigns.brief_models import BRIEF_KEPT_DAYS, CampaignBriefDraft
 from app.modules.campaigns.exceptions import BriefDraftNotFound, BriefDraftsWaiting
@@ -78,8 +79,6 @@ def ask(
     Raises BriefDraftsWaiting when three of the brand's drafts still wait.
     Counted under the brand's lock, so two asks at once cannot pass it.
     """
-    from app.modules.auth.models.brand import Brand
-
     db.scalars(
         select(Brand.id).where(Brand.id == access.brand.id).with_for_update()
     ).one()
@@ -210,21 +209,34 @@ def run(
         db.rollback()
         logger.warning("brief drafting stopped: the daily limit is reached")
         return DraftRun(0, 0, 0, True, deleted)
-    from app.modules.auth.models.brand import Brand
-
-    waiting = db.execute(
-        select(CampaignBriefDraft.id, Brand.account_id)
-        .join(Brand, Brand.id == CampaignBriefDraft.brand_id)
-        .where(CampaignBriefDraft.status == "waiting")
-        .order_by(CampaignBriefDraft.created_at, CampaignBriefDraft.id)
-        .limit(QUEUE_DEPTH)
-    ).all()
-    db.rollback()
-    queue = [
-        draft_id
-        for draft_id, brand_account_id in waiting
-        if rollout.includes("brief_drafting", brand_account_id)
-    ][: min(limit, allowance)]
+    wanted = min(limit, allowance)
+    queue: list[uuid.UUID] = []
+    after: tuple[datetime, uuid.UUID] | None = None
+    while len(queue) < wanted:
+        page = db.execute(
+            select(CampaignBriefDraft.id, CampaignBriefDraft.created_at, Brand.account_id)
+            .join(Brand, Brand.id == CampaignBriefDraft.brand_id)
+            .where(
+                CampaignBriefDraft.status == "waiting",
+                *(
+                    [tuple_(CampaignBriefDraft.created_at, CampaignBriefDraft.id) > after]
+                    if after
+                    else []
+                ),
+            )
+            .order_by(CampaignBriefDraft.created_at, CampaignBriefDraft.id)
+            .limit(QUEUE_DEPTH)
+        ).all()
+        db.rollback()
+        queue += [
+            draft_id
+            for draft_id, _, brand_account_id in page
+            if rollout.includes("brief_drafting", brand_account_id)
+        ]
+        if len(page) < QUEUE_DEPTH:
+            break
+        after = (page[-1].created_at, page[-1].id)
+    queue = queue[:wanted]
     outcomes = [
         draft_one(db, drafter, draft_id, now)
         for draft_id in within_budget(queue, budget, "brief_drafts.run")

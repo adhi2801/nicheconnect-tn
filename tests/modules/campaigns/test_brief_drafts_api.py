@@ -184,6 +184,8 @@ def test_a_share_cut_back_sends_nothing_more_from_brands_now_outside_it(
         cut = rollout.bucket("brief_drafting", inside.account_id) + 1
         if rollout.bucket("brief_drafting", outside.account_id) >= cut:
             break
+    else:
+        pytest.fail("no brand pair split by the share in 20 tries")
     first = ask(client, outside, IDEA + " Asked first.")
     clock.advance(timedelta(seconds=1))
     ask(client, inside, IDEA + " Asked second.")
@@ -197,6 +199,33 @@ def test_a_share_cut_back_sends_nothing_more_from_brands_now_outside_it(
     assert left["status"] == "waiting"
     monkeypatch.setattr(settings, "feature_rollout", {"brief_drafting": 0})
     assert brief_service.run(db, drafter, clock.now).drafted == 0
+
+
+def test_out_of_share_drafts_older_than_the_queue_depth_do_not_starve_a_brand_inside(
+    client, db, clock, drafter, monkeypatch
+):
+    """Audit C25: the job pages past waiting drafts of brands outside the share."""
+    from app.core import rollout
+    from app.core.config import settings
+
+    for _ in range(20):
+        outside, inside = brand_user(db, clock), brand_user(db, clock)
+        cut = rollout.bucket("brief_drafting", inside.account_id) + 1
+        if rollout.bucket("brief_drafting", outside.account_id) >= cut:
+            break
+    else:
+        pytest.fail("no brand pair split by the share in 20 tries")
+    monkeypatch.setattr(brief_service, "QUEUE_DEPTH", 2)
+    for n in range(3):
+        ask(client, outside, IDEA + f" Outside {n}.")
+        clock.advance(timedelta(seconds=1))
+    ask(client, inside, IDEA + " Inside.")
+    monkeypatch.setattr(settings, "feature_rollout", {"brief_drafting": cut})
+
+    run = brief_service.run(db, drafter, clock.now)
+
+    assert run.drafted == 1
+    assert drafter.ideas == [IDEA + " Inside."]
 
 
 def test_a_draft_is_gone_after_a_week(client, db, clock, drafter):
