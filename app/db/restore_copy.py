@@ -41,7 +41,9 @@ DEAD_STATES = frozenset(
 )
 # What a delete may answer without it being a fault: already gone, or
 # already being deleted (a sweep and a `finally` may both ask).
-GONE = frozenset({"DBInstanceNotFound", "DBInstanceNotFoundFault", "InvalidDBInstanceState"})
+GONE = frozenset(
+    {"DBInstanceNotFound", "DBInstanceNotFoundFault", "InvalidDBInstanceState"}
+)
 # The earliest moment is kept an hour inside the window, so a restore asked
 # for near its edge is never refused because the edge moved meanwhile.
 WINDOW_MARGIN = timedelta(hours=1)

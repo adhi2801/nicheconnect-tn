@@ -136,6 +136,9 @@ def test_settings_are_read_only_through_config():
 DATES_FROM_MOMENTS_ALLOWED = {
     ("app/core/clock.py", "return moment.astimezone(IST).date()"): "the one conversion",
     ("app/modules/auth/dependencies.py", "return datetime.now(UTC)"): "the clock itself",
+    ("app/db/restore_check.py", "now=lambda: datetime.now(UTC),"): (
+        "the restore test's clock; its month is taken by india_date"
+    ),
     (
         "app/modules/notifications/preference_service.py",
         "candidate = datetime.combine(local.date(), at, tzinfo=IST)",

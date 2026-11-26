@@ -41,7 +41,9 @@ from tests.core.test_error_tracking import DSN, Collect
 
 SOURCE = "nicheconnect-production"
 SECURITY_GROUP = "sg-0123456789abcdef0"
-PRODUCTION_URL = "postgresql+psycopg://nicheconnect_app:secret@prod.internal:5432/nicheconnect"
+PRODUCTION_URL = (
+    "postgresql+psycopg://nicheconnect_app:secret@prod.internal:5432/nicheconnect"
+)
 NOVEMBER = datetime(2026, 11, 30, 21, 0, tzinfo=UTC)  # 02:30 on 1 December in Tamil Nadu
 
 
@@ -61,11 +63,16 @@ class Clock:
 
 
 class Recording:
-    """moto's RDS client, with every restore request kept as it was sent,
-    and the copy's state overridable."""
+    """moto's RDS client, with every restore request kept as it was sent, the
+    copy's state overridable, and the latest restorable moment held still.
+
+    moto drops a False or a 0 from a restore request and copies the source's
+    value instead; AWS honours them, so the copy's backups are read back as
+    asked."""
 
     def __init__(self, client: Any) -> None:
         self._client = client
+        self.latest = datetime.now(UTC).replace(microsecond=0)
         self.restores: list[dict[str, Any]] = []
         self.deleted: list[str] = []
         self.state: str | None = None
@@ -80,10 +87,20 @@ class Recording:
 
     def describe_db_instances(self, **params: Any) -> Any:
         found = self._client.describe_db_instances(**params)
-        if self.state is not None:
-            for instance in found["DBInstances"]:
-                if "-restore-check-" in instance["DBInstanceIdentifier"]:
-                    instance["DBInstanceStatus"] = self.state
+        asked = {r["TargetDBInstanceIdentifier"]: r for r in self.restores}
+        for instance in found["DBInstances"]:
+            instance["LatestRestorableTime"] = self.latest
+            if instance["DBInstanceIdentifier"] in asked:
+                restore = asked[instance["DBInstanceIdentifier"]]
+                instance["BackupRetentionPeriod"] = restore.get(
+                    "BackupRetentionPeriod", 14
+                )
+                instance["DeletionProtection"] = restore.get("DeletionProtection", False)
+            if (
+                self.state is not None
+                and "-restore-check-" in instance["DBInstanceIdentifier"]
+            ):
+                instance["DBInstanceStatus"] = self.state
         return found
 
     def __getattr__(self, name: str) -> Any:
@@ -96,14 +113,16 @@ def rds() -> Iterator[Recording]:
         ec2 = boto3.client("ec2", region_name="ap-south-1")
         vpc = ec2.create_vpc(CidrBlock="10.0.0.0/16")["Vpc"]["VpcId"]
         subnets = [
-            ec2.create_subnet(VpcId=vpc, CidrBlock=f"10.0.{i}.0/24", AvailabilityZone=zone)[
-                "Subnet"
-            ]["SubnetId"]
+            ec2.create_subnet(
+                VpcId=vpc, CidrBlock=f"10.0.{i}.0/24", AvailabilityZone=zone
+            )["Subnet"]["SubnetId"]
             for i, zone in enumerate(["ap-south-1a", "ap-south-1b"])
         ]
         client = boto3.client("rds", region_name="ap-south-1")
         client.create_db_subnet_group(
-            DBSubnetGroupName=SOURCE, DBSubnetGroupDescription="private", SubnetIds=subnets
+            DBSubnetGroupName=SOURCE,
+            DBSubnetGroupDescription="private",
+            SubnetIds=subnets,
         )
         client.create_db_instance(
             DBInstanceIdentifier=SOURCE,
@@ -159,7 +178,9 @@ def times(*moments: datetime):
     return now
 
 
-def a_run(copies: RestoreCopies, clock: Clock | None = None, *, now=None, rng=None) -> Outcome:
+def a_run(
+    copies: RestoreCopies, clock: Clock | None = None, *, now=None, rng=None
+) -> Outcome:
     clock = clock or Clock()
     latest = copies.window()[1]
     return run(
@@ -176,7 +197,9 @@ def a_run(copies: RestoreCopies, clock: Clock | None = None, *, now=None, rng=No
 # --- the copy --------------------------------------------------------------------------
 
 
-def test_the_copy_is_asked_for_private_unprotected_without_backups_and_tagged(copies, rds):
+def test_the_copy_is_asked_for_private_unprotected_without_backups_and_tagged(
+    copies, rds
+):
     copies.start(copies.name(NOVEMBER), None)
 
     (asked,) = rds.restores
@@ -270,10 +293,14 @@ def test_leftovers_are_swept_and_nothing_else(copies, rds):
     left = f"{SOURCE}-restore-check-20261031-2100"
     other = "nicheconnect-staging-restore-check-20261031-2100"
     rds.restore_db_instance_to_point_in_time(
-        SourceDBInstanceIdentifier=SOURCE, TargetDBInstanceIdentifier=left, UseLatestRestorableTime=True
+        SourceDBInstanceIdentifier=SOURCE,
+        TargetDBInstanceIdentifier=left,
+        UseLatestRestorableTime=True,
     )
     rds.restore_db_instance_to_point_in_time(
-        SourceDBInstanceIdentifier=SOURCE, TargetDBInstanceIdentifier=other, UseLatestRestorableTime=True
+        SourceDBInstanceIdentifier=SOURCE,
+        TargetDBInstanceIdentifier=other,
+        UseLatestRestorableTime=True,
     )
 
     assert copies.sweep() == [left]
@@ -283,7 +310,9 @@ def test_leftovers_are_swept_and_nothing_else(copies, rds):
 # --- the run --------------------------------------------------------------------------------
 
 
-def test_a_good_run_checks_the_copy_records_its_times_and_deletes_it(copies, rds, monkeypatch):
+def test_a_good_run_checks_the_copy_records_its_times_and_deletes_it(
+    copies, rds, monkeypatch
+):
     asked = checks_find(monkeypatch, [])
     latest = copies.window()[1]
 
@@ -302,7 +331,9 @@ def test_a_good_run_checks_the_copy_records_its_times_and_deletes_it(copies, rds
     assert identifiers(rds) == {SOURCE}
 
 
-def test_a_failed_check_fails_the_run_and_the_copy_is_still_deleted(copies, rds, monkeypatch):
+def test_a_failed_check_fails_the_run_and_the_copy_is_still_deleted(
+    copies, rds, monkeypatch
+):
     checks_find(monkeypatch, ["sealed: admin_action differs from production"])
 
     outcome = a_run(copies)
@@ -311,7 +342,9 @@ def test_a_failed_check_fails_the_run_and_the_copy_is_still_deleted(copies, rds,
     assert identifiers(rds) == {SOURCE}
 
 
-def test_a_check_that_cannot_reach_the_copy_fails_the_run_and_deletes_it(copies, rds, monkeypatch):
+def test_a_check_that_cannot_reach_the_copy_fails_the_run_and_deletes_it(
+    copies, rds, monkeypatch
+):
     checks_find(monkeypatch, OperationalError("SELECT 1", {}, Exception("refused")))
 
     outcome = a_run(copies)
@@ -321,7 +354,9 @@ def test_a_check_that_cannot_reach_the_copy_fails_the_run_and_deletes_it(copies,
     assert identifiers(rds) == {SOURCE}
 
 
-def test_a_copy_never_ready_stops_at_ninety_minutes_and_is_deleted(copies, rds, monkeypatch):
+def test_a_copy_never_ready_stops_at_ninety_minutes_and_is_deleted(
+    copies, rds, monkeypatch
+):
     asked = checks_find(monkeypatch, [])
     rds.state = "creating"
     clock = Clock()
@@ -380,19 +415,34 @@ def test_over_five_minutes_lost_fails_the_run(copies, monkeypatch):
     assert outcome.problems == ["target: 360 s would be lost, over 300"]
 
 
-def test_every_third_month_a_random_second_in_the_window_is_restored(copies, rds, monkeypatch):
+def test_every_third_month_a_random_second_in_the_window_is_restored(
+    copies, rds, monkeypatch
+):
     asked = checks_find(monkeypatch, [])
-    earliest, latest = copies.window()
     # 02:30 on 1 December in Tamil Nadu is still November in UTC: December counts.
     at = datetime(2026, 11, 30, 21, 0, tzinfo=UTC)
-    shift = latest - at + timedelta(minutes=1)
+    rds.latest = at - timedelta(minutes=1)
+    earliest, latest = copies.window()
 
-    outcome = a_run(copies, now=times(at + shift, at + shift + timedelta(minutes=30)))
+    outcome = a_run(copies, now=times(at, at + timedelta(minutes=30)))
 
     assert not outcome.latest
     assert earliest <= outcome.restore_time <= latest
     assert rds.restores[0]["RestoreTime"] == outcome.restore_time
     assert asked[0]["cutoff"] == outcome.restore_time - timedelta(minutes=10)
+
+
+def test_the_last_day_of_november_in_tamil_nadu_restores_the_latest(
+    copies, rds, monkeypatch
+):
+    checks_find(monkeypatch, [])
+    at = datetime(2026, 11, 30, 18, 0, tzinfo=UTC)  # 23:30 on 30 November in Tamil Nadu
+    rds.latest = at - timedelta(minutes=1)
+
+    outcome = a_run(copies, now=times(at, at + timedelta(minutes=30)))
+
+    assert outcome.latest
+    assert "RestoreTime" not in rds.restores[0]
 
 
 def test_the_random_moment_reaches_both_ends_of_the_window():
@@ -411,10 +461,15 @@ def test_the_random_moment_reaches_both_ends_of_the_window():
     assert restore_moment(date(2026, 12, 1), earliest, latest, Edge(True)) == latest
 
 
-@pytest.mark.parametrize(("month", "random_moment"), [(1, False), (2, False), (3, True), (11, False), (12, True)])
+@pytest.mark.parametrize(
+    ("month", "random_moment"),
+    [(1, False), (2, False), (3, True), (11, False), (12, True)],
+)
 def test_only_every_third_month_restores_a_random_moment(month, random_moment):
     earliest = datetime(2026, 11, 16, tzinfo=UTC)
-    chosen = restore_moment(date(2026, month, 1), earliest, earliest + timedelta(days=14), random.Random(1))
+    chosen = restore_moment(
+        date(2026, month, 1), earliest, earliest + timedelta(days=14), random.Random(1)
+    )
 
     assert (chosen is not None) is random_moment
 
@@ -489,17 +544,45 @@ def test_sentry_hears_the_monitor_s_slug_status_and_duration_only(sent):
     assert (first["status"], last["status"]) == ("in_progress", "error")
     assert first["check_in_id"] == last["check_in_id"] == started
     assert last["duration"] == 12.5
-    assert first["monitor_config"]["schedule"] == {"type": "crontab", "value": "30 2 1 * *"}
+    assert first["monitor_config"]["schedule"] == {
+        "type": "crontab",
+        "value": "30 2 1 * *",
+    }
     assert first["monitor_config"]["timezone"] == "Asia/Kolkata"
     assert set(last) <= {
-        "type", "monitor_slug", "check_in_id", "status", "duration", "environment",
-        "release", "monitor_config", "contexts", "event_id", "timestamp", "platform",
-        "sdk", "server_name",
+        "type",
+        "monitor_slug",
+        "check_in_id",
+        "status",
+        "duration",
+        "environment",
+        "release",
+        "monitor_config",
+        "contexts",
+        "event_id",
+        "timestamp",
+        "platform",
+        "sdk",
+        "server_name",
     }
     assert "user" not in last and "request" not in last
 
 
 # --- the entry point --------------------------------------------------------------------------
+
+
+def given(monkeypatch, rds: Recording) -> None:
+    """main's copies on the recording client, which reads a copy back as AWS makes it."""
+    monkeypatch.setattr(
+        restore_check,
+        "copies_from",
+        lambda config: RestoreCopies(
+            rds,
+            source=config.restore_check_source_db,
+            subnet_group=config.restore_check_subnet_group,
+            security_group=config.restore_check_security_group,
+        ),
+    )
 
 
 def statuses(monkeypatch) -> list[str]:
@@ -520,6 +603,7 @@ def test_unconfigured_it_does_nothing_and_says_so(monkeypatch, caplog):
 
 def test_configured_it_runs_and_checks_in_ok(rds, monkeypatch):
     said = statuses(monkeypatch)
+    given(monkeypatch, rds)
     checks_find(monkeypatch, [])
     config = load(
         restore_check_source_db=SOURCE,
@@ -533,6 +617,7 @@ def test_configured_it_runs_and_checks_in_ok(rds, monkeypatch):
 
 def test_a_failed_run_exits_1_and_checks_in_error(rds, monkeypatch):
     said = statuses(monkeypatch)
+    given(monkeypatch, rds)
     checks_find(monkeypatch, ["dbos: schema missing"])
     config = load(
         restore_check_source_db=SOURCE,
@@ -559,7 +644,11 @@ def test_the_task_s_copies_come_from_its_three_settings():
 
 @pytest.mark.parametrize(
     "missing",
-    ["restore_check_source_db", "restore_check_subnet_group", "restore_check_security_group"],
+    [
+        "restore_check_source_db",
+        "restore_check_subnet_group",
+        "restore_check_security_group",
+    ],
 )
 def test_any_setting_missing_refuses_to_run(missing):
     values = {

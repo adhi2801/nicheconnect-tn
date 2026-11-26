@@ -51,7 +51,9 @@ RESTORED_AT = datetime.now(UTC) + timedelta(hours=1)
 
 def owner_url(database: str) -> str:
     return (
-        make_url(owner_engine.url).set(database=database).render_as_string(hide_password=False)
+        make_url(owner_engine.url)
+        .set(database=database)
+        .render_as_string(hide_password=False)
     )
 
 
@@ -61,7 +63,9 @@ def as_owner(database: str) -> Engine:
 
 def server_statement(statement: str) -> None:
     """CREATE and DROP DATABASE refuse to run inside a transaction."""
-    with owner_engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
+    with owner_engine.connect().execution_options(
+        isolation_level="AUTOCOMMIT"
+    ) as connection:
         connection.execute(text(statement))
 
 
@@ -74,7 +78,7 @@ def production() -> Iterator[str]:
         env.pop("APP_DATABASE_PASSWORD", None)
         # The release step itself, in its own process, so Alembic's logging
         # setup never reaches this one's.
-        subprocess.run(  # noqa: S603 - this interpreter, a fixed module
+        subprocess.run(
             [sys.executable, "-m", "app.db.prepare"], cwd=ROOT, env=env, check=True
         )
         seeding = as_owner(name)
@@ -83,7 +87,11 @@ def production() -> Iterator[str]:
                 create_account(db, "creator")
             admin = create_account(db, "admin")
             for note in ("first", "second", "third"):
-                db.add(AdminAction(admin_account_id=admin.id, action="view_account", note=note))
+                db.add(
+                    AdminAction(
+                        admin_account_id=admin.id, action="view_account", note=note
+                    )
+                )
             db.commit()
         seeding.dispose()
         yield name
@@ -201,7 +209,9 @@ def test_a_sealed_row_altered_or_removed_fails(production, copy, login, change):
         "ALTER TABLE admin_action ENABLE TRIGGER USER",
     )
 
-    assert problems(production, copy, login) == ["sealed: admin_action differs from production"]
+    assert problems(production, copy, login) == [
+        "sealed: admin_action differs from production"
+    ]
 
 
 def test_rows_lost_in_the_copy_fail(production, copy, login):
@@ -232,18 +242,25 @@ def test_rows_made_after_the_cut_off_are_not_compared(production, copy, login):
 def test_a_table_missing_from_the_copy_fails(production, copy, login):
     break_copy(copy, "DROP TABLE creator_embedding")
 
-    assert problems(production, copy, login) == ["rows: creator_embedding missing from the copy"]
+    assert problems(production, copy, login) == [
+        "rows: creator_embedding missing from the copy"
+    ]
 
 
 @pytest.mark.parametrize(
     "change",
-    ["REVOKE INSERT ON campaign FROM app_writer", "GRANT TRUNCATE ON campaign TO app_writer"],
+    [
+        "REVOKE INSERT ON campaign FROM app_writer",
+        "GRANT TRUNCATE ON campaign TO app_writer",
+    ],
     ids=["narrowed", "widened"],
 )
 def test_the_login_s_rights_changed_fail(production, copy, login, change):
     break_copy(copy, change)
 
-    assert problems(production, copy, login) == ["rights: campaign grants the wrong rights"]
+    assert problems(production, copy, login) == [
+        "rights: campaign grants the wrong rights"
+    ]
 
 
 def test_a_login_with_powers_of_its_own_fails(production, copy, login):
@@ -301,7 +318,9 @@ def test_pgvector_must_be_0_8_2_or_later(found, ok):
         (0, 1, "rows: t has 1 in the copy, over 1% more than 0"),
     ],
 )
-def test_the_copy_holds_production_s_rows_and_at_most_one_percent_more(production, copy, problem):
+def test_the_copy_holds_production_s_rows_and_at_most_one_percent_more(
+    production, copy, problem
+):
     assert count_problem("t", production, copy) == problem
 
 
@@ -328,7 +347,9 @@ def made(**overrides: object) -> Copy:
         ({"backups_kept_days": 1}, "copy: keeps backups"),
     ],
 )
-def test_a_copy_that_is_public_unencrypted_protected_or_backed_up_fails(override, problem):
+def test_a_copy_that_is_public_unencrypted_protected_or_backed_up_fails(
+    override, problem
+):
     assert setting_problems(made()) == []
     assert setting_problems(made(**override)) == [problem]
 
@@ -338,8 +359,16 @@ def test_a_copy_that_is_public_unencrypted_protected_or_backed_up_fails(override
     [
         (timedelta(hours=1), timedelta(minutes=5), []),
         (None, timedelta(minutes=5), []),
-        (timedelta(hours=1, seconds=1), timedelta(0), ["target: restore took 3601 s, over 3600"]),
-        (timedelta(0), timedelta(minutes=5, seconds=1), ["target: 301 s would be lost, over 300"]),
+        (
+            timedelta(hours=1, seconds=1),
+            timedelta(0),
+            ["target: restore took 3601 s, over 3600"],
+        ),
+        (
+            timedelta(0),
+            timedelta(minutes=5, seconds=1),
+            ["target: 301 s would be lost, over 300"],
+        ),
     ],
 )
 def test_a_restore_over_an_hour_or_over_five_minutes_lost_fails(rto, rpo, found):

@@ -37,6 +37,7 @@ import time
 from collections.abc import Callable, Collection
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
+from typing import TYPE_CHECKING
 
 import boto3
 import sentry_sdk
@@ -57,6 +58,9 @@ from app.core.structured_logs import configure_logging
 from app.db.prepare import alembic_config
 from app.db.restore_copy import Copy, CopyFailed, CopyNotReady, RestoreCopies
 from app.db.roles import APP_WRITER
+
+if TYPE_CHECKING:
+    from sentry_sdk._types import MonitorConfig
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +93,7 @@ PRIVILEGES = ("SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", 
 # Each table's moment of making; a table with neither is compared whole.
 MADE_AT = ("created_at", "recorded_at")
 MONITOR_SLUG = "restore-check"
-MONITOR_CONFIG = {
+MONITOR_CONFIG: MonitorConfig = {
     "schedule": {"type": "crontab", "value": "30 2 1 * *"},
     "timezone": "Asia/Kolkata",
     "checkin_margin": 30,
@@ -283,7 +287,12 @@ def _tables(connection: Connection) -> dict[str, str | None]:
 
 
 def _rows(
-    connection: Connection, table: str, made_at: str | None, cutoff: datetime, *, sealed: bool
+    connection: Connection,
+    table: str,
+    made_at: str | None,
+    cutoff: datetime,
+    *,
+    sealed: bool,
 ) -> tuple[int, str]:
     """The table's rows made up to the cut-off: their count, and for a sealed table an md5."""
     quote = connection.dialect.identifier_preparer.quote
@@ -338,7 +347,9 @@ def database_problems(
     """Every check on the copy, each statement cut to the time the run has left."""
     timeout_ms = max(1000, int(deadline.remaining() * 1000))
     options = {"options": f"-c statement_timeout={timeout_ms}", "connect_timeout": 10}
-    production_engine = create_engine(production_url, poolclass=NullPool, connect_args=options)
+    production_engine = create_engine(
+        production_url, poolclass=NullPool, connect_args=options
+    )
     copy_engine = create_engine(copy_url, poolclass=NullPool, connect_args=options)
     try:
         with production_engine.connect() as production, copy_engine.connect() as copy:
@@ -391,7 +402,7 @@ def run(
         rto = now() - requested_at
     except CopyFailed as stopped:
         problems.append(f"restore: stopped in state {stopped}")
-    except (CopyNotReady, DeadlinePassed):
+    except CopyNotReady, DeadlinePassed:
         problems.append("restore: not done within 90 minutes")
     except SQLAlchemyError as error:
         problems.append(f"database: {type(error).__name__}")
@@ -412,9 +423,13 @@ def record(outcome: Outcome) -> None:
     """The one result line; an error line too when it failed, which Sentry turns into an issue."""
     line = {
         "ok": outcome.ok,
-        "restore_time": outcome.restore_time.astimezone(UTC).isoformat(timespec="seconds"),
+        "restore_time": outcome.restore_time.astimezone(UTC).isoformat(
+            timespec="seconds"
+        ),
         "latest": outcome.latest,
-        "rto_seconds": None if outcome.rto is None else round(outcome.rto.total_seconds()),
+        "rto_seconds": None
+        if outcome.rto is None
+        else round(outcome.rto.total_seconds()),
         "rto_target_seconds": round(RTO_TARGET.total_seconds()),
         "rpo_seconds": round(outcome.rpo.total_seconds()),
         "rpo_target_seconds": round(RPO_TARGET.total_seconds()),
@@ -435,7 +450,7 @@ def heartbeat(
         check_in_id=check_in_id,
         status=status,
         duration=duration,
-        monitor_config=MONITOR_CONFIG,  # type: ignore[arg-type] - Sentry's TypedDict
+        monitor_config=MONITOR_CONFIG,
     )
 
 
