@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.core.errors import ResponseDocs, problem_doc
@@ -16,6 +17,7 @@ from app.core.rate_limit import rate_limit
 from app.db.session import get_db
 from app.modules.admin import rate_report_service as service
 from app.modules.auth.dependencies import CurrentAdmin, get_now
+from app.modules.insights import rate_report_rules as rules
 from app.modules.insights.rate_report_models import QUARTER_PATTERN, CityRateReport
 from app.modules.insights.rate_report_schemas import (
     AdminRateReportFullRead,
@@ -90,11 +92,23 @@ def read_rate_report(
     db: Annotated[Session, Depends(get_db)],
     now: Annotated[datetime, Depends(get_now)],
     method_version: Annotated[int | None, Query(ge=1, le=32767)] = None,
-) -> AdminRateReportFullRead:
+) -> AdminRateReportFullRead | JSONResponse:
     report = service.read(db, admin, quarter, now, method_version)
+    fields = {
+        **_read(report).model_dump(mode="json"),
+        "id": str(report.id),
+        "published_by_account_id": (
+            str(report.published_by_account_id)
+            if report.published_by_account_id
+            else None
+        ),
+    }
+    if report.method_version != rules.METHOD_VERSION:
+        # An older version's body may have another shape than today's schema,
+        # which would fail it (a 500): it is answered as it was stored.
+        return JSONResponse({**fields, "body": report.body})
     return AdminRateReportFullRead(
-        **_read(report).model_dump(),
-        id=report.id,
+        **{**_read(report).model_dump(), "id": report.id},
         published_by_account_id=report.published_by_account_id,
         body=RateReportBody.model_validate(report.body),
     )

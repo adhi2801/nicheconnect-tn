@@ -480,6 +480,46 @@ def test_an_admin_read_costs_a_fixed_number_of_queries(client, db, admin):
 # --- correcting a withdrawn quarter (D-201) ----------------------------------------------
 
 
+def test_only_a_lost_rebuild_is_answered_as_one_any_other_refusal_is_raised(
+    db, admin, newer_method, monkeypatch
+):
+    """D-201 review: not every IntegrityError means 'not withdrawn'."""
+    from sqlalchemy.exc import IntegrityError
+
+    old = withdrawn(db, admin)
+
+    real_add = db.add
+
+    def add_then_refuse(row):
+        real_add(row)
+
+        def refuse(*args, **kwargs):
+            raise IntegrityError("INSERT", {}, Exception("a different constraint"))
+
+        monkeypatch.setattr(db, "flush", refuse)
+
+    monkeypatch.setattr(db, "add", add_then_refuse)
+
+    with pytest.raises(IntegrityError):
+        service.rebuild(db, old.quarter, FIXED_NOW, agreed_fees=False)
+
+
+def test_an_older_versions_body_is_read_as_stored_not_checked_against_today(
+    client, db, admin, newer_method
+):
+    """D-201 review: version 2's body may change shape; version 1's stored one
+    must still read, not fail today's schema."""
+    row = built(db)
+    row.body = {"legacy_shape": [1, 2, 3]}
+    row.body_sha256 = service.fingerprint(row.body)
+    db.flush()
+
+    response = admin_read(client, admin, row.quarter)
+
+    assert response.status_code == 200, response.text
+    assert response.json()["body"] == {"legacy_shape": [1, 2, 3]}
+
+
 def rebuild(client, user: User, quarter: str):
     return client.post(f"{ADMIN_URL}/{quarter}/rebuild", headers=user.headers)
 
