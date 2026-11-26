@@ -1482,7 +1482,7 @@ requires-dist = [
     { name = "pgvector", specifier = "==0.5.1" },
     { name = "pillow", specifier = "==13.0.0" },
     { name = "psycopg", extras = ["binary"], specifier = "==3.3.9" },
-    { name = "publicsuffixlist", specifier = "==1.1.2.20261107" },
+    { name = "publicsuffixlist", specifier = "==1.1.2.20261118" },
     { name = "pydantic-settings", specifier = "==2.16.3" },
     { name = "pyjwt", specifier = "==2.15.0" },
     { name = "pyotp", specifier = "==2.12.1" },
@@ -1803,11 +1803,11 @@ wheels = [
 
 [[package]]
 name = "publicsuffixlist"
-version = "1.1.2.20261107"
+version = "1.1.2.20261118"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/10/1d/5e5a298fd7f70911054c3107a2f1a34c5392db31ed159c4d537fe4127b6b/publicsuffixlist-1.1.2.20261107.tar.gz", hash = "sha256:8dfd2ddfe3b14f16a18fc785ffd6986685b47c8ae3e9c09c7cb5ff8c240a9dd3", size = 106705, upload-time = "2026-11-07T09:56:33.878Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/80/5f/579823b25816b8c1be1e53cbca3d3d5a6c854aa1016f5a7a6b2bacffa686/publicsuffixlist-1.1.2.20261118.tar.gz", hash = "sha256:3dc010da9369afef7c5ef58db0528c3677728cf3cb5b66d45bc7f98b9da9eaec", size = 107999, upload-time = "2026-11-18T11:29:52.681Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/50/83/cd048836ffde199af911767d99979f65170e7cae1d20e403ceb454451e62/publicsuffixlist-1.1.2.20261107-py3-none-any.whl", hash = "sha256:1fe45aa1902b28c7ddf6f185644fb69acc5fa8134fe394d0fdf97b034a08c910", size = 109464, upload-time = "2026-11-07T09:56:32.855Z" },
+    { url = "https://files.pythonhosted.org/packages/83/4a/fe42f9fa6182de9d7013ef2d609b2d956ae5e8573602ff1fa708a3872346/publicsuffixlist-1.1.2.20261118-py3-none-any.whl", hash = "sha256:711da3d55a7ff3edec7df0f95755a75101fc04bf8714e4f345a53dc51cfa14dd", size = 110691, upload-time = "2026-11-18T11:29:51.123Z" },
 ]
 
 [[package]]
