@@ -167,6 +167,38 @@ def test_the_day_s_ceiling_stops_the_job(client, db, clock, drafter, monkeypatch
     assert brief_service.run(db, drafter, clock.now).drafted == 1
 
 
+def test_a_share_cut_back_sends_nothing_more_from_brands_now_outside_it(
+    client, db, clock, drafter, monkeypatch
+):
+    """Audit C25: the job honours the rollout share as the route does.
+
+    A brand asks while inside the share; the share is then cut below it. Its
+    words are not sent to the model, its draft still waits, and a brand still
+    inside, which asked later, is drafted in the same one-draft run.
+    """
+    from app.core import rollout
+    from app.core.config import settings
+
+    for _ in range(20):
+        outside, inside = brand_user(db, clock), brand_user(db, clock)
+        cut = rollout.bucket("brief_drafting", inside.account_id) + 1
+        if rollout.bucket("brief_drafting", outside.account_id) >= cut:
+            break
+    first = ask(client, outside, IDEA + " Asked first.")
+    clock.advance(timedelta(seconds=1))
+    ask(client, inside, IDEA + " Asked second.")
+    monkeypatch.setattr(settings, "feature_rollout", {"brief_drafting": cut})
+
+    run = brief_service.run(db, drafter, clock.now, limit=1)
+
+    assert run.drafted == 1
+    assert drafter.ideas == [IDEA + " Asked second."]
+    left = client.get(first.headers["Location"], headers=outside.headers).json()
+    assert left["status"] == "waiting"
+    monkeypatch.setattr(settings, "feature_rollout", {"brief_drafting": 0})
+    assert brief_service.run(db, drafter, clock.now).drafted == 0
+
+
 def test_a_draft_is_gone_after_a_week(client, db, clock, drafter):
     brand = brand_user(db, clock)
     made = ask(client, brand).json()["id"]
