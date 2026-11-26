@@ -13,6 +13,7 @@ from sqlalchemy import func, select
 
 from app.modules.insights import rate_report_rules as rules
 from app.modules.insights import rate_report_service as service
+from app.modules.insights.exceptions import RateReportWithdrawn
 from app.modules.insights.rate_report_models import CityRateReport
 from app.modules.insights.rate_report_schemas import RateReportBody
 from tests.query_counts import count_queries
@@ -543,3 +544,77 @@ def test_the_fingerprint_is_sha256_of_canonical_json():
         service.fingerprint(data)
         == hashlib.sha256(service.canonical_json(data)).hexdigest()
     )
+
+
+# --- the archive's rows, and one row a quarter (D-201) ---------------------------------
+
+PAGED = datetime(2051, 1, 5, 0, 30, tzinfo=UTC)  # newer than any other test's rows
+
+
+def test_the_archive_pages_on_its_summary_rows_and_never_loads_a_body(db):
+    """The archive's next page is keyed on each row's creation, read from the
+    summary's columns; a body read from those rows raises, never queries."""
+    from sqlalchemy.exc import InvalidRequestError
+
+    older = a_report(db, "2050-Q3", PAGED, published=True)
+    newer = a_report(db, "2050-Q4", PAGED + timedelta(days=1), published=True)
+    db.expunge_all()  # fresh rows, loaded only as the archive loads them
+
+    first = service.published(db, limit=1, cursor=None)
+    second = service.published(db, limit=1, cursor=first.next_cursor)
+
+    assert [row.id for row in first.rows] == [newer.id]
+    assert [row.id for row in second.rows] == [older.id]
+    with pytest.raises(InvalidRequestError):
+        _ = first.rows[0].body
+
+
+def test_a_quarter_s_reads_and_its_lock_take_one_row(db):
+    """A corrected quarter has two rows; the public read, the admin's read and
+    the lock before publishing each take the one they mean, and the lock
+    never holds the withdrawn version it supersedes."""
+    import re
+
+    from sqlalchemy import event
+
+    from app.db.session import engine
+    from tests.factories import create_account
+
+    old = a_report(db, "2050-Q2", PAGED, published=True)
+    old.withdrawn_at = PAGED
+    old.withdrawn_reason = "A figure was built from a wrong city."
+    db.flush()
+    db.add(
+        CityRateReport(
+            quarter="2050-Q2",
+            method_version=2,
+            body={},
+            body_sha256=service.fingerprint({}),
+            built_at=PAGED,
+            supersedes_id=old.id,
+            created_at=PAGED,
+            updated_at=PAGED,
+        )
+    )
+    db.flush()
+    limits: list[object] = []
+
+    def capture(conn, cursor, statement, parameters, context, executemany):
+        if "FROM city_rate_report" in statement and "WHERE city_rate_report.quarter" in (
+            statement
+        ):
+            [name] = re.findall(r"LIMIT %\((\w+)\)s", statement)
+            limits.append(dict(parameters)[name])
+
+    admin_id = create_account(db, "admin").id
+    event.listen(engine, "before_cursor_execute", capture)
+    try:
+        with pytest.raises(RateReportWithdrawn):
+            service.read_published(db, "2050-Q2")
+        read = service.read_any(db, "2050-Q2")
+        published = service.publish(db, admin_id, "2050-Q2", PAGED)
+    finally:
+        event.remove(engine, "before_cursor_execute", capture)
+
+    assert read.method_version == published.method_version == 2
+    assert limits == [1, 1, 1]

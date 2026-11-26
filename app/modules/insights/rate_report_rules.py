@@ -144,7 +144,8 @@ def overdue_quarters(
     known = {
         quarter for quarter in built if parse_quarter(quarter) <= parse_quarter(last)
     }
-    quarter = min(known, key=parse_quarter) if known else last
+    # `YYYY-Qn`, its year four digits, compares as text in the quarters' order.
+    quarter = min(known) if known else last
     missing: list[str] = []
     while parse_quarter(quarter) <= parse_quarter(last):
         if quarter not in known:

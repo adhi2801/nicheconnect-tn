@@ -512,6 +512,15 @@ def test_a_withdrawn_quarter_is_built_again_under_a_newer_method(
     assert answer["supersedes_id"] == str(old.id)
     assert answer["published_at"] is None
     assert client.get(f"{URL}/{old.quarter}").status_code == 410  # until published
+    db.expire_all()
+    row = db.scalar(
+        select(CityRateReport).where(
+            CityRateReport.quarter == old.quarter, CityRateReport.method_version == 2
+        )
+    )
+    assert row.body_sha256 == service.fingerprint(row.body)
+    # The clock's time at the build, as a new build is (D-201 point 2).
+    assert row.created_at == row.updated_at == row.built_at
     notes = db.scalars(
         select(AdminAction.note).where(
             AdminAction.admin_account_id == admin.account_id,

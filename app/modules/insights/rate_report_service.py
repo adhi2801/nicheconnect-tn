@@ -277,13 +277,14 @@ def health(db: Session, now: datetime) -> Health:
     ).all()
     return Health(
         overdue=rules.overdue_quarters({row.quarter for row in rows}, now, OVERDUE_AFTER),
+        # `YYYY-Qn`, its year four digits (the table's CHECK), sorts as text
+        # in the quarters' order.
         unpublished=sorted(
             {
                 row.quarter
                 for row in rows
                 if row.published_at is None and now - row.built_at > UNPUBLISHED_AFTER
-            },
-            key=rules.parse_quarter,
+            }
         ),
     )
 
@@ -298,14 +299,14 @@ def published(db: Session, *, limit: int, cursor: str | None) -> Slice[CityRateR
     built in is the quarters' order; a corrected quarter (D-201) lists its
     new version where it was built, its withdrawn one where that was. One
     query, of the summary's columns only: never the body, which the archive
-    does not show and which is the row's bulk. Reading a body from these rows raises rather than quietly
-    costing a query a row.
+    does not show and which is the row's bulk. Reading a body from these rows
+    raises rather than quietly costing a query a row.
     """
     query = (
         select(CityRateReport)
         .options(
+            # The primary key is always loaded; these are the rest.
             load_only(
-                CityRateReport.id,
                 CityRateReport.quarter,
                 CityRateReport.method_version,
                 CityRateReport.published_at,

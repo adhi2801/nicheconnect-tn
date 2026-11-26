@@ -281,6 +281,7 @@ def test_barter_deals_are_counted_as_a_share_never_a_price():
     [
         ([100, 50, 40, 10], True),  # 10 left after the top three: exactly 10%
         ([100, 50, 40, 9], False),  # 9 is not
+        ([1_005, 500, 400, 100], False),  # 100 is just under 10% of 1,005
         ([100, 50, 10], False),  # the second and third together know the first
         ([100, 100, 5, 5, 4], False),
         ([100, 100, 5, 5, 5], True),
@@ -365,3 +366,14 @@ def test_paid_deals_must_meet_the_floors_on_their_own():
     assert cell.deals == 11
     assert cell.barter_share_percent == 18
     assert cell.median_paise is None
+
+
+def test_a_brand_s_fees_are_summed_before_the_rule():
+    """No one deal of the large brand stands out, but its five together are
+    most of the money: summed per brand, the cell is not safe."""
+    cell = [Deal(creator=f"big{i}", brand="big", fee_paise=100_000) for i in range(5)]
+    cell += [Deal(creator=f"c{i}", brand=f"b{i % 4}", fee_paise=10_000) for i in range(5)]
+    assert rules.enough_to_show(cell)
+    assert rules.p_percent_safe([100_000, 10_000, 10_000, 10_000, 10_000])
+
+    assert not rules.fees_protected(cell)
