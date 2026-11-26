@@ -2530,3 +2530,15 @@ Newest entries at the bottom.
   1. The entry names version 3.14.10, so any Python change brings it back to be judged; remove it when a 3.14 release carries the fix.
   2. Any cookie the API ever sets voids this entry and is judged first.
   3. Proven by CI's `image` job on this branch passing the Grype gate with the entry, having failed without it on 027d619.
+
+## D-202: Refusing a memo due date over a year ahead ships as an ordinary change (audit C13)
+- Date: 2026-11-26
+- Approved by: Adhi, in session on 26 November 2026, choosing Option A after seeing the proposal. Reviewed by Adhi only; no second person.
+- Context: audit C13 (deal memos) found `content_due_on` had a floor but no ceiling: a memo due 9999-12-31, accepted, with a draft the brand held a day, answered 500 on the memo, both sides' lists, the creator's delivery record and its calendar file. The fix refuses a date more than a year ahead on create and edit (422 `validation_failed` on `content_due_on`), as C11 does for a campaign's closing date and C9 for availability. `docs/standards/backend.md` calls stricter validation a breaking change.
+- Options considered: A) ship it as an ordinary change, with the contract's descriptions, the OpenAPI snapshot and the frontend types refreshed, because the API has no clients yet; B) treat it as breaking, with a new API version or a deprecation notice first; C) leave the date unbounded and make every reader tolerate it.
+- Chosen: A.
+- Reason: no app or partner reads the API yet, so nothing can break; B would version a pilot API for no reader, and C leaves the 500 to be fixed in every route that reads a date.
+- Consequences / follow-ups:
+  1. Shipped in ff15504 and 928febb on `fix/c13-audit`: the guard in `deal_memo/service.py`, the contract and `frontend/packages/api/src/schema.d.ts` refreshed. Sending needs no check: a repeat deal starts with no date, so every date reaches a memo through create or edit.
+  2. Seen failing without each guard: with the create guard removed the 9999 memo is created (201); with the edit guard removed the edit lands (200).
+  3. Once the API has clients, this exception ends: a stricter rule then needs the deprecation path `backend.md` describes.
