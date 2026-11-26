@@ -224,8 +224,95 @@ def test_out_of_share_drafts_older_than_the_queue_depth_do_not_starve_a_brand_in
 
     run = brief_service.run(db, drafter, clock.now)
 
-    assert run.drafted == 1
+    assert (run.drafted, run.skipped, run.failed) == (1, 0, 0), "each draft queued once"
     assert drafter.ideas == [IDEA + " Inside."]
+
+
+def test_drafts_asked_in_the_same_instant_are_each_read_once_across_pages(
+    client, db, clock, drafter, monkeypatch
+):
+    """Re-review of audit C25: the page key is (created_at, id), not created_at alone.
+
+    Three drafts share one created_at and a page holds one: a key on created_at
+    alone would skip the second and third, a key read with >= would queue the
+    first again and again.
+    """
+    monkeypatch.setattr(brief_service, "QUEUE_DEPTH", 1)
+    brand = brand_user(db, clock)
+    ideas = [IDEA + f" Same instant {n}." for n in range(3)]
+    for idea in ideas:
+        ask(client, brand, idea)
+
+    run = brief_service.run(db, drafter, clock.now)
+
+    assert (run.drafted, run.skipped, run.failed) == (3, 0, 0)
+    assert sorted(drafter.ideas) == sorted(ideas)
+
+
+def brands_outside_the_share(db, clock, how_many: int, cut: int) -> list:
+    """Brands whose bucket for brief drafting is at or above `cut`."""
+    from app.core import rollout
+
+    found = []
+    for _ in range(how_many * 20):
+        brand = brand_user(db, clock)
+        if rollout.bucket("brief_drafting", brand.account_id) >= cut:
+            found.append(brand)
+            if len(found) == how_many:
+                return found
+    pytest.fail(f"fewer than {how_many} brands outside a share of {cut}")
+
+
+def page_reads(statements: list[str]) -> int:
+    """How many of the statements read a page of waiting drafts."""
+    return sum(
+        "FROM campaign_brief_draft JOIN brand" in statement for statement in statements
+    )
+
+
+def test_a_run_reads_at_most_its_page_cap_however_many_drafts_wait_outside_the_share(
+    client, db, clock, drafter, monkeypatch
+):
+    """Re-review of audit C25: the paging is bounded, so a run's queries are too."""
+    from app.core.config import settings
+    from tests.query_counts import count_queries
+
+    monkeypatch.setattr(brief_service, "QUEUE_DEPTH", 1)
+    cut = 1
+
+    def cost(brands: int) -> tuple[int, int]:
+        for brand in brands_outside_the_share(db, clock, brands, cut):
+            for n in range(brief_service.MAX_WAITING_PER_BRAND):
+                ask(client, brand, IDEA + f" Outside {n}.")
+        monkeypatch.setattr(settings, "feature_rollout", {"brief_drafting": cut})
+        with count_queries() as statements:
+            brief_service.run(db, drafter, clock.now)
+        monkeypatch.setattr(settings, "feature_rollout", {})
+        return len(statements), page_reads(statements)
+
+    fewer, more = cost(2), cost(4)
+
+    assert fewer == more, "a run's queries do not grow with the drafts waiting outside"
+    assert more[1] == brief_service.MAX_PAGES
+    assert drafter.ideas == []
+
+
+def test_at_a_share_of_0_a_run_reads_no_waiting_draft(
+    client, db, clock, drafter, monkeypatch
+):
+    """Re-review of audit C25: the kill switch costs the job nothing but its cleanup."""
+    from app.core.config import settings
+    from tests.query_counts import count_queries
+
+    ask(client, brand_user(db, clock))
+    monkeypatch.setattr(settings, "feature_rollout", {"brief_drafting": 0})
+
+    with count_queries() as statements:
+        run = brief_service.run(db, drafter, clock.now)
+
+    assert run.drafted == 0 and drafter.ideas == []
+    assert page_reads(statements) == 0
+    assert not any("count(" in statement for statement in statements)
 
 
 def test_a_draft_is_gone_after_a_week(client, db, clock, drafter):

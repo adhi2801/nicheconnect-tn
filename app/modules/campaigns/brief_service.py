@@ -54,9 +54,15 @@ EXPORT_FIELDS = allow(
 MAX_WAITING_PER_BRAND = 3
 MAX_ATTEMPTS = 3
 PER_RUN = 10
-# How deep a run looks for drafts it may send: waiting drafts of brands
-# outside a rollout share are passed over, and each brand has at most three.
+# The page size: how many waiting drafts, oldest first, one query reads.
+# Drafts of brands outside the rollout share are passed over and the next
+# page read, keyed on (created_at, id) so no draft is read twice or missed.
 QUEUE_DEPTH = 300
+# At most this many pages a run (re-review of audit C25): five queries and
+# 1,500 rows bound what one run reads, however many drafts of brands outside
+# the share wait ahead (each brand has at most three, kept a week). Past the
+# cap the run drafts what it found; the rest wait for a later run.
+MAX_PAGES = 5
 # Its own namespace, so a draft's advisory lock never meets a proof file's.
 LOCK_NAMESPACE = 40
 RETRYABLE = frozenset({"api_error", "max_tokens"})
@@ -197,12 +203,14 @@ def run(
 ) -> DraftRun:
     """One run of the job: delete drafts past their week, then draft the oldest waiting.
 
-    With drafting switched off (no drafter) nothing is drafted; old drafts still go.
+    With drafting switched off (no drafter) or its rollout share at 0, nothing
+    is read or drafted; old drafts still go. At most `MAX_PAGES` pages of
+    waiting drafts are read, and none once the queue or the budget is full.
     Once `budget` is spent no further draft is started (item 118, D-186); the
     rest stay waiting for the next run.
     """
     deleted = delete_old(db, now)
-    if drafter is None:
+    if drafter is None or rollout.share("brief_drafting") == 0:
         return DraftRun(0, 0, 0, False, deleted)
     allowance = settings.brief_drafting_daily_limit - drafted_in_last_day(db, now)
     if allowance <= 0:
@@ -212,7 +220,9 @@ def run(
     wanted = min(limit, allowance)
     queue: list[uuid.UUID] = []
     after: tuple[datetime, uuid.UUID] | None = None
-    while len(queue) < wanted:
+    for _ in range(MAX_PAGES):
+        if len(queue) >= wanted or (budget is not None and budget.expired()):
+            break
         page = db.execute(
             select(CampaignBriefDraft.id, CampaignBriefDraft.created_at, Brand.account_id)
             .join(Brand, Brand.id == CampaignBriefDraft.brand_id)
