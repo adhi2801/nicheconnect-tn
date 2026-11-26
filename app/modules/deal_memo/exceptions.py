@@ -100,6 +100,27 @@ class DueDateHasPassed(DomainError):
     title = "The agreed due date has already passed. Set a new one first"
 
 
+class DueDateTooFar(DomainError):
+    """A due date more than a year ahead: almost certainly a mistyped year,
+    refused as a campaign's closing date (C11) and availability (C9) refuse
+    one. Unbounded, a date at the end of the calendar broke every read that
+    moves it by the days a brand held a draft, the creator's delivery record
+    among them, and the deal's calendar file (audit C13)."""
+
+    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
+    code = "validation_failed"
+    title = "Some fields are missing or invalid"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.errors = [
+            {
+                "field": "content_due_on",
+                "message": "Choose a due date within a year from today; check the year",
+            }
+        ]
+
+
 class CheckpointNotFound(DomainError):
     # No checkpoint covers this deal yet (its first entry is newer than the
     # last one), or none exists for the date asked about.
