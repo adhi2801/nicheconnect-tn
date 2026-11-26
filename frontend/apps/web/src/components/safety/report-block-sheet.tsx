@@ -34,7 +34,9 @@ export function ReportBlockSheet({ open, onClose, subject, brandId, brandName, o
     setProblem(null);
     report.mutate(reportBody(subject, category, note), {
       onSuccess: ({ alreadyOpen }) => setReported({ again: alreadyOpen, category }),
-      onError: (error) => setProblem(error instanceof ApiError && error.kind === "conflict" ? t("safety.report.refused") : failureWords(error)),
+      // The only 409 a report answers is an earlier try still in flight (sendWrite has already waited it out three times); a 404 means
+      // there is nothing with that id to report any more.
+      onError: (error) => setProblem(error instanceof ApiError && error.code === "idempotency_key_in_flight" ? t("safety.report.stillSending") : error instanceof ApiError && error.kind === "not_found" ? t("safety.report.gone") : failureWords(error)),
     });
   }
 

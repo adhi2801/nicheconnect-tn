@@ -26,7 +26,7 @@ test("a campaign is reported in one tap and a reason, sent once with a key, and 
   await sheet.getByLabel(/Spam or a scam/).check();
   await sheet.getByRole("button", { name: "Send report" }).click();
   await expect(sheet.getByText("Report sent. Thank you.")).toBeVisible();
-  await expect(sheet.getByText("We look at it within 36 hours.", { exact: false })).toBeVisible();
+  await expect(sheet.getByText("We aim to look at it within 36 hours.", { exact: false })).toBeVisible();
   const { writes } = await state();
   expect(writes).toHaveLength(1);
   expect(writes[0].key).toMatch(/^[0-9a-f-]{36}$/);
@@ -41,7 +41,7 @@ test("reporting the same thing again says the first report is still open", async
     await page.getByRole("dialog").getByLabel(/Pretending to be me/).check();
     await page.getByRole("dialog").getByRole("button", { name: "Send report" }).click();
     await expect(page.getByRole("dialog").getByText(round === 1 ? "Report sent. Thank you." : "You've already reported this, and that report is still open.")).toBeVisible();
-    await expect(page.getByRole("dialog").getByText("We look at it within 2 hours.", { exact: false })).toBeVisible();
+    await expect(page.getByRole("dialog").getByText("We aim to look at it within 2 hours.", { exact: false })).toBeVisible();
   }
 });
 
@@ -54,8 +54,9 @@ test("blocking asks once more, then the brand's campaigns are gone and the perso
   await sheet.getByRole("button", { name: "Block Kovai Organics" }).click();
   expect((await state()).writes).toHaveLength(0);
   await sheet.getByRole("button", { name: "Yes, block Kovai Organics" }).click();
-  await expect(page).toHaveURL(/\/app\/discover\?blocked=1$/);
   await expect(page.getByText("Blocked. You won't see that brand's campaigns", { exact: false })).toBeVisible();
+  await expect(page.getByText("Deals already agreed carry on. They were not told.", { exact: false })).toBeVisible();
+  await expect(page).toHaveURL(/\/app\/discover$/); // the notice is shown once; a reload does not bring it back
   await expect(page.locator("main ul li a[href^='/app/discover/']").first()).toBeVisible();
   await expect(page.getByText("Kovai Organics")).toHaveCount(0);
   const { writes } = await state();

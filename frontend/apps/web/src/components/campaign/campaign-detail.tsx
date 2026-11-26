@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ReportBlockSheet } from "@/components/safety/report-block-sheet";
@@ -18,7 +18,9 @@ import { flagsFor, payLine, type Campaign } from "@/lib/campaigns";
 import { formatDate, indiaDay } from "@/lib/format";
 import { campaignTypeLabel, formatLabel, nicheLabel, platformLabel } from "@/lib/labels";
 import { t } from "@/lib/app-messages";
-import { useIntentKeys } from "@/lib/mutations";
+import { useApply, useIntentKeys } from "@/lib/mutations";
+import { draftName, dropDraft } from "@/lib/drafts";
+import { useSession } from "@/lib/use-session";
 import { ApplyForm } from "./apply-form";
 import { BrandRecord } from "./brand-record";
 
@@ -27,11 +29,13 @@ export function CampaignDetail({ campaign, mine, checking }: { campaign: Campaig
   const router = useRouter();
   const [applying, setApplying] = useState(false);
   const [reporting, setReporting] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState<Application | null>(null);
-  // Held here, not in the sheet: closing and reopening the sheet after a lost answer resends with the same key.
+  // The write and its key live here, not in the sheet: closing and reopening the sheet after a lost answer resends with the same key,
+  // and a success is shown (and the draft dropped) even if the browser closed the sheet while it was sending.
   const keys = useIntentKeys();
-  const onBusy = useCallback((b: boolean) => setBusy(b), []);
+  const session = useSession();
+  const draft = draftName(session.status === "signedIn" ? session.session.accountId : "none", `apply:${campaign.id}`);
+  const apply = useApply(campaign.id, keys, (a) => { dropDraft(draft); setSent(a); setApplying(false); });
   const pay = payLine(campaign);
   const yours = sent ?? mine;
 
@@ -134,8 +138,8 @@ export function CampaignDetail({ campaign, mine, checking }: { campaign: Campaig
 
       <ReportBlockSheet open={reporting} onClose={() => setReporting(false)} subject={{ kind: "campaign", id: campaign.id }} brandId={campaign.brand_id} brandName={campaign.brand_name} onBlocked={() => router.replace("/app/discover?blocked=1")} />
 
-      <Sheet open={applying} onClose={() => setApplying(false)} title={t("apply.title", { title: campaign.title })} locked={busy}>
-        {applying && <ApplyForm campaign={campaign} intentKeys={keys} onBusy={onBusy} onCancel={() => setApplying(false)} onSent={(a) => { setSent(a); setApplying(false); }} />}
+      <Sheet open={applying} onClose={() => setApplying(false)} title={t("apply.title", { title: campaign.title })} locked={apply.isPending}>
+        {applying && <ApplyForm campaign={campaign} apply={apply} draft={draft} onCancel={() => setApplying(false)} />}
       </Sheet>
     </div>
   );

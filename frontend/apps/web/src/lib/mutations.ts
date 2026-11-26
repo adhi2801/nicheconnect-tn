@@ -28,14 +28,15 @@ export function useCreateProfile() {
   });
 }
 
-export function useApply(campaignId: string, keys: IntentKeys) {
+export function useApply(campaignId: string, keys: IntentKeys, onSent: (sent: components["schemas"]["ApplicationRead"]) => void) {
   const client = useQueryClient();
   return useMutation({
     retry: false,
     mutationFn: (body: components["schemas"]["ApplicationCreate"]) =>
       sendWrite((signal) => api.POST("/api/v1/campaigns/{campaign_id}/applications", { params: { path: { campaign_id: campaignId }, header: { "Idempotency-Key": keys.keyFor({ campaignId, body }) } }, body, signal })),
-    onSuccess: async () => {
+    onSuccess: async (sent) => {
       keys.done();
+      onSent(sent);
       await Promise.all(["my-applications", "application-feedback", "discover", "campaign"].map((k) => client.invalidateQueries({ queryKey: [k] })));
     },
     // Already applied (say, from another tab, or a send whose answer was lost before a reload): fetch the list again, so the page

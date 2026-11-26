@@ -355,12 +355,13 @@
       "sending": "Sending your report",
       "pickReason": "Choose what is wrong.",
       "noteLong": "Keep the note to 1,000 characters or fewer.",
-      "refused": "This can't be reported from here.",
       "sent": "Report sent. Thank you.",
       "already": "You've already reported this, and that report is still open.",
-      "within2h": "We look at it within 2 hours. You'll get a notification when it is resolved.",
-      "within36h": "We look at it within 36 hours. You'll get a notification when it is resolved.",
-      "within7d": "We look at it within 7 days. You'll get a notification when it is resolved."
+      "within2h": "We aim to look at it within 2 hours. You'll get a notification when it is resolved.",
+      "within36h": "We aim to look at it within 36 hours. You'll get a notification when it is resolved.",
+      "within7d": "We aim to look at it within 7 days. You'll get a notification when it is resolved.",
+      "stillSending": "Your report is still being sent. Wait a moment, then try again.",
+      "gone": "This can't be reported any more: it may have been removed."
     },
     "block": {
       "title": "Block {brand}",
@@ -369,7 +370,7 @@
       "confirm": "Yes, block {brand}",
       "working": "Blocking",
       "keep": "Don't block",
-      "done": "Blocked. You won't see that brand's campaigns, and they can't reach you. They were not told."
+      "done": "Blocked. You won't see that brand's campaigns, and neither of you can start anything new with the other. Deals already agreed carry on. They were not told."
     }
   }
 }

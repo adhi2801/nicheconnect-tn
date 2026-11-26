@@ -257,6 +257,22 @@ test("a draft goes when the session ends by itself, not only on Sign out", async
   expect(await drafts()).toEqual([]);
 });
 
+test("a draft survives a reload when the server cannot be reached, because the session has not ended", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/app/discover/c-5");
+  await page.getByRole("button", { name: "Apply" }).click();
+  await page.getByLabel("Why you're a good fit").fill("A pitch written on patchy 4G.");
+  // The session cannot be renewed (the backend busy or out of reach) while the page reloads.
+  await fetch(`${MOCK}/__scenario`, { method: "POST", body: JSON.stringify({ refreshBusy: true }) });
+  await page.reload();
+  await expect(page).toHaveURL(/\/sign-in$/);
+  // Back in reach: the same login restores, and the words are still there.
+  await fetch(`${MOCK}/__scenario`, { method: "POST", body: JSON.stringify({ refreshBusy: false }) });
+  await page.goto("/app/discover/c-5");
+  await page.getByRole("button", { name: "Apply" }).click();
+  await expect(page.getByLabel("Why you're a good fit")).toHaveValue("A pitch written on patchy 4G.");
+});
+
 test("numbers in other people's text are never turned into phone links by the browser", async ({ page }) => {
   await signIn(page);
   await expect(page.locator('meta[name="format-detection"]')).toHaveAttribute("content", /telephone=no/);

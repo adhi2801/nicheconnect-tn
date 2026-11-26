@@ -8,6 +8,7 @@ import { CodeField } from "@/components/ui/code-field";
 import { Notice } from "@/components/ui/notice";
 import { Pill } from "@/components/ui/pill";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DomainLine } from "@/components/campaign/domain-line";
 import { FlagNote } from "@/components/ui/flag-note";
 import { SelectField } from "@/components/ui/select-field";
 import { Sheet } from "@/components/ui/sheet";
@@ -26,6 +27,8 @@ export function Catalogue() {
   const [code, setCode] = useState("42");
   const [role, setRole] = useState<"creator" | "brand">("creator");
   const [sheet, setSheet] = useState(false);
+  // A sample registration ten days old, worked out once, so the "registered recently" state always shows here.
+  const [tenDaysAgo] = useState(() => new Date(Date.now() - 10 * 86_400_000).toISOString().slice(0, 10));
   const [pitch, setPitch] = useState("I make Madurai street-food reels every week.");
   return (
     <main className="mx-auto grid w-full max-w-5xl gap-12 px-5 py-12">
@@ -91,6 +94,13 @@ export function Catalogue() {
           <p className="text-[15px]">Pay a ₹500 registration fee to apply.</p>
           <FlagNote flags={["asks_for_money"]} />
           <FlagNote flags={["phone_number", "a_kind_the_app_does_not_know_yet"]} />
+        </div>
+      </Block>
+
+      <Block title="A verified website: what was checked, and a recent one said plainly">
+        <div className="grid items-start gap-5 sm:grid-cols-2">
+          <DomainLine domain={{ domain: "chennaibakes.in", dnssec_validated: false, last_checked_at: "2026-11-20T00:00:00Z", registered_on: "2019-03-02", verified_since: "2026-10-01T00:00:00Z" }} />
+          <DomainLine domain={{ domain: "chennaibakes-offers.in", dnssec_validated: false, last_checked_at: "2026-11-20T00:00:00Z", registered_on: tenDaysAgo, verified_since: "2026-11-20T00:00:00Z" }} />
         </div>
       </Block>
 

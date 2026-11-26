@@ -48,12 +48,15 @@ test("a campaign that no longer exists still shows its application, said plainly
 });
 
 test("each campaign is read once, however many applications it has (the R7 stopgap stays bounded)", async ({ page }) => {
+  await page.clock.install(); // the page's clock, so the reads can be made old without waiting
   await open(page);
   await expect(page.locator("article")).toHaveCount(5);
   await expect(page.getByText("Filter coffee tasting 6")).toBeVisible();
   const { calls } = await state();
   for (const id of ["c-2", "c-4", "c-6", "c-8", "c-gone"]) expect(calls[`/api/v1/campaigns/${id}`]).toBe(1);
-  // Not read again when the tab regains focus (the read's limit is 60 a minute an account).
+  // Not read again when the tab regains focus (the read's limit is 60 a minute an account), even once the reads are old: 11 minutes
+  // on, past their 10-minute freshness, a focus would re-read them all if focus re-reads were on.
+  await page.clock.fastForward("11:00");
   await page.evaluate(() => { window.dispatchEvent(new Event("focus")); document.dispatchEvent(new Event("visibilitychange")); });
   await page.waitForTimeout(500);
   expect((await state()).calls["/api/v1/campaigns/c-2"]).toBe(1);

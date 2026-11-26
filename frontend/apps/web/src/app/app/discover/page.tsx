@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -37,7 +37,9 @@ function DiscoverBody() {
   const yours = useMemo(() => new Map((mine.data ?? []).filter((a) => a.status !== "withdrawn").map((a) => [a.campaign_id, a.origin === "invited" ? ("invited" as const) : ("applied" as const)])), [mine.data]);
   const campaigns = discover.data?.pages.flatMap((p) => p.items) ?? [];
   const filtered = activeFilterCount(filters) > 0;
-  const justBlocked = params.get("blocked") === "1";
+  // Shown once: the address loses ?blocked=1 at once, so a reload or Back does not show it again.
+  const [justBlocked] = useState(() => params.get("blocked") === "1");
+  useEffect(() => { if (params.has("blocked")) router.replace(`${pathname}${filtersToSearch(filters)}`, { scroll: false }); }, [params, pathname, filters, router]);
 
   const apply = (next: Filters) => router.replace(`${pathname}${filtersToSearch(next)}`, { scroll: false });
 

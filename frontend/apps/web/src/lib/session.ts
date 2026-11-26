@@ -31,9 +31,7 @@ export function subscribeToSession(listener: () => void): () => void {
 }
 
 function set(next: SessionState): void {
-  // Drafts never outlive the session that wrote them, however it ends (signing out, an expired login, "sign out everywhere"),
-  // and a newly signed-in account never sees another account's (lib/drafts.ts).
-  if (next.status === "signedOut") dropAllDrafts();
+  // A newly signed-in account never sees another account's drafts (lib/drafts.ts).
   if (next.status === "signedIn") dropOtherAccountsDrafts(next.session.accountId);
   state = next;
   clearTimeout(timer);
@@ -75,7 +73,9 @@ export function renewSession(): Promise<boolean> {
         return true;
       }
       if (response.status === 401 || response.status === 422) {
-        set(SIGNED_OUT);
+        // The session has really ended (expired, or "sign out everywhere" from another device): its drafts go with it.
+        // Not when the server could not be reached (below): a draft must survive a reload while offline.
+        endSession();
         return false;
       }
     } catch {
@@ -94,8 +94,14 @@ export function restoreSession(): Promise<boolean> {
   return state.status === "restoring" ? renewSession() : Promise.resolve(state.status === "signedIn");
 }
 
-export async function signOut(): Promise<void> {
+/** The session has really ended, as opposed to "could not reach the server": nothing it wrote stays on this device. */
+function endSession(): void {
+  dropAllDrafts();
   set(SIGNED_OUT);
+}
+
+export async function signOut(): Promise<void> {
+  endSession();
   channel?.postMessage({ type: "signedOut" });
   await fetch("/api/session/logout", { method: "POST", cache: "no-store" }).catch(() => undefined);
 }
@@ -103,5 +109,5 @@ export async function signOut(): Promise<void> {
 // Another tab signed in, renewed or signed out: follow it, without telling the others again.
 channel?.addEventListener("message", (event: MessageEvent<{ type: string; session?: Session }>) => {
   if (event.data.type === "signedIn" && event.data.session) set({ status: "signedIn", session: event.data.session });
-  if (event.data.type === "signedOut") set(SIGNED_OUT);
+  if (event.data.type === "signedOut") endSession();
 });

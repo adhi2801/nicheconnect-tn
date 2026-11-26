@@ -136,7 +136,7 @@ createServer((req, res) => {
       if (path === "/api/v1/me/blocks" && req.method === "POST") {
         record("block");
         blocked.add(body.brand_id);
-        return send(res, 201, { id: `bl-${blocked.size}`, brand_id: body.brand_id, creator_id: null, created_at: "2026-11-26T00:00:00Z" });
+        return send(res, 201, { id: `bl-${blocked.size}`, brand_id: body.brand_id, creator_id: null, name: "Kovai Organics", created_at: "2026-11-26T00:00:00Z" });
       }
       if (path === "/api/v1/applications/me") {
         if (scenario.applicationsDelayMs) await new Promise((r) => setTimeout(r, scenario.applicationsDelayMs));
@@ -235,6 +235,7 @@ createServer((req, res) => {
     }
     if (req.url === "/api/v1/auth/refresh") {
       refreshCalls += 1;
+      if (scenario.refreshBusy) return fail(res, 503, "service_busy", { "Retry-After": "1" }); // the backend unreachable or busy; the login still valid
       if (refreshDelayMs) await new Promise((r) => setTimeout(r, refreshDelayMs));
       const token = body.refresh_token;
       if (used.has(token)) { reuseDetected = true; valid.clear(); return fail(res, 401, "refresh_reused"); }

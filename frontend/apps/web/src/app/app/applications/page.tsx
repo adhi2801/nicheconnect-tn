@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ApplicationRow } from "@/components/applications/application-row";
 import { FeedbackCard } from "@/components/applications/feedback-card";
 import { DiscoverTabs } from "@/components/discover/discover-tabs";
@@ -34,6 +35,7 @@ export default function ApplicationsPage() {
   const campaigns = useCampaignsFor(useMemo(() => campaignIdsOf(items), [items]));
   const groups = groupApplications(items);
   const withdraw = useWithdraw();
+  const client = useQueryClient();
   const [confirming, setConfirming] = useState<Application | null>(null);
   const [reporting, setReporting] = useState<Campaign | null>(null);
   const [message, setMessage] = useState<{ tone: "info" | "error"; text: string } | null>(null);
@@ -110,7 +112,7 @@ export default function ApplicationsPage() {
 
       {reporting && (
         <ReportBlockSheet open onClose={() => setReporting(null)} subject={{ kind: "brand", id: reporting.brand_id }} brandId={reporting.brand_id} brandName={reporting.brand_name}
-          onBlocked={() => { setReporting(null); setMessage({ tone: "info", text: t("safety.block.done") }); }} />
+          onBlocked={() => { setReporting(null); setMessage({ tone: "info", text: t("safety.block.done") }); void client.invalidateQueries({ queryKey: ["campaign"] }); }} />
       )}
 
       <Sheet open={confirming !== null} onClose={() => setConfirming(null)} title={t("applications.withdraw.title")} locked={withdraw.isPending}>
