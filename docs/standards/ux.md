@@ -4,7 +4,7 @@ Applies to research, flows, the design system, copy and accessibility, and to **
 
 **Timing (D-141, reversing D-053's wait):** the website and the apps are built now, beside the backend. Designs are checked against `docs/api/openapi.json`: a screen that needs a field the API does not answer is a backend request, not a frontend decision.
 
-**For:** whoever researches, designs or writes copy, and every backend change that shapes what a person sees, read in full before the first flow or field (`CLAUDE.md` section 6). **Last checked on 28 October 2026**, when the frontend began (D-141). Earlier, on 14 October, two claims had stopped being true and were corrected (section 8).
+**For:** whoever researches, designs or writes copy, and every backend change that shapes what a person sees, read in full before the first flow or field (`CLAUDE.md` section 6). **Checked against the code on 20 November 2026, at `4a87b6c`** (`main` at `b2dcbbd` merged in): the whole file was read that day against the committed API contract (every status name and field it names), `frontend/` (every built screen), CI and the decision log. Corrected that day, after the independent reviews of 19 and 20 November: section 0's accessibility row, in CI since D-198; a new gap 5 naming every screen built before any usability test; sources for the 100 ms skeleton, the open colour decision and the call-count check (F347). The check of 19 November, at `97d08e6`, corrected four claims before it. The corrections of 14 October are kept in section 8.
 
 **The twelve dimensions** (`CLAUDE.md` section 5, D-139), and where this standard serves each:
 
@@ -31,7 +31,7 @@ Each row: the strongest published benchmark, with its source; ours against it; h
 |---|---|---|---|---|
 | **How usable it feels** (MeasuringU) | The System Usability Scale averages **68** across 500 studies and over 5,000 users; above **80.3** is an A, the top 10% ([MeasuringU, "Measuring usability with the System Usability Scale", 3 February 2011](https://measuringu.com/sus/)) | Every core journey (section 3) scores **above 80.3** with brand owners and with creators, before launch and after each redesign of it (**approved, D-171**) | The ten SUS questions after each usability session (section 2), at least five people per side | No session run yet |
 | **Whether people succeed** (Google HEART) | Happiness, engagement, adoption, retention and task success, chosen per product (section 9) | Task completion of at least 90%, no critical confusion point, a first campaign and a first application each in under 5 minutes (section 2) | The usability sessions, then the product's own events after launch | The bar is set; no session run yet |
-| **Accessible to everyone** (W3C) | WCAG 2.2, level AA (section 9) | AA on every screen, checked by tools in CI and by a person with TalkBack and VoiceOver on the reference phones before each release (`frontend.md` section 6) | CI's accessibility checks; the release checklist | **In CI since 18 November 2026** (D-198): axe-core over every page of the website (WCAG 2.2 AA plus 7:1 body text, light and dark, motion on and off, phone and laptop) and Lighthouse's Accessibility 100 on the public pages, both failing the build; the TalkBack and VoiceOver pass stays a release step and has not been run |
+| **Accessible to everyone** (W3C) | WCAG 2.2, level AA (section 9) | AA on every screen, checked by tools in CI and by a person with TalkBack and VoiceOver on the reference phones before each release (`frontend.md` section 6) | CI's accessibility checks; the release checklist | **Decided 18 November 2026 (D-198), gating `main` since 20 November 2026**: axe-core over every page of the website (WCAG 2.2 AA plus 7:1 body text, light and dark, motion on and off, phone and laptop) and Lighthouse's Accessibility 100 on the public pages, both failing the build; the TalkBack and VoiceOver pass stays a release step and has not been run |
 
 What moves a row from **(decision)** to binding: a founder's yes, recorded in `docs/DECISIONS.md` (`CLAUDE.md` section 5), with its measurement built in the same change.
 
@@ -52,9 +52,9 @@ What moves a row from **(decision)** to binding: a founder's yes, recorded in `d
 
 ## 2. Research and validation
 
-- **Design first, then test it with people (D-117).** Design waits for Erode Harish's canvas additions; when it starts, the design system and the core screens come first as prototypes, and before any flow is final, at least 5 conversations with real target users (brands and creators separately) are held on them, notes in `docs/research/`, using the Mom Test template in `docs/research/README.md`. **None is recorded yet** (section 8, gap 1).
+- **Design first, then test it with people (D-117).** Design has started since the frontend began (D-141): the landing page's first version is built (D-155), and `frontend/` holds the first screens (gap 5 lists them). The design system and the core screens come first as prototypes, and before any flow is final, at least 5 conversations with real target users (brands and creators separately) are held on them, notes in `docs/research/`, using the Mom Test template in `docs/research/README.md`. **None is recorded yet** (section 8, gap 1).
 - **The five-second test** on any visual direction: what is this, and would you trust it with a deal? 10 brand owners and 10 creators.
-- Every core journey is usability-tested with at least 5 users before it is built, and again before launch.
+- Every core journey is usability-tested with at least 5 users before it is built, and again before launch. **Not held so far**: every screen in `frontend/` was built before any test (gap 5).
 - **Measured success** (Google's HEART framework, on the core journeys):
   - task completion of at least 90%;
   - no critical confusion point;
@@ -85,7 +85,7 @@ What moves a row from **(decision)** to binding: a founder's yes, recorded in `d
 
 ## 5. Every screen
 
-- Handles loading (skeleton within 100 ms), empty (with a helpful next action), error (what happened and how to fix it), success, and **"not enough to say"** where a figure can be null.
+- Handles loading (skeleton within 100 ms, the limit under which a response feels instant: Nielsen, section 9), empty (with a helpful next action), error (what happened and how to fix it), success, and **"not enough to say"** where a figure can be null.
 - Has one primary action.
 - Works from 360 px wide to large desktop, at 200% text size.
 - Meets WCAG 2.2 AA (`frontend.md` section 6). Motion respects "reduce motion".
@@ -118,21 +118,24 @@ What moves a row from **(decision)** to binding: a founder's yes, recorded in `d
 
 ## 8. Gaps, named
 
+**Closed on 31 October:** colour and product psychology researched only at the brand book's depth (the former gap 5, its number since reused): `docs/research/COLOUR_PSYCHOLOGY_2026.md` and `docs/research/INTERFACE_PSYCHOLOGY_2026.md`, with dated studies.
+
 **Corrected on 14 October:** the design direction's place (on `main`, not a branch), and the core journeys, which missed the report outcome, the campaign report and the calendar file.
 
 | # | Gap | Risk | Acting on it |
 |---|---|---|---|
-| 1 | **No user conversation is recorded.** `docs/research/` holds the interview template and desk research, but no interview notes, so section 2's rule has guarded nothing so far | Flows designed from our assumptions; the most expensive mistake a product makes | Erode Harish (design) runs the first 10, five brands and five creators in Tamil Nadu, with the template in `docs/research/README.md`, before the flows are drawn |
-| 2 | **No usability test or five-second test has run** | The same | After gap 1, on the first wireframes |
-| 3 | **The look is not chosen yet** (the brand book, the dashboard prototype or the green of pull request #78) | Screens built twice | Chosen from a coded prototype of the landing page and one product screen (D-141) |
-| 4 | **"At most two calls" is checked by reading**, not a test | A screen that needs five calls is found by the frontend | When the frontend exists, its API client can count calls per screen in CI |
-| 5 | **Colour and product psychology is researched only at the brand book's depth** | Colours chosen by taste where evidence exists | A research file with dated studies, beside `docs/research/TAMIL_DESIGN_ROOTS.md`, before the tokens are final |
+| 1 | **No user conversation is recorded.** `docs/research/` holds the interview template and desk research, but no interview notes, so section 2's rule has guarded nothing so far | Flows designed from our assumptions; the most expensive mistake a product makes | Erode Harish (design) runs the first 10, five brands and five creators in Tamil Nadu, with the template in `docs/research/README.md` and the sessions laid out in `docs/research/PEOPLE_RESEARCH_KIT.md`, before more flows are drawn |
+| 2 | **No usability test or five-second test has run** | The same | After gap 1, on the first wireframes, each session as `docs/research/PEOPLE_RESEARCH_KIT.md` lays it out |
+| 3 | **The look is not chosen yet** (the brand book, the dashboard prototype or the green of pull request #78) | Screens built twice | Chosen from a coded prototype of the landing page and one product screen (D-141); the accent by the test with real people that `docs/PROPOSAL_FRONTEND_ARCHITECTURE.md` section 4 proposes (proposed, not approved), its evidence in `docs/research/COLOUR_PSYCHOLOGY_2026.md` |
+| 4 | **"At most two calls" is checked by reading**, not a test | A screen that needs five calls is found by the frontend | F347 in `docs/FRONTEND_COMPLETE.md`: the client counts calls per screen in the browser tests, a third call failing; open |
+| 5 | **Every screen in `frontend/` was built before any usability test** (section 2), none with a session run on it. Listed 20 November 2026 from each `page.tsx` under `frontend/apps/web/src/app/`: on the website, the landing page (D-155, at /), sign-in (/sign-in), the signed-in home (/app), deals (/app/deals), the account page (/app/me), a holding page for screens not yet built (/app/ followed by any other path) and the design-system page (/design); in the app (`frontend/apps/mobile/lib/screens.dart`), a creator's profile (`CreatorProfile`), a creator's day (`CreatorToday`) and a brand's card (`BrandCard`) | The first people to try a flow are its users, after launch | The sessions in `docs/research/PEOPLE_RESEARCH_KIT.md` run on the built screens before any more core journeys are built; a founder decides whether building waits for them |
 
 ## 9. Sources
 
-Each link checked to exist on 14 October 2026.
+Links checked on 14 October 2026; later links on the dates beside them.
 
 - [Google: Measuring the User Experience on a Large Scale (the HEART framework)](https://research.google/pubs/measuring-the-user-experience-on-a-large-scale-user-centered-metrics-for-web-applications/).
+- [Nielsen Norman Group: Response Times, the 3 important limits](https://www.nngroup.com/articles/response-times-3-important-limits/) (Jakob Nielsen, 1993): 0.1 second feels instant; the link checked live on 20 November 2026.
 - [Nielsen Norman Group: why you only need to test with 5 users](https://www.nngroup.com/articles/why-you-only-need-to-test-with-5-users/).
 - [The Mom Test](https://www.momtestbook.com/), the interview method in `docs/research/README.md`.
 - [WCAG 2.2](https://www.w3.org/TR/WCAG22/).
