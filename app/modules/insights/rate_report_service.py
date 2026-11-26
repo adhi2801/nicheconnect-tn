@@ -341,11 +341,11 @@ def read_published(db: Session, quarter: str) -> CityRateReport:
         .where(
             CityRateReport.quarter == quarter, CityRateReport.published_at.is_not(None)
         )
-        # Standing before withdrawn, then the newest method.
-        .order_by(
-            CityRateReport.withdrawn_at.is_not(None),
-            CityRateReport.method_version.desc(),
-        )
+        # The newest published version is the one that stands, if any does:
+        # a newer version exists only once the one before it was withdrawn
+        # (the supersedes trigger), and a withdrawal is never undone (the
+        # seal). So the newest is the answer either way.
+        .order_by(CityRateReport.method_version.desc())
         .limit(1)
     )
     if report is None:
