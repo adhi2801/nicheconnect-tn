@@ -53,7 +53,9 @@ RUN groupadd --system --gid 10001 app \
 # built on 19 September; and APT itself (CVE-2026-109518, High: a tampered
 # mirror or proxy could get an unverified package installed, D-159); and
 # zlib (CVE-2026-76844 and CVE-2026-85091, High; CVE-2026-27171, Medium),
-# found by the image gate on 11 November (D-178).
+# found by the image gate on 11 November (D-178); and glibc (14 CVEs, up to
+# Medium), zstd (CVE-2026-124851) and shadow's passwd and login.defs
+# (CVE-2026-135901), found by the image gate on 26 November (D-203).
 # Exact versions, upgrade only, so the build stays
 # reproducible. Remove this step when the base digest moves to an image
 # that already has these versions or newer; Grype will say if it is early.
@@ -66,6 +68,11 @@ RUN apt-get update \
         apt=3.0.4 \
         libapt-pkg7.0=3.0.4 \
         zlib1g=1:1.3.dfsg+really1.3.1-1+deb13u1 \
+        libc6=2.41-12+deb13u5 \
+        libc-bin=2.41-12+deb13u5 \
+        libzstd1=1.5.7+dfsg-1+deb13u1 \
+        passwd=1:4.17.4-2+deb13u1 \
+        login.defs=1:4.17.4-2+deb13u1 \
     && rm -rf /var/lib/apt/lists/*
 # RES_OPTIONS bounds every name lookup (D-186 point 14a, Adhi, 18 November
 # 2026): glibc's resolver reads it over resolv.conf, so a lookup waits at

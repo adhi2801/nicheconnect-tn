@@ -2530,3 +2530,15 @@ Newest entries at the bottom.
   1. The entry names version 3.14.10, so any Python change brings it back to be judged; remove it when a 3.14 release carries the fix.
   2. Any cookie the API ever sets voids this entry and is judged first.
   3. Proven by CI's `image` job on this branch passing the Grype gate with the entry, having failed without it on 027d619.
+
+## D-203: glibc, zstd and shadow patched in the API image (16 CVEs)
+- Date: 2026-11-26
+- Approved by: Adhi, in this session ("A"). Reviewed by Adhi only; no second person.
+- Context: CI's image gate failed on `cfd9198` (pull request #143): Grype found 14 CVEs in `libc6` and `libc-bin` 2.41-12+deb13u4 (up to Medium), CVE-2026-124851 in `libzstd1` 1.5.7+dfsg-1 and CVE-2026-135901 in `passwd` and `login.defs` 1:4.17.4-2, each with a Debian fix. Nothing in the change introduced them: the vulnerability database moved after `main` last passed, so every branch failed the gate.
+- Options considered: A) upgrade the five packages to the fixed versions in the image's existing security block (the pattern of D-068, D-159 and D-178); B) accept them in `.grype.yaml` with a reason and an expiry.
+- Chosen: A.
+- Reason: fixes exist, and D-047 says security fixes come at once.
+- Consequences / follow-ups:
+  1. `Dockerfile`: `libc6` and `libc-bin` 2.41-12+deb13u5, `libzstd1` 1.5.7+dfsg-1+deb13u1, `passwd` and `login.defs` 1:4.17.4-2+deb13u1, exact, upgrade only; removed when the base digest carries them.
+  2. OpenSSL's High findings in the same scan have no Debian fix yet, so `--only-fixed` does not fail on them; they are patched here when a fix is published.
+  3. Proven by CI's `image` job on this branch passing the Grype gate, having failed on `cfd9198`.
