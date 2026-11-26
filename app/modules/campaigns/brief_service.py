@@ -17,6 +17,11 @@ nothing here creates or changes a campaign.
 - A failed call is tried again up to three times; a refusal or an answer
   that does not fit is final.
 - Drafts are kept a week, then deleted by the job.
+- **The rollout share holds in the job too** (item 92, D-160; audit C25): a
+  brand outside `brief_drafting`'s share, as when drafting is off, has
+  nothing sent to the model. A share cut back, or to 0 to stop it, leaves
+  the drafts such brands asked for while inside it waiting until their week
+  ends, and they never stand in the way of the brands still inside.
 """
 
 import logging
@@ -24,15 +29,17 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, select, tuple_, update
 from sqlalchemy.orm import Session
 
+from app.core import rollout
 from app.core.config import settings
 from app.core.deadline import Deadline
 from app.core.export import MAX_ROWS_PER_SECTION, ExportedSection, allow, build_section
 from app.core.job_runs import within_budget
 from app.modules.auth.brand_access import BrandAccess
 from app.modules.auth.models.account import Account
+from app.modules.auth.models.brand import Brand
 from app.modules.campaigns.brief_drafter import BriefDrafter, Drafted
 from app.modules.campaigns.brief_models import BRIEF_KEPT_DAYS, CampaignBriefDraft
 from app.modules.campaigns.exceptions import BriefDraftNotFound, BriefDraftsWaiting
@@ -47,6 +54,15 @@ EXPORT_FIELDS = allow(
 MAX_WAITING_PER_BRAND = 3
 MAX_ATTEMPTS = 3
 PER_RUN = 10
+# The page size: how many waiting drafts, oldest first, one query reads.
+# Drafts of brands outside the rollout share are passed over and the next
+# page read, keyed on (created_at, id) so no draft is read twice or missed.
+QUEUE_DEPTH = 300
+# At most this many pages a run (re-review of audit C25): five queries and
+# 1,500 rows bound what one run reads, however many drafts of brands outside
+# the share wait ahead (each brand has at most three, kept a week). Past the
+# cap the run drafts what it found; the rest wait for a later run.
+MAX_PAGES = 5
 # Its own namespace, so a draft's advisory lock never meets a proof file's.
 LOCK_NAMESPACE = 40
 RETRYABLE = frozenset({"api_error", "max_tokens"})
@@ -69,8 +85,6 @@ def ask(
     Raises BriefDraftsWaiting when three of the brand's drafts still wait.
     Counted under the brand's lock, so two asks at once cannot pass it.
     """
-    from app.modules.auth.models.brand import Brand
-
     db.scalars(
         select(Brand.id).where(Brand.id == access.brand.id).with_for_update()
     ).one()
@@ -189,27 +203,50 @@ def run(
 ) -> DraftRun:
     """One run of the job: delete drafts past their week, then draft the oldest waiting.
 
-    With drafting switched off (no drafter) nothing is drafted; old drafts still go.
+    With drafting switched off (no drafter) or its rollout share at 0, nothing
+    is read or drafted; old drafts still go. At most `MAX_PAGES` pages of
+    waiting drafts are read, and none once the queue or the budget is full.
     Once `budget` is spent no further draft is started (item 118, D-186); the
     rest stay waiting for the next run.
     """
     deleted = delete_old(db, now)
-    if drafter is None:
+    if drafter is None or rollout.share("brief_drafting") == 0:
         return DraftRun(0, 0, 0, False, deleted)
     allowance = settings.brief_drafting_daily_limit - drafted_in_last_day(db, now)
     if allowance <= 0:
         db.rollback()
         logger.warning("brief drafting stopped: the daily limit is reached")
         return DraftRun(0, 0, 0, True, deleted)
-    queue = list(
-        db.scalars(
-            select(CampaignBriefDraft.id)
-            .where(CampaignBriefDraft.status == "waiting")
+    wanted = min(limit, allowance)
+    queue: list[uuid.UUID] = []
+    after: tuple[datetime, uuid.UUID] | None = None
+    for _ in range(MAX_PAGES):
+        if len(queue) >= wanted or (budget is not None and budget.expired()):
+            break
+        page = db.execute(
+            select(CampaignBriefDraft.id, CampaignBriefDraft.created_at, Brand.account_id)
+            .join(Brand, Brand.id == CampaignBriefDraft.brand_id)
+            .where(
+                CampaignBriefDraft.status == "waiting",
+                *(
+                    [tuple_(CampaignBriefDraft.created_at, CampaignBriefDraft.id) > after]
+                    if after
+                    else []
+                ),
+            )
             .order_by(CampaignBriefDraft.created_at, CampaignBriefDraft.id)
-            .limit(min(limit, allowance))
+            .limit(QUEUE_DEPTH)
         ).all()
-    )
-    db.rollback()
+        db.rollback()
+        queue += [
+            draft_id
+            for draft_id, _, brand_account_id in page
+            if rollout.includes("brief_drafting", brand_account_id)
+        ]
+        if len(page) < QUEUE_DEPTH:
+            break
+        after = (page[-1].created_at, page[-1].id)
+    queue = queue[:wanted]
     outcomes = [
         draft_one(db, drafter, draft_id, now)
         for draft_id in within_budget(queue, budget, "brief_drafts.run")
