@@ -408,6 +408,23 @@ def publish(
     return report
 
 
+_LOST_REBUILD_CONSTRAINTS = frozenset(
+    {
+        "uq_city_rate_report_quarter_method_version",
+        "uq_city_rate_report_supersedes_id",
+    }
+)
+
+
+def _is_lost_rebuild(error: IntegrityError) -> bool:
+    """Whether the database refused a rebuild because another admin's won:
+    one of the two unique constraints, or the supersedes trigger."""
+    diag = getattr(error.orig, "diag", None)
+    if getattr(diag, "constraint_name", None) in _LOST_REBUILD_CONSTRAINTS:
+        return True
+    return "city_rate_report_supersedes" in str(error.orig)
+
+
 def rebuild(
     db: Session, quarter: str, built_at: datetime, *, agreed_fees: bool
 ) -> CityRateReport:
@@ -415,10 +432,12 @@ def rebuild(
     superseding the withdrawn report. Unpublished, like any new build; does
     not commit: the caller logs it first.
 
-    The newest version is locked first, and a second admin building at the
-    same moment is refused by the database (one row a quarter and version,
-    and a report superseded once) and told the quarter's newest report is
-    no longer the withdrawn one. Asking prices are today's rate cards, as
+    The newest version is locked first and, once the lock is held, looked at
+    again: an admin who waited finds the winner's row and is told the
+    quarter's newest report is no longer the withdrawn one before any figure
+    is worked out. The database still refuses a second row (one row a
+    quarter and version, a report superseded once, the supersedes trigger),
+    and only those refusals are answered so; any other is raised. Asking prices are today's rate cards, as
     `built_at` and `as_of` say: a past quarter's cards are not kept.
 
     Raises NotAQuarter, RateReportNotBuilt, RateReportNotWithdrawn and
@@ -431,6 +450,20 @@ def rebuild(
     if newest.method_version >= rules.METHOD_VERSION:
         db.rollback()
         raise RateReportMethodUnchanged()
+    # A rebuild that waited on the lock may have read the newest row before
+    # the winner's commit: look again, so the loser is refused before it
+    # works out a whole body.
+    if db.scalar(
+        select(CityRateReport.id)
+        .where(
+            CityRateReport.quarter == quarter,
+            (CityRateReport.supersedes_id == newest.id)
+            | (CityRateReport.method_version >= rules.METHOD_VERSION),
+        )
+        .limit(1)
+    ):
+        db.rollback()
+        raise RateReportNotWithdrawn()
     body = build_body(db, quarter, built_at, agreed_fees=agreed_fees).model_dump(
         mode="json"
     )
@@ -447,8 +480,10 @@ def rebuild(
     db.add(report)
     try:
         db.flush()
-    except IntegrityError:
+    except IntegrityError as error:
         db.rollback()
+        if not _is_lost_rebuild(error):
+            raise
         raise RateReportNotWithdrawn() from None
     return report
 

@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import delete, func, select, text
+from sqlalchemy.exc import IntegrityError
 
 from app.db.session import SessionLocal
 from app.modules.admin import rate_report_service as admin_service
@@ -229,3 +230,90 @@ def test_a_session_holding_an_old_copy_still_sees_it_published(built_report):
                 built_report["quarter"],
                 CONCURRENCY_NOW,
             )
+
+
+def test_a_rebuild_that_waited_is_refused_before_it_builds_anything(
+    built_report, slow_writes, monkeypatch
+):
+    """D-201 review: after the lock, the loser looks again and builds no body."""
+    with SessionLocal() as session:
+        first = session.get_one(Account, built_report["admins"][0])
+        admin_service.publish(session, first, built_report["quarter"], CONCURRENCY_NOW)
+        admin_service.withdraw(
+            session, first, built_report["quarter"], "Wrong city.", CONCURRENCY_NOW
+        )
+    monkeypatch.setattr(rules, "METHOD_VERSION", 2)
+    real = service.build_body
+    calls: list[int] = []
+
+    def counted(*args, **kwargs):
+        calls.append(1)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(service, "build_body", counted)
+
+    def rebuild(index: int) -> str:
+        with SessionLocal() as session:
+            admin = session.get_one(Account, built_report["admins"][index])
+            try:
+                admin_service.rebuild(
+                    session, admin, built_report["quarter"], CONCURRENCY_NOW
+                )
+            except RateReportNotWithdrawn:
+                return "refused"
+            return "rebuilt"
+
+    outcomes, errors = race(rebuild)
+
+    assert errors == []
+    assert sorted(outcomes) == ["rebuilt"] + ["refused"] * (THREADS - 1)
+    assert len(calls) == 1
+
+
+def test_two_first_builds_of_a_new_quarter_under_two_versions_leave_one(moment):
+    """D-201 review: FOR UPDATE locks nothing on a quarter with no row, so the
+    trigger takes an advisory lock on the quarter; only one version stands."""
+    quarter = f"{random.randint(1000, 9999)}-Q2"
+    barrier = threading.Barrier(2)
+    outcomes: list[str] = []
+
+    def insert(version: int) -> None:
+        body = {"v": version}
+        with SessionLocal() as session:
+            barrier.wait()
+            try:
+                session.add(
+                    CityRateReport(
+                        quarter=quarter,
+                        method_version=version,
+                        body=body,
+                        body_sha256=service.fingerprint(body),
+                        built_at=moment,
+                        created_at=moment,
+                        updated_at=moment,
+                    )
+                )
+                session.flush()
+                time.sleep(0.4)  # the other insert arrives while this one is open
+                session.commit()
+                outcomes.append("stands")
+            except IntegrityError:
+                session.rollback()
+                outcomes.append("refused")
+
+    threads = [threading.Thread(target=insert, args=(v,)) for v in (1, 2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    try:
+        assert sorted(outcomes) == ["refused", "stands"]
+        with SessionLocal() as session:
+            assert (
+                session.scalar(
+                    select(func.count()).where(CityRateReport.quarter == quarter)
+                )
+                == 1
+            )
+    finally:
+        remove([quarter], [])

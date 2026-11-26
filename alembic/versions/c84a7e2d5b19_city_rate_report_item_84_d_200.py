@@ -126,6 +126,10 @@ LANGUAGE plpgsql AS $$
 DECLARE
     newest city_rate_report%ROWTYPE;
 BEGIN
+    -- FOR UPDATE below locks nothing when the quarter has no row yet, so two
+    -- first builds under different versions would both pass: serialise on
+    -- the quarter itself, held to the end of the transaction.
+    PERFORM pg_advisory_xact_lock(hashtext('city_rate_report:' || NEW.quarter));
     IF EXISTS (
         SELECT 1 FROM city_rate_report
         WHERE quarter = NEW.quarter AND method_version = NEW.method_version
