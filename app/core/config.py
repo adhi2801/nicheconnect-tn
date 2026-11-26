@@ -1,10 +1,17 @@
 import json
 import re
-from typing import Literal
+from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
-from pydantic import Field, SecretStr, ValidationInfo, field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import (
+    Field,
+    SecretStr,
+    StrictInt,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 # Keys must carry at least 256 bits (D-008). A token_urlsafe(32) value is
 # 43 characters, so 32 characters is the floor.
@@ -15,6 +22,17 @@ PLACEHOLDER_PREFIX = "change-me"
 # The features whose routes honour a rollout share (item 92, D-160). A
 # feature is added here in the same change that makes its routes check it.
 ROLLOUT_FEATURES = ("brief_drafting",)
+
+
+def _once_each(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    """A JSON object whose keys each appear once; JSON alone keeps the last."""
+    found: dict[str, object] = {}
+    for key, value in pairs:
+        if key in found:
+            raise ValueError(f"feature_rollout names {key!r} twice")
+        found[key] = value
+    return found
+
 
 # Every environment the app knows. Anything else is a typo, and a typo must
 # stop the app rather than quietly count as one of these (D-044).
@@ -179,8 +197,13 @@ class Settings(BaseSettings):
     # Gradual rollout (item 92, D-160): a switched-on feature reaching only a
     # share of accounts, as {"brief_drafting": 10}. Unset means everyone.
     # Only the features whose routes honour a share may be named, checked at
-    # startup with the percentages.
-    feature_rollout: dict[str, int] = Field(default_factory=dict)
+    # startup with the percentages. A whole number only: `true` is not "on"
+    # and "10" is not 10, and a feature named twice stops startup, so what is
+    # read is what was written (audit C25). Read as text here, not by the
+    # settings source, so the duplicate check sees the JSON itself.
+    feature_rollout: Annotated[dict[str, StrictInt], NoDecode] = Field(
+        default_factory=dict
+    )
     # Error tracking (D-074). Unset means off, which is right for local and
     # test. A DSN only lets a program send errors in, never read them, which
     # is why Sentry treats it as public; it is still a setting, never code.
@@ -335,9 +358,11 @@ class Settings(BaseSettings):
     @field_validator("feature_rollout", mode="before")
     @classmethod
     def rollout_from_json(cls, value: object) -> object:
-        """Read as JSON when given as text, however the setting arrives."""
+        """Read as JSON when given as text, refusing a feature named twice."""
         if isinstance(value, str):
-            return json.loads(value) if value.strip() else {}
+            return (
+                json.loads(value, object_pairs_hook=_once_each) if value.strip() else {}
+            )
         return value
 
     @model_validator(mode="after")

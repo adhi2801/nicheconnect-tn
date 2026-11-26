@@ -89,6 +89,34 @@ def test_a_share_that_could_not_be_honoured_stops_the_app_starting(value, messag
         Settings(**{**settings.model_dump(), "feature_rollout": value})
 
 
+@pytest.mark.parametrize(
+    ("text", "message"),
+    [
+        # "on" written as true would otherwise reach 1% of accounts.
+        ('{"brief_drafting": true}', "valid integer"),
+        ('{"brief_drafting": "10"}', "valid integer"),
+        ('{"brief_drafting": 10.0}', "valid integer"),
+        # JSON alone keeps the last of two, so 100 would win unseen.
+        ('{"brief_drafting": 10, "brief_drafting": 100}', "names 'brief_drafting' twice"),
+        ("[]", "valid dictionary"),
+    ],
+)
+def test_a_share_written_as_anything_but_one_whole_number_stops_the_app(
+    text, message, monkeypatch
+):
+    """Audit C25: read from the environment, exactly as production reads it."""
+    monkeypatch.setenv("FEATURE_ROLLOUT", text)
+    with pytest.raises(ValidationError, match=message):
+        Settings()
+
+
+def test_a_share_read_from_the_environment_is_the_number_written(monkeypatch):
+    monkeypatch.setenv("FEATURE_ROLLOUT", '{"brief_drafting": 25}')
+    assert Settings().feature_rollout == {"brief_drafting": 25}
+    monkeypatch.setenv("FEATURE_ROLLOUT", "")
+    assert Settings().feature_rollout == {}
+
+
 def test_every_feature_that_honours_a_share_is_a_feature_screens_are_told_of():
     assert set(ROLLOUT_FEATURES) <= set(features.FeaturesRead.model_fields)
 
