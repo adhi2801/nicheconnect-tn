@@ -43,6 +43,9 @@ READ_LIMIT = "60 per minute"
 # A ceiling per day as well as per minute (trust-and-safety.md rule 2, item 58):
 # a per-minute limit stops a script, not a person spamming by hand all day.
 APPLY_LIMIT = "30 per minute;30 per day"
+# Shortlisting and accepting tell the creator; a brand with many applicants
+# decides many a day, so the ceiling is higher than for reaching someone new.
+DECIDE_LIMIT = "30 per minute;200 per day"
 
 # route_class: every POST here accepts an Idempotency-Key header, so a
 # creator whose connection dropped can retry safely (backend.md section 2).
@@ -237,7 +240,7 @@ def _brand_decision(
             451: problem_doc("The creator is withheld for legal reasons (item 52)"),
         },
     )
-    @rate_limit(WRITE_LIMIT)
+    @rate_limit(DECIDE_LIMIT)
     @named_as(f"application_{action}")
     def endpoint(
         request: Request,
