@@ -1,5 +1,5 @@
 import { flagWords } from "@/lib/campaigns";
-import { t } from "@/lib/messages";
+import { t } from "@/lib/app-messages";
 import { AlertIcon } from "./icons";
 
 /** Warnings shown beside the text they are about, never hiding it (trust-and-safety.md section 5, ux.md section 5). */

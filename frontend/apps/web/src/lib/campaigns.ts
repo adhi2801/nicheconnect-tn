@@ -1,7 +1,7 @@
 import type { components } from "@colyv/api";
 import type { FieldError } from "./errors.ts";
 import { formatPaise } from "./format.ts";
-import type { MessageKey } from "./messages.ts";
+import type { MessageKey } from "./app-messages.ts";
 import { NICHES, type Niche } from "./onboarding.ts";
 
 // Discover, a campaign and applying to it (frontend/design/screen-plan.md C2, C3, C4). Pure rules, no React, so the apps can reuse them.
@@ -85,9 +85,12 @@ export function rupeesToPaise(typed: string): number | null {
 
 export type ApplyProblems = { pitch?: MessageKey; quote?: MessageKey };
 
+/** A pitch's length as the backend counts it: characters (code points), not UTF-16 units, so an emoji counts once. */
+export const pitchLength = (pitch: string): number => [...pitch.trim()].length;
+
 export function checkApplication(pitch: string, quoteTyped: string): ApplyProblems {
   const problems: ApplyProblems = {};
-  const length = pitch.trim().length;
+  const length = pitchLength(pitch);
   if (length < PITCH_MIN) problems.pitch = "apply.errors.pitchShort";
   else if (length > PITCH_MAX) problems.pitch = "apply.errors.pitchLong";
   const quote = rupeesToPaise(quoteTyped);
@@ -117,8 +120,9 @@ export function applyRefusal(code: string | undefined, fields: FieldError[]): { 
     case "own_content_withheld": return { key: "apply.refused.withheld" };
     case "content_withheld": return { key: "apply.refused.campaignWithheld" };
     case "campaign_not_found": return { key: "apply.refused.gone" };
+    case "invitation_pending": return { key: "apply.refused.invited" };
   }
-  if (fields.some((f) => f.field === "pitch")) return { key: "apply.errors.pitchShort", field: "pitch" };
+  if (fields.some((f) => f.field === "pitch")) return { key: "apply.errors.pitchCheck", field: "pitch" };
   if (fields.some((f) => f.field === "quoted_amount_paise")) return { key: "apply.errors.quoteInvalid", field: "quote" };
   return { key: "common.somethingWrong" };
 }
@@ -144,6 +148,22 @@ export function recordLines(r: Reliability): RecordLine[] {
   if (r.currently_overdue > 0) lines.push({ key: r.currently_overdue === 1 ? "campaign.record.overdueOne" : "campaign.record.overdue", vars: { count: r.currently_overdue }, tone: "bad" });
   return lines;
 }
+
+/** A domain registered this many days ago or fewer is called recent: what scams use (trust-and-safety.md section 5). */
+export const RECENT_DOMAIN_DAYS = 90;
+
+export type DomainFacts = { domain: string; verifiedSince: string; registeredOn: string | null; recent: boolean };
+
+/**
+ * A verified domain as what was checked (legal.md section 3, item 74, D-106): the domain, since when it is verified, and when the
+ * registry says it was registered, with "recent" said plainly. Never "verified brand". `today` and the dates are Tamil Nadu dates.
+ */
+export function domainFacts(d: { domain: string; verified_since: string; registered_on?: string | null }, today: string, indiaDay: (ts: string) => string): DomainFacts {
+  const registeredOn = d.registered_on ?? null;
+  const days = registeredOn ? (Date.UTC(...ymd(today)) - Date.UTC(...ymd(registeredOn))) / 86_400_000 : null;
+  return { domain: d.domain, verifiedSince: indiaDay(d.verified_since), registeredOn, recent: days !== null && days <= RECENT_DOMAIN_DAYS };
+}
+const ymd = (iso: string): [number, number, number] => { const [y, m, d] = iso.split("-").map(Number); return [y, m - 1, d]; };
 
 /** The warnings for one field, to show beside it (trust-and-safety.md section 5). Unknown flags still show, with general words. */
 export function flagsFor(flags: readonly FieldFlag[] | null | undefined, field: string): FieldFlag["flag"][] {

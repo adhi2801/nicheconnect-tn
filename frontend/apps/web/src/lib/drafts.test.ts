@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { dropAllDrafts, dropDraft, readDraft, saveDraft } from "./drafts.ts";
+import { draftName, dropAllDrafts, dropDraft, dropOtherAccountsDrafts, readDraft, saveDraft } from "./drafts.ts";
 
 function memoryStore(initial: Record<string, string> = {}) {
   const data = new Map(Object.entries(initial));
@@ -42,4 +42,12 @@ test("sign-out wipes every draft and nothing else", () => {
   const s = memoryStore({ "colyv-draft:apply:c1": "{}", "colyv-draft:onboarding": "{}", "theme": "dark" });
   dropAllDrafts(s);
   assert.deepEqual([...s.data.keys()], ["theme"]);
+});
+
+test("at sign-in, another account's drafts go and this account's stay", () => {
+  const mine = draftName("acc-1", "apply:c1");
+  const theirs = draftName("acc-2", "apply:c1");
+  const s = memoryStore({ [`colyv-draft:${mine}`]: "{}", [`colyv-draft:${theirs}`]: "{}", [`colyv-draft:${draftName("acc-10", "onboarding")}`]: "{}", theme: "dark" });
+  dropOtherAccountsDrafts("acc-1", s);
+  assert.deepEqual([...s.data.keys()].sort(), [`colyv-draft:${mine}`, "theme"]);
 });

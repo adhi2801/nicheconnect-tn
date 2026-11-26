@@ -8,10 +8,10 @@ import { canWithdraw, reasonWords, statusTone, statusWords, type Application } f
 import { flagsFor, type Campaign } from "@/lib/campaigns";
 import { ApiError } from "@/lib/errors";
 import { formatDate, formatPaise, indiaDay } from "@/lib/format";
-import { t } from "@/lib/messages";
+import { t } from "@/lib/app-messages";
 
 /** One application: which campaign, where it stands and since when, and why, when a brand said no. */
-export function ApplicationRow({ application: a, campaign, onWithdraw }: { application: Application; campaign: UseQueryResult<Campaign> | undefined; onWithdraw: (a: Application) => void }) {
+export function ApplicationRow({ application: a, campaign, onWithdraw, onReport }: { application: Application; campaign: UseQueryResult<Campaign> | undefined; onWithdraw: (a: Application) => void; onReport: (c: Campaign) => void }) {
   const gone = campaign?.error instanceof ApiError && (campaign.error.kind === "not_found" || campaign.error.kind === "withheld");
   return (
     <article className="grid gap-3 rounded-3xl bg-sunk p-5">
@@ -21,6 +21,8 @@ export function ApplicationRow({ application: a, campaign, onWithdraw }: { appli
             <>
               <p className="truncate text-sm font-semibold text-muted">{campaign.data.brand_name}</p>
               <h3 className="font-display text-lg font-semibold leading-snug tracking-tight">{campaign.data.title}</h3>
+              <FlagNote flags={flagsFor(campaign.data.text_flags, "title")} />
+              {campaign.data.brand_name_flag && <p className="mt-1 text-sm font-semibold text-warn">{t("discover.card.nameFlag")}</p>}
             </>
           ) : campaign?.isPending ? (
             <div aria-busy="true" className="grid gap-1.5"><Skeleton className="h-4 w-28 bg-line" /><Skeleton className="h-6 w-56 bg-line" /></div>
@@ -58,6 +60,8 @@ export function ApplicationRow({ application: a, campaign, onWithdraw }: { appli
         <div className="flex flex-wrap items-center gap-2">
           {campaign?.data && <Link href={`/app/discover/${a.campaign_id}`} className="t-base inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold underline-offset-4 hover:bg-surface hover:underline">{t("applications.open")}</Link>}
           {canWithdraw(a) && <Button variant="quiet" className="min-h-11 px-4 text-sm" onClick={() => onWithdraw(a)}>{t("applications.withdraw.button")}</Button>}
+          {/* One tap from what the brand sent. Only where the brand is known: a closed campaign does not say which brand it was (R7). */}
+          {campaign?.data && <Button variant="quiet" className="min-h-11 px-4 text-sm" onClick={() => campaign.data && onReport(campaign.data)}>{t("safety.open")}</Button>}
         </div>
       )}
     </article>

@@ -1,6 +1,6 @@
 import type { components } from "@colyv/api";
 import type { FieldError } from "./errors.ts";
-import type { MessageKey } from "./messages.ts";
+import type { MessageKey } from "./app-messages.ts";
 
 // A creator's first two steps (frontend/design/screen-plan.md C0). The rules mirror the backend's (POST /creators/me), so a field it
 // would refuse is refused here first, in plain words. The backend stays the authority (frontend.md section 10).

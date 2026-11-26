@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { ApiError } from "./errors.ts";
-import { IntentKeys, newIdempotencyKey, sendWrite } from "./writes.ts";
+import { IntentKeys, newIdempotencyKey, sendWrite, sendWriteWithStatus } from "./writes.ts";
 
 const ok = <T>(data: T) => async () => ({ data, response: new Response(null, { status: 201 }) });
 const fail = (status: number, code: string, headers: Record<string, string> = {}) => ({ error: { code }, response: new Response(null, { status, headers }) });
@@ -54,4 +54,23 @@ test("a 429 and a 409 are never retried", async () => {
 
 test("a dropped connection is a network error, not a crash", async () => {
   await assert.rejects(sendWrite(async () => { throw new TypeError("Failed to fetch"); }), (e: unknown) => e instanceof ApiError && e.kind === "network");
+});
+
+test("an earlier try still being worked on is waited out with the same request, then its result is returned", async () => {
+  let calls = 0;
+  const attempt = async () => (++calls === 1 ? fail(409, "idempotency_key_in_flight") : { data: "first try's result", response: new Response(null, { status: 201 }) });
+  assert.equal(await sendWrite(attempt, { sleep: async () => {} }), "first try's result");
+  assert.equal(calls, 2);
+});
+
+test("a stalled connection is given up after the timeout, as a network error the person can retry", async () => {
+  const stalled = (signal: AbortSignal) => new Promise<never>((_, reject) => signal.addEventListener("abort", () => reject(signal.reason)));
+  const started = Date.now();
+  await assert.rejects(sendWrite(stalled, { timeoutMs: 50 }), (e: unknown) => e instanceof ApiError && e.kind === "network");
+  assert.ok(Date.now() - started < 2000);
+});
+
+test("a write can tell a new record (201) from one that already existed (200)", async () => {
+  assert.deepEqual(await sendWriteWithStatus(async () => ({ data: "r", response: new Response(null, { status: 201 }) })), { data: "r", status: 201 });
+  assert.deepEqual(await sendWriteWithStatus(async () => ({ data: "r", response: new Response(null, { status: 200 }) })), { data: "r", status: 200 });
 });

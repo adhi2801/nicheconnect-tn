@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { t } from "@/lib/messages";
+import { t } from "@/lib/app-messages";
 
 /** Two places a creator moves between while finding work: what is open, and what they already sent. Links, so each has its address. */
 export function DiscoverTabs({ current }: { current: "open" | "mine" }) {

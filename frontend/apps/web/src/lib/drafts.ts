@@ -1,6 +1,7 @@
 // What a person types survives a failed send, a lost connection and a closed tab (frontend.md section 5): drafts stay on this
 // device until sent. Only words the person wrote for a form are kept, never a token, and never a date of birth (D-086: used once,
-// not kept). Every draft is wiped at sign-out, so the next person on a shared computer sees none of it.
+// not kept). On a shared computer the next person sees none of it: each draft is named by its account (draftName), every draft is
+// wiped whenever the session ends however it ends (lib/session.ts), and any other account's drafts are wiped at sign-in.
 //
 // Storage can be missing or refuse (a private window, blocked site data), so every read and write is guarded and a page works without.
 
@@ -15,6 +16,9 @@ function store(): Store | null {
     return null;
   }
 }
+
+/** A draft's storage name, tied to the account that wrote it. */
+export const draftName = (accountId: string, form: string): string => `${accountId}:${form}`;
 
 export function readDraft<T extends object>(name: string, from: Store | null = store()): Partial<T> | null {
   try {
@@ -43,17 +47,22 @@ export function dropDraft(name: string, from: Store | null = store()): void {
   }
 }
 
-/** At sign-out: every draft, whatever it was for. */
-export function dropAllDrafts(from: Store | null = store()): void {
+function dropWhere(keep: (name: string) => boolean, from: Store | null): void {
   try {
     if (!from) return;
     const names: string[] = [];
     for (let i = 0; i < from.length; i++) {
       const key = from.key(i);
-      if (key?.startsWith(PREFIX)) names.push(key);
+      if (key?.startsWith(PREFIX) && !keep(key.slice(PREFIX.length))) names.push(key);
     }
     names.forEach((k) => from.removeItem(k));
   } catch {
     // Nothing to do.
   }
 }
+
+/** When the session ends, however it ends: every draft, whatever it was for. */
+export const dropAllDrafts = (from: Store | null = store()): void => dropWhere(() => false, from);
+
+/** At sign-in: every draft another account left on this device. */
+export const dropOtherAccountsDrafts = (accountId: string, from: Store | null = store()): void => dropWhere((name) => name.startsWith(`${accountId}:`), from);

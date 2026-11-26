@@ -13,8 +13,10 @@ import { Reveal } from "@/components/ui/reveal";
 import { Sheet } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { campaignIdsOf, groupApplications, type Application } from "@/lib/applications";
+import type { Campaign } from "@/lib/campaigns";
+import { ReportBlockSheet } from "@/components/safety/report-block-sheet";
 import { ApiError, commonWordsKey } from "@/lib/errors";
-import { t, type MessageKey } from "@/lib/messages";
+import { t, type MessageKey } from "@/lib/app-messages";
 import { useWithdraw } from "@/lib/mutations";
 import { useCampaignsFor, useMyApplications } from "@/lib/queries";
 
@@ -33,6 +35,7 @@ export default function ApplicationsPage() {
   const groups = groupApplications(items);
   const withdraw = useWithdraw();
   const [confirming, setConfirming] = useState<Application | null>(null);
+  const [reporting, setReporting] = useState<Campaign | null>(null);
   const [message, setMessage] = useState<{ tone: "info" | "error"; text: string } | null>(null);
 
   function confirmWithdraw() {
@@ -41,7 +44,9 @@ export default function ApplicationsPage() {
       onSuccess: () => { setConfirming(null); setMessage({ tone: "info", text: t("applications.withdraw.done") }); },
       onError: (error) => {
         // A conflict means its status changed since the list loaded (a brand answered it): say so, and show where it stands now.
-        const why = error instanceof ApiError && error.kind === "conflict" ? t("applications.withdraw.changed") : t(commonWordsKey(error));
+        const why = error instanceof ApiError && error.kind === "rate_limited" && error.retryAfter ? t("common.rateLimitedWait", { seconds: error.retryAfter })
+          : error instanceof ApiError && error.kind === "conflict" && error.code !== "idempotency_key_in_flight" ? t("applications.withdraw.changed")
+          : t(commonWordsKey(error));
         setMessage({ tone: "error", text: `${t("applications.withdraw.failed")} ${why}` });
         setConfirming(null);
         void mine.refetch();
@@ -66,6 +71,13 @@ export default function ApplicationsPage() {
       <Reveal index={1}>
         {mine.isPending ? (
           <div aria-busy="true" aria-label={t("common.loading")} className="grid gap-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-36 rounded-3xl" />)}</div>
+        ) : mine.isError && mine.error instanceof ApiError && mine.error.code === "creator_profile_required" ? (
+          // No profile yet: a state with a next step, not an error.
+          <Card className="grid justify-items-start gap-4 p-6 sm:p-8">
+            <h2 className="font-display text-2xl font-semibold tracking-tight">{t("applications.noProfile.title")}</h2>
+            <p className="max-w-[52ch] text-[15px] leading-6 text-muted">{t("applications.noProfile.body")}</p>
+            <ButtonLink href="/app/onboarding">{t("applications.noProfile.cta")}</ButtonLink>
+          </Card>
         ) : mine.isError ? (
           <LoadError title={t("applications.errorTitle")} error={mine.error} onRetry={() => void mine.refetch()} />
         ) : items.length === 0 ? (
@@ -86,7 +98,7 @@ export default function ApplicationsPage() {
                     {t(GROUP_TITLES[group.id])} <span className="tabular-nums">({group.items.length})</span>
                   </h2>
                   <ul className="grid gap-3">
-                    {group.items.map((a) => <li key={a.id}><ApplicationRow application={a} campaign={campaigns.get(a.campaign_id)} onWithdraw={(x) => { setMessage(null); setConfirming(x); }} /></li>)}
+                    {group.items.map((a) => <li key={a.id}><ApplicationRow application={a} campaign={campaigns.get(a.campaign_id)} onWithdraw={(x) => { setMessage(null); setConfirming(x); }} onReport={(c) => { setMessage(null); setReporting(c); }} /></li>)}
                   </ul>
                 </section>
               ))}
@@ -95,6 +107,11 @@ export default function ApplicationsPage() {
           </div>
         )}
       </Reveal>
+
+      {reporting && (
+        <ReportBlockSheet open onClose={() => setReporting(null)} subject={{ kind: "brand", id: reporting.brand_id }} brandId={reporting.brand_id} brandName={reporting.brand_name}
+          onBlocked={() => { setReporting(null); setMessage({ tone: "info", text: t("safety.block.done") }); }} />
+      )}
 
       <Sheet open={confirming !== null} onClose={() => setConfirming(null)} title={t("applications.withdraw.title")} locked={withdraw.isPending}>
         <p className="text-[15px] leading-6 text-muted">{t("applications.withdraw.body")}</p>

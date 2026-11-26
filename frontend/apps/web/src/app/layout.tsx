@@ -11,6 +11,9 @@ const jetbrains = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["lati
 export const metadata: Metadata = {
   title: { default: "Colyv", template: "%s · Colyv" },
   description: "Every brand and creator deal, on the record.",
+  // Phones (Safari on iPhone above all) turn numbers, addresses and emails in page text into tappable links. Other people's text is
+  // never made clickable (frontend.md section 10): "Call me on 98765 43210" in a note stays words.
+  formatDetection: { telephone: false, email: false, address: false },
 };
 
 export const viewport: Viewport = { themeColor: "#E8ECE9" };

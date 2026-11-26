@@ -1,0 +1,375 @@
+{
+  "niches": {
+    "food": "Food",
+    "fashion": "Fashion",
+    "beauty": "Beauty",
+    "tech": "Tech",
+    "travel": "Travel",
+    "fitness": "Fitness",
+    "education": "Education",
+    "entertainment": "Entertainment",
+    "finance": "Finance",
+    "lifestyle": "Lifestyle"
+  },
+  "campaignTypes": {
+    "paid": "Paid",
+    "barter": "Barter",
+    "commission": "Commission",
+    "local_business": "Local business"
+  },
+  "onboarding": {
+    "step": "Step {n} of 2",
+    "one": {
+      "title": "About you",
+      "subtitle": "Brands see this first. You can change it later."
+    },
+    "two": {
+      "title": "Where and what",
+      "subtitle": "So we show you campaigns that fit."
+    },
+    "name": {
+      "label": "Your name, as brands will see it",
+      "hint": "Your own name or your page's name."
+    },
+    "handle": {
+      "label": "Handle",
+      "hint": "Lowercase letters, numbers, dots or underscores. 3 to 30 characters.",
+      "preview": "Brands will see you as @{handle}"
+    },
+    "city": {
+      "label": "City",
+      "hint": "Where you live, or where you make most of your content."
+    },
+    "niches": {
+      "legend": "What you make content about",
+      "hint": "Pick up to 5.",
+      "count": "{count} of 5 chosen",
+      "full": "That's 5. Remove one to pick another."
+    },
+    "dob": {
+      "label": "Date of birth",
+      "hint": "Used once to confirm you are 18 or over. We don't keep it."
+    },
+    "continue": "Continue",
+    "back": "Back",
+    "finish": "Finish setup",
+    "finishing": "Setting up your profile",
+    "draftKept": "What you type is kept on this device until you finish. Your date of birth is not.",
+    "errorTitle": "Your profile wasn't saved",
+    "errors": {
+      "nameMissing": "Enter the name brands will see.",
+      "nameLong": "Keep the name to 100 characters or fewer.",
+      "handleMissing": "Choose a handle.",
+      "handleShape": "Use 3 to 30 characters: lowercase letters, numbers, dots or underscores.",
+      "handleTaken": "That handle is taken. Try another, for example with your city added.",
+      "cityMissing": "Enter your city.",
+      "cityLong": "Keep the city to 60 characters or fewer.",
+      "nichesMissing": "Pick at least one.",
+      "nichesTooMany": "Pick up to 5.",
+      "dobMissing": "Enter your date of birth.",
+      "dobInvalid": "Enter a real date in the past.",
+      "underage": "Colyv is for people 18 or over, so you can't sign up yet."
+    },
+    "brandSoon": {
+      "title": "Brand setup is being built",
+      "body": "It is next on the list. Your Today screen already shows what needs you."
+    }
+  },
+  "discover": {
+    "title": "Discover",
+    "subtitle": "Open campaigns from brands in Tamil Nadu. Pay and terms are shown before you apply.",
+    "tabs": {
+      "label": "Campaigns and your applications",
+      "open": "Open campaigns",
+      "mine": "My applications"
+    },
+    "filters": {
+      "label": "Filter campaigns",
+      "city": "City",
+      "cityPlaceholder": "Any city",
+      "niche": "Niche",
+      "nicheAny": "Any niche",
+      "type": "Type",
+      "typeAny": "Any type",
+      "min": "Minimum pay (₹)",
+      "minPlaceholder": "Any",
+      "show": "Show campaigns",
+      "clear": "Clear filters",
+      "active": "{count} filters on",
+      "activeOne": "1 filter on"
+    },
+    "card": {
+      "closes": "Open until the end of {date}",
+      "noClose": "No closing date",
+      "anyCity": "Any city",
+      "applied": "Applied",
+      "nameFlag": "Name looks like another brand's",
+      "invited": "Invited"
+    },
+    "empty": {
+      "filteredTitle": "No open campaigns match",
+      "filteredBody": "Try clearing a filter. New campaigns appear here as brands post them.",
+      "noneTitle": "No open campaigns right now",
+      "noneBody": "Brands post new campaigns every week. Check back soon."
+    },
+    "more": "Show more campaigns",
+    "loadingMore": "Loading more campaigns",
+    "end": "That's every open campaign that matches.",
+    "errorTitle": "Campaigns didn't load",
+    "moreError": "More campaigns didn't load."
+  },
+  "campaigns": {
+    "pay": {
+      "range": "{min} to {max}",
+      "exact": "{amount}",
+      "upTo": "Up to {amount}",
+      "from": "From {amount}",
+      "barter": "Barter: products or services, no fee",
+      "commission": "Commission on sales",
+      "unstated": "Pay not stated"
+    }
+  },
+  "campaign": {
+    "back": "Back to Discover",
+    "by": "By {brand}",
+    "pay": "Pay",
+    "deliver": "What to deliver",
+    "about": "About the campaign",
+    "cities": "Cities",
+    "niches": "Niches",
+    "closes": "Applications close",
+    "noClose": "No closing date",
+    "anyCity": "Anywhere",
+    "deliverable": "{quantity} × {format} on {platform}",
+    "formats": {
+      "post": "post",
+      "reel": "reel",
+      "story": "story",
+      "short": "short",
+      "video": "video",
+      "live": "live",
+      "other": "other"
+    },
+    "platforms": {
+      "instagram": "Instagram",
+      "youtube": "YouTube"
+    },
+    "record": {
+      "title": "This brand's payment record",
+      "source": "Counted from deals on Colyv, as marked by the brand and the creator. A record, not a rating.",
+      "noHistory": "Fewer than 3 finished deals on Colyv, so there is no history yet. That says nothing good or bad.",
+      "paid": "Marked {paid} of {settled} finished deals as paid, with {creators} different creators",
+      "paidOne": "Marked {paid} of {settled} finished deals as paid, all with one creator",
+      "onTime": "Paid by the due date in {percent}% of {settled} finished deals",
+      "medianDays": "Half were marked paid within {days} days of the work being approved",
+      "overdue": "{count} payments to creators are overdue right now",
+      "overdueOne": "1 payment to a creator is overdue right now",
+      "error": "The payment record didn't load.",
+      "nameFlag": "This brand's name looks like another brand's, and it hasn't verified that brand's website. Check before you agree to anything."
+    },
+    "apply": "Apply",
+    "closed": "Applications for this campaign have closed.",
+    "yours": {
+      "title": "Your application",
+      "sent": "Sent {date}",
+      "see": "See my applications",
+      "invitedTitle": "Your invitation",
+      "invited": "Invited {date}"
+    },
+    "notFound": {
+      "title": "This campaign isn't available",
+      "body": "It may have closed or been taken down. Browse other open campaigns.",
+      "cta": "Browse campaigns"
+    },
+    "withheld": {
+      "title": "This campaign is unavailable for legal reasons",
+      "body": "It was taken down after a legal request or a report the law asks us to act on."
+    },
+    "errorTitle": "This campaign didn't load",
+    "closesOn": "Open until the end of {date}"
+  },
+  "apply": {
+    "title": "Apply to {title}",
+    "pitch": {
+      "label": "Why you're a good fit",
+      "hint": "Who your audience is, and an idea for this campaign.",
+      "counter": "{count} of 1,000 characters"
+    },
+    "quote": {
+      "label": "Your quote (optional)",
+      "hint": "In rupees. Leave it blank for barter or commission."
+    },
+    "budget": "This campaign pays {pay}.",
+    "aboveBudget": "That's above this campaign's maximum of {max}. You can still send it, but brands often say no to quotes over their budget.",
+    "send": "Send application",
+    "sending": "Sending your application",
+    "cancel": "Cancel",
+    "draftKept": "Your words are kept on this device until you send them.",
+    "safety": "You never pay to get a deal. If anyone asks you for a fee or a deposit, don't pay, and report them.",
+    "sent": {
+      "title": "Application sent",
+      "body": "{brand} can see it now. You'll get a notification when they answer.",
+      "see": "See my applications",
+      "more": "Browse more campaigns"
+    },
+    "failedTitle": "Your application wasn't sent",
+    "keptNote": "Your words are kept. Try again when you're ready.",
+    "errors": {
+      "pitchShort": "Write at least 20 characters.",
+      "pitchLong": "Keep it to 1,000 characters or fewer.",
+      "quoteInvalid": "Enter an amount in rupees, such as 5000.",
+      "pitchCheck": "Check your pitch: it needs 20 to 1,000 characters."
+    },
+    "refused": {
+      "alreadyApplied": "You've already applied to this campaign.",
+      "closed": "Applications for this campaign have closed.",
+      "noProfile": "Set up your profile first, then apply.",
+      "withheld": "Your profile is withheld for legal reasons, so you can't apply to new campaigns until that is lifted.",
+      "campaignWithheld": "This campaign is unavailable for legal reasons.",
+      "gone": "This campaign is no longer available.",
+      "invited": "This brand has already invited you to this campaign. Answer the invitation instead."
+    },
+    "setUpProfile": "Set up my profile"
+  },
+  "flags": {
+    "label": "Be careful",
+    "asksForMoney": "This text asks for money. On Colyv you never pay to get a deal.",
+    "contact": "This text has contact details. Keep talking on Colyv until a deal is agreed.",
+    "upi": "This text has a UPI ID. You never pay to get a deal.",
+    "other": "Read this text with care."
+  },
+  "applications": {
+    "title": "My applications",
+    "subtitle": "Where each one stands, with the date it last changed.",
+    "groups": {
+      "moving": "In progress",
+      "invited": "Invitations",
+      "ended": "Closed",
+      "other": "Other"
+    },
+    "status": {
+      "submitted": "Sent",
+      "shortlisted": "Shortlisted",
+      "accepted": "Accepted",
+      "rejected": "Not chosen",
+      "withdrawn": "Withdrawn",
+      "invited": "Invited",
+      "declined": "Declined",
+      "other": "Updated"
+    },
+    "changed": "Updated {date}",
+    "quoted": "You quoted {amount}",
+    "noQuote": "No quote",
+    "reasonLabel": "The brand's reason",
+    "noteLabel": "Their note",
+    "reason": {
+      "budget_mismatch": "The budget didn't match",
+      "audience_mismatch": "Your audience wasn't the right fit",
+      "timing": "The timing didn't work",
+      "chose_another_creator": "They chose another creator",
+      "incomplete_profile": "Your profile wasn't complete enough to decide",
+      "other": "Another reason"
+    },
+    "invitedNote": "Answering invitations is being built. It will be on Today.",
+    "campaignUnknown": "Campaign details didn't load",
+    "campaignGone": "This campaign isn't open any more",
+    "open": "Open campaign",
+    "withdraw": {
+      "button": "Withdraw",
+      "title": "Withdraw this application?",
+      "body": "The brand will no longer consider it. This is final.",
+      "confirm": "Withdraw application",
+      "working": "Withdrawing",
+      "keep": "Keep it",
+      "failed": "It wasn't withdrawn.",
+      "done": "Application withdrawn.",
+      "changed": "Its status changed since this page loaded. The list now shows where it stands."
+    },
+    "empty": {
+      "title": "No applications yet",
+      "body": "Find an open campaign that fits and apply in a few minutes.",
+      "cta": "Browse campaigns"
+    },
+    "errorTitle": "Your applications didn't load",
+    "feedback": {
+      "title": "What your applications show",
+      "asOf": "As of {date}",
+      "commonReason": "Most common reason across your {count} rejections: {reason}",
+      "quotesAbove": "{above} of your {compared} quotes were above the campaign's maximum budget.",
+      "open": "{count} open campaigns in your niches you haven't applied to yet.",
+      "openOne": "1 open campaign in your niches you haven't applied to yet.",
+      "browse": "Browse them"
+    },
+    "noProfile": {
+      "title": "Set up your profile first",
+      "body": "Your applications appear here once you have a profile and apply to a campaign.",
+      "cta": "Set up my profile"
+    }
+  },
+  "domain": {
+    "verified": "{domain}, verified since {date}",
+    "registered": "The domain registry says it was registered on {date}.",
+    "recent": "This website was registered recently, on {date}. Take extra care before you agree to anything."
+  },
+  "safety": {
+    "open": "Report or block",
+    "title": "Report or block {brand}",
+    "categories": {
+      "spam": {
+        "title": "Spam or a scam",
+        "hint": "For example, it asks you to pay a fee or a deposit."
+      },
+      "fake_profile": {
+        "title": "A fake brand",
+        "hint": "It is not who it says it is."
+      },
+      "non_payment": {
+        "title": "It did not pay",
+        "hint": "Work was delivered and the money never came."
+      },
+      "abuse": {
+        "title": "Abuse or harassment",
+        "hint": "Insults, threats or pressure."
+      },
+      "impersonation": {
+        "title": "Pretending to be me",
+        "hint": "It uses your name, photos or account."
+      },
+      "intimate_content": {
+        "title": "Intimate images of me",
+        "hint": "Something shows you undressed or sexually, real or made up."
+      },
+      "other": {
+        "title": "Something else",
+        "hint": "Tell us in the note."
+      }
+    },
+    "report": {
+      "titleCampaign": "Report this campaign",
+      "titleBrand": "Report this brand",
+      "why": "What is wrong?",
+      "noteLabel": "Anything to add (optional)",
+      "noteHint": "What happened, in your words. Only our team reads it.",
+      "noteCounter": "{count} of 1,000 characters",
+      "send": "Send report",
+      "sending": "Sending your report",
+      "pickReason": "Choose what is wrong.",
+      "noteLong": "Keep the note to 1,000 characters or fewer.",
+      "refused": "This can't be reported from here.",
+      "sent": "Report sent. Thank you.",
+      "already": "You've already reported this, and that report is still open.",
+      "within2h": "We look at it within 2 hours. You'll get a notification when it is resolved.",
+      "within36h": "We look at it within 36 hours. You'll get a notification when it is resolved.",
+      "within7d": "We look at it within 7 days. You'll get a notification when it is resolved."
+    },
+    "block": {
+      "title": "Block {brand}",
+      "what": "They won't be told. From then on neither of you can start anything new with the other: no applications, no invitations, and you won't see their campaigns. Deals already agreed carry on.",
+      "button": "Block {brand}",
+      "confirm": "Yes, block {brand}",
+      "working": "Blocking",
+      "keep": "Don't block",
+      "done": "Blocked. You won't see that brand's campaigns, and they can't reach you. They were not told."
+    }
+  }
+}

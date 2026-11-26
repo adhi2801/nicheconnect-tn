@@ -17,6 +17,8 @@ async function open(page: Page, extra: object = {}) {
   await expect(page).toHaveURL(/\/app$/);
   await page.goto("/app/applications");
   await expect(page.getByRole("heading", { name: "My applications" })).toBeVisible();
+  // The heading shows with the loading state; a test that counts rows must first wait for them to be there.
+  if (!("applications" in extra)) await expect(page.locator("article").first()).toBeVisible();
 }
 
 test("applications are grouped, dated in India's calendar, with the campaign's name", async ({ page }) => {
@@ -41,14 +43,20 @@ test("the brand's note is text with its warning beside it, never a link", async 
 
 test("a campaign that no longer exists still shows its application, said plainly", async ({ page }) => {
   await open(page);
-  await expect(page.locator("article", { hasText: "Withdrawn" })).toContainText("This campaign is no longer available");
+  // The backend answers 404 to a creator for any campaign that is no longer open (closed, cancelled or taken down).
+  await expect(page.locator("article", { hasText: "Withdrawn" })).toContainText("This campaign isn't open any more");
 });
 
 test("each campaign is read once, however many applications it has (the R7 stopgap stays bounded)", async ({ page }) => {
   await open(page);
-  await expect(page.locator("article")).toHaveCount(4);
+  await expect(page.locator("article")).toHaveCount(5);
+  await expect(page.getByText("Filter coffee tasting 6")).toBeVisible();
   const { calls } = await state();
-  for (const id of ["c-2", "c-4", "c-6", "c-gone"]) expect(calls[`/api/v1/campaigns/${id}`]).toBe(1);
+  for (const id of ["c-2", "c-4", "c-6", "c-8", "c-gone"]) expect(calls[`/api/v1/campaigns/${id}`]).toBe(1);
+  // Not read again when the tab regains focus (the read's limit is 60 a minute an account).
+  await page.evaluate(() => { window.dispatchEvent(new Event("focus")); document.dispatchEvent(new Event("visibilitychange")); });
+  await page.waitForTimeout(500);
+  expect((await state()).calls["/api/v1/campaigns/c-2"]).toBe(1);
 });
 
 test("feedback shows facts with what they rest on", async ({ page }) => {
@@ -81,6 +89,7 @@ test("withdrawing something a brand just answered says so, and the list refreshe
 
 test("only what a brand has not answered for good can be withdrawn", async ({ page }) => {
   await open(page);
+  await expect(page.locator("article", { hasText: "Not chosen" })).toBeVisible();
   await expect(page.locator("article", { hasText: "Not chosen" }).getByRole("button", { name: "Withdraw" })).toHaveCount(0);
   await expect(page.locator("article", { hasText: "Shortlisted" }).getByRole("button", { name: "Withdraw" })).toHaveCount(1);
 });
@@ -91,6 +100,19 @@ test("no applications yet points to Discover; a failed load offers a retry", asy
   await scenario({ applications: "error" });
   await page.reload();
   await expect(page.getByText("Your applications didn't load")).toBeVisible();
+});
+
+test("an invitation is its own group, with the brand's note as text", async ({ page }) => {
+  await open(page);
+  await expect(page.getByRole("heading", { name: "Invitations (1)" })).toBeVisible();
+  await expect(page.locator("article", { hasText: "Invited" })).toContainText("Loved your Madurai reels. Join our launch?");
+});
+
+test("a creator with no profile yet gets the way to make one, not an error", async ({ page }) => {
+  await open(page, { applications: "noProfile" });
+  await expect(page.getByRole("heading", { name: "Set up your profile first" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Set up my profile" })).toHaveAttribute("href", "/app/onboarding");
+  await expect(page.getByText("Something went wrong")).toHaveCount(0);
 });
 
 test("Discover stays marked in the navigation on My applications", async ({ page }) => {

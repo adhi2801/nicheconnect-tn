@@ -1,7 +1,7 @@
-import { useInfiniteQuery, useQueries, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueries, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { api } from "./api";
 import type { Application } from "./applications";
-import { discoverQuery, type Filters } from "./campaigns";
+import { discoverQuery, type Campaign, type Filters } from "./campaigns";
 import { ApiError, apiErrorFrom } from "./errors";
 import type { Memo } from "./deals";
 import type { Role } from "./session";
@@ -68,8 +68,9 @@ export const usePayments = () => useQuery({ queryKey: ["payments"], queryFn: asy
 
 // ---- Finding work and applying (screen-plan C0 to C5) ----
 
-/** Cities where creators have published Passports, to suggest while typing. A suggestion only: any city may be typed. */
-export const useCities = () => useQuery({ queryKey: ["cities"], staleTime: 60 * 60_000, queryFn: () => unwrap(api.GET("/api/v1/cities")) });
+/** Cities where creators have published Passports, to suggest while typing. A suggestion only: any city may be typed. Read only once
+ *  a city field is used (`enabled`), so it never counts against a screen's two calls. */
+export const useCities = (enabled = true) => useQuery({ queryKey: ["cities"], enabled, staleTime: 60 * 60_000, queryFn: () => unwrap(api.GET("/api/v1/cities")) });
 
 /** Open campaigns, twenty at a time by cursor, for these filters. */
 export const useDiscover = (filters: Filters) =>
@@ -82,7 +83,22 @@ export const useDiscover = (filters: Filters) =>
 
 const campaignQuery = (id: string) => ({ queryKey: ["campaign", id], staleTime: 60_000, queryFn: () => unwrap(api.GET("/api/v1/campaigns/{campaign_id}", { params: { path: { campaign_id: id } } })) });
 
-export const useCampaign = (id: string) => useQuery(campaignQuery(id));
+/** One campaign. Opened from Discover, it starts from the card Discover already holds (placeholder data), so the brand is known at
+ *  once and the brand's record is asked for in parallel, not after the campaign (frontend.md section 4: in parallel, never a chain).
+ *  Opened from a link, the record waits for the campaign: a chain of two, until the backend carries the record on the campaign. */
+export const useCampaign = (id: string) => {
+  const client = useQueryClient();
+  return useQuery({
+    ...campaignQuery(id),
+    placeholderData: () => {
+      for (const [, data] of client.getQueriesData<InfiniteData<{ items: Campaign[] }>>({ queryKey: ["discover"] })) {
+        const found = data?.pages.flatMap((p) => p.items).find((c) => c.id === id);
+        if (found) return found;
+      }
+      return undefined;
+    },
+  });
+};
 
 /** A brand's payment record. Read only once the campaign has said which brand it is. */
 export const useReliability = (brandId: string | undefined) =>
@@ -111,5 +127,10 @@ export const useApplicationFeedback = () => useQuery({ queryKey: ["application-f
 
 /** STOPGAP for request R7: an application carries no campaign title or brand name, so each distinct campaign is read once (shared
  *  with the campaign screen's cache). This breaks ux.md's two-call rule and goes when the backend adds the names. */
+//  Bounded so it cannot exhaust the campaign read's limit (60 a minute an account): read once, kept 10 minutes, not read again when the
+//  tab regains focus, never retried. A creator with more campaigns than that limit sees "didn't load" on the rest until R7.
 export const useCampaignsFor = (ids: string[]) =>
-  useQueries({ queries: ids.map((id) => campaignQuery(id)), combine: (results) => new Map(ids.map((id, i) => [id, results[i]])) });
+  useQueries({
+    queries: ids.map((id) => ({ ...campaignQuery(id), staleTime: 10 * 60_000, refetchOnWindowFocus: false, retry: false })),
+    combine: (results) => new Map(ids.map((id, i) => [id, results[i]])),
+  });

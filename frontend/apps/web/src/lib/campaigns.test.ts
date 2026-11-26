@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { activeFilterCount, applicationBody, applyRefusal, checkApplication, discoverQuery, filtersFrom, filtersToSearch, flagsFor, flagWords, payLine, PITCH_MAX, quoteAboveBudget, recordLines, rupeesToPaise, type Reliability } from "./campaigns.ts";
+import { domainFacts, pitchLength, activeFilterCount, applicationBody, applyRefusal, checkApplication, discoverQuery, filtersFrom, filtersToSearch, flagsFor, flagWords, payLine, PITCH_MAX, quoteAboveBudget, recordLines, rupeesToPaise, type Reliability } from "./campaigns.ts";
 
 const params = (s: string) => new URLSearchParams(s);
 
@@ -73,7 +73,8 @@ test("each refusal from the backend has words a creator can act on", () => {
   assert.equal(applyRefusal("applications_closed", []).key, "apply.refused.closed");
   assert.equal(applyRefusal("campaign_not_open", []).key, "apply.refused.closed");
   assert.equal(applyRefusal("own_content_withheld", []).key, "apply.refused.withheld");
-  assert.deepEqual(applyRefusal("validation_failed", [{ field: "pitch", message: "x" }]), { key: "apply.errors.pitchShort", field: "pitch" });
+  assert.deepEqual(applyRefusal("validation_failed", [{ field: "pitch", message: "x" }]), { key: "apply.errors.pitchCheck", field: "pitch" });
+  assert.equal(applyRefusal("invitation_pending", []).key, "apply.refused.invited");
   assert.deepEqual(applyRefusal("validation_failed", [{ field: "quoted_amount_paise", message: "x" }]), { key: "apply.errors.quoteInvalid", field: "quote" });
   assert.equal(applyRefusal("something_new", []).key, "common.somethingWrong");
 });
@@ -105,4 +106,21 @@ test("warnings belong to their own field, once each, and an unknown kind still s
   assert.deepEqual(flagsFor(null, "title"), []);
   assert.equal(flagWords("asks_for_money"), "flags.asksForMoney");
   assert.equal(flagWords("new_kind_from_backend"), "flags.other");
+});
+
+test("a pitch is counted in characters as the backend counts them, so an emoji counts once", () => {
+  assert.equal(pitchLength("🍛".repeat(12)), 12);
+  assert.equal(checkApplication("🍛".repeat(20), "").pitch, undefined); // 20 characters, though 40 UTF-16 units
+  assert.equal(checkApplication("🍛".repeat(19), "").pitch, "apply.errors.pitchShort");
+  assert.equal(checkApplication("🍛".repeat(600), "").pitch, undefined); // 600 characters, though 1,200 units
+});
+
+test("a verified domain is what was checked: since when, when registered, and recent said plainly", () => {
+  const day = (ts: string) => ts.slice(0, 10);
+  assert.deepEqual(domainFacts({ domain: "chennaibakes.in", verified_since: "2026-10-01T00:00:00Z", registered_on: "2019-03-02" }, "2026-11-26", day),
+    { domain: "chennaibakes.in", verifiedSince: "2026-10-01", registeredOn: "2019-03-02", recent: false });
+  assert.equal(domainFacts({ domain: "x.in", verified_since: "2026-11-20T00:00:00Z", registered_on: "2026-11-23" }, "2026-11-26", day).recent, true);
+  assert.equal(domainFacts({ domain: "x.in", verified_since: "2026-11-20T00:00:00Z", registered_on: "2026-08-28" }, "2026-11-26", day).recent, true); // 90 days
+  assert.equal(domainFacts({ domain: "x.in", verified_since: "2026-11-20T00:00:00Z", registered_on: "2026-08-27" }, "2026-11-26", day).recent, false); // 91
+  assert.deepEqual(domainFacts({ domain: "x.in", verified_since: "2026-11-20T00:00:00Z", registered_on: null }, "2026-11-26", day).registeredOn, null);
 });

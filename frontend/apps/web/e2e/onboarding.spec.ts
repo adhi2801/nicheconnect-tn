@@ -104,13 +104,15 @@ test("too many tries shows the wait, and keeps the form", async ({ page }) => {
 test("what was typed survives a reload, except the date of birth, which is never kept", async ({ page }) => {
   await newCreator(page);
   await stepOne(page);
-  await page.getByLabel("City").fill("Madurai");
+  // The date first, then other fields edited after it, so any save that could carry the date has run.
   await page.getByLabel("Date of birth").fill("1998-06-14");
+  await page.getByLabel("City").fill("Madurai");
+  await page.getByRole("button", { name: "Food" }).click();
   // Checked before the reload: once the form loads again it saves its (empty) date, which would hide a date kept a moment ago.
   await expect(page.getByLabel("Date of birth")).toHaveValue("1998-06-14");
-  const stored = await page.evaluate(() => Object.entries(localStorage).filter(([k]) => k.startsWith("colyv-draft:")).map(([, v]) => v).join(""));
+  const stored = await page.evaluate(() => JSON.stringify([Object.entries(localStorage), Object.entries(sessionStorage), document.cookie, location.href]));
   expect(stored).toContain("Madurai"); // the draft is there
-  expect(stored).not.toContain("1998-06-14"); // and the date of birth is not in it
+  for (const form of ["1998-06-14", "14/06/1998", "1998"]) expect(stored).not.toContain(form); // and the date of birth is nowhere
   await page.reload();
   await expect(page.getByLabel("Handle")).toHaveValue("@Meena.Makes");
   await page.getByRole("button", { name: "Continue" }).click();

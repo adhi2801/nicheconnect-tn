@@ -1,6 +1,6 @@
-# Proposal: six API requests from the frontend
+# Proposal: API requests from the frontend (R1 to R12)
 
-**25 November 2026:** R7 to R10 added by the creator journey's build (D-200), each with the stopgap the website uses meanwhile. **Checked 6 November 2026:** R1, R2, R3 and R6 are on `main` (their branches merged); R4 and R5 stand as below. The frontend item that waited on R6 (F304) is unblocked.
+**25 November 2026:** R7 to R12 added by the creator journey's build (D-200), each with the stopgap the website uses meanwhile. **R7 is the most urgent**: without it My applications cannot name most finished applications. **Checked 6 November 2026:** R1, R2, R3 and R6 are on `main` (their branches merged); R4 and R5 stand as below. The frontend item that waited on R6 (F304) is unblocked.
 
 **Status, 4 November 2026:** R1 and R6 approved (Adhi: "do it yourself", D-153) and built on `feature/campaign-names`; R2 likewise (D-154), on `feature/applicant-summary`; R3 built as item 27 (D-140, D-144). R4 and R5 still open: R4 waits on the validation pack's consent wording, R5 on a decision for after launch, as this file recommends. **Originally:** Proposed. Written 28 October 2026 by the design and frontend side (Erode Harish's track, with Claude), for Adhi.
 
@@ -132,22 +132,29 @@ Needed by:    About 10 November.
 → Approve A, B, or modify?
 ```
 
-## R7. A campaign's title and brand on each of a creator's applications
+## R7. A campaign's title, brand and brand id on each of a creator's applications (most urgent)
 
 ```
 DECISION NEEDED: Name the campaign on GET /api/v1/applications/me
 Context:      My applications (C5, built 25 November 2026, D-200) lists a creator's
               applications. Each carries only campaign_id, so the screen reads each
               distinct campaign once: 1 + N calls, against ux.md's two-call rule.
-              Checked on the real backend with seeded data that day.
-Option A:     campaign_title and brand_name on each item of /applications/me (and on
-              one application), as R1 did for memos.   | + one call; the stopgap goes
-              | - two more fields to keep; effort S
-Option B:     Keep the stopgap.   | + nothing to build | - a creator with 40
-              applications to 30 campaigns waits on 31 calls
+              Worse, GET /campaigns/{id} answers 404 to a creator for any campaign
+              that is no longer open (campaigns/service.py), and campaigns close after
+              selection: most finished applications (accepted, not chosen) cannot be
+              named at all, and their brand cannot be reported or blocked from there.
+              And the reads share the campaign read's limit, 60 a minute an account:
+              a creator with more than 60 campaigns sees "didn't load" on the rest.
+Option A:     campaign_title, brand_name and brand_id on each item of /applications/me
+              (and on one application), whatever the campaign's state, as R1 did for
+              memos.   | + one call; every row named; report and block on every row
+              | - three more fields to keep; effort S
+Option B:     Keep the stopgap.   | + nothing to build | - finished applications
+              show "This campaign isn't open any more" with no name
 Recommended:  A.
 Risk & rollback: Response fields only; clients ignore what they do not read.
-Needed by:    Before the pilot; the stopgap works until then.
+Needed by:    Before the pilot. The stopgap is bounded (read once, kept 10 minutes,
+              not re-read on focus, never retried) but cannot name a closed campaign.
 → Approve A, B, or modify?
 ```
 
@@ -176,8 +183,12 @@ DECISION NEEDED: The reader's own application on GET /api/v1/campaigns/{id}
 Context:      The campaign screen (C3) shows Apply, or the application already sent.
               To know which, it reads the creator's whole application list, shared
               with Discover and usually cached; opened from a link, it is a third call.
-Option A:     my_application { id, status, created_at } on a campaign read by a
-              creator, null otherwise.   | + two calls always | - one field; effort S
+Option A:     my_application { id, status, origin, created_at } on a campaign read
+              by a creator, null otherwise; and the brand's payment record on the
+              campaign too, so a campaign opened from a link is one call, not a chain
+              of two (frontend.md section 4: in parallel, never in a chain; from
+              Discover the website already starts from the card and asks in
+              parallel).   | + one call always | - two fields; effort S
 Option B:     Keep reading the list.   | + nothing to build | - a third call from a link
 Recommended:  A, after R7.
 Risk & rollback: A response field only.
@@ -200,6 +211,39 @@ Option B:     Keep showing it after sending.   | + nothing to build | - the auth
               learns after the brand can already read it
 Recommended:  A.
 Risk & rollback: A read-only check; removing it returns to after-sending.
+→ Approve A, B, or modify?
+```
+
+## R11. Warnings on a deliverable's note
+
+```
+DECISION NEEDED: Flag deliverable_items[].note as the other free text is flagged
+Context:      A campaign's deliverable notes are the brand's free text (up to 200
+              characters), shown to creators, but text_flags covers only title,
+              description and deliverables (campaigns/schemas.py). "WhatsApp 98765
+              43210 to confirm" in a note gets no warning (trust-and-safety.md
+              section 5).
+Option A:     Add each note to text_flags, as field "deliverable_items.{i}.note".
+              | + the screen shows it beside the note at once | - effort S
+Option B:     Leave notes unflagged.   | - a gap in the warnings
+Recommended:  A.
+Risk & rollback: Response field values only.
+→ Approve A, B, or modify?
+```
+
+## R12. Whether a campaign requires an ad disclosure
+
+```
+DECISION NEEDED: disclosure_required on a campaign
+Context:      The screen plan (C3) shows a creator, before applying, whether the
+              campaign requires an ad disclosure (ASCI). The memo carries it; the
+              campaign read does not, so the campaign screen cannot say it.
+Option A:     disclosure_required on CampaignRead (the brand's intent, confirmed on
+              the memo).   | + terms before commitment | - effort S, and its wording
+              is a legal.md question
+Option B:     Show it from the memo only.   | - a creator learns it after applying
+Recommended:  A, worded with the validation pack.
+Risk & rollback: A response field only.
 → Approve A, B, or modify?
 ```
 

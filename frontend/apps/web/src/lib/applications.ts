@@ -1,5 +1,5 @@
 import type { components } from "@colyv/api";
-import type { MessageKey } from "./messages.ts";
+import type { MessageKey } from "./app-messages.ts";
 import type { Tone } from "./tone.ts";
 
 // My applications (frontend/design/screen-plan.md C5): where each one stands, dated, with the reason when a brand said no.

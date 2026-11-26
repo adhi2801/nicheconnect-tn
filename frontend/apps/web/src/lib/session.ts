@@ -3,7 +3,7 @@
 // The access token lives here, in memory only (docs/standards/frontend.md section 10). The refresh token is never here: it is in an
 // httpOnly cookie that only app/api/session reads. So a reload asks /api/session/refresh for a new access token, and the page's
 // own scripts can never read a long-lived credential.
-import { dropAllDrafts } from "./drafts";
+import { dropAllDrafts, dropOtherAccountsDrafts } from "./drafts";
 
 export type Role = "creator" | "brand";
 export type Session = { role: Role; accountId: string; accessToken: string; expiresAt: number };
@@ -31,6 +31,10 @@ export function subscribeToSession(listener: () => void): () => void {
 }
 
 function set(next: SessionState): void {
+  // Drafts never outlive the session that wrote them, however it ends (signing out, an expired login, "sign out everywhere"),
+  // and a newly signed-in account never sees another account's (lib/drafts.ts).
+  if (next.status === "signedOut") dropAllDrafts();
+  if (next.status === "signedIn") dropOtherAccountsDrafts(next.session.accountId);
   state = next;
   clearTimeout(timer);
   if (next.status === "signedIn") {
@@ -91,7 +95,6 @@ export function restoreSession(): Promise<boolean> {
 }
 
 export async function signOut(): Promise<void> {
-  dropAllDrafts();
   set(SIGNED_OUT);
   channel?.postMessage({ type: "signedOut" });
   await fetch("/api/session/logout", { method: "POST", cache: "no-store" }).catch(() => undefined);
@@ -100,5 +103,5 @@ export async function signOut(): Promise<void> {
 // Another tab signed in, renewed or signed out: follow it, without telling the others again.
 channel?.addEventListener("message", (event: MessageEvent<{ type: string; session?: Session }>) => {
   if (event.data.type === "signedIn" && event.data.session) set({ status: "signedIn", session: event.data.session });
-  if (event.data.type === "signedOut") { dropAllDrafts(); set(SIGNED_OUT); }
+  if (event.data.type === "signedOut") set(SIGNED_OUT);
 });

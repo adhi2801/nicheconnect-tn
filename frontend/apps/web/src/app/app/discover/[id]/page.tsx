@@ -7,7 +7,7 @@ import { LoadError } from "@/components/ui/load-error";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CampaignDetail } from "@/components/campaign/campaign-detail";
 import { ApiError } from "@/lib/errors";
-import { t } from "@/lib/messages";
+import { t } from "@/lib/app-messages";
 import { useCampaign, useMyApplications } from "@/lib/queries";
 
 // One campaign (screen-plan C3), opened from Discover. Its calls: the campaign, the brand's record (after the campaign names the brand),

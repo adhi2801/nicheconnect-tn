@@ -8,6 +8,10 @@ import { CodeField } from "@/components/ui/code-field";
 import { Notice } from "@/components/ui/notice";
 import { Pill } from "@/components/ui/pill";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FlagNote } from "@/components/ui/flag-note";
+import { SelectField } from "@/components/ui/select-field";
+import { Sheet } from "@/components/ui/sheet";
+import { TextAreaField } from "@/components/ui/text-area-field";
 import { TextField } from "@/components/ui/text-field";
 
 const swatches = ["ground", "surface", "surface-sunk", "ink", "ink-muted", "line-strong", "accent", "hero-from", "hero-to", "highlight", "highlight-deep", "highlight-soft", "gauge-deep", "gauge-mid", "ok", "ok-soft", "warn", "warn-soft", "bad", "bad-soft"];
@@ -21,6 +25,8 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
 export function Catalogue() {
   const [code, setCode] = useState("42");
   const [role, setRole] = useState<"creator" | "brand">("creator");
+  const [sheet, setSheet] = useState(false);
+  const [pitch, setPitch] = useState("I make Madurai street-food reels every week.");
   return (
     <main className="mx-auto grid w-full max-w-5xl gap-12 px-5 py-12">
       <header className="grid gap-2">
@@ -64,6 +70,36 @@ export function Catalogue() {
           <TextField label="Error" error="Enter a 10-digit Indian mobile number." defaultValue="12345" prefix="+91" />
           <TextField label="Disabled" disabled defaultValue="Not editable" />
         </div>
+      </Block>
+
+      <Block title="Text area, with its count">
+        <div className="grid items-start gap-5 sm:grid-cols-2">
+          <TextAreaField label="Default" hint="Who your audience is." rows={3} value={pitch} onChange={(e) => setPitch(e.target.value)} counter={`${[...pitch.trim()].length} of 1,000 characters`} />
+          <TextAreaField label="Error" rows={3} defaultValue="Too short" error="Write at least 20 characters." counter="9 of 1,000 characters" />
+        </div>
+      </Block>
+
+      <Block title="Select: the phone's own picker">
+        <div className="grid items-start gap-5 sm:grid-cols-3">
+          <SelectField label="Niche" options={[{ value: "", label: "Any niche" }, { value: "food", label: "Food" }, { value: "fashion", label: "Fashion" }]} />
+          <SelectField label="Disabled" disabled options={[{ value: "", label: "Any type" }]} />
+        </div>
+      </Block>
+
+      <Block title="Warning note: beside the text it is about, never hiding it">
+        <div className="grid max-w-xl gap-2">
+          <p className="text-[15px]">Pay a ₹500 registration fee to apply.</p>
+          <FlagNote flags={["asks_for_money"]} />
+          <FlagNote flags={["phone_number", "a_kind_the_app_does_not_know_yet"]} />
+        </div>
+      </Block>
+
+      <Block title="Sheet: from the bottom on a phone, in the middle on a laptop">
+        <Button variant="secondary" className="justify-self-start" onClick={() => setSheet(true)}>Open a sheet</Button>
+        <Sheet open={sheet} onClose={() => setSheet(false)} title="Withdraw this application?">
+          <p className="text-[15px] leading-6 text-muted">The brand will no longer consider it. This is final.</p>
+          <div className="flex flex-wrap gap-3"><Button onClick={() => setSheet(false)}>Withdraw application</Button><Button variant="quiet" onClick={() => setSheet(false)}>Keep it</Button></div>
+        </Sheet>
       </Block>
 
       <Block title="Code field">

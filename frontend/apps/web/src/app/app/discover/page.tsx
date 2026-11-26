@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -13,7 +13,7 @@ import { DiscoverFilters } from "@/components/discover/discover-filters";
 import { DiscoverTabs } from "@/components/discover/discover-tabs";
 import { Kolam } from "@/components/today/kolam";
 import { activeFilterCount, filtersFrom, filtersToSearch, type Filters } from "@/lib/campaigns";
-import { t } from "@/lib/messages";
+import { t } from "@/lib/app-messages";
 import { useCities, useDiscover, useMyApplications } from "@/lib/queries";
 
 const SkeletonCards = () => (
@@ -31,10 +31,13 @@ function DiscoverBody() {
   const filters = useMemo(() => filtersFrom(params), [params]);
   const discover = useDiscover(filters);
   const mine = useMyApplications();
-  const cities = useCities();
-  const applied = useMemo(() => new Set((mine.data ?? []).filter((a) => a.status !== "withdrawn").map((a) => a.campaign_id)), [mine.data]);
+  const [wantCities, setWantCities] = useState(false);
+  const cities = useCities(wantCities);
+  // What the creator already has on each campaign: an application they sent, or an invitation from the brand.
+  const yours = useMemo(() => new Map((mine.data ?? []).filter((a) => a.status !== "withdrawn").map((a) => [a.campaign_id, a.origin === "invited" ? ("invited" as const) : ("applied" as const)])), [mine.data]);
   const campaigns = discover.data?.pages.flatMap((p) => p.items) ?? [];
   const filtered = activeFilterCount(filters) > 0;
+  const justBlocked = params.get("blocked") === "1";
 
   const apply = (next: Filters) => router.replace(`${pathname}${filtersToSearch(next)}`, { scroll: false });
 
@@ -50,9 +53,11 @@ function DiscoverBody() {
         </header>
       </Reveal>
 
+      {justBlocked && <div aria-live="polite"><Notice><p>{t("safety.block.done")}</p></Notice></div>}
+
       <Reveal index={1}>
         {/* Keyed by the filters, so the form resets to the address after back or forward. */}
-        <DiscoverFilters key={filtersToSearch(filters)} value={filters} cities={(cities.data ?? []).map((c) => c.city)} onApply={apply} />
+        <DiscoverFilters key={filtersToSearch(filters)} value={filters} cities={(cities.data ?? []).map((c) => c.city)} onApply={apply} onCityFocus={() => setWantCities(true)} />
       </Reveal>
 
       <Reveal index={2}>
@@ -73,7 +78,7 @@ function DiscoverBody() {
           ) : (
             <>
               <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {campaigns.map((c) => <li key={c.id}><CampaignCard campaign={c} applied={applied.has(c.id)} /></li>)}
+                {campaigns.map((c) => <li key={c.id}><CampaignCard campaign={c} yours={yours.get(c.id) ?? null} /></li>)}
               </ul>
               {discover.isFetchNextPageError && <Notice tone="error"><p>{t("discover.moreError")}</p></Notice>}
               {discover.hasNextPage ? (

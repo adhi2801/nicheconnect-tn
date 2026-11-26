@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { feedbackLines, reasonWords } from "@/lib/applications";
 import { formatDate } from "@/lib/format";
-import { t } from "@/lib/messages";
+import { t } from "@/lib/app-messages";
 import { useApplicationFeedback } from "@/lib/queries";
 
 /** What a creator's applications show, as dated facts, only where there is enough to say something (screen-plan C5). Silent otherwise:

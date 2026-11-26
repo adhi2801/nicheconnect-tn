@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { LoadError } from "@/components/ui/load-error";
 import { Skeleton } from "@/components/ui/skeleton";
 import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
-import { t } from "@/lib/messages";
+import { t } from "@/lib/app-messages";
 import { useProfile } from "@/lib/queries";
 import { useSession } from "@/lib/use-session";
 

@@ -38,7 +38,7 @@ It does **not** mean:
 
 ## 2. Where we are
 
-**352 items: 0 built on `main` (0.0%), 4 built on a branch and not merged (1.1%), 57 started (16.2%), 277 open, 14 blocked.** Counted from the tables of 31 October, plus section 20a (6 November) and the five creator screens started on 25 November (D-200); the other statuses of 31 October have not been re-read against `main` since.
+**352 items: 0 built on `main` (0.0%), 4 built on a branch and not merged (1.1%), 59 started (16.8%), 275 open, 14 blocked.** Counted from the tables of 31 October, plus section 20a (6 November) and the seven items started on 25 November (D-200: five creator screens, report and block); the other statuses of 31 October have not been re-read against `main` since.
 
 | Section | Items | Built | On a branch | Started | Open | Blocked |
 |---|---|---|---|---|---|---|
@@ -47,8 +47,8 @@ It does **not** mean:
 | 6. Design system foundations | 15 | 0 | 1 | 5 | 9 | 0 |
 | 7. Components | 68 | 0 | 0 | 19 | 49 | 0 |
 | 8. Experience and research with people | 17 | 0 | 0 | 2 | 15 | 0 |
-| 9. Journeys, end to end | 16 | 0 | 0 | 1 | 15 | 0 |
-| 10. Screens | 69 | 0 | 0 | 13 | 54 | 2 |
+| 9. Journeys, end to end | 16 | 0 | 0 | 2 | 14 | 0 |
+| 10. Screens | 69 | 0 | 0 | 14 | 53 | 2 |
 | 11. The landing page and public pages | 15 | 0 | 0 | 0 | 11 | 4 |
 | 12. Motion | 14 | 0 | 0 | 1 | 13 | 0 |
 | 13. Animation, 3D and the signature moments | 16 | 0 | 0 | 3 | 13 | 0 |
@@ -60,7 +60,7 @@ It does **not** mean:
 | 19. Ahead of everyone | 6 | 0 | 0 | 1 | 4 | 1 |
 | 20. Release and operations | 6 | 0 | 0 | 0 | 6 | 0 |
 | 20a. Found by the research of 6 November | 11 | 0 | 0 | 0 | 6 | 5 |
-| **All** | **352** | **0** | **4** | **57** | **277** | **14** |
+| **All** | **352** | **0** | **4** | **59** | **275** | **14** |
 
 **Read honestly:**
 - **Nothing is built to the bar on `main` yet.** The merged web app (pull request #78) is a first version: its screens and components are counted as *Started*, to be rebuilt, not patched (`frontend.md`, "Gaps, named").
@@ -276,7 +276,7 @@ Each runs in Playwright on the website and Maestro in the apps, on every pull re
 | F150 | **Pay by UPI link or mark a payment sent, one or many** | Passes on web and both apps, slow 4G, failure cases included | — | Open |
 | F151 | **Confirm receipt, or open a dispute and add evidence** | Passes on web and both apps, slow 4G, failure cases included | — | Open |
 | F152 | **Barter: ship goods, confirm receipt** | Passes on web and both apps, slow 4G, failure cases included | — | Open |
-| F153 | **Block and report, and see what became of a report** | Passes on web and both apps, slow 4G, failure cases included | — | Open |
+| F153 | **Block and report, and see what became of a report** | Passes on web and both apps, slow 4G, failure cases included | — | Started. Started 25 November 2026 on the website (D-200): report and block one tap from a campaign and from a brand's note on My applications; not yet from deals or memos, no "what became of my report" screen, not in the apps |
 | F154 | **A brand's team: invite, join, act in a role, leave** | Passes on web and both apps, slow 4G, failure cases included | — | Open |
 | F155 | **Delete my account, and cancel it within 30 days** | Passes on web and both apps, slow 4G, failure cases included | — | Open |
 | F156 | **Download my data** | Passes on web and both apps, slow 4G, failure cases included | — | Open |
@@ -326,7 +326,7 @@ Every screen in `frontend/design/screen-plan.md` (Harish's plan, with his IDs) a
 | F193 | **Invitation, answer one** (Creator; Must) | `frontend.md` section 14, on web and both apps | — | Open |
 | F194 | **Invite a creator** (Brand; Must) | `frontend.md` section 14, on web and both apps | — | Open |
 | F195 | **Offer sheet** (Both; Must) | `frontend.md` section 14, on web and both apps | — | Open |
-| F196 | **Report and block** (Both; Must) | `frontend.md` section 14, on web and both apps | — | Open |
+| F196 | **Report and block** (Both; Must) | `frontend.md` section 14, on web and both apps | — | Started. Started 25 November 2026 on the website (D-200): report and block one tap from a campaign and from a brand's note on My applications; not yet from deals or memos, no "what became of my report" screen, not in the apps |
 | F197 | **Delete my account** (Both; Must) | `frontend.md` section 14, on web and both apps | — | Open |
 | F198 | **Step-up sheet** (Both; Must) | `frontend.md` section 14, on web and both apps | — | Open |
 | F199 | **Draft review (send a draft; approve or ask for changes)** (Both; Must) | `frontend.md` section 14, on web and both apps | — | Open |

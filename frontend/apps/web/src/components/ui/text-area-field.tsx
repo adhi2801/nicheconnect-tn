@@ -6,7 +6,7 @@ type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "id"> & {
   label: string;
   hint?: string;
   error?: string;
-  /** A live count, such as "120 of 1,000 characters". Announced politely, so a screen reader hears it without being interrupted. */
+  /** A count, such as "120 of 1,000 characters". Read with the field (aria-describedby), not announced on every pause in typing. */
   counter?: string;
 };
 
@@ -31,7 +31,7 @@ export function TextAreaField({ label, hint, error, counter, className = "", row
       />
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
         {error ? <p id={errorId} className="text-sm text-bad">{error}</p> : <span />}
-        {counter && <p id={counterId} aria-live="polite" className="text-sm tabular-nums text-muted">{counter}</p>}
+        {counter && <p id={counterId} className="text-sm tabular-nums text-muted">{counter}</p>}
       </div>
     </div>
   );

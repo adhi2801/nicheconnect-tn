@@ -2,6 +2,8 @@
 
 import { useCallback, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ReportBlockSheet } from "@/components/safety/report-block-sheet";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FlagNote } from "@/components/ui/flag-note";
@@ -14,16 +16,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { statusTone, statusWords, type Application } from "@/lib/applications";
 import { flagsFor, payLine, type Campaign } from "@/lib/campaigns";
 import { formatDate, indiaDay } from "@/lib/format";
-import { nicheLabel } from "@/lib/labels";
-import { t } from "@/lib/messages";
+import { campaignTypeLabel, formatLabel, nicheLabel, platformLabel } from "@/lib/labels";
+import { t } from "@/lib/app-messages";
+import { useIntentKeys } from "@/lib/mutations";
 import { ApplyForm } from "./apply-form";
 import { BrandRecord } from "./brand-record";
 
 /** Everything needed to decide, on one page, above the one action (screen-plan C3: terms before commitment). */
 export function CampaignDetail({ campaign, mine, checking }: { campaign: Campaign; mine: Application | undefined; checking: boolean }) {
+  const router = useRouter();
   const [applying, setApplying] = useState(false);
+  const [reporting, setReporting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState<Application | null>(null);
+  // Held here, not in the sheet: closing and reopening the sheet after a lost answer resends with the same key.
+  const keys = useIntentKeys();
   const onBusy = useCallback((b: boolean) => setBusy(b), []);
   const pay = payLine(campaign);
   const yours = sent ?? mine;
@@ -31,7 +38,7 @@ export function CampaignDetail({ campaign, mine, checking }: { campaign: Campaig
   const facts: { term: string; detail: string }[] = [
     { term: t("campaign.cities"), detail: campaign.cities.length > 0 ? campaign.cities.join(", ") : t("campaign.anyCity") },
     { term: t("campaign.niches"), detail: campaign.niches.map(nicheLabel).join(", ") },
-    { term: t("campaign.closes"), detail: campaign.applications_close_on ? formatDate(campaign.applications_close_on) : t("campaign.noClose") },
+    { term: t("campaign.closes"), detail: campaign.applications_close_on ? t("campaign.closesOn", { date: formatDate(campaign.applications_close_on) }) : t("campaign.noClose") },
   ];
 
   return (
@@ -42,10 +49,13 @@ export function CampaignDetail({ campaign, mine, checking }: { campaign: Campaig
             <ChevronLeftIcon width={18} height={18} aria-hidden />{t("campaign.back")}
           </Link>
           <header className="grid gap-2">
-            <p className="text-sm font-semibold text-muted">{t("campaign.by", { brand: campaign.brand_name })}</p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-muted">{t("campaign.by", { brand: campaign.brand_name })}</p>
+              <Button variant="quiet" className="min-h-11 px-4 text-sm" onClick={() => setReporting(true)}>{t("safety.open")}</Button>
+            </div>
             <h1 className="font-display text-[2rem] font-semibold leading-[1.1] tracking-tight sm:text-[2.5rem]">{campaign.title}</h1>
             <FlagNote flags={flagsFor(campaign.text_flags, "title")} />
-            <div className="flex flex-wrap gap-1.5"><Pill tone="neutral">{t(`campaignTypes.${campaign.campaign_type}`)}</Pill></div>
+            <div className="flex flex-wrap gap-1.5"><Pill tone="neutral">{campaignTypeLabel(campaign.campaign_type)}</Pill></div>
           </header>
         </div>
       </Reveal>
@@ -59,19 +69,20 @@ export function CampaignDetail({ campaign, mine, checking }: { campaign: Campaig
             </section>
             <section className="grid gap-2">
               <h2 className="text-sm font-semibold text-muted">{t("campaign.deliver")}</h2>
-              {campaign.deliverable_items.length > 0 ? (
+              {/* The summary both sides read is always shown, so a warning beside it is never about text nobody can see. */}
+              <p className="whitespace-pre-line text-[15px] leading-6">{campaign.deliverables}</p>
+              <FlagNote flags={flagsFor(campaign.text_flags, "deliverables")} />
+              {campaign.deliverable_items.length > 0 && (
                 <ul className="grid gap-2">
                   {campaign.deliverable_items.map((d, i) => (
                     <li key={i} className="rounded-2xl bg-sunk px-4 py-3 text-[15px] leading-6">
-                      <span className="font-semibold">{t("campaign.deliverable", { quantity: d.quantity, format: t(`campaign.formats.${d.format}`), platform: t(`campaign.platforms.${d.platform}`) })}</span>
+                      <span className="font-semibold">{t("campaign.deliverable", { quantity: d.quantity, format: formatLabel(d.format), platform: platformLabel(d.platform) })}</span>
+                      {/* The backend does not check these notes for contact details or money requests yet (request R11). */}
                       {d.note && <span className="block text-muted">{d.note}</span>}
                     </li>
                   ))}
                 </ul>
-              ) : (
-                <p className="whitespace-pre-line text-[15px] leading-6">{campaign.deliverables}</p>
               )}
-              <FlagNote flags={flagsFor(campaign.text_flags, "deliverables")} />
             </section>
             <section className="grid gap-2">
               <h2 className="text-sm font-semibold text-muted">{t("campaign.about")}</h2>
@@ -97,20 +108,20 @@ export function CampaignDetail({ campaign, mine, checking }: { campaign: Campaig
             )}
             {sent && <FlagNote flags={flagsFor(sent.text_flags, "pitch")} />}
             {checking && !sent ? (
-              <div aria-busy="true" aria-label={t("common.loading")} className="grid gap-3"><Skeleton className="h-8 w-2/3 bg-white/15" /><Skeleton className="h-12 w-full bg-white/15" /></div>
+              <div aria-busy="true" aria-label={t("common.loading")} className="grid gap-3"><Skeleton className="h-8 w-2/3" /><Skeleton className="h-12 w-full" /></div>
             ) : yours ? (
               <div className="grid gap-3">
-                <h2 className="font-display text-lg font-semibold tracking-tight">{t("campaign.yours.title")}</h2>
+                <h2 className="font-display text-lg font-semibold tracking-tight">{t(yours.origin === "invited" ? "campaign.yours.invitedTitle" : "campaign.yours.title")}</h2>
                 <div className="flex flex-wrap items-center gap-2">
                   <Pill tone={statusTone(yours.status)}>{t(statusWords(yours.status))}</Pill>
-                  <span className="text-sm text-muted">{t("campaign.yours.sent", { date: formatDate(indiaDay(yours.created_at)) })}</span>
+                  <span className="text-sm text-muted">{t(yours.origin === "invited" ? "campaign.yours.invited" : "campaign.yours.sent", { date: formatDate(indiaDay(yours.created_at)) })}</span>
                 </div>
                 <ButtonLink href="/app/applications" variant="secondary" className="justify-self-start">{t("campaign.yours.see")}</ButtonLink>
               </div>
             ) : campaign.applications_open ? (
               <div className="grid gap-3">
                 <p className="font-display text-2xl font-semibold tabular-nums">{t(pay.key, pay.vars)}</p>
-                <p className="text-sm text-on-accent/80">{campaign.applications_close_on ? t("discover.card.closes", { date: formatDate(campaign.applications_close_on) }) : t("campaign.noClose")}</p>
+                <p className="text-sm text-on-accent/80">{campaign.applications_close_on ? t("campaign.closesOn", { date: formatDate(campaign.applications_close_on) }) : t("campaign.noClose")}</p>
                 <Button variant="highlight" onClick={() => setApplying(true)}>{t("campaign.apply")}</Button>
               </div>
             ) : (
@@ -121,8 +132,10 @@ export function CampaignDetail({ campaign, mine, checking }: { campaign: Campaig
         </Reveal>
       </div>
 
+      <ReportBlockSheet open={reporting} onClose={() => setReporting(false)} subject={{ kind: "campaign", id: campaign.id }} brandId={campaign.brand_id} brandName={campaign.brand_name} onBlocked={() => router.replace("/app/discover?blocked=1")} />
+
       <Sheet open={applying} onClose={() => setApplying(false)} title={t("apply.title", { title: campaign.title })} locked={busy}>
-        {applying && <ApplyForm campaign={campaign} onBusy={onBusy} onCancel={() => setApplying(false)} onSent={(a) => { setSent(a); setApplying(false); }} />}
+        {applying && <ApplyForm campaign={campaign} intentKeys={keys} onBusy={onBusy} onCancel={() => setApplying(false)} onSent={(a) => { setSent(a); setApplying(false); }} />}
       </Sheet>
     </div>
   );

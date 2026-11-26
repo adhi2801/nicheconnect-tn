@@ -28,20 +28,27 @@ test("Discover shows pay, type, place and closing date on each card, and marks w
   await expect(first).toContainText("Kovai Organics");
   await expect(first).toContainText("₹5,000 to ₹15,000");
   await expect(first).toContainText("Madurai, Chennai");
-  await expect(first).toContainText("Applications close 15 Dec");
-  await expect(cards(page).filter({ hasText: "Chennai Bakes" }).first()).toContainText("chennaibakes.in verified");
+  await expect(first).toContainText("Open until the end of 15 Dec");
+  await expect(cards(page).filter({ hasText: "Chennai Bakes" }).first()).toContainText("chennaibakes.in, verified since 1 Oct 2026");
+  await expect(page.locator("a[href='/app/discover/c-8']")).toContainText("Invited");
+  await expect(page.locator("a[href='/app/discover/c-8']")).not.toContainText("Applied");
   await expect(page.locator("a[href='/app/discover/c-2']")).toContainText("Applied");
   await expect(page.locator("a[href='/app/discover/c-1']")).not.toContainText("Applied");
 });
 
 test("Discover makes no call per card: one for campaigns, one for applications, whatever the page size", async ({ page }) => {
   await signIn(page);
+  await fetch(`${MOCK}/__calls/reset`, { method: "POST", body: "{}" });
   await page.goto("/app/discover");
   await expect(cards(page)).toHaveCount(20);
   const { calls } = await state();
+  // Every call made, not only the two expected: the screen's two, plus the frame's own (who is signed in, the unread count).
+  expect(Object.keys(calls).sort()).toEqual(["/api/v1/applications/me", "/api/v1/campaigns/discover", "/api/v1/creators/me", "/api/v1/notifications/unread-count"]);
   expect(calls["/api/v1/campaigns/discover"]).toBe(1);
   expect(calls["/api/v1/applications/me"]).toBe(1);
-  expect(Object.keys(calls).filter((p) => /^\/api\/v1\/(campaigns\/c-|brands\/)/.test(p))).toEqual([]);
+  // The city suggestions are read only once the city field is used.
+  await page.getByLabel("City").focus();
+  await expect.poll(async () => (await state()).calls["/api/v1/cities"]).toBe(1);
 });
 
 test("more campaigns load by cursor, then the list says it has reached the end", async ({ page }) => {
@@ -95,7 +102,25 @@ test("a campaign shows its terms, and the brand's record as facts with what they
   await expect(page.getByText("2 × reel on Instagram")).toBeVisible();
   await expect(page.getByText("Marked 8 of 9 finished deals as paid, with 6 different creators")).toBeVisible();
   await expect(page.getByText("Paid by the due date in 88% of 9 finished deals")).toBeVisible();
-  await expect(page.getByText("Website chennaibakes.in, verified")).toBeVisible();
+  await expect(page.getByText("chennaibakes.in, verified since 1 Oct 2026")).toBeVisible();
+  await expect(page.getByText("The domain registry says it was registered on 2 Mar 2019.")).toBeVisible();
+  await expect(page.getByText(/registered recently/)).toHaveCount(0);
+});
+
+test("a website registered days ago is said plainly, beside the domain", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/app/discover/c-newdomain");
+  await expect(page.getByText(/This website was registered recently, on .*Take extra care before you agree to anything\./)).toBeVisible();
+});
+
+test("opened from Discover, the brand's record is asked for at once, not after the campaign", async ({ page }) => {
+  await signIn(page, { campaignDelayMs: 2500 });
+  await page.goto("/app/discover");
+  await cards(page).first().waitFor();
+  await page.locator("a[href='/app/discover/c-1']").click();
+  // The campaign's own read takes 2.5 s here. The record shows well before that, because the card already named the brand; in a
+  // chain it could not show until the campaign had arrived.
+  await expect(page.getByText(/Fewer than 3 finished deals on Colyv/)).toBeVisible({ timeout: 1500 });
 });
 
 test("a new brand has no history yet, never a zero, and money it owes now still shows", async ({ page }) => {
@@ -204,6 +229,37 @@ test("a pitch the backend flags shows its warning to the author once sent", asyn
   await page.getByLabel("Why you're a good fit").fill("Send a deposit first and I will make the reel for you.");
   await page.getByRole("button", { name: "Send application" }).click();
   await expect(page.getByText("This text asks for money. On Colyv you never pay to get a deal.")).toBeVisible();
+});
+
+test("a sheet the browser closes by itself can always be opened again", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/app/discover/c-5");
+  await page.getByRole("button", { name: "Apply" }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  // As Android's Back or a second Escape does under the close-watcher rules: the dialog closes without our code asking.
+  await page.evaluate(() => document.querySelector<HTMLDialogElement>("dialog[open]")?.close());
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await page.getByRole("button", { name: "Apply" }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+});
+
+test("a draft goes when the session ends by itself, not only on Sign out", async ({ page, context }) => {
+  await signIn(page);
+  await page.goto("/app/discover/c-5");
+  await page.getByRole("button", { name: "Apply" }).click();
+  await page.getByLabel("Why you're a good fit").fill("A pitch the next person on this computer must never see.");
+  const drafts = () => page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("colyv-draft:")));
+  expect(await drafts()).toHaveLength(1);
+  // The login ends without Sign out (it expired, or "sign out everywhere" from a phone): the refresh is refused.
+  await context.clearCookies();
+  await page.reload();
+  await expect(page).toHaveURL(/\/sign-in$/);
+  expect(await drafts()).toEqual([]);
+});
+
+test("numbers in other people's text are never turned into phone links by the browser", async ({ page }) => {
+  await signIn(page);
+  await expect(page.locator('meta[name="format-detection"]')).toHaveAttribute("content", /telephone=no/);
 });
 
 test("Escape closes the sheet, and the draft is still there when it opens again", async ({ page }) => {

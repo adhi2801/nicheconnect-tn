@@ -125,7 +125,7 @@ for (const view of VIEWS) {
 
         // States a page visit never reaches: the onboarding form (anyone with a profile is sent past it), with its errors showing,
         // and the Apply sheet open over a campaign.
-        test("a new creator's onboarding steps and the Apply sheet have no accessibility violation", async ({ page }) => {
+        test("a new creator's onboarding steps, the Apply sheet and the report sheet have no accessibility violation", async ({ page }) => {
           await fetch(`${MOCK}/__scenario`, { method: "POST", body: JSON.stringify({ profile: "missing", attention: "empty" }) });
           await signIn(page, "Creator");
           await page.goto("/app/onboarding");
@@ -145,6 +145,12 @@ for (const view of VIEWS) {
           await expect(page.getByText("Write at least 20 characters.")).toBeVisible();
           await settled(page);
           expect(await violations(page), "the Apply sheet, with an error").toEqual([]);
+          await page.keyboard.press("Escape");
+          await page.getByRole("button", { name: "Report or block" }).click();
+          await page.getByRole("dialog").getByRole("button", { name: "Send report" }).click();
+          await expect(page.getByText("Choose what is wrong.")).toBeVisible();
+          await settled(page);
+          expect(await violations(page), "the report and block sheet, with an error").toEqual([]);
         });
 
         for (const role of ["Creator", "Brand"] as const) {

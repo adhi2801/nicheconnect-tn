@@ -2,7 +2,7 @@
 
 import { useId } from "react";
 import { CheckIcon } from "@/components/ui/icons";
-import { t } from "@/lib/messages";
+import { t } from "@/lib/app-messages";
 import { MAX_NICHES, NICHES, toggleNiche, type Niche } from "@/lib/onboarding";
 
 /** Up to five niches as toggle chips. Each chip is a real button with aria-pressed, so a screen reader says chosen or not. */
@@ -10,7 +10,7 @@ export function NichePicker({ value, onChange, error }: { value: Niche[]; onChan
   const id = useId();
   const full = value.length >= MAX_NICHES;
   return (
-    <div role="group" aria-labelledby={`${id}-legend`} aria-describedby={`${id}-status${error ? ` ${id}-error` : ""}`} className="grid gap-2">
+    <div role="group" data-invalid={error ? "true" : undefined} aria-labelledby={`${id}-legend`} aria-describedby={`${id}-status${error ? ` ${id}-error` : ""}`} className="grid gap-2">
       <p id={`${id}-legend`} className="text-sm font-semibold">{t("onboarding.niches.legend")}</p>
       <p className="text-sm text-muted">{t("onboarding.niches.hint")}</p>
       <ul className="flex flex-wrap gap-2">

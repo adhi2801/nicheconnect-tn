@@ -5,9 +5,9 @@ import { createServer } from "node:http";
 const port = Number(process.env.PORT ?? 8098);
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "POST, GET, PUT, PATCH, DELETE, OPTIONS", "Access-Control-Expose-Headers": "Retry-After, X-Request-ID, WWW-Authenticate" };
 
-let n, valid, used, reuseDetected, refreshCalls, lastForwardedFor, refreshDelayMs, tokens, scenario, calls, writes, created, lastQuery, sentApps, withdrawn;
-const defaults = () => ({ attention: "items", profile: "found", totals: "money", unread: 3, busyOnce: false, deals: "full", names: true, createProfile: "ok", discover: "items", apply: "ok", applications: "some", withdraw: "ok", applicationsDelayMs: 0 });
-const reset = () => { n = 0; valid = new Map(); used = new Set(); tokens = new Map(); reuseDetected = false; refreshCalls = 0; lastForwardedFor = null; refreshDelayMs = 0; scenario = defaults(); calls = {}; writes = []; created = false; lastQuery = null; sentApps = []; withdrawn = new Set(); };
+let n, valid, used, reuseDetected, refreshCalls, lastForwardedFor, refreshDelayMs, tokens, scenario, calls, writes, created, lastQuery, sentApps, withdrawn, reports, blocked;
+const defaults = () => ({ attention: "items", profile: "found", totals: "money", unread: 3, busyOnce: false, deals: "full", names: true, createProfile: "ok", discover: "items", apply: "ok", applications: "some", withdraw: "ok", applicationsDelayMs: 0, campaignDelayMs: 0 });
+const reset = () => { n = 0; valid = new Map(); used = new Set(); tokens = new Map(); reuseDetected = false; refreshCalls = 0; lastForwardedFor = null; refreshDelayMs = 0; scenario = defaults(); calls = {}; writes = []; created = false; lastQuery = null; sentApps = []; withdrawn = new Set(); reports = new Map(); blocked = new Set(); };
 
 // ---- The creator's journey: campaigns, applications (contract: CampaignRead, ApplicationRead, BrandReliabilityRead) ----
 const CAMPAIGN_TITLES = ["Diwali sweets reel", "Filter coffee tasting", "Silk saree styling", "Millet snacks launch", "Temple town food walk"];
@@ -17,13 +17,15 @@ const campaign = (i, extra = {}) => ({
   deliverables: "2 reels", deliverable_items: [{ format: "reel", platform: "instagram", quantity: 2, note: null }],
   campaign_type: i % 7 === 3 ? "barter" : "paid", budget_min_paise: i % 7 === 3 ? null : 500_000, budget_max_paise: i % 7 === 3 ? null : 1_500_000,
   cities: ["Madurai", "Chennai"], niches: i % 3 ? ["food"] : ["fashion", "lifestyle"], applications_close_on: "2026-12-15", applications_close_at: "2026-12-15T18:30:00Z",
-  applications_open: true, status: "open", applicant_count: null, verified_domain: i % 2 ? null : { domain: "chennaibakes.in", dnssec_validated: false, last_checked_at: "2026-11-20T00:00:00Z", registered_on: null, verified_since: "2026-10-01T00:00:00Z" },
+  applications_open: true, status: "open", applicant_count: null, verified_domain: i % 2 ? null : { domain: "chennaibakes.in", dnssec_validated: false, last_checked_at: "2026-11-20T00:00:00Z", registered_on: "2019-03-02", verified_since: "2026-10-01T00:00:00Z" },
   text_flags: [], created_at: "2026-11-01T00:00:00Z", updated_at: "2026-11-01T00:00:00Z", currency: "INR", ...extra,
 });
 const ALL_CAMPAIGNS = Array.from({ length: 25 }, (_, i) => campaign(i + 1));
 const SPECIAL = {
   "c-flagged": campaign(90, { id: "c-flagged", description: "Pay a ₹500 registration fee to apply.", text_flags: [{ field: "description", flag: "asks_for_money" }] }),
   "c-closed": campaign(91, { id: "c-closed", applications_open: false }),
+  // A website registered ten days before today: the screen must say so plainly.
+  "c-newdomain": campaign(92, { id: "c-newdomain", verified_domain: { domain: "chennaibakes-offers.in", dnssec_validated: false, last_checked_at: "2026-11-20T00:00:00Z", registered_on: new Date(Date.now() - 10 * 86_400_000).toISOString().slice(0, 10), verified_since: "2026-11-20T00:00:00Z" } }),
 };
 const application = (id, campaignId, status, changed, extra = {}) => ({
   id, campaign_id: campaignId, creator_id: "cr-1", status, status_changed_at: changed, created_at: changed, updated_at: changed, pitch: "I make Madurai food reels every week.",
@@ -37,6 +39,7 @@ const myApplications = () => {
     application("a-2", "c-4", "shortlisted", "2026-11-22T05:00:00Z"),
     application("a-3", "c-6", "rejected", "2026-11-18T19:00:00Z", { rejection_reason: "budget_mismatch", rejection_note: "Call me on 98765 43210 to discuss.", text_flags: [{ field: "rejection_note", flag: "phone_number" }] }),
     application("a-4", "c-gone", "withdrawn", "2026-11-10T05:00:00Z"),
+    application("a-5", "c-8", "invited", "2026-11-21T05:00:00Z", { origin: "invited", invitation_note: "Loved your Madurai reels. Join our launch?" }),
   ];
   return [...sentApps, ...base].map((a) => (withdrawn.has(a.id) ? { ...a, status: "withdrawn" } : a));
 };
@@ -61,6 +64,7 @@ createServer((req, res) => {
     if (req.url === "/__state") return send(res, 200, { reuseDetected, refreshCalls, lastForwardedFor, liveLogins: valid.size, calls, writes, lastQuery });
     if (req.url === "/__scenario") { scenario = { ...defaults(), ...body }; return send(res, 200, scenario); }
     if (req.url === "/__reset") { reset(); return send(res, 200, {}); }
+    if (req.url === "/__calls/reset") { calls = {}; return send(res, 200, {}); } // count one screen's calls, not the screens before it
     if (req.url === "/__slow-refresh") { refreshDelayMs = Number(body.ms ?? 0); return send(res, 200, {}); }
 
     // ---- Today's data. Each answers only to a token this mock issued, as the real ones do. ----
@@ -87,7 +91,7 @@ createServer((req, res) => {
       if (path === "/api/v1/campaigns/discover") {
         lastQuery = Object.fromEntries(query);
         if (scenario.discover === "error") return fail(res, 500, "unexpected_error");
-        let items = scenario.discover === "empty" ? [] : [...ALL_CAMPAIGNS];
+        let items = scenario.discover === "empty" ? [] : ALL_CAMPAIGNS.filter((c) => !blocked.has(c.brand_id));
         if (query.get("niche")) items = items.filter((c) => c.niches.includes(query.get("niche")));
         if (query.get("campaign_type")) items = items.filter((c) => c.campaign_type === query.get("campaign_type"));
         const start = query.get("cursor") === "page-2" ? 20 : 0;
@@ -96,10 +100,11 @@ createServer((req, res) => {
       const campaignMatch = path.match(/^\/api\/v1\/campaigns\/([^/]+)$/);
       if (campaignMatch && req.method === "GET") {
         const id = campaignMatch[1];
+        if (scenario.campaignDelayMs) await new Promise((r) => setTimeout(r, scenario.campaignDelayMs));
         if (id === "c-gone") return fail(res, 404, "campaign_not_found");
         if (id === "c-withheld") return fail(res, 451, "content_withheld");
         const found = SPECIAL[id] ?? ALL_CAMPAIGNS.find((c) => c.id === id);
-        return found ? send(res, 200, found) : fail(res, 404, "campaign_not_found");
+        return found && !blocked.has(found.brand_id) ? send(res, 200, found) : fail(res, 404, "campaign_not_found"); // a block reads as not found
       }
       const reliabilityMatch = path.match(/^\/api\/v1\/brands\/([^/]+)\/reliability$/);
       if (reliabilityMatch) {
@@ -119,9 +124,24 @@ createServer((req, res) => {
         sentApps.unshift(sent);
         return send(res, 201, sent);
       }
+      if (path === "/api/v1/reports" && req.method === "POST") {
+        record("report");
+        const subject = `${body.subject_kind}:${body.subject_id}`;
+        const existing = reports.get(subject);
+        if (existing) return send(res, 200, existing); // already reported and still open: the same report, 200
+        const made = { id: `r-${reports.size + 1}`, subject_kind: body.subject_kind, subject_id: body.subject_id, category: body.category, status: "open", created_at: "2026-11-26T00:00:00Z", resolved_at: null };
+        reports.set(subject, made);
+        return send(res, 201, made);
+      }
+      if (path === "/api/v1/me/blocks" && req.method === "POST") {
+        record("block");
+        blocked.add(body.brand_id);
+        return send(res, 201, { id: `bl-${blocked.size}`, brand_id: body.brand_id, creator_id: null, created_at: "2026-11-26T00:00:00Z" });
+      }
       if (path === "/api/v1/applications/me") {
         if (scenario.applicationsDelayMs) await new Promise((r) => setTimeout(r, scenario.applicationsDelayMs));
         if (scenario.applications === "error") return fail(res, 500, "unexpected_error");
+        if (scenario.applications === "noProfile") return fail(res, 409, "creator_profile_required");
         return send(res, 200, { items: myApplications(), next_cursor: null });
       }
       if (path === "/api/v1/applications/me/feedback") {

@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { SelectField } from "@/components/ui/select-field";
 import { TextField } from "@/components/ui/text-field";
 import { activeFilterCount, CAMPAIGN_TYPES, type CampaignType, type Filters } from "@/lib/campaigns";
-import { t } from "@/lib/messages";
+import { t } from "@/lib/app-messages";
 import { NICHES, type Niche } from "@/lib/onboarding";
 
 /** The four filters the API supports (GET /campaigns/discover): city, niche, type, minimum pay. Applied on submit, not per keystroke. */
-export function DiscoverFilters({ value, cities, onApply }: { value: Filters; cities: string[]; onApply: (f: Filters) => void }) {
+export function DiscoverFilters({ value, cities, onApply, onCityFocus }: { value: Filters; cities: string[]; onApply: (f: Filters) => void; onCityFocus: () => void }) {
   const [city, setCity] = useState(value.city ?? "");
   const [niche, setNiche] = useState<string>(value.niche ?? "");
   const [type, setType] = useState<string>(value.type ?? "");
@@ -35,7 +35,7 @@ export function DiscoverFilters({ value, cities, onApply }: { value: Filters; ci
   return (
     <form role="search" aria-label={t("discover.filters.label")} onSubmit={submit} className="grid gap-4 rounded-3xl bg-sunk p-4 sm:p-5">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <TextField label={t("discover.filters.city")} placeholder={t("discover.filters.cityPlaceholder")} value={city} onChange={(e) => setCity(e.target.value)} list="discover-cities" maxLength={60} />
+        <TextField label={t("discover.filters.city")} placeholder={t("discover.filters.cityPlaceholder")} value={city} onChange={(e) => setCity(e.target.value)} onFocus={onCityFocus} list="discover-cities" maxLength={60} />
         <datalist id="discover-cities">{cities.map((c) => <option key={c} value={c} />)}</datalist>
         <SelectField label={t("discover.filters.niche")} value={niche} onChange={(e) => setNiche(e.target.value)} options={[{ value: "", label: t("discover.filters.nicheAny") }, ...NICHES.map((n) => ({ value: n, label: t(`niches.${n}`) }))]} />
         <SelectField label={t("discover.filters.type")} value={type} onChange={(e) => setType(e.target.value)} options={[{ value: "", label: t("discover.filters.typeAny") }, ...CAMPAIGN_TYPES.map((c) => ({ value: c, label: t(`campaignTypes.${c}`) }))]} />
