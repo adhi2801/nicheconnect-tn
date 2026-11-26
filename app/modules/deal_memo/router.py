@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page, Slice
-from app.core.rate_limit import rate_limit
+from app.core.rate_limit import named_as, rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
 from app.modules.campaigns.dependencies import (
@@ -40,6 +40,9 @@ from app.modules.deal_memo.schemas import (
 from app.modules.deal_memo.stage import stages_for
 
 WRITE_LIMIT = "30 per minute"
+# Each move reaches the other side (a notice, terms to answer), so each has
+# a daily ceiling per account as well (trust-and-safety.md rule 2).
+MOVE_LIMIT = "30 per minute;200 per day"
 READ_LIMIT = "60 per minute"
 
 router = APIRouter(
@@ -89,7 +92,9 @@ def _page(
     description=(
         "Creates the memo as a draft, visible only to the brand until it is sent. "
         "Paid and local-business campaigns need a fee; barter campaigns must not "
-        "have one. One memo per application."
+        "have one. One memo per application. A `content_due_on` more than a "
+        "year ahead in Tamil Nadu is refused (422): almost certainly a "
+        "mistyped year."
     ),
     responses={
         **_COMMON_ERRORS,
@@ -201,7 +206,8 @@ def read_memo(
     description=(
         "Only while the brand holds it: a draft, or after the creator asked for a "
         "change. Once accepted the terms stop moving, so a creator can rely on "
-        "what they agreed to."
+        "what they agreed to. A `content_due_on` more than a year ahead is "
+        "refused (422)."
     ),
     responses={
         **_COMMON_ERRORS,
@@ -227,7 +233,15 @@ def update_memo(
 def _brand_move(
     action: str, new_status: str, summary: str, description: str
 ) -> Callable[..., Any]:
-    @router.post(
+    def endpoint(
+        request: Request,
+        memo: BrandMemo,
+        db: Session = Depends(get_db),
+        now: datetime = Depends(get_now),
+    ) -> MemoRead:
+        return _read(db, service.change_status(db, memo, new_status, now, actor="brand"))
+
+    return router.post(
         f"/{{memo_id}}/{action}",
         response_model=MemoRead,
         summary=summary,
@@ -238,17 +252,7 @@ def _brand_move(
             404: problem_doc("No such memo, or it is not yours"),
             409: problem_doc("The memo is not in a state where that is allowed"),
         },
-    )
-    @rate_limit(WRITE_LIMIT)
-    def endpoint(
-        request: Request,
-        memo: BrandMemo,
-        db: Session = Depends(get_db),
-        now: datetime = Depends(get_now),
-    ) -> MemoRead:
-        return _read(db, service.change_status(db, memo, new_status, now, actor="brand"))
-
-    return endpoint
+    )(rate_limit(MOVE_LIMIT)(named_as(f"memo_{action}")(endpoint)))
 
 
 send_memo = _brand_move(
@@ -279,19 +283,6 @@ cancel_memo_as_brand = _brand_move(
 def _creator_move(
     action: str, new_status: str, summary: str, description: str
 ) -> Callable[..., Any]:
-    @router.post(
-        f"/{{memo_id}}/{action}",
-        response_model=MemoRead,
-        summary=summary,
-        description=description,
-        name=f"memo_{action}",
-        responses={
-            **_COMMON_ERRORS,
-            404: problem_doc("No such memo, or it was not sent to you"),
-            409: problem_doc("The memo is not in a state where that is allowed"),
-        },
-    )
-    @rate_limit(WRITE_LIMIT)
     def endpoint(
         request: Request,
         memo: CreatorMemo,
@@ -302,7 +293,18 @@ def _creator_move(
             db, service.change_status(db, memo, new_status, now, actor="creator")
         )
 
-    return endpoint
+    return router.post(
+        f"/{{memo_id}}/{action}",
+        response_model=MemoRead,
+        summary=summary,
+        description=description,
+        name=f"memo_{action}",
+        responses={
+            **_COMMON_ERRORS,
+            404: problem_doc("No such memo, or it was not sent to you"),
+            409: problem_doc("The memo is not in a state where that is allowed"),
+        },
+    )(rate_limit(MOVE_LIMIT)(named_as(f"memo_{action}")(endpoint)))
 
 
 accept_memo = _creator_move(
@@ -348,7 +350,7 @@ withdraw_memo_as_creator = _creator_move(
         422: problem_doc("The message is missing or too short"),
     },
 )
-@rate_limit(WRITE_LIMIT)
+@rate_limit(MOVE_LIMIT)
 def request_change(
     request: Request,
     body: ChangeRequest,

@@ -12,7 +12,11 @@ from app.core.literals import ensure_same_values
 from app.core.partial_update import check_change
 from app.core.taxonomy import CURRENCY
 from app.core.text_flags import FieldFlag, field_flags
-from app.modules.campaigns.schemas import DeliverableItems, DeliverableRead
+from app.modules.campaigns.schemas import (
+    DeliverableItems,
+    DeliverableRead,
+    deliverable_notes,
+)
 from app.modules.deal_memo.content_rights import RIGHTS_STATES
 from app.modules.deal_memo.delivery_record import (
     HAS_HISTORY,
@@ -221,7 +225,11 @@ class MemoFields(BaseModel):
         # after they were matched: a creator naming a price is ordinary and
         # contact is no longer a warning, so neither flag applies to it.
         return field_flags(
-            {"deliverables": self.deliverables, "extra_terms": self.extra_terms},
+            {
+                "deliverables": self.deliverables,
+                **deliverable_notes(self.deliverable_items),
+                "extra_terms": self.extra_terms,
+            },
             money=True,
             contact=False,
         )

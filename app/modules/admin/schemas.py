@@ -180,6 +180,10 @@ class AdminActionRead(BaseModel):
         "lift_withhold",
         "clear_brand_name",
         "withdraw_brand_name_clearance",
+        "publish_rate_report",
+        "withdraw_rate_report",
+        "view_rate_report",
+        "rebuild_rate_report",
     ]
     subject_account_id: uuid.UUID | None
     report_id: uuid.UUID | None

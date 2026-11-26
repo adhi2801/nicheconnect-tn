@@ -215,6 +215,21 @@ def test_the_band_comes_from_the_same_platforms_followers(client, db, brand):
     assert body["creators_counted"] == 0
 
 
+def test_a_creator_on_a_band_s_edge_counts_in_the_band_above(client, db, brand):
+    """10,000 followers is 10k_50k's first count and under_10k's first count
+    past it (`asking_prices.in_band`, which the rate report shares)."""
+    for price in (100_000, 200_000, 300_000, 400_000, 500_000):
+        pricer(db, price, followers=10_000)
+    pricer(db, 9_000_000, followers=50_000)  # 50k_100k's first count, not here
+
+    in_band = guidance(client, brand)
+    below = guidance(client, brand, followers=9_999)
+
+    assert in_band["audience_band"] == "10k_50k"
+    assert in_band["creators_counted"] == 5
+    assert below["creators_counted"] == 0
+
+
 def test_another_format_or_platform_is_not_counted(client, db, brand):
     five_food_creators_in_madurai(db)
     for _ in range(5):

@@ -194,9 +194,9 @@ One feature at a time, built whole, to these eight steps. Adhi chose this on 12 
 
 - **One feature at a time** (above). Never a batch of features, a new project, or a multi-module refactor without approval.
 - **One file, one job.** Don't combine unrelated responsibilities for convenience.
-- **Branch per task.** Never commit directly to `main`. Branch names: `feature/<name>`, `fix/<name>`, `chore/<name>`, `docs/<name>`.
+- **Straight to `main` while Adhi builds alone (D-204).** Commit on `main`, run the gates locally, push; no pull requests and no long-lived branches. If Erode Harish returns to backend work, branch per task again: `feature/<name>`, `fix/<name>`, `chore/<name>`, `docs/<name>`.
 - **Small commits** in Conventional Commits style: `feat(auth): add OTP request endpoint`.
-- **Every merge to `main`** goes through a PR the other founder reviews, with green CI. **While Adhi builds alone (D-101), Claude merges finished work to `main` itself, without asking each time**: only when every local gate has passed and CI is seen green on GitHub for the exact commit being merged (read through GitHub's API), with a merge commit (`--no-ff`), never a force-push or a rewritten history, and saying in the report that no second person reviewed it.
+- **Every push to `main`** has passed the affected tests and linters locally first, and CI on `main` is checked after it; a red `main` is fixed before anything else. Never a force-push or a rewritten history. When two founders build, every merge to `main` goes through a pull request the other reviews, with green CI (D-101 is replaced by D-204 while Adhi builds alone).
 - **No silent shortcuts.** If the fast way conflicts with this file, stop and ask.
 - **Before touching payments, PII or embeddings,** re-read section 2.
 - **Status words mean exactly this:**
@@ -211,7 +211,7 @@ One feature at a time, built whole, to these eight steps. Adhi chose this on 12 
 
 - Never run `git push --force`, `git reset --hard`, `git rebase` on shared branches, or delete branches without approval.
 - Never commit `.env`, secrets, keys, tokens, `venv/`, or large generated files. If one is staged, unstage it and warn.
-- Merge only as D-101 allows (above); otherwise founders merge on GitHub.
+- Push to `main` only as D-204 allows (above).
 
 ---
 
@@ -277,9 +277,9 @@ If a standard conflicts with a founder's explicit instruction, point out the con
 - [ ] Error format, pagination and naming match `docs/standards/backend.md`
 - [ ] Schema changes only via a reviewed migration with a working downgrade
 - [ ] No new dependency without a recorded approval
-- [ ] Committed on a feature branch and pushed
+- [ ] Committed and pushed to `main` (D-204)
 - [ ] Every document it affects still meets the documents' bar (`docs/README.md`)
-- [ ] CI seen green (not assumed) on the exact commit; merged by a founder, or by Claude under D-101; reviewed by the other founder, or the report says it was not
+- [ ] CI seen green (not assumed) on the pushed commit; any red fixed first
 
 ---
 

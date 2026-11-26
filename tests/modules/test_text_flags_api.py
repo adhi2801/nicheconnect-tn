@@ -141,6 +141,47 @@ def test_memo_terms_asking_for_a_deposit_are_flagged(client, db, clock):
     assert flags(body) == [("extra_terms", "asks_for_money")]
 
 
+def test_a_memo_deliverable_note_asking_for_money_is_flagged(client, db, clock):
+    """Audit C13, 22 November 2026. Each line's note is the brand's words and
+    the creator reads it with the terms, but only the summary and the extra
+    terms were checked: the scam fitted in a note, unflagged."""
+    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    memo_id = accepted_memo(
+        client,
+        brand,
+        creator,
+        deliverable_items=[
+            {"platform": "instagram", "format": "reel", "note": "60 seconds, in Tamil"},
+            {"platform": "instagram", "format": "story", "note": SCAM},
+        ],
+    )
+
+    body = client.get(f"{MEMOS_URL}/{memo_id}", headers=creator.headers).json()
+
+    assert flags(body) == [("deliverable_items.1.note", "asks_for_money")]
+
+
+def test_a_campaign_deliverable_note_asking_for_money_is_flagged(client, db, clock):
+    """The same note on a brief, before any deal: contact details count too."""
+    brand, creator = brand_user(db, clock), creator_user(db, clock)
+    campaign_id = open_campaign(
+        client,
+        brand,
+        deliverable_items=[
+            {"platform": "instagram", "format": "reel", "note": SCAM},
+            {"platform": "instagram", "format": "story", "note": "WhatsApp 98765 43210"},
+            {"platform": "youtube", "format": "short", "note": "60 seconds, in Tamil"},
+        ],
+    )
+
+    body = client.get(f"{CAMPAIGNS_URL}/{campaign_id}", headers=creator.headers).json()
+
+    assert flags(body) == [
+        ("deliverable_items.0.note", "asks_for_money"),
+        ("deliverable_items.1.note", "phone_number"),
+    ]
+
+
 def test_a_revision_note_asking_for_money_is_flagged(client, db, clock):
     brand, creator = brand_user(db, clock), creator_user(db, clock)
     memo_id = accepted_memo(client, brand, creator)

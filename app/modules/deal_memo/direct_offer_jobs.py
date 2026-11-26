@@ -19,6 +19,7 @@ from typing import Any
 
 from dbos import DBOS, ScheduleInput
 
+from app.core.job_runs import run_alone
 from app.db.session import SessionLocal
 from app.modules.deal_memo import direct_offer_service
 
@@ -35,7 +36,8 @@ def run(scheduled_at: datetime) -> direct_offer_service.JobRun:
 @DBOS.step(name="direct_offers.expire_and_erase")
 def expire_and_erase_step(scheduled_at: datetime) -> None:
     # One step: the work is idempotent, so a crash halfway is safely redone.
-    run(scheduled_at)
+    # One run at a time per schedule (item 118, D-186).
+    run_alone(SCHEDULE_NAME, lambda: run(scheduled_at))
 
 
 @DBOS.workflow(name="direct_offers.hourly")

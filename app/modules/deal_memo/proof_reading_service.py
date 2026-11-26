@@ -39,7 +39,9 @@ from sqlalchemy.orm import Session
 
 from app.core.clock import india_date
 from app.core.config import settings
-from app.core.storage import FileStore, ObjectTooLarge
+from app.core.deadline import Deadline
+from app.core.job_runs import within_budget
+from app.core.storage import FileStore, ObjectTooLarge, storage_failures
 from app.modules.campaigns.models import Application
 from app.modules.deal_memo import record_service as record
 from app.modules.deal_memo.exceptions import (
@@ -58,6 +60,14 @@ logger = logging.getLogger(__name__)
 # Screenshots read per run. A run starts every minute; a reading takes
 # seconds, so five keep a run near a minute even when the API is slow.
 PER_RUN = 5
+# Files looked at per run, to find PER_RUN to read. A file whose clean copy
+# storage refuses or cannot give now is passed over without a reading, so it
+# stays first in line; looking further than PER_RUN keeps five such files
+# from holding every other proof back (review of item 118, 18 November
+# 2026). A refusal costs one quick request; a slow store is held by the run's
+# budget. More than this many stuck at once would starve the rest again
+# (D-186 point 14 names it).
+CANDIDATES_PER_RUN = 50
 MAX_ATTEMPTS = 3
 RETRY_AFTER = timedelta(minutes=15)
 RETRYABLE = ("api_error", "max_tokens")
@@ -315,6 +325,16 @@ def read_one(
             except KeyError, ObjectTooLarge:
                 logger.warning("proof file %s: its clean copy cannot be read", file_id)
                 return SKIPPED
+            except storage_failures() as error:
+                # Storage too slow, unreachable or refusing this time: still
+                # due, so the next run tries, and the rest are read now. Its
+                # type only: a message could carry the key (backend.md 9).
+                logger.warning(
+                    "proof file %s: its clean copy could not be read now (%s)",
+                    file_id,
+                    type(error).__name__,
+                )
+                return SKIPPED
             reading = reader.read(image, content_type)
             return save_reading(db, file_id, reading, now)
         finally:
@@ -329,10 +349,15 @@ def read_due(
     now: datetime,
     *,
     limit: int = PER_RUN,
+    budget: Deadline | None = None,
 ) -> ReadingRun:
-    """One run: the oldest due files, each on its own, up to the daily limit.
+    """One run: up to `limit` of the oldest due files read, up to the daily limit.
 
-    With reading switched off (no reader) nothing happens at all.
+    With reading switched off (no reader) nothing happens at all. Up to
+    CANDIDATES_PER_RUN due files are looked at, oldest first, until `limit`
+    of them have been given to the reader: one storage cannot give now is
+    passed over and does not count. Once `budget` is spent no further file
+    is started (item 118, D-186); the rest stay due for the next run.
     """
     if reader is None:
         return ReadingRun(
@@ -351,11 +376,16 @@ def read_due(
             .outerjoin(ProofFileReading, ProofFileReading.proof_file_id == ProofFile.id)
             .where(due(now))
             .order_by(ProofFile.cleaned_at, ProofFile.id)
-            .limit(min(limit, allowance))
+            .limit(CANDIDATES_PER_RUN)
         ).all()
     )
     db.rollback()
-    outcomes = [read_one(db, store, reader, file_id, now) for file_id in queue]
+    to_read = min(limit, allowance)
+    outcomes: list[str] = []
+    for file_id in within_budget(queue, budget, "proof_files.read"):
+        outcomes.append(read_one(db, store, reader, file_id, now))
+        if len(outcomes) - outcomes.count(SKIPPED) >= to_read:
+            break
     return ReadingRun(
         read=outcomes.count(READ),
         no_numbers=outcomes.count(NO_NUMBERS),

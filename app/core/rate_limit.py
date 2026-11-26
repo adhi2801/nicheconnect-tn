@@ -74,3 +74,25 @@ def shared_rate_limit[Endpoint: Callable[..., Any]](
         value, scope=scope, key_func=key
     )
     return decorator
+
+
+def named_as[Endpoint: Callable[..., Any]](
+    name: str,
+) -> Callable[[Endpoint], Endpoint]:
+    """Rename an endpoint made by a factory function, below its rate limit.
+
+    slowapi names a route's limits, and keys their counters, by the endpoint
+    function's module and name (`key_style="endpoint"`). Routes made by one
+    factory are all one function name, so unrenamed they shared one counter
+    and stacked one copy of their limit on it per route: each request was
+    charged once per route the factory made, and a move on one route counted
+    against the others (audit C13, 22 November 2026). Placed under
+    `@rate_limit`, so the name is set before the limit is attached;
+    `tests/test_rate_limit.py` fails on any name two routes share.
+    """
+
+    def rename(endpoint: Endpoint) -> Endpoint:
+        endpoint.__name__ = endpoint.__qualname__ = name
+        return endpoint
+
+    return rename

@@ -5,6 +5,7 @@ a throwaway schema for DBOS's state and a date in 2020 for the checkpoint, so
 no deal is covered, and they remove everything they wrote afterwards.
 """
 
+import uuid
 from collections.abc import Iterator
 from datetime import UTC, date, datetime
 
@@ -15,10 +16,15 @@ from sqlalchemy import delete, select, text
 
 from app.core import jobs
 from app.core.config import settings
+from app.core.job_runs import (
+    EVERY_MINUTE_BUDGET_SECONDS,
+    LONG_BUDGET_SECONDS,
+    one_run_at_a_time,
+)
 from app.db.session import SessionLocal
 from app.main import app
 from app.modules.admin import report_clock_jobs
-from app.modules.campaigns import alert_jobs
+from app.modules.campaigns import alert_jobs, brief_jobs
 from app.modules.deal_memo import (
     anchor_jobs,
     anchor_service,
@@ -28,6 +34,7 @@ from app.modules.deal_memo import (
 )
 from app.modules.deal_memo.anchor_models import DealRecordCheckpoint, DealRecordTimestamp
 from app.modules.deal_memo.timestamp_authority import Stamp
+from app.modules.insights import rate_report_jobs
 from app.modules.me import (
     account_deletion_jobs,
     connection_jobs,
@@ -131,7 +138,7 @@ def test_the_cleaning_workflow_runs_through_dbos(launched, monkeypatch):
     monkeypatch.setattr(
         proof_cleaning_jobs,
         "run_cleaning",
-        lambda scheduled_at: runs.append(scheduled_at),
+        lambda scheduled_at, budget=None: runs.append(scheduled_at),
     )
 
     proof_cleaning_jobs.clean_proof_files(SCHEDULED, None)
@@ -157,7 +164,7 @@ def test_the_reading_workflow_runs_through_dbos(launched, monkeypatch):
     monkeypatch.setattr(
         proof_reading_jobs,
         "run_reading",
-        lambda scheduled_at: runs.append(scheduled_at),
+        lambda scheduled_at, budget=None: runs.append(scheduled_at),
     )
 
     proof_reading_jobs.read_proof_files(SCHEDULED, None)
@@ -191,7 +198,7 @@ def test_the_warning_workflow_runs_through_dbos(launched, monkeypatch):
     monkeypatch.setattr(
         report_clock_jobs,
         "run_warnings",
-        lambda scheduled_at: runs.append(scheduled_at),
+        lambda scheduled_at, budget=None: runs.append(scheduled_at),
     )
 
     report_clock_jobs.warn_about_report_deadlines(SCHEDULED, None)
@@ -254,7 +261,7 @@ def test_the_domain_checking_workflow_runs_through_dbos(launched, monkeypatch):
     monkeypatch.setattr(
         brand_domain_jobs,
         "run_checks",
-        lambda scheduled_at: runs.append(scheduled_at),
+        lambda scheduled_at, budget=None: runs.append(scheduled_at),
     )
 
     brand_domain_jobs.check_brand_domains(SCHEDULED, None)
@@ -284,7 +291,9 @@ def test_phone_changes_are_made_every_minute_with_no_backfill(launched):
 def test_the_phone_change_workflow_runs_through_dbos(launched, monkeypatch):
     runs = []
     monkeypatch.setattr(
-        phone_change_jobs, "run_changes", lambda scheduled_at: runs.append(scheduled_at)
+        phone_change_jobs,
+        "run_changes",
+        lambda scheduled_at, budget=None: runs.append(scheduled_at),
     )
 
     phone_change_jobs.make_phone_changes(SCHEDULED, None)
@@ -310,7 +319,9 @@ def test_data_exports_are_built_every_minute_with_no_backfill(launched):
 def test_the_export_workflow_runs_through_dbos(launched, monkeypatch):
     runs = []
     monkeypatch.setattr(
-        data_export_jobs, "run_exports", lambda scheduled_at: runs.append(scheduled_at)
+        data_export_jobs,
+        "run_exports",
+        lambda scheduled_at, budget=None: runs.append(scheduled_at),
     )
 
     data_export_jobs.build_data_exports(SCHEDULED, None)
@@ -336,7 +347,9 @@ def test_passkey_resets_are_settled_every_minute_with_no_backfill(launched):
 def test_the_passkey_workflow_runs_through_dbos(launched, monkeypatch):
     runs = []
     monkeypatch.setattr(
-        passkey_jobs, "run_resets", lambda scheduled_at: runs.append(scheduled_at)
+        passkey_jobs,
+        "run_resets",
+        lambda scheduled_at, budget=None: runs.append(scheduled_at),
     )
 
     passkey_jobs.settle_passkey_resets(SCHEDULED, None)
@@ -368,7 +381,7 @@ def test_the_deletion_workflow_runs_through_dbos(launched, monkeypatch):
     monkeypatch.setattr(
         account_deletion_jobs,
         "run_deletions",
-        lambda scheduled_at: runs.append(scheduled_at),
+        lambda scheduled_at, budget=None: runs.append(scheduled_at),
     )
 
     account_deletion_jobs.erase_accounts(SCHEDULED, None)
@@ -394,7 +407,9 @@ def test_campaign_alerts_are_sent_every_minute_with_no_backfill(launched):
 def test_the_alert_workflow_runs_through_dbos(launched, monkeypatch):
     runs = []
     monkeypatch.setattr(
-        alert_jobs, "run_sending", lambda scheduled_at: runs.append(scheduled_at)
+        alert_jobs,
+        "run_sending",
+        lambda scheduled_at, budget=None: runs.append(scheduled_at),
     )
 
     alert_jobs.send_campaign_alerts(SCHEDULED, None)
@@ -414,7 +429,9 @@ def test_connections_are_refreshed_each_morning_with_no_backfill(launched):
 def test_the_refresh_workflow_runs_through_dbos(launched, monkeypatch):
     runs = []
     monkeypatch.setattr(
-        connection_jobs, "run_refresh", lambda scheduled_at: runs.append(scheduled_at)
+        connection_jobs,
+        "run_refresh",
+        lambda scheduled_at, budget=None: runs.append(scheduled_at),
     )
 
     connection_jobs.refresh_connections(SCHEDULED, None)
@@ -452,3 +469,144 @@ def test_a_direct_offer_run_with_nothing_due_changes_nothing(launched):
     run = direct_offer_jobs.run(SCHEDULED)
 
     assert run.expired == run.deleted == 0
+
+
+def test_the_rate_report_is_built_each_morning_with_no_backfill(launched):
+    """Item 84, D-200: 06:00 in Tamil Nadu; a missed day is the next day's work."""
+    schedule = DBOS.get_schedule(rate_report_jobs.SCHEDULE_NAME)
+
+    assert schedule is not None
+    assert schedule["schedule"] == rate_report_jobs.DAILY_CRON == "30 0 * * *"
+    assert schedule["automatic_backfill"] is False
+
+
+def test_the_rate_report_workflow_runs_through_dbos(launched, monkeypatch):
+    runs = []
+    monkeypatch.setattr(
+        rate_report_jobs, "run_build", lambda scheduled_at: runs.append(scheduled_at)
+    )
+
+    rate_report_jobs.build_rate_report(SCHEDULED, None)
+
+    assert runs == [SCHEDULED]
+
+
+def test_a_failing_rate_report_run_is_checked_once_not_once_a_try(launched, monkeypatch):
+    """The build is tried 3 times; whether a report is overdue is said once,
+    after the last try (item 84, D-200)."""
+    tries, checks = [], []
+
+    def failing(scheduled_at):
+        tries.append(scheduled_at)
+        raise RuntimeError("the database went away")
+
+    monkeypatch.setattr(rate_report_jobs, "run_build", failing)
+    monkeypatch.setattr(rate_report_jobs, "run_check", checks.append)
+    monkeypatch.setattr(
+        rate_report_jobs, "SCHEDULE_NAME", f"test-rate-report-{uuid.uuid4().hex}"
+    )
+
+    with pytest.raises(Exception):  # noqa: B017 - DBOS's own after the tries
+        rate_report_jobs.build_rate_report(SCHEDULED, None)
+
+    assert tries == [SCHEDULED] * 3
+    assert checks == [SCHEDULED]
+
+
+def test_a_rate_report_run_that_builds_is_checked_once(launched, monkeypatch):
+    checks = []
+    monkeypatch.setattr(rate_report_jobs, "run_build", lambda scheduled_at: None)
+    monkeypatch.setattr(rate_report_jobs, "run_check", checks.append)
+
+    rate_report_jobs.build_rate_report(SCHEDULED, None)
+
+    assert checks == [SCHEDULED]
+
+
+# --- one run at a time, and each run's budget (item 118, D-186) ----------------------
+
+JOBS = [
+    # module, the work it runs, its workflow, its budget (None: it calls nobody outside)
+    (
+        proof_cleaning_jobs,
+        "run_cleaning",
+        "clean_proof_files",
+        EVERY_MINUTE_BUDGET_SECONDS,
+    ),
+    (proof_reading_jobs, "run_reading", "read_proof_files", EVERY_MINUTE_BUDGET_SECONDS),
+    (brief_jobs, "run_drafting", "draft_briefs", EVERY_MINUTE_BUDGET_SECONDS),
+    (data_export_jobs, "run_exports", "build_data_exports", EVERY_MINUTE_BUDGET_SECONDS),
+    (brand_domain_jobs, "run_checks", "check_brand_domains", EVERY_MINUTE_BUDGET_SECONDS),
+    (account_deletion_jobs, "run_deletions", "erase_accounts", LONG_BUDGET_SECONDS),
+    (anchor_jobs, "run_checkpoint", "daily_checkpoint", LONG_BUDGET_SECONDS),
+    (connection_jobs, "run_refresh", "refresh_connections", LONG_BUDGET_SECONDS),
+    (rate_report_jobs, "run_build", "build_rate_report", None),
+    (direct_offer_jobs, "run", "hourly", None),
+    (report_clock_jobs, "run_warnings", "warn_about_report_deadlines", None),
+    (alert_jobs, "run_sending", "send_campaign_alerts", None),
+    (passkey_jobs, "run_resets", "settle_passkey_resets", None),
+    (phone_change_jobs, "run_changes", "make_phone_changes", None),
+]
+JOB_IDS = [module.SCHEDULE_NAME for module, *_ in JOBS]
+
+
+def own_lock_name(monkeypatch, module) -> str:
+    """The job's runs lock a name of this test's own, never the real schedule's.
+
+    The real DBOS scheduler runs while `launched`, and other tests or app
+    processes on this database may hold a real schedule's lock; a name no
+    one else uses keeps this test from waiting on them, or them on it. The
+    workflow reads its module's SCHEDULE_NAME when it runs, so it locks this.
+    """
+    name = f"test-{module.SCHEDULE_NAME}-{uuid.uuid4().hex}"
+    monkeypatch.setattr(module, "SCHEDULE_NAME", name)
+    return name
+
+
+def test_every_schedule_is_bounded_here():
+    """A schedule added later must join JOBS, or this fails."""
+    scheduled = {
+        schedule["schedule_name"]
+        for module in vars(jobs).values()
+        if hasattr(module, "schedules")
+        for schedule in module.schedules()
+    }
+
+    assert len(scheduled) == 14
+    assert scheduled == set(JOB_IDS)
+
+
+@pytest.mark.parametrize(("module", "work", "workflow", "budget"), JOBS, ids=JOB_IDS)
+def test_each_run_is_given_its_budget(
+    launched, monkeypatch, module, work, workflow, budget
+):
+    given = []
+    own_lock_name(monkeypatch, module)
+    monkeypatch.setattr(
+        module, work, lambda scheduled_at, *budgets: given.append((scheduled_at, budgets))
+    )
+
+    getattr(module, workflow)(SCHEDULED, None)
+
+    [(scheduled_at, budgets)] = given
+    assert scheduled_at == SCHEDULED
+    if budget is None:
+        assert budgets == ()
+    else:
+        [deadline] = budgets
+        assert budget - 5 < deadline.remaining() <= budget
+
+
+@pytest.mark.parametrize(("module", "work", "workflow", "budget"), JOBS, ids=JOB_IDS)
+def test_a_run_while_the_last_is_still_going_does_nothing(
+    launched, monkeypatch, module, work, workflow, budget
+):
+    given = []
+    monkeypatch.setattr(module, work, lambda *args: given.append(args))
+    name = own_lock_name(monkeypatch, module)
+
+    with one_run_at_a_time(name) as held:
+        assert held is True  # the "last run", on a connection of its own
+        getattr(module, workflow)(SCHEDULED, None)
+
+    assert given == []

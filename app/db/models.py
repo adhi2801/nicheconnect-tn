@@ -49,6 +49,7 @@ from app.modules.deal_memo.record_models import DealRecordEntry  # noqa: F401
 from app.modules.deal_memo.shipment_models import BarterShipment  # noqa: F401
 from app.modules.disputes.event_models import DisputeEvent  # noqa: F401
 from app.modules.disputes.models import Dispute  # noqa: F401
+from app.modules.insights.rate_report_models import CityRateReport  # noqa: F401
 from app.modules.matching.creator_list_models import (  # noqa: F401
     CreatorList,
     CreatorListEntry,

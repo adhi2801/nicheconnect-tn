@@ -56,6 +56,10 @@ APPEND_ONLY_TABLES = {
 # Sealed the same way: those above, and dispute events since item 99, which
 # keep an updated_at that always equals created_at.
 SEALED_TABLES = APPEND_ONLY_TABLES | {"dispute_event"}
+# Changed freely until published, then sealed but for one withdrawal, by a
+# trigger that also refuses deleting and emptying it (item 84, D-200). Not
+# append-only: it has an updated_at, and the app's login may update it.
+SEALED_ONCE_PUBLISHED = {"city_rate_report"}
 # A deal record entry's moment is `recorded_at`, which is inside its seal and
 # set by the app, so it has no created_at either (D-057 point 3).
 NO_CREATED_AT = {"deal_record_entry"}
@@ -256,7 +260,7 @@ def test_append_only_tables_refuse_every_change():
 
     assert {
         t for t, events in sealed.items() if events >= {"UPDATE", "DELETE", "TRUNCATE"}
-    } == SEALED_TABLES
+    } == SEALED_TABLES | SEALED_ONCE_PUBLISHED
 
 
 def test_every_rule_in_the_database_is_broken_by_some_test():

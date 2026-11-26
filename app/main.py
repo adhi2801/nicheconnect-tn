@@ -25,6 +25,7 @@ from app.modules.admin.admin_login_router import router as admin_login_router
 from app.modules.admin.admin_router import router as admin_router
 from app.modules.admin.look_alike_router import router as look_alike_router
 from app.modules.admin.numbers_router import router as numbers_router
+from app.modules.admin.rate_report_router import router as admin_rate_report_router
 from app.modules.admin.report_clock_router import router as report_clock_router
 from app.modules.admin.report_router import router as report_router
 from app.modules.admin.takedown_router import router as admin_takedown_router
@@ -68,6 +69,7 @@ from app.modules.deal_memo.shipment_router import router as shipment_router
 from app.modules.disputes.router import router as disputes_router
 from app.modules.insights.city_figures_router import router as city_figures_router
 from app.modules.insights.rate_guidance_router import router as rate_guidance_router
+from app.modules.insights.rate_report_router import router as rate_report_router
 from app.modules.matching.creator_list_router import router as creator_lists_router
 from app.modules.matching.router import router as matching_router
 from app.modules.matching.search_router import router as search_router
@@ -201,6 +203,7 @@ app.include_router(attention_router)
 app.include_router(public_router)
 # Public: city figures for city pages (D-078).
 app.include_router(city_figures_router)
+app.include_router(rate_report_router)
 app.include_router(rate_card_router)
 app.include_router(availability_router)
 app.include_router(brand_domain_router)
@@ -223,6 +226,7 @@ app.include_router(look_alike_router)
 app.include_router(numbers_router)
 app.include_router(report_clock_router)
 app.include_router(admin_takedown_router)
+app.include_router(admin_rate_report_router)
 app.include_router(attribution_router)
 app.include_router(media_kit_router)
 app.include_router(rate_guidance_router)

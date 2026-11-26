@@ -158,6 +158,12 @@ variable "proof_reading_enabled" {
   description = "true once the validation pack allows it and the Claude key is in its secret. Until the key is pasted, true stops the app at startup."
 }
 
+variable "rate_report_agreed_fees" {
+  type        = bool
+  default     = false
+  description = "The quarterly rate report's agreed-fee section (item 84, D-200): true only once the lawyer answers and a founder amends D-078."
+}
+
 variable "proof_reader_model" {
   type        = string
   default     = "claude-opus-5-5"

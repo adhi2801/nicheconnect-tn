@@ -1,7 +1,8 @@
 """Building data exports, and destroying unclaimed ones, as a scheduled DBOS workflow (D-111, D-060).
 
-Every minute: up to 10 exports asked for are built and their owners told,
-and every file 24 hours past ready and never downloaded is destroyed. DBOS
+Every minute: every file 24 hours past ready and never downloaded is
+destroyed, first, so no build can put it off; then up to 10 exports asked
+for are built and their owners told. DBOS
 records each run under an id fixed by its scheduled minute, so two app
 instances never both run the same one; within a run, an export is marked
 ready only if it still waits, so even an overlap would not mark one twice.
@@ -18,6 +19,8 @@ from typing import Any
 
 from dbos import DBOS, ScheduleInput
 
+from app.core.deadline import Deadline
+from app.core.job_runs import EVERY_MINUTE_BUDGET_SECONDS, run_alone
 from app.core.storage import get_file_store
 from app.db.session import SessionLocal
 from app.modules.me import data_export_service
@@ -26,16 +29,27 @@ EVERY_MINUTE_CRON = "* * * * *"
 SCHEDULE_NAME = "data-exports-build"
 
 
-def run_exports(scheduled_at: datetime) -> data_export_service.ExportRun:
-    """The work itself, callable without DBOS (tests, and a manual rerun)."""
-    return data_export_service.run_exports(SessionLocal, get_file_store(), scheduled_at)
+def run_exports(
+    scheduled_at: datetime, budget: Deadline | None = None
+) -> data_export_service.ExportRun:
+    """The work itself, callable without DBOS (tests, and a manual rerun).
+
+    No budget unless one is given: the scheduled step gives its own.
+    """
+    return data_export_service.run_exports(
+        SessionLocal, get_file_store(), scheduled_at, budget=budget
+    )
 
 
 @DBOS.step(name="data_exports.run")
 def export_step(scheduled_at: datetime) -> None:
     # One step: each export is built and marked in its own transactions,
     # only while it still waits, so a crash halfway is safely redone.
-    run_exports(scheduled_at)
+    # One run at a time per schedule (item 118, D-186).
+    run_alone(
+        SCHEDULE_NAME,
+        lambda: run_exports(scheduled_at, Deadline(EVERY_MINUTE_BUDGET_SECONDS)),
+    )
 
 
 @DBOS.workflow(name="data_exports.build")

@@ -16,7 +16,9 @@ async function signInToDeals(page: Page, role: "Creator" | "Brand" = "Creator") 
   await expect(page.getByRole("heading", { level: 1, name: "Deals" })).toBeVisible();
 }
 
-const cards = (page: Page) => page.getByRole("link", { name: /^Open this deal/ });
+// Every deal card links to its deal; the card's own words are its name (no label replaces them).
+// Cards are the links inside the stage columns ("In progress, 2 deals"); the payments list links to deals too.
+const cards = (page: Page) => page.getByRole("region", { name: /, \d+ deals?$/ }).getByRole("listitem").getByRole("link");
 const column = (page: Page, name: RegExp | string) => page.getByRole("region", { name });
 
 test("a creator sees the journey in five stages, with each deal where it is, and no Draft", async ({ page }) => {
@@ -39,6 +41,8 @@ test("where it is the person's move the card says so, and otherwise whose it is"
   await expect(inProgress.getByRole("link", { name: /Spice box unboxing/ })).toContainText("Madurai Masala Co.");
   await expect(inProgress.getByRole("link", { name: /Spice box unboxing/ })).toContainText("₹6,500");
   await expect(inProgress.getByRole("link", { name: /Spice box unboxing/ })).toContainText("Due 25 Oct");
+  // A screen reader hears what the card shows, the money, the date and whose move it is, not a shorter label.
+  await expect(inProgress.getByRole("link", { name: /Spice box unboxing/ })).toHaveAccessibleName(/₹6,500.*Due 25 Oct.*Your move/);
   // the person's own moves come first in a column
   await expect(inProgress.getByRole("link").first()).toContainText("Spice box unboxing");
 });

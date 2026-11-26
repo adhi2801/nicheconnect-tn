@@ -12,7 +12,7 @@ from app.core.clock import india_date
 from app.core.errors import problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page, Slice
-from app.core.rate_limit import rate_limit
+from app.core.rate_limit import named_as, rate_limit
 from app.core.taxonomy import Niche
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentAccount, get_now
@@ -320,6 +320,7 @@ def _status_endpoint(
         },
     )
     @rate_limit(WRITE_LIMIT)
+    @named_as(f"campaign_{action}")
     def endpoint(
         request: Request,
         campaign: OwnedCampaign,

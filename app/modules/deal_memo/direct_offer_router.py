@@ -193,7 +193,7 @@ def to_read(offer: DirectOffer, now: datetime) -> DirectOfferRead:
             "`creator_left`"
         ),
         422: problem_doc(
-            "A field is missing or invalid; `due_date_too_far` (more than a year ahead)"
+            "A field is missing or invalid; a due date more than a year ahead (`content_due_on`)"
         ),
         429: problem_doc(
             "`direct_offer_daily_limit` (10 today), `direct_offer_creator_number_limit` "

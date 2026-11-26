@@ -31,12 +31,12 @@ from datetime import date
 from sqlalchemy import ColumnElement, exists, func, select
 from sqlalchemy.orm import Session
 
-from app.core.taxonomy import CURRENCY, NICHES, Niche
+from app.core.taxonomy import NICHES, Niche
 from app.modules.auth.models.creator import Creator
 from app.modules.auth.suspension import account_is_active, brand_is_active
 from app.modules.campaigns import applying
 from app.modules.campaigns.models import Campaign
-from app.modules.profiles.models import CreatorPackage
+from app.modules.insights import asking_prices
 
 MIN_COUNT = 5  # as fair-rate guidance (D-056)
 
@@ -56,6 +56,10 @@ def _published_creators() -> list[ColumnElement[bool]]:
 class CityCount:
     city: str
     published_creators: int
+    # How the database matches the city (`lower(btrim(city))`), as it worked
+    # it out: the rate report matches creators on this, never on Python's
+    # own lower-casing, which differs from PostgreSQL's for some letters.
+    key: str
 
 
 @dataclass(frozen=True)
@@ -82,13 +86,17 @@ def cities(db: Session) -> list[CityCount]:
         select(
             func.mode().within_group(func.btrim(Creator.city)),
             func.count(Creator.id),
+            key,
         )
         .where(*_published_creators())
         .group_by(key)
         .having(func.count(Creator.id) >= MIN_COUNT)
         .order_by(func.count(Creator.id).desc(), key)
     ).all()
-    return [CityCount(city=name, published_creators=count) for name, count in rows]
+    return [
+        CityCount(city=name, published_creators=count, key=city_key)
+        for name, count, city_key in rows
+    ]
 
 
 def for_city(db: Session, city: str, today: date) -> CityFigures:
@@ -141,28 +149,9 @@ def for_city(db: Session, city: str, today: date) -> CityFigures:
 def _asking_prices(db: Session, creators: list[ColumnElement[bool]]) -> list[AskingPrice]:
     """The median asking price per platform and format, five creators or more.
 
-    Each creator counts once: their own median in the group first, so one
-    creator with five Reel packages cannot outweigh four others (D-056).
+    Which prices count, and each creator once, is `asking_prices` (D-056).
     """
-    per_creator = (
-        select(
-            CreatorPackage.platform,
-            CreatorPackage.format,
-            func.percentile_cont(0.5)
-            .within_group(CreatorPackage.price_paise)
-            .label("price"),
-        )
-        .join(Creator, Creator.id == CreatorPackage.creator_id)
-        .where(
-            *creators,
-            Creator.rate_card_public_at.is_not(None),
-            CreatorPackage.currency == CURRENCY,
-        )
-        .group_by(
-            CreatorPackage.creator_id, CreatorPackage.platform, CreatorPackage.format
-        )
-        .subquery()
-    )
+    per_creator = asking_prices.per_creator(creators)
     rows = list(
         db.execute(
             select(

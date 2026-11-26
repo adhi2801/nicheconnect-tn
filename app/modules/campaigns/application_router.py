@@ -16,7 +16,7 @@ from app.core.clock import india_date
 from app.core.errors import ResponseDocs, problem_doc
 from app.core.idempotent_route import IdempotentRoute
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page, Slice
-from app.core.rate_limit import rate_limit
+from app.core.rate_limit import named_as, rate_limit
 from app.db.session import get_db
 from app.modules.auth.dependencies import get_now
 from app.modules.campaigns import applicant_service, feedback, service
@@ -43,6 +43,9 @@ READ_LIMIT = "60 per minute"
 # A ceiling per day as well as per minute (trust-and-safety.md rule 2, item 58):
 # a per-minute limit stops a script, not a person spamming by hand all day.
 APPLY_LIMIT = "30 per minute;30 per day"
+# Shortlisting and accepting tell the creator; a brand with many applicants
+# decides many a day, so the ceiling is higher than for reaching someone new.
+DECIDE_LIMIT = "30 per minute;200 per day"
 
 # route_class: every POST here accepts an Idempotency-Key header, so a
 # creator whose connection dropped can retry safely (backend.md section 2).
@@ -237,7 +240,8 @@ def _brand_decision(
             451: problem_doc("The creator is withheld for legal reasons (item 52)"),
         },
     )
-    @rate_limit(WRITE_LIMIT)
+    @rate_limit(DECIDE_LIMIT)
+    @named_as(f"application_{action}")
     def endpoint(
         request: Request,
         application: BrandApplication,

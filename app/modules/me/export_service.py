@@ -161,6 +161,14 @@ NOT_EXPORTED: dict[str, str] = {
         "fingerprint existed at a given time. They say nothing about any one "
         "person, and each deal's proof includes the ones that cover it."
     ),
+    "city_rate_report": (
+        "The free quarterly report of what creators ask, by city: counts and "
+        "rounded figures across many creators, each shown only when at least "
+        "five are behind it. The report names no creator or brand, so nothing "
+        "in it is about you; the report itself is public. Each one also "
+        "records which of our admins published it, kept for ever with the "
+        "published report."
+    ),
 }
 
 DATA_EXPORT_FIELDS = allow(

@@ -7,7 +7,7 @@ is where they live.
 **Budgets** (`docs/standards/backend.md` section 6): p95 ≤ 300 ms for reads,
 ≤ 500 ms for writes, on seeded local data.
 
-**Last measured: 19 November 2026, D-189 after its independent review, with `main` merged in** (section "Added 19 November: direct offers" below): 101 timings, 100 within budget, the one over the export job, as before. On 18 November, before the review's fixes, on a loaded laptop, and on 13 November, before the merge: the same counts. Before that, **12 November 2026, D-184 with `main` merged in** (section "Added 12 November: the deal domain's locks, measured again on a quiet database" below): 86 timings, 85 within budget, the one over the export job. On 11 November after D-184 (section "Added 11 November: the deal domain's locks" below): 84 timings, 83 within budget, on a machine loaded by another job's test run. Earlier the same day (section "Every route, 11 November" below): 83 timings, all 83 within budget. Before that, 6 November: 73 timings, 71 within budget. Before that, per section as dated:
+**Last measured: 26 November 2026, the deal memo routes after audit C13 (section "Added 26 November" below); before that, **26 November 2026, item 84's admin read and correctable quarters (D-201)** (section "Added 26 November: the rate report's admin read and rebuild" below): 100 timings, 99 within budget, the one over the export job. Before that, **22 November 2026, item 84 after its independent review (D-201)** (section "Added 22 November: the rate report's archive reads no body" below): 98 timings, 97 within budget, the one over the export job. Before that, **20 November 2026, item 84 (D-200)** (section "Added 20 November: the quarterly city rate report" below): 98 timings, all 98 within budget. Before that, **12 November 2026, D-184 with `main` merged in** (section "Added 12 November: the deal domain's locks, measured again on a quiet database" below): 86 timings, 85 within budget, the one over the export job. On 11 November after D-184 (section "Added 11 November: the deal domain's locks" below): 84 timings, 83 within budget, on a machine loaded by another job's test run. Earlier the same day (section "Every route, 11 November" below): 83 timings, all 83 within budget. Before that, 6 November: 73 timings, 71 within budget. Before that, per section as dated:
 30 September 2026 for creator search and reports (next
 section); 26 September 2026 for everything else, on PostgreSQL 18.6 with pgvector 0.8.6
 (D-049), seeded with 10 brands, 200 creators, 150 campaigns, 785
@@ -15,6 +15,77 @@ applications and 958 rate card packages. 100 runs per read. For writes: 30
 whole deals, 5 bank bulk transfers of 25 rows, and 30 rounds of rate card
 edits. All from one run, on a developer laptop under Docker Desktop for
 Windows.
+
+## Added 26 November: the deal memo routes, after audit C13 (D-202)
+
+`scripts/measure_performance.py --runs 50 --deals 30` on the shared local database (151 campaigns, 788 applications, 203 creators, 958 packages), on `fix/c13-audit` with `main` merged in; the 30 deals are rolled back, as the script always does. **93 timings, all within budget.** The audit added a daily ceiling to the memo moves and a date check on create and edit. The shared database was not quiet, so these are upper bounds, and each write rests on 30 calls, so its p95 is close to its maximum.
+
+| Route | p50 ms | p95 ms | max ms | Budget |
+|---|---|---|---|---|
+| `POST /deal-memos/for-application/{id}` | 29.8 | 49.0 | 76.8 | 500 |
+| `PATCH /deal-memos/{id}` | 27.4 | 39.8 | 41.8 | 500 |
+| `POST /deal-memos/{id}/send` | 32.4 | 43.1 | 53.3 | 500 |
+| `GET /deal-memos/{id}/check (creator)` | 29.9 | 42.9 | 43.8 | 300 |
+| `GET /deal-memos/{id}/check (brand)` | 32.5 | 68.7 | 154.7 | 300 |
+| `POST /deal-memos/{id}/accept` | 33.0 | 55.3 | 56.0 | 500 |
+| `POST /deal-memos/{id}/proof` | 34.8 | 58.1 | 61.2 | 500 |
+| `POST /deal-memos/{id}/proof/{id}/approve` | 44.7 | 59.6 | 67.5 | 500 |
+| `GET /deal-memos/{id}/calendar.ics` | 14.5 | 20.2 | 34.1 | 300 |
+| `POST /deal-memos/{id}/payment/mark-paid` | 33.7 | 44.5 | 48.0 | 500 |
+| `POST /deal-memos/{id}/payment/dispute` | 25.4 | 32.0 | 40.9 | 500 |
+| `POST /deal-memos/{id}/payment/confirm` | 32.3 | 47.3 | 69.4 | 500 |
+| `POST /deal-memos/{id}/drafts/uploads` | 24.6 | 37.2 | 64.9 | 500 |
+| `POST /deal-memos/{id}/drafts (2 images)` | 94.9 | 127.6 | 135.0 | 500 |
+| `GET /deal-memos/{id}/drafts` | 18.5 | 26.0 | 50.7 | 300 |
+| `GET /deal-memos/{id}/drafts/{id}/files` | 18.9 | 30.1 | 64.0 | 300 |
+| `POST /deal-memos/{id}/drafts/{id}/request-changes` | 42.8 | 66.4 | 83.6 | 500 |
+| `POST /deal-memos/{id}/drafts/{id}/approve` | 42.9 | 76.2 | 86.2 | 500 |
+
+**Not measured:** the memo's decline, cancel and change-request moves, which the script does not drive; each passes through the same lock as the accept above.
+
+## Added 26 November: the rate report's admin read and rebuild (item 84, D-201)
+
+On `feature/city-rate-report`, `scripts/measure_performance.py --runs 50` (30 whole deals for the writes), against the branch's own database (`nc_item84`: 150 campaigns, 785 applications, 200 creators, 958 packages), everything rolled back, each stored report carrying 20 cities as on 22 November. Two routes are new: an admin's read of a report in any state, its body and an admin log entry included, timed before each publish; and the rebuild of each withdrawn quarter under a raised method version, whose request builds the report over every seeded creator (agreed fees off, as the setting stands) and logs it. Publishing, withdrawing and the public read now pick the quarter's newest version (`ORDER BY method_version DESC LIMIT 1`, or standing before withdrawn), so they are measured again. **100 timings, 99 within budget**: the export job over, as on 12 and 22 November (713.0 ms p95; untouched by this change).
+
+| Route | p50 ms | p95 ms | max ms | Budget |
+|---|---|---|---|---|
+| `GET /admin/rate-reports/{quarter}` (new) | 30.7 | 39.3 | 39.7 | 300 |
+| `POST /admin/rate-reports/{quarter}/rebuild` (new) | 83.5 | 101.8 | 112.8 | 500 |
+| `POST /admin/rate-reports/{quarter}/publish` | 23.7 | 32.3 | 38.0 | 500 |
+| `POST /admin/rate-reports/{quarter}/withdraw` | 23.7 | 37.4 | 38.1 | 500 |
+| `GET /rate-reports/{quarter}` | 18.1 | 25.9 | 28.4 | 300 |
+| `GET /rate-reports` (the archive) | 13.4 | 19.6 | 21.7 | 300 |
+| The daily job's build of one report | 27.2 | 75.0 | 76.8 | 30,000 (a job's run) |
+
+The rebuild is the slowest because it is a whole build inside a request; at a fifth of its budget it needs no job of its own. The admin read is a fixed number of queries whatever the body's size (`test_an_admin_read_costs_a_fixed_number_of_queries`).
+
+## Added 22 November: the rate report's archive reads no body (item 84, D-201)
+
+On `feature/city-rate-report`, `scripts/measure_performance.py --runs 50` (30 whole deals for the writes), against the branch's own database (`nc_item84`: 150 campaigns, 785 applications, 200 creators, 958 packages), everything rolled back. The script now stores each measured report with **20 cities** (the seeded cities repeated under new names, `REPORT_CITIES`), the size of a real quarter's report, so the reads carry a realistic body; the 20 November figures were taken on a body of the seeded cities alone. Two runs, the same morning, the code differing only in the archive's query: before, it selected every column, the JSONB body of up to 100 reports included; after, only the summary's columns (`load_only`, a body read raising rather than querying), proven by `test_the_archive_never_reads_a_report_s_body`. **98 timings each run, 97 within budget**: the export job over, as on 12 November (519.6 ms before, 578.7 ms after; untouched by this change).
+
+| Route | p95 before ms | p95 after ms | Budget |
+|---|---|---|---|
+| `GET /rate-reports` (the archive) | 90.2 | 18.3 | 300 |
+| `GET /rate-reports/{quarter}` | 22.1 | 25.6 | 300 |
+| `POST /admin/rate-reports/{quarter}/publish` | 43.6 | 31.0 | 500 |
+| `POST /admin/rate-reports/{quarter}/withdraw` | 35.1 | 52.6 | 500 |
+| The daily job's build of one report | 63.9 | 70.6 | 30,000 (a job's run) |
+
+Only the archive's query changed; the other rows moved within run-to-run noise on a laptop.
+
+## Added 20 November: the quarterly city rate report (item 84, D-200)
+
+On `feature/city-rate-report`, `scripts/measure_performance.py --runs 50` (30 whole deals for the writes), against a database of its own on the same server (`nc_item84`, freshly migrated and seeded: 150 campaigns, 785 applications, 200 creators, 958 packages). The report is built 30 times over every seeded creator with agreed fees switched on (the heavier build), published, read and withdrawn, all inside the writes' rolled-back transaction. **98 timings, all 98 within budget**; the export job, over its budget on 12 November, measured 480.2 ms p95 this run.
+
+| Route | p50 ms | p95 ms | max ms | Budget |
+|---|---|---|---|---|
+| `GET /rate-reports/{quarter}` | 11.0 | 15.2 | 17.4 | 300 |
+| `GET /rate-reports` | 22.1 | 30.9 | 32.8 | 300 |
+| `POST /admin/rate-reports/{quarter}/publish` | 17.6 | 22.0 | 31.0 | 500 |
+| `POST /admin/rate-reports/{quarter}/withdraw` | 18.4 | 23.2 | 60.5 | 500 |
+| The daily job's build of one report (four queries) | 16.6 | 29.5 | 34.3 | 30,000 (a job's run) |
+
+A report read is one query by its unique quarter (`test_a_report_read_costs_one_query`); the archive costs the same queries however many reports (`test_the_archive_costs_the_same_queries_however_long`); the build is four queries for one city or three (`test_the_build_costs_the_same_queries_for_one_city_or_three`). The seeded data has few cities with five published creators, so the build's time at 20 cities is not measured; its query count does not grow with them.
 
 ## Added 19 November: direct offers (D-189)
 

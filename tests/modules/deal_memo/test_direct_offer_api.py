@@ -288,7 +288,7 @@ def test_a_due_date_must_be_from_today_to_a_year_ahead(client, db, clock, on):
     assert passed.status_code == 409
     assert passed.json()["code"] == "due_date_has_passed"
     assert too_far.status_code == 422
-    assert too_far.json()["code"] == "due_date_too_far"
+    assert too_far.json()["code"] == "validation_failed"
     assert too_far.json()["errors"][0]["field"] == "content_due_on"
     assert send(client, creator, content_due_on="2027-09-17").status_code == 201
 

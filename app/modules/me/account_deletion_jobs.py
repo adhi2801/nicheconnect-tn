@@ -20,6 +20,8 @@ from typing import Any
 
 from dbos import DBOS, ScheduleInput
 
+from app.core.deadline import Deadline
+from app.core.job_runs import LONG_BUDGET_SECONDS, run_alone
 from app.core.storage import get_file_store
 from app.db.session import SessionLocal
 from app.modules.me import account_deletion_service
@@ -28,10 +30,15 @@ EVERY_15_MINUTES_CRON = "*/15 * * * *"
 SCHEDULE_NAME = "account-deletions-erase"
 
 
-def run_deletions(scheduled_at: datetime) -> account_deletion_service.DeletionRun:
-    """The work itself, callable without DBOS (tests, and a manual rerun)."""
+def run_deletions(
+    scheduled_at: datetime, budget: Deadline | None = None
+) -> account_deletion_service.DeletionRun:
+    """The work itself, callable without DBOS (tests, and a manual rerun).
+
+    No budget unless one is given: the scheduled step gives its own.
+    """
     return account_deletion_service.run_deletions(
-        SessionLocal, get_file_store(), scheduled_at
+        SessionLocal, get_file_store(), scheduled_at, budget=budget
     )
 
 
@@ -39,7 +46,10 @@ def run_deletions(scheduled_at: datetime) -> account_deletion_service.DeletionRu
 def deletion_step(scheduled_at: datetime) -> None:
     # One step: each account is erased in its own transaction, only if it
     # is still due, so a crash halfway is safely redone.
-    run_deletions(scheduled_at)
+    # One run at a time per schedule (item 118, D-186).
+    run_alone(
+        SCHEDULE_NAME, lambda: run_deletions(scheduled_at, Deadline(LONG_BUDGET_SECONDS))
+    )
 
 
 @DBOS.workflow(name="account_deletions.erase")

@@ -296,7 +296,11 @@
               "withhold",
               "lift_withhold",
               "clear_brand_name",
-              "withdraw_brand_name_clearance"
+              "withdraw_brand_name_clearance",
+              "publish_rate_report",
+              "withdraw_rate_report",
+              "view_rate_report",
+              "rebuild_rate_report"
             ],
             "title": "Action",
             "type": "string"
@@ -454,6 +458,193 @@
           "handle"
         ],
         "title": "AdminProfileRead",
+        "type": "object"
+      },
+      "AdminRateReportFullRead": {
+        "description": "A report in any state, its figures included: what an admin reads\nbefore publishing it.",
+        "properties": {
+          "body": {
+            "$ref": "#/components/schemas/RateReportBody"
+          },
+          "body_sha256": {
+            "title": "Body Sha256",
+            "type": "string"
+          },
+          "built_at": {
+            "format": "date-time",
+            "title": "Built At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "method_version": {
+            "title": "Method Version",
+            "type": "integer"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "published_by_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published By Account Id"
+          },
+          "quarter": {
+            "title": "Quarter",
+            "type": "string"
+          },
+          "supersedes_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The withdrawn report of the same quarter this one corrects",
+            "title": "Supersedes Id"
+          },
+          "withdrawn_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Withdrawn At"
+          },
+          "withdrawn_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Withdrawn Reason"
+          }
+        },
+        "required": [
+          "quarter",
+          "method_version",
+          "built_at",
+          "published_at",
+          "withdrawn_at",
+          "withdrawn_reason",
+          "body_sha256",
+          "supersedes_id",
+          "id",
+          "published_by_account_id",
+          "body"
+        ],
+        "title": "AdminRateReportFullRead",
+        "type": "object"
+      },
+      "AdminRateReportRead": {
+        "description": "A report's state as an admin sees it after publishing, withdrawing or\nbuilding it again.",
+        "properties": {
+          "body_sha256": {
+            "title": "Body Sha256",
+            "type": "string"
+          },
+          "built_at": {
+            "format": "date-time",
+            "title": "Built At",
+            "type": "string"
+          },
+          "method_version": {
+            "title": "Method Version",
+            "type": "integer"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "quarter": {
+            "title": "Quarter",
+            "type": "string"
+          },
+          "supersedes_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The withdrawn report of the same quarter this one corrects",
+            "title": "Supersedes Id"
+          },
+          "withdrawn_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Withdrawn At"
+          },
+          "withdrawn_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Withdrawn Reason"
+          }
+        },
+        "required": [
+          "quarter",
+          "method_version",
+          "built_at",
+          "published_at",
+          "withdrawn_at",
+          "withdrawn_reason",
+          "body_sha256",
+          "supersedes_id"
+        ],
+        "title": "AdminRateReportRead",
         "type": "object"
       },
       "AdminReportRead": {
@@ -929,6 +1120,129 @@
           "created_at"
         ],
         "title": "AgentTokenRead",
+        "type": "object"
+      },
+      "AgreedCellRead": {
+        "description": "What was agreed, for one platform and format: accepted memos with one\ndeliverable, each creator's own median first.",
+        "properties": {
+          "barter_share_percent": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The share of the cell's deals paid in goods, not money. Null below the floor in `min_counts`: not enough to say, never zero",
+            "title": "Barter Share Percent"
+          },
+          "brands": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null below the floor in `min_counts`: not enough to say, never zero",
+            "title": "Brands"
+          },
+          "creators": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null below the floor in `min_counts`: not enough to say, never zero",
+            "title": "Creators"
+          },
+          "deals": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deals in the cell, barter included. Null below the floor in `min_counts`: not enough to say, never zero",
+            "title": "Deals"
+          },
+          "format": {
+            "enum": [
+              "post",
+              "reel",
+              "story",
+              "short",
+              "video",
+              "live",
+              "other"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "lower_quarter_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only once the paid deals rest on 10 creators or more. Null below the floor in `min_counts`: not enough to say, never zero",
+            "title": "Lower Quarter Paise"
+          },
+          "median_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null below the floor in `min_counts`: not enough to say, never zero",
+            "title": "Median Paise"
+          },
+          "platform": {
+            "enum": [
+              "instagram",
+              "youtube"
+            ],
+            "title": "Platform",
+            "type": "string"
+          },
+          "upper_quarter_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only once the paid deals rest on 10 creators or more. Null below the floor in `min_counts`: not enough to say, never zero",
+            "title": "Upper Quarter Paise"
+          }
+        },
+        "required": [
+          "platform",
+          "format",
+          "deals",
+          "creators",
+          "brands",
+          "barter_share_percent",
+          "lower_quarter_paise",
+          "median_paise",
+          "upper_quarter_paise"
+        ],
+        "title": "AgreedCellRead",
         "type": "object"
       },
       "ApplicantRead": {
@@ -1494,6 +1808,90 @@
         "title": "ArrivalIn",
         "type": "object"
       },
+      "AskingCellRead": {
+        "description": "What creators ask, for one platform and format: published rate cards.",
+        "properties": {
+          "creators": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Creators behind the figures, each counted once. Null below the floor in `min_counts`: not enough to say, never zero",
+            "title": "Creators"
+          },
+          "format": {
+            "enum": [
+              "post",
+              "reel",
+              "story",
+              "short",
+              "video",
+              "live",
+              "other"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "lower_quarter_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null below the floor in `min_counts`: not enough to say, never zero",
+            "title": "Lower Quarter Paise"
+          },
+          "median_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null below the floor in `min_counts`: not enough to say, never zero",
+            "title": "Median Paise"
+          },
+          "platform": {
+            "enum": [
+              "instagram",
+              "youtube"
+            ],
+            "title": "Platform",
+            "type": "string"
+          },
+          "upper_quarter_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null below the floor in `min_counts`: not enough to say, never zero",
+            "title": "Upper Quarter Paise"
+          }
+        },
+        "required": [
+          "platform",
+          "format",
+          "creators",
+          "lower_quarter_paise",
+          "median_paise",
+          "upper_quarter_paise"
+        ],
+        "title": "AskingCellRead",
+        "type": "object"
+      },
       "AskingPriceRead": {
         "description": "The median asking price for one platform and format in a city.\n\nEach creator counts once; only groups of five creators or more appear.",
         "properties": {
@@ -1896,6 +2294,116 @@
           "items"
         ],
         "title": "AttentionRead",
+        "type": "object"
+      },
+      "AudienceBandCellRead": {
+        "description": "Statewide asking prices for one audience band, platform and format.",
+        "properties": {
+          "audience_band": {
+            "enum": [
+              "under_10k",
+              "10k_50k",
+              "50k_100k",
+              "100k_500k",
+              "500k_plus"
+            ],
+            "title": "Audience Band",
+            "type": "string"
+          },
+          "audience_figures_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The oldest follower count behind the band, as creators stated it; we never checked it",
+            "title": "Audience Figures From"
+          },
+          "creators": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null below the floor in `min_counts`: not enough to say, never zero",
+            "title": "Creators"
+          },
+          "format": {
+            "enum": [
+              "post",
+              "reel",
+              "story",
+              "short",
+              "video",
+              "live",
+              "other"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "lower_quarter_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null below the floor in `min_counts`: not enough to say, never zero",
+            "title": "Lower Quarter Paise"
+          },
+          "median_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null below the floor in `min_counts`: not enough to say, never zero",
+            "title": "Median Paise"
+          },
+          "platform": {
+            "enum": [
+              "instagram",
+              "youtube"
+            ],
+            "title": "Platform",
+            "type": "string"
+          },
+          "upper_quarter_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null below the floor in `min_counts`: not enough to say, never zero",
+            "title": "Upper Quarter Paise"
+          }
+        },
+        "required": [
+          "audience_band",
+          "platform",
+          "format",
+          "creators",
+          "lower_quarter_paise",
+          "median_paise",
+          "upper_quarter_paise",
+          "audience_figures_from"
+        ],
+        "title": "AudienceBandCellRead",
         "type": "object"
       },
       "AvailabilityRead": {
@@ -4409,6 +4917,45 @@
           "asking_prices"
         ],
         "title": "CityFiguresRead",
+        "type": "object"
+      },
+      "CityRatesRead": {
+        "properties": {
+          "agreed_fees": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AgreedCellRead"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when this report was built without agreed fees",
+            "title": "Agreed Fees"
+          },
+          "asking_prices": {
+            "description": "Every platform and format, in a fixed order, null where too few",
+            "items": {
+              "$ref": "#/components/schemas/AskingCellRead"
+            },
+            "title": "Asking Prices",
+            "type": "array"
+          },
+          "city": {
+            "description": "As most of its creators spell it",
+            "title": "City",
+            "type": "string"
+          }
+        },
+        "required": [
+          "city",
+          "asking_prices",
+          "agreed_fees"
+        ],
+        "title": "CityRatesRead",
         "type": "object"
       },
       "ConnectionComplete": {
@@ -9789,6 +10336,58 @@
         "title": "MetaDeletionRead",
         "type": "object"
       },
+      "MinCountsRead": {
+        "description": "The floors this report was built with (docs/RATE_REPORT_METHOD.md).",
+        "properties": {
+          "agreed_brands": {
+            "title": "Agreed Brands",
+            "type": "integer"
+          },
+          "agreed_creators": {
+            "title": "Agreed Creators",
+            "type": "integer"
+          },
+          "agreed_deals": {
+            "title": "Agreed Deals",
+            "type": "integer"
+          },
+          "agreed_max_brand_share_percent": {
+            "title": "Agreed Max Brand Share Percent",
+            "type": "integer"
+          },
+          "agreed_p_percent": {
+            "description": "The p% rule's p: fees left after the two largest contributors must come to at least this share of the largest",
+            "title": "Agreed P Percent",
+            "type": "integer"
+          },
+          "agreed_quartiles_creators": {
+            "description": "Paid creators needed before any fee figure: the median and quarters",
+            "title": "Agreed Quartiles Creators",
+            "type": "integer"
+          },
+          "asking_creators": {
+            "title": "Asking Creators",
+            "type": "integer"
+          },
+          "rounded_to_paise": {
+            "description": "Every figure to the nearest of these",
+            "title": "Rounded To Paise",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "asking_creators",
+          "agreed_deals",
+          "agreed_creators",
+          "agreed_brands",
+          "agreed_max_brand_share_percent",
+          "agreed_quartiles_creators",
+          "agreed_p_percent",
+          "rounded_to_paise"
+        ],
+        "title": "MinCountsRead",
+        "type": "object"
+      },
       "MisreadMark": {
         "additionalProperties": false,
         "properties": {
@@ -11634,6 +12233,34 @@
           "items"
         ],
         "title": "Page[PaymentListItem]",
+        "type": "object"
+      },
+      "Page_RateReportSummaryRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RateReportSummaryRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as ?cursor= to get the next page",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[RateReportSummaryRead]",
         "type": "object"
       },
       "Page_ReportRead_": {
@@ -13891,6 +14518,181 @@
           "as_of"
         ],
         "title": "RateGuidanceRead",
+        "type": "object"
+      },
+      "RateReportBody": {
+        "additionalProperties": false,
+        "description": "One quarter's figures, aggregate numbers only: no id, handle or name.",
+        "properties": {
+          "agreed_fees_included": {
+            "description": "False while agreed fees are switched off; then every city's is null",
+            "title": "Agreed Fees Included",
+            "type": "boolean"
+          },
+          "as_of": {
+            "description": "The day the figures were worked out. Asking prices are the published rate cards on that day; agreed fees, the memos accepted in the quarter",
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "audience_bands": {
+            "description": "Statewide asking prices by follower band, platform and format",
+            "items": {
+              "$ref": "#/components/schemas/AudienceBandCellRead"
+            },
+            "title": "Audience Bands",
+            "type": "array"
+          },
+          "cities": {
+            "description": "Cities with at least five published creators, largest first",
+            "items": {
+              "$ref": "#/components/schemas/CityRatesRead"
+            },
+            "title": "Cities",
+            "type": "array"
+          },
+          "currency": {
+            "const": "INR",
+            "default": "INR",
+            "title": "Currency",
+            "type": "string"
+          },
+          "method_version": {
+            "title": "Method Version",
+            "type": "integer"
+          },
+          "min_counts": {
+            "$ref": "#/components/schemas/MinCountsRead"
+          },
+          "period_from": {
+            "description": "The quarter's first day, in Tamil Nadu",
+            "format": "date",
+            "title": "Period From",
+            "type": "string"
+          },
+          "period_to": {
+            "description": "The quarter's last day, in Tamil Nadu",
+            "format": "date",
+            "title": "Period To",
+            "type": "string"
+          },
+          "quarter": {
+            "examples": [
+              "2026-Q4"
+            ],
+            "title": "Quarter",
+            "type": "string"
+          }
+        },
+        "required": [
+          "quarter",
+          "method_version",
+          "period_from",
+          "period_to",
+          "as_of",
+          "min_counts",
+          "agreed_fees_included",
+          "cities",
+          "audience_bands"
+        ],
+        "title": "RateReportBody",
+        "type": "object"
+      },
+      "RateReportRead": {
+        "description": "A published quarterly report. Never changes once published.",
+        "properties": {
+          "body": {
+            "$ref": "#/components/schemas/RateReportBody"
+          },
+          "body_sha256": {
+            "description": "SHA-256 of `body` as canonical JSON: keys sorted, no spaces, ASCII, any other letter as JSON's `\\uXXXX` escape. Any copy can be checked against this one",
+            "title": "Body Sha256",
+            "type": "string"
+          },
+          "built_at": {
+            "format": "date-time",
+            "title": "Built At",
+            "type": "string"
+          },
+          "method_url": {
+            "description": "The rules this report was built by, in words",
+            "title": "Method Url",
+            "type": "string"
+          },
+          "method_version": {
+            "title": "Method Version",
+            "type": "integer"
+          },
+          "published_at": {
+            "format": "date-time",
+            "title": "Published At",
+            "type": "string"
+          },
+          "quarter": {
+            "examples": [
+              "2026-Q4"
+            ],
+            "title": "Quarter",
+            "type": "string"
+          }
+        },
+        "required": [
+          "quarter",
+          "method_version",
+          "method_url",
+          "built_at",
+          "published_at",
+          "body_sha256",
+          "body"
+        ],
+        "title": "RateReportRead",
+        "type": "object"
+      },
+      "RateReportSummaryRead": {
+        "description": "One published quarter, for the archive.",
+        "properties": {
+          "body_sha256": {
+            "title": "Body Sha256",
+            "type": "string"
+          },
+          "method_version": {
+            "title": "Method Version",
+            "type": "integer"
+          },
+          "published_at": {
+            "format": "date-time",
+            "title": "Published At",
+            "type": "string"
+          },
+          "quarter": {
+            "examples": [
+              "2026-Q4"
+            ],
+            "title": "Quarter",
+            "type": "string"
+          },
+          "withdrawn_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set when it was withdrawn; reading it then answers 410 with why",
+            "title": "Withdrawn At"
+          }
+        },
+        "required": [
+          "quarter",
+          "method_version",
+          "published_at",
+          "withdrawn_at",
+          "body_sha256"
+        ],
+        "title": "RateReportSummaryRead",
         "type": "object"
       },
       "ReadPartRead": {
@@ -17013,6 +17815,23 @@
         ],
         "title": "VerifiedDomainRead",
         "type": "object"
+      },
+      "WithdrawRateReportIn": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "description": "Why, shown to every reader of the withdrawn report",
+            "maxLength": 500,
+            "minLength": 10,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "WithdrawRateReportIn",
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -18149,6 +18968,472 @@
           }
         ],
         "summary": "The founders' weekly numbers",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/rate-reports/{quarter}": {
+      "get": {
+        "description": "The quarter's newest report, or the one of `method_version`, whether unpublished, published or withdrawn, with all its figures: what an admin reads before publishing it. Written to the admin log as read. Limit: 30 requests per minute.",
+        "operationId": "read_rate_report_api_v1_admin_rate_reports__quarter__get",
+        "parameters": [
+          {
+            "description": "A quarter of the Tamil Nadu calendar, `YYYY-Qn`",
+            "in": "path",
+            "name": "quarter",
+            "required": true,
+            "schema": {
+              "description": "A quarter of the Tamil Nadu calendar, `YYYY-Qn`",
+              "examples": [
+                "2026-Q4"
+              ],
+              "pattern": "^[0-9]{4}-Q[1-4]$",
+              "title": "Quarter",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "method_version",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 32767,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Method Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminRateReportFullRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`rate_report_not_built`; also the answer for anyone who is not an admin"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "That is not a quarter, or the method version is not one"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read a quarter's city rate report in any state",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/rate-reports/{quarter}/publish": {
+      "post": {
+        "description": "Makes the quarter's newest built report public, once an admin has read it (`GET /api/v1/admin/rate-reports/{quarter}`). From then on nothing it says can change: the database refuses it. Written to the admin log. Limit: 30 requests per minute.",
+        "operationId": "publish_rate_report_api_v1_admin_rate_reports__quarter__publish_post",
+        "parameters": [
+          {
+            "description": "A quarter of the Tamil Nadu calendar, `YYYY-Qn`",
+            "in": "path",
+            "name": "quarter",
+            "required": true,
+            "schema": {
+              "description": "A quarter of the Tamil Nadu calendar, `YYYY-Qn`",
+              "examples": [
+                "2026-Q4"
+              ],
+              "pattern": "^[0-9]{4}-Q[1-4]$",
+              "title": "Quarter",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminRateReportRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`rate_report_not_built`; also the answer for anyone who is not an admin"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`rate_report_already_published`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "That is not a quarter, or the reason is missing or too short. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Publish a quarter's city rate report",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/rate-reports/{quarter}/rebuild": {
+      "post": {
+        "description": "For a quarter whose newest report was withdrawn, once the method has a newer version: builds the quarter again under it, unpublished, replacing the withdrawn report, which stays as it was. Its asking prices are today's rate cards, as `built_at` says. Read it, then publish it. Written to the admin log. Limit: 30 requests per minute.",
+        "operationId": "rebuild_rate_report_api_v1_admin_rate_reports__quarter__rebuild_post",
+        "parameters": [
+          {
+            "description": "A quarter of the Tamil Nadu calendar, `YYYY-Qn`",
+            "in": "path",
+            "name": "quarter",
+            "required": true,
+            "schema": {
+              "description": "A quarter of the Tamil Nadu calendar, `YYYY-Qn`",
+              "examples": [
+                "2026-Q4"
+              ],
+              "pattern": "^[0-9]{4}-Q[1-4]$",
+              "title": "Quarter",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminRateReportRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`rate_report_not_built`; also the answer for anyone who is not an admin"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`rate_report_not_withdrawn` or `rate_report_method_unchanged`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "That is not a quarter, or the reason is missing or too short. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Build a withdrawn quarter's report again",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/rate-reports/{quarter}/withdraw": {
+      "post": {
+        "description": "For a report found wrong after publishing: readers then get 410 with the reason, and the archive lists it as withdrawn. Its figures stay as they were, never rewritten. Once only. A correction comes once the method has a newer version: `.../rebuild` builds the quarter again, and once that is published readers get it instead. Written to the admin log with the reason. Limit: 30 requests per minute.",
+        "operationId": "withdraw_rate_report_api_v1_admin_rate_reports__quarter__withdraw_post",
+        "parameters": [
+          {
+            "description": "A quarter of the Tamil Nadu calendar, `YYYY-Qn`",
+            "in": "path",
+            "name": "quarter",
+            "required": true,
+            "schema": {
+              "description": "A quarter of the Tamil Nadu calendar, `YYYY-Qn`",
+              "examples": [
+                "2026-Q4"
+              ],
+              "pattern": "^[0-9]{4}-Q[1-4]$",
+              "title": "Quarter",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WithdrawRateReportIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminRateReportRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`rate_report_not_built`; also the answer for anyone who is not an admin"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`rate_report_not_published` or `rate_report_already_withdrawn`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "That is not a quarter, or the reason is missing or too short. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Can't guarantee this request runs only once right now. Safe to retry"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Withdraw a published city rate report",
         "tags": [
           "admin"
         ]
@@ -33120,7 +34405,7 @@
     },
     "/api/v1/deal-memos/for-application/{application_id}": {
       "post": {
-        "description": "Creates the memo as a draft, visible only to the brand until it is sent. Paid and local-business campaigns need a fee; barter campaigns must not have one. One memo per application.",
+        "description": "Creates the memo as a draft, visible only to the brand until it is sent. Paid and local-business campaigns need a fee; barter campaigns must not have one. One memo per application. A `content_due_on` more than a year ahead in Tamil Nadu is refused (422): almost certainly a mistyped year.",
         "operationId": "create_memo_api_v1_deal_memos_for_application__application_id__post",
         "parameters": [
           {
@@ -33581,7 +34866,7 @@
         ]
       },
       "patch": {
-        "description": "Only while the brand holds it: a draft, or after the creator asked for a change. Once accepted the terms stop moving, so a creator can rely on what they agreed to.",
+        "description": "Only while the brand holds it: a draft, or after the creator asked for a change. Once accepted the terms stop moving, so a creator can rely on what they agreed to. A `content_due_on` more than a year ahead is refused (422).",
         "operationId": "update_memo_api_v1_deal_memos__memo_id__patch",
         "parameters": [
           {
@@ -39536,7 +40821,7 @@
               },
               "application/problem+json": {}
             },
-            "description": "A field is missing or invalid; `due_date_too_far` (more than a year ahead)"
+            "description": "A field is missing or invalid; a due date more than a year ahead (`content_due_on`)"
           },
           "429": {
             "content": {
@@ -45756,6 +47041,232 @@
         "summary": "What creators like this charge",
         "tags": [
           "rate guidance"
+        ]
+      }
+    },
+    "/api/v1/rate-reports": {
+      "get": {
+        "description": "Every published quarterly city rate report, newest first, withdrawn ones included with when they were withdrawn. Paged with `cursor`. Sent with an ETag and `Cache-Control: public, no-cache`: a cache asks again each time, and an unchanged list answers 304. Limit: 60 requests per minute.",
+        "operationId": "list_rate_reports_api_v1_rate_reports_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "header",
+            "name": "if-none-match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-None-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_RateReportSummaryRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "A limit out of range, or a bad cursor"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Published quarterly rate reports",
+        "tags": [
+          "public"
+        ]
+      }
+    },
+    "/api/v1/rate-reports/{quarter}": {
+      "get": {
+        "description": "What creators ask by city, platform and format, and statewide by audience band, for one closed quarter, from anonymous figures: each creator counted once, every figure rounded to the nearest ₹100, and `null` wherever too few are behind it, meaning **not enough to say**, never zero. Agreed fees appear only in a report built with them (`agreed_fees_included`). A published report never changes; `body_sha256` lets any copy be checked. A withdrawn report answers 410 with why. Sent with an ETag and `Cache-Control: public, no-cache`: a cache asks again each time, so a withdrawal shows at once, and an unchanged report answers 304. Limit: 60 requests per minute.",
+        "operationId": "read_rate_report_api_v1_rate_reports__quarter__get",
+        "parameters": [
+          {
+            "description": "A quarter of the Tamil Nadu calendar, `YYYY-Qn`",
+            "in": "path",
+            "name": "quarter",
+            "required": true,
+            "schema": {
+              "description": "A quarter of the Tamil Nadu calendar, `YYYY-Qn`",
+              "examples": [
+                "2026-Q4"
+              ],
+              "pattern": "^[0-9]{4}-Q[1-4]$",
+              "title": "Quarter",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "if-none-match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-None-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateReportRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "No report is published for that quarter"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "`rate_report_withdrawn`: the detail says why"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "That is not a quarter (`YYYY-Qn`)"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Too many requests; see the Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before trying again",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "summary": "One quarter's city rate report",
+        "tags": [
+          "public"
         ]
       }
     },

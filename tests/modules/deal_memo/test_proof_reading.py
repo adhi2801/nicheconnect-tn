@@ -14,6 +14,7 @@ from sqlalchemy import func, select, text
 from app.core import storage
 from app.core.clock import india_date
 from app.core.config import settings
+from app.core.deadline import Deadline, DeadlinePassed
 from app.modules.auth.models.creator import Creator
 from app.modules.deal_memo import proof_cleaning_service as cleaning
 from app.modules.deal_memo import proof_reading_service as reading_service
@@ -485,3 +486,140 @@ def test_the_handle_in_a_channel_link(platform, url, handle):
 )
 def test_which_numbers_can_be_true_together(numbers, agree):
     assert numbers_agree(numbers) is agree
+
+
+def test_a_run_whose_budget_is_spent_reads_nothing_and_leaves_it_due(
+    client, db, clock, deal
+):
+    """Item 118 (D-186): no file is started once the run's budget is spent."""
+    _, creator, memo_id = deal
+    [file_id] = cleaned(client, db, clock, creator, memo_id)
+    reader = FakeReader()
+
+    spent = run(db, clock, reader, budget=Deadline(0))
+
+    assert spent.read == 0
+    assert reader.images == []
+    assert reading_for(db, file_id) is None
+    # Still due: the next run, with time to spare, reads it.
+    assert run(db, clock, reader, budget=Deadline(45)).read == 1
+
+
+def test_a_clean_copy_too_slow_to_read_is_skipped_and_stays_due(
+    client, db, clock, deal, monkeypatch
+):
+    """Item 118 (D-186): storage past its 30 s limit is this run's problem,
+    not the file's: nothing is read or sealed, and the next run tries again."""
+    _, creator, memo_id = deal
+    [file_id] = cleaned(client, db, clock, creator, memo_id)
+    reader = FakeReader()
+    store = storage.memory_store()
+    real_read = store.read
+
+    def too_slow(key: str, *, max_bytes: int) -> bytes:
+        raise DeadlinePassed("reading a stored file passed its limit")
+
+    monkeypatch.setattr(store, "read", too_slow)
+    slow = run(db, clock, reader)
+
+    assert (slow.read, slow.skipped) == (0, 1)
+    assert reader.images == []
+    assert reading_for(db, file_id) is None
+    monkeypatch.setattr(store, "read", real_read)
+    assert run(db, clock, reader).read == 1
+
+
+def _store_failures():
+    from botocore.exceptions import (
+        ClientError,
+        ConnectTimeoutError,
+        EndpointConnectionError,
+        ReadTimeoutError,
+    )
+
+    return [
+        ReadTimeoutError(endpoint_url="https://s3.example"),
+        ConnectTimeoutError(endpoint_url="https://s3.example"),
+        EndpointConnectionError(endpoint_url="https://s3.example"),
+        ClientError({"Error": {"Code": "InternalError"}}, "GetObject"),
+        DeadlinePassed("reading a stored file passed its limit"),
+    ]
+
+
+@pytest.mark.parametrize("failure", _store_failures(), ids=lambda e: type(e).__name__)
+def test_a_store_that_fails_one_file_leaves_it_due_and_reads_the_rest(
+    client, db, clock, deal, monkeypatch, failure
+):
+    """A stuck or unreachable S3 is this run's problem for that file only:
+    it stays due, and the next file is still read, in the same run."""
+    _, creator, memo_id = deal
+    first_id, second_id = cleaned(client, db, clock, creator, memo_id, count=2)
+    reader = FakeReader()
+    store = storage.memory_store()
+    real_read = store.read
+    calls: list[str] = []
+
+    def fails_once(key: str, *, max_bytes: int) -> bytes:
+        calls.append(key)
+        if len(calls) == 1:
+            raise failure
+        return real_read(key, max_bytes=max_bytes)
+
+    monkeypatch.setattr(store, "read", fails_once)
+    result = run(db, clock, reader)
+
+    assert (result.read, result.skipped) == (1, 1)
+    assert reading_for(db, first_id) is None
+    assert reading_for(db, second_id) is not None
+    monkeypatch.setattr(store, "read", real_read)
+    assert run(db, clock, reader).read == 1
+    assert reading_for(db, first_id) is not None
+
+
+PER_RUN = reading_service.PER_RUN
+
+
+def _refusals():
+    from botocore.exceptions import ClientError
+
+    return [
+        KeyError("its clean copy is gone"),
+        ClientError({"Error": {"Code": "AccessDenied"}}, "GetObject"),
+    ]
+
+
+@pytest.mark.parametrize("refusal", _refusals(), ids=lambda e: type(e).__name__)
+def test_files_storage_refuses_never_hold_the_others_back(
+    client, db, clock, deal, monkeypatch, refusal
+):
+    """More files than a run reads (PER_RUN) are refused by the store, every
+    time: they are passed over without counting, so a file behind them is
+    still read in the same run. Looking only PER_RUN deep, none ever would be."""
+    _, creator, memo_id = deal
+    ids = cleaned(client, db, clock, creator, memo_id, count=PER_RUN + 2)
+    store = storage.memory_store()
+    real_read = store.read
+    calls: list[str] = []
+
+    def refuses_all_but_the_last(key: str, *, max_bytes: int) -> bytes:
+        calls.append(key)
+        if len(calls) <= PER_RUN + 1:
+            raise refusal
+        return real_read(key, max_bytes=max_bytes)
+
+    monkeypatch.setattr(store, "read", refuses_all_but_the_last)
+    result = run(db, clock, FakeReader())
+
+    assert (result.read, result.skipped) == (1, PER_RUN + 1)
+    assert [reading_for(db, file_id) is None for file_id in ids] == [True] * (
+        PER_RUN + 1
+    ) + [False]
+
+
+def test_a_run_reads_no_more_than_its_files(client, db, clock, deal):
+    """Looking further than PER_RUN never reads more than PER_RUN."""
+    _, creator, memo_id = deal
+    cleaned(client, db, clock, creator, memo_id, count=PER_RUN + 2)
+
+    assert run(db, clock, FakeReader()).read == PER_RUN
+    assert run(db, clock, FakeReader()).read == 2

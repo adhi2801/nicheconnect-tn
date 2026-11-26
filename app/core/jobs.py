@@ -25,6 +25,7 @@ from app.modules.deal_memo import (
     proof_cleaning_jobs,
     proof_reading_jobs,
 )
+from app.modules.insights import rate_report_jobs
 from app.modules.me import (
     account_deletion_jobs,
     connection_jobs,
@@ -66,6 +67,7 @@ def start(*, schema: str = DBOS_SCHEMA) -> None:
         + brief_jobs.schedules()
         + connection_jobs.schedules()
         + direct_offer_jobs.schedules()
+        + rate_report_jobs.schedules()
     )
 
 
