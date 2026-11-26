@@ -70,6 +70,13 @@ PUBLIC = {
     ),
     ("GET", "/api/v1/cities"): "cities with public figures (D-078)",
     ("GET", "/api/v1/cities/{city}/figures"): "a city's public figures (D-078)",
+    (
+        "GET",
+        "/api/v1/rate-reports",
+    ): "the published quarterly rate reports (item 84, D-200)",
+    ("GET", "/api/v1/rate-reports/{quarter}"): (
+        "one quarter's anonymous city rate report (item 84, D-200)"
+    ),
     ("POST", "/api/v1/platforms/meta/data-deletion"): (
         "Meta's data deletion callback: Meta's signature is the credential (D-134)"
     ),

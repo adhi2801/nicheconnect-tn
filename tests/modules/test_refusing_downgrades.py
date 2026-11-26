@@ -71,6 +71,7 @@ REFUSING = {
     "2d1e67a96a45": "images on drafts, and their sealed cleanings",
     "6de6ca38de81": "brand team memberships and invites, live or ended",
     "7ac9c63d532e": "notices telling creators a brand changed hands",
+    "c84a7e2d5b19": "published quarterly rate reports, and their admin log entries",
 }
 
 
@@ -761,3 +762,54 @@ def test_brand_changed_hands_notices(db, clock):
     db.flush()
 
     assert f"{before + 1} creators were told" in refusal(db, "7ac9c63d532e")
+
+
+def test_published_rate_reports(db):
+    before = count(
+        db, "SELECT count(*) FROM city_rate_report WHERE published_at IS NOT NULL"
+    )
+    admin = create_account(db, "admin")
+    db.execute(
+        text(
+            "INSERT INTO city_rate_report (quarter, method_version, body, body_sha256,"
+            " built_at, published_at, published_by_account_id)"
+            " VALUES ('1001-Q1', 1, '{}'::jsonb, repeat('a', 64), now(), now(), :a)"
+        ),
+        {"a": admin.id},
+    )
+
+    assert f"{before + 1} quarterly rate reports are published" in refusal(
+        db, "c84a7e2d5b19"
+    )
+
+
+@pytest.mark.parametrize(
+    "action",
+    [
+        "publish_rate_report",
+        "withdraw_rate_report",
+        # An admin's read and a rebuild are in the log too (D-201): the
+        # narrower list of actions could not hold them either.
+        "view_rate_report",
+        "rebuild_rate_report",
+    ],
+)
+def test_log_entries_of_publishing_rate_reports(db, action):
+    before = count(
+        db,
+        "SELECT count(*) FROM admin_action WHERE action IN"
+        " ('publish_rate_report', 'withdraw_rate_report',"
+        " 'view_rate_report', 'rebuild_rate_report')",
+    )
+    admin = create_account(db, "admin")
+    db.execute(
+        text(
+            "INSERT INTO admin_action (admin_account_id, action, note)"
+            " VALUES (:a, :action, 'checked')"
+        ),
+        {"a": admin.id, "action": action},
+    )
+
+    assert f"{before + 1} admin log entries record publishing" in refusal(
+        db, "c84a7e2d5b19"
+    )

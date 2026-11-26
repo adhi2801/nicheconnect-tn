@@ -60,11 +60,15 @@ from app.modules.auth.tokens import (
 )
 from app.modules.campaigns.models import Campaign
 from app.modules.deal_memo import proof_cleaning_service
+from app.modules.insights import rate_report_rules, rate_report_service
+from app.modules.insights.rate_report_models import CityRateReport
 from app.modules.me import data_export_service, phone_change_service
 from app.modules.payment_status.service import MAX_BULK_MARK_PAID
 
 READ_BUDGET_MS = 300
 WRITE_BUDGET_MS = 500
+# A background job's run, not a request (the rate report's build, item 84).
+JOB_BUDGET_MS = 30_000
 
 # Queries behind the list endpoints, checked with EXPLAIN to confirm the
 # indexes are used (database.md section 5).
@@ -139,6 +143,8 @@ def summarise(name: str, timings: list[float], budget: int) -> dict:
 # production, stayed flat at 269-341 ms. A slow bulk number here is worth
 # re-checking with real commits before it is believed.
 BULK_ROUNDS = 5
+# The cities a real quarter's rate report lists (item 84, D-200).
+REPORT_CITIES = 20
 # The most a brand may send in one call: the worst case is the one that matters.
 BULK_ROWS = MAX_BULK_MARK_PAID
 
@@ -736,6 +742,83 @@ def measure_writes(
                 {"note": "Measured, then rolled back."},
             )
 
+        # The quarterly city rate report (item 84, D-200): built over every
+        # seeded creator, agreed fees included (the heavier build), then
+        # published, read as the public reads it, and withdrawn, `deals`
+        # times; rolled back with the rest. The build is the job's work, not
+        # a request, so it is held to the job's 30-second budget.
+        for round_number in range(deals):
+            quarter = f"{1000 + round_number}-Q1"
+            started = time.perf_counter()
+            report = rate_report_service.build_body(db, quarter, now, agreed_fees=True)
+            # The seeded data lists few cities; a real quarter's report lists
+            # about 20, so the stored body is filled out to REPORT_CITIES by
+            # repeating the cities found, and the reads are timed on a body
+            # that large. The build's time includes this small step.
+            if not report.cities:
+                raise SystemExit("rate report: no listed city in the seeded data")
+            report.cities = [
+                report.cities[i % len(report.cities)].model_copy(
+                    update={"city": f"Measured city {i + 1}"}
+                )
+                for i in range(REPORT_CITIES)
+            ]
+            body = report.model_dump(mode="json")
+            db.add(
+                CityRateReport(
+                    quarter=quarter,
+                    method_version=1,
+                    body=body,
+                    body_sha256=rate_report_service.fingerprint(body),
+                    built_at=now,
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+            db.flush()
+            timings["JOB build the rate report"].append(
+                (time.perf_counter() - started) * 1000
+            )
+            # What an admin reads before publishing (D-201), logged.
+            write(
+                "GET /admin/rate-reports/{quarter}",
+                f"/api/v1/admin/rate-reports/{quarter}",
+                admin_headers,
+                method="GET",
+            )
+            write(
+                "POST /admin/rate-reports/{quarter}/publish",
+                f"/api/v1/admin/rate-reports/{quarter}/publish",
+                admin_headers,
+            )
+            write(
+                "GET /rate-reports/{quarter}",
+                f"/api/v1/rate-reports/{quarter}",
+                {},
+                method="GET",
+            )
+            write("GET /rate-reports", "/api/v1/rate-reports", {}, method="GET")
+        for round_number in range(deals):
+            write(
+                "POST /admin/rate-reports/{quarter}/withdraw",
+                f"/api/v1/admin/rate-reports/{1000 + round_number}-Q1/withdraw",
+                admin_headers,
+                {"reason": "Measured, then rolled back."},
+            )
+        # Each withdrawn quarter corrected under a newer method (D-201): the
+        # rebuild is a request, its build over every seeded creator inside it.
+        # The method version is raised for these requests only.
+        method, rate_report_rules.METHOD_VERSION = rate_report_rules.METHOD_VERSION, 2
+        try:
+            for round_number in range(deals):
+                write(
+                    "POST /admin/rate-reports/{quarter}/rebuild",
+                    f"/api/v1/admin/rate-reports/{1000 + round_number}-Q1/rebuild",
+                    admin_headers,
+                )
+        finally:
+            rate_report_rules.METHOD_VERSION = method
+
         # The second check (item 82). The phone's caps, like the limiter,
         # are not what is measured, so they are lifted for the run; the
         # code is read from a fake sender, as in the tests.
@@ -948,12 +1031,12 @@ def measure_writes(
         outer.rollback()
         connection.close()
 
-    return [
-        summarise(
-            name, values, READ_BUDGET_MS if name.startswith("GET ") else WRITE_BUDGET_MS
-        )
-        for name, values in timings.items()
-    ]
+    def budget(name: str) -> int:
+        if name.startswith("JOB "):
+            return JOB_BUDGET_MS
+        return READ_BUDGET_MS if name.startswith("GET ") else WRITE_BUDGET_MS
+
+    return [summarise(name, values, budget(name)) for name, values in timings.items()]
 
 
 def main() -> int:

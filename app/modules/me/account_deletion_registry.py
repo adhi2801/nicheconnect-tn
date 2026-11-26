@@ -12,7 +12,11 @@ quietly forgets:
   period is a setting left unset until the validation pack gives it
   (constraint 6). Unset means kept, as the law may require; deleting each
   kind once its period ends is a later item;
-- NOT_PERSONAL: holds nothing about a person.
+- NOT_PERSONAL: holds nothing about a person who uses the product. One
+  table names one of our staff: `city_rate_report` keeps the account id of
+  the admin who published each report, kept for ever with the published
+  report, as the seal keeps the report itself; it holds nothing about anyone
+  else.
 
 The kinds and what they hold are also what the owner is shown before
 asking (`GET /api/v1/me/deletion`), so nobody is told "everything goes".
@@ -175,4 +179,8 @@ NOT_PERSONAL: dict[str, str] = {
     "campaign_embedding": "Numbers worked out from a campaign's brief, not a person",
     "deal_record_checkpoint": "One fingerprint a day over every deal, and a count",
     "deal_record_timestamp": "Timestamp authorities' signatures over a checkpoint",
+    "city_rate_report": (
+        "A quarter's figures across many creators, naming none of them; each "
+        "row names the admin who published it"
+    ),
 }

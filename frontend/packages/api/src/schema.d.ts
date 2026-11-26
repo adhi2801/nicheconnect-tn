@@ -204,6 +204,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/rate-reports/{quarter}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read a quarter's city rate report in any state
+         * @description The quarter's newest report, or the one of `method_version`, whether unpublished, published or withdrawn, with all its figures: what an admin reads before publishing it. Written to the admin log as read. Limit: 30 requests per minute.
+         */
+        get: operations["read_rate_report_api_v1_admin_rate_reports__quarter__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/rate-reports/{quarter}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publish a quarter's city rate report
+         * @description Makes the quarter's newest built report public, once an admin has read it (`GET /api/v1/admin/rate-reports/{quarter}`). From then on nothing it says can change: the database refuses it. Written to the admin log. Limit: 30 requests per minute.
+         */
+        post: operations["publish_rate_report_api_v1_admin_rate_reports__quarter__publish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/rate-reports/{quarter}/rebuild": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Build a withdrawn quarter's report again
+         * @description For a quarter whose newest report was withdrawn, once the method has a newer version: builds the quarter again under it, unpublished, replacing the withdrawn report, which stays as it was. Its asking prices are today's rate cards, as `built_at` says. Read it, then publish it. Written to the admin log. Limit: 30 requests per minute.
+         */
+        post: operations["rebuild_rate_report_api_v1_admin_rate_reports__quarter__rebuild_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/rate-reports/{quarter}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Withdraw a published city rate report
+         * @description For a report found wrong after publishing: readers then get 410 with the reason, and the archive lists it as withdrawn. Its figures stay as they were, never rewritten. Once only. A correction comes once the method has a newer version: `.../rebuild` builds the quarter again, and once that is published readers get it instead. Written to the admin log with the reason. Limit: 30 requests per minute.
+         */
+        post: operations["withdraw_rate_report_api_v1_admin_rate_reports__quarter__withdraw_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/reports": {
         parameters: {
             query?: never;
@@ -3836,6 +3916,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rate-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Published quarterly rate reports
+         * @description Every published quarterly city rate report, newest first, withdrawn ones included with when they were withdrawn. Paged with `cursor`. Sent with an ETag and `Cache-Control: public, no-cache`: a cache asks again each time, and an unchanged list answers 304. Limit: 60 requests per minute.
+         */
+        get: operations["list_rate_reports_api_v1_rate_reports_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rate-reports/{quarter}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One quarter's city rate report
+         * @description What creators ask by city, platform and format, and statewide by audience band, for one closed quarter, from anonymous figures: each creator counted once, every figure rounded to the nearest ₹100, and `null` wherever too few are behind it, meaning **not enough to say**, never zero. Agreed fees appear only in a report built with them (`agreed_fees_included`). A published report never changes; `body_sha256` lets any copy be checked. A withdrawn report answers 410 with why. Sent with an ETag and `Cache-Control: public, no-cache`: a cache asks again each time, so a withdrawal shows at once, and an unchanged report answers 304. Limit: 60 requests per minute.
+         */
+        get: operations["read_rate_report_api_v1_rate_reports__quarter__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reports": {
         parameters: {
             query?: never;
@@ -4057,7 +4177,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "view_account" | "suspend" | "restore" | "resolve_report" | "withhold" | "lift_withhold" | "clear_brand_name" | "withdraw_brand_name_clearance";
+            action: "view_account" | "suspend" | "restore" | "resolve_report" | "withhold" | "lift_withhold" | "clear_brand_name" | "withdraw_brand_name_clearance" | "publish_rate_report" | "withdraw_rate_report" | "view_rate_report" | "rebuild_rate_report";
             /**
              * Admin Account Id
              * Format: uuid
@@ -4125,6 +4245,72 @@ export interface components {
              * @description The brand's name, or the creator's display name
              */
             name: string;
+        };
+        /**
+         * AdminRateReportFullRead
+         * @description A report in any state, its figures included: what an admin reads
+         *     before publishing it.
+         */
+        AdminRateReportFullRead: {
+            body: components["schemas"]["RateReportBody"];
+            /** Body Sha256 */
+            body_sha256: string;
+            /**
+             * Built At
+             * Format: date-time
+             */
+            built_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Method Version */
+            method_version: number;
+            /** Published At */
+            published_at: string | null;
+            /** Published By Account Id */
+            published_by_account_id: string | null;
+            /** Quarter */
+            quarter: string;
+            /**
+             * Supersedes Id
+             * @description The withdrawn report of the same quarter this one corrects
+             */
+            supersedes_id: string | null;
+            /** Withdrawn At */
+            withdrawn_at: string | null;
+            /** Withdrawn Reason */
+            withdrawn_reason: string | null;
+        };
+        /**
+         * AdminRateReportRead
+         * @description A report's state as an admin sees it after publishing, withdrawing or
+         *     building it again.
+         */
+        AdminRateReportRead: {
+            /** Body Sha256 */
+            body_sha256: string;
+            /**
+             * Built At
+             * Format: date-time
+             */
+            built_at: string;
+            /** Method Version */
+            method_version: number;
+            /** Published At */
+            published_at: string | null;
+            /** Quarter */
+            quarter: string;
+            /**
+             * Supersedes Id
+             * @description The withdrawn report of the same quarter this one corrects
+             */
+            supersedes_id: string | null;
+            /** Withdrawn At */
+            withdrawn_at: string | null;
+            /** Withdrawn Reason */
+            withdrawn_reason: string | null;
         };
         /** AdminReportRead */
         AdminReportRead: {
@@ -4359,6 +4545,58 @@ export interface components {
             name: string;
             /** Scopes */
             scopes: ("deals:read" | "campaigns:read" | "applications:write" | "notes:write" | "alerts:write")[];
+        };
+        /**
+         * AgreedCellRead
+         * @description What was agreed, for one platform and format: accepted memos with one
+         *     deliverable, each creator's own median first.
+         */
+        AgreedCellRead: {
+            /**
+             * Barter Share Percent
+             * @description The share of the cell's deals paid in goods, not money. Null below the floor in `min_counts`: not enough to say, never zero
+             */
+            barter_share_percent: number | null;
+            /**
+             * Brands
+             * @description Null below the floor in `min_counts`: not enough to say, never zero
+             */
+            brands: number | null;
+            /**
+             * Creators
+             * @description Null below the floor in `min_counts`: not enough to say, never zero
+             */
+            creators: number | null;
+            /**
+             * Deals
+             * @description Deals in the cell, barter included. Null below the floor in `min_counts`: not enough to say, never zero
+             */
+            deals: number | null;
+            /**
+             * Format
+             * @enum {string}
+             */
+            format: "post" | "reel" | "story" | "short" | "video" | "live" | "other";
+            /**
+             * Lower Quarter Paise
+             * @description Only once the paid deals rest on 10 creators or more. Null below the floor in `min_counts`: not enough to say, never zero
+             */
+            lower_quarter_paise: number | null;
+            /**
+             * Median Paise
+             * @description Null below the floor in `min_counts`: not enough to say, never zero
+             */
+            median_paise: number | null;
+            /**
+             * Platform
+             * @enum {string}
+             */
+            platform: "instagram" | "youtube";
+            /**
+             * Upper Quarter Paise
+             * @description Only once the paid deals rest on 10 creators or more. Null below the floor in `min_counts`: not enough to say, never zero
+             */
+            upper_quarter_paise: number | null;
         };
         /**
          * ApplicantRead
@@ -4615,6 +4853,42 @@ export interface components {
             source?: ("passport_link" | "instagram" | "whatsapp" | "event" | "search" | "other") | null;
         };
         /**
+         * AskingCellRead
+         * @description What creators ask, for one platform and format: published rate cards.
+         */
+        AskingCellRead: {
+            /**
+             * Creators
+             * @description Creators behind the figures, each counted once. Null below the floor in `min_counts`: not enough to say, never zero
+             */
+            creators: number | null;
+            /**
+             * Format
+             * @enum {string}
+             */
+            format: "post" | "reel" | "story" | "short" | "video" | "live" | "other";
+            /**
+             * Lower Quarter Paise
+             * @description Null below the floor in `min_counts`: not enough to say, never zero
+             */
+            lower_quarter_paise: number | null;
+            /**
+             * Median Paise
+             * @description Null below the floor in `min_counts`: not enough to say, never zero
+             */
+            median_paise: number | null;
+            /**
+             * Platform
+             * @enum {string}
+             */
+            platform: "instagram" | "youtube";
+            /**
+             * Upper Quarter Paise
+             * @description Null below the floor in `min_counts`: not enough to say, never zero
+             */
+            upper_quarter_paise: number | null;
+        };
+        /**
          * AskingPriceRead
          * @description The median asking price for one platform and format in a city.
          *
@@ -4756,6 +5030,52 @@ export interface components {
              * @description True when more items exist than are listed
              */
             truncated: boolean;
+        };
+        /**
+         * AudienceBandCellRead
+         * @description Statewide asking prices for one audience band, platform and format.
+         */
+        AudienceBandCellRead: {
+            /**
+             * Audience Band
+             * @enum {string}
+             */
+            audience_band: "under_10k" | "10k_50k" | "50k_100k" | "100k_500k" | "500k_plus";
+            /**
+             * Audience Figures From
+             * @description The oldest follower count behind the band, as creators stated it; we never checked it
+             */
+            audience_figures_from: string | null;
+            /**
+             * Creators
+             * @description Null below the floor in `min_counts`: not enough to say, never zero
+             */
+            creators: number | null;
+            /**
+             * Format
+             * @enum {string}
+             */
+            format: "post" | "reel" | "story" | "short" | "video" | "live" | "other";
+            /**
+             * Lower Quarter Paise
+             * @description Null below the floor in `min_counts`: not enough to say, never zero
+             */
+            lower_quarter_paise: number | null;
+            /**
+             * Median Paise
+             * @description Null below the floor in `min_counts`: not enough to say, never zero
+             */
+            median_paise: number | null;
+            /**
+             * Platform
+             * @enum {string}
+             */
+            platform: "instagram" | "youtube";
+            /**
+             * Upper Quarter Paise
+             * @description Null below the floor in `min_counts`: not enough to say, never zero
+             */
+            upper_quarter_paise: number | null;
         };
         /** AvailabilityRead */
         AvailabilityRead: {
@@ -5847,6 +6167,24 @@ export interface components {
             open_campaigns: number | null;
             /** Published Creators */
             published_creators: number | null;
+        };
+        /** CityRatesRead */
+        CityRatesRead: {
+            /**
+             * Agreed Fees
+             * @description Null when this report was built without agreed fees
+             */
+            agreed_fees: components["schemas"]["AgreedCellRead"][] | null;
+            /**
+             * Asking Prices
+             * @description Every platform and format, in a fixed order, null where too few
+             */
+            asking_prices: components["schemas"]["AskingCellRead"][];
+            /**
+             * City
+             * @description As most of its creators spell it
+             */
+            city: string;
         };
         /**
          * ConnectionComplete
@@ -8028,6 +8366,37 @@ export interface components {
             /** Url */
             url: string;
         };
+        /**
+         * MinCountsRead
+         * @description The floors this report was built with (docs/RATE_REPORT_METHOD.md).
+         */
+        MinCountsRead: {
+            /** Agreed Brands */
+            agreed_brands: number;
+            /** Agreed Creators */
+            agreed_creators: number;
+            /** Agreed Deals */
+            agreed_deals: number;
+            /** Agreed Max Brand Share Percent */
+            agreed_max_brand_share_percent: number;
+            /**
+             * Agreed P Percent
+             * @description The p% rule's p: fees left after the two largest contributors must come to at least this share of the largest
+             */
+            agreed_p_percent: number;
+            /**
+             * Agreed Quartiles Creators
+             * @description Paid creators needed before any fee figure: the median and quarters
+             */
+            agreed_quartiles_creators: number;
+            /** Asking Creators */
+            asking_creators: number;
+            /**
+             * Rounded To Paise
+             * @description Every figure to the nearest of these
+             */
+            rounded_to_paise: number;
+        };
         /** MisreadMark */
         MisreadMark: {
             /**
@@ -8634,6 +9003,16 @@ export interface components {
         Page_PaymentListItem_: {
             /** Items */
             items: components["schemas"]["PaymentListItem"][];
+            /**
+             * Next Cursor
+             * @description Pass as ?cursor= to get the next page
+             */
+            next_cursor?: string | null;
+        };
+        /** Page[RateReportSummaryRead] */
+        Page_RateReportSummaryRead_: {
+            /** Items */
+            items: components["schemas"]["RateReportSummaryRead"][];
             /**
              * Next Cursor
              * @description Pass as ?cursor= to get the next page
@@ -9711,6 +10090,118 @@ export interface components {
             source: "published_asking_prices";
             /** Upper Quarter Paise */
             upper_quarter_paise: number | null;
+        };
+        /**
+         * RateReportBody
+         * @description One quarter's figures, aggregate numbers only: no id, handle or name.
+         */
+        RateReportBody: {
+            /**
+             * Agreed Fees Included
+             * @description False while agreed fees are switched off; then every city's is null
+             */
+            agreed_fees_included: boolean;
+            /**
+             * As Of
+             * Format: date
+             * @description The day the figures were worked out. Asking prices are the published rate cards on that day; agreed fees, the memos accepted in the quarter
+             */
+            as_of: string;
+            /**
+             * Audience Bands
+             * @description Statewide asking prices by follower band, platform and format
+             */
+            audience_bands: components["schemas"]["AudienceBandCellRead"][];
+            /**
+             * Cities
+             * @description Cities with at least five published creators, largest first
+             */
+            cities: components["schemas"]["CityRatesRead"][];
+            /**
+             * Currency
+             * @default INR
+             * @constant
+             */
+            currency: "INR";
+            /** Method Version */
+            method_version: number;
+            min_counts: components["schemas"]["MinCountsRead"];
+            /**
+             * Period From
+             * Format: date
+             * @description The quarter's first day, in Tamil Nadu
+             */
+            period_from: string;
+            /**
+             * Period To
+             * Format: date
+             * @description The quarter's last day, in Tamil Nadu
+             */
+            period_to: string;
+            /**
+             * Quarter
+             * @example 2026-Q4
+             */
+            quarter: string;
+        };
+        /**
+         * RateReportRead
+         * @description A published quarterly report. Never changes once published.
+         */
+        RateReportRead: {
+            body: components["schemas"]["RateReportBody"];
+            /**
+             * Body Sha256
+             * @description SHA-256 of `body` as canonical JSON: keys sorted, no spaces, ASCII, any other letter as JSON's `\uXXXX` escape. Any copy can be checked against this one
+             */
+            body_sha256: string;
+            /**
+             * Built At
+             * Format: date-time
+             */
+            built_at: string;
+            /**
+             * Method Url
+             * @description The rules this report was built by, in words
+             */
+            method_url: string;
+            /** Method Version */
+            method_version: number;
+            /**
+             * Published At
+             * Format: date-time
+             */
+            published_at: string;
+            /**
+             * Quarter
+             * @example 2026-Q4
+             */
+            quarter: string;
+        };
+        /**
+         * RateReportSummaryRead
+         * @description One published quarter, for the archive.
+         */
+        RateReportSummaryRead: {
+            /** Body Sha256 */
+            body_sha256: string;
+            /** Method Version */
+            method_version: number;
+            /**
+             * Published At
+             * Format: date-time
+             */
+            published_at: string;
+            /**
+             * Quarter
+             * @example 2026-Q4
+             */
+            quarter: string;
+            /**
+             * Withdrawn At
+             * @description Set when it was withdrawn; reading it then answers 410 with why
+             */
+            withdrawn_at: string | null;
         };
         /** ReadPartRead */
         ReadPartRead: {
@@ -11237,6 +11728,14 @@ export interface components {
              */
             verified_since: string;
         };
+        /** WithdrawRateReportIn */
+        WithdrawRateReportIn: {
+            /**
+             * Reason
+             * @description Why, shown to every reader of the withdrawn report
+             */
+            reason: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -11954,6 +12453,313 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    read_rate_report_api_v1_admin_rate_reports__quarter__get: {
+        parameters: {
+            query?: {
+                method_version?: number | null;
+            };
+            header?: never;
+            path: {
+                /** @description A quarter of the Tamil Nadu calendar, `YYYY-Qn` */
+                quarter: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRateReportFullRead"];
+                };
+            };
+            /** @description `rate_report_not_built`; also the answer for anyone who is not an admin */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description That is not a quarter, or the method version is not one */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    publish_rate_report_api_v1_admin_rate_reports__quarter__publish_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description A quarter of the Tamil Nadu calendar, `YYYY-Qn` */
+                quarter: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRateReportRead"];
+                };
+            };
+            /** @description `rate_report_not_built`; also the answer for anyone who is not an admin */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `rate_report_already_published`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description That is not a quarter, or the reason is missing or too short. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    rebuild_rate_report_api_v1_admin_rate_reports__quarter__rebuild_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description A quarter of the Tamil Nadu calendar, `YYYY-Qn` */
+                quarter: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRateReportRead"];
+                };
+            };
+            /** @description `rate_report_not_built`; also the answer for anyone who is not an admin */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `rate_report_not_withdrawn` or `rate_report_method_unchanged`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description That is not a quarter, or the reason is missing or too short. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    withdraw_rate_report_api_v1_admin_rate_reports__quarter__withdraw_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Send the same key when retrying this request and you get the original response back instead of doing the work twice, with `Idempotency-Replayed: true` on the reply. Retrying while the first attempt is still running gives 409; reusing a key with a different body gives 422. Use a new random value (a UUID is ideal) for each distinct request. Keys are remembered for 24 hours. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description A quarter of the Tamil Nadu calendar, `YYYY-Qn` */
+                quarter: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WithdrawRateReportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRateReportRead"];
+                };
+            };
+            /** @description The request itself could not be read, for example a body that is not valid UTF-8. Nothing was done */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description `rate_report_not_built`; also the answer for anyone who is not an admin */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `rate_report_not_published` or `rate_report_already_withdrawn`. Or: A request with the same Idempotency-Key is still being processed; wait a moment and retry */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description That is not a quarter, or the reason is missing or too short. Or: The request is not valid, including an Idempotency-Key that is not usable or was already used with a different body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Can't guarantee this request runs only once right now. Safe to retry */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
                 };
             };
         };
@@ -30182,6 +30988,138 @@ export interface operations {
                 };
             };
             /** @description An unknown platform, format or niche, or a bad follower count */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    list_rate_reports_api_v1_rate_reports_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: {
+                "if-none-match"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_RateReportSummaryRead_"];
+                };
+            };
+            /** @description A limit out of range, or a bad cursor */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Too many requests; see the Retry-After header */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description Busy right now: nothing was done. Wait the seconds in the Retry-After header and send the same request again (code `service_busy`) */
+            503: {
+                headers: {
+                    /** @description Seconds to wait before trying again */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    read_rate_report_api_v1_rate_reports__quarter__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "if-none-match"?: string | null;
+            };
+            path: {
+                /** @description A quarter of the Tamil Nadu calendar, `YYYY-Qn` */
+                quarter: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateReportRead"];
+                };
+            };
+            /** @description No report is published for that quarter */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description `rate_report_withdrawn`: the detail says why */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
+                };
+            };
+            /** @description That is not a quarter (`YYYY-Qn`) */
             422: {
                 headers: {
                     [name: string]: unknown;

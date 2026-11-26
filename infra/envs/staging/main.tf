@@ -56,6 +56,11 @@ variable "proof_reading_enabled" {
   default = false
 }
 
+variable "rate_report_agreed_fees" {
+  type    = bool
+  default = false
+}
+
 variable "sentry_dsn" {
   type    = string
   default = ""
@@ -112,6 +117,7 @@ module "app" {
   otp_sender                   = var.otp_sender
   msg91_whatsapp_number        = var.msg91_whatsapp_number
   proof_reading_enabled        = var.proof_reading_enabled
+  rate_report_agreed_fees      = var.rate_report_agreed_fees
   sentry_dsn                   = var.sentry_dsn
   upi_notice_version           = var.upi_notice_version
   platform_connections_enabled = var.platform_connections_enabled

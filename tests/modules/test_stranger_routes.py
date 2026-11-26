@@ -20,6 +20,7 @@ list cannot outlive the truth. A route this test cannot fill fails, so a new
 route is covered the day it is added.
 """
 
+import json
 import uuid
 from datetime import timedelta
 from typing import Any
@@ -38,6 +39,7 @@ from app.modules.auth.models.brand_team import BrandInvite, BrandMember
 from app.modules.auth.models.passkey import Passkey
 from app.modules.auth.team_invites import hash_invited_phone
 from app.modules.deal_memo.anchor_service import create_checkpoint
+from app.modules.insights import rate_report_service
 from tests.deal_flow import (
     CAMPAIGNS_URL,
     LINK,
@@ -64,6 +66,10 @@ PUBLIC: dict[tuple[str, str], tuple[frozenset[str], str]] = {
     ("GET", "/api/v1/cities/{city}/figures"): (
         EVERYONE,
         "anonymous city figures (D-078)",
+    ),
+    ("GET", "/api/v1/rate-reports/{quarter}"): (
+        EVERYONE,
+        "a published quarterly city rate report (item 84, D-200)",
     ),
     ("GET", "/api/v1/campaigns/{campaign_id}"): (
         EVERYONE,
@@ -138,6 +144,7 @@ BODIES: dict[str, dict[str, Any]] = {
     "PackageUpdate": {"price_paise": 900_000},
     "SuspendIn": {"reason": "fraud", "note": "Checking a report."},
     "RestoreIn": {"note": "Checked: a mistake."},
+    "WithdrawRateReportIn": {"reason": "A city's figures were built from a wrong name."},
     "ResolveReportIn": {"outcome": "dismissed", "note": "Looked genuine."},
     "LiftTakedownIn": {"note": "The order was set aside."},
     "CampaignUpdate": {"title": "Pongal sweets launch, extended"},
@@ -454,6 +461,24 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
         )
     )
 
+    # A published quarterly rate report (item 84): public by design. A
+    # quarter of this test's own, so a report another test left cannot clash.
+    quarter = f"{1000 + uuid.uuid4().int % 9000}-Q{1 + uuid.uuid4().int % 4}"
+    one(
+        "INSERT INTO city_rate_report (quarter, method_version, body, body_sha256,"
+        " built_at, published_at, published_by_account_id)"
+        " VALUES (:q, 1, CAST(:body AS jsonb), :sha, :t, :t, :a) RETURNING id",
+        q=quarter,
+        body=json.dumps(
+            rate_report_service.build_body(
+                db, quarter, clock.now, agreed_fees=False
+            ).model_dump(mode="json")
+        ),
+        sha="a" * 64,
+        t=clock.now,
+        a=create_account(db, "admin").id,
+    )
+
     ids = {
         "memo_id": memo_id,
         "brief_draft_id": brief_draft_id,
@@ -487,6 +512,7 @@ def world(client: TestClient, db: Session, clock) -> dict[str, Any]:
         "account_id": brand.account_id,
         "city": city,
         "unpaid_memo_id": unpaid_memo_id,
+        "quarter": quarter,
         "platform": "instagram",
     }
     assert all(value is not None for value in ids.values()), ids
