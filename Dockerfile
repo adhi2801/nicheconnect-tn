@@ -53,7 +53,9 @@ RUN groupadd --system --gid 10001 app \
 # built on 19 September; and APT itself (CVE-2026-109518, High: a tampered
 # mirror or proxy could get an unverified package installed, D-159); and
 # zlib (CVE-2026-76844 and CVE-2026-85091, High; CVE-2026-27171, Medium),
-# found by the image gate on 11 November (D-178).
+# found by the image gate on 11 November (D-178); and glibc (14 CVEs, up to
+# Medium), zstd (CVE-2026-124851) and shadow's passwd and login.defs
+# (CVE-2026-135901), found by the image gate on 26 November (D-203).
 # Exact versions, upgrade only, so the build stays
 # reproducible. Remove this step when the base digest moves to an image
 # that already has these versions or newer; Grype will say if it is early.
