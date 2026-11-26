@@ -126,7 +126,7 @@ export function CampaignDetail({ campaign, mine, checking }: { campaign: Campaig
               <div className="grid gap-3">
                 <p className="font-display text-2xl font-semibold tabular-nums">{t(pay.key, pay.vars)}</p>
                 <p className="text-sm text-on-accent/80">{campaign.applications_close_on ? t("campaign.closesOn", { date: formatDate(campaign.applications_close_on) }) : t("campaign.noClose")}</p>
-                <Button variant="highlight" onClick={() => setApplying(true)}>{t("campaign.apply")}</Button>
+                <Button variant="highlight" onClick={() => { if (!apply.isPending) apply.reset(); setApplying(true); }}>{t("campaign.apply")}</Button>
               </div>
             ) : (
               <p className="text-[15px] font-semibold">{t("campaign.closed")}</p>

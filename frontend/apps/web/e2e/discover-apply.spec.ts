@@ -222,6 +222,19 @@ test("too many tries shows the wait, never retried by itself", async ({ page }) 
   expect((await state()).writes).toHaveLength(1);
 });
 
+test("an old refusal is not shown as current when the sheet is opened again", async ({ page }) => {
+  await signIn(page, { apply: "rate" });
+  await page.goto("/app/discover/c-5");
+  await page.getByRole("button", { name: "Apply" }).click();
+  await page.getByLabel("Why you're a good fit").fill(PITCH);
+  await page.getByRole("button", { name: "Send application" }).click();
+  await expect(page.getByText("Try again in 40 seconds.", { exact: false })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Apply" }).click();
+  await expect(page.getByLabel("Why you're a good fit")).toHaveValue(PITCH); // the words stay
+  await expect(page.getByText("Try again in 40 seconds.", { exact: false })).toHaveCount(0); // the old wait does not
+});
+
 test("a pitch the backend flags shows its warning to the author once sent", async ({ page }) => {
   await signIn(page);
   await page.goto("/app/discover/c-5");

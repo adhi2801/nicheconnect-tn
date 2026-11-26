@@ -19,7 +19,7 @@ type Body = ReturnType<typeof applicationBody>;
 const numbers = new Intl.NumberFormat("en-IN");
 
 /** What the backend's refusal means here: a field to fix, or words for the whole form. Read from the write itself, which lives on the
- *  campaign page, so it is still there if the sheet is closed and opened again. */
+ *  campaign page; opening the sheet clears an old refusal, so a wait or "offline" from minutes ago is never shown as current. */
 function refusalOf(error: unknown): { field?: keyof ApplyProblems; key: MessageKey; vars?: Record<string, number>; profileLink?: boolean } | null {
   if (!error) return null;
   if (error instanceof ApiError && error.kind === "rate_limited") return error.retryAfter ? { key: "common.rateLimitedWait", vars: { seconds: error.retryAfter } } : { key: "common.rateLimited" };

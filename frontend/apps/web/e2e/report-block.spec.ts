@@ -75,3 +75,17 @@ test("a brand's note on My applications is one tap from reporting that brand", a
   await expect(page.getByRole("dialog").getByText("Report sent. Thank you.")).toBeVisible();
   expect((await state()).writes[0].body).toEqual({ subject_kind: "brand", subject_id: "b-good", category: "abuse", note: "Asked me to call a private number." });
 });
+
+test("blocking from My applications reads again only that brand's campaigns, not every row", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/app/applications");
+  await expect(page.locator("article").first()).toBeVisible();
+  await expect(page.getByText("Filter coffee tasting 1")).toBeVisible(); // the one from Kovai Organics, another brand
+  const before = (await state()).calls;
+  await page.locator("article", { hasText: "Not chosen" }).getByRole("button", { name: "Report or block" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Block Chennai Bakes" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Yes, block Chennai Bakes" }).click();
+  await expect(page.getByText("Blocked.", { exact: false })).toBeVisible();
+  await expect.poll(async () => (await state()).calls["/api/v1/campaigns/c-6"]).toBe(before["/api/v1/campaigns/c-6"] + 1);
+  expect((await state()).calls["/api/v1/campaigns/c-1"]).toBe(before["/api/v1/campaigns/c-1"]); // Kovai's: not read again
+});

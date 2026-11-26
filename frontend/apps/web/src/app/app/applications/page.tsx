@@ -112,7 +112,13 @@ export default function ApplicationsPage() {
 
       {reporting && (
         <ReportBlockSheet open onClose={() => setReporting(null)} subject={{ kind: "brand", id: reporting.brand_id }} brandId={reporting.brand_id} brandName={reporting.brand_name}
-          onBlocked={() => { setReporting(null); setMessage({ tone: "info", text: t("safety.block.done") }); void client.invalidateQueries({ queryKey: ["campaign"] }); }} />
+          onBlocked={() => {
+            setReporting(null);
+            setMessage({ tone: "info", text: t("safety.block.done") });
+            // Only the blocked brand's campaigns are read again: re-reading every row would spend the campaign read's limit (R7).
+            // `as`: the query library types cached data as unknown inside a predicate; these keys hold campaigns (lib/queries.ts).
+            void client.invalidateQueries({ queryKey: ["campaign"], predicate: (q) => (q.state.data as Campaign | undefined)?.brand_id === reporting.brand_id });
+          }} />
       )}
 
       <Sheet open={confirming !== null} onClose={() => setConfirming(null)} title={t("applications.withdraw.title")} locked={withdraw.isPending}>

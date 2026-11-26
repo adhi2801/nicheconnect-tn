@@ -40,6 +40,7 @@ const myApplications = () => {
     application("a-3", "c-6", "rejected", "2026-11-18T19:00:00Z", { rejection_reason: "budget_mismatch", rejection_note: "Call me on 98765 43210 to discuss.", text_flags: [{ field: "rejection_note", flag: "phone_number" }] }),
     application("a-4", "c-gone", "withdrawn", "2026-11-10T05:00:00Z"),
     application("a-5", "c-8", "invited", "2026-11-21T05:00:00Z", { origin: "invited", invitation_note: "Loved your Madurai reels. Join our launch?" }),
+    application("a-6", "c-1", "withdrawn", "2026-11-09T05:00:00Z"), // the one from another brand (Kovai Organics)
   ];
   return [...sentApps, ...base].map((a) => (withdrawn.has(a.id) ? { ...a, status: "withdrawn" } : a));
 };

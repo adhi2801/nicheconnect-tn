@@ -24,7 +24,7 @@ async function open(page: Page, extra: object = {}) {
 test("applications are grouped, dated in India's calendar, with the campaign's name", async ({ page }) => {
   await open(page);
   await expect(page.getByRole("heading", { name: "In progress (2)" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Closed (2)" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Closed (3)" })).toBeVisible();
   const first = page.locator("article").first();
   await expect(first).toContainText("Temple town food walk 4"); // shortlisted leads
   await expect(first).toContainText("Shortlisted");
@@ -44,20 +44,22 @@ test("the brand's note is text with its warning beside it, never a link", async 
 test("a campaign that no longer exists still shows its application, said plainly", async ({ page }) => {
   await open(page);
   // The backend answers 404 to a creator for any campaign that is no longer open (closed, cancelled or taken down).
-  await expect(page.locator("article", { hasText: "Withdrawn" })).toContainText("This campaign isn't open any more");
+  await expect(page.locator("article").filter({ hasText: "This campaign isn't open any more" })).toHaveCount(1);
+  await expect(page.locator("article").filter({ hasText: "This campaign isn't open any more" })).toContainText("Withdrawn");
 });
 
 test("each campaign is read once, however many applications it has (the R7 stopgap stays bounded)", async ({ page }) => {
   await page.clock.install(); // the page's clock, so the reads can be made old without waiting
   await open(page);
-  await expect(page.locator("article")).toHaveCount(5);
+  await expect(page.locator("article")).toHaveCount(6);
   await expect(page.getByText("Filter coffee tasting 6")).toBeVisible();
   const { calls } = await state();
-  for (const id of ["c-2", "c-4", "c-6", "c-8", "c-gone"]) expect(calls[`/api/v1/campaigns/${id}`]).toBe(1);
+  for (const id of ["c-1", "c-2", "c-4", "c-6", "c-8", "c-gone"]) expect(calls[`/api/v1/campaigns/${id}`]).toBe(1);
   // Not read again when the tab regains focus (the read's limit is 60 a minute an account), even once the reads are old: 11 minutes
   // on, past their 10-minute freshness, a focus would re-read them all if focus re-reads were on.
   await page.clock.fastForward("11:00");
-  await page.evaluate(() => { window.dispatchEvent(new Event("focus")); document.dispatchEvent(new Event("visibilitychange")); });
+  // As a real browser does on returning to the tab: visibilitychange at the document, bubbling to window, where the query library listens.
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange", { bubbles: true })));
   await page.waitForTimeout(500);
   expect((await state()).calls["/api/v1/campaigns/c-2"]).toBe(1);
 });
@@ -77,7 +79,7 @@ test("withdrawing asks first, sends once with a key, then shows it as withdrawn"
   await page.locator("article", { hasText: "Sent" }).getByRole("button", { name: "Withdraw" }).click();
   await page.getByRole("button", { name: "Withdraw application" }).click();
   await expect(page.getByText("Application withdrawn.")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Closed (3)" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Closed (4)" })).toBeVisible();
   const { writes } = await state();
   expect(writes).toHaveLength(1);
   expect(writes[0].key).toMatch(/^[0-9a-f-]{36}$/);
