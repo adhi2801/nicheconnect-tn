@@ -457,15 +457,9 @@ def rebuild(
     # works out a whole body. EXISTS, so no row count is there to get wrong.
     # Only "a row supersedes it": the supersedes trigger keeps a quarter's
     # rows in one chain, so any newer version already supersedes this row,
-    # and a second test of the version could never be told apart (D-205).
-    if db.scalar(
-        select(
-            exists().where(
-                CityRateReport.quarter == quarter,
-                CityRateReport.supersedes_id == newest.id,
-            )
-        )
-    ):
+    # and a row superseding it is of its quarter; a test of the version or
+    # the quarter could never be told apart (D-205).
+    if db.scalar(select(exists().where(CityRateReport.supersedes_id == newest.id))):
         db.rollback()
         raise RateReportNotWithdrawn()
     body = build_body(db, quarter, built_at, agreed_fees=agreed_fees).model_dump(
