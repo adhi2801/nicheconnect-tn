@@ -82,7 +82,7 @@ async function settled(page: Page) {
 async function violations(page: Page) {
   const scheme = await page.evaluate(() => document.documentElement.dataset.theme);
   const ink = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--c-ink").trim().toLowerCase());
-  expect(ink, `the ${scheme} theme is what renders`).toBe(scheme === "dark" ? "#f4f0e7" : "#201712");
+  expect(ink, `the ${scheme} theme is what renders`).toBe(scheme === "dark" ? "#f4f3f1" : "#181715");
   const result = await new AxeBuilder({ page }).withTags(TAGS).analyze();
   const above = await new AxeBuilder({ page }).withRules(RULES_ABOVE_AA).analyze();
   return [...result.violations, ...above.violations].map((v) => ({

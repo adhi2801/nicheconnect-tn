@@ -1,4 +1,5 @@
 {
+  "defaultLook": "neutral",
   "defaultBrand": "burgundy",
   "themes": [
     "light",
@@ -132,6 +133,68 @@
       "accent-mid": "#5AA570",
       "accent-deep-from": "#185B37",
       "accent-deep-to": "#012C18"
+    },
+    "neutral/light": {
+      "ground": "#F7F7F6",
+      "surface": "#FFFFFF",
+      "surface-raised": "#FFFFFF",
+      "sunk": "#F0EFED",
+      "ink": "#181715",
+      "ink-muted": "#514F4D",
+      "line": "#E3E2E0",
+      "line-strong": "#81807D",
+      "focus": "#181715",
+      "ok": "#135C30",
+      "ok-soft": "#E2F6E6",
+      "warn": "#6D4B04",
+      "warn-soft": "#FCF1D4",
+      "bad": "#971B1A",
+      "bad-soft": "#FEEBE9",
+      "seal": "#D0A348",
+      "seal-hi": "#F1DFA7",
+      "seal-lo": "#84591A",
+      "on-seal": "#362107",
+      "accent": "#181715",
+      "accent-hover": "#343331",
+      "accent-pressed": "#434240",
+      "on-accent": "#FFFFFF",
+      "accent-ink": "#181715",
+      "accent-soft": "#F0EFED",
+      "on-accent-soft": "#23211F",
+      "accent-mid": "#878683",
+      "accent-deep-from": "#2C2B29",
+      "accent-deep-to": "#11100F"
+    },
+    "neutral/dark": {
+      "ground": "#0E0D0C",
+      "surface": "#181716",
+      "surface-raised": "#201F1E",
+      "sunk": "#090807",
+      "ink": "#F4F3F1",
+      "ink-muted": "#BFBEBB",
+      "line": "#2C2B2A",
+      "line-strong": "#757472",
+      "focus": "#F4F3F1",
+      "ok": "#86DB9D",
+      "ok-soft": "#112D1A",
+      "warn": "#ECCA76",
+      "warn-soft": "#372709",
+      "bad": "#FE9B93",
+      "bad-soft": "#40201D",
+      "seal": "#E1B75C",
+      "seal-hi": "#F7E6B1",
+      "seal-lo": "#9D712D",
+      "on-seal": "#261704",
+      "accent": "#F4F3F1",
+      "accent-hover": "#D8D7D5",
+      "accent-pressed": "#C5C4C2",
+      "on-accent": "#11100F",
+      "accent-ink": "#F4F3F1",
+      "accent-soft": "#252422",
+      "on-accent-soft": "#E8E8E6",
+      "accent-mid": "#878683",
+      "accent-deep-from": "#E5E4E2",
+      "accent-deep-to": "#CBCAC8"
     }
   },
   "contrast": {
@@ -837,6 +900,358 @@
         "bg": "ink",
         "min": 7,
         "ratio": 12.66
+      }
+    ],
+    "neutral/light": [
+      {
+        "fg": "ink",
+        "bg": "ground",
+        "min": 7,
+        "ratio": 16.71
+      },
+      {
+        "fg": "ink",
+        "bg": "surface",
+        "min": 7,
+        "ratio": 17.91
+      },
+      {
+        "fg": "ink",
+        "bg": "sunk",
+        "min": 7,
+        "ratio": 15.59
+      },
+      {
+        "fg": "ink",
+        "bg": "surface-raised",
+        "min": 7,
+        "ratio": 17.91
+      },
+      {
+        "fg": "ink-muted",
+        "bg": "ground",
+        "min": 7,
+        "ratio": 7.61
+      },
+      {
+        "fg": "ink-muted",
+        "bg": "surface",
+        "min": 7,
+        "ratio": 8.15
+      },
+      {
+        "fg": "ink-muted",
+        "bg": "sunk",
+        "min": 7,
+        "ratio": 7.1
+      },
+      {
+        "fg": "accent-ink",
+        "bg": "surface",
+        "min": 7,
+        "ratio": 17.91
+      },
+      {
+        "fg": "accent-ink",
+        "bg": "ground",
+        "min": 7,
+        "ratio": 16.71
+      },
+      {
+        "fg": "on-accent-soft",
+        "bg": "accent-soft",
+        "min": 7,
+        "ratio": 13.96
+      },
+      {
+        "fg": "ok",
+        "bg": "ok-soft",
+        "min": 7,
+        "ratio": 7.13
+      },
+      {
+        "fg": "warn",
+        "bg": "warn-soft",
+        "min": 7,
+        "ratio": 7.02
+      },
+      {
+        "fg": "bad",
+        "bg": "bad-soft",
+        "min": 7,
+        "ratio": 7.35
+      },
+      {
+        "fg": "ok",
+        "bg": "surface",
+        "min": 7,
+        "ratio": 8.07
+      },
+      {
+        "fg": "warn",
+        "bg": "surface",
+        "min": 7,
+        "ratio": 7.9
+      },
+      {
+        "fg": "bad",
+        "bg": "surface",
+        "min": 7,
+        "ratio": 8.44
+      },
+      {
+        "fg": "on-seal",
+        "bg": "seal",
+        "min": 4.5,
+        "ratio": 6.54
+      },
+      {
+        "fg": "on-accent",
+        "bg": "accent",
+        "min": 4.5,
+        "ratio": 17.91
+      },
+      {
+        "fg": "on-accent",
+        "bg": "accent-hover",
+        "min": 4.5,
+        "ratio": 12.62
+      },
+      {
+        "fg": "on-accent",
+        "bg": "accent-pressed",
+        "min": 4.5,
+        "ratio": 10.04
+      },
+      {
+        "fg": "on-accent",
+        "bg": "accent-deep-from",
+        "min": 4.5,
+        "ratio": 14.14
+      },
+      {
+        "fg": "on-accent",
+        "bg": "accent-deep-to",
+        "min": 4.5,
+        "ratio": 19.01
+      },
+      {
+        "fg": "line-strong",
+        "bg": "surface",
+        "min": 3,
+        "ratio": 3.95
+      },
+      {
+        "fg": "line-strong",
+        "bg": "ground",
+        "min": 3,
+        "ratio": 3.68
+      },
+      {
+        "fg": "focus",
+        "bg": "surface",
+        "min": 3,
+        "ratio": 17.91
+      },
+      {
+        "fg": "focus",
+        "bg": "ground",
+        "min": 3,
+        "ratio": 16.71
+      },
+      {
+        "fg": "accent",
+        "bg": "surface",
+        "min": 3,
+        "ratio": 17.91
+      },
+      {
+        "fg": "bad",
+        "bg": "ground",
+        "min": 3,
+        "ratio": 7.88
+      },
+      {
+        "fg": "accent-soft",
+        "bg": "ink",
+        "min": 7,
+        "ratio": 15.59
+      }
+    ],
+    "neutral/dark": [
+      {
+        "fg": "ink",
+        "bg": "ground",
+        "min": 7,
+        "ratio": 17.51
+      },
+      {
+        "fg": "ink",
+        "bg": "surface",
+        "min": 7,
+        "ratio": 16.14
+      },
+      {
+        "fg": "ink",
+        "bg": "sunk",
+        "min": 7,
+        "ratio": 18.05
+      },
+      {
+        "fg": "ink",
+        "bg": "surface-raised",
+        "min": 7,
+        "ratio": 14.84
+      },
+      {
+        "fg": "ink-muted",
+        "bg": "ground",
+        "min": 7,
+        "ratio": 10.45
+      },
+      {
+        "fg": "ink-muted",
+        "bg": "surface",
+        "min": 7,
+        "ratio": 9.63
+      },
+      {
+        "fg": "ink-muted",
+        "bg": "sunk",
+        "min": 7,
+        "ratio": 10.77
+      },
+      {
+        "fg": "accent-ink",
+        "bg": "surface",
+        "min": 7,
+        "ratio": 16.14
+      },
+      {
+        "fg": "accent-ink",
+        "bg": "ground",
+        "min": 7,
+        "ratio": 17.51
+      },
+      {
+        "fg": "on-accent-soft",
+        "bg": "accent-soft",
+        "min": 7,
+        "ratio": 12.64
+      },
+      {
+        "fg": "ok",
+        "bg": "ok-soft",
+        "min": 7,
+        "ratio": 8.93
+      },
+      {
+        "fg": "warn",
+        "bg": "warn-soft",
+        "min": 7,
+        "ratio": 9.11
+      },
+      {
+        "fg": "bad",
+        "bg": "bad-soft",
+        "min": 7,
+        "ratio": 7.16
+      },
+      {
+        "fg": "ok",
+        "bg": "surface",
+        "min": 7,
+        "ratio": 10.77
+      },
+      {
+        "fg": "warn",
+        "bg": "surface",
+        "min": 7,
+        "ratio": 11.32
+      },
+      {
+        "fg": "bad",
+        "bg": "surface",
+        "min": 7,
+        "ratio": 8.8
+      },
+      {
+        "fg": "on-seal",
+        "bg": "seal",
+        "min": 4.5,
+        "ratio": 9.22
+      },
+      {
+        "fg": "on-accent",
+        "bg": "accent",
+        "min": 4.5,
+        "ratio": 17.14
+      },
+      {
+        "fg": "on-accent",
+        "bg": "accent-hover",
+        "min": 4.5,
+        "ratio": 13.22
+      },
+      {
+        "fg": "on-accent",
+        "bg": "accent-pressed",
+        "min": 4.5,
+        "ratio": 10.91
+      },
+      {
+        "fg": "on-accent",
+        "bg": "accent-deep-from",
+        "min": 4.5,
+        "ratio": 14.96
+      },
+      {
+        "fg": "on-accent",
+        "bg": "accent-deep-to",
+        "min": 4.5,
+        "ratio": 11.6
+      },
+      {
+        "fg": "line-strong",
+        "bg": "surface",
+        "min": 3,
+        "ratio": 3.83
+      },
+      {
+        "fg": "line-strong",
+        "bg": "ground",
+        "min": 3,
+        "ratio": 4.16
+      },
+      {
+        "fg": "focus",
+        "bg": "surface",
+        "min": 3,
+        "ratio": 16.14
+      },
+      {
+        "fg": "focus",
+        "bg": "ground",
+        "min": 3,
+        "ratio": 17.51
+      },
+      {
+        "fg": "accent",
+        "bg": "surface",
+        "min": 3,
+        "ratio": 16.14
+      },
+      {
+        "fg": "bad",
+        "bg": "ground",
+        "min": 3,
+        "ratio": 9.55
+      },
+      {
+        "fg": "accent-soft",
+        "bg": "ink",
+        "min": 7,
+        "ratio": 13.98
       }
     ]
   }

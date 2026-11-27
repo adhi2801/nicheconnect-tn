@@ -1,24 +1,23 @@
-import { HeroOrbit } from "@/components/landing/hero-orbit";
-import { Closing, HeroText, Money, Product, Record, SiteHeader, Sides, Steps } from "@/components/landing/sections";
-import { t } from "@/lib/messages";
+import { Closing, Hero, Money, Product, Record, Sides, Steps } from "@/components/home/sections";
+import { SiteFooter } from "@/components/site/site-footer";
+import { SiteHeader } from "@/components/site/site-header";
 
-// The landing page (D-141): the turning temple, then what a deal is, the product's own board, the record, the money promise, both sides, and the
-// way in. Server-rendered and readable with no script; only the hero's turn runs in the browser.
+// Home (frontend/design/website-plan.md section 2): the structure, in the neutral look, with design slots where the temple, the
+// product board and the seal will go (HD-002). Server-rendered and complete with no script.
 export default function Home() {
   return (
-    <main>
-      <div className="landing-stage relative">
-        <SiteHeader />
-        <HeroOrbit alt={t("landing.hero.imageAlt")}>
-          <HeroText />
-        </HeroOrbit>
-      </div>
-      <Steps />
-      <Product />
-      <Record />
-      <Money />
-      <Sides />
-      <Closing />
-    </main>
+    <>
+      <SiteHeader />
+      <main>
+        <Hero />
+        <Steps />
+        <Product />
+        <Record />
+        <Money />
+        <Sides />
+        <Closing />
+      </main>
+      <SiteFooter />
+    </>
   );
 }

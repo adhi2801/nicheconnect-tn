@@ -5,16 +5,16 @@
 import { readFileSync } from "node:fs";
 
 const url = process.argv[2] ?? "http://127.0.0.1:3100/";
-const words = JSON.parse(readFileSync(new URL("../apps/web/src/messages/en.json", import.meta.url), "utf8")).landing;
+const words = JSON.parse(readFileSync(new URL("../apps/web/src/messages/en.json", import.meta.url), "utf8")).home;
 const expected = [
   words.hero.title,
   words.hero.lede,
   words.steps.title,
   ...Object.values(words.steps.items).map((item) => item.title),
   words.product.title,
-  words.product.caption,
   words.record.title,
   words.money.title,
+  words.sides.title,
   words.sides.brands.title,
   words.sides.creators.title,
   words.closing.title,

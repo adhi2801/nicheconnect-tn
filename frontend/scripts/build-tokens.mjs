@@ -74,10 +74,21 @@ const colours = (group) => {
 const THEMES = ["light", "dark"];
 const BRANDS = Object.keys(tokens(t.brand));
 const DEFAULT_BRAND = "burgundy";
+// Two looks (HD-004): the neutral look is the default; the heritage look is the theme above with a brand. A neutral palette names
+// only what differs from the heritage one, so the state and seal colours stay the same in both.
+const DEFAULT_LOOK = t.look.$extensions["colyv.default"];
+if (DEFAULT_LOOK !== "neutral") throw new Error(`look: the CSS below is written for a neutral default, not ${DEFAULT_LOOK}`);
 const resolved = {};
 for (const theme of THEMES) {
   const base = colours(t.theme[theme]);
   for (const brand of BRANDS) resolved[`${theme}/${brand}`] = { ...base, ...colours(t.brand[brand][theme]) };
+}
+for (const theme of THEMES) {
+  const heritage = resolved[`${theme}/${DEFAULT_BRAND}`];
+  const neutral = colours(t.look.neutral[theme]);
+  const unknown = Object.keys(neutral).filter((k) => !(k in heritage));
+  if (unknown.length) throw new Error(`look.neutral.${theme}: no such colour in the heritage look: ${unknown.join(", ")}`);
+  resolved[`neutral/${theme}`] = { ...heritage, ...neutral };
 }
 
 // ---------- contrast ----------
@@ -121,18 +132,22 @@ for (const [k, v] of Object.entries(tokens(t.easing))) css += `  --ease-${k}: ${
 // the first design system's motion names
 css += "  --m-fast: var(--m-press);\n  --m-base: var(--m-state);\n  --m-slow: var(--m-section);\n  --m-ease: var(--ease-standard);\n";
 css += elevation("light");
-css += block(resolved[`light/${DEFAULT_BRAND}`]);
+css += block(resolved["neutral/light"]);
 css += "}\n\n";
+// Dark is opt-in (data-theme="dark") until every component passes its dark screenshots;
+// then this becomes a prefers-color-scheme rule too.
+css += `[data-theme="dark"] {\n  color-scheme: dark;\n${elevation("dark")}${block(resolved["neutral/dark"])}}\n\n`;
+// The heritage look, for the whole site at once: data-look="heritage" on <html>.
+const H = '[data-look="heritage"]';
+css += `${H} {\n${block(resolved[`light/${DEFAULT_BRAND}`])}}\n\n`;
 for (const brand of BRANDS.filter((b) => b !== DEFAULT_BRAND)) {
-  css += `[data-brand="${brand}"] {\n`;
+  css += `${H}[data-brand="${brand}"], ${H} [data-brand="${brand}"] {\n`;
   for (const [k, v] of Object.entries(colours(t.brand[brand].light))) css += `  --c-${k}: ${v};\n`;
   css += "}\n\n";
 }
-// Dark is opt-in (data-theme="dark") until every component passes its dark screenshots;
-// then this becomes a prefers-color-scheme rule too.
-css += `[data-theme="dark"] {\n  color-scheme: dark;\n${elevation("dark")}${block(resolved[`dark/${DEFAULT_BRAND}`])}}\n\n`;
+css += `${H}[data-theme="dark"] {\n${block(resolved[`dark/${DEFAULT_BRAND}`])}}\n\n`;
 for (const brand of BRANDS.filter((b) => b !== DEFAULT_BRAND)) {
-  css += `[data-theme="dark"][data-brand="${brand}"], [data-theme="dark"] [data-brand="${brand}"] {\n`;
+  css += `${H}[data-theme="dark"][data-brand="${brand}"], ${H}[data-theme="dark"] [data-brand="${brand}"] {\n`;
   for (const [k, v] of Object.entries(colours(t.brand[brand].dark))) css += `  --c-${k}: ${v};\n`;
   css += "}\n\n";
 }
@@ -140,7 +155,7 @@ writeFileSync(new URL("tokens.css", out), css);
 
 writeFileSync(
   new URL("tokens.resolved.json", out),
-  JSON.stringify({ defaultBrand: DEFAULT_BRAND, themes: THEMES, brands: BRANDS, colours: resolved, contrast: checks }, null, 2) + "\n",
+  JSON.stringify({ defaultLook: DEFAULT_LOOK, defaultBrand: DEFAULT_BRAND, themes: THEMES, brands: BRANDS, colours: resolved, contrast: checks }, null, 2) + "\n",
 );
 
 // ---------- Dart ----------

@@ -23,3 +23,5 @@ export const LogoutIcon = (p: SVGProps<SVGSVGElement>) => (<svg {...base} {...p}
 export const PlusIcon = (p: SVGProps<SVGSVGElement>) => (<svg {...base} {...p}><path d="M12 5v14M5 12h14" /></svg>);
 export const ChevronLeftIcon = (p: SVGProps<SVGSVGElement>) => (<svg {...base} {...p}><path d="m14 6-6 6 6 6" /></svg>);
 export const ChevronRightIcon = (p: SVGProps<SVGSVGElement>) => (<svg {...base} {...p}><path d="m10 6 6 6-6 6" /></svg>);
+export const MenuIcon = (p: SVGProps<SVGSVGElement>) => (<svg {...base} {...p}><path d="M4 8h16M4 16h16" /></svg>);
+export const CloseIcon = (p: SVGProps<SVGSVGElement>) => (<svg {...base} {...p}><path d="M6 6l12 12M18 6 6 18" /></svg>);

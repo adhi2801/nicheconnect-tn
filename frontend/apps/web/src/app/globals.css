@@ -33,7 +33,9 @@
   --radius-xl: var(--r-xl);
   --shadow-soft: 0 1px 2px rgb(15 27 21 / 0.04), 0 14px 34px -18px rgb(15 27 21 / 0.16);
   --font-sans: var(--font-inter), var(--f-sans);
-  --font-display: var(--font-jakarta), var(--f-display);
+  /* The headline face follows the look: Inter in the neutral look (HD-004), Plus Jakarta Sans in the heritage look. next/font names
+     the self-hosted faces itself, so this is the one look rule that cannot live in tokens.json. */
+  --font-display: var(--look-display);
   --font-mono: var(--font-jetbrains), var(--f-numeric);
 }
 
@@ -92,34 +94,92 @@ body {
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
 
-/* The landing page's stage (frontend.md 8b). Not a theme token on purpose: it must match the pixels of the rendered
-   frames (sampled from frontend/3d/temple's hero renders, near-black with a warm glow), whatever the theme is. */
-.landing-stage {
-  --stage: #050302;
-  --stage-ink: #f4ede3;
-  --stage-muted: #c9bfb1;
-  background: var(--stage);
-  color: var(--stage-ink);
+/* The public site's type (frontend/design/website-plan.md section 4). Sizes and tracking come from tokens.json's type scale; between
+   a phone and a laptop each size grows with the window, clamped to its two token sizes, so nothing jumps at a breakpoint.
+   In Tailwind's components layer, so a utility on the element (text-balance, a colour) wins over these. */
+@layer components {
+  .type-display {
+    font-family: var(--look-display);
+    font-weight: 600;
+    font-size: clamp(var(--t-display-s-size), 2rem + 3.6vw, var(--t-display-l-size));
+    line-height: 1.04;
+    letter-spacing: var(--t-display-l-tracking);
+    text-wrap: balance;
+  }
+  .type-title {
+    font-family: var(--look-display);
+    font-weight: 600;
+    font-size: clamp(var(--t-title-1-size), 1.25rem + 2.6vw, var(--t-display-m-size));
+    line-height: 1.08;
+    letter-spacing: var(--t-display-m-tracking);
+    text-wrap: balance;
+  }
+  .type-subtitle {
+    font-family: var(--look-display);
+    font-weight: 600;
+    font-size: clamp(var(--t-title-2-size), 1.2rem + 0.8vw, var(--t-title-1-size));
+    line-height: 1.2;
+    letter-spacing: var(--t-title-2-tracking);
+  }
+  .type-lede {
+    font-size: clamp(var(--t-body-lg-size), 1rem + 0.3vw, var(--t-title-3-size));
+    line-height: 1.55;
+    letter-spacing: var(--t-body-lg-tracking);
+    color: var(--c-ink-muted);
+    text-wrap: pretty;
+  }
+  .type-eyebrow {
+    font-size: var(--t-callout-size);
+    line-height: var(--t-callout-leading);
+    font-weight: 600;
+    color: var(--c-ink-muted);
+  }
 }
 
-/* The canvas fades in over the still only once its first frame is drawn, so the swap is never seen. */
-.landing-orbit {
-  opacity: 0;
-  transition: opacity var(--m-base) var(--m-ease);
-}
-.landing-orbit[data-ready="true"] {
-  opacity: 1;
-}
+/* The headline face of each look (see --font-display above). */
+:root { --look-display: var(--font-inter), var(--f-ui); }
+[data-look="heritage"] { --look-display: var(--font-jakarta), var(--f-display); }
 
-/* A shade under the words, never over the tower: legible text on any frame. */
-.landing-veil {
-  background:
-    linear-gradient(to top, rgb(5 3 2 / 0.92) 0%, rgb(5 3 2 / 0.55) 30%, rgb(5 3 2 / 0) 58%),
-    linear-gradient(to right, rgb(5 3 2 / 0.55) 0%, rgb(5 3 2 / 0) 45%);
+/* A design slot (HD-002, src/design/design-slot.tsx). The box is sealed: its size never depends on what is inside (contain: size),
+   nothing inside can move the page (layout), paint outside it or put a fixed layer over the page (paint), and its stacking is its
+   own (isolation). e2e/design-slots.spec.ts fills every slot with a deliberately unruly design and proves the rest of the page is
+   unchanged, to the pixel. */
+.design-slot {
+  position: relative;
+  contain: strict;
+  isolation: isolate;
+  overflow: clip;
 }
-
-/* Tamil numerals mark the steps (LANDING_CULTURE_FIT.md Part D): the script's own digits, set by a system Tamil face. */
-.tamil-numeral {
-  font-family: "Noto Sans Tamil", "Nirmala UI", "Tamil Sangam MN", "Latha", sans-serif;
-  font-feature-settings: normal;
+.design-slot > :not(.design-slot-label) {
+  width: 100%;
+  height: 100%;
+}
+/* Empty, on the live site: a quiet surface, so a page waiting for its designs never looks broken. */
+.design-slot[data-slot-state="empty"] {
+  background: var(--c-sunk);
+}
+.design-slot-label {
+  display: none;
+}
+/* Development builds: every slot outlined, with its name and what goes there. */
+[data-show-slots] .design-slot {
+  outline: 1.5px dashed var(--c-line-strong);
+  outline-offset: -1.5px;
+}
+[data-show-slots] .design-slot-label {
+  display: block;
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 6px 10px;
+  font: 500 11px/1.4 var(--font-inter), var(--f-ui);
+  color: var(--c-ink-muted);
+  background: var(--c-surface);
+  border-top: 1px dashed var(--c-line-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* A slot showing its fallback (the wordmark in the logo slot) is too small for a label: outlined only, so the fallback stays readable. */
+[data-show-slots] .design-slot[data-slot-state="fallback"] .design-slot-label {
+  display: none;
 }
