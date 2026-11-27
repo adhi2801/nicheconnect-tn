@@ -281,6 +281,7 @@ pytest_add_cli_args_test_selection = [
     "tests/modules/payment_status/test_reference_properties.py",
     "tests/core/test_text_flags.py",
     "tests/core/test_text_flags_properties.py",
+    "tests/core/test_pagination.py",
     "tests/core/test_pagination_properties.py",
     "tests/modules/campaigns/test_campaign_report_csv.py",
     "tests/modules/campaigns/test_campaign_templates_api.py",

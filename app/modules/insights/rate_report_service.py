@@ -31,7 +31,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, load_only
@@ -452,15 +452,15 @@ def rebuild(
         raise RateReportMethodUnchanged()
     # A rebuild that waited on the lock may have read the newest row before
     # the winner's commit: look again, so the loser is refused before it
-    # works out a whole body.
+    # works out a whole body. EXISTS, so no row count is there to get wrong.
     if db.scalar(
-        select(CityRateReport.id)
-        .where(
-            CityRateReport.quarter == quarter,
-            (CityRateReport.supersedes_id == newest.id)
-            | (CityRateReport.method_version >= rules.METHOD_VERSION),
+        select(
+            exists().where(
+                CityRateReport.quarter == quarter,
+                (CityRateReport.supersedes_id == newest.id)
+                | (CityRateReport.method_version >= rules.METHOD_VERSION),
+            )
         )
-        .limit(1)
     ):
         db.rollback()
         raise RateReportNotWithdrawn()
