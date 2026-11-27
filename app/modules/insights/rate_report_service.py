@@ -422,7 +422,9 @@ def _is_lost_rebuild(error: IntegrityError) -> bool:
     diag = getattr(error.orig, "diag", None)
     if getattr(diag, "constraint_name", None) in _LOST_REBUILD_CONSTRAINTS:
         return True
-    return "city_rate_report_supersedes" in str(error.orig)
+    # The trigger's own message, with its colon: the foreign key's name
+    # (fk_city_rate_report_supersedes_id_...) holds the same words.
+    return "city_rate_report_supersedes:" in str(error.orig)
 
 
 def rebuild(
@@ -453,12 +455,14 @@ def rebuild(
     # A rebuild that waited on the lock may have read the newest row before
     # the winner's commit: look again, so the loser is refused before it
     # works out a whole body. EXISTS, so no row count is there to get wrong.
+    # Only "a row supersedes it": the supersedes trigger keeps a quarter's
+    # rows in one chain, so any newer version already supersedes this row,
+    # and a second test of the version could never be told apart (D-205).
     if db.scalar(
         select(
             exists().where(
                 CityRateReport.quarter == quarter,
-                (CityRateReport.supersedes_id == newest.id)
-                | (CityRateReport.method_version >= rules.METHOD_VERSION),
+                CityRateReport.supersedes_id == newest.id,
             )
         )
     ):
