@@ -755,12 +755,18 @@ def test_any_other_refusal_is_not_a_lost_rebuild(db, fields, constraint):
 
 
 def test_a_quarter_corrected_and_withdrawn_again_is_corrected_again(db, monkeypatch):
-    """The look again after the lock asks for a row superseding the newest
-    version. The first correction supersedes the first version, not the
-    newest, so it must not stop the second correction."""
+    """The look again after the lock asks, of this quarter only, for a row
+    superseding the newest version or at the version being built. The first
+    correction supersedes the first version, not the newest, so it must not
+    stop the second correction; nor must another quarter's report already
+    at the version being built (two quarters, testing.md section 2)."""
     quarter = a_quarter()
+    other = a_quarter()
+    while other == quarter:
+        other = a_quarter()
     first = withdrawn_row(db, quarter)
     second = withdrawn_row(db, quarter, 2, supersedes_id=first)
+    insert_row(db, other, 3)
     monkeypatch.setattr(rules, "METHOD_VERSION", 3)
 
     report = service.rebuild(db, quarter, PAGED, agreed_fees=False)
