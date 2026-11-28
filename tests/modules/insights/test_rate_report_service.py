@@ -5,11 +5,13 @@ it (testing.md section 2), in a city of its own.
 """
 
 import json
+import random
 import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
+from sqlalchemy.exc import IntegrityError
 
 from app.modules.insights import rate_report_rules as rules
 from app.modules.insights import rate_report_service as service
@@ -539,7 +541,7 @@ def test_the_fingerprint_is_sha256_of_canonical_json():
 
     data = {"b": [1, "₹"], "a": None}
 
-    assert service.canonical_json(data) == b'{"a":null,"b":[1,"\u20b9"]}'
+    assert service.canonical_json(data) == rb'{"a":null,"b":[1,"\u20b9"]}'
     assert (
         service.fingerprint(data)
         == hashlib.sha256(service.canonical_json(data)).hexdigest()
@@ -618,3 +620,178 @@ def test_a_quarter_s_reads_and_its_lock_take_one_row(db):
 
     assert read.method_version == published.method_version == 2
     assert limits == [1, 1, 1]
+
+
+# --- a rebuild that lost, told apart from any other refusal (D-201) --------------------
+
+LOST_TEXT = "city_rate_report_supersedes"  # the trigger's name, in its message
+
+
+def insert_row(db, quarter: str, method_version: int = 1, **fields) -> None:
+    """A report row written with raw SQL, as the database's own rules see it."""
+    values = {
+        "quarter": quarter,
+        "method_version": method_version,
+        "built_at": PAGED,
+        "published_at": None,
+        "published_by_account_id": None,
+        "withdrawn_at": None,
+        "withdrawn_reason": None,
+        "supersedes_id": None,
+    } | fields
+    db.execute(
+        text(
+            "INSERT INTO city_rate_report (quarter, method_version, body, body_sha256,"
+            " built_at, published_at, published_by_account_id, withdrawn_at,"
+            " withdrawn_reason, supersedes_id) VALUES (:quarter, :method_version,"
+            " '{}'::jsonb, repeat('b', 64), :built_at, :published_at,"
+            " :published_by_account_id, :withdrawn_at, :withdrawn_reason,"
+            " :supersedes_id)"
+        ),
+        values,
+    )
+
+
+def withdrawn_row(db, quarter: str, method_version: int = 1, **fields) -> uuid.UUID:
+    from tests.factories import create_account
+
+    insert_row(
+        db,
+        quarter,
+        method_version,
+        published_at=PAGED,
+        published_by_account_id=create_account(db, "admin").id,
+        withdrawn_at=PAGED,
+        withdrawn_reason="A figure was built from a wrong city.",
+        **fields,
+    )
+    return db.scalar(
+        select(CityRateReport.id).where(
+            CityRateReport.quarter == quarter,
+            CityRateReport.method_version == method_version,
+        )
+    )
+
+
+def refusal(db, write) -> IntegrityError:
+    """The database's refusal of `write`, inside a savepoint, so the test's
+    own transaction goes on."""
+    with pytest.raises(IntegrityError) as caught, db.begin_nested():
+        write()
+    return caught.value
+
+
+def a_quarter() -> str:
+    return f"{random.randint(1000, 9999)}-Q{random.randint(1, 4)}"
+
+
+def test_a_second_row_of_a_quarter_and_version_is_a_lost_rebuild(db):
+    """Read by the constraint's name alone: its message does not carry the
+    trigger's, so only the name can say it."""
+    quarter = a_quarter()
+    insert_row(db, quarter)
+
+    error = refusal(db, lambda: insert_row(db, quarter))
+
+    assert error.orig.diag.constraint_name == (
+        "uq_city_rate_report_quarter_method_version"
+    )
+    assert LOST_TEXT not in str(error.orig)
+    assert service._is_lost_rebuild(error) is True
+
+
+@pytest.mark.owner
+def test_a_second_correction_of_one_report_is_a_lost_rebuild(db):
+    """The unique index is reached only by two corrections the trigger let
+    through at once; it is set aside here, inside the test's own rolled-back
+    transaction, to reach the index alone (hence `owner`)."""
+    quarter = a_quarter()
+    first = withdrawn_row(db, quarter)
+    insert_row(db, quarter, 2, supersedes_id=first)
+    db.execute(
+        text("ALTER TABLE city_rate_report DISABLE TRIGGER city_rate_report_supersedes")
+    )
+
+    error = refusal(db, lambda: insert_row(db, quarter, 3, supersedes_id=first))
+
+    assert error.orig.diag.constraint_name == "uq_city_rate_report_supersedes_id"
+    assert service._is_lost_rebuild(error) is True
+
+
+def test_the_supersedes_trigger_s_refusal_is_a_lost_rebuild(db):
+    """Read by the trigger's message alone: a raised exception names no
+    constraint."""
+    quarter = a_quarter()
+    withdrawn_row(db, quarter)
+
+    error = refusal(db, lambda: insert_row(db, quarter, 2))
+
+    assert error.orig.diag.constraint_name is None
+    assert str(error.orig).startswith(f"{LOST_TEXT}: a new {quarter} report")
+    assert service._is_lost_rebuild(error) is True
+
+
+@pytest.mark.parametrize(
+    ("fields", "constraint"),
+    [
+        ({"quarter": "2026-Q5"}, "ck_city_rate_report_quarter_shape"),
+        (
+            {"published_at": PAGED, "published_by_account_id": uuid.UUID(int=1)},
+            "fk_city_rate_report_published_by_account_id_account",
+        ),
+    ],
+)
+def test_any_other_refusal_is_not_a_lost_rebuild(db, fields, constraint):
+    """A check or a foreign key on the same table is a bug, raised, never
+    told to the admin as another admin's win."""
+    error = refusal(db, lambda: insert_row(db, **({"quarter": a_quarter()} | fields)))
+
+    assert error.orig.diag.constraint_name == constraint
+    assert LOST_TEXT not in str(error.orig)
+    assert service._is_lost_rebuild(error) is False
+
+
+def test_the_supersedes_foreign_key_s_refusal_is_not_a_lost_rebuild(db):
+    """The lookalike: the foreign key's name holds the trigger's name
+    without its colon, so only the colon tells the two apart. The trigger
+    runs first and would refuse this row itself, so the table's owner turns
+    it off inside the test's own transaction (rolled back with it) to reach
+    the foreign key behind it."""
+    db.execute(
+        text("ALTER TABLE city_rate_report DISABLE TRIGGER city_rate_report_supersedes")
+    )
+
+    error = refusal(
+        db, lambda: insert_row(db, a_quarter(), supersedes_id=uuid.UUID(int=9))
+    )
+
+    assert (
+        error.orig.diag.constraint_name
+        == "fk_city_rate_report_supersedes_id_city_rate_report"
+    )
+    assert LOST_TEXT in str(error.orig)
+    assert f"{LOST_TEXT}:" not in str(error.orig)
+    assert service._is_lost_rebuild(error) is False
+
+
+# --- the look again, after the lock (D-201) ---------------------------------------------
+
+
+def test_a_quarter_corrected_and_withdrawn_again_is_corrected_again(db, monkeypatch):
+    """The look again after the lock asks, of this quarter only, for a row
+    superseding the newest version or at the version being built. The first
+    correction supersedes the first version, not the newest, so it must not
+    stop the second correction; nor must another quarter's report already
+    at the version being built (two quarters, testing.md section 2)."""
+    quarter = a_quarter()
+    other = a_quarter()
+    while other == quarter:
+        other = a_quarter()
+    first = withdrawn_row(db, quarter)
+    second = withdrawn_row(db, quarter, 2, supersedes_id=first)
+    insert_row(db, other, 3)
+    monkeypatch.setattr(rules, "METHOD_VERSION", 3)
+
+    report = service.rebuild(db, quarter, PAGED, agreed_fees=False)
+
+    assert (report.method_version, report.supersedes_id) == (3, second)

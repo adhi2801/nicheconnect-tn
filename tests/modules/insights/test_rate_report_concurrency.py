@@ -317,3 +317,95 @@ def test_two_first_builds_of_a_new_quarter_under_two_versions_leave_one(moment):
             )
     finally:
         remove([quarter], [])
+
+
+def test_a_rebuild_waiting_behind_an_older_version_s_correction_is_refused(
+    built_report, monkeypatch
+):
+    """D-201, D-205: the look again after the lock finds a correction by
+    what it supersedes, whatever its version.
+
+    A rolling deploy: an instance still on method version 2 corrects the
+    quarter while one already on version 3 waits on the lock. The waiter
+    holds the version-1 row it read before the commit; the correction
+    supersedes that row though it is below the waiter's version, and the
+    look again (a row superseding the newest) sees it. Driven, not raced:
+    the correcting instance takes the lock first, the waiter is seen blocked
+    by exactly that session (`pg_blocking_pids`), and only then is the
+    correction committed (testing.md section 4, the driven race)."""
+    quarter = built_report["quarter"]
+    with SessionLocal() as session:
+        first = session.get_one(Account, built_report["admins"][0])
+        admin_service.publish(session, first, quarter, CONCURRENCY_NOW)
+        admin_service.withdraw(session, first, quarter, "Wrong city.", CONCURRENCY_NOW)
+    monkeypatch.setattr(rules, "METHOD_VERSION", 3)
+    real = service.build_body
+    calls: list[int] = []
+
+    def counted(*args, **kwargs):
+        calls.append(1)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(service, "build_body", counted)
+    pids: list[int] = []
+    outcomes: list[str] = []
+    errors: list[BaseException] = []
+
+    def waiter() -> None:
+        with SessionLocal() as session:
+            pids.append(session.scalar(text("SELECT pg_backend_pid()")))
+            try:
+                service.rebuild(session, quarter, CONCURRENCY_NOW, agreed_fees=False)
+                outcomes.append("rebuilt")
+            except RateReportNotWithdrawn:
+                outcomes.append("refused")
+            except BaseException as error:  # pragma: no cover - reported below
+                errors.append(error)
+
+    corrector = SessionLocal()
+    thread = threading.Thread(target=waiter, daemon=True)  # never holds pytest open
+    try:
+        withdrawn = service._locked(corrector, quarter)
+        withdrawn_id = withdrawn.id  # read now: the commit below expires it
+        corrector_pid = corrector.scalar(text("SELECT pg_backend_pid()"))
+        thread.start()
+        deadline = time.monotonic() + 10
+        with SessionLocal() as watcher:
+            while not (
+                pids
+                and corrector_pid
+                in watcher.scalar(text("SELECT pg_blocking_pids(:p)"), {"p": pids[0]})
+            ):
+                assert time.monotonic() < deadline, "the waiter never waited"
+                time.sleep(0.01)
+                watcher.rollback()  # a fresh snapshot each look
+        body = {"v": 2}
+        corrector.add(
+            CityRateReport(
+                quarter=quarter,
+                method_version=2,
+                body=body,
+                body_sha256=service.fingerprint(body),
+                built_at=CONCURRENCY_NOW,
+                supersedes_id=withdrawn.id,
+                created_at=CONCURRENCY_NOW,
+                updated_at=CONCURRENCY_NOW,
+            )
+        )
+        corrector.commit()
+    finally:
+        corrector.close()
+        if thread.ident is not None:  # started
+            thread.join(timeout=30)
+
+    assert not thread.is_alive(), "the waiter never finished"
+    assert errors == []
+    assert outcomes == ["refused"]
+    assert calls == []
+    with SessionLocal() as session:
+        rows = session.execute(
+            select(CityRateReport.method_version, CityRateReport.supersedes_id)
+            .where(CityRateReport.quarter == quarter)
+            .order_by(CityRateReport.method_version)
+        ).all()
+    assert [tuple(row) for row in rows] == [(1, None), (2, withdrawn_id)]

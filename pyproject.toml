@@ -256,8 +256,12 @@ only_mutate = [
     "app/core/retrying.py",
     # The quarterly rate report's floors, rounding and quarters, and its
     # build, archive and publishing (item 84, D-200): a floor that silently
-    # lets one person's price through is the harm. 485 mutants, all killed
-    # (20 November 2026, Linux container, Tamil Nadu zone).
+    # lets one person's price through is the harm. "All killed" was claimed
+    # for these two on 20 and 26 November; the nightly of 27 November found
+    # 15 survivors in the service. Measured over this whole list on 28
+    # November 2026 (Linux container, Tamil Nadu zone), after D-205 removed
+    # rebuild's unreachable version half and quarter filter: 1,792 mutants,
+    # 14 survive, exactly the 14 accepted (D-091, D-194).
     "app/modules/insights/rate_report_rules.py",
     "app/modules/insights/rate_report_service.py",
 ]
@@ -281,6 +285,7 @@ pytest_add_cli_args_test_selection = [
     "tests/modules/payment_status/test_reference_properties.py",
     "tests/core/test_text_flags.py",
     "tests/core/test_text_flags_properties.py",
+    "tests/core/test_pagination.py",
     "tests/core/test_pagination_properties.py",
     "tests/modules/campaigns/test_campaign_report_csv.py",
     "tests/modules/campaigns/test_campaign_templates_api.py",

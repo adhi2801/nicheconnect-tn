@@ -31,7 +31,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, load_only
@@ -422,7 +422,11 @@ def _is_lost_rebuild(error: IntegrityError) -> bool:
     diag = getattr(error.orig, "diag", None)
     if getattr(diag, "constraint_name", None) in _LOST_REBUILD_CONSTRAINTS:
         return True
-    return "city_rate_report_supersedes" in str(error.orig)
+    # The trigger's own message, with its colon: two lookalikes hold the same
+    # words without it, the foreign key fk_city_rate_report_supersedes_id_
+    # city_rate_report and the unique uq_city_rate_report_supersedes_id (the
+    # latter already matched above by its name).
+    return "city_rate_report_supersedes:" in str(error.orig)
 
 
 def rebuild(
@@ -452,16 +456,12 @@ def rebuild(
         raise RateReportMethodUnchanged()
     # A rebuild that waited on the lock may have read the newest row before
     # the winner's commit: look again, so the loser is refused before it
-    # works out a whole body.
-    if db.scalar(
-        select(CityRateReport.id)
-        .where(
-            CityRateReport.quarter == quarter,
-            (CityRateReport.supersedes_id == newest.id)
-            | (CityRateReport.method_version >= rules.METHOD_VERSION),
-        )
-        .limit(1)
-    ):
+    # works out a whole body. EXISTS, so no row count is there to get wrong.
+    # Only "a row supersedes it": the supersedes trigger keeps a quarter's
+    # rows in one chain, so any newer version already supersedes this row,
+    # and a row superseding it is of its quarter; a test of the version or
+    # the quarter could never be told apart (D-205).
+    if db.scalar(select(exists().where(CityRateReport.supersedes_id == newest.id))):
         db.rollback()
         raise RateReportNotWithdrawn()
     body = build_body(db, quarter, built_at, agreed_fees=agreed_fees).model_dump(
