@@ -99,3 +99,49 @@ test("coming up: deals whose work is still to come, nearest first, yours marked;
   assert.equal(comingUp(memos, "creator", "2026-11-28", 1).length, 1);
   assert.equal(openDeals(memos), 5, "a deal at payment is still open, but its work date no longer counts as coming up");
 });
+
+import { engagementOf, funnelOf, isMetric, rankPosts, stageCountsOf, type Post } from "./dashboard.ts";
+
+test("engagement is calculated from what was read, and only when there is enough to calculate it", () => {
+  assert.deepEqual(engagementOf({ ...none, views: 1000, likes: 80, comments: 10, saves: 5, shares: 5 }), { rate: 0.1, partial: false });
+  assert.deepEqual(engagementOf({ ...none, views: 1000, likes: 100 }), { rate: 0.1, partial: true }, "saves and shares were not shown, so the real rate is at least this");
+  assert.deepEqual(engagementOf({ ...none, reach: 500, comments: 50 }), { rate: 0.1, partial: true }, "no views on the screenshot: over the reach");
+  assert.equal(engagementOf({ ...none, views: 1000 }), null, "no likes or comments shown: nothing to calculate");
+  assert.equal(engagementOf({ ...none, likes: 50 }), null, "no views or reach: nothing to divide by");
+  assert.equal(engagementOf({ ...none, views: 0, likes: 5 }), null, "a base of zero is not divided by");
+  assert.deepEqual(engagementOf({ ...none, views: 100, likes: 0, comments: 0 }), { rate: 0, partial: true }, "zero likes that WERE read is zero");
+});
+
+const post = (id: string, n: Partial<Numbers>): Post => ({ dealId: id, creator: id, handle: id, numbers: { ...none, ...n }, readings: 1, markedWrong: 0, approximate: false, link: null });
+
+test("posts rank by the chosen figure; one that did not show it goes last with no value", () => {
+  const ranked = rankPosts([post("a", { views: 10 }), post("b", {}), post("c", { views: 50 }), post("d", { views: 0 })], "views");
+  assert.deepEqual(ranked.map((r) => r.post.dealId), ["c", "a", "d", "b"]);
+  assert.deepEqual(ranked.map((r) => r.value), [50, 10, 0, null]);
+  assert.deepEqual(rankPosts([post("a", { likes: 3 }), post("b", { likes: 9 })], "likes").map((r) => r.post.dealId), ["b", "a"]);
+});
+
+test("the metric from the address is one we know, or none", () => {
+  assert.equal(isMetric("views"), true);
+  assert.equal(isMetric("impressions"), false);
+  assert.equal(isMetric(null), false);
+});
+
+test("the funnel and the stage strip list every step, zeros included", () => {
+  const r = report({ applications: { submitted: 2, accepted: 1, withdrawn: 7 }, list: [deal("agreed"), deal("in_progress"), deal("in_progress"), deal("cancelled")] });
+  assert.deepEqual(funnelOf(r).map((f) => f.count), [2, 0, 1, 0], "withdrawn is left out");
+  assert.deepEqual(stageCountsOf(r).map((s) => `${s.stage}:${s.count}`), ["memo_sent:0", "agreed:1", "in_progress:2", "payment:0", "finished:0"]);
+});
+
+import { averageEngagement, formatPercent } from "./dashboard.ts";
+
+test("the average engagement counts only posts with enough shown, and says if any was partial", () => {
+  const a = post("a", { views: 1000, likes: 100, comments: 0, saves: 0, shares: 0 }); // 10%, complete
+  const b = post("b", { views: 1000, likes: 300 }); // 30%, partial
+  const c = post("c", { views: 1000 }); // nothing to calculate
+  assert.deepEqual(averageEngagement([a, b, c]), { rate: 0.2, partial: true, count: 2 });
+  assert.deepEqual(averageEngagement([a]), { rate: 0.1, partial: false, count: 1 });
+  assert.equal(averageEngagement([c]), null);
+  assert.equal(averageEngagement([]), null);
+  assert.equal(formatPercent(0.0912), "9.1%");
+});

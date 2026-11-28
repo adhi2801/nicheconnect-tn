@@ -67,3 +67,9 @@ Differences from the plan, stated plainly:
 - **"Coming up" leaves out deals at the payment stage**: their work date means nothing once the work is delivered (found while checking the first screenshots).
 - **The picture card is an optional design slot** (`today.feature`): it is not drawn until a design is added, so the dashboard never shows an empty panel.
 - **The campaign page for both roles** is the next page, shown after this one is approved.
+
+## 7. Built on 28 November 2026 (the brand's Campaigns and campaign page, D-205)
+
+Built: `/app/campaigns` (filter chips with counts, a card per campaign showing its status, pay, closing date, applications and deals finished; a guided "four steps" card when a brand has none) and `/app/campaigns/{id}` with three sections kept in the address (`?tab=`): **Overview** (figures, four progress bars, applications funnel, deals by stage, the campaign's terms, the money), **Creators** (every collaboration with stage, fee, dates, payment and the post's headline number; filter by stage), **Insights** (six figures as buttons with their totals; posts ranked by the figure picked, bars growing into place; average engagement, calculated and labelled; selecting a post opens its numbers, the backend's checks and the screenshot). Brand Today shows a "first steps" card until a campaign exists.
+
+Departures from section 1: the creator's own view of a campaign (their application or deal beside the brand's facts) is still `/app/discover/{id}` as built in D-200, not yet extended; creating a campaign (`/app/campaigns/new`) is still the "being built" page.

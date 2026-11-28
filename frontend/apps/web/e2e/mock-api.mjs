@@ -6,7 +6,7 @@ const port = Number(process.env.PORT ?? 8098);
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "POST, GET, PUT, PATCH, DELETE, OPTIONS", "Access-Control-Expose-Headers": "Retry-After, X-Request-ID, WWW-Authenticate" };
 
 let n, valid, used, reuseDetected, refreshCalls, lastForwardedFor, refreshDelayMs, tokens, scenario, calls, writes, created, lastQuery, sentApps, withdrawn, reports, blocked;
-const defaults = () => ({ attention: "items", profile: "found", totals: "money", unread: 3, busyOnce: false, deals: "full", names: true, createProfile: "ok", discover: "items", apply: "ok", applications: "some", campaigns: "some", reports: "some", withdraw: "ok", applicationsDelayMs: 0, campaignDelayMs: 0 });
+const defaults = () => ({ attention: "items", profile: "found", totals: "money", unread: 3, busyOnce: false, deals: "full", names: true, createProfile: "ok", discover: "items", apply: "ok", applications: "some", campaigns: "some", reports: "some", evidence: "ok", withdraw: "ok", applicationsDelayMs: 0, campaignDelayMs: 0 });
 const reset = () => { n = 0; valid = new Map(); used = new Set(); tokens = new Map(); reuseDetected = false; refreshCalls = 0; lastForwardedFor = null; refreshDelayMs = 0; scenario = defaults(); calls = {}; writes = []; created = false; lastQuery = null; sentApps = []; withdrawn = new Set(); reports = new Map(); blocked = new Set(); };
 
 // ---- The creator's journey: campaigns, applications (contract: CampaignRead, ApplicationRead, BrandReliabilityRead) ----
@@ -56,17 +56,23 @@ const BRAND_CAMPAIGNS = [
 const nums = (o = {}) => ({ views: null, reach: null, impressions: null, likes: null, comments: null, saves: null, shares: null, ...o });
 const reportDeal = (id, stage, name, handle, results) => ({ deal_memo_id: id, stage, creator: { display_name: name, handle }, content_url: null, results: { numbers: nums(), readings: 0, readings_marked_wrong: 0, includes_abbreviated: false, source: "screenshot", ...results } });
 const counts = (o) => ({ submitted: 0, shortlisted: 0, accepted: 0, rejected: 0, withdrawn: 0, invited: 0, declined: 0, ...o });
+const reportDealFull = (id, stage, name, handle, o = {}) => ({ ...reportDeal(id, stage, name, handle, o.results ?? {}), fee_amount_paise: o.fee ?? 600_000, work_due_on: o.due ?? null, content_due_on: o.due ?? null, payment_state: o.pay ?? null });
+const money = (agreed, marked, confirmed) => ({ agreed_value_paise: agreed, marked_paid_paise: marked, confirmed_paise: confirmed });
 const REPORTS = {
-  "c-1": { title: "Diwali sweets reel", totals: { applications: counts({ submitted: 3, shortlisted: 2, accepted: 2, rejected: 1 }), deals: 3, deals_agreed: 3, deals_finished: 1 }, deals: [
-    reportDeal("m-3", "payment", "Priya Eats", "priya", { numbers: nums({ views: 48_200, reach: 36_000, likes: 3_100, comments: 212, saves: 540 }), readings: 2, includes_abbreviated: true }),
-    reportDeal("m-6", "finished", "Arun Tastes", "arun", { numbers: nums({ views: 12_500, reach: 9_800, likes: 900, comments: 41 }), readings: 1 }),
-    reportDeal("m-11", "in_progress", "Suresh Snaps", "suresh", {}),
+  "c-1": { title: "Diwali sweets reel", totals: { applications: counts({ submitted: 3, shortlisted: 2, accepted: 5, rejected: 1 }), deals: 7, deals_agreed: 7, deals_finished: 3, ...money(4_200_000, 2_700_000, 1_800_000) }, deals: [
+    reportDealFull("m-3", "payment", "Priya Eats", "priya", { fee: 700_000, pay: "paid", results: { numbers: nums({ views: 48_200, reach: 36_000, likes: 3_100, comments: 212, saves: 540 }), readings: 2, includes_abbreviated: true } }),
+    reportDealFull("m-6", "finished", "Arun Tastes", "arun", { fee: 800_000, pay: "confirmed", results: { numbers: nums({ views: 12_500, reach: 9_800, likes: 900, comments: 41 }), readings: 1 } }),
+    reportDealFull("m-12", "finished", "Meera Makes", "meera", { fee: 650_000, pay: "confirmed", results: { numbers: nums({ views: 31_400, reach: 24_100, likes: 2_200, comments: 140, saves: 310 }), readings: 1 } }),
+    reportDealFull("m-13", "payment", "Divya Daily", "divya", { fee: 500_000, pay: "unconfirmed", results: { numbers: nums({ views: 9_800, reach: 7_500, likes: 700, comments: 33 }), readings: 1 } }),
+    reportDealFull("m-16", "finished", "Nisha Nibbles", "nisha", { fee: 550_000, pay: "confirmed", results: { numbers: nums({ views: 21_000, reach: 15_000, likes: 1_600, comments: 88 }), readings: 2 } }),
+    reportDealFull("m-11", "in_progress", "Suresh Snaps", "suresh", { fee: 650_000, due: ahead(5) }),
+    reportDealFull("m-14", "in_progress", "Anand Cuts", "anand", { fee: 350_000, due: ahead(9) }),
   ] },
-  "c-2": { title: "Filter coffee tasting", totals: { applications: counts({ submitted: 1, accepted: 1 }), deals: 1, deals_agreed: 1, deals_finished: 0 }, deals: [
-    reportDeal("m-5", "agreed", "Divya Daily", "divya", {}),
+  "c-2": { title: "Filter coffee tasting", totals: { applications: counts({ submitted: 1, accepted: 1 }), deals: 1, deals_agreed: 1, deals_finished: 0, ...money(500_000, 0, 0) }, deals: [
+    reportDealFull("m-5", "agreed", "Divya Daily", "divya", { fee: 500_000, due: ahead(15) }),
   ] },
-  "c-3": { title: "Silk saree styling", totals: { applications: counts({ shortlisted: 1, accepted: 1, rejected: 2 }), deals: 1, deals_agreed: 1, deals_finished: 1 }, deals: [
-    reportDeal("m-8", "finished", "Kavya Plates", "kavya", { numbers: nums({ reach: 7_400, likes: 380 }), readings: 1, readings_marked_wrong: 1 }),
+  "c-3": { title: "Silk saree styling", totals: { applications: counts({ shortlisted: 1, accepted: 1, rejected: 2 }), deals: 1, deals_agreed: 1, deals_finished: 1, ...money(300_000, 300_000, 300_000) }, deals: [
+    reportDealFull("m-8", "finished", "Kavya Plates", "kavya", { fee: 300_000, pay: "confirmed", results: { numbers: nums({ reach: 7_400, likes: 380 }), readings: 1, readings_marked_wrong: 1 } }),
   ] },
 };
 reset();
@@ -129,6 +135,7 @@ createServer((req, res) => {
         if (scenario.campaignDelayMs) await new Promise((r) => setTimeout(r, scenario.campaignDelayMs));
         if (id === "c-gone") return fail(res, 404, "campaign_not_found");
         if (id === "c-withheld") return fail(res, 451, "content_withheld");
+        if (role === "brand" && BRAND_CAMPAIGNS.some((c) => c.id === id)) return send(res, 200, BRAND_CAMPAIGNS.find((c) => c.id === id));
         const found = SPECIAL[id] ?? ALL_CAMPAIGNS.find((c) => c.id === id);
         return found && !blocked.has(found.brand_id) ? send(res, 200, found) : fail(res, 404, "campaign_not_found"); // a block reads as not found
       }
@@ -196,6 +203,19 @@ createServer((req, res) => {
         // "none": the same campaigns, but no screenshot has been read yet (no readings at all).
         if (report && scenario.reports === "none") report = { ...report, deals: report.deals.map((d) => ({ ...d, results: { ...d.results, numbers: nums(), readings: 0 } })) };
         return report ? send(res, 200, { campaign_id: reportMatch[1], status: "open", campaign_type: "paid", ...report }) : fail(res, 404, "campaign_not_found");
+      }
+      const proofMatch = path.match(/^\/api\/v1\/deal-memos\/([^/]+)\/proof$/);
+      if (proofMatch && role === "brand") {
+        if (scenario.evidence === "error") return fail(res, 500, "unexpected_error");
+        return send(res, 200, [{ id: `pf-${proofMatch[1]}`, deal_memo_id: proofMatch[1], status: "approved", format: "reel", note: null, revision_note: null, content_url: null, disclosure_confirmed: true, auto_approved: false, approved_at: "2026-11-20T10:00:00Z", content_removed_on: null, created_at: "2026-11-19T10:00:00Z", updated_at: "2026-11-20T10:00:00Z", files: [], text_flags: [] }]);
+      }
+      const filesMatch = path.match(/^\/api\/v1\/deal-memos\/([^/]+)\/proof\/([^/]+)\/files$/);
+      if (filesMatch && role === "brand") {
+        const deal = Object.values(REPORTS).flatMap((r) => r.deals).find((d) => d.deal_memo_id === filesMatch[1]);
+        const numbers = deal?.results.numbers ?? nums();
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="360" height="520" viewBox="0 0 360 520"><rect width="360" height="520" fill="#f3f3f1"/><text x="180" y="250" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#3b3b39">Sample screenshot</text><text x="180" y="282" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#6b6b68">Post insights</text></svg>`;
+        return send(res, 200, [{ id: `pff-${filesMatch[1]}`, content_type: "image/svg+xml", status: "cleaned", size_bytes: 600, rejection_reason: null, url: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`, url_expires_at: "2099-01-01T00:00:00Z",
+          reading: { status: "read", platform: "instagram", handle: deal?.creator.handle ?? null, post_date: "2026-11-19", numbers, abbreviated: [], checks: { date_within_deal: true, handle_matches: deal?.creator.handle !== "meera" ? true : false, numbers_consistent: true }, stated_followers: 12_000, stated_average_views: 8_000, views_against_stated: numbers.views ? Math.round((numbers.views / 8_000) * 10) / 10 : null, source: "screenshot", read_at: "2026-11-19T11:00:00Z", creator_marked_at: null, creator_note: null } }]);
       }
       if (path === "/api/v1/notifications/unread-count") return send(res, 200, { unread: scenario.unread });
       if (path === "/api/v1/payments/mine/totals") {

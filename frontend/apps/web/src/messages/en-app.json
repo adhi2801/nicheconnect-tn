@@ -476,5 +476,149 @@
       "error": "Post numbers could not be loaded."
     },
     "feature": "A picture goes here"
+  },
+  "brandCampaigns": {
+    "list": {
+      "title": "Campaigns",
+      "subtitle": "Everything you are running, and how each one is doing.",
+      "new": "New campaign",
+      "filters": {
+        "label": "Show",
+        "all": "All",
+        "ongoing": "Ongoing",
+        "draft": "Drafts",
+        "cancelled": "Cancelled"
+      },
+      "none": "No campaign in this group.",
+      "error": "Campaigns could not be loaded.",
+      "empty": {
+        "title": "Start your first campaign",
+        "body": "Four steps, and each one is on the record.",
+        "steps": {
+          "1": "Write what you need and set a budget",
+          "2": "Creators apply, and you choose who to work with",
+          "3": "Agree the terms in a memo",
+          "4": "Approve the work and mark the payment"
+        }
+      },
+      "card": {
+        "closes": "Closes {date}",
+        "noClose": "No closing date",
+        "open": "Open",
+        "stage": "{count} in progress"
+      }
+    },
+    "view": {
+      "back": "All campaigns",
+      "nav": "Campaign sections",
+      "sections": {
+        "overview": "Overview",
+        "creators": "Creators",
+        "insights": "Insights"
+      },
+      "status": {
+        "draft": "Draft",
+        "open": "Taking applications",
+        "closed": "Closed to applications",
+        "cancelled": "Cancelled"
+      },
+      "figures": {
+        "applications": "Applications",
+        "agreed": "Deals agreed",
+        "finished": "Deals finished",
+        "paid": "Paid and confirmed"
+      },
+      "funnel": {
+        "title": "Applications",
+        "submitted": "New",
+        "shortlisted": "Shortlisted",
+        "accepted": "Accepted",
+        "rejected": "Not chosen",
+        "none": "No application yet."
+      },
+      "stages": {
+        "title": "Deals by stage",
+        "none": "No deal yet. Send a memo to a creator who applied."
+      },
+      "details": {
+        "title": "The campaign"
+      },
+      "money": {
+        "title": "Money",
+        "agreed": "Agreed fees",
+        "marked": "Marked as paid by you",
+        "confirmed": "Confirmed by creators",
+        "note": "You pay creators directly. Colyv records it."
+      },
+      "creators": {
+        "title": "Collaborations",
+        "all": "All",
+        "empty": "No creator has a deal on this campaign yet.",
+        "none": "No deal at this stage.",
+        "fee": "Fee",
+        "due": "Work due",
+        "payment": "Payment",
+        "post": "Post",
+        "noPost": "No numbers yet",
+        "open": "Open the deal",
+        "barter": "Barter",
+        "agreedOn": "Agreed {date}"
+      },
+      "insights": {
+        "title": "Insights",
+        "metric": "Compare posts by",
+        "engagement": "Engagement",
+        "engagementNote": "Calculated from the numbers read: likes, comments, saves and shares over views (over reach when no views were shown).",
+        "atLeast": "at least {rate}",
+        "rate": "{rate}",
+        "notEnough": "Not enough shown",
+        "ranked": "Posts by {metric}",
+        "hint": "Select a post to see its numbers, its checks and the screenshot.",
+        "totalLabel": "Total {metric}",
+        "noValue": "Not shown",
+        "posts": "{count} posts",
+        "average": "Average engagement",
+        "averageOf": "across {count} posts with enough shown",
+        "top": "Highest: {name}"
+      },
+      "post": {
+        "title": "{name}'s post",
+        "numbers": "What the screenshot showed",
+        "checks": "What we checked",
+        "screenshot": "The screenshot",
+        "alt": "The creator's screenshot of the post's insights",
+        "impressions": "Impressions",
+        "handle": "The handle on it is the creator's linked channel",
+        "date": "The post date is within the deal",
+        "consistent": "The numbers agree with each other",
+        "ok": "Checked",
+        "bad": "Does not match",
+        "unknown": "Not checked",
+        "vsStated": "Views against what they said they usually get: {ratio} times",
+        "loading": "Loading the evidence",
+        "error": "The evidence could not be loaded.",
+        "none": "No screenshot has been read yet.",
+        "wrong": "The creator marked this reading as wrong.",
+        "openDeal": "Open the deal"
+      },
+      "pay": {
+        "due": "Due",
+        "late": "Late",
+        "unpaid": "Unpaid",
+        "paid": "Marked as paid",
+        "unconfirmed": "Waiting for the creator",
+        "confirmed": "Confirmed",
+        "none": "No payment yet"
+      },
+      "reportError": "The numbers for this campaign could not be loaded. Refresh the page to try again.",
+      "notFound": {
+        "title": "We could not find this campaign",
+        "body": "It may have been removed, or the link may be wrong. Your campaigns are all on one page."
+      }
+    },
+    "first": {
+      "title": "Your first steps",
+      "body": "Nothing is running yet. This is how a deal goes."
+    }
   }
 }

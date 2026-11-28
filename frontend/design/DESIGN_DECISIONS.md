@@ -55,3 +55,10 @@ Started 27 November 2026. Earlier choices he made in sessions before this file e
 - His words: "i need both the creator and brand to have dashboard. The brand should be able to view the collab status and the insights of the reel or post performing which is posted by the creator or posted in colab... and every information about the campaign and ongoing campaign should be able to be viewed by both creator and brands... i have already given you a dashboard look previously for reference it is in our file already the yellow one... just change its colour tone and use the reference i gave you now and that one and make a new one out of these... and it shouldnt spoil the aesthetics of the website"
 - He chose: performance from the numbers read from creators' screenshots, honestly labelled ("Screenshot numbers now"), and "Yes, build it" to `frontend/design/dashboard-plan.md`.
 - Order: Today for the creator and the brand, then the campaign page for both roles; one page at a time (HD-006).
+
+## HD-009: The brand side must not look empty: campaigns, collaborations and reel insights, interactive
+
+- Date: 2026-11-28
+- His words: "brands side of the web looks empty...it also needs dashboard to view the information about ongoing campaign and about the engagement of the reels and insights if the reel that colabed with the creator....it should be very interactable and looks very professional and aesthetic"
+- What it means: the brand's Campaigns page and a campaign page (overview, creators and collaborations, and insights of the posts: engagement, with a click-through for each post) are built next, interactive, in the merged look. The brand's Today gets the same switchable insights and a guided first-steps card in place of an empty look.
+- Data limit unchanged (HD-008): numbers are what the creators' screenshots said, labelled so; engagement is calculated from them and says it is.

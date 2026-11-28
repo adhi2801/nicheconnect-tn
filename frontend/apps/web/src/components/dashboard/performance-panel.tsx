@@ -17,7 +17,7 @@ export function PerformancePanel({ reports, loading, failed }: { reports: Report
   const posts = reports.flatMap(postsOf).map((p) => ({ p, head: headlineOf(p.numbers) })).sort((a, b) => (b.head?.value ?? -1) - (a.head?.value ?? -1)).slice(0, TOP);
   const wrong = reports.flatMap(postsOf).reduce((n, p) => n + p.markedWrong, 0);
   return (
-    <Panel title={t("dashboard.performance.title")} tone="sage">
+    <Panel title={t("dashboard.performance.title")} tone="sage" action={{ href: "/app/campaigns", label: t("dashboard.campaigns.all") }}>
       <p className="-mt-3 text-[13px] text-muted">{t("dashboard.performance.source")}</p>
       {loading ? (
         <div aria-busy="true" className="grid gap-3"><Skeleton className="h-16" /><Skeleton className="h-24" /></div>

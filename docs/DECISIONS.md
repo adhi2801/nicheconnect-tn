@@ -2597,3 +2597,15 @@ Newest entries at the bottom.
   1. Performance is per post and per campaign total with "read from the creator's screenshot, not verified"; never a daily series; a missing number is never shown as zero; abbreviated figures (12.5K) are marked not exact.
   2. Today (both roles) is built first, then the campaign page; each is shown and approved before the next (HD-006).
   3. Requests for Adhi, filed rather than worked around: a creator's own results summed over all their deals in one call; the campaign id on a memo row if it is missing; a brand's list of open deals with creator names.
+
+## D-205: The brand's Campaigns page and campaign page, with interactive post insights
+- Date: 2026-11-28
+- Approved by: Erode Harish (in session, 28 November 2026: "brands side of the web looks empty... it also needs dashboard to view the information about ongoing campaign and about the engagement of the reels and insights ... very interactable ... very professional and aesthetic"). His words are HD-009. **Not reviewed by the other founder.**
+- Context: a brand opening the website saw empty states and a "being built" Campaigns tab; the campaign page was already planned (D-204) for both roles.
+- Options considered: A) build the Campaigns page and the brand's campaign page now, with the insights explorer inside it; B) only enrich Today; C) wait for live Instagram numbers.
+- Chosen: A (his message is the direction; the scope is the campaign page already planned in D-204 plus the Campaigns list that its link needs).
+- Reason: it is where a brand actually looks at ongoing work, and it uses only data the API already sends.
+- Consequences / follow-ups:
+  1. Engagement is calculated, never read: (likes + comments + saves + shares) over views (reach when no views were shown), only when a base and at least one interaction figure were read, and marked "at least" when some were missing. It says so on screen.
+  2. A post's detail (its screenshot, the backend's checks of it) is read only when the brand opens it.
+  3. The local backend's sample data (`scripts/seed_dev_data.py`) has campaigns and applicants but no deals or screenshot readings, so a real local account shows performance only once real deals exist; the sample-data preview (the stand-in backend) shows everything filled. A request for Adhi: extend the seed script with a demo brand's deals and readings.

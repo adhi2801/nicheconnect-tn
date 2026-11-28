@@ -144,3 +144,65 @@ export function comingUp(memos: Memo[], role: Role, today: string, limit = 4): C
     .sort((a, b) => a.days - b.days)
     .slice(0, limit);
 }
+
+// ---- A campaign's own page (frontend/design/dashboard-plan.md, D-205) ----
+
+/** The figures a brand can compare posts by, in the order they are offered. Impressions are rarely on a screenshot and are shown in a post's own detail. */
+export const METRICS = ["views", "reach", "likes", "comments", "saves", "shares"] as const;
+export type Metric = (typeof METRICS)[number];
+export const isMetric = (value: string | null | undefined): value is Metric => METRICS.includes(value as Metric);
+
+export type Engagement = { rate: number; partial: boolean };
+
+/**
+ * How much the people who saw a post did something about it, CALCULATED from the numbers read: likes, comments, saves and shares over
+ * views (or over reach when the screenshot showed no views). It needs a base above zero and at least likes or comments; `partial` says
+ * some of the four were not shown, so the real rate is at least this. Never a guess for a post whose screenshot said too little.
+ */
+export function engagementOf(n: Numbers): Engagement | null {
+  const base = typeof n.views === "number" ? n.views : typeof n.reach === "number" ? n.reach : null;
+  if (base === null || base <= 0) return null;
+  if (typeof n.likes !== "number" && typeof n.comments !== "number") return null;
+  const parts = [n.likes, n.comments, n.saves, n.shares];
+  const shown = parts.filter((v): v is number => typeof v === "number");
+  return { rate: shown.reduce((a, b) => a + b, 0) / base, partial: shown.length < parts.length };
+}
+
+export type Ranked = { post: Post; value: number | null };
+
+/** Posts by one figure, biggest first; a post whose screenshot did not show it goes last, with no value (not zero). */
+export function rankPosts(posts: Post[], metric: Metric): Ranked[] {
+  return posts
+    .map((post) => ({ post, value: post.numbers[metric] }))
+    .sort((a, b) => (b.value ?? -1) - (a.value ?? -1));
+}
+
+export type Funnel = { status: "submitted" | "shortlisted" | "accepted" | "rejected"; count: number }[];
+
+/** Where the applications to a campaign stand: every status, zeros included, withdrawn left out. */
+export const funnelOf = (report: Report): Funnel => {
+  const a = report.totals.applications;
+  return [
+    { status: "submitted", count: a.submitted },
+    { status: "shortlisted", count: a.shortlisted },
+    { status: "accepted", count: a.accepted },
+    { status: "rejected", count: a.rejected },
+  ];
+};
+
+const STAGES = ["memo_sent", "agreed", "in_progress", "payment", "finished"] as const;
+export type StageKey = (typeof STAGES)[number];
+export const STAGE_ORDER: readonly StageKey[] = STAGES;
+
+/** Deals at each stage of the journey, in order, zeros included. Declined and cancelled deals are not stages. */
+export const stageCountsOf = (report: Report): { stage: StageKey; count: number }[] => STAGES.map((stage) => ({ stage, count: report.deals.filter((d) => d.stage === stage).length }));
+
+/** 0.0912 as "9.1%". */
+export const formatPercent = (rate: number): string => new Intl.NumberFormat("en-IN", { style: "percent", maximumFractionDigits: 1 }).format(rate);
+
+/** The average engagement across the posts that had enough shown to calculate one, and how many those were. Null when none did. */
+export function averageEngagement(posts: Post[]): { rate: number; partial: boolean; count: number } | null {
+  const all = posts.map((p) => engagementOf(p.numbers)).filter((e): e is Engagement => e !== null);
+  if (all.length === 0) return null;
+  return { rate: all.reduce((a, e) => a + e.rate, 0) / all.length, partial: all.some((e) => e.partial), count: all.length };
+}

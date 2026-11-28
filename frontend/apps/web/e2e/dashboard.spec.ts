@@ -41,17 +41,17 @@ test("a creator's dashboard: what needs them, what is due, what is coming up, th
 test("a brand's dashboard: progress, needs you, campaigns, each collaboration's status", async ({ page }) => {
   await signIn(page, "Brand");
   await expect(page.getByText("Creators applied")).toBeVisible();
-  await expect(page.getByText("14", { exact: true })).toBeVisible(); // 8 + 2 + 4 applications across the three ongoing campaigns
-  // Progress, worked out from every campaign's report: 10 of 14 looked at, 5 of 5 memos agreed, 3 of 5 approved, 2 of 5 paid.
-  await expect(page.getByRole("progressbar", { name: "Applications looked at" })).toHaveAttribute("aria-valuenow", "71");
+  await expect(page.getByText("17", { exact: true })).toBeVisible(); // 11 + 2 + 4 applications across the three ongoing campaigns
+  // Progress, worked out from every campaign's report: 13 of 17 looked at, 9 of 9 memos agreed, 6 of 9 approved, 4 of 9 paid.
+  await expect(page.getByRole("progressbar", { name: "Applications looked at" })).toHaveAttribute("aria-valuenow", "76");
   await expect(page.getByRole("progressbar", { name: "Memos agreed" })).toHaveAttribute("aria-valuenow", "100");
-  await expect(page.getByRole("progressbar", { name: "Work approved" })).toHaveAttribute("aria-valuenow", "60");
-  await expect(page.getByRole("progressbar", { name: "Paid and confirmed" })).toHaveAttribute("aria-valuenow", "40");
+  await expect(page.getByRole("progressbar", { name: "Work approved" })).toHaveAttribute("aria-valuenow", "67");
+  await expect(page.getByRole("progressbar", { name: "Paid and confirmed" })).toHaveAttribute("aria-valuenow", "44");
   // Campaigns: the three ongoing ones, not the draft.
   const campaigns = panel(page, "Your campaigns");
   await expect(campaigns.locator("ul a")).toHaveCount(3);
   await expect(campaigns).toContainText("Diwali sweets reel");
-  await expect(campaigns).toContainText("8 applied · 1 of 3 deals finished");
+  await expect(campaigns).toContainText("11 applied · 3 of 7 deals finished");
   await expect(campaigns).toContainText("Closed to applications");
   await expect(campaigns).not.toContainText("Millet snacks launch");
   await expect(campaigns.getByRole("link", { name: /Diwali sweets reel/ })).toHaveAttribute("href", "/app/campaigns/c-1");
@@ -67,13 +67,13 @@ test("performance says it is read from screenshots, shows what they said, and ne
   await signIn(page, "Brand");
   const perf = panel(page, "Post performance");
   await expect(perf).toContainText("Read from the creators' screenshots, not verified.");
-  await expect(perf).toContainText("3 posts, from 4 screenshots");
-  await expect(perf.getByText("Views").locator("xpath=following-sibling::dd")).toHaveText("60.7K");
-  await expect(perf.getByText("Saves").locator("xpath=following-sibling::dd")).toHaveText("540");
+  await expect(perf).toContainText("6 posts, from 8 screenshots");
+  await expect(perf.getByText("Views").locator("xpath=following-sibling::dd")).toHaveText("1.2L");
+  await expect(perf.getByText("Saves").locator("xpath=following-sibling::dd")).toHaveText("850");
   // No screenshot showed shares: the total says so in words. It is not 0 (zero shares and "nobody said" mean opposite things).
   await expect(perf.getByText("Shares").locator("xpath=following-sibling::dd")).toHaveText("Not shown");
   await expect(perf).toContainText("48.2K views");
-  await expect(perf).toContainText("7.4K reach"); // a post whose screenshot showed no views is headlined by its reach
+  await expect(perf).toContainText("31.4K views");
   await expect(perf).toContainText("Some figures were shown rounded on the screenshot");
   await expect(perf).toContainText("Readings a creator marked as wrong are left out.");
 });

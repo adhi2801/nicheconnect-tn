@@ -209,3 +209,7 @@ body {
 [data-show-slots] .design-slot[data-slot-state="fallback"] .design-slot-label {
   display: none;
 }
+
+/* A bar that grows into place when it first appears (a ranked post, a progress capsule). Reduced motion makes it instant (above). */
+@keyframes bar-grow { from { transform: scaleX(0); } }
+.bar-grow { transform-origin: left center; animation: bar-grow var(--m-section) var(--ease-decelerate) both; }

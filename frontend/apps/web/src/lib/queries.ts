@@ -157,3 +157,19 @@ export const useCampaignReports = (ids: string[]) =>
       failed: results.filter((r) => r.isError).length,
     }),
   });
+
+/** What stands behind a post: its approved proofs and the files on them, each with the numbers read from the screenshot and the checks
+ *  the backend ran. Read only when a brand opens a post (`memoId` set), because it is up to four calls. */
+export const usePostEvidence = (memoId: string | null) =>
+  useQuery({
+    queryKey: ["post-evidence", memoId],
+    enabled: !!memoId,
+    staleTime: 60_000,
+    retry: false,
+    queryFn: async () => {
+      const id = memoId ?? "";
+      const proofs = (await unwrap(api.GET("/api/v1/deal-memos/{memo_id}/proof", { params: { path: { memo_id: id } } }))).slice(0, 3);
+      const files = await Promise.all(proofs.map((p) => unwrap(api.GET("/api/v1/deal-memos/{memo_id}/proof/{proof_id}/files", { params: { path: { memo_id: id, proof_id: p.id } } }))));
+      return { proofs, files: files.flat() };
+    },
+  });

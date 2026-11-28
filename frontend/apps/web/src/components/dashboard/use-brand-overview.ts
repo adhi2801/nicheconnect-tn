@@ -11,6 +11,8 @@ export function useBrandOverview() {
   const { reports, pending, failed } = useCampaignReports(list.map((c) => c.id));
   return {
     list,
+    /** Every campaign the brand has, any status; undefined until they load. */
+    total: campaigns.data?.length,
     reports,
     byId: useMemo(() => new Map(reports.map((r) => [r.campaign_id, r])), [reports]),
     loading: campaigns.isPending || (list.length > 0 && pending),
