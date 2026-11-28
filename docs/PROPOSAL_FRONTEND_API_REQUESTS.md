@@ -247,6 +247,50 @@ Risk & rollback: A response field only.
 → Approve A, B, or modify?
 ```
 
+## R13. Sample data with deals and screenshot readings, for a demo brand (local development)
+
+```
+DECISION NEEDED: extend scripts/seed_dev_data.py with a demo brand's deals and readings
+Context:      The seed script makes brands, creators, campaigns and applications, but no
+              deal memos, payments, proofs or screenshot readings. A brand's dashboard and
+              campaign page (D-204, D-205) are built to show collaborations, payments and
+              how the posts performed (numbers read from creators' screenshots, D-070), so
+              on a real local backend they can only show empty states. The frontend has
+              been checked against a stand-in for the backend, not against real data of this
+              kind.
+Option A:     One demo brand ("Chennai Bakes") with 3 campaigns, about 10 creators, deals
+              at every stage, payments in every state, and 5 to 8 approved proofs with a
+              reading each (some with a number missing, one marked wrong, one abbreviated).
+              Same fake phone range, local only, removed by --reset.   | + the whole brand
+              journey can be looked at and tested on the real API | - effort M (his area:
+              scripts and the proof reading tables)
+Option B:     Leave it; the frontend keeps its stand-in for these screens.   | - no check
+              against the real shapes until real deals exist
+Recommended:  A. It also lets the contract tests for the report and the proof files run on
+              realistic rows.
+Risk & rollback: a development script only; nothing runs outside ENVIRONMENT=local.
+→ Approve A, B, or modify?
+```
+
+## R14. A creator's own results in one read, and a brand's open deals with creator names
+
+```
+DECISION NEEDED: two reads the dashboards currently cannot do in one call (D-204)
+Context:      (1) A creator's "Your numbers" card needs every approved post's reading across
+              their deals: today that is one call per deal and per proof. (2) A brand's
+              "collaborations" list shows each creator's name from the memo's
+              counterparty_name (their handle); the campaign applicants list has the full
+              creator, the memo list does not.
+Option A:     GET /creators/me/results (totals and per-deal readings for the creator's own
+              approved work, the same shape as the campaign report's results) and
+              display_name beside handle on a memo's counterparty for a brand.
+              | + two cards need no fan-out | - effort S to M
+Option B:     Leave it; the cards stay out until it exists.
+Recommended:  A.
+Risk & rollback: new read and one response field; nothing changes for current clients.
+→ Approve A, B, or modify?
+```
+
 ---
 
 **Not requested, for the record:** brand logo, city and category (a brand's face is its name, verified domain and payment record); team seats (item 13) are not at launch; the admin console is a separate question in `frontend/design/execution-plan.md` section 6.
