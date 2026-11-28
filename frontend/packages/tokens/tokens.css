@@ -124,9 +124,9 @@
   --c-accent-pressed: #434240;
   --c-on-accent: #FFFFFF;
   --c-accent-ink: #181715;
-  --c-accent-soft: #F0EFED;
-  --c-on-accent-soft: #23211F;
-  --c-accent-mid: #878683;
+  --c-accent-soft: #D7FB70;
+  --c-on-accent-soft: #181715;
+  --c-accent-mid: #BFE255;
   --c-accent-deep-from: #2C2B29;
   --c-accent-deep-to: #11100F;
   --c-surface-sunk: var(--c-sunk);

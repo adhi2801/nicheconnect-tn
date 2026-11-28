@@ -65,7 +65,8 @@
     "role": {
       "creator": "Creator",
       "brand": "Brand"
-    }
+    },
+    "close": "Close menu"
   },
   "today": {
     "greeting": {

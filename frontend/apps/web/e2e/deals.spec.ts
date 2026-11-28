@@ -138,7 +138,7 @@ test("on a phone the stages swipe sideways inside the board, and the page itself
 
 test("when the stages do not all fit, buttons bring the later ones into view", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" }); // the scroll then jumps, so the test does not wait on an animation
-  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.setViewportSize({ width: 1024, height: 900 }); // narrow enough that the five stages do not all fit
   await signInToDeals(page);
   const finished = column(page, "Finished, 1 deal");
   const next = page.getByRole("button", { name: "Later stages" });

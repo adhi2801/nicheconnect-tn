@@ -4,6 +4,18 @@ import { expect, test, type Page } from "@playwright/test";
 const MOCK = "http://localhost:8098";
 const scenario = (body: object) => fetch(`${MOCK}/__scenario`, { method: "POST", body: JSON.stringify(body) });
 const state = async () => (await fetch(`${MOCK}/__state`)).json();
+
+// Waits until the stand-in has stopped hearing from the page: Today's own reads are done, so a count that follows is Discover's alone.
+// (Not "network idle": this app never reaches it, e2e/accessibility.spec.ts.)
+async function quiet() {
+  let last = "";
+  for (let i = 0; i < 40; i++) {
+    await new Promise((done) => setTimeout(done, 400));
+    const now = JSON.stringify((await state()).calls);
+    if (now === last) return;
+    last = now;
+  }
+}
 const PITCH = "I make Madurai street-food reels every week for an audience of 18 to 30 year olds in the city.";
 
 test.beforeEach(async () => { await fetch(`${MOCK}/__reset`, { method: "POST", body: "{}" }); });
@@ -38,6 +50,7 @@ test("Discover shows pay, type, place and closing date on each card, and marks w
 
 test("Discover makes no call per card: one for campaigns, one for applications, whatever the page size", async ({ page }) => {
   await signIn(page);
+  await quiet(); // Today's own reads finish first, so only Discover's are counted
   await fetch(`${MOCK}/__calls/reset`, { method: "POST", body: "{}" });
   await page.goto("/app/discover");
   await expect(cards(page)).toHaveCount(20);

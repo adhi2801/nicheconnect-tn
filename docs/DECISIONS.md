@@ -2585,3 +2585,15 @@ Newest entries at the bottom.
   1. `tokens.json` gains `lime`, `on-lime`, `sage`, `wash-from` and `wash-to` in both looks and both themes; neutral muted text is darkened slightly (L 0.43 to 0.405) so grey text on the new tints keeps 7:1. 216 contrast pairs pass.
   2. This refines D-202's neutral look (the near-white and near-black base stays); it does not reverse it. D-142 holds: the reference's photograph is not copied; its place is a design slot.
   3. Home is restyled; the dashboard (Today) is built next, then the other pages, one at a time (HD-006).
+
+## D-204: The creator's and the brand's dashboards, and the campaign page for both, with performance read from screenshots
+- Date: 2026-11-28
+- Approved by: Erode Harish (in session, 28 November 2026: his message, and chose "Screenshot numbers now" and "Yes, build it" to `frontend/design/dashboard-plan.md`). His words are HD-008. **Not reviewed by the other founder.**
+- Context: Harish asked for a dashboard for each role in the merged look of the COREHR reference and the earlier yellow prototype, a brand view of each collaboration's status and the performance of the posts, and all campaign information visible to both sides. The backend has no live Instagram numbers (the connection is switched off until Meta's review); its performance data is the numbers read from a creator's proof screenshot (D-070), per post and summed per campaign.
+- Options considered: (a) performance: A) screenshot numbers now, labelled; B) none until Instagram is connected; C) a sample graph. (b) the plan: A) build as written; B) change it.
+- Chosen: A and A.
+- Reason: it shows what the product really knows, says where each number came from, and switches to verified numbers later without a redesign; a sample graph would show figures the product cannot yet produce.
+- Consequences / follow-ups:
+  1. Performance is per post and per campaign total with "read from the creator's screenshot, not verified"; never a daily series; a missing number is never shown as zero; abbreviated figures (12.5K) are marked not exact.
+  2. Today (both roles) is built first, then the campaign page; each is shown and approved before the next (HD-006).
+  3. Requests for Adhi, filed rather than worked around: a creator's own results summed over all their deals in one call; the campaign id on a memo row if it is missing; a brand's list of open deals with creator names.

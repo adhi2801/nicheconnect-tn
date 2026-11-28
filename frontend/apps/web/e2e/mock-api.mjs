@@ -6,7 +6,7 @@ const port = Number(process.env.PORT ?? 8098);
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "POST, GET, PUT, PATCH, DELETE, OPTIONS", "Access-Control-Expose-Headers": "Retry-After, X-Request-ID, WWW-Authenticate" };
 
 let n, valid, used, reuseDetected, refreshCalls, lastForwardedFor, refreshDelayMs, tokens, scenario, calls, writes, created, lastQuery, sentApps, withdrawn, reports, blocked;
-const defaults = () => ({ attention: "items", profile: "found", totals: "money", unread: 3, busyOnce: false, deals: "full", names: true, createProfile: "ok", discover: "items", apply: "ok", applications: "some", withdraw: "ok", applicationsDelayMs: 0, campaignDelayMs: 0 });
+const defaults = () => ({ attention: "items", profile: "found", totals: "money", unread: 3, busyOnce: false, deals: "full", names: true, createProfile: "ok", discover: "items", apply: "ok", applications: "some", campaigns: "some", reports: "some", withdraw: "ok", applicationsDelayMs: 0, campaignDelayMs: 0 });
 const reset = () => { n = 0; valid = new Map(); used = new Set(); tokens = new Map(); reuseDetected = false; refreshCalls = 0; lastForwardedFor = null; refreshDelayMs = 0; scenario = defaults(); calls = {}; writes = []; created = false; lastQuery = null; sentApps = []; withdrawn = new Set(); reports = new Map(); blocked = new Set(); };
 
 // ---- The creator's journey: campaigns, applications (contract: CampaignRead, ApplicationRead, BrandReliabilityRead) ----
@@ -43,6 +43,31 @@ const myApplications = () => {
     application("a-6", "c-1", "withdrawn", "2026-11-09T05:00:00Z"), // the one from another brand (Kovai Organics)
   ];
   return [...sentApps, ...base].map((a) => (withdrawn.has(a.id) ? { ...a, status: "withdrawn" } : a));
+};
+
+// ---- The brand's dashboard: its campaigns and each one's report (contract: CampaignRead, CampaignReportRead). Dates are relative to today. ----
+const ahead = (days) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+const BRAND_CAMPAIGNS = [
+  campaign(1, { id: "c-1", brand_id: "br-1", brand_name: "Chennai Bakes", title: "Diwali sweets reel", status: "open", updated_at: "2026-11-24T00:00:00Z" }),
+  campaign(2, { id: "c-2", brand_id: "br-1", brand_name: "Chennai Bakes", title: "Filter coffee tasting", status: "open", updated_at: "2026-11-20T00:00:00Z" }),
+  campaign(3, { id: "c-3", brand_id: "br-1", brand_name: "Chennai Bakes", title: "Silk saree styling", status: "closed", applications_open: false, updated_at: "2026-11-10T00:00:00Z" }),
+  campaign(4, { id: "c-4", brand_id: "br-1", brand_name: "Chennai Bakes", title: "Millet snacks launch", status: "draft", updated_at: "2026-11-26T00:00:00Z" }),
+];
+const nums = (o = {}) => ({ views: null, reach: null, impressions: null, likes: null, comments: null, saves: null, shares: null, ...o });
+const reportDeal = (id, stage, name, handle, results) => ({ deal_memo_id: id, stage, creator: { display_name: name, handle }, content_url: null, results: { numbers: nums(), readings: 0, readings_marked_wrong: 0, includes_abbreviated: false, source: "screenshot", ...results } });
+const counts = (o) => ({ submitted: 0, shortlisted: 0, accepted: 0, rejected: 0, withdrawn: 0, invited: 0, declined: 0, ...o });
+const REPORTS = {
+  "c-1": { title: "Diwali sweets reel", totals: { applications: counts({ submitted: 3, shortlisted: 2, accepted: 2, rejected: 1 }), deals: 3, deals_agreed: 3, deals_finished: 1 }, deals: [
+    reportDeal("m-3", "payment", "Priya Eats", "priya", { numbers: nums({ views: 48_200, reach: 36_000, likes: 3_100, comments: 212, saves: 540 }), readings: 2, includes_abbreviated: true }),
+    reportDeal("m-6", "finished", "Arun Tastes", "arun", { numbers: nums({ views: 12_500, reach: 9_800, likes: 900, comments: 41 }), readings: 1 }),
+    reportDeal("m-11", "in_progress", "Suresh Snaps", "suresh", {}),
+  ] },
+  "c-2": { title: "Filter coffee tasting", totals: { applications: counts({ submitted: 1, accepted: 1 }), deals: 1, deals_agreed: 1, deals_finished: 0 }, deals: [
+    reportDeal("m-5", "agreed", "Divya Daily", "divya", {}),
+  ] },
+  "c-3": { title: "Silk saree styling", totals: { applications: counts({ shortlisted: 1, accepted: 1, rejected: 2 }), deals: 1, deals_agreed: 1, deals_finished: 1 }, deals: [
+    reportDeal("m-8", "finished", "Kavya Plates", "kavya", { numbers: nums({ reach: 7_400, likes: 380 }), readings: 1, readings_marked_wrong: 1 }),
+  ] },
 };
 reset();
 
@@ -160,6 +185,18 @@ createServer((req, res) => {
         if (scenario.profile === "missing" && !(created && path === "/api/v1/creators/me")) return fail(res, 404, "profile_not_found");
         return send(res, 200, role === "creator" ? { id: "cr-1", display_name: "Lakshmi Loves", handle: "lakshmi" } : { id: "br-1", name: "Chennai Bakes" });
       }
+      if (path === "/api/v1/campaigns" && req.method === "GET" && role === "brand") {
+        if (scenario.campaigns === "error") return fail(res, 500, "unexpected_error");
+        return send(res, 200, { items: scenario.campaigns === "empty" ? [] : BRAND_CAMPAIGNS, next_cursor: null });
+      }
+      const reportMatch = path.match(/^\/api\/v1\/campaigns\/([^/]+)\/report$/);
+      if (reportMatch && role === "brand") {
+        if (scenario.reports === "error") return fail(res, 500, "unexpected_error");
+        let report = REPORTS[reportMatch[1]];
+        // "none": the same campaigns, but no screenshot has been read yet (no readings at all).
+        if (report && scenario.reports === "none") report = { ...report, deals: report.deals.map((d) => ({ ...d, results: { ...d.results, numbers: nums(), readings: 0 } })) };
+        return report ? send(res, 200, { campaign_id: reportMatch[1], status: "open", campaign_type: "paid", ...report }) : fail(res, 404, "campaign_not_found");
+      }
       if (path === "/api/v1/notifications/unread-count") return send(res, 200, { unread: scenario.unread });
       if (path === "/api/v1/payments/mine/totals") {
         if (scenario.totals === "error") return fail(res, 500, "unexpected_error");
@@ -184,7 +221,9 @@ createServer((req, res) => {
           ["m-11", "payment", "brand", 650_000, "2026-10-20", "Trichy Tiffins", "Suresh Snaps", "Combo meal reels", true],
         ];
         if (role === "brand") rows.push(["m-9", "draft", "brand", null, null, "Chennai Bakes", "Anand Cuts", "Protein laddu launch", false]);
+        const WORK_DUE = { "m-2": ahead(2), "m-3": ahead(6), "m-4": ahead(9), "m-5": ahead(15) };
         const items = rows.map(([id, stage, waiting, fee, due, brandName, creatorName, title, dispute]) => ({
+          work_due_on: WORK_DUE[id] ?? null,
           id, application_id: "a-" + id, stage, status: stage === "draft" ? "draft" : stage === "declined" ? "declined" : stage === "cancelled" ? "cancelled" : stage === "memo_sent" ? "sent" : "accepted",
           waiting_on: waiting, fee_amount_paise: fee, agreed_amount_paise: stage === "memo_sent" || stage === "draft" ? null : fee, content_due_on: due, updated_at: "2026-10-2" + (id.length % 9) + "T10:00:00Z", has_open_dispute: dispute, currency: "INR",
           ...(scenario.names ? { campaign_title: title, counterparty_name: role === "creator" ? brandName : creatorName } : {}),

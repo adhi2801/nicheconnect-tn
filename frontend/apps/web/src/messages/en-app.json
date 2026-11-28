@@ -372,5 +372,109 @@
       "keep": "Don't block",
       "done": "Blocked. You won't see that brand's campaigns, and neither of you can start anything new with the other. Deals already agreed carry on. They were not told."
     }
+  },
+  "dashboard": {
+    "figures": {
+      "creator": {
+        "confirmed": "Confirmed so far",
+        "onItsWay": "On its way",
+        "openDeals": "Open deals"
+      },
+      "brand": {
+        "applicants": "Creators applied",
+        "openDeals": "Deals open",
+        "toMark": "To mark as paid"
+      }
+    },
+    "sampleData": "Sample data",
+    "progress": {
+      "title": "How your collaborations are going",
+      "applications": "Applications looked at",
+      "memos": "Memos agreed",
+      "work": "Work approved",
+      "paid": "Paid and confirmed",
+      "notYet": "Not enough yet",
+      "of": "{done} of {of}"
+    },
+    "next": {
+      "title": "Next due",
+      "days": "days",
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "open": "Open",
+      "none": "Nothing is due soon."
+    },
+    "coming": {
+      "title": "Coming up",
+      "all": "All deals",
+      "empty": "Nothing is dated yet. Deal dates appear here once a memo is agreed.",
+      "yours": "Your move",
+      "waiting": "Waiting",
+      "when": {
+        "late": "{days} days late",
+        "lateOne": "1 day late",
+        "today": "Due today",
+        "tomorrow": "Due tomorrow",
+        "days": "Due in {days} days"
+      },
+      "error": "Deals could not be loaded."
+    },
+    "applications": {
+      "title": "Your applications",
+      "see": "See all",
+      "empty": "You have not applied to a campaign yet.",
+      "browse": "Browse campaigns",
+      "error": "Applications could not be loaded.",
+      "status": "Updated {date}"
+    },
+    "campaigns": {
+      "title": "Your campaigns",
+      "all": "All campaigns",
+      "empty": "No campaign is running. Start one and creators can apply.",
+      "start": "New campaign",
+      "status": {
+        "open": "Taking applications",
+        "closed": "Closed to applications"
+      },
+      "applied": "{count} applied",
+      "deals": "{done} of {of} deals finished",
+      "noDeals": "No deals yet",
+      "error": "Campaigns could not be loaded.",
+      "partial": "{count} campaigns could not be loaded."
+    },
+    "collabs": {
+      "title": "Collaborations",
+      "all": "All deals",
+      "empty": "No deal is running. Send a memo to a creator who applied.",
+      "yours": "Your move",
+      "theirs": "Waiting on them",
+      "due": "Work due {date}"
+    },
+    "performance": {
+      "title": "Post performance",
+      "source": "Read from the creators' screenshots, not verified.",
+      "summary": {
+        "one": "1 post, from {readings} screenshots",
+        "other": "{count} posts, from {readings} screenshots"
+      },
+      "views": "Views",
+      "reach": "Reach",
+      "impressions": "Impressions",
+      "likes": "Likes",
+      "comments": "Comments",
+      "saves": "Saves",
+      "shares": "Shares",
+      "notShown": "Not shown",
+      "approximate": "Some figures were shown rounded on the screenshot (like 12.5K), so these are not exact.",
+      "markedWrong": "Readings a creator marked as wrong are left out.",
+      "empty": "No post numbers yet. They appear once a creator sends a screenshot of the post's insights.",
+      "top": "By post",
+      "viewsOf": "{value} views",
+      "reachOf": "{value} reach",
+      "noHeadline": "No views or reach shown",
+      "readingsOf": "{count} screenshots",
+      "error": "Post numbers could not be loaded."
+    },
+    "feature": "A picture goes here"
   }
 }

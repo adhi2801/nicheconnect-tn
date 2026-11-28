@@ -1,7 +1,8 @@
 "use client";
 
 import { useId } from "react";
-import { Card } from "@/components/ui/card";
+import { Panel } from "@/components/dashboard/panel";
+import { Pill } from "@/components/ui/pill";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatPaise } from "@/lib/format";
 import { t } from "@/lib/messages";
@@ -19,8 +20,8 @@ const GAP = 1.4; // between segments, in hundredths of the arc
 export function PaymentGauge({ role }: { role: Role }) {
   const totals = usePaymentTotals();
   const hatchId = useId();
-  if (totals.isPending) return <Skeleton className="h-64 rounded-[1.75rem]" />;
-  if (totals.isError) return null; // the figure cards above already say the payments could not be loaded
+  if (totals.isPending) return <Skeleton className="h-64 rounded-[2rem]" />;
+  if (totals.isError) return <Panel title={t("today.gauge.title")}><p className="text-[15px] leading-6 text-muted">{t("today.moneyError")}</p></Panel>;
 
   const done = totals.data.finished.amount_paise;
   const waiting = totals.data.awaiting_confirmation.amount_paise;
@@ -39,8 +40,7 @@ export function PaymentGauge({ role }: { role: Role }) {
     { label: t("today.gauge.legendNotMarked"), amount: notMarked, swatch: <span aria-hidden className="hatch size-3 rounded-full ring-1 ring-gauge-mid" /> },
   ];
   return (
-    <Card className="grid gap-4 p-5 sm:p-6">
-      <h2 className="font-display text-xl font-semibold tracking-tight">{t("today.gauge.title")}</h2>
+    <Panel title={t("today.gauge.title")} action={{ href: "/app/deals", label: t("deals.payments.title") }}>
       <div className="relative mx-auto w-full max-w-[16rem]">
         <svg viewBox="0 0 220 118" className="w-full" aria-hidden fill="none">
           <defs>
@@ -78,6 +78,7 @@ export function PaymentGauge({ role }: { role: Role }) {
           </li>
         ))}
       </ul>
-    </Card>
+      {totals.data.overdue.amount_paise > 0 && <div><Pill tone="bad">{t("today.money.late", { amount: formatPaise(totals.data.overdue.amount_paise) })}</Pill></div>}
+    </Panel>
   );
 }

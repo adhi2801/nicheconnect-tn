@@ -23,7 +23,8 @@ async function signIn(page: Page, role: "Creator" | "Brand" = "Creator") {
 
 const signedIn = (page: Page) => expect(page.getByRole("link", { name: "Your account" })).toBeVisible();
 const signOutFrom = async (page: Page) => {
-  await page.getByRole("button", { name: "Sign out" }).first().click(); // the sidebar's
+  await page.getByRole("link", { name: "Your account" }).click(); // Account holds Sign out (the phone's menu has it too)
+  await page.getByRole("button", { name: "Sign out" }).click();
 };
 
 const refreshCookie = async (context: BrowserContext) => (await context.cookies()).find((c) => c.name === "colyv_rt");

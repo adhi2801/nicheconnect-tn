@@ -5,6 +5,18 @@ const MOCK = "http://localhost:8098";
 const scenario = (body: object) => fetch(`${MOCK}/__scenario`, { method: "POST", body: JSON.stringify(body) });
 const state = async () => (await fetch(`${MOCK}/__state`)).json();
 
+// Waits until the stand-in has stopped hearing from the page: Today's own reads are done, so a count that follows is Discover's alone.
+// (Not "network idle": this app never reaches it, e2e/accessibility.spec.ts.)
+async function quiet() {
+  let last = "";
+  for (let i = 0; i < 40; i++) {
+    await new Promise((done) => setTimeout(done, 400));
+    const now = JSON.stringify((await state()).calls);
+    if (now === last) return;
+    last = now;
+  }
+}
+
 test.beforeEach(async () => { await fetch(`${MOCK}/__reset`, { method: "POST", body: "{}" }); });
 
 async function open(page: Page, extra: object = {}) {
@@ -15,6 +27,9 @@ async function open(page: Page, extra: object = {}) {
   await page.getByRole("button", { name: "Send code" }).click();
   await page.getByLabel("6-digit code").fill("123456");
   await expect(page).toHaveURL(/\/app$/);
+  // Today reads some campaigns of its own; let it finish, then count only what My applications reads.
+  await quiet();
+  await fetch(`${MOCK}/__calls/reset`, { method: "POST", body: "{}" });
   await page.goto("/app/applications");
   await expect(page.getByRole("heading", { name: "My applications" })).toBeVisible();
   // The heading shows with the loading state; a test that counts rows must first wait for them to be there.

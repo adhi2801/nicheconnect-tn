@@ -134,3 +134,26 @@ export const useCampaignsFor = (ids: string[]) =>
     queries: ids.map((id) => ({ ...campaignQuery(id), staleTime: 10 * 60_000, refetchOnWindowFocus: false, retry: false })),
     combine: (results) => new Map(ids.map((id, i) => [id, results[i]])),
   });
+
+// ---- The dashboards (frontend/design/dashboard-plan.md) ----
+
+/** The brand's own campaigns, newest first. Pilot scale: the first fifty. */
+export const useMyCampaigns = (enabled = true) =>
+  useQuery({ queryKey: ["my-campaigns"], enabled, queryFn: async () => (await unwrap(api.GET("/api/v1/campaigns", { params: { query: { limit: 50 } } }))).items });
+
+/** One report per campaign, read together: each carries the applications, every deal's stage and what the screenshots said, so a
+ *  campaign card needs no second call. A campaign whose report did not load is counted in `failed`, never left out silently. */
+export const useCampaignReports = (ids: string[]) =>
+  useQueries({
+    queries: ids.map((id) => ({
+      queryKey: ["campaign-report", id],
+      staleTime: 60_000,
+      retry: false,
+      queryFn: () => unwrap(api.GET("/api/v1/campaigns/{campaign_id}/report", { params: { path: { campaign_id: id } } })),
+    })),
+    combine: (results) => ({
+      reports: results.flatMap((r) => (r.data ? [r.data] : [])),
+      pending: results.some((r) => r.isPending),
+      failed: results.filter((r) => r.isError).length,
+    }),
+  });

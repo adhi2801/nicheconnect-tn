@@ -53,7 +53,7 @@ test("a brand sees its own navigation and handles as @handle", async ({ page }) 
 
 test("payments show what each role acts on first, with late money called out", async ({ page }) => {
   await signIn(page);
-  await expect(page.getByText("Waiting for you to confirm")).toBeVisible();
+  await expect(page.getByText("Not yet marked as paid")).toBeVisible();
   await expect(page.getByText("₹6,500 is late")).toBeVisible();
   await expect(page.getByText("₹1,25,000").first()).toBeVisible(); // confirmed so far, Indian grouping
 });
@@ -64,7 +64,7 @@ test("when nothing needs the person, Today says so calmly and points forward", a
   await expect(page.getByText("You are all caught up.")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Nothing needs you right now" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Browse campaigns" }).first()).toHaveAttribute("href", "/app/discover");
-  await expect(page.getByText("Nothing yet").first()).toBeVisible();
+  await expect(page.getByText("No payments yet").first()).toBeVisible();
 });
 
 test("a new account is asked to finish its profile first", async ({ page }) => {
@@ -119,20 +119,25 @@ test("the navigation marks where you are, and a screen not built yet answers kin
   await expect(page).toHaveURL(/\/app$/);
 });
 
-test("on a laptop the navigation is a sidebar, on a phone a bar at the bottom", async ({ page }) => {
+test("on a laptop the menu is a pill bar across the top, on a phone a button opens a full-screen menu", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await signIn(page);
-  // Both bars are in the page; CSS shows one. (Role queries skip hidden elements, so these use the label.)
+  // Both menus are in the page; the browser shows one. (Role queries skip hidden elements, so these use the label.)
   const nav = page.locator('nav[aria-label="Main"]');
   await expect(nav).toHaveCount(2);
-  const [top, bottom] = [nav.first(), nav.last()];
-  await expect(top).toBeVisible();
-  await expect(bottom).toBeHidden();
+  const [bar, menu] = [nav.first(), nav.last()];
+  await expect(bar).toBeVisible();
+  await expect(bar.getByRole("link", { name: "Today" })).toHaveAttribute("aria-current", "page");
+  expect((await bar.boundingBox())!.y).toBeLessThan(100); // across the top, not a bar at the bottom
+  await expect(menu).toBeHidden();
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(top).toBeHidden();
-  await expect(bottom).toBeVisible();
-  const box = await bottom.boundingBox();
-  expect(box!.y + box!.height).toBeGreaterThan(800); // pinned to the bottom of the phone screen
+  await expect(bar).toBeHidden();
+  await page.getByRole("button", { name: "Menu" }).click();
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole("link", { name: "Deals" })).toBeVisible();
+  await expect(menu.getByRole("button", { name: "Sign out" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
 });
 
 test("nothing scrolls sideways on a phone", async ({ page }) => {

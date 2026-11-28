@@ -180,6 +180,13 @@ body {
 .design-slot-label {
   display: none;
 }
+/* An optional slot nobody has filled is not drawn (src/design/design-slot.tsx); the development outline still shows it. */
+.design-slot[data-optional][data-slot-state="empty"] {
+  display: none;
+}
+[data-show-slots] .design-slot[data-optional][data-slot-state="empty"] {
+  display: block;
+}
 /* Development builds: every slot outlined, with its name and what goes there. */
 [data-show-slots] .design-slot {
   outline: 1.5px dashed var(--c-line-strong);

@@ -1,6 +1,6 @@
 # The dashboards (Today) and the campaign view, for creators and for brands
 
-**Status: Proposed, 28 November 2026.** Nothing here is built. Harish's words are HD-007 and his message of 28 November (below); the look is D-203.
+**Status: Approved by Harish, 28 November 2026 (D-204). Today for both roles is built and waits for his look; the campaign page is not built yet.** Harish's words are HD-007 and his message of 28 November (below); the look is D-203.
 
 ## What Harish asked for
 
@@ -56,3 +56,14 @@ Gaps, filed as requests rather than worked around: a creator's own results summe
 - **Gates:** scope (adds the campaign page and performance cards to the approved plan); no dependency, database, CI or backend change.
 - **Risks:** the screenshot-only performance data is thin and will look sparse until creators send proofs; seeded data in the local backend has few readings, so screenshots of this page use the stand-in's sample data and say so.
 - **Undo:** its own branch work on `feature/website-structure`; nothing merges without Harish's approval of each page.
+
+## 6. Built on 28 November 2026 (Today, both roles), and what differs from section 1
+
+Built: the signed-in menu is now the pill menu across the top (a button and a full-screen menu on a phone), no sidebar and no tab bar. A creator's Today has the three figures, Needs you (the dark card), Next due (the ring), Coming up, Your applications and Payments. A brand's Today has the three figures, the four progress bars, Needs you, Collaborations, Post performance, Your campaigns, Next due and Payments. Rules in `src/lib/dashboard.ts` (9 tests); cards in `src/components/dashboard/`.
+
+Differences from the plan, stated plainly:
+- **Not built, on the creator's Today: "How brands pay" and "Your numbers".** Each needs one call per brand or per proof; they wait for an aggregated read (a request for Adhi, listed in D-204).
+- **A brand's "collaborations" list shows open deals only** (memo sent, agreed, in progress, payment), not finished ones, which are on the Deals page.
+- **"Coming up" leaves out deals at the payment stage**: their work date means nothing once the work is delivered (found while checking the first screenshots).
+- **The picture card is an optional design slot** (`today.feature`): it is not drawn until a design is added, so the dashboard never shows an empty panel.
+- **The campaign page for both roles** is the next page, shown after this one is approved.

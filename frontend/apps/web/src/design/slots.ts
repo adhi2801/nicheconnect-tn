@@ -24,6 +24,10 @@ export const SLOTS = {
     size: "w-full max-w-[30rem] aspect-square",
     purpose: "The sealed record: the bronze seal, or a made image of a record being sealed.",
   },
+  "today.feature": {
+    size: "w-full aspect-[16/9]",
+    purpose: "The dashboard's picture card (the reference's photograph): a made illustration. Shown only once a design is added (data-optional).",
+  },
   "footer.ornament": {
     size: "w-full h-12",
     purpose: "A band of ornament above the footer: a kolam line, drawn as a vector.",

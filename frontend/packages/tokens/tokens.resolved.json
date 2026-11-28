@@ -184,9 +184,9 @@
       "accent-pressed": "#434240",
       "on-accent": "#FFFFFF",
       "accent-ink": "#181715",
-      "accent-soft": "#F0EFED",
-      "on-accent-soft": "#23211F",
-      "accent-mid": "#878683",
+      "accent-soft": "#D7FB70",
+      "on-accent-soft": "#181715",
+      "accent-mid": "#BFE255",
       "accent-deep-from": "#2C2B29",
       "accent-deep-to": "#11100F"
     },
@@ -1159,7 +1159,7 @@
         "fg": "on-accent-soft",
         "bg": "accent-soft",
         "min": 7,
-        "ratio": 13.96
+        "ratio": 15.29
       },
       {
         "fg": "ok",
@@ -1315,7 +1315,7 @@
         "fg": "accent-soft",
         "bg": "ink",
         "min": 7,
-        "ratio": 15.59
+        "ratio": 15.29
       }
     ],
     "neutral/dark": [

@@ -4,20 +4,20 @@ import Link from "next/link";
 import { useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { IconButton } from "@/components/ui/icon-button";
-import { BellIcon } from "@/components/ui/icons";
+import { BellIcon, CloseIcon, MenuIcon } from "@/components/ui/icons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { initials } from "@/lib/format";
 import { t } from "@/lib/messages";
 import { useProfile, useUnreadCount } from "@/lib/queries";
 import { restoreSession, type Role } from "@/lib/session";
 import { useSession } from "@/lib/use-session";
-import { BottomNav, SideNav } from "./app-nav";
+import { MenuNav, TopNav } from "./app-nav";
 
-// The colyv mark is a placeholder until the designer's logo arrives: a green ring with a dot.
+// The colyv mark is a placeholder until the designer's logo arrives: a ring with a dot, in the outlined pill the public site uses.
 function Logo() {
   return (
-    <Link href="/app" className="flex min-h-11 items-center gap-2.5 font-display text-xl font-semibold tracking-tight">
-      <span aria-hidden className="grid size-8 place-items-center rounded-full border-[3px] border-accent"><span className="size-2 rounded-full bg-accent" /></span>
+    <Link href="/app" className="t-base inline-flex h-11 shrink-0 items-center gap-2.5 rounded-full border border-line-strong bg-surface/70 px-4 font-display text-[19px] font-semibold tracking-[-0.035em]">
+      <span aria-hidden className="grid size-5 place-items-center rounded-full border-2 border-accent"><span className="size-1.5 rounded-full bg-accent" /></span>
       Colyv
     </Link>
   );
@@ -25,45 +25,53 @@ function Logo() {
 
 function Bell({ unread }: { unread: number }) {
   return (
-    <IconButton href="/app/inbox" label={unread > 0 ? t("nav.unread", { count: unread }) : t("nav.notifications")} badge={unread > 0 ? <span aria-hidden className="absolute -right-0.5 -top-0.5 grid min-w-5 place-items-center rounded-full bg-accent px-1 text-[11px] font-bold leading-5 text-on-accent ring-2 ring-ground lg:ring-sunk">{unread > 9 ? "9+" : unread}</span> : null}>
+    <IconButton href="/app/inbox" label={unread > 0 ? t("nav.unread", { count: unread }) : t("nav.notifications")} badge={unread > 0 ? <span aria-hidden className="absolute -right-0.5 -top-0.5 grid min-w-5 place-items-center rounded-full bg-lime px-1 text-[11px] font-bold leading-5 text-on-lime ring-2 ring-ground">{unread > 9 ? "9+" : unread}</span> : null}>
       <BellIcon width={20} height={20} />
     </IconButton>
   );
 }
+
+const MENU = "app-menu";
 
 function Frame({ children, role }: { children: ReactNode; role: Role }) {
   const profile = useProfile(role);
   const unread = useUnreadCount().data?.unread ?? 0;
   const name = profile.data?.found ? profile.data.name : null;
   return (
-    <div className="min-h-screen lg:p-5">
+    <div className="min-h-screen">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-ink focus:px-5 focus:py-3 focus:text-on-accent">{t("nav.skip")}</a>
-      <div className="mx-auto min-h-screen max-w-[1520px] lg:min-h-[calc(100vh-2.5rem)] lg:grid lg:grid-cols-[16.5rem_minmax(0,1fr)] lg:gap-3 lg:rounded-[2.25rem] lg:bg-surface lg:p-3 lg:shadow-card">
-        <aside className="hidden px-5 py-5 lg:grid lg:content-start lg:gap-10">
+      <header className="sticky top-0 z-40 pt-3 sm:pt-4">
+        <div className="mx-auto flex h-14 w-full max-w-[90rem] items-center gap-4 px-5 sm:px-8">
           <Logo />
-          <SideNav role={role} unread={unread} />
-        </aside>
-        <div className="flex min-w-0 flex-col gap-4 px-4 pt-4 sm:px-6 lg:gap-5 lg:rounded-[1.75rem] lg:bg-sunk lg:p-5">
-          <header className="flex items-center justify-between gap-3">
-            <div className="lg:hidden"><Logo /></div>
-            <div className="flex items-center gap-2.5 lg:ml-auto">
-              <Bell unread={unread} />
-              {/* No aria-label: what a sighted person reads (the name and role) starts the link's spoken name,
-                  as WCAG 2.5.3 asks, and "Your account" ends it; the initials are a picture of the name. */}
-              <Link href="/app/me" className="t-base flex min-h-11 items-center gap-3 rounded-full bg-surface p-1 shadow-card hover:bg-sunk lg:pr-5">
-                <span aria-hidden className="grid size-9 place-items-center rounded-full bg-accent text-[13px] font-semibold text-on-accent">{name ? initials(name) : <span aria-hidden className="size-2 rounded-full bg-highlight-deep" />}</span>
-                <span className="hidden min-w-0 text-left leading-tight lg:grid">
-                  <span className="max-w-40 truncate text-sm font-semibold">{name ?? " "}</span>
-                  <span className="text-xs text-muted">{t(`nav.role.${role}`)}</span>
-                </span>
-                <span className="sr-only">{t("nav.yourAccount")}</span>
-              </Link>
-            </div>
-          </header>
-          <main id="main" className="flex-1 pb-28 lg:rounded-3xl lg:bg-surface lg:p-6 lg:pb-8 lg:shadow-card">{children}</main>
+          <TopNav role={role} />
+          <div className="ml-auto flex items-center gap-2.5 lg:ml-0">
+            <Bell unread={unread} />
+            {/* No aria-label: what a sighted person reads (the name and role) starts the link's spoken name,
+                as WCAG 2.5.3 asks, and "Your account" ends it; the initials are a picture of the name. */}
+            <Link href="/app/me" className="t-base hidden min-h-11 items-center gap-3 rounded-full bg-surface/90 p-1 shadow-[0_0_0_1px_var(--c-line)] hover:bg-surface lg:flex lg:pr-5">
+              <span aria-hidden className="grid size-9 place-items-center rounded-full bg-accent text-[13px] font-semibold text-on-accent">{name ? initials(name) : <span aria-hidden className="size-2 rounded-full bg-highlight-deep" />}</span>
+              <span className="min-w-0 text-left leading-tight">
+                <span className="block max-w-40 truncate text-sm font-semibold">{name ?? " "}</span>
+                <span className="block text-xs text-muted">{t(`nav.role.${role}`)}</span>
+              </span>
+              <span className="sr-only">{t("nav.yourAccount")}</span>
+            </Link>
+            <button type="button" popoverTarget={MENU} aria-label={t("nav.menu")} className="t-base inline-flex size-11 items-center justify-center rounded-full bg-surface/90 text-ink shadow-[0_0_0_1px_var(--c-line)] hover:bg-surface lg:hidden">
+              <MenuIcon width={20} height={20} />
+            </button>
+          </div>
         </div>
-      </div>
-      <BottomNav role={role} />
+        <div id={MENU} popover="auto" aria-label={t("nav.label")} className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none overflow-y-auto border-0 bg-ground p-0 text-ink">
+          <div className="flex h-16 items-center justify-between px-5 sm:px-8">
+            <Logo />
+            <button type="button" popoverTarget={MENU} popoverTargetAction="hide" aria-label={t("nav.close")} className="t-base inline-flex size-11 items-center justify-center rounded-full hover:bg-sunk">
+              <CloseIcon width={22} height={22} />
+            </button>
+          </div>
+          <MenuNav role={role} />
+        </div>
+      </header>
+      <main id="main" className="mx-auto w-full max-w-[90rem] px-5 pb-20 pt-8 sm:px-8 lg:pt-10">{children}</main>
     </div>
   );
 }

@@ -48,3 +48,10 @@ Started 27 November 2026. Earlier choices he made in sessions before this file e
 - What it means: white rounded cards in a bento grid on the soft tint; near-black for the main button and the current menu item; lime as the highlight (badges, round arrow buttons, status tags, progress); sage green for one tinted card and charts; a centred pill-shaped top menu; large light-weight numbers and headings with small quiet labels. Dotted bars, the tick-mark ring, the split progress bar, round-check lists and tables with status pills are the dashboard's parts.
 - Refines HD-004 (Apple-calm neutral): the near-white and near-black base stays; lime and sage are added to it. A style reference only: no names, assets or layout copied one-to-one.
 - Meets earlier rules: D-142 (nothing is a photograph): the reference's photo card becomes a design slot and people show as initials. The reference's faint grey text is made darker so body text still meets 7:1 (`frontend.md` section 6).
+
+## HD-008: Both roles get a dashboard; performance and campaign facts visible to both
+
+- Date: 2026-11-28
+- His words: "i need both the creator and brand to have dashboard. The brand should be able to view the collab status and the insights of the reel or post performing which is posted by the creator or posted in colab... and every information about the campaign and ongoing campaign should be able to be viewed by both creator and brands... i have already given you a dashboard look previously for reference it is in our file already the yellow one... just change its colour tone and use the reference i gave you now and that one and make a new one out of these... and it shouldnt spoil the aesthetics of the website"
+- He chose: performance from the numbers read from creators' screenshots, honestly labelled ("Screenshot numbers now"), and "Yes, build it" to `frontend/design/dashboard-plan.md`.
+- Order: Today for the creator and the brand, then the campaign page for both roles; one page at a time (HD-006).

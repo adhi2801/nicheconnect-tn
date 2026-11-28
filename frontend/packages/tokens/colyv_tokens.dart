@@ -250,9 +250,9 @@ class ColyvTokens {
     accentPressed: Color(0xFF434240),
     onAccent: Color(0xFFFFFFFF),
     accentInk: Color(0xFF181715),
-    accentSoft: Color(0xFFF0EFED),
-    onAccentSoft: Color(0xFF23211F),
-    accentMid: Color(0xFF878683),
+    accentSoft: Color(0xFFD7FB70),
+    onAccentSoft: Color(0xFF181715),
+    accentMid: Color(0xFFBFE255),
     accentDeepFrom: Color(0xFF2C2B29),
     accentDeepTo: Color(0xFF11100F),
   );
