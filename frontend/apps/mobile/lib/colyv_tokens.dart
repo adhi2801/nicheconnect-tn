@@ -23,6 +23,11 @@ class ColyvPalette {
     required this.sealHi,
     required this.sealLo,
     required this.onSeal,
+    required this.lime,
+    required this.onLime,
+    required this.sage,
+    required this.washFrom,
+    required this.washTo,
     required this.accent,
     required this.accentHover,
     required this.accentPressed,
@@ -53,6 +58,11 @@ class ColyvPalette {
   final Color sealHi;
   final Color sealLo;
   final Color onSeal;
+  final Color lime;
+  final Color onLime;
+  final Color sage;
+  final Color washFrom;
+  final Color washTo;
   final Color accent;
   final Color accentHover;
   final Color accentPressed;
@@ -86,6 +96,11 @@ class ColyvTokens {
     sealHi: Color(0xFFF1DFA7),
     sealLo: Color(0xFF84591A),
     onSeal: Color(0xFF362107),
+    lime: Color(0xFFF1DFA7),
+    onLime: Color(0xFF201712),
+    sage: Color(0xFFF3ECE1),
+    washFrom: Color(0xFFF8EFE2),
+    washTo: Color(0xFFF8F4ED),
     accent: Color(0xFF7E1933),
     accentHover: Color(0xFF6C1029),
     accentPressed: Color(0xFF5B0C21),
@@ -117,6 +132,11 @@ class ColyvTokens {
     sealHi: Color(0xFFF1DFA7),
     sealLo: Color(0xFF84591A),
     onSeal: Color(0xFF362107),
+    lime: Color(0xFFF1DFA7),
+    onLime: Color(0xFF201712),
+    sage: Color(0xFFF3ECE1),
+    washFrom: Color(0xFFF8EFE2),
+    washTo: Color(0xFFF8F4ED),
     accent: Color(0xFF185B37),
     accentHover: Color(0xFF124C2C),
     accentPressed: Color(0xFF0F4025),
@@ -148,6 +168,11 @@ class ColyvTokens {
     sealHi: Color(0xFFF7E6B1),
     sealLo: Color(0xFF9D712D),
     onSeal: Color(0xFF261704),
+    lime: Color(0xFFE1B75C),
+    onLime: Color(0xFF261704),
+    sage: Color(0xFF1E2433),
+    washFrom: Color(0xFF121620),
+    washTo: Color(0xFF0B0E17),
     accent: Color(0xFFB54154),
     accentHover: Color(0xFFA5374A),
     accentPressed: Color(0xFF962C40),
@@ -179,6 +204,11 @@ class ColyvTokens {
     sealHi: Color(0xFFF7E6B1),
     sealLo: Color(0xFF9D712D),
     onSeal: Color(0xFF261704),
+    lime: Color(0xFFE1B75C),
+    onLime: Color(0xFF261704),
+    sage: Color(0xFF1E2433),
+    washFrom: Color(0xFF121620),
+    washTo: Color(0xFF0B0E17),
     accent: Color(0xFF2A7449),
     accentHover: Color(0xFF337D52),
     accentPressed: Color(0xFF23643F),
@@ -196,7 +226,7 @@ class ColyvTokens {
     surfaceRaised: Color(0xFFFFFFFF),
     sunk: Color(0xFFF0EFED),
     ink: Color(0xFF181715),
-    inkMuted: Color(0xFF514F4D),
+    inkMuted: Color(0xFF4A4946),
     line: Color(0xFFE3E2E0),
     lineStrong: Color(0xFF81807D),
     focus: Color(0xFF181715),
@@ -210,6 +240,11 @@ class ColyvTokens {
     sealHi: Color(0xFFF1DFA7),
     sealLo: Color(0xFF84591A),
     onSeal: Color(0xFF362107),
+    lime: Color(0xFFD7FB70),
+    onLime: Color(0xFF181715),
+    sage: Color(0xFFDEEFE3),
+    washFrom: Color(0xFFDFF4E3),
+    washTo: Color(0xFFF4F3E2),
     accent: Color(0xFF181715),
     accentHover: Color(0xFF343331),
     accentPressed: Color(0xFF434240),
@@ -241,6 +276,11 @@ class ColyvTokens {
     sealHi: Color(0xFFF7E6B1),
     sealLo: Color(0xFF9D712D),
     onSeal: Color(0xFF261704),
+    lime: Color(0xFFCBEF63),
+    onLime: Color(0xFF11100F),
+    sage: Color(0xFF223227),
+    washFrom: Color(0xFF0D1E13),
+    washTo: Color(0xFF0F0E0B),
     accent: Color(0xFFF4F3F1),
     accentHover: Color(0xFFD8D7D5),
     accentPressed: Color(0xFFC5C4C2),
@@ -273,6 +313,11 @@ class ColyvTokens {
   static const cSealHi = Color(0xFFF1DFA7);
   static const cSealLo = Color(0xFF84591A);
   static const cOnSeal = Color(0xFF362107);
+  static const cLime = Color(0xFFF1DFA7);
+  static const cOnLime = Color(0xFF201712);
+  static const cSage = Color(0xFFF3ECE1);
+  static const cWashFrom = Color(0xFFF8EFE2);
+  static const cWashTo = Color(0xFFF8F4ED);
   static const cAccent = Color(0xFF7E1933);
   static const cAccentHover = Color(0xFF6C1029);
   static const cAccentPressed = Color(0xFF5B0C21);

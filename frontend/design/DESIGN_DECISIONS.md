@@ -39,3 +39,12 @@ Started 27 November 2026. Earlier choices he made in sessions before this file e
 - Date: 2026-11-26
 - His words: "show me each screen and get approval before creating next page"
 - What it means: one page at a time, shown at phone and laptop widths, and the next page starts only after his yes.
+
+## HD-007: The look of the dashboard and every page follows the COREHR reference
+
+- Date: 2026-11-28
+- His words: "i want the dashboard to look like this and every page in the standard" (with the Dribbble reference "Dashboard Mockup, Data Dashboard, Design by Saddam", saved in the session's images folder as 3.png).
+- He chose: restyle Home first, then build the dashboard (Today); and a soft mint-to-cream tint as the site's background (not plain off-white, not the iridescent swirl).
+- What it means: white rounded cards in a bento grid on the soft tint; near-black for the main button and the current menu item; lime as the highlight (badges, round arrow buttons, status tags, progress); sage green for one tinted card and charts; a centred pill-shaped top menu; large light-weight numbers and headings with small quiet labels. Dotted bars, the tick-mark ring, the split progress bar, round-check lists and tables with status pills are the dashboard's parts.
+- Refines HD-004 (Apple-calm neutral): the near-white and near-black base stays; lime and sage are added to it. A style reference only: no names, assets or layout copied one-to-one.
+- Meets earlier rules: D-142 (nothing is a photograph): the reference's photo card becomes a design slot and people show as initials. The reference's faint grey text is made darker so body text still meets 7:1 (`frontend.md` section 6).

@@ -47,13 +47,17 @@ About 42 pages in all. Their contents come from `frontend/design/screen-plan.md`
 6. **The look lives in one file.** Every colour, font, size, space, radius, shadow and motion comes from `frontend/tokens/tokens.json`. A check fails the build if a component writes a raw colour. The neutral look is one theme there. The warm heritage look will be a second theme, switched for the whole site at once.
 7. **Proven, not claimed.** A browser test fills every slot with a deliberately loud test design (bright colour, oversized text, an attempt at a global style) and checks that every pixel outside the slots, and the position of every other element, is unchanged at phone and laptop widths. This is HD-002, written as a test. It is broken on purpose (a slot without containment) to show it fails.
 
-## 4. The neutral look (HD-004)
+## 4. The look (HD-004, refined by HD-007 on 28 November 2026)
 
-- An off-white ground (not pure white, see HD-004), white surfaces, near-black text, one accent kept for the single primary action on a page.
-- One typeface for everything people read: Inter, which the site already self-hosts, with tighter tracking at display sizes. Large headlines on public pages (56 to 80 px on a laptop), 16 to 17 px body text.
-- Spacing on an 8-point scale, with generous section spacing on public pages; hairline borders instead of boxed beige cards; at most one surface colour per page region.
+Harish's reference is the COREHR dashboard (saved in the session's images folder). Every page, public and signed-in, follows it:
+
+- A soft tint ground (pale mint at the top left, cream at the top right, fading to off-white), with white rounded cards (32 px corners) in a bento grid on it.
+- Near-black for the one main button and the current menu item; lime for highlights (tags, number badges, round arrow buttons, check marks, status tags); sage green for one tinted card per page and for charts. Lime is only ever a fill behind dark text, never text.
+- A pill-shaped top menu (the current page in black); a logo in an outlined pill (the logo slot).
+- Inter, with light-weight headings and big figures (`type-figure`, weight 300) and small quiet labels. Muted text is a little darker than the reference's so body text keeps 7:1.
+- Dashboard parts to come with Today: the dotted bar chart, the tick-mark ring, the split progress bar, round-check lists, tables with status pills. The reference's photo card becomes a design slot (D-142: nothing is a photograph); people show as initials.
 - Motion: one easing, short durations, nothing loops; everything respects reduced motion.
-- The `/design` catalogue is redone in this look first, so every page is built from parts already seen and approved.
+- The `/design` catalogue is redone in this look so every page is built from parts already seen and approved.
 
 ## 5. Order, with your yes at each step (HD-006)
 

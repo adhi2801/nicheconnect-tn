@@ -9,7 +9,7 @@ export type Slot = { size: string; purpose: string };
 
 export const SLOTS = {
   "brand.mark": {
-    size: "h-7 w-[5.5rem]",
+    size: "h-7 w-[3.75rem]",
     purpose: "The logo, from the designer's brand book. Until then the word Colyv is shown.",
   },
   "home.hero": {

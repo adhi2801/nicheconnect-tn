@@ -2573,3 +2573,15 @@ Newest entries at the bottom.
   3. **The rule "never a plain white ground" is set aside while the neutral look is the default**: the ground is off-white (#F7F7F6), surfaces are white. It returns with the heritage look.
   4. Pages are built one at a time and each waits for Harish's approval (HD-006), Home first; the order is `website-plan.md` section 5. Links to pages not yet built answer "not found" until they are.
   5. The landing page's turning temple (D-155, D-164) leaves Home's code and returns as the design in the `home.hero` slot when Harish adds it; its frames and `lib/orbit.ts` are kept.
+
+## D-203: The website's look follows the COREHR reference: lime, sage and a soft mint tint on white cards
+- Date: 2026-11-28
+- Approved by: Erode Harish (in session, 28 November 2026: "i want the dashboard to look like this and every page in the standard", with the reference image; chose "Home, then dashboard" and "Soft mint-to-cream tint"). His words are HD-007 in `frontend/design/DESIGN_DECISIONS.md`. **Not reviewed by the other founder**; Adhi is told.
+- Context: shown Home in the plain neutral look of D-202, Harish sent a reference dashboard and asked for the dashboard and every page in that style.
+- Options considered: (a) which first: A) Home, then the dashboard; B) the dashboard first; C) both together. (b) the ground: A) soft mint-to-cream tint; B) plain off-white; C) the reference's iridescent swirl.
+- Chosen: A and A.
+- Reason: settle the look on one page already built, then carry it to the dashboard, the biggest surface; the tint is what the reference's own screen uses and keeps the base calm.
+- Consequences / follow-ups:
+  1. `tokens.json` gains `lime`, `on-lime`, `sage`, `wash-from` and `wash-to` in both looks and both themes; neutral muted text is darkened slightly (L 0.43 to 0.405) so grey text on the new tints keeps 7:1. 216 contrast pairs pass.
+  2. This refines D-202's neutral look (the near-white and near-black base stays); it does not reverse it. D-142 holds: the reference's photograph is not copied; its place is a design slot.
+  3. Home is restyled; the dashboard (Today) is built next, then the other pages, one at a time (HD-006).

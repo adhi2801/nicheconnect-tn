@@ -30,6 +30,11 @@
       "seal-hi": "#F1DFA7",
       "seal-lo": "#84591A",
       "on-seal": "#362107",
+      "lime": "#F1DFA7",
+      "on-lime": "#201712",
+      "sage": "#F3ECE1",
+      "wash-from": "#F8EFE2",
+      "wash-to": "#F8F4ED",
       "accent": "#7E1933",
       "accent-hover": "#6C1029",
       "accent-pressed": "#5B0C21",
@@ -61,6 +66,11 @@
       "seal-hi": "#F1DFA7",
       "seal-lo": "#84591A",
       "on-seal": "#362107",
+      "lime": "#F1DFA7",
+      "on-lime": "#201712",
+      "sage": "#F3ECE1",
+      "wash-from": "#F8EFE2",
+      "wash-to": "#F8F4ED",
       "accent": "#185B37",
       "accent-hover": "#124C2C",
       "accent-pressed": "#0F4025",
@@ -92,6 +102,11 @@
       "seal-hi": "#F7E6B1",
       "seal-lo": "#9D712D",
       "on-seal": "#261704",
+      "lime": "#E1B75C",
+      "on-lime": "#261704",
+      "sage": "#1E2433",
+      "wash-from": "#121620",
+      "wash-to": "#0B0E17",
       "accent": "#B54154",
       "accent-hover": "#A5374A",
       "accent-pressed": "#962C40",
@@ -123,6 +138,11 @@
       "seal-hi": "#F7E6B1",
       "seal-lo": "#9D712D",
       "on-seal": "#261704",
+      "lime": "#E1B75C",
+      "on-lime": "#261704",
+      "sage": "#1E2433",
+      "wash-from": "#121620",
+      "wash-to": "#0B0E17",
       "accent": "#2A7449",
       "accent-hover": "#337D52",
       "accent-pressed": "#23643F",
@@ -140,7 +160,7 @@
       "surface-raised": "#FFFFFF",
       "sunk": "#F0EFED",
       "ink": "#181715",
-      "ink-muted": "#514F4D",
+      "ink-muted": "#4A4946",
       "line": "#E3E2E0",
       "line-strong": "#81807D",
       "focus": "#181715",
@@ -154,6 +174,11 @@
       "seal-hi": "#F1DFA7",
       "seal-lo": "#84591A",
       "on-seal": "#362107",
+      "lime": "#D7FB70",
+      "on-lime": "#181715",
+      "sage": "#DEEFE3",
+      "wash-from": "#DFF4E3",
+      "wash-to": "#F4F3E2",
       "accent": "#181715",
       "accent-hover": "#343331",
       "accent-pressed": "#434240",
@@ -185,6 +210,11 @@
       "seal-hi": "#F7E6B1",
       "seal-lo": "#9D712D",
       "on-seal": "#261704",
+      "lime": "#CBEF63",
+      "on-lime": "#11100F",
+      "sage": "#223227",
+      "wash-from": "#0D1E13",
+      "wash-to": "#0F0E0B",
       "accent": "#F4F3F1",
       "accent-hover": "#D8D7D5",
       "accent-pressed": "#C5C4C2",
@@ -368,6 +398,48 @@
         "ratio": 7.7
       },
       {
+        "fg": "on-lime",
+        "bg": "lime",
+        "min": 7,
+        "ratio": 13.29
+      },
+      {
+        "fg": "ink",
+        "bg": "sage",
+        "min": 7,
+        "ratio": 15
+      },
+      {
+        "fg": "ink-muted",
+        "bg": "sage",
+        "min": 7,
+        "ratio": 7.07
+      },
+      {
+        "fg": "ink",
+        "bg": "wash-from",
+        "min": 7,
+        "ratio": 15.46
+      },
+      {
+        "fg": "ink-muted",
+        "bg": "wash-from",
+        "min": 7,
+        "ratio": 7.29
+      },
+      {
+        "fg": "ink",
+        "bg": "wash-to",
+        "min": 7,
+        "ratio": 16.06
+      },
+      {
+        "fg": "ink-muted",
+        "bg": "wash-to",
+        "min": 7,
+        "ratio": 7.57
+      },
+      {
         "fg": "accent-soft",
         "bg": "ink",
         "min": 7,
@@ -542,6 +614,48 @@
         "bg": "ground",
         "min": 3,
         "ratio": 7.7
+      },
+      {
+        "fg": "on-lime",
+        "bg": "lime",
+        "min": 7,
+        "ratio": 13.29
+      },
+      {
+        "fg": "ink",
+        "bg": "sage",
+        "min": 7,
+        "ratio": 15
+      },
+      {
+        "fg": "ink-muted",
+        "bg": "sage",
+        "min": 7,
+        "ratio": 7.07
+      },
+      {
+        "fg": "ink",
+        "bg": "wash-from",
+        "min": 7,
+        "ratio": 15.46
+      },
+      {
+        "fg": "ink-muted",
+        "bg": "wash-from",
+        "min": 7,
+        "ratio": 7.29
+      },
+      {
+        "fg": "ink",
+        "bg": "wash-to",
+        "min": 7,
+        "ratio": 16.06
+      },
+      {
+        "fg": "ink-muted",
+        "bg": "wash-to",
+        "min": 7,
+        "ratio": 7.57
       },
       {
         "fg": "accent-soft",
@@ -720,6 +834,48 @@
         "ratio": 9.48
       },
       {
+        "fg": "on-lime",
+        "bg": "lime",
+        "min": 7,
+        "ratio": 9.22
+      },
+      {
+        "fg": "ink",
+        "bg": "sage",
+        "min": 7,
+        "ratio": 13.62
+      },
+      {
+        "fg": "ink-muted",
+        "bg": "sage",
+        "min": 7,
+        "ratio": 8.58
+      },
+      {
+        "fg": "ink",
+        "bg": "wash-from",
+        "min": 7,
+        "ratio": 15.9
+      },
+      {
+        "fg": "ink-muted",
+        "bg": "wash-from",
+        "min": 7,
+        "ratio": 10.01
+      },
+      {
+        "fg": "ink",
+        "bg": "wash-to",
+        "min": 7,
+        "ratio": 16.95
+      },
+      {
+        "fg": "ink-muted",
+        "bg": "wash-to",
+        "min": 7,
+        "ratio": 10.67
+      },
+      {
         "fg": "accent-soft",
         "bg": "ink",
         "min": 7,
@@ -896,6 +1052,48 @@
         "ratio": 9.48
       },
       {
+        "fg": "on-lime",
+        "bg": "lime",
+        "min": 7,
+        "ratio": 9.22
+      },
+      {
+        "fg": "ink",
+        "bg": "sage",
+        "min": 7,
+        "ratio": 13.62
+      },
+      {
+        "fg": "ink-muted",
+        "bg": "sage",
+        "min": 7,
+        "ratio": 8.58
+      },
+      {
+        "fg": "ink",
+        "bg": "wash-from",
+        "min": 7,
+        "ratio": 15.9
+      },
+      {
+        "fg": "ink-muted",
+        "bg": "wash-from",
+        "min": 7,
+        "ratio": 10.01
+      },
+      {
+        "fg": "ink",
+        "bg": "wash-to",
+        "min": 7,
+        "ratio": 16.95
+      },
+      {
+        "fg": "ink-muted",
+        "bg": "wash-to",
+        "min": 7,
+        "ratio": 10.67
+      },
+      {
         "fg": "accent-soft",
         "bg": "ink",
         "min": 7,
@@ -931,19 +1129,19 @@
         "fg": "ink-muted",
         "bg": "ground",
         "min": 7,
-        "ratio": 7.61
+        "ratio": 8.4
       },
       {
         "fg": "ink-muted",
         "bg": "surface",
         "min": 7,
-        "ratio": 8.15
+        "ratio": 9
       },
       {
         "fg": "ink-muted",
         "bg": "sunk",
         "min": 7,
-        "ratio": 7.1
+        "ratio": 7.83
       },
       {
         "fg": "accent-ink",
@@ -1070,6 +1268,48 @@
         "bg": "ground",
         "min": 3,
         "ratio": 7.88
+      },
+      {
+        "fg": "on-lime",
+        "bg": "lime",
+        "min": 7,
+        "ratio": 15.29
+      },
+      {
+        "fg": "ink",
+        "bg": "sage",
+        "min": 7,
+        "ratio": 14.98
+      },
+      {
+        "fg": "ink-muted",
+        "bg": "sage",
+        "min": 7,
+        "ratio": 7.53
+      },
+      {
+        "fg": "ink",
+        "bg": "wash-from",
+        "min": 7,
+        "ratio": 15.52
+      },
+      {
+        "fg": "ink-muted",
+        "bg": "wash-from",
+        "min": 7,
+        "ratio": 7.8
+      },
+      {
+        "fg": "ink",
+        "bg": "wash-to",
+        "min": 7,
+        "ratio": 16.01
+      },
+      {
+        "fg": "ink-muted",
+        "bg": "wash-to",
+        "min": 7,
+        "ratio": 8.04
       },
       {
         "fg": "accent-soft",
@@ -1246,6 +1486,48 @@
         "bg": "ground",
         "min": 3,
         "ratio": 9.55
+      },
+      {
+        "fg": "on-lime",
+        "bg": "lime",
+        "min": 7,
+        "ratio": 14.54
+      },
+      {
+        "fg": "ink",
+        "bg": "sage",
+        "min": 7,
+        "ratio": 12.19
+      },
+      {
+        "fg": "ink-muted",
+        "bg": "sage",
+        "min": 7,
+        "ratio": 7.27
+      },
+      {
+        "fg": "ink",
+        "bg": "wash-from",
+        "min": 7,
+        "ratio": 15.62
+      },
+      {
+        "fg": "ink-muted",
+        "bg": "wash-from",
+        "min": 7,
+        "ratio": 9.32
+      },
+      {
+        "fg": "ink",
+        "bg": "wash-to",
+        "min": 7,
+        "ratio": 17.41
+      },
+      {
+        "fg": "ink-muted",
+        "bg": "wash-to",
+        "min": 7,
+        "ratio": 10.38
       },
       {
         "fg": "accent-soft",

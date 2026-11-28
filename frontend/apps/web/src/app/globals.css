@@ -21,6 +21,11 @@
   --color-hero-to: var(--c-hero-to);
   --color-gauge-deep: var(--c-gauge-deep);
   --color-gauge-mid: var(--c-gauge-mid);
+  --color-lime: var(--c-lime);
+  --color-on-lime: var(--c-on-lime);
+  --color-sage: var(--c-sage);
+  --color-wash-from: var(--c-wash-from);
+  --color-wash-to: var(--c-wash-to);
   --color-ok: var(--c-ok);
   --color-ok-soft: var(--c-ok-soft);
   --color-warn: var(--c-warn);
@@ -39,8 +44,14 @@
   --font-mono: var(--font-jetbrains), var(--f-numeric);
 }
 
+/* The site's ground: a soft mint glow in the top left and a cream one in the top right over the plain ground (HD-007). The glows have
+   a fixed size, so a long page is calm below the first screens and the cards (white) are what stand out. */
 body {
-  background: var(--c-ground);
+  background:
+    radial-gradient(70rem 46rem at 0% 0%, var(--c-wash-from), transparent 72%),
+    radial-gradient(60rem 40rem at 100% 6%, var(--c-wash-to), transparent 72%),
+    var(--c-ground);
+  background-repeat: no-repeat;
   color: var(--c-ink);
   font-family: var(--font-inter), var(--f-sans);
   -webkit-font-smoothing: antialiased;
@@ -100,7 +111,7 @@ body {
 @layer components {
   .type-display {
     font-family: var(--look-display);
-    font-weight: 600;
+    font-weight: 450;
     font-size: clamp(var(--t-display-s-size), 2rem + 3.6vw, var(--t-display-l-size));
     line-height: 1.04;
     letter-spacing: var(--t-display-l-tracking);
@@ -108,7 +119,7 @@ body {
   }
   .type-title {
     font-family: var(--look-display);
-    font-weight: 600;
+    font-weight: 450;
     font-size: clamp(var(--t-title-1-size), 1.25rem + 2.6vw, var(--t-display-m-size));
     line-height: 1.08;
     letter-spacing: var(--t-display-m-tracking);
@@ -116,10 +127,18 @@ body {
   }
   .type-subtitle {
     font-family: var(--look-display);
-    font-weight: 600;
+    font-weight: 500;
     font-size: clamp(var(--t-title-2-size), 1.2rem + 0.8vw, var(--t-title-1-size));
     line-height: 1.2;
     letter-spacing: var(--t-title-2-tracking);
+  }
+  /* Big figures (the dashboard's numbers): light, tabular, tight (HD-007). */
+  .type-figure {
+    font-family: var(--look-display);
+    font-weight: 300;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.035em;
+    line-height: 1;
   }
   .type-lede {
     font-size: clamp(var(--t-body-lg-size), 1rem + 0.3vw, var(--t-title-3-size));

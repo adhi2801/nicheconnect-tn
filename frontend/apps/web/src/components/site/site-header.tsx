@@ -17,7 +17,7 @@ const MENU = "site-menu";
 /** The wordmark, inside the logo's design slot: the designer's logo replaces it with one line in src/design/registry.ts. */
 export function Wordmark() {
   return (
-    <Link href="/" aria-label={t("site.home")} className="t-base -mx-1 rounded-md px-1">
+    <Link href="/" aria-label={t("site.home")} className="t-base inline-flex h-11 w-fit items-center rounded-full border border-line-strong bg-surface/70 px-4">
       <DesignSlot id="brand.mark" fallback={<span className="block font-display text-[21px] font-semibold leading-7 tracking-[-0.035em]">{t("site.brand")}</span>} />
     </Link>
   );
@@ -28,25 +28,35 @@ export function Wordmark() {
  * opened by the browser's own popover, so the menu works with no script at all (frontend.md section 8d), and Escape or a tap
  * outside closes it.
  */
-export function SiteHeader() {
+export function SiteHeader({ current }: { current?: string }) {
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-ground/85 backdrop-blur-md backdrop-saturate-150">
-      <div className="mx-auto flex h-16 w-full max-w-[75rem] items-center gap-8 px-5 sm:px-8">
+    <header className="sticky top-0 z-40 pt-3 sm:pt-4">
+      <div className="mx-auto flex h-14 w-full max-w-[75rem] items-center gap-4 px-5 sm:px-8">
         <Wordmark />
         <nav aria-label={t("site.nav.label")} className="hidden flex-1 justify-center lg:flex">
-          <ul className="flex items-center gap-8">
-            {SITE_LINKS.map((link) => (
-              <li key={link.href}>
-                <Link href={link.href} prefetch={false} className="t-base text-[14px] font-medium text-muted hover:text-ink">{t(link.key)}</Link>
-              </li>
-            ))}
+          <ul className="flex items-center gap-1 rounded-full bg-surface/90 p-1 shadow-[0_0_0_1px_var(--c-line)] backdrop-blur-md">
+            {SITE_LINKS.map((link) => {
+              const here = current === link.href;
+              return (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    prefetch={false}
+                    aria-current={here ? "page" : undefined}
+                    className={`t-base inline-flex h-9 items-center rounded-full px-4 text-[13px] font-medium ${here ? "bg-accent text-on-accent" : "text-ink hover:bg-sunk"}`}
+                  >
+                    {t(link.key)}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </nav>
-        <div className="ml-auto flex items-center gap-1 lg:ml-0">
-          <Link href="/sign-in" className="t-base hidden min-h-11 items-center rounded-full px-4 text-[14px] font-medium text-ink hover:bg-sunk sm:inline-flex lg:min-h-10">{t("site.nav.signIn")}</Link>
-          <Link href="/sign-in" className="t-base inline-flex min-h-11 items-center rounded-full bg-accent px-5 text-[14px] font-semibold text-on-accent hover:bg-accent-hover active:scale-[0.98] lg:min-h-10">{t("site.nav.start")}</Link>
-          <button type="button" popoverTarget={MENU} aria-label={t("site.nav.menu")} className="t-base -mr-2 inline-flex size-11 items-center justify-center rounded-full text-ink hover:bg-sunk lg:hidden">
-            <MenuIcon width={22} height={22} />
+        <div className="ml-auto flex items-center gap-2 lg:ml-0">
+          <Link href="/sign-in" className="t-base hidden h-11 items-center rounded-full bg-surface/90 px-5 text-[13px] font-medium text-ink shadow-[0_0_0_1px_var(--c-line)] hover:bg-surface sm:inline-flex">{t("site.nav.signIn")}</Link>
+          <Link href="/sign-in" className="t-base inline-flex h-11 items-center rounded-full bg-accent px-5 text-[13px] font-semibold text-on-accent hover:bg-accent-hover active:scale-[0.98]">{t("site.nav.start")}</Link>
+          <button type="button" popoverTarget={MENU} aria-label={t("site.nav.menu")} className="t-base inline-flex size-11 items-center justify-center rounded-full bg-surface/90 text-ink shadow-[0_0_0_1px_var(--c-line)] hover:bg-surface lg:hidden">
+            <MenuIcon width={20} height={20} />
           </button>
         </div>
       </div>

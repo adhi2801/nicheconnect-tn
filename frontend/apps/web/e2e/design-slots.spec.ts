@@ -75,7 +75,25 @@ for (const path of PAGES) {
       // Every slot has a real box: one that collapsed to nothing would pass this test while hiding its design.
       for (const box of await slots.evaluateAll((els) => els.filter((el) => el.checkVisibility()).map((el) => el.getBoundingClientRect().height))) expect(box).toBeGreaterThan(0);
 
-      const shot = () => page.screenshot({ fullPage: true, animations: "disabled", caret: "hide", mask: [slots], maskColor: "#808080" });
+      // The slots are covered with grey boxes a hair larger than they are, then the page is photographed. (Playwright's own mask covers whole
+      // pixels, and a slot at a fractional position has an edge row that is half its own: seen on 28 November 2026, so the margin.)
+      const shot = async () => {
+        await page.evaluate((margin) => {
+          const width = document.documentElement.scrollWidth, scrolled = window.scrollY;
+          for (const slot of document.querySelectorAll("[data-slot]")) {
+            const r = slot.getBoundingClientRect();
+            if (r.width === 0) continue;
+            const left = Math.max(0, r.left - margin), right = Math.min(width, r.right + margin);
+            const cover = document.createElement("div");
+            cover.setAttribute("data-cover", "");
+            cover.style.cssText = `position:absolute;z-index:2147483647;background:#808080;left:${left}px;top:${r.top + scrolled - margin}px;width:${right - left}px;height:${r.height + margin * 2}px`;
+            document.body.appendChild(cover);
+          }
+        }, 2);
+        const image = await page.screenshot({ fullPage: true, animations: "disabled", caret: "hide" });
+        await page.evaluate(() => document.querySelectorAll("[data-cover]").forEach((el) => el.remove()));
+        return image;
+      };
       const before = { layout: await layout(page), image: await shot() };
 
       await page.evaluate((html) => {
