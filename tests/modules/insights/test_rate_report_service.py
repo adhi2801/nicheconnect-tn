@@ -541,7 +541,7 @@ def test_the_fingerprint_is_sha256_of_canonical_json():
 
     data = {"b": [1, "₹"], "a": None}
 
-    assert service.canonical_json(data) == b'{"a":null,"b":[1,"\u20b9"]}'
+    assert service.canonical_json(data) == rb'{"a":null,"b":[1,"\u20b9"]}'
     assert (
         service.fingerprint(data)
         == hashlib.sha256(service.canonical_json(data)).hexdigest()
@@ -748,6 +748,29 @@ def test_any_other_refusal_is_not_a_lost_rebuild(db, fields, constraint):
 
     assert error.orig.diag.constraint_name == constraint
     assert LOST_TEXT not in str(error.orig)
+    assert service._is_lost_rebuild(error) is False
+
+
+def test_the_supersedes_foreign_key_s_refusal_is_not_a_lost_rebuild(db):
+    """The lookalike: the foreign key's name holds the trigger's name
+    without its colon, so only the colon tells the two apart. The trigger
+    runs first and would refuse this row itself, so the table's owner turns
+    it off inside the test's own transaction (rolled back with it) to reach
+    the foreign key behind it."""
+    db.execute(
+        text("ALTER TABLE city_rate_report DISABLE TRIGGER city_rate_report_supersedes")
+    )
+
+    error = refusal(
+        db, lambda: insert_row(db, a_quarter(), supersedes_id=uuid.UUID(int=9))
+    )
+
+    assert (
+        error.orig.diag.constraint_name
+        == "fk_city_rate_report_supersedes_id_city_rate_report"
+    )
+    assert LOST_TEXT in str(error.orig)
+    assert f"{LOST_TEXT}:" not in str(error.orig)
     assert service._is_lost_rebuild(error) is False
 
 

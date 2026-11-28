@@ -422,8 +422,10 @@ def _is_lost_rebuild(error: IntegrityError) -> bool:
     diag = getattr(error.orig, "diag", None)
     if getattr(diag, "constraint_name", None) in _LOST_REBUILD_CONSTRAINTS:
         return True
-    # The trigger's own message, with its colon: the foreign key's name
-    # (fk_city_rate_report_supersedes_id_...) holds the same words.
+    # The trigger's own message, with its colon: two lookalikes hold the same
+    # words without it, the foreign key fk_city_rate_report_supersedes_id_
+    # city_rate_report and the unique uq_city_rate_report_supersedes_id (the
+    # latter already matched above by its name).
     return "city_rate_report_supersedes:" in str(error.orig)
 
 

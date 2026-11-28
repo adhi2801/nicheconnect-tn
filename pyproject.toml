@@ -259,10 +259,9 @@ only_mutate = [
     # lets one person's price through is the harm. "All killed" was claimed
     # for these two on 20 and 26 November; the nightly of 27 November found
     # 15 survivors in the service. Measured over this whole list on 28
-    # November 2026 (Linux container, Tamil Nadu zone): 1,798 mutants, 15
-    # survive: the 14 accepted (D-091, D-194) and rebuild's method-version
-    # `>=` written `>`, equivalent while the supersedes trigger holds, left
-    # for a founder's decision.
+    # November 2026 (Linux container, Tamil Nadu zone), after D-205 removed
+    # rebuild's unreachable version half and quarter filter: 1,792 mutants,
+    # 14 survive, exactly the 14 accepted (D-091, D-194).
     "app/modules/insights/rate_report_rules.py",
     "app/modules/insights/rate_report_service.py",
 ]

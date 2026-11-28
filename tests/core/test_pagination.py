@@ -101,7 +101,7 @@ def cursor_condition() -> tuple[BinaryExpression[bool], ...]:
     condition = older_than_cursor(
         Row.created_at, Row.id, encode_cursor(cursor_time, cursor_id)
     )
-    return tuple(condition.clauses)  # type: ignore[attr-defined]
+    return tuple(condition.clauses)
 
 
 def test_the_condition_is_a_plain_range_and_a_row_value_comparison():
